@@ -4,15 +4,9 @@ Format:
 
 ## Year
 
-### Round
+### [Round - Instructions, problem sets and scoreboard](link.to/scoreboard) / [Solutions](link.to/solutions)
 
-[Solutions](link.to/solutions)
-
-[Instructions, problem sets and scoreboard](link.to/scoreboard)
-
-### FAQ / Schedule
-
-[FAQ / Schedule](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-2015-faq/1029173677098533)
+### [FAQ / Schedule](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-2015-faq/1029173677098533)
 
 ===
 
