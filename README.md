@@ -115,10 +115,13 @@ For example:
 ## Adding new years / rounds / problem sets
 
 - In order to facilitate easy adding of new problem sets, a sample template is created under the folder `templates`
-- Whenever there is a new year of contest coming, just cp -r the `_year_` folder under templates will do. e.g. `cp -r templates/_year_ 2015`
-- Edit the `.md` files accordingly
+- Whenever there is a new year of contest coming, just `cp -r` the `_year_` folder under templates will do. e.g. `cp -r templates/_year_ 2015`
+- Next, edit the `faq.md` file, put back the source link for faq of that year and its content
+- Then `cp -r` the `_round_` folder. e.g. `cp -r _round_ qualifying_round`
+- Edit the `round-instructions.md`, fill back the link to the instructions for that round and its content
+- Clone the problem set folder by `cp -r _problem_id_._problem_title_` to a properly named folder, e.g. `cp -r _problem_id_._problem_title_ 1.Cooking_the_Books`
+- Edit the `problem.md` file, fill back the link to the problem descriptions
+
 - Save the sample input / output files under appropriate positions
-- Adding a new problem set is similar, just by cp -r the `_problem_id_._problem_title_` folder  to a properly named folder will do
-- Edit the `.md` files inside accordingly
 - Save the input / output files and also source code by others and note well about the naming convention will do
 
