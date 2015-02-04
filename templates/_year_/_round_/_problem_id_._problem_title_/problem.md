@@ -1,4 +1,4 @@
-src: [link to the problem page]
+[src](link.to/the-problem-description-page)
 
 [
     - actual content of the problem page, note well about the formatting of the superscripts and subscripts
