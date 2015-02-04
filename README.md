@@ -36,11 +36,11 @@ source-links.md
 ### Folders and files per year and round
 
 ```
-- [year]/
-    - faq.md
-    - [round]/
-        - round-instructions.md
-        - [problem id].[problem_title]/
+[year]
+├── faq.md
+└── [round]
+    ├── [problem_id].[problem_title]
+    └── round-instructions.md
 ```
 
 - For each year, there will be a folder of that year. 
@@ -71,16 +71,16 @@ For example:
 ### Folders and files per problem set
 
 ```
-- [problem id].[problem folder]/
-    - problem.md
-    - [sample input].txt
-    - [sample output].txt
-    - solutions/
-        - official_solution.md
-        - [actual input].txt
-        - expected_output.txt
-        - sources/
-            - [rank].[hacker name].[source code extension]
+[problem_id].[problem_title]
+├── problem.md
+├── [sample_input].txt
+├── [sample_output].txt
+└── solutions
+    ├── official_solution.md
+    ├── [actual_input].txt
+    ├── expected_output.txt
+    └── sources
+        └── [rank].[hacker_name].[ext]
 ```
 
 - In each problem set folder, there will be the following folders and files:
