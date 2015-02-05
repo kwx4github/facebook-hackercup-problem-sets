@@ -31,7 +31,9 @@ For the _i_ th maze, print a line containing "Case #i: " followed by the smalles
 ###### Constraints
 
 1 ≤ **T** ≤ 100 
+
 1 ≤ **M**, **N** ≤ 100 
+
 Each maze will contain exactly one 'S' and exactly one 'G'.
 
 Example input
