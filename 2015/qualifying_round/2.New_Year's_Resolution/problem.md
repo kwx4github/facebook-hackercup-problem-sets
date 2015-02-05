@@ -17,8 +17,11 @@ For each test case _i_, print a line containing "Case #i: " followed by either "
 ###### Constraints
 
 1 ≤ **T** ≤ 20 
+
 1 ≤ **N** ≤ 20 
+
 10 ≤ **G<sub>P</sub>**, **G<sub>C</sub>**, **G<sub>F</sub>** ≤ 1000 
+
 10 ≤ **P**, **C**, **F** ≤ 1000 
 
 Example input
