@@ -14,11 +14,14 @@ Lasers are powerful, but they do not pass through walls or laser turrets. The la
 
 Input begins with an integer **T**, the number of mazes you'll explore. For each maze, there is first a line containing two integers, **M** and **N**, the height and width of the maze, respectively. The next **M** lines contain **N** characters each, describing the maze:
 
+```
 . (empty space) 
 # (wall) 
 S (starting position) 
 G (goal) 
 < > ^ v (laser turrets) 
+```
+
 The four symbols for laser turrets signify turrets that are initially pointing left, right, up, or down respectively before you take your first step.
 
 ###### Output
