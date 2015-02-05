@@ -21,11 +21,17 @@ For the ith test case, print a line containing "Case #i: " followed by the minim
 ###### Constraints
 
 1 ≤ **T** ≤ 100 
+
 1 ≤ **N** ≤ 100,000 
+
 The **N** words will have a total length of no more than 1,000,000 characters. 
+
 The words are made up of only lower-case alphabetic characters. 
+
 The words are pairwise distinct. 
+
 **NOTE:** The input file is about 10-20MB.
+
 **For Autocomplete, only lowercase letters a-z will be used.**
 
 
