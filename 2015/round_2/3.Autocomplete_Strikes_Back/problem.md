@@ -21,7 +21,9 @@ For the **i** th test case, print a line containing "Case #i: " followed by the 
 ###### Constraints
 
 1 ≤ **T** ≤ 20 
+
 2 ≤ **N** ≤ 4,000 
+
 1 ≤ **K** ≤ min(**N**-1, 100) 
 
 The **N** words will have a total length of no more than 20,000 characters. 
