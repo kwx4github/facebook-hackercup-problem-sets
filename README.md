@@ -55,7 +55,7 @@ For example:
 - 2015/
     - faq.md
     - qualifying_round/
-	- round-instructions.md
+        - round-instructions.md
         - 1.Cooking_the_Books/
         - 2.New_Year's_Resolution/
         - 3.Laser_Maze/
