@@ -72,21 +72,21 @@ Sample template:
 
 ## 2011
 
-### [Round 3 (Final Round)](https://www.facebook.com/hackercup/problems.php?round=188859297819219) / [Solutions]()
+### [Round 3 (Final Round)](https://www.facebook.com/hackercup/problems.php?round=188859297819219) / Solutions (not available)
 
-### [Round 2](https://www.facebook.com/hackercup/problems.php?round=178767375498716) / [Solutions]()
+### [Round 2](https://www.facebook.com/hackercup/problems.php?round=178767375498716) / Solutions (not available)
 
-### [Round 1C](https://www.facebook.com/hackercup/problems.php?round=173585106010813) / [Solutions]()
+### [Round 1C](https://www.facebook.com/hackercup/problems.php?round=173585106010813) / Solutions (not available)
 
-### [Round 1B](https://www.facebook.com/hackercup/problems.php?round=167482453296629) / [Solutions]()
+### [Round 1B](https://www.facebook.com/hackercup/problems.php?round=167482453296629) / Solutions (not available)
 
-### [Round 1A (reprise)](https://www.facebook.com/hackercup/problems.php?round=123802894356576) / [Solutions]()
+### [Round 1A (reprise)](https://www.facebook.com/hackercup/problems.php?round=123802894356576) / Solutions (not available)
 
-### [Round 1A](https://www.facebook.com/hackercup/problems.php?round=144428782277390) / [Solutions]()
+### [Round 1A](https://www.facebook.com/hackercup/problems.php?round=144428782277390) / Solutions (not available)
 
-### [Qualifying Round](https://www.facebook.com/hackercup/problems.php?round=4) / [Solutions]()
+### [Qualifying Round](https://www.facebook.com/hackercup/problems.php?round=4) / Solutions (not available)
 
-### [Test Round](https://www.facebook.com/hackercup/problems.php?round=103456299728530) / [Solutions]()
+### [Test Round](https://www.facebook.com/hackercup/problems.php?round=103456299728530) / Solutions (not available)
 
 ### [FAQ & Schedule](https://www.facebook.com/notes/facebook-hacker-cup/updated-dates-and-times-for-online-rounds/193925823956660)
 
