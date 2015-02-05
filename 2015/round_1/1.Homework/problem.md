@@ -23,7 +23,9 @@ For the **i** th question, print a line containing "Case #i: " followed by the n
 ###### Constraints
 
 1 ≤ **T** ≤ 100 
+
 2 ≤ **A** ≤ **B** ≤ 10<sup>7</sup> 
+
 1 ≤ **K** ≤ 10<sup>9</sup> 
 
 ###### Explanation of Sample
