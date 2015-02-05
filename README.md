@@ -121,7 +121,9 @@ For example:
 - Edit the `round-instructions.md`, fill back the link to the instructions for that round and its content
 - Clone the problem set folder by `cp -r _problem_id_._problem_title_` to a properly named folder, e.g. `cp -r _problem_id_._problem_title_ 1.Cooking_the_Books`
 - Edit the `problem.md` file, fill back the link to the problem descriptions
-
-- Save the sample input / output files under appropriate positions
-- Save the input / output files and also source code by others and note well about the naming convention will do
+- Download the example input / output files from the problem page. Save them with the default name given (usually named in the format of [problem name]_example_[input/output].txt
+- Edit the `official_solution.md` page, fill back the link to the official solution and the solution content for that problem
+- Download the input file from the official solution, name it with `[problem name].txt`
+- If there is also the output file from the official solution, download and save it as well. Otherwise try to generate the expected output from the winning source codes, name it with `expected_output.txt` if no default name is available
+- Download a few source code by other winning hackers and save them to the `sources` folder, name them in the format of `[rank].[hacker name].[extension]`
 
