@@ -23,6 +23,7 @@ Absolute errors of up to 10<sup>-5</sup> will be ignored.
 ###### Constraints
 
 1 ≤ **T** ≤ 20 
+
 0.01 ≤ **p** ≤ 1.0 
 
 Example input
