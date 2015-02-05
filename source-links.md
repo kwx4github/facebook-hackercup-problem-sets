@@ -36,5 +36,57 @@ Sample template:
 
 ### [Qualifying Round](https://www.facebook.com/hackercup/problems.php?round=598486203541358) / [Solutions](https://www.facebook.com/notes/facebook-hacker-cup/2014-qualification-round-solutions/775180192497884)
 
-### [FAQ & Schedule](link.to/faq&schedule)
+### [FAQ & Schedule](https://www.facebook.com/notes/769049686444268/)
+
+===
+
+## 2013
+
+### [Round 4 (Final Round)](https://www.facebook.com/hackercup/problems.php?round=430084003727512) / Solutions (not available)
+
+### [Round 3](https://www.facebook.com/hackercup/problems.php?round=402976459784646) / Solutions (not available)
+
+### [Round 2](https://www.facebook.com/hackercup/problems.php?round=499927843385312) / Solutions (not available)
+
+### [Round 1](https://www.facebook.com/hackercup/problems.php?round=189890111155691) / [Solutions](https://www.facebook.com/notes/facebook-hacker-cup/2013-round-1-solutions/606859202663318)
+
+### [Qualifying Round](https://www.facebook.com/hackercup/problems.php?round=185564241586420) / [Solutions](https://www.facebook.com/notes/facebook-hacker-cup/qualification-round-solutions/598486173500621)
+
+### [FAQ & Schedule](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-2013-faq/591459627536609)
+
+===
+
+## 2012
+
+### [Round 3](https://www.facebook.com/hackercup/problems.php?round=222291111185610) / Solutions (not available)
+
+### [Round 2](https://www.facebook.com/hackercup/problems.php?round=154897681286317) / Solutions (not available)
+
+### [Round 1](https://www.facebook.com/hackercup/problems.php?round=225705397509134) / Solutions (not available)
+
+### [Qualifying Round )](https://www.facebook.com/hackercup/problems.php?round=146094915502528) / [Solutions](https://www.facebook.com/notes/facebook-hacker-cup/2012-qualification-round-solutions/371108282905079)
+
+### [FAQ & Schedule](https://www.facebook.com/notes/facebook-engineering/announcing-facebooks-2012-hacker-cup/10150468260528920)
+
+===
+
+## 2011
+
+### [Round 3 (Final Round)](https://www.facebook.com/hackercup/problems.php?round=188859297819219) / [Solutions]()
+
+### [Round 2](https://www.facebook.com/hackercup/problems.php?round=178767375498716) / [Solutions]()
+
+### [Round 1C](https://www.facebook.com/hackercup/problems.php?round=173585106010813) / [Solutions]()
+
+### [Round 1B](https://www.facebook.com/hackercup/problems.php?round=167482453296629) / [Solutions]()
+
+### [Round 1A (reprise)](https://www.facebook.com/hackercup/problems.php?round=123802894356576) / [Solutions]()
+
+### [Round 1A](https://www.facebook.com/hackercup/problems.php?round=144428782277390) / [Solutions]()
+
+### [Qualifying Round](https://www.facebook.com/hackercup/problems.php?round=4) / [Solutions]()
+
+### [Test Round](https://www.facebook.com/hackercup/problems.php?round=103456299728530) / [Solutions]()
+
+### [FAQ & Schedule](https://www.facebook.com/notes/facebook-hacker-cup/updated-dates-and-times-for-online-rounds/193925823956660)
 
