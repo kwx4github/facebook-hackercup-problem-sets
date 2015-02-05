@@ -31,7 +31,9 @@ For the ith hierarchy, print a line containing "Case #i: " followed by the small
 ###### Constraints
 
 1 ≤ **T** ≤ 100 
+
 1 ≤ **N** ≤ 200,000 
+
 **NOTE:** The input file is about 10-20MB.
 
 ###### Explanation of Sample
