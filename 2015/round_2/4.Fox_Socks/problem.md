@@ -32,12 +32,17 @@ Input begins with an integer **T**, the number of sock collections Mr. Fox has. 
 
 The first two elements of each sequence of integers (**S**, **O**, **A**, **B**, **C**, and **D**) are given, and the rest are computed with the following pseudorandom generators:
 
-   **S<sub>i</sub>** = (**X<sub>S</sub>** * **S<sub>i-2</sub>** + **Y<sub>S</sub>** * **S<sub>i-1</sub>** + **Z<sub>S</sub>**) modulo 10<sup>9</sup>, for 3 ≤ i ≤ **N**
-   **O<sub>i</sub>** = ((**X<sub>O</sub>** * **O<sub>i-2</sub>** + **Y<sub>O</sub>** * **O<sub>i-1</sub>** + **Z<sub>O</sub>**) modulo 4) + 1, for 3 ≤ i ≤ **M**
-   **A<sub>i</sub>** = ((**X<sub>A</sub>** * **A<sub>i-2</sub>** + **Y<sub>A</sub>** * **A<sub>i-1</sub>** + **Z<sub>A</sub>**) modulo **N**) + 1, for 3 ≤ i ≤ **M**
-   **B<sub>i</sub>** = ((**X<sub>B</sub>** * **B<sub>i-2</sub>** + **Y<sub>B</sub>** * **B<sub>i-1</sub>** + **Z<sub>B</sub>**) modulo **N**) + 1, for 3 ≤ i ≤ **M**
-   **C<sub>i</sub>** = (**X<sub>C</sub>** * **C<sub>i-2</sub>** + **Y<sub>C</sub>** * **C<sub>i-1</sub>** + **Z<sub>C</sub>**) modulo 10<sup>9</sup>, for 3 ≤ i ≤ **M**
-   **D<sub>i</sub>** = (**X<sub>D</sub>** * **D<sub>i-2</sub>** + **Y<sub>D</sub>** * **D<sub>i-1</sub>** + **Z<sub>D</sub>**) modulo 10<sup>9</sup>, for 3 ≤ i ≤ **M**
+**S<sub>i</sub>** = (**X<sub>S</sub>** * **S<sub>i-2</sub>** + **Y<sub>S</sub>** * **S<sub>i-1</sub>** + **Z<sub>S</sub>**) modulo 10<sup>9</sup>, for 3 ≤ i ≤ **N**
+
+**O<sub>i</sub>** = ((**X<sub>O</sub>** * **O<sub>i-2</sub>** + **Y<sub>O</sub>** * **O<sub>i-1</sub>** + **Z<sub>O</sub>**) modulo 4) + 1, for 3 ≤ i ≤ **M**
+
+**A<sub>i</sub>** = ((**X<sub>A</sub>** * **A<sub>i-2</sub>** + **Y<sub>A</sub>** * **A<sub>i-1</sub>** + **Z<sub>A</sub>**) modulo **N**) + 1, for 3 ≤ i ≤ **M**
+
+**B<sub>i</sub>** = ((**X<sub>B</sub>** * **B<sub>i-2</sub>** + **Y<sub>B</sub>** * **B<sub>i-1</sub>** + **Z<sub>B</sub>**) modulo **N**) + 1, for 3 ≤ i ≤ **M**
+
+**C<sub>i</sub>** = (**X<sub>C</sub>** * **C<sub>i-2</sub>** + **Y<sub>C</sub>** * **C<sub>i-1</sub>** + **Z<sub>C</sub>**) modulo 10<sup>9</sup>, for 3 ≤ i ≤ **M**
+
+**D<sub>i</sub>** = (**X<sub>D</sub>** * **D<sub>i-2</sub>** + **Y<sub>D</sub>** * **D<sub>i-1</sub>** + **Z<sub>D</sub>**) modulo 10<sup>9</sup>, for 3 ≤ i ≤ **M**
 
 ###### Output
 
