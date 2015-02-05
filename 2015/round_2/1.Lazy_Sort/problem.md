@@ -23,6 +23,7 @@ For the **i** th case, print a line containing "Case #i: " followed by "yes" if 
 ###### Constraints
 
 1 ≤ **T** ≤ 20 
+
 1 ≤ **N** ≤ 50,000 
 
 ###### Explanation of Sample
