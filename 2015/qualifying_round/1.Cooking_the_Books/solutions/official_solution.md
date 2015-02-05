@@ -9,5 +9,6 @@ An O(N) solution is also available, though it isn't necessary for such small num
 For example, if the number is 997818, D is 7, as we can't replace 9 with anything larger. D' will be 8, and in particular we select the 8 from the end of the number, to give us the result 998817. We can select both D and D' in O(N) time, leading to an overall time complexity of O(N). The process to find the smallest number is parallel.
 
 Input: http://pastebin.com/UEW60MbW
+
 Output: http://pastebin.com/Xqm6PThN
 
