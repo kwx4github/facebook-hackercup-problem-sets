@@ -1,4 +1,4 @@
-[src](/hackercup/problems.php?pid=313229895540583&round=344496159068801)
+[src](https://www.facebook.com/hackercup/problems.php?pid=313229895540583&round=344496159068801)
 
 # Facebook Hacker Cup 2015 Round 1
 
