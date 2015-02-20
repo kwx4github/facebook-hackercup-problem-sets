@@ -5,6 +5,7 @@
 January 6, 2015 at 3:18am
 
 ##### Where can I register for the Hacker Cup?  https://www.facebook.com/hackercup/register
+
 ##### Who gets T-shirts?
  
    The top 550 finishers from Round 2 will get t-shirts.
@@ -56,5 +57,3 @@ January 6, 2015 at 3:18am
 - 2nd Place: $2,000 USD
 - 3rd Place: $1,000 USD
 - 4th-25th Place: $100 USD
-
-

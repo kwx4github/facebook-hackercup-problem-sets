@@ -35,7 +35,6 @@ For any three targets at distinct points **a**, **b**, and **c**, it is guarante
 
 Let **p** be any point at which the boomerang may change direction after hitting a target. For any two targets at distinct points **a** and **b**, it is guaranteed that **p** is either closer than 10<sup>-13</sup> away from the infinite line between **a** and **b** (and is considered to be on the line), or is further than 10<sup>-6</sup> away (and is considered to not be on the line).
 
-
 ##### Explanation of Sample
 
 On the first plane, one optimal strategy is to throw the boomerang in the direction of the positive x-axis (that is, to (6, 0)), and then run to (0, 0). It will hit targets 2 and 3 on the first segment of its flight, and all 3 targets on the second segment, for a score of 2*3=6.
