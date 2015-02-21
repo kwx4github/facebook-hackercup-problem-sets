@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1521672018093383&round=323882677799153)
 
-# Facebook Hacker Cup 2015 Round 2
+## Fox Socks
 
-##### Fox Socks
-
-##### 45 points 
+### 45 points 
 
 Mr. Fox sure loves his socks! He stores his many indistinguishable socks in a
 set of **N** bins, which are arranged in a circle and numbered in clockwise
@@ -94,7 +92,7 @@ performs the same operations, but this time C and D take on the values 1, 2,
 socks and adds 2 socks to each bin, then counts those 10 socks, and then
 counts 0 odd bins. The total is then 15 + 30 + 10 + 10 = 65.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -136,7 +134,7 @@ counts 0 odd bins. The total is then 15 + 30 + 10 + 10 = 65.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 0

@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1036037553088752&round=742632349177460)
 
-# Facebook Hacker Cup 2015 Qualification Round
+## New Year's Resolution
 
-##### New Year's Resolution
-
-##### 30 points 
+### 30 points 
 
 Alex's New Year's resolution for 2015 is to eat healthier foods. He's done
 some research and has found out that calories come from three main sources,
@@ -38,7 +36,7 @@ macronutrient, or "no" if it is not possible.
 10 ≤ **G<sub>P</sub>**, **G<sub>C</sub>**, **G<sub>F</sub>** ≤ 1000  
 10 ≤ **P**, **C**, **F** ≤ 1000  
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -104,7 +102,7 @@ macronutrient, or "no" if it is not possible.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: yes

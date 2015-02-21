@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=688426044611322&round=344496159068801)
 
-# Facebook Hacker Cup 2015 Round 1
+## Winning at Sports
 
-##### Winning at Sports
-
-##### 25 points 
+### 25 points 
 
 In the game of _Sports_, the object is have more points than the other team
 after a certain amount of time has elapsed. Scores are denoted by two hyphen-
@@ -51,7 +49,7 @@ In the third test case, you can get a stress-free win by scoring points 1, 2,
 and 4, or points 1, 2, and 3. You can get a stressful win by scoring points 2,
 4, and 5, or points 3, 4, and 5.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -63,7 +61,7 @@ and 4, or points 1, 2, and 3. You can get a stressful win by scoring points 2,
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 1 1

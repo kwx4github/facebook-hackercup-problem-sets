@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=582396081891255&round=344496159068801)
 
-# Facebook Hacker Cup 2015 Round 1
+## Homework
 
-##### Homework
-
-##### 10 points 
+### 10 points 
 
 Your first-grade math teacher, Mr. Book, has just introduced you to an amazing
 new concept — primes! According to your notes, a prime is a positive integer
@@ -54,7 +52,7 @@ In the first test case, the numbers in the inclusive range [5, 15] with
 primacity 2 are 6, 10, 12, 14, and 15. All other numbers in this range have
 primacity 1.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -66,7 +64,7 @@ primacity 1.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 5

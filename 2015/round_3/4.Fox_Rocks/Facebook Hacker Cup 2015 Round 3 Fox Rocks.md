@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=602966206500471&round=890884524269795)
 
-# Facebook Hacker Cup 2015 Round 3
+## Fox Rocks
 
-##### Fox Rocks
-
-##### 40 points 
+### 40 points 
 
 Mr. Fox sure loves his rocks! In fact, when he's not in a hurry, he often
 looks at the rocks lying around near him to decide where to wander in his
@@ -83,7 +81,7 @@ as he now only goes to clearing 4 1/3 of the time. His fourth stroll has
 probability 1/3 as he gets stuck in clearing 4 1/3 of the time, and in
 clearing 1 1/3 of the time.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -157,7 +155,7 @@ clearing 1 1/3 of the time.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 1.000000 0.500000 0.666667 0.333333

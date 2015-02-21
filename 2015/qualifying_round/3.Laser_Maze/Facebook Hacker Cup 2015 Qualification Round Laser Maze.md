@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1523599254559737&round=742632349177460)
 
-# Facebook Hacker Cup 2015 Qualification Round
+## Laser Maze
 
-##### Laser Maze
-
-##### 55 points 
+### 55 points 
 
 Standard mazes lose their mystery as one grows older. But throw in some
 lasers, and suddenly you've got yourself a recipe for cross-generational
@@ -54,7 +52,7 @@ safely.
 1 ≤ **M**, **N** ≤ 100  
 Each maze will contain exactly one 'S' and exactly one 'G'.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -77,7 +75,7 @@ S....
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 6

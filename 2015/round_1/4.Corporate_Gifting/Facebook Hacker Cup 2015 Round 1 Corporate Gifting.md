@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=759650454070547&round=344496159068801)
 
-# Facebook Hacker Cup 2015 Round 1
+## Corporate Gifting
 
-##### Corporate Gifting
-
-##### 40 points 
+### 40 points 
 
 The fine people of Corpro Corp. are a festive bunch. Every holiday season,
 everybody buys a gift for their manager. A cynic might say that the employees
@@ -75,7 +73,7 @@ spend $1.
 In the second test case, employees #2 and #3 will spend $2, and the other
 employees will spend $1.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -92,7 +90,7 @@ employees will spend $1.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 4

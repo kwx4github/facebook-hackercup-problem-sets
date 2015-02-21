@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=193964420699886&round=323882677799153)
 
-# Facebook Hacker Cup 2015 Round 2
+## Lazy Sort
 
-##### Lazy Sort
-
-##### 10 points 
+### 10 points 
 
 Much to Mr. Book's amazement, his entire first-grade math class has completed
 the enormous amount of homework that he assigned only the day before. Being
@@ -51,7 +49,7 @@ top of his final stack, which will reverse the order of the pages.
 In the fourth case, one approach is for Mr. Book to move pages 4, 3, 2, and 1
 to the top of his final stack, and then move 5 and 6 to the bottom.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -68,7 +66,7 @@ to the top of his final stack, and then move 5 and 6 to the bottom.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: yes

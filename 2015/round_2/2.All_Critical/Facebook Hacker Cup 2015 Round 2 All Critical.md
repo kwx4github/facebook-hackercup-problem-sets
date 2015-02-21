@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1394490097513820&round=323882677799153)
 
-# Facebook Hacker Cup 2015 Round 2
+## All Critical
 
-##### All Critical
-
-##### 20 points 
+### 20 points 
 
 In the game _Theatrhythm Final Fantasy_, you poke a screen with a stick to the
 beat of various songs. The goal is to poke the screen as accurately as
@@ -45,7 +43,7 @@ Absolute errors of up to 10<sup>-5</sup> will be ignored.
 1 ≤ **T** ≤ 20  
 0.01 ≤ **p** ≤ 1.0  
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -57,7 +55,7 @@ Absolute errors of up to 10<sup>-5</sup> will be ignored.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 34.64694

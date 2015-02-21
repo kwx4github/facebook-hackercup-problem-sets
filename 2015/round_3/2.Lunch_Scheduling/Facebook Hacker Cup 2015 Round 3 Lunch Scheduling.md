@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=764700076919084&round=890884524269795)
 
-# Facebook Hacker Cup 2015 Round 3
+## Lunch Scheduling
 
-##### Lunch Scheduling
-
-##### 15 points 
+### 15 points 
 
 James and Wilson are the best of buddies. And, conveniently enough, they both
 work at Corpro Corp! Every day, they have the opportunity to eat lunch
@@ -74,7 +72,7 @@ In the first case, James can attend the meeting from time 40,000,000 to
 70,000,000, and Wilson can attend the meeting from time 10,000,000 to time
 21,000,000. They each attend one meeting, so the combined inconvenience is 1.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -106,7 +104,7 @@ In the first case, James can attend the meeting from time 40,000,000 to
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 1

@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=313229895540583&round=344496159068801)
 
-# Facebook Hacker Cup 2015 Round 1
+## Autocomplete
 
-##### Autocomplete
-
-##### 25 points 
+### 25 points 
 
 Since you crave state-of-the-art technology, you've just purchased a phone
 with a great new feature: autocomplete! Your phone's version of autocomplete
@@ -47,7 +45,7 @@ The words are pairwise distinct.
 In the first test case, you will write "h", "he", "l", "hil", "hill", for a
 total of 1 + 2 + 1 + 3 + 4 = 11 characters.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -83,7 +81,7 @@ yet
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 11

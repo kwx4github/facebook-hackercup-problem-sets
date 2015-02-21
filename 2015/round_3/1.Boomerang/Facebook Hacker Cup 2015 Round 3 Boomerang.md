@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=642233395880928&round=890884524269795)
 
-# Facebook Hacker Cup 2015 Round 3
+## Boomerang
 
-##### Boomerang
-
-##### 10 points 
+### 10 points 
 
 Today you've found yourself standing on an infinite 2D plane at coordinates
 (**X<sub>0</sub>**, **Y<sub>0</sub>**). There are also **N** targets on this
@@ -72,7 +70,7 @@ direction of the positive x-axis (that is, to (6, 0)), and then run to (0, 0).
 It will hit targets 2 and 3 on the first segment of its flight, and all 3
 targets on the second segment, for a score of 2*3=6.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -116,7 +114,7 @@ targets on the second segment, for a score of 2*3=6.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 6

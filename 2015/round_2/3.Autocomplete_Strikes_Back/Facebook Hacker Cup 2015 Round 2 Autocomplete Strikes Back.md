@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1525315704386390&round=323882677799153)
 
-# Facebook Hacker Cup 2015 Round 2
+## Autocomplete Strikes Back
 
-##### Autocomplete Strikes Back
-
-##### 25 points 
+### 25 points 
 
 This morning you woke up with an uncontrollable urge to send a text message
 made up of **K** distinct words. But, can you believe it? Your new phone just
@@ -48,7 +46,7 @@ In the first case, one option is to choose the words "tin", "tinny",
 "gigantic", and "tilts". You can then text these words by typing "tin",
 "tinn", "g", and "til", respectively, for a total of 3+4+1+3=11 letters.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -87,7 +85,7 @@ sword
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 11

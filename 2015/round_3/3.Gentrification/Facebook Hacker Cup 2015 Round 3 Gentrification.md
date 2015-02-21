@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=847639175277938&round=890884524269795)
 
-# Facebook Hacker Cup 2015 Round 3
+## Gentrification
 
-##### Gentrification
-
-##### 35 points 
+### 35 points 
 
 The residents of Townsville have made it clear to the mayor that they're
 greatly concerned about gentrification, a process by which wealthy people move
@@ -64,7 +62,7 @@ In the second test case, any single neighbourhood can be gentrified, but
 that's it. If any two neighbourhoods are gentrified, there would be a path
 from one to the other, but no path back.
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -101,7 +99,7 @@ from one to the other, but no path back.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 4

@@ -1,10 +1,8 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=582062045257424&round=742632349177460)
 
-# Facebook Hacker Cup 2015 Qualification Round
+## Cooking the Books
 
-##### Cooking the Books
-
-##### 15 points 
+### 15 points 
 
 Every business can make use of a good accountant and, if they're not big on
 following the law, sometimes a bad one. Bad accountants try to make more money
@@ -36,7 +34,7 @@ using at most a single swap and following the rules above.
 0 ≤ **N** ≤ 999999999  
 **N** will never begin with a leading 0 unless **N** = 0  
 
-##### Example input
+#### Example input
 
 ```
 5
@@ -48,7 +46,7 @@ using at most a single swap and following the rules above.
 
 ```
 
-##### Example output
+#### Example output
 
 ```
 Case #1: 13524 51324
