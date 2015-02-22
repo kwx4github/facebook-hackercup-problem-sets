@@ -1,30 +1,42 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1036037553088752&round=742632349177460)
 
-##### New Year's Resolution
+## New Year's Resolution
 
-##### 30 points
+### 30 points 
 
-Alex's New Year's resolution for 2015 is to eat healthier foods. He's done some research and has found out that calories come from three main sources, called macronutrients: protein, carbohydrates, and fat. Alex wants to get the right balance of protein, carbohydrates, and fat to have a balanced diet. For each available food, Alex can only choose to eat it or not eat it. He can't eat a certain food more than once, and he can't eat a fractional amount of a food.
+Alex's New Year's resolution for 2015 is to eat healthier foods. He's done
+some research and has found out that calories come from three main sources,
+called macronutrients: protein, carbohydrates, and fat. Alex wants to get the
+right balance of protein, carbohydrates, and fat to have a balanced diet. For
+each available food, Alex can only choose to eat it or not eat it. He can't
+eat a certain food more than once, and he can't eat a fractional amount of a
+food.
 
-###### Input
+### Input
 
-Input begins with an integer **T**, the number of test cases. For each test case, the first line consists of three space-separated integers: **G<sub>P</sub>**, **G<sub>C</sub>**, and **G<sub>F</sub>**, which represent the amount of protein, carbohydrates, and fat that Alex wants to eat. The next line has the number of foods for that test case, an integer **N**. The next **N** lines each consist of three space-separated integers: **P**, **C**, and **F**, which represent the amount of protein, carbohydrates, and fat in that food, respectively.
+Input begins with an integer **T**, the number of test cases. For each test
+case, the first line consists of three space-separated integers:
+**G<sub>P</sub>**, **G<sub>C</sub>**, and **G<sub>F</sub>**, which represent
+the amount of protein, carbohydrates, and fat that Alex wants to eat. The next
+line has the number of foods for that test case, an integer **N**. The next
+**N** lines each consist of three space-separated integers: **P**, **C**, and
+**F**, which represent the amount of protein, carbohydrates, and fat in that
+food, respectively.
 
-###### Output
+### Output
 
-For each test case _i_, print a line containing "Case #i: " followed by either "yes" if it is possible for Alex to eat the exact amount of each macronutrient, or "no" if it is not possible.
+For each test case _i_, print a line containing "Case #_i_: " followed by
+either "yes" if it is possible for Alex to eat the exact amount of each
+macronutrient, or "no" if it is not possible.
 
-###### Constraints
+### Constraints
 
-1 ≤ **T** ≤ 20 
+1 ≤ **T** ≤ 20  
+1 ≤ **N** ≤ 20  
+10 ≤ **G<sub>P</sub>**, **G<sub>C</sub>**, **G<sub>F</sub>** ≤ 1000  
+10 ≤ **P**, **C**, **F** ≤ 1000  
 
-1 ≤ **N** ≤ 20 
-
-10 ≤ **G<sub>P</sub>**, **G<sub>C</sub>**, **G<sub>F</sub>** ≤ 1000 
-
-10 ≤ **P**, **C**, **F** ≤ 1000 
-
-Example input
+#### Example input
 
 ```
 5
@@ -89,7 +101,7 @@ Example input
 405 25 20
 ```
 
-Example output
+#### Example output
 
 ```
 Case #1: yes

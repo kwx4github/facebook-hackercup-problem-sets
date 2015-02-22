@@ -1,34 +1,55 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=688426044611322&round=344496159068801)
 
-##### Winning at Sports
+## Winning at Sports
 
-###### 25 points
+### 25 points 
 
-In the game of _Sports_, the object is have more points than the other team after a certain amount of time has elapsed. Scores are denoted by two hyphen-separated integers. For example, scores may include 3-2, 4-1, or 10-0. The first number is how many points you've scored, and the second is the number of points scored by the opposing team. You're very good at _Sports_, and consequently you always win. However, you don't always achieve victory the same way every time.
+In the game of _Sports_, the object is have more points than the other team
+after a certain amount of time has elapsed. Scores are denoted by two hyphen-
+separated integers. For example, scores may include 3-2, 4-1, or 10-0. The
+first number is how many points you've scored, and the second is the number of
+points scored by the opposing team. You're very good at _Sports_, and
+consequently you always win. However, you don't always achieve victory the
+same way every time.
 
-The two most extreme kinds of victory are called **stress-free** and **stressful**. In a **stress-free** victory, you score the first point and from then on you always have more points than your opponent. In a **stressful** victory, you never have more points than your opponent until after their score is equal to their final score.
+The two most extreme kinds of victory are called **stress-free** and
+**stressful**. In a **stress-free** victory, you score the first point and
+from then on you always have more points than your opponent. In a
+**stressful** victory, you never have more points than your opponent until
+after their score is equal to their final score.
 
-Given the final score of a game of Sports, how many ways could you arrange the order in which the points are scored such that you secure a **stress-free** or **stressful** win?
+Given the final score of a game of _Sports_, how many ways could you arrange
+the order in which the points are scored such that you secure a **stress-
+free** or **stressful** win?
 
-###### Input
+### Input
 
-Input begins with an integer **T**, the number of games you'll play. For each game, there is one line containing the final score of the game in the format described above.
+Input begins with an integer **T**, the number of games you'll play. For each
+game, there is one line containing the final score of the game in the format
+described above.
 
-###### Output
+### Output
 
-For the ith game, print a line containing "Case #i: " followed by two space-separated integers, the number of ways you can achieve a **stress-free** or **stressful** win, respectively. Since these numbers may be very large, output them modulo 1,000,000,007.
+For the **i**th game, print a line containing "Case #**i**: " followed by two
+space-separated integers, the number of ways you can achieve a **stress-free**
+or **stressful** win, respectively. Since these numbers may be very large,
+output them modulo 1,000,000,007.
 
-###### Constraints
+### Constraints
 
-1 ≤ **T** ≤ 100 
+1 ≤ **T** ≤ 100  
 
-Since you always win, the first number in any final score will always be larger than the second. Both scores will be non-negative integers not exceeding 2000.
+Since you always win, the first number in any final score will always be
+larger than the second. Both scores will be non-negative integers not
+exceeding 2000.
 
-###### Explanation of Sample
+### Explanation of Sample
 
-In the third test case, you can get a stress-free win by scoring points 1, 2, and 4, or points 1, 2, and 3. You can get a stressful win by scoring points 2, 4, and 5, or points 3, 4, and 5.
+In the third test case, you can get a stress-free win by scoring points 1, 2,
+and 4, or points 1, 2, and 3. You can get a stressful win by scoring points 2,
+4, and 5, or points 3, 4, and 5.
 
-Example input
+#### Example input
 
 ```
 5
@@ -39,7 +60,7 @@ Example input
 1000-500
 ```
 
-Example output
+#### Example output
 
 ```
 Case #1: 1 1

@@ -1,32 +1,49 @@
 [src](https://www.facebook.com/hackercup/problems.php?pid=1394490097513820&round=323882677799153)
 
-##### All Critical
+## All Critical
 
-##### 20 points
+### 20 points 
 
-In the game _Theatrhythm Final Fantasy_, you poke a screen with a stick to the beat of various songs. The goal is to poke the screen as accurately as possible. If you hit a note at just the right time, you're awarded a **critical**. Every song is broken into 20 sections, and if you get a **critical** on every note in a section, then you get that section's golden **critical bar**.
+In the game _Theatrhythm Final Fantasy_, you poke a screen with a stick to the
+beat of various songs. The goal is to poke the screen as accurately as
+possible. If you hit a note at just the right time, you're awarded a
+**critical**. Every song is broken into 20 sections, and if you get a
+**critical** on every note in a section, then you get that section's golden
+**critical bar**.
 
-You would like to collect all 20 **critical bars** for every song. Songs vary in difficulty, but each song has a fixed probability **p**, which is the chance that you manage to secure any one **critical bar** on a single playthrough. The chances are independent, so for any given pair of sections, the probability of getting both **critical bars** in a single playthrough is **p**<sup>2</sup>, and so on. **Critical bars** are saved between playthroughs, so you don't have to win all of the **critical bars** in a single play of the song. You might win the first 10 on one play, and then the last 10 on another.
+You would like to collect all 20 **critical bars** for every song. Songs vary
+in difficulty, but each song has a fixed probability **p**, which is the
+chance that you manage to secure any one **critical bar** on a single
+playthrough. The chances are independent, so for any given pair of sections,
+the probability of getting both **critical bars** in a single playthrough is
+**p**<sup>2</sup>, and so on. **Critical bars** are saved between
+playthroughs, so you don't have to win all of the **critical bars** in a
+single play of the song. You might win the first 10 on one play, and then the
+last 10 on another.
 
-On average, how many times will you have to play a song to win all 20 **critical bars**?
+On average, how many times will you have to play a song to win all 20
+**critical bars**?
 
-###### Input
+### Input
 
-Input begins with an integer **T**, the number of songs you'll play. For each song, there is a line containing a floating point number, **p**, the probability of winning any particular **critical bar** on a single play of the song.
+Input begins with an integer **T**, the number of songs you'll play. For each
+song, there is a line containing a floating point number, **p**, the
+probability of winning any particular **critical bar** on a single play of the
+song.
 
-###### Output
+### Output
 
-For each song, output the expected number of times you need to play the song before acquiring all 20 **critical bars**, rounded to five decimal points.
+For each song, output the expected number of times you need to play the song
+before acquiring all 20 **critical bars**, rounded to five decimal points.
 
 Absolute errors of up to 10<sup>-5</sup> will be ignored.
 
-###### Constraints
+### Constraints
 
-1 ≤ **T** ≤ 20 
+1 ≤ **T** ≤ 20  
+0.01 ≤ **p** ≤ 1.0  
 
-0.01 ≤ **p** ≤ 1.0 
-
-Example input
+#### Example input
 
 ```
 5
@@ -37,7 +54,7 @@ Example input
 0.12345
 ```
 
-Example output
+#### Example output
 
 ```
 Case #1: 34.64694

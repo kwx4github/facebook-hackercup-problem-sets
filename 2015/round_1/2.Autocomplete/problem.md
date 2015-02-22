@@ -1,45 +1,51 @@
-[src](link://www.facebook.com/hackercup/problems.php?pid=313229895540583&round=344496159068801)
+[src](https://www.facebook.com/hackercup/problems.php?pid=313229895540583&round=344496159068801)
 
-##### Autocomplete
+## Autocomplete
 
-##### 25 points
+### 25 points 
 
-Since you crave state-of-the-art technology, you've just purchased a phone with a great new feature: autocomplete! Your phone's version of autocomplete has some pros and cons. On the one hand, it's very cautious. It only autocompletes a word when it knows exactly what you're trying to write. On the other hand, you have to teach it every word you want to use.
+Since you crave state-of-the-art technology, you've just purchased a phone
+with a great new feature: autocomplete! Your phone's version of autocomplete
+has some pros and cons. On the one hand, it's very cautious. It only
+autocompletes a word when it knows exactly what you're trying to write. On the
+other hand, you have to teach it every word you want to use.
 
-You have **N** distinct words that you'd like to send in a text message in order. Before sending each word, you add it to your phone's dictionary. Then, you write the smallest non-empty prefix of the word necessary for your phone to autocomplete the word. This prefix must either be the whole word, or a prefix which is not a prefix of any other word yet in the dictionary.
+You have **N** distinct words that you'd like to send in a text message in
+order. Before sending each word, you add it to your phone's dictionary. Then,
+you write the smallest non-empty prefix of the word necessary for your phone
+to autocomplete the word. This prefix must either be the whole word, or a
+prefix which is not a prefix of any other word yet in the dictionary.
 
 What's the minimum number of letters you must type to send all **N** words?
 
-###### Input
+### Input
 
-Input begins with an integer **T**, the number of test cases. For each test case, there is first a line containing the integer **N**. Then, **N** lines follow, each containing a word to send in the order you wish to send them.
+Input begins with an integer **T**, the number of test cases. For each test
+case, there is first a line containing the integer **N**. Then, **N** lines
+follow, each containing a word to send in the order you wish to send them.
 
-###### Output
+### Output
 
-For the ith test case, print a line containing "Case #i: " followed by the minimum number of characters you need to type in your text message.
+For the **i**th test case, print a line containing "Case #**i**: " followed by
+the minimum number of characters you need to type in your text message.
 
-###### Constraints
+### Constraints
 
-1 ≤ **T** ≤ 100 
+1 ≤ **T** ≤ 100  
+1 ≤ **N** ≤ 100,000  
 
-1 ≤ **N** ≤ 100,000 
+The **N** words will have a total length of no more than 1,000,000 characters.  
+The words are made up of only lower-case alphabetic characters.  
+The words are pairwise distinct.  
 
-The **N** words will have a total length of no more than 1,000,000 characters. 
+**NOTE:** The input file is about 10-20MB. 
 
-The words are made up of only lower-case alphabetic characters. 
+### Explanation of Sample
 
-The words are pairwise distinct. 
+In the first test case, you will write "h", "he", "l", "hil", "hill", for a
+total of 1 + 2 + 1 + 3 + 4 = 11 characters.
 
-**NOTE:** The input file is about 10-20MB.
-
-**For Autocomplete, only lowercase letters a-z will be used.**
-
-
-###### Explanation of Sample
-
-In the first test case, you will write "h", "he", "l", "hil", "hill", for a total of 1 + 2 + 1 + 3 + 4 = 11 characters.
-
-Example input
+#### Example input
 
 ```
 5
@@ -74,7 +80,7 @@ fun
 yet
 ```
 
-Example output
+#### Example output
 
 ```
 Case #1: 11
