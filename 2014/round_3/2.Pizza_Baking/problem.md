@@ -29,7 +29,7 @@ are multiple assignments involving the same minimum number of ovens, print the
 smallest possible assignment according to the ordering defined below.
 
 Here's how you compare two assignments. If **X** is an assignment of pizzas to
-ovens, let **X**(** i **) denote the set of 0-based pizza indices assigned to
+ovens, let **X**( **i** ) denote the set of 0-based pizza indices assigned to
 oven **i** (oven indices are also 0-based).
 
 If **S** and **T** are two sets of pizza indices, we say that **S** < **T**,
@@ -40,8 +40,8 @@ Example: {0, 2, 6} < {0, 3, 4} and {0, 1, 2, 3} < {0, 1, 2}
 
 If **X** and **Y** are two pizza assignments, we say that **X** < **Y**, if
 and only if there exists some **k**, such that :  
-* for 0 ≤ **i** < **k**, **X**(** i **) is identical to **Y**(** i **), and,   
-* **X**(** k **) < **Y**(** k **), as per the set ordering defined above.   
+* for 0 ≤ **i** < **k**, **X**( **i** ) is identical to **Y**( **i** ), and,   
+* **X**( **k** ) < **Y**( **k** ), as per the set ordering defined above.   
 Example:  
 **X** = [ **X**(0) = {0, 3, 6}, **X**(1) = {1, 4, 5}, **X**(2) = {2, 7} ]   
 **Y** = [ **Y**(0) = {0, 3, 6}, **Y**(1) = {1, 4}, **Y**(2) = {2, 5, 7} ]   
@@ -72,7 +72,7 @@ assigned to.
 
 ### Constraints
 
-1 ≤ **T **≤ 20  
+1 ≤ **T** ≤ 20  
 1 ≤ **K** ≤ 24  
 1 ≤ **C<sub>i</sub>** ≤ 100  
 1 ≤ **N** ≤ 1000  
