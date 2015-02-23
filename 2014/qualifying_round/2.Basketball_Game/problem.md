@@ -39,8 +39,8 @@ test cases.
 Each test case starts with a line containing three space separated integers
 **N** **M** **P**
 
-The subsequent **N** lines are in the format "<name> <shot_percentage>
-<height>". See the example for clarification.
+The subsequent **N** lines are in the format "&lt;name&gt; &lt;shot_percentage&gt;
+&lt;height&gt;". See the example for clarification.
 
 ### Constraints
 
@@ -76,7 +76,7 @@ played one minute so far and it's Wai and Purav who have to sit out.
 
 Finally after the third minute Lin and Maihong go back to the bench and all
 the players currently playing again are:  
-Purav Slawek Wai Weiyan
+`Purav Slawek Wai Weiyan`
 
 #### Example input
 
