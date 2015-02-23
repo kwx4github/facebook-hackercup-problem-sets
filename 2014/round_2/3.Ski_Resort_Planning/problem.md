@@ -46,7 +46,7 @@ constraints in the input, modulo 1,000,000,007
 
 ### Constraints
 
-1 ≤ ** T ** ≤ 20  
+1 ≤ **T** ≤ 20  
 2 ≤ **N** ≤ 5000  
 **A<sub>i</sub>** < **i** for each of **A<sub>1</sub>**, **A<sub>2</sub>**, ..., **A<sub>N-1</sub>**  
 
