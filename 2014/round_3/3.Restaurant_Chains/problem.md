@@ -17,10 +17,10 @@ To ensure that tourists do not face a drastic change in the food scenario when
 traveling from one city to another, the government has decided that the
 following condition must be satisfied for each pair of cities (**u**, **v**) :
 
-_ "the number of restaurant chains open in city **u** but not in city **v**"
+_"the number of restaurant chains open in city **u** but not in city **v**"
 plus "the number of restaurant chains open in city **v** but not in city
 **u**" should always be equal to the shortest distance between city **u** and
-city **v**. _
+city **v**._
 
 It is guaranteed that every two cities are connected by some sequence of
 bidirectional roads, and the shortest distance between city **u** and city
