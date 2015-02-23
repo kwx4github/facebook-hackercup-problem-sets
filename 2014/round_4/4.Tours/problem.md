@@ -18,12 +18,12 @@ buildings are directly connected by more than one walkway. There are no other
 ways to move from building to building.
 
 Over a period of **D** days, some events will occur at Facebook HQ. One of two
-types of events will happen on the _i_th day, indicated by a character
+types of events will happen on the _i_ th day, indicated by a character
 **E<sub>i</sub>**. If **E<sub>i</sub>** = 'T', then a tour will take place.
 Otherwise, **E<sub>i</sub>** = 'S', and a security sweep of one building will
 take place.
 
-If a tour is given on the _i_th day, visitors will plan to enter the compound
+If a tour is given on the _i_ th day, visitors will plan to enter the compound
 at building **X<sub>i</sub>**, and leave from building **Y<sub>i</sub>**
 (**X<sub>i</sub>** != **Y<sub>i</sub>**). If it turns out that these two
 buildings are not actually connected by any sequence of walkways, then the
@@ -40,7 +40,7 @@ from building **X<sub>i</sub>** and building **Y<sub>i</sub>**. Good thing
 they'll no doubt have brought cameras to amuse themselves with while they wait
 to be found.
 
-On the other hand, if a security sweep is conducted on the _i_th day, then the
+On the other hand, if a security sweep is conducted on the _i_ th day, then the
 security foxes will carefully search building **Z<sub>i</sub>** for any
 trespassers remaining from previous tours, and kindly escort them out.
 
