@@ -36,8 +36,8 @@ followed by the number of valid assignments, modulo 1,000,000,007
 
 ### Constraints
 
-1 ≤ ** T ** ≤ 20  
-2 ≤ ** K ** ≤ 100  
+1 ≤ **T** ≤ 20  
+2 ≤ **K** ≤ 100  
 1 ≤ **n<sub>i</sub>** ≤ 4  
 1 ≤ **n<sub>1</sub>** \+ **n<sub>2</sub>** \+ ... + **n<sub>K</sub>** ≤ 100  
 
