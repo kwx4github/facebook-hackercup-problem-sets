@@ -22,5 +22,6 @@ There are two different intended ways to solve the above subproblem for a given 
 The other possible intended method uses computes the probability C<sub>i</sub> of having i Focks of the current color with a divide-and-conquer strategy over indices of Focks. For a range with a small number of Focks (for example, no more than 100), the C values can be computed with the simple DP mentioned above. On the other hand, a larger range can be recursively split in half, with the C arrays of its two halves then combined together with a fast Fourier transform. This algorithm has a time complexity of O(N log<sup>2</sup> N).
 
 Input: https://www.dropbox.com/s/nvxhklxbxkt3ax5/fox_focks.in?dl=0
+
 Output: https://www.dropbox.com/s/r9vz088kyh31wc4/fox_focks.out?dl=0
 
