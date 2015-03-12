@@ -1,6 +1,6 @@
 [src](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-final-round-solutions/1080127472003153)
 
-Fox Locks
+##### Fox Locks
 
 (Problem author: Jacob Plachta)
 
