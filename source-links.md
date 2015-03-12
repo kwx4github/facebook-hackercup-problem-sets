@@ -12,7 +12,7 @@ Sample template:
 
 ## 2015
 
-### [Round 4](https://www.facebook.com/hackercup/problems.php?round=1556405007936780) / [Solutions]()
+### [Round 4](https://www.facebook.com/hackercup/problems.php?round=1556405007936780) / [Solutions](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-final-round-solutions/1080127472003153)
 
 ### [Round 3](https://www.facebook.com/hackercup/problems.php?round=890884524269795) / [Solutions](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-2015-round-3-solutions/1056536891028878)
 
