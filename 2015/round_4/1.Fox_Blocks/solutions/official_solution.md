@@ -15,4 +15,5 @@ The algorithm described above clearly takes O(N) time per query naively. To atte
 Finally, to improve the time complexity to O(log N) per query, we can store not only the next index (in each direction), but also the one 2 steps ahead, 4 steps ahead, 8 steps ahead, and so on. For each query, we can then repeatedly skip ahead as much as possible from a without overshooting b (and vice versa), which will take at most O(log N) skips.
 
 Input: https://www.dropbox.com/s/ievk6o4z51ea557/fox_blocks.in?dl=0
+
 Output: https://www.dropbox.com/s/n2vyjvxj85hc823/fox_blocks.out?dl=0
