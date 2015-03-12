@@ -1,4 +1,4 @@
-[src](link.to/official-solution-page)
+[src](https://www.facebook.com/notes/facebook-hacker-cup/hacker-cup-final-round-solutions/1080127472003153)
 
 ##### Fox Lochs
 
