@@ -45,7 +45,7 @@ carefully, how much water can Mr. Fox get into the central hub section?
 1 ≤ **K** ≤ 50  
 0 ≤ **H** ≤ 10^9  
 1 ≤ **N<sub>i</sub>** ≤ 100,000  
-**N<sub>i</sub>** > 1 implies **N<sub>i+1</sub>** ≥ 2***N<sub>i</sub>** (for 1 ≤ **i** < **K**)   
+**N<sub>i</sub>** > 1 implies **N<sub>i+1</sub>** ≥ 2* **N<sub>i</sub>** (for 1 ≤ **i** < **K**)   
 0 ≤ **W<sub>i,j</sub>** ≤ 10^9  
 
 ### Input
