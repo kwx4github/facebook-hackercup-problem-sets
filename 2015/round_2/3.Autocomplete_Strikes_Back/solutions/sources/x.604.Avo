@@ -1,0 +1,167 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+class Program3
+{
+    class Node
+    {
+        Node[] children = new Node[26];
+        int count = 0;
+        bool isEnd = false;
+        bool isRoot = false;
+
+        public Node() { }
+
+        public Node(bool isRoot)
+        {
+            this.isRoot = isRoot;
+        }
+
+        public void Add(string word)
+        {
+            add(this, word);
+        }
+
+        static void add(Node node, string word)
+        {
+            for (int i = 0; i < word.Length; i++)
+            {
+                node.count++;
+                node = node.getChild(word[i]);
+            }
+            node.count++;
+            node.isEnd = true;
+        }
+
+        public int GetInc(string word)
+        {
+            return getInc(word, 0, true);
+        }
+
+        int getInc(string word, int i, bool previousEnd)
+        {
+            if (count == 0)
+                return 1;
+            else if (isRoot)
+                return getChild(word[i]).getInc(word, i + 1, isEnd);
+
+            int result = getChild(word[i]).getInc(word, i + 1, isEnd);
+            if (count == 1)
+                result += isEnd ? 1 : 2;
+            else
+                result += count + 1;
+            return result;
+        }
+
+        public int Count()
+        {
+            if (count < 2)
+                return count;
+            int result = isRoot ? 0 : count;
+            for (int i = 0; i < 26; i++)
+            {
+                if (children[i] != null)
+                    result += children[i].Count();
+            }
+            return result;
+        }
+
+        Node getChild(char child)
+        {
+            var result = children[child - 'a'];
+            if (result == null)
+                result = new Node();
+            children[child - 'a'] = result;
+            return result;
+        }
+    }
+
+    static int solve()
+    {
+        int N = Input.GetInt();
+        int K = Input.GetInt();
+        string[] words = Input.GetArray(N, Input.GetString);
+        Array.Sort(words, (w1, w2) => w1.Length.CompareTo(w2.Length));
+        var used = new bool[N];
+        var trie = new Node(true);
+        for (int i = 0; i < K; i++)
+        {
+            int minCount = Int32.MaxValue;
+            int minj = -1;
+            for (int j = 0; j < N; j++)
+            {
+                if (used[j])
+                    continue;
+                var count = trie.GetInc(words[j]);
+                if (count < minCount)
+                {
+                    minCount = count;
+                    minj = j;
+                }
+            }
+            used[minj] = true;
+            trie.Add(words[minj]);
+        }
+        return trie.Count();
+    }
+
+    static void Main(string[] args)
+    {
+        long t = Input.GetLong();
+        for (long i = 1; i <= t; i++)
+            Console.WriteLine("Case #" + i + ": " + solve());
+    }
+}
+
+static class Input
+{
+    static Input()
+    {
+        Console.SetIn(File.OpenText("autocomplete_strikes_back.txt"));
+
+        var streamWriter = new StreamWriter(File.OpenWrite("output.txt"));
+        streamWriter.AutoFlush = true; // we leak this and therefore there's no flush at the end
+        Console.SetOut(streamWriter);
+
+        System.Threading.Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+    }
+
+    public static double GetDouble()
+    {
+        return Double.Parse(GetString());
+    }
+
+    public static int GetInt()
+    {
+        return Int32.Parse(GetString());
+    }
+
+    public static long GetLong()
+    {
+        return Int64.Parse(GetString());
+    }
+
+    public static T[] GetArray<T>(int n, Func<T> getToken)
+    {
+        T[] result = new T[n];
+        for (int i = 0; i < n; i++)
+            result[i] = getToken();
+        return result;
+    }
+
+    public static string GetString()
+    {
+        while (tokens.Count == 0)
+        {
+            string line = Console.ReadLine();
+            line.Split(null).Where(token => token.Length > 0).ToList().ForEach(token => tokens.Enqueue(token));
+        }
+        return tokens.Dequeue();
+    }
+
+    static Queue<string> tokens = new Queue<string>();
+}

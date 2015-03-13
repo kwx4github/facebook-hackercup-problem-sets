@@ -1,0 +1,256 @@
+package Y2015.Round2.Autocomplete;
+
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.InputMismatchException;
+import java.util.LinkedList;
+
+public class Main {
+	private static final String fileName = "input/Y2015/Round2/C";
+	private static final String inputFileName = fileName + ".in";
+	private static final String outputFileName = fileName + ".out";
+
+	// AutoComplete
+	public static void main(String[] args) throws Exception {
+		final InputReader in = new InputReader(new FileInputStream(inputFileName));
+		final OutputWriter out = new OutputWriter(new FileOutputStream(outputFileName));
+		int T = in.readInt();
+		for(int t=1;t<=T;t++){
+			int N = in.readInt(),
+				K = in.readInt();
+			String[]dict = new String[N];
+			boolean[]removed = new boolean[N];
+			for(int i=0;i<N;i++){
+				dict[i]=in.readString();
+			}
+			Arrays.sort(dict);
+			ArrayList<Comb> list = new ArrayList<Comb>();
+			for(int a=0;a<N;a++){
+				for(int b=a+1;b<N;b++){
+					list.add(new Comb(a,b,prefix(dict[a],dict[b])));
+				}
+			}
+			int a = 0;
+			Collections.sort(list);
+			int total = N;
+			while(total > K){
+				Comb cur = list.get(a++);
+				if(removed[cur.a]||removed[cur.b])continue;
+				removed[cur.b]=true;
+				total--;
+			}
+			// calc res
+			long res = 0;
+			TrieNode root = new TrieNode(0);
+			for(int i=0;i<N;i++){
+				if(removed[i])continue;
+				root.insert(dict[i]);
+			}
+			LinkedList<TrieNode> todo = new LinkedList<TrieNode>();			
+			for(int i=0;i<root.c.length;i++){
+				if(root.c[i]==null)continue;
+				todo.add(root.c[i]);
+			}
+			while(!todo.isEmpty()){
+				TrieNode cur = todo.pollFirst();
+				if(cur.isEnd || cur.count==1){
+					res+=cur.depth;
+				}
+				if(cur.count>1){
+					for(int i=0;i<cur.c.length;i++){
+						if(cur.c[i]==null)continue;
+						todo.add(cur.c[i]);
+					}	
+				}
+			}
+			out.printLine("Case #"+t+": "+res);
+		}
+		out.close();
+	}
+	private static final int CHARS = 26;
+	private static final char M_CHAR = 'a';
+	static class TrieNode {
+		// make child nodes
+		private TrieNode[] c;
+		private int count;
+		private boolean isEnd;
+		private int depth;
+		public TrieNode(int depth) {
+			c = new TrieNode[CHARS]; // 1 for each letter in alphabet
+			count = 0;
+			isEnd=false;
+			this.depth = depth;
+		}
+
+		protected void insert(String word) {
+			TrieNode current = this;
+			for(int i=0;i<word.length();i++){
+				int val = word.charAt(i) - M_CHAR;
+				if (current.c[val] == null) {
+					current.c[val] = new TrieNode(current.depth+1);
+				}
+				current = current.c[val];
+				current.count++;
+			}
+			current.isEnd=true;
+		}
+	}
+	
+	static int prefix(String a, String b){
+		int pref = 0;
+		while(pref < a.length() && pref < b.length()){
+			if(a.charAt(pref) != b.charAt(pref))break;
+			pref++;
+		}
+		return pref;
+	}
+	
+	static class Comb implements Comparable<Comb>{
+		int a, b, pref;
+		public Comb(int a, int b, int pref) {
+			this.a=a;this.b=b;this.pref=pref;
+		}
+		@Override
+		public int compareTo(Comb o) {
+			return this.pref > o.pref ? -1: 1;
+		}
+	}
+	static class InputReader {
+		private InputStream stream;
+		private byte[] buf = new byte[1024];
+		private int curChar;
+		private int numChars;
+
+		public InputReader(InputStream stream) {
+			this.stream = stream;
+		}
+
+		public int read() {
+			if (numChars == -1)
+				throw new InputMismatchException();
+			if (curChar >= numChars) {
+				curChar = 0;
+				try {
+					numChars = stream.read(buf);
+				} catch (IOException e) {
+					throw new InputMismatchException();
+				}
+				if (numChars <= 0)
+					return -1;
+			}
+			return buf[curChar++];
+		}
+
+		public String readLine() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			StringBuilder res = new StringBuilder();
+			do {
+				res.appendCodePoint(c);
+				c = read();
+			} while (!isEndOfLine(c));
+			return res.toString();
+		}
+
+		public String readString() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			StringBuilder res = new StringBuilder();
+			do {
+				res.appendCodePoint(c);
+				c = read();
+			} while (!isSpaceChar(c));
+			return res.toString();
+		}
+
+		public long readLong() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			int sgn = 1;
+			if (c == '-') {
+				sgn = -1;
+				c = read();
+			}
+			long res = 0;
+			do {
+				if (c < '0' || c > '9')
+					throw new InputMismatchException();
+				res *= 10;
+				res += c - '0';
+				c = read();
+			} while (!isSpaceChar(c));
+			return res * sgn;
+		}
+
+		public int readInt() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			int sgn = 1;
+			if (c == '-') {
+				sgn = -1;
+				c = read();
+			}
+			int res = 0;
+			do {
+				if (c < '0' || c > '9')
+					throw new InputMismatchException();
+				res *= 10;
+				res += c - '0';
+				c = read();
+			} while (!isSpaceChar(c));
+			return res * sgn;
+		}
+
+		public boolean isSpaceChar(int c) {
+			return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+		}
+
+		public boolean isEndOfLine(int c) {
+			return c == '\n' || c == '\r' || c == -1;
+		}
+	}
+
+	static class OutputWriter {
+		private final PrintWriter writer;
+
+		public OutputWriter(OutputStream outputStream) {
+			writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					outputStream)));
+		}
+
+		public OutputWriter(Writer writer) {
+			this.writer = new PrintWriter(writer);
+		}
+
+		public void print(Object... objects) {
+			for (int i = 0; i < objects.length; i++) {
+				if (i != 0)
+					writer.print(' ');
+				writer.print(objects[i]);
+			}
+		}
+
+		public void printLine(Object... objects) {
+			print(objects);
+			writer.println();
+		}
+
+		public void close() {
+			writer.close();
+		}
+	}
+}

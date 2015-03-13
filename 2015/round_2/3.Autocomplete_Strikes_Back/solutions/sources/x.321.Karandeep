@@ -1,0 +1,325 @@
+import java.io.*;
+import java.util.*;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author karan173
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "autocomplete.*strikes.*back.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("autocompletestrikesback.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		FastReader in = new FastReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		AutocompleteStrikesBack solver = new AutocompleteStrikesBack();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class AutocompleteStrikesBack
+{
+    class Trie
+    {
+        Trie child[] = new Trie[26];
+        int dp[];
+        int cnt = 0;
+        int leafCnt = 0;
+        int netcnt = 0;
+    }
+
+    void insertIter(Trie root, char s[], int n)
+    {
+        int i = 0;
+        while (true)
+        {
+            root.netcnt++;
+            if (i == n)
+            {
+                root.leafCnt++;
+                return;
+            }
+            int dig = s[i] - 'a';
+            if (root.child[dig] == null)
+            {
+                root.cnt++;
+            }
+            if (root.child[dig] == null)
+            {
+                root.child[dig] = new Trie ();
+            }
+            root = root.child[dig];
+            i++;
+        }
+    }
+    int n;
+    int k;
+
+    public void solve(int testNumber, FastReader in, PrintWriter out)
+    {
+        Trie root = new Trie ();
+        root.netcnt = 1;
+        n = in.ni ();
+        k = in.ni ();
+        if (k == 1)
+        {
+            out.print ("Case #" + testNumber + ": ");
+            out.println (1);
+            return;
+        }
+        for (int i = 0; i < n; i++)
+        {
+            char s[] = in.ns ().toCharArray ();
+            insertIter (root, s, s.length);
+        }
+        Queue<Trie> queue = new ArrayDeque<Trie> ();
+        ArrayList<Trie> list = new ArrayList<Trie> ();
+        queue.add (root);
+        while (!queue.isEmpty ())
+        {
+            Trie trie = queue.poll ();
+            list.add (trie);
+            for (int i = 0; i < 26; i++)
+            {
+                if (trie.child[i] != null)
+                {
+                    queue.add (trie.child[i]);
+                }
+            }
+        }
+        Collections.reverse (list);
+        for (Trie trie : list)
+        {
+            dfs (trie);
+        }
+//        int dp[] = dfs (root, "");
+        out.print ("Case #" + testNumber + ": ");
+        out.println (root.dp[k] - k);
+    }
+
+    int INF = Integer.MAX_VALUE / 2;
+
+//    private int[] dfs(Trie root, String word)
+//    {
+//        int dp[] = new int[k + 1];
+//        Arrays.fill (dp, INF);
+//        dp[0] = 0;
+//        if (root.leafCnt > 0)
+//        {
+//            for (int i = 1; i <= Math.min (root.leafCnt, k); i++)
+//            {
+//                dp[i] = 0;
+//            }
+//        }
+//        if(root.netcnt > 1)
+//        {
+//            for (int i = 0; i < 26; i++)
+//            {
+//                if (root.child[i] != null)
+//                {
+//                    int childDp[] = dfs (root.child[i], word + (char) (i + 'a'));
+//                    dp = combine (dp, childDp);
+////                    if (word.equals ("ti"))
+////                    {
+////                        System.out.println ("xx" + Arrays.toString (dp) + " " + Arrays.toString (childDp));
+////                    }
+//                }
+//            }
+//        }
+//
+//        if (root.cnt == 1)
+//        {
+//            dp[1] = 0;
+//        }
+////        System.out.println (word + " " + Arrays.toString (dp));
+//        for (int i = 0; i <= k; i++)
+//        {
+//            if (dp[i] < INF)
+//            {
+//                dp[i] += i;
+//            }
+//        }
+//        return dp;
+//    }
+
+    private void dfs(Trie root)
+    {
+        root.dp = new int[k + 1];
+        Arrays.fill (root.dp, INF);
+        root.dp[0] = 0;
+        if (root.leafCnt > 0)
+        {
+            for (int i = 1; i <= Math.min (root.leafCnt, k); i++)
+            {
+                root.dp[i] = 0;
+            }
+        }
+        if(root.netcnt > 1)
+        {
+            for (int i = 0; i < 26; i++)
+            {
+                if (root.child[i] != null)
+                {
+                    root.dp = combine (root.dp, root.child[i].dp);
+                }
+            }
+        }
+
+        if (root.cnt == 1)
+        {
+            root.dp[1] = 0;
+        }
+//        System.out.println (word + " " + Arrays.toString (dp));
+        for (int i = 0; i <= k; i++)
+        {
+            if (root.dp[i] < INF)
+            {
+                root.dp[i] += i;
+            }
+        }
+    }
+
+    private int[] combine(int[] dp1, int[] dp2)
+    {
+        int dp[] = new int[k + 1];
+        Arrays.fill (dp, INF);
+        for (int i = 0; i <= k; i++)
+        {
+            for (int ch1 = 0; ch1 <= i; ch1++)
+            {
+                int ch2 = i - ch1;
+                dp[i] = Math.min (dp[i], dp1[ch1] + dp2[ch2]);
+            }
+        }
+        return dp;
+    }
+}
+
+class FastReader
+{
+
+    public InputStream stream;
+    private byte[] buf = new byte[1024];
+    private int curChar;
+    private int numChars;
+    private SpaceCharFilter filter;
+
+    public FastReader(InputStream stream)
+    {
+        this.stream = stream;
+    }
+
+    public int read()
+    {
+        if (numChars == -1)
+        {
+            throw new InputMismatchException ();
+        }
+        if (curChar >= numChars)
+        {
+            curChar = 0;
+            try
+            {
+                numChars = stream.read (buf);
+            } catch (IOException e)
+            {
+                throw new InputMismatchException ();
+            }
+            if (numChars <= 0)
+            {
+                return -1;
+            }
+        }
+        return buf[curChar++];
+    }
+
+    public int ni()
+    {
+        int c = read ();
+        while (isSpaceChar (c))
+            c = read ();
+        int sgn = 1;
+        if (c == '-')
+        {
+            sgn = -1;
+            c = read ();
+        }
+        int res = 0;
+        do
+        {
+            if (c < '0' || c > '9')
+            {
+                throw new InputMismatchException ();
+            }
+            res *= 10;
+            res += c - '0';
+            c = read ();
+        } while (!isSpaceChar (c));
+        return res * sgn;
+    }
+
+    public String ns()
+    {
+        int c = read ();
+        while (isSpaceChar (c))
+            c = read ();
+        StringBuilder res = new StringBuilder ();
+        do
+        {
+            res.appendCodePoint (c);
+            c = read ();
+        } while (!isSpaceChar (c));
+        return res.toString ();
+    }
+
+    public boolean isSpaceChar(int c)
+    {
+        if (filter != null)
+        {
+            return filter.isSpaceChar (c);
+        }
+        return isWhitespace (c);
+    }
+
+    public static boolean isWhitespace(int c)
+    {
+        return c==' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+    }
+
+    public String next()
+    {
+        return ns ();
+    }
+
+    public interface SpaceCharFilter
+    {
+        public boolean isSpaceChar(int ch);
+    }
+}
+

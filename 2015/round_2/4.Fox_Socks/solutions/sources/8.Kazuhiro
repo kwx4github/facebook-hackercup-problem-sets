@@ -1,0 +1,373 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <cassert>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <deque>
+#include <set>
+#include <map>
+#include <utility>
+#include <numeric>
+#include <algorithm>
+#include <bitset>
+#include <complex>
+#include <cstdint>
+#include <unordered_set>
+#include <unordered_map>
+
+using namespace std;
+
+typedef unsigned uint;
+typedef long long Int;
+typedef vector<int> vint;
+typedef pair<int, int> pint;
+#define mp make_pair
+
+template<typename T> void pv(T a, T b) { for (T i = a; i != b; ++i) cout << *i << " "; cout << endl; }
+template<typename T> void chmin(T &t, const T &f) { if (t > f) t = f; }
+template<typename T> void chmax(T &t, const T &f) { if (t < f) t = f; }
+int in() { int x; scanf("%d", &x); return x; }
+
+const Int MO = 1000000000;
+
+void readThem(int size, Int modulo, Int offset, Int *ret) {
+	ret[0] = in();
+	ret[1] = in();
+	const Int X = in();
+	const Int Y = in();
+	const Int Z = in();
+	for (int i = 2; i < size; ++i) {
+		ret[i] = (X * ret[i - 2] + Y * ret[i - 1] + Z) % modulo + offset;
+	}
+}
+
+const int LIM_N = 1100000;
+const int LIM_M = 1100000;
+
+int N, M;
+Int S[LIM_N + 10];
+Int O[LIM_M + 10];
+Int A[LIM_M + 10];
+Int B[LIM_M + 10];
+Int C[LIM_M + 10];
+Int D[LIM_M + 10];
+
+Int brts[LIM_M + 10];
+
+void bruteForce() {
+	static Int x[LIM_N];
+	copy(S, S + N, x);
+	fill(brts, brts + M, 0);
+	for (int m = 0; m < M; ++m) {
+		switch (O[m]) {
+			case 1: {
+				int i = A[m];
+				for (int b = 0; b < B[m]; ++b) {
+					const Int socks = (C[m] + b * D[m]) % MO;
+					(x[i] += socks) %= MO;
+					(brts[m] += socks) %= MO;
+					++i %= N;
+				}
+			} break;
+			case 2: {
+				int i = A[m];
+				for (int b = 0; b < B[m]; ++b) {
+					(brts[m] += x[i]) %= MO;
+					x[i] = C[m];
+					(brts[m] += C[m]) %= MO;
+					++i %= N;
+				}
+			} break;
+			case 3: {
+				int i = A[m];
+				for (int b = 0; b < B[m]; ++b) {
+					(brts[m] += x[i]) %= MO;
+					++i %= N;
+				}
+			} break;
+			case 4: {
+				int i = A[m];
+				for (int b = 0; b < B[m]; ++b) {
+					if (x[i] % 2 != 0) {
+						(brts[m] += 1) %= MO;
+					}
+					++i %= N;
+				}
+			} break;
+			default: assert(false);
+		}
+	}
+}
+
+struct Mint {
+	Int v;
+	Mint(Int v = 0) { if ((this->v = v % MO) < 0) this->v += MO; }
+	Mint operator+(const Mint &a) const { return v + a.v; }
+	Mint operator-(const Mint &a) const { return v - a.v; }
+	Mint operator*(const Mint &a) const { return v * a.v; }
+	Mint operator/(const Mint &a) const {
+		Mint ret = *this, x = a;
+		for (Int e = MO - 2; e; e >>= 1, x *= x) if (e & 1) ret *= x;
+		return ret;
+	}
+	Mint operator+=(const Mint &a) { return *this = *this + a; }
+	Mint operator-=(const Mint &a) { return *this = *this - a; }
+	Mint operator*=(const Mint &a) { return *this = *this * a; }
+	Mint operator/=(const Mint &a) { return *this = *this / a; }
+	friend ostream &operator<<(ostream &os, const Mint &a) { return os << a.v; }
+};
+
+const int LIM_SEG = 1100000;
+int segN;
+Mint sz0[LIM_SEG + 10];
+Mint sz1[LIM_SEG + 10];
+
+Mint sum[LIM_SEG + 10];
+Mint odd[LIM_SEG + 10];
+Mint add0[LIM_SEG + 10];
+Mint add1[LIM_SEG + 10];
+Mint fil[LIM_SEG + 10];
+bool toFil[LIM_SEG + 10];
+
+enum Type {
+	ADD0,
+	ADD1,
+	FIL,
+	GET_SUM,
+	GET_ODD,
+};
+Mint query(int u, int L, int R, int a, int b, Type typ, Mint val) {
+// cout<<"query "<<u<<" "<<L<<" "<<R<<" "<<a<<" "<<b<<" "<<typ<<" "<<val<<endl;
+	const int uL = u << 1 | 0;
+	const int uR = u << 1 | 1;
+	if (u < segN) {
+		if (toFil[u]) {
+			sum[uL] = fil[u] * sz0[uL];
+			sum[uR] = fil[u] * sz0[uR];
+			odd[uL] = (fil[u].v & 1) ? sz0[uL] : 0;
+			odd[uR] = (fil[u].v & 1) ? sz0[uR] : 0;
+			fil[uL] = fil[u];
+			fil[uR] = fil[u];
+			toFil[uL] = true;
+			toFil[uR] = true;
+			add0[uL] = 0;
+			add0[uR] = 0;
+			add1[uL] = 0;
+			add1[uR] = 0;
+			toFil[u] = false;
+		}
+		if (add0[u].v != 0) {
+			sum[uL] += add0[u] * sz0[uL];
+			sum[uR] += add0[u] * sz0[uR];
+			if (add0[u].v & 1) odd[uL] = sz0[uL] - odd[uL];
+			if (add0[u].v & 1) odd[uR] = sz0[uR] - odd[uR];
+			add0[uL] += add0[u];
+			add0[uR] += add0[u];
+			add0[u] = 0;
+		}
+		if (add1[u].v != 0) {
+			sum[uL] += add1[u] * sz1[uL];
+			sum[uR] += add1[u] * sz1[uR];
+			add1[uL] += add1[u];
+			add1[uR] += add1[u];
+			add1[u] = 0;
+		}
+	}
+	chmax(a, L);
+	chmin(b, R);
+	if (a >= b) {
+		return 0;
+	}
+	if (a == L && b == R) {
+		switch (typ) {
+			case ADD0: {
+				sum[u] += val * sz0[u];
+				if (val.v & 1) odd[u] = sz0[u] - odd[u];
+				add0[u] += val;
+				return 0;
+			} break;
+			case ADD1: {
+				sum[u] += val * sz1[u];
+				add1[u] += val;
+				return 0;
+			} break;
+			case FIL: {
+				sum[u] = val * sz0[u];
+				odd[u] = (val.v & 1) ? sz0[u] : 0;
+				fil[u] = val;
+				toFil[u] = true;
+				add0[u] = 0;
+				add1[u] = 0;
+				return 0;
+			} break;
+			case GET_SUM: {
+				return sum[u];
+			} break;
+			case GET_ODD: {
+				return odd[u];
+			} break;
+			default: assert(false);
+		}
+		assert(false);
+	}
+	const int Mid = (L + R) / 2;
+	const Mint resL = query(uL, L, Mid, a, b, typ, val);
+	const Mint resR = query(uR, Mid, R, a, b, typ, val);
+	sum[u] = sum[uL] + sum[uR];
+	odd[u] = odd[uL] + odd[uR];
+	return resL + resR;
+}
+
+Mint anss[LIM_M + 10];
+
+int main() {
+	
+	
+	for (int TC = in(), tc = 1; tc <= TC; ++tc) {
+		N = in();
+		M = in();
+/*
+Si = (XS*Si-2 + YS*Si-1 + ZS) modulo 10^9, for 3 ≤ i ≤ N
+Oi = ((XO*Oi-2 + YO*Oi-1 + ZO) modulo 4) + 1, for 3 ≤ i ≤ M
+Ai = ((XA*Ai-2 + YA*Ai-1 + ZA) modulo N) + 1, for 3 ≤ i ≤ M
+Bi = ((XB*Bi-2 + YB*Bi-1 + ZB) modulo N) + 1, for 3 ≤ i ≤ M
+Ci = (XC*Ci-2 + YC*Ci-1 + ZC) modulo 10^9, for 3 ≤ i ≤ M
+Di = (XD*Di-2 + YD*Di-1 + ZD) modulo 10^9, for 3 ≤ i ≤ M
+*/
+		readThem(N, 1000000000, 0, S);
+		readThem(M, 4, 1, O);
+		readThem(M, N, 1, A);
+		readThem(M, N, 1, B);
+		readThem(M, 1000000000, 0, C);
+		readThem(M, 1000000000, 0, D);
+		
+		for (int m = 0; m < M; ++m) {
+			--A[m];
+		}
+		
+		fill(anss, anss + M, 0);
+		for (int m = 0; m < M; ++m) {
+			switch (O[m]) {
+				case 1: {
+					Int x = B[m] - 1, y = B[m];
+					((x % 2 == 0) ? x : y) /= 2;
+// if(tc==3)cout<<"added "<<((Mint(C[m]) * Mint(B[m]))+(Mint(D[m]) * Mint(x * y)))<<endl;
+					anss[m] += Mint(C[m]) * Mint(B[m]);
+					anss[m] += Mint(D[m]) * Mint(x * y);
+				} break;
+				case 2: {
+					anss[m] += Mint(C[m]) * Mint(B[m]);
+				} break;
+				case 3: {
+					//
+				} break;
+				case 4: {
+					//
+				} break;
+				default: assert(false);
+			}
+		}
+		for (int s = 0; s < 2; ++s) {
+			const int n = (N + 1 - s) / 2;
+			for (segN = 2; segN < n; segN <<= 1);
+			for (int i = 0; i < n; ++i) {
+				const int u = segN + i;
+				sz0[u] = 1;
+				sz1[u] = i;
+				sum[u] = S[s + i * 2];
+				odd[u] = (S[s + i * 2] & 1) ? 1 : 0;
+				add0[u] = 0;
+				add1[u] = 0;
+				fil[u] = 0;
+				toFil[u] = false;
+			}
+			for (int u = segN + n; u < segN + segN; ++u) {
+				sz0[u] = 0;
+				sz1[u] = 0;
+				sum[u] = 0;
+				odd[u] = 0;
+				add0[u] = 0;
+				add1[u] = 0;
+				fil[u] = 0;
+				toFil[u] = false;
+			}
+			for (int u = segN; --u; ) {
+				const int uL = u << 1 | 0;
+				const int uR = u << 1 | 1;
+				sz0[u] = sz0[uL] + sz0[uR];
+				sz1[u] = sz1[uL] + sz1[uR];
+				sum[u] = sum[uL] + sum[uR];
+				odd[u] = odd[uL] + odd[uR];
+				add0[u] = 0;
+				add1[u] = 0;
+				fil[u] = 0;
+				toFil[u] = false;
+			}
+if(0)if(N<=5){
+cout<<"S[s+_*2] : ";for(int i=0;i<n;++i)cout<<S[s+i*2]<<" ";cout<<endl;
+cout<<"sum : ";pv(sum+1,sum+segN*2);
+cout<<"odd : ";pv(odd+1,odd+segN*2);
+for(int i=0;i<n;++i)for(int j=i;j<=n;++j)cout<<"sum "<<i<<" "<<j<<"; "<<query(1,0,segN,i,j,GET_SUM,0)<<endl;
+for(int i=0;i<n;++i)for(int j=i;j<=n;++j)cout<<"odd "<<i<<" "<<j<<"; "<<query(1,0,segN,i,j,GET_ODD,0)<<endl;
+}
+			for (int m = 0; m < M; ++m) {
+				for (int shift = 0; shift < 2; ++shift) {
+					int a = A[m];
+					int b = A[m] + B[m] - 1;
+					if (shift) {
+						a -= N;
+						b -= N;
+					}
+					chmax(a, 0);
+					chmin(b, N - 1);
+					for (; (a & 1) != s; ++a);
+					for (; (b & 1) != s; --b);
+					if (a <= b) {
+						switch (O[m]) {
+							case 1: {
+								const Mint d = D[m] * 2;
+								const Mint c = Mint(C[m]) + Mint((a + shift * N) - A[m]) * Mint(D[m]) - Mint(a / 2) * d;
+								query(1, 0, segN, a / 2, b / 2 + 1, ADD0, c);
+								query(1, 0, segN, a / 2, b / 2 + 1, ADD1, d);
+							} break;
+							case 2: {
+								anss[m] += query(1, 0, segN, a / 2, b / 2 + 1, GET_SUM, 0);
+								query(1, 0, segN, a / 2, b / 2 + 1, FIL, C[m]);
+							} break;
+							case 3: {
+								anss[m] += query(1, 0, segN, a / 2, b / 2 + 1, GET_SUM, 0);
+							} break;
+							case 4: {
+								anss[m] += query(1, 0, segN, a / 2, b / 2 + 1, GET_ODD, 0);
+							} break;
+							default: assert(false);
+						}
+					}
+				}
+			}
+		}
+if(0){
+bruteForce();
+// cout<<"brts : ";pv(brts,brts+M);
+// cout<<"anss : ";pv(anss,anss+M);
+for(int m=0;m<M;++m){
+cout<<O[m]<<" "<<A[m]<<" "<<B[m]<<" "<<C[m]<<" "<<D[m]<<"  "<<brts[m]<<" "<<anss[m]<<endl;
+if(brts[m]!=anss[m].v){cout<<"WA!"<<endl;exit(0);}
+}
+}
+		Mint ans = 0;
+		for (int m = 0; m < M; ++m) {
+			ans += anss[m];
+		}
+		printf("Case #%d: %lld\n", tc, ans.v);
+		fflush(stdout);
+	}
+	
+	return 0;
+}
+

@@ -1,0 +1,188 @@
+#include "stdafx.h"
+#include <list>
+#include <stack>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include <queue>
+#include <set>
+#include <map>
+#include <sstream>
+#include <iomanip>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <assert.h>
+
+using namespace std;
+
+
+typedef unsigned long long ull;
+typedef long long int64;
+
+
+#define pb push_back
+#define mp make_pair
+#define forab(i, a, b) for(int i=int(a);i<int(b);i++)
+#define forn(i, n) forab(i, 0, n)
+
+//#define mo 1000000007
+
+
+const int SIGMA = 26;
+const int ELEMENT_MAX = 20048;
+
+typedef struct node* trie;
+struct node {
+	trie child[1+SIGMA];
+	trie parent;
+	int sum;
+	int topk[100];
+} tree[ELEMENT_MAX];
+
+int tot,num,k;
+vector<int> bfs[2];
+
+void trie_init() {
+	tot = 1;
+	memset(tree, 0, sizeof(tree));
+}
+
+
+int main()
+{
+	freopen("..\\in.txt", "r", stdin);
+	freopen("..\\out.txt", "w", stdout);
+	
+	int test_sum=20;
+	scanf("%d", &test_sum);
+
+	char s[ELEMENT_MAX];
+	bfs[0].reserve(ELEMENT_MAX);
+	bfs[1].reserve(ELEMENT_MAX);
+
+	forab(test, 1, test_sum+1) {
+		printf("Case #%d: ", test);
+
+
+		//--------------------------------
+		scanf("%d %d", &num, &k);
+		trie_init();
+
+		forn(i, num) {
+			scanf("%s", s);
+
+			trie t = tree;
+			for (int j = 0; s[j]; j++) {
+				int c = s[j] - 'a' + 1;
+
+				if (0 == t->child[c]) {
+					t->child[c] = tree + (tot++);
+					t->sum++;
+				}
+
+				t->child[c]->parent =t;
+				t=t->child[c];
+			}
+			
+			t->child[0]=(trie)1;
+		}
+
+		int index = 0;
+
+		bfs[index].clear();
+		forab(i, 1, tot) {
+			if (0 == tree[i].sum) bfs[index].push_back(i);
+		}
+
+		while(bfs[index].size() > 0) {
+			const int oldi = index;
+			const int newi = 1-index;
+
+			bfs[newi].clear();
+			forn(j, bfs[oldi].size()) {
+				const int i=bfs[oldi][j];
+				int poi[SIGMA];
+				int select_sum[SIGMA+1];
+				int select[100];
+
+				memset(poi, 0, sizeof(poi));
+				memset(select, 0, sizeof(select));
+				memset(select_sum, 0, sizeof(select_sum));
+				
+				int start = 0;
+				if (tree[i].child[0]) {
+					tree[i].topk[0] = 1;
+					select[0] = 0;
+					select_sum[0] = 2;
+					start = 1;
+				}
+
+				forn(ch, SIGMA) {
+					if (0 == tree[i].child[ch+1]) poi[ch]=k;
+				}
+
+				for (;start<k;start++) {
+					int mm = INT_MAX;
+					forn(ch, SIGMA) {
+						if (poi[ch]<k && tree[i].child[ch+1]->topk[poi[ch]] < mm) {
+							if (tree[i].child[ch+1]->topk[poi[ch]] == 0) {
+								poi[ch]=k;
+							} else {
+								mm=tree[i].child[ch+1]->topk[poi[ch]];
+								select[start]=ch+1;
+								poi[ch]++;
+							}							
+						}
+					}
+
+					if (mm<INT_MAX) {
+						if (i)	tree[i].topk[start]=mm+1;
+						else tree[i].topk[start]=mm;
+						select_sum[select[start]]++;
+					} else {
+						break;
+					}
+				}
+
+
+				int sum = 0;
+				forn(j, k) {
+					if (tree[i].topk[j]>0) {
+						if (select_sum[select[j]] == 1) {
+							tree[i].topk[j]=2;
+						}
+						sum++;
+					} else break;
+				}
+
+				sort(tree[i].topk, tree[i].topk+sum);
+
+
+				if (tree[i].parent) {
+					if ( 0== --tree[i].parent->sum) {
+						bfs[newi].push_back(tree[i].parent-tree);
+					}
+				}
+			}
+
+			index = newi;
+		}
+
+		ull sum =0;
+		forn(i,k) {
+			sum+=tree[0].topk[i];
+		}
+		printf("%lld", sum);
+
+		//--------------------------------
+		printf("\n");
+	}
+
+	return 0;
+}
+
+
+

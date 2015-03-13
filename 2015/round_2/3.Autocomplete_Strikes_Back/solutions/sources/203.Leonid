@@ -1,0 +1,126 @@
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+using namespace std;
+
+typedef vector<int> vint;
+typedef pair<int, int> pii;
+
+const int MAXCHARS = 26;
+const int MAXK = 105;
+const int INF = 1000000;
+
+struct Node {
+	int words;
+	bool isWord;
+	int letter;
+	vector<Node> children;
+
+	Node(int letter) {
+		this->words = 0;
+		this->isWord = false;
+		this->letter = letter;
+	}
+
+	Node& getChild(int letter) {
+		for (int i = 0; i < children.size(); i++) {
+			if (children[i].letter == letter) {
+				return children[i];
+			}
+		}
+		children.push_back(Node(letter));
+		return *children.rbegin();
+	}
+
+	void printNode(int ident) {
+		for (int i = 0; i < children.size(); i++) {
+			for (int j = 0; j < ident; j++) {
+				cout << " ";
+			}
+			cout << (char)(children[i].letter + 'a') << (children[i].isWord ? '*' : '-') << endl;
+			children[i].printNode(ident + 2);
+		}
+	}
+
+	vector<int> getDP(bool root, int ident) {
+		vector<int> dp(MAXK, INF);
+		dp[0] = 0;
+		if (words == 0) {
+			/* Should never happen, because empty nodes aren't created. */
+		}
+		else {
+			if (isWord) {
+				/* Initialise DP with this word, it takes exactly one character to type it. */
+				dp[1] = 0;
+			}
+			for (int i = 0; i < children.size(); i++) {
+				vector<int> childDP = children[i].getDP(false, ident + 2);
+				vector<int> nextDP(MAXK, INF);
+				for (int ii = 0; ii < MAXK && dp[ii] < INF; ii++) {
+					for (int jj = 0; jj < MAXK && childDP[jj] < INF && ii + jj < MAXK; jj++) {
+						int s = ii + jj;
+						nextDP[s] = min(nextDP[s], dp[ii] + childDP[jj]);
+					}
+				}
+				dp = nextDP;
+			}
+			/* When returning, letter should be typed, to move up. It increases depending on the number of typed words. */
+			if (!root) {
+				for (int i = 0; i < MAXK && dp[i] != INF; i++) {
+					dp[i] += i;
+				}
+				dp[1] = 1;
+			}
+		}
+
+		// for (int j = 0; j < ident; j++) {
+		// 	cout << " ";
+		// }
+		// cout << (char)(letter + 'a') << (isWord ? '*' : '-') << ": ";
+		// for (int i = 0; i < dp.size() && dp[i] != INF; i++) {
+		// 	cout << dp[i] << " ";
+		// }
+		// cout << endl;
+
+		return dp;
+	}
+};
+
+void addWord(Node* node, const string& word) {
+	/* Iterative to avoid even potential stack overflow. */
+	int last = word.size() - 1;
+	node->words++;
+	for (int i = 0; i < word.size(); i++) {
+		int letter = word[i] - 'a';
+		Node& child = node->getChild(letter);
+		child.words++;
+		if (i == last) {
+			child.isWord = true;
+		}
+		node = &child;
+	}
+}
+
+void solve(int test) {
+	int n, k; scanf("%d %d ", &n, &k);
+	Node root('0'); /* Root of everything. */
+	for (int i = 0; i < n; i++) {
+		string word; cin >> word;
+		addWord(&root, word);
+	}
+	//root.printNode(0);
+	vector<int> dp = root.getDP(true, 0);
+
+	printf("Case #%d: ", test);
+	printf("%d\n", dp[k]);
+}
+
+int main() {
+	freopen("autocomplete_strikes_back.txt", "rt", stdin);
+	freopen("autocomplete_strikes_back.out", "wt", stdout);	
+	int tests; scanf("%d ", &tests);
+	for (int i = 0; i < tests; i++) solve(i + 1);
+	return 0;
+}

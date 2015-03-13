@@ -1,0 +1,125 @@
+import scala.collection._
+
+object C extends App {
+
+  @inline def tokenizeLine = new java.util.StringTokenizer(readLine)
+  def readInts(n: Int) = { val tl = tokenizeLine; Array.fill(n)(tl.nextToken.toInt) }
+  def readLongs(n: Int) = { val tl = tokenizeLine; Array.fill(n)(tl.nextToken.toLong) }
+  def readBigs(n: Int) = { val tl = tokenizeLine; Array.fill(n)(BigInt(tl.nextToken)) }
+
+  case class Node(c: Char, var leftChild: Node, var next: Node)
+  
+  def add(node: Node, w: String, from: Int): Int = {
+    //println(w, from, node)
+    var sub = node
+    var prev = node
+    var done = false
+    var res = 0
+    while (sub != null && !done) {
+      if (from == -1 || sub.c == w.charAt(from)) {
+        done = true
+        if (sub.leftChild == null) {
+          if (from + 1 < w.length) sub.leftChild = Node(w.charAt(from + 1), null, null)
+          res = from + 2
+        }
+        if (from + 1 < w.length) {
+          val res2 = add(sub.leftChild, w, from + 1)
+          if (res == 0) res = res2
+        }
+      }
+      prev = sub
+      sub = sub.next
+    }
+    if (!done) {
+      res = from + 1
+      if (from < w.length) {
+        prev.next = Node(w.charAt(from), null, null)
+        if (from < w.length) {
+          val res2 = add(prev.next, w, from)
+          if (res == 0) res = res2
+        }
+      }
+    }
+    if (res == 0) from + 1 else res
+  }
+
+  def compute(node: Node, depth: Int, k: Int): Array[Int] = {
+    if (node.leftChild == null) {
+      Array(0, if (node.c == '.') depth - 1 else depth)
+    } else if (node.leftChild.next == null) {
+      val res = compute(node.leftChild, depth + 1, k)
+      if (depth > 0) res(1) = depth
+      res
+    } else {
+      val childResBuilders = new mutable.ArrayBuilder.ofRef[Array[Int]]
+      var ptr = node.leftChild
+      while (ptr != null) {
+        childResBuilders += compute(ptr, depth + 1, k)
+        ptr = ptr.next
+      }
+      val childRes = childResBuilders.result
+      val childCount = childRes.length
+      val maxWords = childRes.map(_.length - 1).sum min k
+      val res = Array.ofDim[Int](maxWords + 1)
+      
+      //if (node.c == 'n') childRes.foreach(a => println(a.mkString(" ")))
+      
+      val dp = Array.fill(maxWords + 1, childCount + 1){ 0 }
+      
+      var w = 1
+      while (w <= maxWords) {
+        
+        var minByW = Int.MaxValue 
+        
+        if (w < childRes(0).length) dp(w)(0) = childRes(0)(w)
+        else dp(w)(0) = Int.MaxValue / 2
+        
+        var c = 1
+        while (c < childCount) {
+          var minByC = Int.MaxValue
+          val limit = Math.min(childRes(c).length, w + 1)
+          var take = 0
+          while (take < limit) {
+            minByC = Math.min(minByC, childRes(c)(take) + dp(w - take)(c - 1))
+            take += 1
+          }
+          dp(w)(c) = minByC
+          minByW = Math.min(minByW, minByC)
+          c += 1
+        }
+        //if (depth == 1) println(s"$w:$minByW " + dp(w).mkString(" "))
+        res(w) = minByW
+        w += 1
+      }
+      
+      if (depth > 0) res(1) = depth
+
+      res
+    }
+  }
+  
+  def solve(test: Int): Unit = {
+
+    val Array(n, k) = readInts(2)
+    val root = Node(' ', null, null)
+
+    for (l <- 0 until n) {
+      //val w = l.toString + "a" * 20000 + "."//readLine + "."
+      val w = readLine + "."
+      add(root, w, -1)
+      //println(x)
+    }
+    
+    val res = compute(root, 0, k)
+    //println(res.mkString(" "))
+
+    println(s"Case #$test: ${res(k)}")
+  }
+
+  Console.setIn(new java.io.BufferedInputStream(new java.io.FileInputStream("src/C/C.txt")))
+  Console.setOut(new java.io.BufferedOutputStream(new java.io.FileOutputStream("src/C/C.out")))
+  for (test <- 1 to readInt) {
+    solve(test)
+    Console.flush
+  }
+}

@@ -1,0 +1,304 @@
+// by shik {{{
+#include <bits/stdc++.h>
+#include <unistd.h>
+#define SZ(x) ((int)(x).size())
+#define ALL(c) begin(c),end(c)
+#define REP(i,n) for ( int i=0; i<(int)(n); i++ )
+#define REP1(i,a,b) for ( int i=(int)(a); i<=(int)(b); i++ )
+#define FOR(it,c) for ( auto it=(c).begin(); it!=(c).end(); it++ )
+#define MP make_pair
+#define PB push_back
+using namespace std;
+typedef pair<int,int> PII;
+typedef vector<int> VI;
+typedef long long LL;
+
+void RI() {}
+
+template<typename... T>
+void RI( int& head, T&... tail ) {
+    scanf("%d",&head);
+    RI(tail...);
+}
+
+template<typename T>
+void _dump( const char* s, T&& head ) { cerr<<s<<"="<<head<<endl; }
+
+template<typename T, typename... Args>
+void _dump( const char* s, T&& head, Args&&... tail ) {
+    cout << __PRETTY_FUNCTION__ << endl;
+    int c=0;
+    while ( *s!=',' || c!=0 ) {
+        if ( *s=='(' || *s=='[' || *s=='{' ) c++;
+        if ( *s==')' || *s==']' || *s=='}' ) c--;
+        cerr<<*s++;
+    }
+    cerr<<"="<<head<<", ";
+    _dump(s+1,tail...);
+}
+
+#define dump(...) _dump(#__VA_ARGS__, __VA_ARGS__);
+
+template<typename Iter>
+ostream& _out( ostream &s, Iter b, Iter e ) {
+    s<<"[";
+    for ( auto it=b; it!=e; it++ ) s<<(it==b?"":" ")<<*it;
+    s<<"]";
+    return s;
+}
+
+template<typename A, typename B>
+ostream& operator <<( ostream &s, const pair<A,B> &p ) { return s<<"("<<p.first<<","<<p.second<<")"; }
+template<typename T>
+ostream& operator <<( ostream &s, const vector<T> &c ) { return _out(s,ALL(c)); }
+template<typename T>
+ostream& operator <<( ostream &s, const set<T> &c ) { return _out(s,ALL(c)); }
+template<typename A, typename B>
+ostream& operator <<( ostream &s, const map<A,B> &c ) { return _out(s,ALL(c)); }
+
+/// }}}
+
+const int N=1e6+10;
+const int M=1e6+10;
+const int MOD=1e9;
+
+template<typename T>
+inline void fix( T &x ) {
+    x%=MOD;
+    if ( x<0 ) x+=MOD;
+}
+
+int shik( int a, int d, int k ) {
+    LL x=a;
+    LL y=a+(k-1LL)*d;
+    if ( k%2==0 ) {
+        return (x+y)%MOD*(k/2)%MOD;
+    } else {
+        assert((x+y)%2==0);
+        return (x+y)/2%MOD*k%MOD;
+    }
+}
+
+int co( int l, int r ) {
+    if ( l%2==0 ) l++;
+    if ( r%2==0 ) r--;
+    return l<=r?(r-l)/2+1:0;
+}
+
+int ce( int l, int r ) {
+    return r-l+1-co(l,r);
+}
+
+const int SN=4*N;
+struct Seg {
+    bool cov[SN];
+    LL x[SN],a[SN],d[SN],s[SN];
+    int o[SN][2];
+    void init() {
+#define Z(z) memset(z,0,sizeof(z))
+        Z(cov); Z(x); Z(a); Z(d); Z(d); Z(o);
+#undef Z
+    }
+    void push( int id, int l, int m ) {
+        if ( cov[id] ) {
+            cov[id*2]=cov[id*2+1]=1;
+            x[id*2]=x[id*2+1]=x[id];
+            a[id*2]=a[id*2+1]=d[id*2]=d[id*2+1]=0;
+            x[id]=cov[id]=0;
+        }
+        a[id*2]+=a[id];
+        d[id*2]+=d[id];
+        a[id*2+1]+=(a[id]+(m-l+1LL)*d[id])%MOD;
+        d[id*2+1]+=d[id];
+        fix(a[id*2]);
+        fix(d[id*2]);
+        fix(a[id*2+1]);
+        fix(d[id*2+1]);
+        a[id]=d[id]=0;
+    }
+    LL _s( int id, int l, int r ) {
+        LL base=cov[id] ? (r-l+1LL)*x[id] : s[id];
+        return base+shik(a[id],d[id],r-l+1);
+    }
+    void _o( int id, int l, int r, int oo[2] ) {
+        //printf("_o %d,%d,%d %lld,%lld %d,%d %d\n",id,l,r,a[id],d[id],o[id][0],o[id][1],(int)cov[id]);
+        int o0=0,o1=0;
+        if ( cov[id] ) {
+            if ( x[id]%2==0 );
+            else {
+                o0=ce(l,r);
+                o1=co(l,r);
+            }
+        } else {
+            o0=o[id][0];
+            o1=o[id][1];
+        }
+        if ( a[id]%2==0 && d[id]%2==0 ) {
+            oo[0]+=o0;
+            oo[1]+=o1;
+        } else if ( a[id]%2==0 && d[id]%2==1 ) {
+            if ( l%2==0 ) {
+                oo[0]+=o0;
+                oo[1]+=co(l,r)-o1;
+            } else {
+                oo[0]+=ce(l,r)-o0;
+                oo[1]+=o1;
+            }
+        } else if ( a[id]%2==1 && d[id]%2==0 ) {
+            oo[0]+=ce(l,r)-o0;
+            oo[1]+=co(l,r)-o1;
+        } else if ( a[id]%2==1 && d[id]%2==1 ) {
+            if ( l%2==0 ) {
+                oo[0]+=ce(l,r)-o0;
+                oo[1]+=o1;
+            } else {
+                oo[0]+=o0;
+                oo[1]+=co(l,r)-o1;
+            }
+        } else puts("QQ");
+    }
+    void pull( int id, int l, int m, int r ) {
+        s[id]=_s(id*2,l,m)+_s(id*2+1,m+1,r);
+        fix(s[id]);
+        o[id][0]=o[id][1]=0;
+        _o(id*2,l,m,o[id]);
+        _o(id*2+1,m+1,r,o[id]);
+    }
+    void add( int id, int l, int r, int ql, int qr, int qa, int qd ) {
+        if ( ql<=l && r<=qr ) {
+            a[id]+=qa+1LL*qd*(l-ql)%MOD;
+            d[id]+=qd;
+            fix(a[id]);
+            fix(d[id]);
+            return;
+        }
+        int m=(l+r)/2;
+        push(id,l,m);
+        if ( ql<=m ) add(id*2,l,m,ql,qr,qa,qd);
+        if ( qr>m ) add(id*2+1,m+1,r,ql,qr,qa,qd);
+        pull(id,l,m,r);
+    }
+    void set( int id, int l, int r, int ql, int qr, int qx ) {
+        if ( ql<=l && r<=qr ) {
+            cov[id]=1;
+            x[id]=qx;
+            a[id]=d[id]=0;
+            return;
+        }
+        int m=(l+r)/2;
+        push(id,l,m);
+        if ( ql<=m ) set(id*2,l,m,ql,qr,qx);
+        if ( qr>m ) set(id*2+1,m+1,r,ql,qr,qx);
+        pull(id,l,m,r);
+    }
+    LL get( int id, int l, int r, int ql, int qr ) {
+        if ( ql<=l && r<=qr ) return _s(id,l,r);
+        int m=(l+r)/2;
+        push(id,l,m);
+        LL ans=0;
+        if ( ql<=m ) ans+=get(id*2,l,m,ql,qr);
+        if ( qr>m ) ans+=get(id*2+1,m+1,r,ql,qr);
+        fix(ans);
+        pull(id,l,m,r);
+        return ans;
+    }
+    int odd( int id, int l, int r, int ql, int qr ) {
+        int oo[2]={};
+        if ( ql<=l && r<=qr ) {
+            _o(id,l,r,oo);
+            return oo[0]+oo[1];
+        }
+        int m=(l+r)/2;
+        push(id,l,m);
+        int ans=0;
+        if ( ql<=m ) ans+=odd(id*2,l,m,ql,qr);
+        if ( qr>m ) ans+=odd(id*2+1,m+1,r,ql,qr);
+        pull(id,l,m,r);
+        return ans;
+    }
+} seg;
+
+int n,m,s[N],oo[M],oa[M],ob[M],oc[M],od[M];
+
+void gen( int len, int arr[], int mod, int add ) {
+    LL x,y,z;
+    scanf("%d%d%lld%lld%lld",arr+1,arr+2,&x,&y,&z);
+    REP1(i,3,len) arr[i]=(x*arr[i-2]+y*arr[i-1]+z)%mod+add;
+}
+
+void input() {
+    RI(n,m);
+    gen(n,s,MOD,0);
+    gen(m,oo,4,1);
+    gen(m,oa,n,1);
+    gen(m,ob,n,1);
+    gen(m,oc,MOD,0);
+    gen(m,od,MOD,0);
+}
+
+int len_of( int a, int b ) {
+    if ( a<=b ) return b-a+1;
+    else return n-a+1+b;
+}
+
+void solve() {
+    seg.init();
+    REP1(i,1,n) seg.set(1,1,n,i,i,s[i]);
+    LL ans=0;
+    REP1(i,1,m) {
+        int o,a,b,c,d;
+        tie(o,a,b,c,d)=tie(oo[i],oa[i],ob[i],oc[i],od[i]);
+        b=a+b-1;
+        if ( b>n ) b-=n;
+        if ( o==1 ) {
+            if ( a<=b ) {
+                seg.add(1,1,n,a,b,c,d);
+            } else {
+                seg.add(1,1,n,a,n,c,d);
+                seg.add(1,1,n,1,b,(c+(n-a+1LL)*d)%MOD,d);
+            }
+            ans+=shik(c,d,len_of(a,b));
+        } else if ( o==2 ) {
+            if ( a<=b ) {
+                ans+=seg.get(1,1,n,a,b);
+                seg.set(1,1,n,a,b,c);
+            } else {
+                ans+=seg.get(1,1,n,a,n);
+                ans+=seg.get(1,1,n,1,b);
+                seg.set(1,1,n,a,n,c);
+                seg.set(1,1,n,1,b,c);
+            }
+            ans+=1LL*c*len_of(a,b)%MOD;
+        } else if ( o==3 ) {
+            if ( a<=b ) {
+                ans+=seg.get(1,1,n,a,b);
+            } else {
+                ans+=seg.get(1,1,n,a,n);
+                ans+=seg.get(1,1,n,1,b);
+            }
+        } else if ( o==4 ) {
+            if ( a<=b ) {
+                ans+=seg.odd(1,1,n,a,b);
+            } else {
+                ans+=seg.odd(1,1,n,a,n);
+                ans+=seg.odd(1,1,n,1,b);
+            }
+        } else puts("QQ");
+        ans%=MOD;
+    }
+    printf("%lld\n",ans);
+}
+
+int main( int argc, char *argv[] ) {
+    int n_case;
+    RI(n_case);
+    REP1(i,1,n_case) {
+        input();
+        if ( argc==2 && atoi(argv[1])!=i ) continue;
+        printf("Case #%d: ",i);
+        solve();
+        fflush(stdout);
+    }
+    return 0;
+}
+

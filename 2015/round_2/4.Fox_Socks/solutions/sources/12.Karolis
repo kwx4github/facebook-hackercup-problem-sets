@@ -1,0 +1,225 @@
+#include <cstdio>
+#include <algorithm>
+using namespace std;
+
+typedef long long ll;
+typedef pair <int, int> ii;
+
+const int mod = 1000000000;
+const int Maxn = 1000005;
+const int Maxm = 1000005;
+const int Maxs = 4194304;
+const int Maxt = 4;
+
+int t;
+int n, m;
+int S[Maxn], O[Maxm], A[Maxm], B[Maxm], C[Maxm], D[Maxm];
+int st[Maxs], od1[Maxs], od2[Maxs];
+ii fl[Maxs];
+bool rm[Maxs];
+int res;
+
+int Prog(int a, int b, int n)
+{
+	int oth = ll(n) * (n - 1) / 2 % mod;
+	return (ll(a) * n + ll(oth) * b) % mod;
+}
+
+void Inc(int v, int a, int b, int sz)
+{
+	fl[v] = ii((fl[v].first + a) % mod, (fl[v].second + b) % mod);
+	st[v] = (st[v] + Prog(a, b, sz)) % mod;
+	if (a % 2) od1[v] = (sz + 1) / 2 - od1[v];
+	if ((a + b) % 2) od2[v] = sz / 2 - od2[v];
+}
+
+void Rem(int v, int sz) 
+{
+	fl[v] = ii(0, 0);
+	st[v] = 0; od1[v] = 0; od2[v] = 0;
+	rm[v] = true;
+}
+
+void Down(int v, int sz1, int sz2)
+{
+	if (rm[v]) { Rem(2 * v, sz1); Rem(2 * v + 1, sz2); rm[v] = false; }
+	if (fl[v] != ii(0, 0)) {
+		Inc(2 * v, fl[v].first, fl[v].second, sz1);
+		Inc(2 * v + 1, ll(fl[v].first + ll(sz1) * fl[v].second) % mod, fl[v].second, sz2);
+		fl[v] = ii(0, 0);
+	}
+}
+
+void Union(int v, int sz1)
+{
+	st[v] = (st[2 * v] + st[2 * v + 1]) % mod;
+	int a = od1[2 * v + 1], b = od2[2 * v + 1];
+	if (sz1 % 2) swap(a, b);
+	od1[v] = od1[2 * v] + a; od2[v] = od2[2 * v] + b;
+}
+
+void Create(int v, int l, int r)
+{
+	fl[v] = ii(0, 0); rm[v] = false;
+	if (l == r) { st[v] = S[l]; od1[v] = S[l] % 2; od2[v] = 0; }
+	else {
+		int m = l + r >> 1;
+		Create(2 * v, l, m); Create(2 * v + 1, m + 1, r);
+		Union(v, m - l + 1);
+	}
+}
+
+void Add(int v, int l, int r, int a, int b, int c, int d)
+{
+	if (l == a && r == b) Inc(v, c, d, r - l + 1);
+	else {
+		int m = l + r >> 1;
+		Down(v, m - l + 1, r - m);
+		if (b <= m) Add(2 * v, l, m, a, b, c, d);
+		else if (m + 1 <= a) Add(2 * v + 1, m + 1, r, a, b, c, d);
+		else {
+			Add(2 * v, l, m, a, m, c, d);
+			Add(2 * v + 1, m + 1, r, m + 1, b, (c + ll(m + 1 - a) * d) % mod, d);
+		}
+		Union(v, m - l + 1);
+	}
+}
+
+void Add(int l, int hm, int a, int b)
+{
+	int lft = n - l + 1;
+	if (lft < hm) {
+		Add(1, 1, n, l, n, a, b);
+		Add(1, 1, n, 1, hm - lft, (a + ll(b) * lft) % mod, b);
+	} else Add(1, 1, n, l, l + hm - 1, a, b);
+}
+
+void Rem(int v, int l, int r, int a, int b)
+{
+	if (l == a && r == b) Rem(v, r - l + 1);
+	else {
+		int m = l + r >> 1;
+		Down(v, m - l + 1, r - m);
+		if (a <= m) Rem(2 * v, l, m, a, min(m, b));
+		if (m + 1 <= b) Rem(2 * v + 1, m + 1, r, max(m + 1, a), b);
+		Union(v, m - l + 1);
+	}
+}
+
+void Remq(int l, int hm)
+{
+	int lft = n - l + 1;
+	if (lft < hm) {
+		Rem(1, 1, n, l, n);
+		Rem(1, 1, n, 1, hm - lft);
+	} else Rem(1, 1, n, l, l + hm - 1);
+}
+
+int Sum(int v, int l, int r, int a, int b)
+{
+	if (l == a && r == b) return st[v];
+	else {
+		int res = 0;
+		int m = l + r >> 1;
+		Down(v, m - l + 1, r - m);
+		if (a <= m) res = (res + Sum(2 * v, l, m, a, min(m, b))) % mod;
+		if (m + 1 <= b) res = (res + Sum(2 * v + 1, m + 1, r, max(m + 1, a), b)) % mod;
+		Union(v, m - l + 1);
+		return res;
+	}
+}
+
+int Sum(int l, int hm)
+{
+	int res = 0;
+	int lft = n - l + 1;
+	if (lft < hm) {
+		res = (res + Sum(1, 1, n, l, n)) % mod;
+		res = (res + Sum(1, 1, n, 1, hm - lft)) % mod;
+	} else res = Sum(1, 1, n, l, l + hm - 1);
+	return res;
+}
+
+int Odds(int v, int l, int r, int a, int b)
+{
+	if (l == a && r == b) return od1[v] + od2[v];
+	else {
+		int res = 0;
+		int m = l + r >> 1;
+		Down(v, m - l + 1, r - m);
+		if (a <= m) res = (res + Odds(2 * v, l, m, a, min(m, b))) % mod;
+		if (m + 1 <= b) res = (res + Odds(2 * v + 1, m + 1, r, max(m + 1, a), b)) % mod;
+		Union(v, m - l + 1);
+		return res;
+	}
+}
+
+int Odds(int l, int hm)
+{
+	int res = 0;
+	int lft = n - l + 1;
+	if (lft < hm) {
+		res = (res + Odds(1, 1, n, l, n)) % mod;
+		res = (res + Odds(1, 1, n, 1, hm - lft)) % mod;
+	} else res = Odds(1, 1, n, l, l + hm - 1);
+	return res;
+}
+
+void Gen(int arr[], int m, int tims, int add)
+{
+	scanf("%d %d", &arr[1], &arr[2]);
+	int x, y, z; scanf("%d %d %d", &x, &y, &z);
+	for (int i = 3; i <= tims; i++)
+		arr[i] = ((ll(x) * arr[i - 2] + ll(y) * arr[i - 1] + z) % m) + add;
+}
+
+int Query1(int a, int b, int c, int d)
+{
+	Add(a, b, c, d);
+	return Prog(c, d, b);
+}
+
+int Query2(int a, int b, int c)
+{
+	int res = Sum(a, b);
+	Remq(a, b);
+	Add(a, b, c, 0);
+	res = (res + ll(b) * c) % mod;
+	return res;
+}
+
+int Query3(int a, int b)
+{
+	return Sum(a, b);
+}
+
+int Query4(int a, int b)
+{
+	return Odds(a, b);
+}
+
+int main()
+{
+	scanf("%d", &t);
+	for (int tc = 1; tc <= t; tc++) {
+		scanf("%d %d", &n, &m);
+		Gen(S, mod, n, 0);
+		Gen(O, Maxt, m, 1);
+		Gen(A, n, m, 1);
+		Gen(B, n, m, 1);
+		Gen(C, mod, m, 0);
+		Gen(D, mod, m, 0);
+
+		Create(1, 1, n);
+
+		res = 0;
+		for (int i = 1; i <= m; i++)
+			if (O[i] == 1) res = (res + Query1(A[i], B[i], C[i], D[i])) % mod;
+			else if (O[i] == 2) res = (res + Query2(A[i], B[i], C[i])) % mod;
+			else if (O[i] == 3) res = (res + Query3(A[i], B[i])) % mod;
+			else if (O[i] == 4) res = (res + Query4(A[i], B[i])) % mod;
+
+		printf("Case #%d: %d\n", tc, res);
+	}
+	return 0;
+}

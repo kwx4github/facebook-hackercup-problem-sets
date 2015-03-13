@@ -1,0 +1,225 @@
+
+#include<algorithm>
+#include<bitset>
+#include<cassert>
+#include<complex>
+#include<cstdio>
+#include<cstring>
+#include<iomanip>
+#include<iostream>
+#include<map>
+#include<queue>
+#include<set>
+#include<stack>
+#include<string>
+#include<vector>
+#define FOR(i, a, b) for(int i =(a); i <=(b); ++i)
+#define FORD(i, a, b) for(int i = (a); i >= (b); --i)
+#define REP(i, n) for(int i = 0;i <(n); ++i)
+#define VAR(v, i) __typeof(i) v=(i)
+#define FORE(i, c) for(VAR(i, (c).begin()); i != (c).end(); ++i)
+#define ALL(x) (x).begin(), (x).end()
+#define SZ(x) ((int)(x).size())
+#define PB push_back
+#define MP make_pair
+#define X first
+#define Y second 
+#define debug(x) {cerr <<#x <<" = " <<x <<endl; }
+#define debugv(x) {{cerr <<#x <<" = "; FORE(itt, (x)) cerr <<*itt <<", "; cerr <<endl; }}
+using namespace std;
+typedef long long LL;
+typedef long double LD;
+typedef pair<int, int> PII;
+typedef vector<int> VI;
+
+template<class C> void mini(C&a4, C b4){a4=min(a4, b4); }
+template<class C> void maxi(C&a4, C b4){a4=max(a4, b4); }
+template<class T1, class T2>
+ostream& operator<< (ostream &out, pair<T1, T2> pair) { return out << "(" << pair.X << ", " << pair.Y << ")";}
+const LL M = 1e9;
+
+struct iT {
+    int N;
+    int n;
+    struct node {
+        LL len;
+        bool reset;
+        LL plus;
+        LL delta;
+        LL sum;
+        LL odd0, odd1;
+        node(): len(1),reset(false), plus(0), delta(0), sum(0), odd0(0), odd1(0) {}
+        
+    };
+    vector<node> T;
+
+    void count(int i) {
+        if (i >= N) {
+            T[i].len = 1;
+            T[i].sum = T[i].plus;
+            T[i].odd0 = T[i].odd1 = 0;
+            if (i % 2 == 0 && T[i].plus % 2 == 1) T[i].odd0 = 1;
+            if (i % 2 == 1 && T[i].plus % 2 == 1) T[i].odd1 = 1;
+        } else {
+            T[i].len = 2*T[2*i].len;
+            if (!T[i].reset) {
+                T[i].sum = (T[2*i].sum + T[2*i+1].sum + T[i].len*T[i].plus + ((T[i].len*(T[i].len-1)/2)%M)*T[i].delta)%M;
+                T[i].odd0 = T[2*i].odd0 + T[2*i+1].odd0;
+                T[i].odd1 = T[2*i].odd1 + T[2*i+1].odd1;
+            } else {
+                T[i].sum = (T[i].len*T[i].plus + ((T[i].len*(T[i].len-1)/2)%M)*T[i].delta)%M;
+                T[i].odd0 = T[i].odd1 = 0;
+            }
+            if (T[i].plus % 2 == 1) T[i].odd0 = T[i].len/2 - T[i].odd0;
+            if ((T[i].plus+T[i].delta) % 2 == 1) T[i].odd1 = T[i].len/2 - T[i].odd1;
+        }
+    }
+    void _push(int i, bool rst, int plus, int delta) {
+        if (rst) {
+            T[i].plus = T[i].delta = T[i].sum = T[i].odd0 = T[i].odd1 = 0;
+            T[i].reset = true;
+        }
+        T[i].plus = (T[i].plus + plus)%M;
+        T[i].delta = (T[i].delta + delta)%M;
+        count(i);
+
+    }
+    void push(int i) {
+        if (i < N) {
+            _push(2*i, T[i].reset, T[i].plus, T[i].delta);
+            _push(2*i+1,T[i].reset, (T[i].plus+T[i].delta*T[2*i].len)%M, T[i].delta);
+        }
+        T[i].reset = false;
+        T[i].plus = T[i].delta = 0;
+    }
+
+
+    iT(vector<LL> s) {
+        n = SZ(s);
+        N = 2;
+        while(N < n) N *= 2;
+        T = vector<node>(2*N);
+        REP(i,n) T[N+i].plus = s[i];
+        FORD(i, 2*N-1, 1) count(i);
+    }
+    LL _count(int i, int b, int e, int beg, int end) {
+        if (b >= end || beg >= e) return 0;
+        if (beg >= b && e >= end) return T[i].sum;
+        push(i);
+        return (_count(2*i,b,e, beg, (beg+end)/2) + _count(2*i+1, b,e,(beg+end)/2, end))%M;
+    }
+
+    LL count(int A, int B) {
+        --A;
+        if (A+B <= n) return _count(1,A,A+B,0,N);
+        else return (_count(1,A,n,0,N) + _count(1,0,A+B-n,0,N))%M;
+    }
+
+    LL _odd(int i, int b, int e, int beg, int end) {
+        if (b >= end || beg >= e) return 0;
+        if (beg >= b && e >= end) return T[i].odd0 + T[i].odd1;
+        push(i);
+        return (_odd(2*i,b,e, beg, (beg+end)/2) + _odd(2*i+1, b,e,(beg+end)/2, end))%M;
+    };
+    LL odd(int A, int B) {
+        --A;
+        if (A+B <= n) return _odd(1,A,A+B,0,N);
+        else return (_odd(1,A,n,0,N) + _odd(1,0,A+B-n,0,N));
+    }
+    void _reset(int i, int b, int e, int beg, int end, int C) {
+        if (b >= end || beg >= e) return;
+        if (beg >= b && e >= end) {
+            T[i].reset = true;
+            T[i].plus = C;
+            T[i].delta = 0;
+            count(i);
+            return;
+        }
+        push(i);
+        _reset(2*i,b,e, beg, (beg+end)/2,C);
+        _reset(2*i+1, b,e,(beg+end)/2, end,C);
+        count(i);
+    }
+    void reset(int A, int B, int C) {
+        --A;
+        if (A+B <= n) _reset(1,A,A+B,0,N,C);
+        else {
+            _reset(1,A,n,0,N,C);
+            _reset(1,0,A+B-n,0,N,C);
+        }
+    }
+    void _add(int i, int b, int e, int beg, int end, LL C, LL D) {
+        if (b >= end || beg >= e) return;
+        if (beg >= b && e >= end) {
+            T[i].plus = (T[i].plus + C + D*(beg-b))%M;
+            T[i].delta = (T[i].delta +D)%M;
+            count(i);
+            return;
+        }
+        push(i);
+        _add(2*i,b,e, beg, (beg+end)/2,C,D);
+        _add(2*i+1, b,e,(beg+end)/2, end,C,D);
+        count(i);
+    }
+    void add(int A, int B, int C,LL D) {
+        --A;
+        if (A+B <= n) _add(1,A,A+B,0,N,C,D);
+        else {
+            _add(1,A,n,0,N,C,D);
+            _add(1,0,A+B-n,0,N,(C+D*(n-A))%M,D);
+        }
+    } 
+};
+
+vector<LL> generrate(int n,long long mod, long long delta) {
+    LL one, two, x,y,z;
+    cin >> one >> two >> x >> y >> z;
+    vector<LL> res(n);
+    res[0] = one;
+    res[1] = two;
+    FOR(i, 2, n-1) {
+        res[i] = ((x*res[i-2])%mod+(y*res[i-1])%mod+z)%mod + delta;
+    }
+    return res;
+}
+
+void solve(int tc) {
+    cout << "Case #" << tc << ": ";
+    int n,m;
+    cin >> n >> m;
+    vector<LL> S = generrate(n,M,0),O = generrate(m,4,1), A = generrate(m,n,1), B = generrate(m,n,1), C = generrate(m,M,0),D = generrate(m,M,0);
+    iT T(S);
+    LL res = 0;
+    REP(i,m) {
+       // debug(MP(O[i], MP(MP(A[i],B[i]), MP(C[i],D[i]))));
+        if (O[i] == 1) {
+            res = (res+C[i]*B[i]+((B[i]*(B[i]-1)/2)%M)*D[i])%M;
+            T.add(A[i],B[i],C[i],D[i]);
+        } else if (O[i] == 2) {
+            res = (res + T.count(A[i],B[i]) + C[i]*B[i])%M;
+            T.reset(A[i],B[i],C[i]);
+        } else if (O[i] == 3) {
+            res = (res + T.count(A[i],B[i])) % M;
+        } else {
+            res = (res+T.odd(A[i],B[i])) % M;
+        }
+        //debug(res);
+    }
+    //REP(i,n) cout << T.count(i+1,1) << " " ;
+   // cout << endl;
+    cout << res << endl;
+
+
+
+}
+
+int main(){
+    ios_base::sync_with_stdio(false);
+    cout << fixed << setprecision(10);
+    int t;
+    cin >> t;
+    REP(i,t) solve(i+1);
+
+    return 0;
+}
+

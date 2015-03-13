@@ -1,0 +1,87 @@
+import java.io.*;
+import java.util.*;
+
+public class Main
+{
+	public static void main(String[] args) throws IOException {
+		//System.setIn(new FileInputStream("in"));
+		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+		int ts = Integer.parseInt(in.readLine());
+		for (int t = 1; t <= ts; t++) {
+			String[] ps = in.readLine().split(" ");
+			int n = Integer.parseInt(ps[0]);
+			Tree.k = Integer.parseInt(ps[1]);
+			Tree tree = new Tree();
+			for (int i = 0; i < n; i++) {
+				tree.insert(in.readLine());
+			}
+			System.out.format("Case #%d: %d\n", t, tree.count());
+		}
+	}
+}
+
+class Tree
+{
+	static int k;
+	boolean isWord;
+	Tree[] children;
+
+	void insert(String word) {
+		Tree node = this;
+		for (char c : word.toCharArray()) {
+			if (node.children == null) {
+				node.children = new Tree[26];
+			}
+			if (node.children[c-'a'] == null) {
+				node.children[c-'a'] = new Tree();
+			}
+			node = node.children[c-'a'];
+		}
+		node.isWord = true;
+	}
+
+	int count() {
+		Map<Integer, Integer> counts = count(0);
+		if (counts.get(k+1) != null && counts.get(k+1) < counts.get(k)) {
+			System.err.println("warning: k+1 > k (k = " + k + ")");
+		}
+		return counts.get(k);
+	}
+
+	Map<Integer, Integer> count(int prefix) {
+		Map<Integer, Integer> map = new HashMap<>();
+		update(map, 0, 0);
+		if (isWord) {
+			update(map, 1, prefix);
+		}
+
+		if (children != null) {
+			for (Tree child : children) {
+				if (child != null) {
+					map = merge(map, child.count(prefix + 1));
+				}
+			}
+		}
+
+		update(map, 1, Math.max(1, prefix));
+		return map;
+	}
+
+	static Map<Integer, Integer> merge(Map<Integer, Integer> map, Map<Integer, Integer> other) {
+		Map<Integer, Integer> result = new HashMap<>();
+		for (Map.Entry<Integer, Integer> first : map.entrySet()) {
+			for (Map.Entry<Integer, Integer> second : other.entrySet()) {
+				update(result, first.getKey() + second.getKey(), first.getValue() + second.getValue());
+			}
+		}
+		return result;
+	}
+
+	static void update(Map<Integer, Integer> map, int pos, int val) {
+		pos = Math.min(pos, k+1);
+		Integer old = map.get(pos);
+		if (old == null || val < old) {
+			map.put(pos, val);
+		}
+	}
+}

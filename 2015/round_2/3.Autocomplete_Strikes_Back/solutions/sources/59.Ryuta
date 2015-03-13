@@ -1,0 +1,135 @@
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <set>
+#include <map>
+#include <queue>
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cctype>
+#include <cassert>
+#include <limits>
+#include <functional>
+#define rep(i,n) for(int (i)=0;(i)<(int)(n);++(i))
+#define rer(i,l,u) for(int (i)=(int)(l);(i)<=(int)(u);++(i))
+#define reu(i,l,u) for(int (i)=(int)(l);(i)<(int)(u);++(i))
+#if defined(_MSC_VER) || __cplusplus > 199711L
+#define aut(r,v) auto r = (v)
+#else
+#define aut(r,v) __typeof(v) r = (v)
+#endif
+#define each(it,o) for(aut(it, (o).begin()); it != (o).end(); ++ it)
+#define all(o) (o).begin(), (o).end()
+#define pb(x) push_back(x)
+#define mp(x,y) make_pair((x),(y))
+#define mset(m,v) memset(m,v,sizeof(m))
+#define INF 0x3f3f3f3f
+#define INFL 0x3f3f3f3f3f3f3f3fLL
+using namespace std;
+typedef vector<int> vi; typedef pair<int,int> pii; typedef vector<pair<int,int> > vpii; typedef long long ll;
+template<typename T, typename U> inline void amin(T &x, U y) { if(y < x) x = y; }
+template<typename T, typename U> inline void amax(T &x, U y) { if(x < y) x = y; }
+
+struct Node {
+	Node(): term(false) { mset(ch, 0); }
+	bool term;
+	Node *ch[26];
+};
+
+
+vector<vi> g;
+vector<int> parent;
+vector<vi> stateidx;
+vi t_ord;
+int nstates = 0;
+
+void tree_getstateindices(int root) {
+	int n = g.size();
+	parent.assign(n, -1);
+	stateidx.assign(n, vi());
+	t_ord.clear();
+	nstates = 0;
+
+	vector<int> stk; stk.push_back(root);
+	while(!stk.empty()) {
+		int i = stk.back(); stk.pop_back();
+		t_ord.push_back(i);
+		stateidx[i].assign(g[i].size() + 1, -1);
+		rep(j, g[i].size()) {
+			int c = g[i][j];
+			if(parent[c] == -1 && c != root) {
+				stk.push_back(c);
+				stateidx[i][j] = nstates ++;
+			}else {
+				stateidx[i][j] = -1;
+				parent[i] = c;
+			}
+		}
+		stateidx[i][g[i].size()] = nstates ++;
+	}
+}
+
+vector<Node> nodes;
+vector<vi> memo;
+
+int rec(int i, int j, int k) {
+	int s = stateidx[i][j];
+	if(s == -1) return rec(i, j+1, k);
+	int &r = memo[s][k];
+	if(r != -1) return r;
+	r = INF;
+	if(j == g[i].size()) {
+		if(k <= (nodes[i].term ? 1 : 0))
+			amin(r, 0);
+	}else {
+		int c = g[i][j];
+		rer(l, 0, k) {
+			amin(r, rec(c, 0, l) + l + rec(i, j+1, k - l));
+			if(l <= 1)
+				amin(r, l + rec(i, j+1, k - l));
+		}
+	}
+	return r;
+}
+
+int main() {
+	char *buf = new char[20001];
+	nodes.assign(20001, Node());
+	int T;
+	scanf("%d", &T);
+	rep(ii, T) {
+		int N, K;
+		scanf("%d%d", &N, &K);
+		Node *nodesp = &nodes[0];
+		Node *root = new(nodesp ++)Node;
+		rep(i, N) {
+			scanf("%s", buf);
+//			rep(j, 5) buf[j] = rand() % 26 + 'a'; buf[5] = 0;
+			Node *t = root;
+			for(const char *p = buf; *p; ++ p) {
+				Node *&n = t->ch[*p - 'a'];
+				if(!n)
+					n = new(nodesp ++)Node;
+				t = n;
+			}
+			t->term = true;
+		}
+		int V = nodesp - &nodes[0];
+		g.assign(V, vi());
+		rep(i, V) rep(a, 26) if(nodes[i].ch[a])
+			g[i].push_back(nodes[i].ch[a] - &nodes[0]);
+		tree_getstateindices(0);
+		memo.assign(nstates, vector<int>(K+1, -1));
+		for(int i = V-1; i >= 0; -- i) rep(j, g[i].size()+1) rer(k, 0, K)
+			rec(i, j, k);
+		
+		int ans = rec(0, 0, K);
+		printf("Case #%d: %d\n", ii+1, ans);
+	}
+	return 0;
+}

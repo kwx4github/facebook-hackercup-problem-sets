@@ -1,0 +1,207 @@
+/*
+ * c.cpp
+ *
+ *  Created on: Jan 24, 2015
+ *      Author: istrandjev
+ */
+
+#define _CRT_SECURE_NO_DEPRECATE
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+#include <iomanip>
+#include <map>
+#include <set>
+#include <math.h>
+#include <stack>
+#include <deque>
+#include <numeric>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <bitset>
+#include <functional>
+#define all(x) x.begin(),x.end()
+#define mpair make_pair
+using namespace std;
+typedef long long ll;
+typedef long double ld;
+const ld epsylon = 1e-9;
+
+int global_num;
+struct TrieNode {
+  vector<pair<char, TrieNode*> > next;
+  int num;
+  int total;
+  int depth;
+  bool final;
+//  ~TrieNode() {
+//    for (int i = 0; i < (int)next.size(); ++i) {
+//      delete next[i].second;
+//    }
+//  }
+};
+
+struct Trie {
+  TrieNode root;
+  Trie() {
+    root.num = global_num++;
+    root.total = 0;
+    root.depth = 0;
+  }
+  void add(const std::string& s) {
+    TrieNode* c = &root;
+    c->total++;
+    int i;
+    for (i = 0; i < (int)s.size(); ++i) {
+      bool met = false;
+      for (int j = 0; j < (int)c->next.size(); ++j) {
+        if (c->next[j].first == s[i]) {
+          c = c->next[j].second;
+          c->total++;
+          met = true;
+          break;
+        }
+      }
+      if (!met) {
+        break;
+      }
+    }
+
+    for (int j = i; j < (int)s.size(); ++j) {
+      TrieNode* temp = new TrieNode();
+      temp->num = global_num++;
+      temp->total = 1;
+      temp->depth = c->depth + 1;
+      c->next.push_back(make_pair(s[j], temp));
+      c = temp;
+    }
+    c->final = true;
+  }
+};
+
+map<pair<int, int>, int> dp[20100];
+
+int solve(TrieNode* c, int lft, int curi);
+
+inline int get(TrieNode* c, int lft, int curi) {
+  pair<int, int> p = make_pair(lft, curi);
+  map<pair<int, int>, int>::iterator it = dp[c->num].find(p);
+  if (it == dp[c->num].end()) {
+    return solve(c, lft, curi);
+  } else {
+    return it->second;
+  }
+}
+
+int solve(TrieNode* c, int lft, int curi) {
+  if (lft == 0) {
+    dp[c->num][make_pair(lft, curi)] = lft;
+    return lft;
+  }
+
+  if (lft == 1) {
+    if (curi == 0) {
+      int ans = max(1, c->depth);
+      dp[c->num][make_pair(lft, curi)] = ans;
+      return ans;
+    } else {
+      int ans = max(1, c->depth + 1);
+      dp[c->num][make_pair(lft, curi)] = ans;
+      return ans;
+    }
+  }
+
+  if (curi == (int)c->next.size() - 1) {
+    int res;
+    if (c->final) {
+      if (c->next.back().second->total >= lft) {
+        c->final = false;
+        int res1 = get(c->next.back().second, lft - 1, 0) + c->depth;
+        c->final = true;
+        int res2 = get(c->next.back().second, lft, 0);
+        res = min(res1, res2);
+      } else {
+        c->final = false;
+        res = get(c->next.back().second, lft - 1, 0) + c->depth;
+        c->final = true;
+      }
+    } else {
+      res = get(c->next.back().second, lft, 0);
+    }
+    dp[c->num][make_pair(lft, curi)] = res;
+    return res;
+  }
+
+  int others = 0;
+  for (int i = curi + 1; i < (int)c->next.size(); ++i) {
+    others += c->next[i].second->total;
+  }
+
+  int minv = max(lft - others, 0);
+  if (c->final && minv > 0) {
+    minv--;
+  }
+  int best = -1;
+
+  for (int cnt = minv; cnt <= c->next[curi].second->total && cnt <= lft; ++cnt) {
+    int temp;
+
+    if (c->final) {
+      if (others + cnt >= lft) {
+        temp = get(c->next[curi].second, cnt, 0) + get(c, lft - cnt, curi + 1);
+        if (lft - cnt - 1 >= 0) {
+          c->final = false;
+          int temp2 = get(c->next[curi].second, cnt, 0) + get(c, lft - cnt - 1, curi + 1) + c->depth;
+          c->final = true;
+          if (temp2 < temp) {
+            temp = temp2;
+          }
+        }
+      } else {
+        c->final = false;
+        temp = get(c->next[curi].second, cnt, 0);
+        temp += get(c, lft - cnt - 1, curi + 1) + c->depth;
+        c->final = true;
+      }
+    } else {
+      temp = get(c->next[curi].second, cnt, 0);
+      temp += get(c, lft - cnt, curi + 1);
+    }
+
+    if (best == -1 || temp < best) {
+      best = temp;
+    }
+  }
+  dp[c->num][make_pair(lft, curi)] = best;
+  return best;
+}
+
+int main() {
+  freopen("facebook.in", "r", stdin);
+  freopen("facebook.out", "w", stdout);
+  int nt;
+  cin >> nt;
+  for (int it = 1; it <= nt; it++) {
+    for (int i = 0; i < 20100; ++i) {
+      dp[i].clear();
+    }
+    global_num = 0;
+    Trie t;
+    int n, k;
+    scanf("%d %d", &n, &k);
+    string s;
+    getline(cin, s);
+    for (int i = 0; i < n; ++i) {
+      getline(cin, s);
+      t.add(s);
+    }
+
+    cout << "Case #" << it << ": " << solve(&t.root, k, 0) << endl;
+  }
+  return 0;
+}
+

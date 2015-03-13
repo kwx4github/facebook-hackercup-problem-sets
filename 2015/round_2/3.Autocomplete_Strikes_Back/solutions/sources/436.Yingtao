@@ -1,0 +1,88 @@
+#!/usr/bin/env pypy3
+
+class Node:
+    def __init__(self,id):
+        self.id = id
+        self.count = 0
+        self.end = False
+        self.sons = [None] * 26
+
+infi = 10**10
+
+class Trie:
+    def __init__(self):
+        self.max_id = 0
+        self.root = Node(self.new_id())
+
+    def new_id(self):
+        res = self.max_id
+        self.max_id += 1
+        return res
+
+    def insert(self,s):
+        node = self.root
+        node.count += 1
+        for place, c in enumerate(s):
+            index = ord(c) - ord('a')
+            assert 0 <= index < 26
+            if node.sons[index] is None:
+                node.sons[index] = Node(self.new_id())
+            node = node.sons[index]
+            node.count += 1
+        node.end = True
+
+    def dp(self, node):
+        i = node.id
+
+        f = [infi] * (K+1)
+
+        sub_count = sum([_.count for _ in node.sons if _ is not None])
+
+        if sub_count == 1:
+            f[0], f[1] = 0, 0
+        else:
+            if sub_count == node.count:
+                f[0], f[1] = 0, infi
+            else: # we should choose it
+                f[0], f[1] = 0, 0
+
+            son_id_s = []
+            for son in node.sons:
+                if son is not None:
+                    self.dp(son)
+                    son_id_s.append(son.id)
+
+            for son_id in son_id_s:
+                for count_total in reversed(range(K+1)):
+                    for count_son in reversed(range(count_total+1)):
+                        f[count_total] = min(f[count_total],
+                                            self.f[son_id][count_son] +
+                                            f[count_total-count_son] +
+                                            count_son)
+            # special case
+            f[0], f[1] = 0, 0
+
+        self.f[i] = f
+
+    def solve(self,K):
+        self.K = K
+        self.f = [ None for _ in range(self.max_id)]
+        self.dp(self.root)
+        return self.f[0][K]
+
+def solve(N, K, W):
+    trie = Trie()
+    for w in W:
+        trie.insert(w)
+
+    answer = trie.solve(K)
+    return answer
+
+T = int(input())
+for Case in range(T):
+    N, K = list(map(int,input().split()))
+    W = []
+    for i in range(N):
+        W.append(input())
+    answer = solve(N, K, W)
+    print('Case #%d: %d'%(Case+1,answer))

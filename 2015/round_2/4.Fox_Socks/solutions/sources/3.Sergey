@@ -1,0 +1,299 @@
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <string>
+#include <set>
+#include <map>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+#include <bitset>
+#include <sstream>
+#include <queue>
+
+using namespace std;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+#define last(a) int(a.size() - 1)
+#define all(a) a.begin(), a.end()
+#define seta(a,x) memset (a, x, sizeof (a))
+#define I (int)
+
+typedef long long int64;
+typedef pair <int, int> pii;
+typedef long double ldb;
+
+const long double eps = 1e-9;
+const int inf = (1 << 30) - 1;
+const int64 inf64 = ((int64)1 << 62) - 1;
+const long double pi = 3.1415926535897932384626433832795;
+
+template <class T> T sqr (T x) {return x * x;}
+template <class T> T abs (T x) {return x < 0 ? -x : x;}
+
+const int nmax = 1048576;
+const int64 mod = 1e9;
+
+struct rec {
+	int64 sum;
+	int odd0, odd1;
+	int64 setVal, addVal, addQ;
+
+	rec () {
+		sum = 0;
+		setVal = -1;
+		addVal = addQ = 0;
+		odd0 = odd1 = 0;
+	}
+	rec (int64 x) {
+		sum = x;
+		setVal = -1;
+		addVal = addQ = 0;
+		odd0 = odd1 = 0;
+		if (x & 1)
+			odd0 = 1;
+	}
+};
+
+rec t[nmax * 2];
+int n, m;
+
+inline void update(int v, int l, int r) {
+	t[v] = rec();
+	t[v].sum = t[v*2].sum + t[v*2+1].sum;
+	while (t[v].sum >= mod) t[v].sum -= mod;
+	if (r == l + 1) {
+		t[v].odd0 = t[v*2].odd0;
+		t[v].odd1 = t[v*2+1].odd0;
+	} else {
+		t[v].odd0 = t[v*2].odd0 + t[v*2+1].odd0;
+		t[v].odd1 = t[v*2].odd1 + t[v*2+1].odd1;
+	}
+}
+
+inline void setVal(int v, int l, int r, int64 val) {
+	t[v].sum = (r - l + 1) * val % mod;
+	if (val & 1) {
+		t[v].odd0 = (r - l + 2) / 2;
+		t[v].odd1 = (r - l + 1) / 2;
+	} else
+		t[v].odd0 = t[v].odd1 = 0;
+
+	t[v].setVal = val;
+	t[v].addVal = 0;
+	t[v].addQ = 0;
+}
+
+inline void addVal(int v, int l, int r, int64 val) {
+	t[v].sum = (t[v].sum + (r - l + 1) * val % mod);
+	if (val & 1) {
+		t[v].odd0 = (r - l + 2) / 2 - t[v].odd0;
+		t[v].odd1 = (r - l + 1) / 2 - t[v].odd1;
+	}
+
+	t[v].addVal += val;
+}
+
+inline void addQ(int v, int l, int r, int64 val) {
+	int64 len = r - l + 1;
+	int64 add = (len * (len - 1) / 2) % mod;
+	t[v].sum = (t[v].sum + add * val) % mod;
+
+	if (val % 2 != 0) {
+		t[v].odd1 = (r - l + 1) / 2 - t[v].odd1;
+	}
+
+	t[v].addQ += val;
+}
+
+
+void push(int v, int l, int r) {
+	if (l == r) return;
+	int m = (l + r) / 2;
+	if (t[v].setVal != -1) {
+		setVal(v * 2, l, m, t[v].setVal);
+		setVal(v * 2 + 1, m + 1, r, t[v].setVal);
+		t[v].setVal = -1;
+	}
+	if (t[v].addVal != 0) {
+		addVal(v * 2, l, m, t[v].addVal);
+		addVal(v * 2 + 1, m + 1, r, t[v].addVal);
+		t[v].addVal = 0;
+	}
+	if (t[v].addQ != 0) {
+		addQ(v * 2, l, m, t[v].addQ);
+		addQ(v * 2 + 1, m + 1, r, t[v].addQ);
+
+		addVal(v * 2 + 1, m + 1, r, (m - l + 1) * t[v].addQ % mod);
+
+		t[v].addQ = 0;
+	}
+}
+
+int64 get(int v, int l, int r, int l1, int r1) {
+	if (l > r1 || r < l1) return 0;
+	push(v, l, r);
+	if (l1 <= l && r <= r1)
+		return t[v].sum;
+	int m = (l + r) / 2;
+	int64 res = get(v * 2, l, m, l1, r1) + get(v * 2 + 1, m + 1, r, l1, r1);
+	while (res >= mod) res -= mod;
+	return res;
+}
+
+int64 getOdd(int v, int l, int r, int l1, int r1) {
+	if (l > r1 || r < l1) return 0;
+	push(v, l, r);
+	if (l1 <= l && r <= r1)
+		return t[v].odd0 + t[v].odd1;
+	int m = (l + r) / 2;
+	int64 res = getOdd(v * 2, l, m, l1, r1) + getOdd(v * 2 + 1, m + 1, r, l1, r1);
+	while (res >= mod) res -= mod;
+	return res;
+}
+
+int addQ(int v, int l, int r, int l1, int r1, int val, int add) {
+	if (l > r1 || r < l1) return 0;
+	push(v, l, r);
+
+	if (l1 <= l && r <= r1) {
+//		cerr << v << " " << l << " " << r << " " << val << " " << add << endl;
+		addVal(v, l, r, add);
+		addQ(v, l, r, val);
+		return r - l + 1;
+	}
+
+	int m = (l + r) / 2;
+
+	int now = addQ(v * 2, l, m, l1, r1, val, add);
+
+	add = (add + 1ll * now * val) % mod;
+
+	now += addQ(v * 2 + 1, m + 1, r, l1, r1, val, add);
+
+	update(v, l, r);
+	return now;
+}
+
+void setVal(int v, int l, int r, int l1, int r1, int val) {
+	if (l > r1 || r < l1) return;
+	push(v, l, r);
+
+	if (l1 <= l && r <= r1) {
+		setVal(v, l, r, val);
+		return;
+	}
+
+	int m = (l + r) / 2;
+
+	setVal(v * 2, l, m, l1, r1, val);
+	setVal(v * 2 + 1, m + 1, r, l1, r1, val);
+
+	update(v, l, r);
+}
+
+int64 s[nmax], o[nmax], a[nmax], b[nmax], c[nmax], d[nmax];
+
+void build(int v, int l, int r, int l1, int r1) {
+	if (l > r1 || r < l1) return;
+
+	if (l == r) {
+		t[v] = rec(s[l-1]);
+		return;
+	}
+
+	int m = (l + r) / 2;
+
+	build(v * 2, l, m, l1, r1);
+	build(v * 2 + 1, m + 1, r, l1, r1);
+
+	t[v] = rec();
+	update(v, l, r);
+}
+
+
+void read(int64 s[nmax], int64 mod, int add, int n) {
+	int64 s1, s2, xs, ys, zs;
+	cin >> s1 >> s2 >> xs >> ys >> zs;
+	s[0] = s1;
+	s[1] = s2;
+	for (int i = 2; i < n; i ++) {
+		s[i] = (s[i-2] * xs + s[i-1] * ys + zs) % mod + add;	
+   	}
+}
+
+void read() {
+	cin >> n >> m;
+	read(s, mod, 0, n);
+	read(o, 4, 1, m);
+	read(a, n, 1, m);
+	read(b, n, 1, m);
+	read(c, mod, 0, m);
+	read(d, mod, 0, m);
+}
+
+void solve () {              
+	read();
+	build(1, 1, nmax, 1, n);
+	int64 res = 0;
+	for (int i = 0; i < m; i ++) {
+		int l = a[i];
+		int r = l + b[i] - 1;
+		if (o[i] == 1) {
+			if (r <= n) {
+				addQ(1, 1, nmax, l, r, d[i], c[i]); 	
+			} else {
+				int now = addQ(1, 1, nmax, l, n, d[i], c[i]);
+				addQ(1, 1, nmax, 1, r - n, d[i], (c[i] + 1ll * now * d[i]) % mod);
+			}
+			res = (res + c[i] * b[i] + ((b[i] * (b[i] - 1) / 2) % mod) * d[i]) % mod;
+		} else if (o[i] == 2) {
+			if (r <= n) {
+				res = (res + get(1, 1, nmax, l, r)) % mod;
+				setVal(1, 1, nmax, l, r, c[i]); 	
+			} else {
+				res = (res + get(1, 1, nmax, l, n) + get(1, 1, nmax, 1, r - n)) % mod;
+				setVal(1, 1, nmax, l, n, c[i]);
+				setVal(1, 1, nmax, 1, r - n, c[i]);
+			}
+			res = (res + c[i] * b[i]) % mod;
+		} else if (o[i] == 3) {
+			if (r <= n) {
+				res = (res + get(1, 1, nmax, l, r)) % mod;
+			} else {
+				res = (res + get(1, 1, nmax, l, n) + get(1, 1, nmax, 1, r - n)) % mod;
+			}
+		} else if (o[i] == 4) {
+			if (r <= n) {
+				res = (res + getOdd(1, 1, nmax, l, r)) % mod;
+			} else {
+				res = (res + getOdd(1, 1, nmax, l, n) + getOdd(1, 1, nmax, 1, r - n)) % mod;
+			}
+		}
+	}
+	cout << res << endl;
+}
+
+int main ()
+{
+//	freopen("input.txt", "rt", stdin);
+	freopen("output.txt", "wt", stdout);
+	
+	int tst;
+	cin >> tst;
+	forn(i, tst) {
+		printf("Case #%d: ", i + 1);
+		solve();
+		cerr << i << " " << clock() << endl;
+	}
+
+
+	return 0;
+}

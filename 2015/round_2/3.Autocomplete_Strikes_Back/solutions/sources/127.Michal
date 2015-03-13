@@ -1,0 +1,139 @@
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <cctype>
+#include <string>
+#include <vector>
+#include <list>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <algorithm>
+using namespace std; 
+
+#define DEBUG(x) cerr << '>' << #x << ':' << x << endl;
+#define REP(i,n) for(int i=0;i<(n);i++)
+#define FOR(i,a,b) for(int i=(a);i<=(b);i++)
+#define FORD(i,a,b) for(int i=(a);i>=(b);i--)
+inline bool EQ(double a, double b) { return fabs(a-b) < 1e-9; }
+
+const int INF = 1<<29;
+typedef long long ll;
+
+inline int two(int n) { return 1 << n; }
+inline int test(int n, int b) { return n & two(b); }
+inline void set_bit(int & n, int b) { n |= two(b); }
+inline void unset_bit(int & n, int b) { n &= ~two(b); }
+inline int last_bit(int n) { return n & (-n); }
+inline int ones(int n) { int res = 0; while(n && ++res) n-=n&(-n); return res; }
+
+template<class T> void chmax(T & a, const T & b) { a = max(a, b); }
+template<class T> void chmin(T & a, const T & b) { a = min(a, b); }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const int MAXN = 4007, MAXK = 107, MAX = 20007;
+int N, K;
+char in[MAX];
+
+const int ALPHA = 26+1;
+inline int to_int(char c)
+{
+	if (!('a' <= c && c <= 'z')) DEBUG("AAAAAAAAA");
+	return c-'a';
+}
+
+int node_counter;
+struct Node
+{
+	Node(): depth(0), sz(0) { index=node_counter++; memset(next, 0, sizeof(next)); }
+	Node * next[ALPHA];
+	int depth, sz, index;
+};
+
+void del(Node * node)
+{
+	REP(i, ALPHA)
+		if (node->next[i])
+			del(node->next[i]);
+	delete node;
+}
+
+int dp[MAX][MAXK], dp2[ALPHA][MAXK];
+
+int go2(Node * node, int a, int k)
+{
+	if (!k) return 0;
+	if (a == ALPHA) return INF;
+	int & res = dp2[a][k];
+	if (res != -1) return res;
+	res = go2(node, a+1, k);
+	if (node->next[a])
+		FOR(kk, 1, min(k, node->next[a]->sz))
+			res = min(res, dp[node->next[a]->index][kk] + go2(node, a+1, k-kk));
+	return res;
+}
+
+void go(Node * node)
+{
+	REP(i, ALPHA)
+		if (node->next[i])
+			go(node->next[i]);
+
+	dp[node->index][1] = node->depth;
+	memset(dp2, -1, sizeof(dp2));
+	//REP(i, ALPHA) REP(j, node->sz+1) dp2[i][j] = -1;
+	FOR(k, 2, node->sz)
+		dp[node->index][k] = go2(node, 0, k);
+}
+
+void Solve(int tc)
+{
+	cerr << "TC: " << tc << endl;
+	scanf("%d%d", &N, &K);
+	node_counter = 0;
+	Node * root = new Node();
+	REP(step, N)
+	{
+		scanf("%s", in);
+		int len = strlen(in);
+		Node * node = root;
+		node->sz++;
+		REP(i, len)
+		{
+			int ind = to_int(in[i]);
+			if (!node->next[ind])
+			{
+				node->next[ind] = new Node();
+				node->next[ind]->depth = node->depth+1;
+			}
+			node = node->next[ind];
+			node->sz++;
+		}
+		// end node
+		node->next[ALPHA-1] = new Node();
+		node->next[ALPHA-1]->depth = node->depth;
+		node->next[ALPHA-1]->sz++;
+	}
+
+	printf("Case #%d: ", tc);
+	if (K == 1)
+		printf("1\n");
+	else
+	{
+		go(root);
+		printf("%d\n", dp[root->index][K]);
+	}
+	del(root);
+}
+
+int main()
+{
+	int T;
+	scanf("%d\n", &T);
+	FOR(tc,1,T) Solve(tc);
+
+	return 0;
+}

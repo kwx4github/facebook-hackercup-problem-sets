@@ -1,0 +1,105 @@
+#include <cstdio>
+#include <memory.h>
+#include <cassert>
+#include <algorithm>
+using namespace std;
+
+const int L = 20500;
+
+char buf[L];
+
+int to[L][26];
+bool term[L];
+
+int pt;
+
+const int K = 105; 
+
+int D[L][K];
+int sub[L][K];
+
+int len[L];
+
+void add(int v, char* s)
+{
+    if (*s == 0) {
+        term[v] = true;
+        return;
+    }
+    if (to[v][*s - 'a'] == -1) {
+        to[v][*s - 'a'] = pt;
+        len[pt] = len[v] + 1;
+        pt++;
+        assert(pt < L - 2);
+    }
+    add(to[v][*s - 'a'], s + 1);
+}
+
+const int inf = L * 10;
+
+int tmp[27][K];
+
+void DFS(int v)
+{
+    for (int k = 1; k < K; k++)
+        tmp[0][k] = inf;
+    tmp[0][0] = 0;
+    for (int i = 1; i <= 26; i++)
+        for (int k = 0; k < K; k++)
+            tmp[i][k] = inf; 
+    for (int i = 0; i < 26; i++)
+    {
+        if (to[v][i] != -1) {
+            int u = to[v][i];
+            DFS(u);
+        }
+    }
+    for (int i = 0; i < 26; i++) {
+        if (to[v][i] != -1) {
+            int u = to[v][i];
+            for (int k = 0; k < K; k++)
+                for (int r = 0; r + k < K; r++)
+                    tmp[i + 1][r + k] = min(tmp[i + 1][r + k], tmp[i][k] + D[u][r]);
+        } else {
+            memcpy(tmp[i + 1], tmp[i], sizeof(tmp[i]));
+        }
+    }
+    for (int k = 0; k < K; k++)
+        sub[v][k] = tmp[26][k];
+    D[v][0] = 0;
+    D[v][1] = max(1, len[v]);
+    for (int k = 2; k < K; k++)
+    {
+        D[v][k] = sub[v][k];
+        if (term[v])
+            D[v][k] = min(D[v][k], len[v] + sub[v][k - 1]);
+    }
+}
+
+void solve(int cs)
+{
+    int n, k;
+    scanf("%d %d ", &n, &k);
+    assert(k <= 100);
+    memset(to, -1, sizeof(to));
+    memset(term, 0, sizeof(term));
+    for (int i = 0; i < L; i++)
+        for (int j = 0; j < K; j++)
+            D[i][j] = sub[i][j] = inf;
+    pt = 1;
+    for (int i = 0; i < n; i++) {
+        gets(buf);
+        add(0, buf + 0);
+    }
+    DFS(0);
+    int ans = D[0][k];
+    printf("Case #%d: %d\n", cs, ans); 
+}
+
+int main()
+{
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; i++)
+        solve(i + 1);
+}

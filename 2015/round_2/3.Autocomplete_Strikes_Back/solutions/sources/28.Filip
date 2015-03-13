@@ -1,0 +1,89 @@
+/* Written by Filip Hlasek 2015 */
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <iostream>
+
+#define FOR(i,a,b) for(int i=(a);i<=(b);i++)
+#define FORD(i,a,b) for(int i=(a);i>=(b);i--)
+#define REP(i,b) for(int i=0;i<(b);i++)
+
+using namespace std;
+
+#define MAXN 41111
+#define MAXK 111
+int Tr;
+int Trie[MAXN][30];
+int word_cnt[MAXN];
+bool word_end[MAXN];
+
+int new_node() {
+  REP(i, 30) Trie[Tr][i] = 0;
+  word_cnt[Tr] = 0;
+  word_end[Tr] = false;
+  return Tr++;
+}
+
+void add_to_trie(string word) {
+  int t = 0;
+  REP(i, word.size()) {
+    int c = word[i] - 'a';
+    if (Trie[t][c] == 0) Trie[t][c] = new_node();
+    word_cnt[t]++;
+    t = Trie[t][c];
+  }
+  word_end[t] = true;
+}
+
+#define INF 1000000
+int dp[MAXN][33][MAXK];
+
+int solve(int t, int c, int K, int depth) {
+  if (!K) return 0;
+  if (c == 30) {
+    if (K == 1) return depth + (t == 0);
+    if (word_end[t]) return depth + solve(t, 0, K - 1, depth);
+    return solve(t, 0, K, depth);
+  }
+  if (dp[t][c][K] != -1) return dp[t][c][K];
+  int sum = 0;
+  FOR(i, c, 29) if (Trie[t][i]) sum += word_cnt[Trie[t][i]];
+  if (sum < K) return dp[t][c][K] = INF;
+
+  int best_ans = INF;
+  if (!Trie[t][c]) return dp[t][c][K] = solve(t, c + 1, K, depth);
+  int tt = Trie[t][c];
+  FOR(k, 0, min(K, word_cnt[tt])) {
+    best_ans = min(best_ans, solve(tt, 30, k, depth + 1) + solve(t, c + 1, K - k, depth));
+  }
+  // printf("solve t: %d c: %d K: %d depth: %d ans: %d\n", t, c, K, depth, best_ans);
+  return dp[t][c][K] = best_ans;
+}
+
+int main(int argc, char *argv[]) {
+  int T;
+  scanf("%d", &T);
+  REP(t, T) {
+    int N, K;
+    int ans = 0;
+    scanf("%d%d", &N, &K);
+    Tr = 0;
+    new_node();
+    REP(i, N) {
+      string word;
+      cin >> word;
+      add_to_trie(word);
+    }
+    REP(i, Tr) REP(j, 33) REP(k, K + 1) dp[i][j][k] = -1;
+    printf("Case #%d: %d\n", t + 1, solve(0, 30, K, 0));
+  }
+  return 0;
+}

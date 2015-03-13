@@ -1,0 +1,179 @@
+#include <string>
+#include <vector>
+#include <cassert>
+#include <set>
+#include <iostream>
+#include <algorithm>
+#include <utility>
+#include <map>
+#include <cstdio>
+#include <sstream>
+#include <cmath>
+
+using namespace std;
+
+#define REP(a, b) for (int a = 0; a<(b); ++a)
+#define FOR(a, b, c) for (int a = (b); a<=(c); ++a)
+#define FORD(a, b, c) for (int a = (b); a>=(c); --a)
+#define INIT(a, b) __typeof(b) a = (b)
+#define FOREACH(a, v) for (INIT(a, (v).begin()); a!=(v).end(); ++a)
+ 
+//template<class T>
+//inline int size(const T&t){return t.size();}
+ 
+typedef vector<string> vs;
+typedef vector<int> vi;
+typedef pair<int, int> pii;
+typedef long long LL;
+
+#define INF 1000000000
+#define PB push_back
+#define MP make_pair
+
+////////////////////////////////
+
+void dekoduj(LL *tab, int ile, LL mod, int dodaj) {
+    LL X, Y, Z;
+    scanf("%lld%lld%lld%lld%lld", &tab[0], &tab[1], &X, &Y, &Z);
+    FOR(a, 2, ile-1)
+        tab[a] = (X*tab[a-2]%mod+Y*tab[a-1]%mod+Z)%mod+dodaj;
+}
+
+#define SIZE (1<<20)
+
+int N, M;
+LL jest_tab[2*SIZE], add_tab[2*SIZE], ukos_tab[2*SIZE];
+int np0_tab[2*SIZE], np1_tab[2*SIZE], repl_tab[2*SIZE];
+
+void popraw(int repl, LL add, LL ukos, int p, int size) {
+    if (repl) {
+        repl_tab[p] = 1;
+        jest_tab[p] = add_tab[p] = ukos_tab[p] = 0;
+        np0_tab[p] = np1_tab[p] = 0;
+    }
+    add_tab[p] = (add_tab[p]+add)%INF;
+    jest_tab[p] = (jest_tab[p]+add*size)%INF;
+    if (add%2) {
+        np0_tab[p] = (size+1)/2-np0_tab[p];
+        np1_tab[p] = size/2-np1_tab[p];
+    }
+    ukos_tab[p] = (ukos_tab[p]+ukos)%INF;
+    jest_tab[p] = (jest_tab[p]+size*(LL)(size-1)/2%INF*ukos)%INF;
+    if (ukos%2)
+        np1_tab[p] = size/2-np1_tab[p];
+}
+
+LL wyn;
+
+void operacja(int O, int pocz, int kon, LL C, LL D, int p, int size) {
+assert(pocz>=0 && kon<=size && kon-pocz>0);
+    if (kon-pocz==size) {
+        if (O==1) {
+            add_tab[p] = (add_tab[p]+C)%INF;
+            jest_tab[p] = (jest_tab[p]+C*size)%INF;
+            wyn = (wyn+C*size)%INF;
+            if (C%2) {
+                np0_tab[p] = (size+1)/2-np0_tab[p];
+                np1_tab[p] = size/2-np1_tab[p];
+            }
+            ukos_tab[p] = (ukos_tab[p]+D)%INF;
+            jest_tab[p] = (jest_tab[p]+size*(LL)(size-1)/2%INF*D)%INF;
+            wyn = (wyn+size*(LL)(size-1)/2%INF*D)%INF;
+            if (D%2)
+                np1_tab[p] = size/2-np1_tab[p];
+        }
+        if (O==2) {
+            wyn = (wyn+jest_tab[p])%INF;
+            repl_tab[p] = 1;
+            jest_tab[p] = add_tab[p] = ukos_tab[p] = 0;
+            np0_tab[p] = np1_tab[p] = 0;
+            add_tab[p] = (add_tab[p]+C)%INF;
+            jest_tab[p] = (jest_tab[p]+C*size)%INF;
+            wyn = (wyn+C*size)%INF;
+            if (C%2) {
+                np0_tab[p] = (size+1)/2-np0_tab[p];
+                np1_tab[p] = size/2-np1_tab[p];
+            }
+        }
+        if (O==3) {
+            wyn = (wyn+jest_tab[p])%INF;
+        }
+        if (O==4) {
+            wyn = (wyn+np0_tab[p]+np1_tab[p])%INF;
+        }
+        return;
+    }
+    popraw(repl_tab[p], add_tab[p], ukos_tab[p], 2*p, size/2);
+    popraw(repl_tab[p], (add_tab[p]+size/2*ukos_tab[p])%INF, ukos_tab[p], 2*p+1, size/2);
+    repl_tab[p] = 0;
+    add_tab[p] = ukos_tab[p] = 0;
+    size /= 2;
+    if (pocz<size)
+        operacja(O, pocz, min(kon, size), C, D, 2*p, size);
+    if (kon>size) {
+        if (O==1 && pocz<size)
+            C = (C+(size-pocz)*D)%INF;
+        operacja(O, max(0, pocz-size), kon-size, C, D, 2*p+1, size);
+    }
+    jest_tab[p] = (jest_tab[2*p]+jest_tab[2*p+1])%INF;
+    if (p>=SIZE/2)
+        np0_tab[p] = np0_tab[2*p], np1_tab[p] = np0_tab[2*p+1];
+    else
+        np0_tab[p] = np0_tab[2*p]+np0_tab[2*p+1], np1_tab[p] = np1_tab[2*p]+np1_tab[2*p+1];
+}
+
+LL operS[SIZE], operO[SIZE], operA[SIZE], operB[SIZE], operC[SIZE], operD[SIZE];
+
+void licz() {
+    scanf("%d%d", &N, &M);
+    dekoduj(operS, N, INF, 0);
+    dekoduj(operO, M, 4, 1);
+    dekoduj(operA, M, N, 1);
+    dekoduj(operB, M, N, 1);
+    dekoduj(operC, M, INF, 0);
+    dekoduj(operD, M, INF, 0);
+    REP(a, 2*SIZE) {
+        jest_tab[a] = add_tab[a] = ukos_tab[a] = 0;
+        np0_tab[a] = np1_tab[a] = repl_tab[a] = 0;
+    }
+    REP(a, N) {
+//        printf("%lld ", operS[a]);
+        jest_tab[SIZE+a] = operS[a];
+        np0_tab[SIZE+a] = operS[a]%2;
+    }
+//    printf("\n");
+    FORD(a, SIZE-1, 1) {
+        jest_tab[a] = (jest_tab[2*a]+jest_tab[2*a+1])%INF;
+        if (a>=SIZE/2)
+            np0_tab[a] = np0_tab[2*a], np1_tab[a] = np0_tab[2*a+1];
+        else
+            np0_tab[a] = np0_tab[2*a]+np0_tab[2*a+1], np1_tab[a] = np1_tab[2*a]+np1_tab[2*a+1];
+    }
+    wyn = 0;
+    REP(a, M) {
+//        printf("O=%lld A=%lld B=%lld C=%lld D=%lld\n", operO[a], operA[a], operB[a], operC[a], operD[a]);
+        int pocz = operA[a]-1;
+        int kon = pocz+operB[a];
+        if (kon<=N)
+            operacja(operO[a], pocz, kon, operC[a], operD[a], 1, SIZE);
+        else {
+            operacja(operO[a], pocz, N, operC[a], operD[a], 1, SIZE);
+            LL C = operC[a];
+            if (operO[a]==1)
+                C = (C+(N-pocz)*operD[a])%INF;
+            operacja(operO[a], 0, kon-N, C, operD[a], 1, SIZE);
+        }
+    }
+    printf("%lld\n", wyn%INF);
+    fprintf(stderr, "%lld\n", wyn%INF);
+}
+
+int main() {
+    int TT;
+    scanf("%d", &TT);
+    REP(tt, TT) {
+        printf("Case #%d: ", (tt+1));
+        fprintf(stderr, "Case #%d: ", (tt+1));
+        licz();
+    }
+}

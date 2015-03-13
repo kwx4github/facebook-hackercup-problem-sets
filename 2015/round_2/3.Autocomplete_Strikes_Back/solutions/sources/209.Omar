@@ -1,0 +1,173 @@
+#include <stdio.h>
+#include <algorithm>
+#include <string.h>
+#include <string>
+#include <vector>
+using namespace std;
+
+FILE *in = fopen("f.in", "r");
+FILE *out = fopen( "f.out" , "w" );
+
+const int INF = 1000000;
+int suf[22][100010], dpth;
+int n, k;
+char str[100010];
+string words[4444];
+int strSize;
+int f[20010][111];
+int backnode[20010][2];
+vector<int> nodeID[4444];
+char inp[22222];
+int start[4444];
+int pref[4444][4444];
+
+int calc(int q, int r){
+  if(r == 0){
+    return 0;
+  }
+  int &ret = f[q][r];
+  if(ret != -1){
+    return ret;
+  }
+  ret = INF;
+  int i = backnode[q][0];
+  int j = backnode[q][1];
+  for(int w = i + 1; w < n; w++){
+    int tmp = pref[i][w];
+    if(j + 1 <= pref[w][i]){
+      tmp += pref[w][i] - j - 1;
+    }
+    int wNode = nodeID[w][pref[i][w] - 1];
+    ret = min(ret, tmp + calc(wNode, r - 1));
+  }
+  return ret;
+}
+
+class suffix{
+  public:
+
+  int a , b , i;
+  inline bool operator < ( const suffix &x )const{return ((a < x.a) || ((a == x.a) && (b < x.b)));}
+  inline bool operator == ( const suffix &x )const{return ((a == x.a) && (b == x.b));}
+}L[100010];
+
+inline int lcp( int a , int b ){
+    int ret = 0;
+    for( int c = dpth - 1 ; c >= 0 && a < strSize && b < strSize ; c-- )
+      if( suf[ c ][ a ] == suf[ c ][ b ] ){
+      a += (1 << c);
+      b += (1 << c);
+      ret += (1 << c);
+    }
+
+  return ret;
+}
+
+int main(){
+  int ntest;
+  fscanf(in, "%d", &ntest);
+  for(int test = 1; test <= ntest; test++){
+    fscanf(in, "%d%d", &n, &k);
+    for(int q = 0; q < n; q++){
+      fscanf(in, "%s", inp);
+      words[q] = inp;
+    }
+    for(int q = 0; q < 4444; q++){
+      nodeID[q].clear();
+    }
+
+    if(k == 1){
+      printf("Case #%d: %d\n", test, 1);
+      continue;
+    }
+
+    sort(words, words + n);
+
+    int sizz = 0;
+    for(int q = 0; q < n; q++){
+      int e = words[q].size();
+      for(int w = 0; w < e; w++){
+        nodeID[q].push_back(sizz);
+        backnode[sizz][0] = q;
+        backnode[sizz][1] = w;
+        sizz ++;
+      }
+    }
+
+    strSize = 0;
+    for(int q = 0; q < n; q++){
+      start[q] = strSize;
+      int e = words[q].size();
+      for(int w = 0; w < e; w++){
+        str[strSize++] = words[q][w];
+      }
+      str[strSize++] = '|';
+    }
+    str[strSize++] = '\0';
+
+
+    for( int c = 0 ; c < strSize ; c++ )
+      suf[ 0 ][ c ] = str[ c ] - 'a';
+    for( int siz = 1 , ii = 1 ; 1 ; siz <<= 1 , ii++ ){
+      for( int c = 0 ; c < strSize ; c++ ){
+        L[ c ].a = suf[ ii - 1 ][ c ];
+        L[ c ].b = (c + siz < strSize) ? suf[ ii - 1 ][ c + siz ] : -1;
+        L[ c ].i = c;
+      }
+  
+      sort( L , L + strSize );
+      int cnt = 0;
+      suf[ ii ][ L[ 0 ].i ] = 0;
+      for( int c = 1 ; c < strSize ; c++ )
+        suf[ ii ][ L[ c ].i ] = ( (L[ c ] == L[ c - 1 ]) ? cnt : ++cnt );
+      if( cnt == strSize - 1 ){
+        dpth = ii + 1;
+        break;
+      }
+    }
+
+    for(int q = 0; q < n; q++){
+      for(int w = 0; w < n; w++){
+        int e = min(words[q].size(), words[w].size());
+        pref[q][w] = min(e, lcp(start[q], start[w]));
+        if(pref[q][w] == 0){
+          pref[q][w] = 1;
+        }
+        else if(pref[q][w] != words[w].size()){
+          pref[q][w] ++;
+        }
+      }
+    }
+    memset(f, -1, sizeof f);
+    /*
+    for(int q = 0; q < sizz; q++){
+      f[q][0] = 0;
+    }
+    for(int r = 1; r < k; r++){
+      for(int q = 1; q < sizz; q++){
+        f[q][r] = INF;
+        int i = backnode[q][0];
+        int j = backnode[q][1];
+        for(int w = i + 1; w < n; w++){
+          int tmp = pref[i][w];
+         if(j + 1 <= pref[w][i]){
+            tmp += pref[w][i] - j - 1;
+          }
+          int wNode = nodeID[w][pref[i][w] - 1];
+          f[q][r] = min(f[q][r], tmp + f[wNode][r - 1]);
+        }
+      }
+    }*/
+
+    int res = INF;
+    for(int q = 0; q < n; q++){
+      for(int w = q + 1; w < n; w++){
+        int nodeW = nodeID[w][pref[q][w] - 1];
+        res = min(res, calc(nodeW, k - 2) + pref[q][w] + pref[w][q]);
+      }
+    }
+
+    fprintf(out, "Case #%d: %d\n", test, res);
+  }
+  return 0;
+}

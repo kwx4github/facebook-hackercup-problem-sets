@@ -1,0 +1,75 @@
+#include <cstdio>
+#include <vector>
+#include <string>
+#include <iostream>
+using namespace std;
+
+const int Maxl = 26;
+const int Maxn = 4005;
+const int Maxk = 105;
+const int Inf = 1000000000;
+
+struct trie {
+	trie *neigh[Maxl];
+	int cnt;
+	int dp[Maxk];
+	trie() { for (int i = 0; i < Maxl; i++) neigh[i] = NULL; cnt = 0; fill(dp, dp + Maxk, Inf); }
+};
+
+int t;
+trie *tr;
+int n, k;
+string s[Maxn];
+int dp[Maxn][Maxk];
+
+void Add(trie *tr, const string &str, int pnt)
+{
+	if (pnt == str.length()) tr->cnt++;
+	else {
+		if (!tr->neigh[str[pnt] - 'a']) tr->neigh[str[pnt] - 'a'] = new trie();
+		Add(tr->neigh[str[pnt] - 'a'], str, pnt + 1);
+	}
+}
+
+int Cost(int cnt) { return cnt <= 1? 0: cnt; }
+
+int Cost(int ind, int val) { return ind == 1 && val <= 0? val + 1: val; }
+
+void Solve(trie *tr)
+{
+	tr->dp[0] = 0;
+	if (tr->cnt) tr->dp[1] = -1;
+	for (int v = 0; v < Maxl; v++) 
+		if (tr->neigh[v]) {
+			Solve(tr->neigh[v]);
+			for (int i = k; i >= 0; i--)
+				for (int j = 0; j <= i; j++)
+					tr->dp[i] = min(tr->dp[i], Cost(i - j, tr->dp[i - j]) + tr->neigh[v]->dp[j] + j);
+		}
+	for (int v = 0; v < Maxl; v++)
+		if (tr->neigh[v] && tr->neigh[v]->dp[1] < Inf) tr->dp[1] = min(tr->dp[1], 0);
+	if (tr->dp[1] < 0) tr->dp[1] = 0;
+}
+
+void Erase(trie *tr)
+{
+	for (int i = 0; i < Maxl; i++)
+		if (tr->neigh[i]) { Erase(tr->neigh[i]); delete tr->neigh[i]; tr->neigh[i] = NULL; }
+}
+
+int main()
+{
+	scanf("%d", &t);
+	for (int tc = 1; tc <= t; tc++) {
+		tr = new trie();
+		scanf("%d %d", &n, &k);
+		for (int i = 0; i < n; i++) {
+			cin >> s[i];
+			Add(tr, s[i], 0);
+		}
+		Solve(tr);
+		printf("Case #%d: %d\n", tc, Cost(k, tr->dp[k]));
+		Erase(tr); delete tr; tr = NULL;
+	}
+	return 0;
+}

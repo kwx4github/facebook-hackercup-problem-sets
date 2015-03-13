@@ -1,0 +1,49 @@
+{-# LANGUAGE MultiParamTypeClasses,FlexibleContexts,FlexibleInstances,TypeSynonymInstances,BangPatterns,RankNTypes,TupleSections #-}
+import Control.Monad
+import Control.Monad.ST
+import Control.Applicative
+import Control.Arrow
+import Debug.Trace
+import Text.Printf
+
+import Data.List
+import Data.Int
+import Data.Bits
+import Data.Maybe
+import Data.Array.Unboxed
+import Data.Array.ST
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.ByteString.Char8 as B
+import Data.Sequence
+import Data.Foldable(toList)
+
+readInt = fromJust . fmap fst . B.readInt
+readInts = map readInt . B.words <$> B.getLine
+
+stepM_ :: Monad m => a -> (a -> Bool) -> (a -> a) -> (a -> m ()) -> m ()
+stepM_ i judge incr step = sub i where 
+    sub i | judge i = step i >> sub (incr i) | otherwise = return ()
+
+main :: IO ()
+main = do
+    tests <- readLn :: IO Int
+    forM_ [1..tests] $ \caseNum -> do
+        p <- readLn :: IO Double
+        printf "Case #%d: %.6f\n" caseNum $ solve p
+
+solve :: Double -> Double
+solve p = dp ! 20 where
+    dp :: Array Int Double
+    dp = listArray (0,20) $ map e [0..]
+    e 0 = 0
+    e n = (1 + sum [ pr ! (n,k) * dp ! k | k <- [0..n-1] ]) / (1 - pr ! (n,n))
+    pr :: UArray (Int,Int) Double
+    pr = runSTUArray $ do
+        arr <- newArray ((0,0),(20,20)) 0
+        writeArray arr (0,0) 1
+        stepM_ 1 (<=20) (+1) $ \n -> stepM_ 0 (<=n) (+1) $ \k -> do
+            p1 <- readArray arr (n-1,k)
+            p2 <- if k == 0 then return 0 else readArray arr (n-1,k-1)
+            writeArray arr (n,k) $ p1 * p + p2 * (1-p)
+        return arr

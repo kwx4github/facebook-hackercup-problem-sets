@@ -1,0 +1,159 @@
+import java.io.*;
+import java.util.*;
+import java.math.*;
+
+public class CriticalMultithread implements Runnable {
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer st;
+	static Random rnd;
+
+	private int maxTests = 20;
+	private double[] results = new double[maxTests];
+
+	private class OneThreadSolver implements Runnable {
+		private final int id;
+		private final double prob;
+
+		public OneThreadSolver(int id, double prob) {
+			this.id = id;
+			this.prob = prob;
+		}
+
+		@Override
+		public void run() {
+			final int N = 20, totalMasks = 1 << N;
+
+			double[] was = new double[totalMasks], after = new double[totalMasks];
+
+			double[][] transform = new double[N + 1][N + 1];
+
+			for (int i = 0; i <= N; i++) {
+				int count = 0;
+
+				for (int mask = 0; mask < totalMasks; mask++) {
+					if (Integer.bitCount(mask) == i) {
+						++count;
+					}
+				}
+				for (int mask = 0; mask < totalMasks; mask++) {
+					if (Integer.bitCount(mask) == i) {
+						was[mask] = 1.0 / count;
+					} else {
+						was[mask] = 0.0;
+					}
+				}
+
+				for (int j = 0; j < N; j++) {
+					for (int mask = 0; mask < totalMasks; mask++) {
+						if (!checkBit(mask, j)) {
+							after[mask | (1 << j)] += was[mask] * prob;
+							after[mask] += was[mask] * (1.0 - prob);
+						} else {
+							after[mask] += was[mask];
+						}
+					}
+					System.arraycopy(after, 0, was, 0, totalMasks);
+					Arrays.fill(after, 0.0);
+				}
+
+				for (int mask = 0; mask < totalMasks; mask++) {
+					transform[i][Integer.bitCount(mask)] += was[mask];
+				}
+			}
+
+			final int maxPlays = 20000;
+			double[] currentProb = new double[N + 1];
+			currentProb[0] = 1.0;
+
+			double result = 0;
+
+			for (int playId = 1; playId <= maxPlays; playId++) {
+				double[] newProb = new double[N + 1];
+
+				for (int a = 0; a <= N; a++) {
+					for (int b = 0; b <= N; b++) {
+						newProb[b] += currentProb[a] * transform[a][b];
+					}
+				}
+
+				result += playId * newProb[N];
+				newProb[N] = 0.0;
+				currentProb = newProb;
+			}
+
+			results[id] = result;
+		}
+
+		private boolean checkBit(int mask, int j) {
+			return ((mask >> j) & 1) != 0;
+		}
+
+	}
+
+	private void solve() throws IOException, InterruptedException {
+		long start = System.currentTimeMillis();
+		int tests = nextInt();
+		Thread[] threads = new Thread[tests];
+		for (int test = 0; test < tests; test++) {
+			double prob = nextDouble();
+			threads[test] = new Thread(new OneThreadSolver(test, prob));
+			threads[test].start();
+		}
+		for (int test = 0; test < tests; test++) {
+			threads[test].join();
+		}
+		for (int test = 1; test <= tests; test++) {
+			out.print("Case #" + test + ": ");
+			out.printf("%.6f", results[test - 1]);
+			out.println();
+		}
+		long total = System.currentTimeMillis() - start;
+		out.println(total / 1000.0);
+	}
+
+	public static void main(String[] args) {
+		new Thread(null, new CriticalMultithread(), "yarrr", 1 << 28).start();
+	}
+
+	public void run() {
+		try {
+			in = new BufferedReader(new InputStreamReader(System.in));
+			out = new PrintWriter(System.out);
+
+			rnd = new Random();
+
+			solve();
+
+			out.close();
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+
+	private String nextToken() throws IOException {
+		while (st == null || !st.hasMoreTokens()) {
+			String line = in.readLine();
+
+			if (line == null)
+				return null;
+
+			st = new StringTokenizer(line);
+		}
+
+		return st.nextToken();
+	}
+
+	private int nextInt() throws IOException {
+		return Integer.parseInt(nextToken());
+	}
+
+	private long nextLong() throws IOException {
+		return Long.parseLong(nextToken());
+	}
+
+	private double nextDouble() throws IOException {
+		return Double.parseDouble(nextToken());
+	}
+}

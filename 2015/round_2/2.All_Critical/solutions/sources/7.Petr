@@ -1,0 +1,160 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
+import java.io.OutputStream;
+import java.util.concurrent.Executors;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.io.FileInputStream;
+import java.util.concurrent.Callable;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.concurrent.ExecutionException;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "all.*critical.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("allcritical.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		AllCritical solver = new AllCritical();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class AllCritical {
+    static class Testcase implements Callable<Testcase> {
+        int testNumber;
+        double p;
+        double res;
+
+        Testcase(int testNumber) {
+            this.testNumber = testNumber;
+        }
+
+        public void readInput(InputReader in) {
+            p = in.nextDouble();
+        }
+
+        public Testcase call() {
+            double[][] comb = new double[21][21];
+            comb[0][0] = 1;
+            for (int i = 1; i <= 20; ++i) {
+                comb[i][0] = 1;
+                for (int j = 1; j <= 20; ++j) {
+                    comb[i][j] = comb[i - 1][j - 1] + comb[i - 1][j];
+                }
+            }
+            double[] res = new double[21];
+            for (int i = 19; i >= 0; --i) {
+                double s = 1;
+                for (int cnt = 1; i + cnt <= 20; ++cnt) {
+                    double pr = 1.0;
+                    for (int j = 0; j < cnt; ++j) pr *= p;
+                    for (int j = cnt; j < 20 - i; ++j) pr *= (1 - p);
+                    s += pr * res[i + cnt] * comb[20 - i][cnt];
+                }
+                double pr = 1.0;
+                for (int j = 0; j < 20 - i; ++j) pr *= (1 - p);
+                s /= 1 - pr;
+                res[i] = s;
+            }
+            this.res = res[0];
+            System.err.println("Done test " + testNumber);
+            return this;
+        }
+
+        public void writeOutput(PrintWriter out) {
+            out.println("Case #" + testNumber + ": " + String.format("%.5f", res));
+        }
+    }
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        Locale.setDefault(Locale.US);
+        int nt = in.nextInt();
+        List<Future<Testcase>> tests = new ArrayList<Future<Testcase>>();
+        ExecutorService pool = Executors.newFixedThreadPool(8);
+        for (int it = 0; it < nt; ++it) {
+            Testcase t = new Testcase(it + 1);
+            t.readInput(in);
+            tests.add(pool.submit(t));
+        }
+        for (Future<Testcase> test : tests) {
+            try {
+                Testcase t = test.get();
+                t.writeOutput(out);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        pool.shutdown();
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+    public double nextDouble() {
+        return Double.parseDouble(next());
+    }
+}
+

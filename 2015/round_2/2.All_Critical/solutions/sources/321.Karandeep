@@ -1,0 +1,264 @@
+import java.io.*;
+import java.util.InputMismatchException;
+import java.util.Locale;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author karan173
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "all.*critical.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("allcritical.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		FastReader in = new FastReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		AllCritical solver = new AllCritical();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class AllCritical
+
+{
+    double p;
+    double pow[];
+    double ncr[][] = new double[23][];
+    double dp[][];
+    void compute()
+    {
+        for (int i = 1; i <= 22; i++)
+        {
+            ncr[i] = new double[i + 1];
+            ncr[i][0] = 1;
+        }
+        ncr[0] = new double[2];
+        ncr[0][0] = 1;
+        ncr[0][1] = 0;
+        for (int n = 1; n <= 22; n++)
+        {
+            // System.out.println(n);
+            for (int r = 1; r <= n; r++)
+            {
+                // System.out.println(r);
+                if (n - 1 >= r)
+                    ncr[n][r] = (ncr[n - 1][r] + ncr[n - 1][r - 1]);
+                else
+                    ncr[n][r] = ncr[n - 1][r - 1];
+            }
+        }
+    }
+
+    public void solve(int testNumber, FastReader in, PrintWriter out)
+    {
+        p = in.nd ();
+        double min = 1.0 - p;
+        double minPow[] = new double[21];
+        pow = new double[21];
+        pow[0] = minPow[0] = 1;
+
+        compute ();
+        for (int i = 1; i <= 20; i++)
+        {
+            pow[i] = pow[i - 1] * p;
+            minPow[i] = minPow[i - 1] * min;
+        }
+        int maxTurns = 100000;
+        dp = new double[maxTurns][21];
+        dp[0][0] = 1.0;
+        double ans = 0;
+        for (int i = 0; i < maxTurns - 1; i++)
+        {
+            for (int bars = 0; bars < 20 ; bars++)
+            {
+                int remaining = 20 - bars;
+                for (int take = 0; take <= remaining; take++)
+                {
+                    double prob = pow[take] * ncr[remaining][take] * minPow[remaining - take] * dp[i][bars];
+                    dp[i+1][bars+take] += prob;
+                }
+            }
+            ans += dp[i][20] * i;
+            dp[i] = null;
+        }
+        out.print("Case #"+testNumber+": ");
+        out.printf ("%.5f\n", ans);
+    }
+}
+
+class FastReader
+{
+
+    public InputStream stream;
+    private byte[] buf = new byte[1024];
+    private int curChar;
+    private int numChars;
+    private SpaceCharFilter filter;
+
+    public FastReader(InputStream stream)
+    {
+        this.stream = stream;
+    }
+
+    public int read()
+    {
+        if (numChars == -1)
+        {
+            throw new InputMismatchException ();
+        }
+        if (curChar >= numChars)
+        {
+            curChar = 0;
+            try
+            {
+                numChars = stream.read (buf);
+            } catch (IOException e)
+            {
+                throw new InputMismatchException ();
+            }
+            if (numChars <= 0)
+            {
+                return -1;
+            }
+        }
+        return buf[curChar++];
+    }
+
+    public int ni()
+    {
+        int c = read ();
+        while (isSpaceChar (c))
+            c = read ();
+        int sgn = 1;
+        if (c == '-')
+        {
+            sgn = -1;
+            c = read ();
+        }
+        int res = 0;
+        do
+        {
+            if (c < '0' || c > '9')
+            {
+                throw new InputMismatchException ();
+            }
+            res *= 10;
+            res += c - '0';
+            c = read ();
+        } while (!isSpaceChar (c));
+        return res * sgn;
+    }
+
+    public String ns()
+    {
+        int c = read ();
+        while (isSpaceChar (c))
+            c = read ();
+        StringBuilder res = new StringBuilder ();
+        do
+        {
+            res.appendCodePoint (c);
+            c = read ();
+        } while (!isSpaceChar (c));
+        return res.toString ();
+    }
+
+    public boolean isSpaceChar(int c)
+    {
+        if (filter != null)
+        {
+            return filter.isSpaceChar (c);
+        }
+        return isWhitespace (c);
+    }
+
+    public static boolean isWhitespace(int c)
+    {
+        return c==' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+    }
+
+    public double nd()
+    {
+        int c = read ();
+        while (isSpaceChar (c))
+            c = read ();
+        int sgn = 1;
+        if (c == '-')
+        {
+            sgn = -1;
+            c = read ();
+        }
+        double res = 0;
+        while (!isSpaceChar (c) && c != '.')
+        {
+            if (c == 'e' || c == 'E')
+            {
+                return res * Math.pow (10, ni ());
+            }
+            if (c < '0' || c > '9')
+            {
+                throw new InputMismatchException ();
+            }
+            res *= 10;
+            res += c - '0';
+            c = read ();
+        }
+        if (c == '.')
+        {
+            c = read ();
+            double m = 1;
+            while (!isSpaceChar (c))
+            {
+                if (c == 'e' || c == 'E')
+                {
+                    return res * Math.pow (10, ni ());
+                }
+                if (c < '0' || c > '9')
+                {
+                    throw new InputMismatchException ();
+                }
+                m /= 10;
+                res += (c - '0') * m;
+                c = read ();
+            }
+        }
+        return res * sgn;
+    }
+
+    public String next()
+    {
+        return ns ();
+    }
+
+    public interface SpaceCharFilter
+    {
+        public boolean isSpaceChar(int ch);
+    }
+}
+

@@ -1,0 +1,96 @@
+#ifdef DEBUG
+	#define D(x...) fprintf(stderr,x);
+#else
+	#define D(x...) 0
+#endif
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+
+#define MAXLEN 20000
+#define INF 1000000000
+#define MAXK 100
+
+struct prefixTree {
+    bool special;
+    prefixTree* next[26];
+    vector<int> cost;
+    prefixTree() {
+        for (int i = 0; i < 26; i++) next[i] = NULL;
+        special = 0;
+    }
+};
+
+void clean(prefixTree* t) {
+    queue<prefixTree*> q;
+    q.push(t);
+    while (!q.empty()) {
+        t = q.front();
+        q.pop();
+        for (int i = 0; i < 26; i++) {
+            if (t->next[i] != NULL) {
+                q.push(t->next[i]);
+            }
+        }
+        delete(t);
+    }
+}
+
+void traverse(prefixTree* t) {
+    t->cost = vector<int>(MAXK+1, INF);
+    t->cost[0] = 0;
+    if (t->special) t->cost[1] = 0;
+    for (int i = 0; i < 26; i++) {
+        if (t->next[i] == NULL) continue;
+        traverse(t->next[i]);
+        vector<int> tmp = t->cost;
+        for (int j = 1; j <= MAXK; j++) {
+            for (int k = 0; j+k <= MAXK; k++) {
+                tmp[j+k] = min(tmp[j+k], j + t->cost[k] + t->next[i]->cost[j]);
+            }
+        }
+        t->cost = tmp;
+    }
+    t->cost[1] = 0;
+    for (int j = 0; j <= MAXK; j++) {
+        if (t->cost[j] == INF) continue;
+    }
+}
+
+int main() {
+    int nTests;
+    scanf("%d ",&nTests);
+    for (int test=1;test<=nTests;test++) {
+        if (1) fprintf(stderr,"Case %d/%d\n",test,nTests);
+
+        prefixTree* root = new prefixTree();
+        int N, K;
+        scanf("%d %d ",&N,&K);
+        char s[MAXLEN+2];
+        for (int i = 0; i < N; i++) {
+            scanf("%s ", s);
+            // TODO careful: can't pick loc as empty root
+            prefixTree* loc = root;
+            int M = strlen(s);
+            for (int j = 0; j < M; j++) {
+                if (NULL == loc->next[s[j]-'a']) {
+                    loc->next[s[j]-'a'] = new prefixTree();
+                }
+                loc = loc->next[s[j]-'a'];
+            }
+            loc->special = 1;
+        }
+        traverse(root);
+        root->cost[1] = 1;
+
+        printf("Case #%d: %d\n", test, root->cost[K]);
+        clean(root);
+    }
+}

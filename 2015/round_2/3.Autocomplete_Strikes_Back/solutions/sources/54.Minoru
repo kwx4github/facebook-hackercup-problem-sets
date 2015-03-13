@@ -1,0 +1,328 @@
+package fhc15.r2;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class C implements Runnable {
+	static final boolean PROD = true;
+	static final int NTHREAD = 1;
+	static String BASEPATH = "c:\\temp\\fhc\\r2\\";
+//	static String BASEPATH = "/home/ec2-user/";
+	
+	static String INPATH = BASEPATH + "autocomplete_strikes_back.txt";
+	static String OUTPATH = INPATH.substring(0, INPATH.length()-4) + new SimpleDateFormat("-HHmmss").format(new Date()) + ".out";
+	
+	static String INPUT = "";
+	
+	int n, K;
+	TrieByList trie;
+	
+	public void read() // not parallelized
+	{
+		n = ni();
+		K = ni();
+		trie = new TrieByList();
+		for(int i = 0;i < n;i++){
+			trie.add(in.next().toCharArray());
+		}
+	}
+	
+	public void process() // parallelized!
+	{
+		dfs(trie.root);
+		out.println(trie.root.dp[K]);
+	}
+	
+	void dfs(TrieByList.Node cur)
+	{
+		cur.dp = new long[K+1];
+		Arrays.fill(cur.dp, Long.MAX_VALUE / 3);
+		cur.dp[0] = 0;
+		for(char u = 'a';u <= 'z';u++){
+			TrieByList.Node child = cur.search(u);
+			if(child != null){
+				dfs(child);
+				for(int j = K;j >= 0;j--){
+					for(int k = 2;k <= j;k++){
+						cur.dp[j] = Math.min(cur.dp[j], cur.dp[j-k] + child.dp[k]);
+					}
+					if(j-1 >= 0){
+						cur.dp[j] = Math.min(cur.dp[j], cur.dp[j-1] + 1);
+					}
+				}
+			}
+		}
+		if(cur.hit == 1){
+			for(int j = K;j >= 1;j--){
+				cur.dp[j] = Math.min(cur.dp[j], cur.dp[j-1]);
+			}
+		}
+		if(cur != trie.root){
+			for(int j = 0;j <= K;j++){
+				cur.dp[j] += j;
+			}
+		}
+	}
+	
+	public static void preprocess()
+	{
+	}
+	
+	public static class TrieByList {
+		public Node root = new Node((char)0, 0);
+		public int gen = 1;
+		
+		public static class Node
+		{
+			public int id;
+			public char c;
+			public long[] dp;
+			
+			public int ptn = 0;
+			public int p = 0;
+			public Node[] child = null;
+			public int hit = 0;
+			
+			public Node fail;
+			
+			public Node(char c, int id)
+			{
+				this.id = id;
+				this.c = c;
+			}
+			
+			public void appendChild(Node n)
+			{
+				if(p == 0){
+					child = new Node[1];
+				}else if(p+1 >= child.length){
+					child = Arrays.copyOf(child, child.length*2);
+				}
+				int z = n.c-'a';
+				int nind = Integer.bitCount(ptn<<31-z);
+				ptn |= 1<<z;
+				System.arraycopy(child, nind, child, nind+1, p-nind);
+				child[nind] = n;
+				p++;
+			}
+			
+			public Node search(char c)
+			{
+				if(ptn<<31-(c-'a')<0){
+					return child[Integer.bitCount(ptn<<31-(c-'a'))-1];
+				}else{
+					return null;
+				}
+			}
+			
+			public String toString(String indent)
+			{
+				StringBuilder sb = new StringBuilder();
+				sb.append(indent + id + ":" + c);
+				if(hit != 0)sb.append(" H:" + hit);
+				if(fail != null)sb.append(" F:" + fail.id);
+				sb.append("\n");
+				for(int i = 0;i < p;i++){
+					sb.append(child[i].toString(indent + "  "));
+				}
+				return sb.toString();
+			}
+		}
+		
+		public void add(char[] s)
+		{
+			Node cur = root;
+			Node pre = null;
+			for(char c : s){
+				pre = cur;
+				cur = pre.search(c);
+				if(cur == null){
+					cur = new Node(c, gen++);
+					pre.appendChild(cur);
+				}
+			}
+			cur.hit++;
+		}
+		
+		public void buildFailure()
+		{
+			root.fail = null;
+			Queue<Node> q = new ArrayDeque<Node>();
+			q.add(root);
+			while(!q.isEmpty()){
+				Node cur = q.poll();
+				inner:
+				for(int i = 0;i < cur.p;i++){
+					Node ch = cur.child[i];
+					q.add(ch);
+					for(Node to = cur.fail; to != null; to = to.fail){
+						Node lch = cur.search(ch.c);
+						if(lch != null){
+							ch.fail = lch;
+							ch.hit += lch.hit; // hit伝播
+							continue inner;
+						}
+					}
+					ch.fail = root;
+				}
+			}
+		}
+		
+		public void search(char[] q)
+		{
+			Node cur = root;
+			outer:
+			for(char c : q){
+				for(;cur != null;cur = cur.fail){
+					Node next = cur.search(c);
+					if(next != null){
+						cur = next;
+						continue outer;
+					}
+					// dead
+				}
+				cur = root;
+			}
+		}
+		
+		public int countHit(char[] q)
+		{
+			Node cur = root;
+			int hit = 0;
+			outer:
+			for(char c : q){
+				for(;cur != null;cur = cur.fail){
+					Node next = cur.search(c);
+					if(next != null){
+						hit += next.hit;
+						cur = next;
+						continue outer;
+					}
+				}
+				cur = root;
+			}
+			return hit;
+		}
+		
+		public String toString()
+		{
+			return root.toString("");
+		}
+	}
+	
+	Scanner in;
+	PrintWriter out;
+	StringWriter sw;
+	int cas;
+	static List<Status> running = new ArrayList<Status>();
+	
+	@Override
+	public void run()
+	{
+		long S = System.nanoTime();
+		// register
+		synchronized(running){
+			Status st = new Status();
+			st.id = cas;
+			st.S = S;
+			running.add(st);
+		}
+		process();
+		// deregister
+		synchronized(running){
+			for(Status st : running){
+				if(st.id == cas){
+					running.remove(st);
+					break;
+				}
+			}
+		}
+		long G = System.nanoTime();
+		
+		if(PROD){
+			System.err.println("case " + cas + " solved. [" + (G-S)/1000000 + "ms]");
+			synchronized(running){
+				StringBuilder sb = new StringBuilder("running : ");
+				for(Status st : running){
+					sb.append(st.id + ":" + (G-st.S)/1000000 + "ms, ");
+				}
+				System.err.println(sb);
+			}
+		}
+	}
+	
+	private static class Status {
+		public int id;
+		public long S;
+	}
+	
+	public C(int cas, Scanner in)
+	{
+		this.cas = cas;
+		this.in = in;
+		this.sw = new StringWriter();
+		this.out = new PrintWriter(this.sw);
+	}
+	
+	private int ni() { return Integer.parseInt(in.next()); }
+	private long nl() { return Long.parseLong(in.next()); }
+	private int[] na(int n) { int[] a = new int[n]; for(int i = 0;i < n;i++)a[i] = ni(); return a; }
+	private double nd() { return Double.parseDouble(in.next()); }
+	private void tr(Object... o) { if(!PROD)System.out.println(Arrays.deepToString(o)); }
+	
+	public static void main(String[] args) throws Exception
+	{
+		long start = System.nanoTime();
+		
+		ExecutorService es = Executors.newFixedThreadPool(NTHREAD);
+		CompletionService<C> cs = new ExecutorCompletionService<C>(es);
+		
+		if(PROD){
+			System.out.println("INPATH : " + INPATH);
+			System.out.println("OUTPATH : " + OUTPATH);
+		}
+		Scanner in = PROD ? new Scanner(new File(INPATH)) : new Scanner(INPUT);
+		PrintWriter out = PROD ? new PrintWriter(new File(OUTPATH)) : new PrintWriter(System.out);
+		int n = in.nextInt();
+		in.nextLine();
+		
+		preprocess();
+		for(int i = 0;i < n;i++){
+			C runner = new C(i+1, in);
+			runner.read();
+			cs.submit(runner, runner);
+		}
+		es.shutdown();
+		String[] outs = new String[n];
+		for(int i = 0;i < n;i++){
+			C runner = cs.take().get(); // not ordered
+			runner.out.flush();
+			runner.out.close();
+			outs[runner.cas-1] = runner.sw.toString();
+		}
+		for(int i = 0;i < n;i++){
+			out.printf("Case #%d: ", i+1);
+			out.append(outs[i]);
+			out.flush();
+		}
+		
+		long end = System.nanoTime();
+		System.out.println((end - start)/1000000 + "ms");
+		if(PROD){
+			System.out.println("INPATH : " + INPATH);
+			System.out.println("OUTPATH : " + OUTPATH);
+		}
+	}
+}

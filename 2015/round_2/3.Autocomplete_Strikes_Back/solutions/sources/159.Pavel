@@ -1,0 +1,363 @@
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Threading;
+using kp.Algo;
+
+namespace HackerCup
+{
+	class Solution
+	{
+		private const bool UseMultiThreading = false;
+		private const bool UseStandardIO = false;
+		private const string InputFile = @"C:\Users\kp\Downloads\autocomplete_strikes_back.txt";
+		private const string OutputFile = @"D:\docs\Dropbox\Olymp\Sources\_submit\HackerCup 2015 Round 2\C.cs" + ".output.txt";
+
+		private int n, k, res;
+		private string[] words;
+
+
+		void ReadData()
+		{
+
+			n = NextInt();
+			k = NextInt();
+			words = new string[n];
+			for ( int i = 0; i < n; i++ )
+			{
+				words[i] = NextToken();
+			}
+
+			return;
+
+			var rnd = new Random();
+			n = rnd.Next( 10 ) + 10;
+			k = rnd.Next( n - 2 ) + 1;
+			words = new string[n];
+			for ( int i = 0; i < n; i++ )
+			{
+				words[i] = "";
+				while ( true )
+				{
+					int len = rnd.Next( 10 ) + 1;
+					for ( int j = 0; j < len; j++ )
+					{
+						words[i] += (char)( rnd.Next( 5 ) + 'a' );
+					}
+					bool ok = true;
+					for ( int j = 0; j < i; j++ )
+					{
+						if ( words[i] == words[j] )
+						{
+							ok = false;
+							break;
+						}
+					}
+					if ( ok ) break;
+				}
+			}
+
+			Thread.Sleep( 100 );
+		}
+
+		static void PreSolve()
+		{
+
+		}
+
+		private int[,] nextState;
+		int[] cntState;
+		private bool[] isWord;
+		private int[, , ,] dp;
+
+		private const int MaxStates = 30000;
+		private const int INF = MaxStates;
+
+		void Solve()
+		{
+			nextState = new int[MaxStates, 26];
+			cntState = new int[MaxStates];
+			isWord = new bool[MaxStates];
+			int states = 0;
+			for ( int i = 0; i < n; i++ )
+			{
+				int curState = 0;
+				++cntState[curState];
+				foreach ( var c in words[i] )
+				{
+					int cid = c - 'a';
+					if ( nextState[curState, cid] == 0 )
+					{
+						nextState[curState, cid] = ++states;
+					}
+					curState = nextState[curState, cid];
+					++cntState[curState];
+				}
+				isWord[curState] = true;
+			}
+
+			dp = new int[states + 1, k + 1, 27, 2];
+			for ( int i = 0; i < states + 1; i++ )
+			{
+				for ( int j = 0; j < k + 1; j++ )
+				{
+					for ( int l = 0; l < 27; l++ )
+					{
+						for ( int m = 0; m < 2; m++ )
+						{
+							dp[i, j, l, m] = -1;
+						}
+					}
+				}
+			}
+			res = GetMin( 0, k, 0, 0 );
+
+			/*
+			if ( res != Brute( n, k, words ) )
+				throw new ApplicationException();
+			 */
+		}
+
+		int Brute( int N, int K, string[] W )
+		{
+			int res1 = INF;
+
+			for ( int i = 0; i < 1 << N; ++i )
+				if ( BitUtils.CountOnes( i ) == K )
+				{
+					string[] aa = new string[K];
+					int cur = 0;
+					for ( int j = 0; j < N; ++j )
+						if ( BitUtils.BitInMask( i, j ) )
+							aa[cur++] = W[j];
+
+					res1 = Math.Min( res1, BruteRes( aa ) );
+				}
+
+			return res1;
+		}
+
+		private int BruteRes( string[] aa )
+		{
+			int R = 0;
+
+			foreach ( var s in aa )
+			{
+				bool added = false;
+				for ( int i = 1; i <= s.Length; ++i )
+				{
+					string st = s.Substring( 0, i );
+					bool ok = true;
+					foreach ( var s1 in aa )
+					{
+						if ( s1 != s && s1.StartsWith( st ) )
+						{
+							ok = false;
+							break;
+						}
+					}
+					if ( ok )
+					{
+						R += i;
+						added = true;
+						break;
+					}
+				}
+				if ( !added )
+					R += s.Length;
+			}
+
+			return R;
+		}
+
+		private int GetMin( int state, int needWords, int startLetter, int takenOnLevel )
+		{
+			if ( needWords == 0 )
+				return 0;
+			if ( cntState[state] < needWords )
+				return INF;
+			if ( startLetter == 26 )
+				return INF;
+			if ( dp[state, needWords, startLetter, takenOnLevel] != -1 )
+				return dp[state, needWords, startLetter, takenOnLevel];
+			int res;
+
+			if ( state > 0 && needWords == 1 && takenOnLevel == 0 )
+			{
+				res = 0;
+			}
+			else
+			{
+				int ch = startLetter;
+				while ( ch < 26 && nextState[state, ch] == 0 ) ++ch;
+				if ( ch == 26 ) res = INF;
+				else
+				{
+					if ( isWord[state] && takenOnLevel == 0 )
+					{
+						--needWords;
+						takenOnLevel = 1;
+					}
+
+					res = GetMin( state, needWords, ch + 1, takenOnLevel );
+
+					for ( int t = 1; t <= cntState[nextState[state, ch]] && t <= needWords; ++t )
+					{
+						res = Math.Min( res, t + GetMin( nextState[state, ch], t, 0, 0 ) + GetMin( state, needWords - t, ch + 1, 1 ) );
+					}
+				}
+			}
+
+			return dp[state, needWords, startLetter, takenOnLevel] = res;
+		}
+
+		void WriteAnswer()
+		{
+			Out.WriteLine( res );
+		}
+
+		#region ...
+
+		void run()
+		{
+			if ( UseStandardIO )
+			{
+				var inputFileName = Path.Combine( Path.GetDirectoryName( GetType().Assembly.Location ), "input.txt" );
+				_inputStream = File.OpenText( inputFileName );
+				_outputStream = Console.Out;
+			}
+			else
+			{
+				_inputStream = File.OpenText( InputFile );
+				_outputStream = File.CreateText( OutputFile );
+			}
+
+			PreSolve();
+
+			int testsCount = int.Parse( _inputStream.ReadLine() );
+			var solvers = new Solution[testsCount];
+			for ( int i = 0; i < testsCount; ++i )
+			{
+				solvers[i] = new Solution();
+				solvers[i].ReadData();
+			}
+
+			int done = 0;
+			if ( UseMultiThreading )
+			{
+				solvers.AsParallel().WithDegreeOfParallelism( Math.Min( Environment.ProcessorCount, 2 ) - 1 ).ForAll(
+					solver => { solver.Solve(); Console.Title = ( ++done ).ToString() + " of " + testsCount; } );
+			}
+			else
+			{
+				for ( int i = 0; i < testsCount; ++i )
+				{
+					solvers[i].Solve();
+					Console.Title = ( ++done ).ToString() + " of " + testsCount;
+				}
+			}
+			for ( int i = 0; i < testsCount; ++i )
+			{
+				Out.Write( string.Format( "Case #{0}: ", i + 1 ) );
+				solvers[i].WriteAnswer();
+			}
+			Out.Flush();
+			if ( UseStandardIO )
+			{
+				Console.ReadLine();
+			}
+			else
+			{
+				Out.Close();
+			}
+		}
+
+		static TextWriter Out { get { return _outputStream; } }
+
+		private static TextReader _inputStream;
+		private static TextWriter _outputStream;
+
+		public BigInteger NextBigInteger()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return BigInteger.Parse( token );
+		}
+
+		public double NextDouble()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return double.Parse( token, CultureInfo.InvariantCulture );
+		}
+
+		public long NextLong()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return long.Parse( token );
+		}
+
+		public int NextInt()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return int.Parse( token );
+		}
+
+		private static readonly Queue<string> Tokens = new Queue<string>();
+		public string NextToken()
+		{
+			if ( Tokens.Count > 0 )
+			{
+				return Tokens.Dequeue();
+			}
+			while ( Tokens.Count == 0 )
+			{
+				var line = _inputStream.ReadLine();
+				if ( line == null ) return null;
+				foreach ( var token in line.Split( _whiteSpaces, StringSplitOptions.RemoveEmptyEntries ) )
+				{
+					Tokens.Enqueue( token );
+				}
+			}
+			return Tokens.Count == 0 ? null : Tokens.Dequeue();
+		}
+
+		private readonly char[] _whiteSpaces = { ' ', '\r', '\n', '\t' };
+
+		static void Main()
+		{
+			new Thread( new Solution().run, 64 * 1024 * 1024 ).Start();
+		}
+
+		#endregion
+	}
+}
+
+namespace kp.Algo { }
+namespace kp.Algo
+{
+	static class BitUtils
+	{
+		public static int CountOnes( int x )
+		{
+			if ( x < 0 ) throw new Exception( "Can't count bits in negative number" );
+			int res = 0;
+			while ( x > 0 )
+			{
+				++res;
+				x &= ( x - 1 );
+			}
+			return res;
+		}
+		public static bool BitInMask( int mask, int bit )
+		{
+			return ( mask & ( 1 << bit ) ) != 0;
+		}
+	}
+}

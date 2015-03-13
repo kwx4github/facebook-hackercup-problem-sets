@@ -1,0 +1,188 @@
+#include <iostream>
+#include <iterator>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <queue>
+#include <stack>
+#include <string.h>
+#include <stdio.h>
+#include <iomanip>
+using namespace std;
+
+#define REP(i,N) for (int i = 0; i < (N); ++i)
+
+typedef unsigned int ui;
+typedef long long ll;
+
+typedef vector<int> vi;
+typedef vector<ll> vll;
+typedef vector<vi> vvi;
+
+template<class T> void printImpl(const vector<T> & coll) { copy(coll.begin(), coll.end(), ostream_iterator<T>(cout, " ")); cout << endl; }
+template<class T, int N> void printImpl(T (&coll)[N]) { copy(coll, coll + N, ostream_iterator<T>(cout, " ")); cout << endl; }
+template<class Key, class Value> void printImpl(const map<Key, Value> & data) { typename map<Key, Value>::const_iterator it; for (it = data.begin(); it != data.end(); ++it) { cout << it->first << ":" << it->second << endl; } }
+template <class T> void printImpl(const T & data) { cout << data << endl; }
+
+#define DEBUGPRINT
+#ifdef DEBUGPRINT
+#define print(x) cout << #x" = "; printImpl(x);
+#else
+#define print(x) ;
+#endif
+
+const ll INF = 999999999LL;
+int K;
+
+struct Node
+{
+    Node()
+    {
+        childs = vector<Node*>(26, NULL);
+        end = false;
+        ifNeed = vector<ll>(K + 1, INF);
+        chCount = 0;
+        pfxCount = 0;
+    }
+
+    vector<Node*> childs;
+    bool end;
+
+    vector<ll> ifNeed;
+    int chCount;
+    int pfxCount;
+};
+
+void add(Node* curr, const string & s, int pos = 0)
+{
+    if (pos >= s.length())
+    {
+        curr->end = true;
+        return;
+    }
+
+    char c = s[pos];
+    curr->pfxCount++;
+    if (curr->childs[c-'a'] != NULL)
+    {
+        add(curr->childs[c-'a'], s, pos + 1);
+    }
+    else
+    {
+        curr->childs[c-'a'] = new Node;
+        curr->chCount++;
+        add(curr->childs[c-'a'], s, pos+1);
+    }
+}
+
+void dfs(Node* curr)
+{
+    if (curr == NULL)
+    {
+        return;
+    }
+
+    if (curr->chCount == 0 || curr->pfxCount == 1)
+    {
+        curr->ifNeed[0] = 0;
+        curr->ifNeed[1] = 1;
+    }
+
+    REP(i,26)
+    {
+        dfs(curr->childs[i]);
+    }
+
+    ll dp[27][101];
+    REP(i,101)
+    {
+        dp[0][i] = INF;
+    }
+    dp[0][0] = 0;
+
+    for (int u = 1; u <= 26; ++u)
+    {
+        for (int s = 0; s <= K; ++s)
+        {
+            dp[u][s] = dp[u-1][s];
+            if (curr->childs[u-1] != NULL)
+            {
+                for (int t = 0; t <= s; ++t)
+                {
+                    if (curr->childs[u-1]->ifNeed[t] != INF)
+                    {
+                        ll currRes = dp[u-1][s-t] + curr->childs[u-1]->ifNeed[t];
+                        dp[u][s] = min(dp[u][s], currRes);
+                    }
+                }
+            }
+        }
+    }
+
+    for (int s = 2; s <= K; ++s)
+    {
+        if (dp[26][s] == INF)
+        {
+            curr->ifNeed[s] = INF;
+        }
+        else
+        {
+            if (curr->end)
+            {
+                if (dp[26][s-1] == INF)
+                {
+                    curr->ifNeed[s] = INF;
+                }
+                else
+                    curr->ifNeed[s] = 1 + dp[26][s-1] + s - 1;
+            }
+            else
+            {
+                curr->ifNeed[s] = dp[26][s] + s;
+            }
+        }
+    }
+    curr->ifNeed[0] = 0;
+    curr->ifNeed[1] = 1;
+}
+
+int main()
+{
+    int caseCount;
+    cin >> caseCount;
+
+    for (int csIx = 1; csIx <= caseCount; ++csIx)
+    {
+        cout << "Case #" << csIx << ": ";
+        int N;
+        cin >> N >> K;
+
+        Node* root = new Node;
+        REP(i,N)
+        {
+            string s;
+            cin >> s;
+            add(root, s);
+        }
+
+        dfs(root);
+//        print(root->childs['a'-'a']->ifNeed);
+//        print(root->childs['a'-'a']->childs['a'-'a']->ifNeed);
+//        print(root->childs['a'-'a']->childs['a'-'a']->childs['a'-'a']->ifNeed);
+//        print(root->childs['a'-'a']->childs['a'-'a']->childs['a'-'a']->childs['a'-'a']->ifNeed);
+//        print(root->childs['a'-'a']->childs['a'-'a']->childs['a'-'a']->childs['a'-'a']->childs['a'-'a']->ifNeed);
+//        print(root->childs['t'-'a']->ifNeed);
+//        print(root->childs['t'-'a']->childs['i'-'a']->ifNeed);
+//        print(root->childs['t'-'a']->childs['i'-'a']->childs['l'-'a']->ifNeed);
+//        print(root->childs['t'-'a']->childs['i'-'a']->childs['n'-'a']->ifNeed);
+//        print(root->childs['g'-'a']->childs['a'-'a']->ifNeed);
+
+        cout << root->ifNeed[K] - K << endl;
+    }
+
+    
+    return 0;
+}

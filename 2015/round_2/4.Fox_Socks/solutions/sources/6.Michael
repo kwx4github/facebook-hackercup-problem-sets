@@ -1,0 +1,413 @@
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.Arrays;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("foxsocks.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxsocks.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxSocks solver = new FoxSocks();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class FoxSocks {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        int m = in.nextInt();
+        int[] s = badInput(in, 1000000000, n, 0);
+        int[] o = badInput(in, 4, m, 1);
+        int[] a = badInput(in, n, m, 1);
+        int[] b = badInput(in, n, m, 1);
+        for (int i = 0; i < m; i++) {
+            --a[i];
+        }
+        int[] c = badInput(in, 1000000000, m, 0);
+        int[] d = badInput(in, 1000000000, m, 0);
+        SegmentTree tree = new SegmentTree(s);
+        int all = 0;
+//        System.err.println(Arrays.toString(s));
+        for (int i = 0; i < m; i++) {
+//            System.err.println(i + ": " + o[i]+" "+a[i]+" "+b[i]);
+//            print(tree, n);
+            switch (o[i]) {
+                case 1: {
+                    wtf1(tree, n, a[i], b[i], c[i], d[i]);
+                    int socksAdded1 = MOD.mul(c[i], b[i]);
+                    int socksAdded2 = MOD.mul(d[i], (int) (((long) b[i] * (b[i] - 1) / 2) % MOD.MOD));
+                    int socks = MOD.add(socksAdded1, socksAdded2);
+                    all = MOD.add(all, socks);
+                    break;
+                }
+                case 2: {
+                    int sum = getSum(tree, n, a[i], b[i]);
+                    setToConstant(tree, n, a[i], b[i], c[i]);
+                    int cur = MOD.add(sum, MOD.mul(b[i], c[i]));
+                    all = MOD.add(all, cur);
+                    break;
+                }
+                case 3: {
+                    int sum = getSum(tree, n, a[i], b[i]);
+                    all = MOD.add(all, sum);
+                    break;
+                }
+                case 4: {
+                    int odd = countOdd(tree, n, a[i], b[i]);
+                    all = MOD.add(all, odd);
+                    break;
+                }
+                default: {
+                    throw new AssertionError();
+                }
+            }
+        }
+        out.println("Case #" + testNumber + ": " + all);
+        System.err.println("done "+testNumber);
+    }
+
+    private int countOdd(SegmentTree tree, int n, int a, int b) {
+        if (a + b > n) {
+            int s1 = tree.countOdd(a, n);
+            int s2 = tree.countOdd(0, a + b - n);
+            return s1 + s2;
+        } else {
+            return tree.countOdd(a, a + b);
+        }
+    }
+
+    private int getSum(SegmentTree tree, int n, int a, int b) {
+        if (a + b > n) {
+            int s1 = tree.getSum(a, n);
+            int s2 = tree.getSum(0, a + b - n);
+            return MOD.add(s1, s2);
+        } else {
+            return tree.getSum(a, a + b);
+        }
+    }
+
+    private void setToConstant(SegmentTree tree, int n, int a, int b, int c) {
+        if (a + b > n) {
+            tree.setToConstant(a, n, c);
+            tree.setToConstant(0, a + b - n, c);
+        } else {
+            tree.setToConstant(a, a + b, c);
+        }
+    }
+
+    private void wtf1(SegmentTree tree, int n, int a, int b, int c, int d) {
+        if (a + b > n) {
+            wtf1safe(tree, n, a, n - a, c, d);
+            wtf1safe(tree, n, 0, a + b - n, MOD.add(c, MOD.mul(d, n - a)), d);
+        } else {
+            wtf1safe(tree, n, a, b, c, d);
+        }
+    }
+
+    private void wtf1safe(SegmentTree tree, int n, int a, int b, int c, int d) {
+        int cc = MOD.add(c, MOD.mul(MOD.MOD - a, d));
+//        System.err.println(a + ".." + b + ": addK " + d + ", addB " + cc);
+        tree.add(a, a + b, d, cc);
+    }
+
+    private int[] badInput(InputReader in, int mod, int n, int add1) {
+        int[] s = new int[n];
+        int s1 = in.nextInt();
+        int s2 = in.nextInt();
+        int xs = in.nextInt();
+        int ys = in.nextInt();
+        int zs = in.nextInt();
+        s[0] = s1;
+        s[1] = s2;
+        for (int i = 2; i < n; i++) {
+            s[i] = (int) (((long) s[i - 2] * xs + (long) s[i - 1] * ys + zs) % mod) + add1;
+        }
+        return s;
+    }
+
+    static final ModUtilsInt MOD = new ModUtilsInt(1000000000);
+
+    static class SegmentTree {
+        private int[] k, b;
+        private int[] kAdd, bAdd;
+        private int[] odd0, odd1;
+        private int[] constant;
+        private final int NULL = Integer.MIN_VALUE;
+        private int n;
+
+        public SegmentTree(int n) {
+            this.n = Integer.highestOneBit(n) << 1;
+            k = new int[2 * this.n];
+            b = new int[2 * this.n];
+            kAdd = new int[2 * this.n];
+            bAdd = new int[2 * this.n];
+            odd0 = new int[2 * this.n];
+            odd1 = new int[2 * this.n];
+            constant = new int[2 * this.n];
+            Arrays.fill(constant, NULL);
+        }
+
+        public SegmentTree(int[] array) {
+            this(array.length);
+            System.arraycopy(array, 0, b, n, array.length);
+            for (int i = 0; i < array.length; i++) {
+                if (array[i] % 2 == 1) {
+                    if (i % 2 == 0) {
+                        ++odd0[i + n];
+                    } else {
+                        ++odd1[i + n];
+                    }
+                }
+            }
+            for (int x = n - 1; x >= 0; --x) {
+                recalc(x);
+            }
+        }
+
+        private int queryL, queryR;
+
+        public void add(int l, int r, int kVal, int bVal) {
+            queryL = l;
+            queryR = r;
+            add1(1, 0, this.n, kVal, bVal);
+        }
+
+        private void recalc(int i) {
+            k[i] = MOD.add(k[2 * i], k[2 * i + 1]);
+            b[i] = MOD.add(b[2 * i], b[2 * i + 1]);
+            odd0[i] = odd0[2 * i] + odd0[2 * i + 1];
+            odd1[i] = odd1[2 * i] + odd1[2 * i + 1];
+        }
+
+        private void add1(int i, int from, int to, int kVal, int bVal) {
+            if (from >= queryR || to <= queryL)
+                return;
+            push(i, from, to);
+            if (from >= queryL && to <= queryR) {
+                add(i, from, to, kVal, bVal);
+            } else {
+                int m = (from + to) >> 1;
+                add1(2 * i, from, m, kVal, bVal);
+                add1(2 * i + 1, m, to, kVal, bVal);
+                recalc(i);
+            }
+        }
+
+        public void setToConstant(int l, int r, int val) {
+            queryL = l;
+            queryR = r;
+            setToConstant1(1, 0, this.n, val);
+        }
+
+        private void setToConstant1(int i, int from, int to, int val) {
+            if (from >= queryR || to <= queryL)
+                return;
+            push(i, from, to);
+            if (from >= queryL && to <= queryR) {
+                set(i, to - from, val);
+            } else {
+                int m = (from + to) >> 1;
+                setToConstant1(2 * i, from, m, val);
+                setToConstant1(2 * i + 1, m, to, val);
+                recalc(i);
+            }
+        }
+
+        private void set(int i, int size, int val) {
+            if (i >= this.n) {
+                constant[i] = NULL;
+            } else {
+                constant[i] = val;
+            }
+            k[i] = 0;
+            b[i] = MOD.mul(size, val);
+            bAdd[i] = 0;
+            kAdd[i] = 0;
+            if ((val & 1) != 0) {
+                if (i >= this.n) {
+                    odd0[i] = (i & 1) ^ 1;
+                    odd1[i] = i & 1;
+                } else {
+                    odd0[i] = size >> 1;
+                    odd1[i] = size >> 1;
+                }
+            } else {
+                odd0[i] = 0;
+                odd1[i] = 0;
+            }
+        }
+
+        private void add(int i, int from, int to, int kVal, int bVal) {
+            if (i >= this.n) {
+                kAdd[i] = 0;
+                bAdd[i] = 0;
+            } else {
+                kAdd[i] = MOD.add(kAdd[i], kVal);
+                bAdd[i] = MOD.add(bAdd[i], bVal);
+            }
+            int mul = (int) (((long) (from + to - 1) * (to - from) / 2) % MOD.MOD);
+            k[i] = MOD.add(k[i], MOD.mul(mul, kVal));
+            b[i] = MOD.add(b[i], MOD.mul(to - from, bVal));
+            if (i >= this.n) {
+                if ((((long) k[i] * i + b[i]) & 1) != 0) {
+                    odd0[i] = (i & 1) ^ 1;
+                    odd1[i] = i & 1;
+                } else {
+                    odd0[i] = 0;
+                    odd1[i] = 0;
+                }
+            } else {
+                if ((bVal & 1) != 0) {
+                    odd0[i] = (to - from) / 2 - odd0[i];
+                    odd1[i] = (to - from) / 2 - odd1[i];
+                }
+                if ((kVal & 1) != 0) {
+                    odd1[i] = (to - from) / 2 - odd1[i];
+                }
+            }
+        }
+
+        private void push(int i, int from, int to) {
+            if (i >= this.n) {
+                return;
+            }
+            if (constant[i] != NULL && (kAdd[i] != 0 || bAdd[i] != 0)) {
+//                throw new AssertionError();
+            }
+            if (constant[i] != NULL) {
+                set(2 * i, (to - from) / 2, constant[i]);
+                set(2 * i + 1, (to - from) / 2, constant[i]);
+                constant[i] = NULL;
+            }
+            if (bAdd[i] != 0 || kAdd[i] != 0) {
+                add(2 * i, from, (from + to) / 2, kAdd[i], bAdd[i]);
+                add(2 * i + 1, (from + to) / 2, to, kAdd[i], bAdd[i]);
+                kAdd[i] = 0;
+                bAdd[i] = 0;
+            }
+        }
+
+        public int getSum(int l, int r) {
+            queryL = l;
+            queryR = r;
+            return getSum1(1, 0, this.n);
+        }
+
+        private int getSum1(int i, int from, int to) {
+            if (from >= queryR || to <= queryL)
+                return 0;
+            push(i, from, to);
+            if (from >= queryL && to <= queryR) {
+                return MOD.add(k[i], b[i]);
+            } else {
+                int m = (from + to) >> 1;
+                int s1 = getSum1(2 * i, from, m);
+                int s2 = getSum1(2 * i + 1, m, to);
+                return MOD.add(s1, s2);
+            }
+        }
+
+        public int countOdd(int l, int r) {
+            queryL = l;
+            queryR = r;
+            return countOdd1(1, 0, this.n);
+        }
+
+        private int countOdd1(int i, int from, int to) {
+            if (from >= queryR || to <= queryL)
+                return 0;
+            push(i, from, to);
+            if (from >= queryL && to <= queryR) {
+                return odd0[i] + odd1[i];
+            } else {
+                int m = (from + to) >> 1;
+                int s1 = countOdd1(2 * i, from, m);
+                int s2 = countOdd1(2 * i + 1, m, to);
+                return s1 + s2;
+            }
+        }
+    }
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+
+class ModUtilsInt {
+
+    public final int MOD;
+
+    public ModUtilsInt(int MOD) {
+        this.MOD = MOD;
+    }
+
+    public int add(int a, int b) {
+        a += b;
+        if (a >= MOD || a < 0) {
+            a -= MOD;
+        }
+        return a;
+    }
+
+    public int mul(int a, int b) {
+        return (int) ((long) a * b % MOD);
+    }
+
+}
+

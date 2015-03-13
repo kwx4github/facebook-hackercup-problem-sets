@@ -1,0 +1,149 @@
+#pragma comment(linker, "/STACK:64000000")
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <cctype>
+#include <cassert>
+#include <ctime>
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <iomanip>
+#include <vector>
+#include <map>
+#include <set>
+#include <algorithm>
+
+using namespace std;
+
+template <class T> inline T sqr(const T& x) { return x * x; }
+template <class T> inline void updMin(T& a, const T& b) { if (b < a) a = b; }
+template <class T> inline void updMax(T& a, const T& b) { if (b > a) a = b; }
+
+typedef long long ll;
+typedef unsigned long long ull;
+typedef unsigned int uint;
+typedef pair<int, int> pii;
+typedef vector<int> vi;
+
+const int MAXK = 100 + 10;
+const int INF = 10000000;
+
+int N, K;
+
+struct Trie
+{
+	int h;
+	int nxt[26];
+	int d[MAXK];
+
+	int shortest_len;
+	
+	bool word;
+
+	Trie(int _h, bool _word): h(_h), word(_word)
+	{
+		memset(nxt, -1, sizeof(nxt));
+		d[0] = 0;
+		for (int i = 1; i <= K; ++i)
+			d[i] = INF;
+	}
+};
+
+vector <Trie> trie;
+
+
+void trieAdd(const string& s)
+{
+	int cur = 0;
+	int l = s.length();
+	for (int i = 0; i < l; ++i)
+	{
+		int c = s[i] - 'a';
+		if (trie[cur].nxt[c] == -1)
+		{
+			trie[cur].nxt[c] = trie.size();
+			trie.push_back(Trie(trie[cur].h + 1, i == l - 1));
+		}
+		cur = trie[cur].nxt[c];
+	}
+}
+
+void dfs(int v)
+{
+	trie[v].shortest_len = trie[v].word ? trie[v].h : INF;
+
+	for (int i = 0; i < 26; ++i)
+	{
+		int to = trie[v].nxt[i];
+		if (to != -1)
+		{
+			dfs(to);
+			updMin(trie[v].shortest_len, trie[to].shortest_len);
+		
+			for (int k = K; k >= 1; --k)
+			{
+				for (int k2 = 1; k2 <= k; ++k2)
+				{
+					int tmp = trie[to].d[k2] + trie[v].d[k - k2];
+					updMin(trie[v].d[k], tmp);
+				}
+			}
+		}
+	}
+	
+	if (trie[v].word)
+	{
+		for (int k = K; k >= 1; --k)
+		{
+			updMin(trie[v].d[k], trie[v].d[k - 1] + trie[v].h);
+		}
+	}
+	updMin(trie[v].d[1], trie[v].h);
+
+}
+
+void solution()
+{
+	cin >> N >> K;
+
+	trie.clear();
+	trie.push_back(Trie(0, false));
+
+	string s;
+	for (int i = 0; i < N; ++i)
+	{
+		cin >> s;
+		trieAdd(s);
+	}
+
+	dfs(0);
+	int ans = trie[0].d[K];
+	cout << ans << "\n";
+}
+
+
+
+int main()
+{
+	freopen("input.txt", "r", stdin); freopen("output.txt", "w", stdout);
+
+	ios::sync_with_stdio(false);
+
+	int testsNumber;
+	cin >> testsNumber;
+
+	for (int test = 0; test < testsNumber; ++test)
+	{
+		cout << "Case #" << test + 1 << ": ";
+		clock_t start = clock();
+		solution();
+		cerr << "Test #" << test << ": time = " << fixed << setprecision(2) << double(clock() - start) / CLOCKS_PER_SEC << endl;
+	}
+
+	return 0;
+}

@@ -1,0 +1,411 @@
+#include <cstdio>
+#include <cassert>
+#include <vector>
+#include <memory.h>
+using namespace std;
+
+//#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define eprintf(...) 42
+
+vector<int> readGen(int n, int mod, int pl)
+{
+    int a1, a2, x, y, z;
+    scanf("%d %d %d %d %d", &a1, &a2, &x, &y, &z);
+    vector<int> res;
+    res.reserve(n);
+    res.push_back(a1);
+    res.push_back(a2);
+    for (int i = 0; i < n - 2; i++)
+    {
+        int na = (a1 * 1LL * x + a2 * 1LL * y + z) % mod + pl;
+        a1 = a2;
+        a2 = na;
+        res.push_back(na);
+    }
+    return res;
+}
+
+int inf = 1000 * 1000 * 1000;
+
+vector<int> V;
+
+typedef long long llong;
+
+int n, m;
+
+struct seg
+{
+    int l, r;
+    seg(int _l, int _r)
+    {
+        l = _l, r = _r;
+    }
+    vector<seg> split()
+    {
+        vector<seg> res;
+        if (l > r)
+        {
+            res.push_back(seg(l, n - 1));
+            res.push_back(seg(0, r));
+        }
+        else
+        {
+            res.push_back(seg(l, r));
+        }
+        return res;
+    }
+    seg toOdd()
+    {
+        int a = l, b = r;
+        if (a % 2 == 0)
+            a++;
+        if (b % 2 == 0)
+            b--;
+        a = (a + 10) / 2 - 5;
+        b = (b + 10) / 2 - 5;
+        return seg(a, b);
+    }
+    seg toEven()
+    {
+        int a = l, b = r;
+        if (a % 2 == 1)
+            a++;
+        if (b % 2 == 1)
+            b--;
+        a = (a + 10) / 2 - 5;
+        b = (b + 10) / 2 - 5;
+        return seg(a, b);
+    }
+};
+
+const int N = 1 << 20;
+
+struct TreeSum
+{
+    llong T[2 * N];
+    llong ass[2 * N];
+    llong addb[2 * N], addk[2 * N];
+
+    TreeSum(const vector<int>& V)
+    {
+        memset(T, 0, sizeof(T));
+        memset(ass, -1, sizeof(ass));
+        memset(addb, 0, sizeof(addb));
+        memset(addk, 0, sizeof(addk));
+        for (int i = 0; i < V.size(); i++)
+            T[i + N] = V[i];
+        for (int i = N - 1; i > 0; i--)
+            T[i] = (T[2 * i] + T[2 * i + 1]) % inf;
+    }
+    void push(int v, int len)
+    {
+        if (ass[v] != -1)
+        {
+            T[v] = len * 1LL * ass[v] % inf;
+            if (v < N) {
+                addb[2 * v] = addk[2 * v] = 0;
+                ass[2 * v] = ass[v];
+                addb[2 * v + 1] = addk[2 * v + 1] = 0;
+                ass[2 * v + 1] = ass[v];
+            }
+            ass[v] = -1;
+        }
+        if (addb[v] != 0 || addk[v] != 0)
+        {
+            T[v] += addb[v] * len % inf;
+            T[v] += addk[v] * ((len * 1LL * (len - 1) / 2) % inf) % inf;
+            T[v] %= inf;
+            if (v < N) {
+                addb[2 * v] = (addb[2 * v] + addb[v]) % inf;
+                addk[2 * v] = (addk[2 * v] + addk[v]) % inf;
+                addb[2 * v + 1] = (addb[2 * v + 1] + addb[v] + addk[v] * 1LL * (len / 2)) % inf;
+                addk[2 * v + 1] = (addk[2 * v + 1] + addk[v]) % inf;
+            }
+            addb[v] = addk[v] = 0;
+        }
+    }
+
+    void recalc(int v, int len)
+    {
+        assert(ass[v] == -1);
+        assert(addb[v] == 0 && addk[v] == 0);
+        assert(v < N);
+        push(2 * v, len / 2);
+        push(2 * v + 1, len / 2);
+        T[v] = (T[2 * v] + T[2 * v + 1]) % inf;
+    }
+
+    llong getSum(int l, int r, int L = 0, int R = N - 1, int v = 1)
+    {
+        push(v, R - L + 1);
+        if (r < L || l > R)
+            return 0;
+        if (l <= L && R <= r)
+            return T[v];
+        return (getSum(l, r, L, (L + R) / 2, 2 * v) + getSum(l, r, (L + R) / 2 + 1, R, 2 * v + 1)) % inf;
+    }
+    
+    void assign(int l, int r, int x, int L = 0, int R = N - 1, int v = 1)
+    {
+        push(v, R - L + 1);
+        if (r < L || l > R)
+            return;
+        if (l <= L && R <= r) {
+            ass[v] = x;
+            addb[v] = addk[v] = 0;
+            return;
+        }
+        assign(l, r, x, L, (L + R) / 2, 2 * v);
+        assign(l, r, x, (L + R) / 2 + 1, R, 2 * v + 1);
+        recalc(v, R - L + 1);
+    }
+
+    void inc(int l, int r, int k, int b, int L = 0, int R = N - 1, int v = 1)
+    {
+        push(v, R - L + 1);
+        if (r < L || l > R)
+            return;
+        if (l <= L && R <= r) {
+            int del = (L - l) * 1LL * k % inf;
+            addb[v] = (addb[v] + b + del) % inf;
+            addk[v] = (addk[v] + k) % inf;
+            return;
+        }
+        inc(l, r, k, b, L, (L + R) / 2, 2 * v);
+        inc(l, r, k, b, (L + R) / 2 + 1, R, 2 * v + 1);
+        recalc(v, R - L + 1);
+    }
+};
+
+struct TreeXor
+{
+    int T[2 * N];
+    bool flag[2 * N];
+    int ass[2 * N];
+
+    TreeXor(vector<int>& V)
+    {
+        memset(flag, 0, sizeof(flag));
+        memset(T, 0, sizeof(T));
+        memset(ass, -1, sizeof(ass));
+        for (int i = 0; i < V.size(); i++)
+            T[N + i] = V[i] & 1;
+        for (int i = N - 1; i > 0; i--)
+            T[i] = T[2 * i] + T[2 * i + 1];
+    }
+
+    void push(int v, int len)
+    {
+        if (ass[v] != -1)
+        {
+            T[v] = ass[v] * len;
+            if (v < N)
+            {
+                flag[2 * v] = 0;
+                ass[2 * v] = ass[v];
+                flag[2 * v + 1] = 0;
+                ass[2 * v + 1] = ass[v];
+            }
+            ass[v] = -1;
+        }
+        if (flag[v])
+        {
+            T[v] = len - T[v];
+            if (v < N)
+            {
+                flag[2 * v] ^= 1;
+                flag[2 * v + 1] ^= 1;
+            }
+            flag[v] = 0;
+        }
+    }
+    void recalc(int v, int len)
+    {
+        assert(ass[v] == -1);
+        assert(flag[v] == 0);
+        assert(v < N);
+        push(2 * v, len / 2);
+        push(2 * v + 1, len / 2);
+        T[v] = T[2 * v] + T[2 * v + 1];
+    }
+
+    int getSum(int l, int r, int L = 0, int R = N - 1, int v = 1)
+    {
+        push(v, R - L + 1);
+        if (r < L || l > R)
+            return 0;
+        if (l <= L && R <= r)
+            return T[v];
+        return getSum(l, r, L, (L + R) / 2, 2 * v) + getSum(l, r, (L + R) / 2 + 1, R, 2 * v + 1);
+    }
+    void assign(int l, int r, int x, int L = 0, int R = N - 1, int v = 1)
+    {
+        push(v, R - L + 1);
+        if (r < L || l > R)
+            return;
+        if (l <= L && R <= r) {
+            flag[v] = 0;
+            ass[v] = x;
+            return;
+        }
+        assign(l, r, x, L, (L + R) / 2, 2 * v);
+        assign(l, r, x, (L + R) / 2 + 1, R, 2 * v + 1);
+        recalc(v, R - L + 1);
+    }
+    void inv(int l, int r, int L = 0, int R = N - 1, int v = 1)
+    {
+        push(v, R - L + 1);
+        if (r < L || l > R)
+            return;
+        if (l <= L && R <= r) {
+            flag[v] ^= 1;
+            return;
+        }
+        inv(l, r, L, (L + R) / 2, 2 * v);
+        inv(l, r, (L + R) / 2 + 1, R, 2 * v + 1);
+        recalc(v, R - L + 1);
+    }
+};
+
+TreeSum *T;
+TreeXor *Xe, *Xo;
+
+void solve(int cs)
+{
+    scanf("%d %d", &n, &m);
+    V = readGen(n, inf, 0);
+    vector<int> O = readGen(m, 4, 1);
+    vector<int> A = readGen(m, n, 1);
+    vector<int> B = readGen(m, n, 1);
+    vector<int> C = readGen(m, inf, 0);
+    vector<int> D = readGen(m, inf, 0);
+
+    T = new TreeSum(V);
+    vector<int> Ve, Vo;
+    for (int i = 0; i < n; i += 2)
+        Ve.push_back(V[i]);
+    for (int i = 1; i < n; i += 2)
+        Vo.push_back(V[i]);
+    Xe = new TreeXor(Ve);
+    Xo = new TreeXor(Vo);
+
+    int ans = 0;
+    for (int i = 0; i < m; i++)
+    {
+        if (i % 10000 == 0)
+            fprintf(stderr, "i = %d\n", i);
+        /*int res = 0;
+        if (O[i] == 1)
+        {
+            for (int j = 0, p = A[i]; j < B[i]; j++, p = (p + 1) % n) {
+                res = (res + (C[i] + j * 1LL * D[i]) % inf) % inf;
+                S[p] = (S[p] + C[i] + j * 1LL * D[i]) % inf;
+            }
+        }
+        else if (O[i] == 2)
+        {
+            for (int j = 0, p = A[i]; j < B[i]; j++, p = (p + 1) % n) {
+                res = (res + (S[p] + C[i]) % inf) % inf;
+                S[p] = C[i] % inf;
+            }
+        }
+        else if (O[i] == 3)
+        {
+            for (int j = 0, p = A[i]; j < B[i]; j++, p = (p + 1) % n) {
+                res = (res + S[p]) % inf;
+            }
+        }
+        else if (O[i] == 4)
+        {
+            for (int j = 0, p = A[i]; j < B[i]; j++, p = (p + 1) % n)
+                res = (res + S[p] % 2);
+        }
+        ans = (ans + res) % inf;*/
+        int res = 0;
+        A[i]--;
+        vector<seg> S = seg(A[i], (A[i] + B[i] - 1) % n).split();
+        if (O[i] == 1)
+        {
+            for (seg s : S)
+            {
+                int len = s.r - s.l + 1;
+                res = (res + C[i] * 1LL * len + D[i] * (((len) * 1LL * (len - 1) / 2) % inf)) % inf;
+                T->inc(s.l, s.r, D[i], C[i]);
+                int c = C[i] & 1;
+                int d = D[i] & 1;
+                seg se = s.toEven();
+                seg so = s.toOdd();
+                if (d == 0)
+                {
+                    if (c == 1) {
+                        Xe->inv(se.l, se.r);
+                        Xo->inv(so.l, so.r);
+                    }
+                }
+                else
+                {
+                    if (s.l % 2 == 0)
+                    {
+                        if (c == 0) {
+                            Xo->inv(so.l, so.r);
+                        } else {
+                            Xe->inv(se.l, se.r);
+                        }
+                    }
+                    else
+                    {
+                        if (c == 0) {
+                            Xe->inv(se.l, se.r);
+                        } else {
+                            Xo->inv(so.l, so.r);
+                        }
+                    }
+                }
+                C[i] = (C[i] + D[i] * 1LL * (s.r - s.l + 1)) % inf;
+            }
+        }
+        if (O[i] == 2)
+        {
+            for (seg s : S)
+            {
+                res = (res + T->getSum(s.l, s.r)) % inf;
+                res = (res + (s.r - s.l + 1) * 1LL * C[i]) % inf;
+                T->assign(s.l, s.r, C[i]);
+                seg se = s.toEven();
+                seg so = s.toOdd();
+                Xe->assign(se.l, se.r, C[i] & 1);
+                Xo->assign(so.l, so.r, C[i] & 1);
+            }
+        }
+        if (O[i] == 3)
+        {
+            for (seg s : S)
+                res = (res + T->getSum(s.l, s.r)) % inf; 
+        }
+        else if (O[i] == 4)
+        {
+            for (seg s : S)
+            {
+                seg so = s.toOdd();
+                seg se = s.toEven();
+                res = (res + Xe->getSum(se.l, se.r)) % inf;
+                res = (res + Xo->getSum(so.l, so.r)) % inf;
+            }
+        }
+        eprintf("i = %d -> res = %d\n", i, res);
+        ans = (ans + res) % inf;
+    }
+    delete T;
+    delete Xe;
+    delete Xo;
+    printf("Case #%d: %d\n", cs, ans); 
+    fflush(stdout);
+}
+
+int main()
+{
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; i++)
+        solve(i + 1);
+}

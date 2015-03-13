@@ -1,0 +1,117 @@
+import java.io.*;
+import java.lang.Character;
+import java.lang.Integer;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Main {
+    static class Node {
+        public Map<Character, Node> children = new HashMap<>();
+        boolean isLeaf = false;
+        String str = null;
+        int[] result = null;
+        int cnt = 0;
+        int depNode = 0;
+        int[] get(int maxK) {
+            if (result == null) {
+                maxK = Math.min(maxK, cnt);
+                List<int[]> cc = new ArrayList<>();
+                for (Character c : children.keySet()) {
+                    Node child = children.get(c);
+                    cc.add(child.get(maxK));
+                }
+                int[][] b = new int[children.size() + 1][maxK+1];
+                int LARGE = 10000000;
+                for (int j=0; j<=children.size(); j++) {
+                    for (int i=0; i<=maxK; i++) {
+                        b[j][i] = LARGE;
+                    }
+                }
+                b[0][0] = 0;
+                for (int j=1; j<=children.size(); j++) {
+                    int[] arr = cc.get(j-1);
+                    for (int x=0; x<arr.length; x++) {
+                        for (int i = 0; i <= maxK; i++) {
+                            if (i-x >=0 && b[j - 1][i - x] < LARGE) {
+                                b[j][i] = Math.min(b[j][i], b[j - 1][i - x] + arr[x]);
+                            }
+                        }
+                    }
+                }
+                result = new int[maxK + 1];
+                for (int i=0; i<=maxK; i++) {
+                    result[i] = b[children.size()][i];
+                }
+                result[0] = 0;
+                result[1] = Math.min(result[1], depNode);
+                /*System.err.print(str + " " + cnt);
+                for (int i=0; i<=maxK; i++) {
+                    System.err.print(" " + result[i]);
+                }
+                System.err.println();*/
+            }
+            return result;
+        }
+    }
+
+    List<String> a = new ArrayList<String>();
+    Node tree;
+
+    Node build(List<String> list, int dep) {
+        if (list.size() == 1) {
+            Node node = new Node();
+            node.str = list.get(0);
+            node.isLeaf = true;
+            node.cnt = 1;
+            node.result = new int[] {0, Math.min(node.str.length(), dep)};
+            return node;
+        }
+
+        Map<Character, List<String> > arr = new HashMap<>();
+        for (String w : list) {
+            Character c = (w.length() == dep) ? ' ' : w.charAt(dep);
+            if (!arr.containsKey(c)) {
+                arr.put(c, new ArrayList<String>());
+            }
+            arr.get(c).add(w);
+        }
+        Node node = new Node();
+        node.cnt = list.size();
+        node.depNode = dep;
+        node.str = list.get(0).substring(0, Math.min(list.get(0).length(), dep));
+        for (Character c : arr.keySet()) {
+            node.children.put(c, build(arr.get(c), dep + 1));
+        }
+        return node;
+    }
+
+    public int run(BufferedReader br) throws Exception {
+        String[] strs = br.readLine().split(" ");
+        int n = Integer.parseInt(strs[0]);
+        int k = Integer.parseInt(strs[1]);
+        for (int i=0; i<n; i++) {
+            a.add(br.readLine());
+        }
+        tree = build(a, 0);
+        int[] ret = tree.get(k);
+        return ret[k];
+    }
+
+
+    public static void main(String[] args) throws Exception {
+        String line;
+        // String filename = "autocomplete_strikes_back_example_input.txt";
+        String filename = "autocomplete_strikes_back.txt";
+        InputStream fis = new FileInputStream(filename);
+        InputStreamReader isr = new InputStreamReader(fis, Charset.forName("UTF-8"));
+        BufferedReader br = new BufferedReader(isr);
+        int cs = Integer.parseInt(br.readLine());
+        for (int ca = 1; ca <= cs; ca++) {
+            int v = new Main().run(br);
+            System.out.println("Case #" + ca + ": " + v);
+        }
+    }
+}

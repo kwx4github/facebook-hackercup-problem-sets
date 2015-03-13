@@ -1,0 +1,68 @@
+#include <stdio.h>
+#include <string.h>
+
+#define LMAX 55555
+char w[LMAX];
+
+#define ALPHA_SIZE 30
+#define MAXNODES 100000
+#define KMAX 101
+#define INF 1000000000
+
+int next[MAXNODES][ALPHA_SIZE], cnt[MAXNODES], cmin[MAXNODES][KMAX], tmp[KMAX];
+char isword[MAXNODES];
+
+int main() {
+	freopen("autocomplete_strikes_back.txt", "r", stdin);
+	freopen("autocomplete.out", "w", stdout);
+	int T, t, N, K, i, j, p, L, node, nodeson, nnodes;
+	scanf("%d", &T);
+	for (t = 1; t <= T; t++) {
+		memset(next, 0, sizeof(next));
+		memset(cnt, 0, sizeof(cnt));
+		memset(isword, 0, sizeof(isword));
+		nnodes = 1;
+		scanf("%d %d", &N, &K);
+		for (i = 1; i <= N; i++) {
+			scanf("%s", w + 1);
+			L = strlen(w + 1);
+			for (node = j = 1; j <= L; j++) {
+				cnt[node]++;
+				w[j] -= 'a';
+				if (next[node][w[j]] == 0) {
+					nnodes++;
+					if (nnodes >= MAXNODES) {
+						fprintf(stderr, "Too many trie nodes!\n");
+						return 1;
+					}
+					next[node][w[j]] = nnodes;
+				}
+				node = next[node][w[j]];
+			}
+			cnt[node]++;
+			isword[node] = 1;
+		}
+		//fprintf(stderr, "nnodes=%d N=%d K=%d\n", nnodes, N, K);
+		for (node = nnodes; node >= 1; node--) {
+			for (j = 1; j <= K; j++)
+				cmin[node][j] = INF;
+			cmin[node][0] = 0;
+			if (isword[node]) cmin[node][1] = 0;
+			for (i = 0; i < ALPHA_SIZE; i++) {
+				if (next[node][i] == 0) continue;
+				nodeson = next[node][i];
+				for (j = 0; j <= K; j++) tmp[j] = INF;
+				for (j = 0; j <= K; j++)
+					for (p = 0; p + j <= K; p++)
+						if (cmin[node][j] + p + cmin[nodeson][p] < tmp[p + j])
+							tmp[p + j] = cmin[node][j] + p + cmin[nodeson][p];
+				memcpy(&cmin[node][0], tmp, (K + 1) * sizeof(int));
+			}
+			if (cnt[node] > 0) cmin[node][1] = 0;
+		}
+		cmin[1][1] = 1;
+		fprintf(stderr, "nnodes=%d N=%d K=%d => %d\n", nnodes, N, K, cmin[1][K]);
+		printf("Case #%d: %d\n", t, cmin[1][K]);
+	}
+	return 0;
+}

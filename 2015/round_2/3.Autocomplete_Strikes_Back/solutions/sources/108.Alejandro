@@ -1,0 +1,234 @@
+#include <cstdlib>
+#include <cctype>
+#include <cstring>
+#include <cstdio>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <map>
+#include <set>
+#include <queue>
+#include <stack>
+#include <fstream>
+#include <numeric>
+#include <iomanip>
+#include <bitset>
+#include <list>
+#include <stdexcept>
+#include <functional>
+#include <utility>
+#include <ctime>
+using namespace std;
+
+typedef long long LL;
+#define rep(it,s) for(__typeof((s).begin()) it=(s).begin();it!=(s).end();it++)
+
+int n, k;
+int m;
+
+int next[20010][28];
+int has[20010];
+int shortest[20010];
+int cnt[20010];
+int len[20010];
+
+void add(int nd, int i, const string &s) {
+
+    if (i == s.length()) {
+
+        has[nd] = 1;
+
+        cnt[nd]++;
+
+        return;
+
+    }
+
+    int a = s[i]-'a';
+
+    int tmp;
+
+    if (next[nd][a]==-1) {
+
+        next[nd][a] = m;
+
+        len[m] = len[nd] + 1;
+
+        tmp = m++;
+
+    }
+    else tmp = next[nd][a];
+
+    shortest[nd] = min(shortest[nd], (int)s.length());
+
+    cnt[nd]++;
+
+    add(tmp, i+1, s);
+
+}
+
+int dp[20010][110][28];
+
+int solve(int nd, int tot, int l) {
+
+    //cout<<nd<<" "<<tot<<" "<<l<<" "<<dp[nd][tot][l]<<endl;
+
+    if (tot==0) return 0;
+    if (l>26) return 1000000;
+
+    if (dp[nd][tot][l]>=0) return dp[nd][tot][l];
+
+    int tmp = 1000000;
+
+    if (cnt[nd] < tot) {
+
+        dp[nd][tot][l] = tmp;
+
+        return tmp;
+
+    }
+
+    if (l==0 && nd!=0) {
+
+        tmp = solve(nd, tot, l+1);
+        if (has[nd]) tmp = min(tmp, solve(nd, tot-1, l+1) + len[nd]);
+        if (tot==1) tmp = min(tmp, len[nd]);
+
+    }
+    else {
+
+        if ((nd==0 && l==0) || next[nd][l-1]==-1) tmp = solve(nd, tot, l+1);
+        else {
+            for (int j=0; j<=tot; j++) {
+
+                tmp = min(tmp, solve(next[nd][l-1], j, 0) + solve(nd, tot-j, l+1));
+
+            }
+        }
+    }
+
+    dp[nd][tot][l] = tmp;
+
+    return tmp;
+
+}
+
+set<string> dic;
+
+int get(const string &a, const string &b) {
+
+    int cnt = 0;
+
+    for (int i=0; i<(int)min(a.length(), b.length()); i++) {
+        if (a[i]!=b[i]) break;
+        cnt++;
+    }
+
+    return min((int)a.length(), cnt+1);
+
+}
+
+int bf(vector<string> v) {
+    int tot = 0;
+    dic.clear();
+
+    for (int i=0; i<v.size(); i++) {
+
+        string s = v[i];
+
+        dic.insert(s);
+
+    }
+
+    for (int i=0; i<v.size(); i++) {
+
+        string s = v[i];
+
+        set<string>::iterator it = dic.upper_bound(s);
+
+        int a = s.length();
+        int b = a;
+
+        if (it != dic.end()) {
+            a = get(s, *it);
+        }
+        else a = 1;
+
+        it--;
+        if (it != dic.begin()) {
+            --it;
+            b = get(s, *it);
+        }
+        else b = 1;
+
+        tot += max(a, b);
+
+    }
+
+    return tot;
+}
+
+int main() {
+
+    freopen("input.txt","r",stdin);
+    freopen("output.txt","w",stdout);
+
+    int tt;
+    cin>>tt;
+    for (int cas=1; cas<=tt; cas++) {
+
+        cin>>n>>k;
+
+        m = 1;
+
+        string s;
+
+        for (int i=0; i<20005; i++) for (int j=0; j<26; j++) next[i][j] = -1;
+        for (int i=0; i<20005; i++) has[i] = 0;
+        for (int i=0; i<20005; i++) shortest[i] = 1000000;
+        for (int i=0; i<20005; i++) cnt[i] = 0;
+        for (int i=0; i<20005; i++) len[i] = 0;
+
+        vector<string> tmp;
+
+        for (int i=0; i<n; i++) {
+
+            cin>>s;
+
+            //cout<<s<<endl;
+
+            add(0, 0, s);
+
+            tmp.push_back(s);
+
+        }
+
+//        int ans = 100000;
+//        for (int i=0; i<(1<<n); i++) if (__builtin_popcount(i)==k) {
+//
+//            vector<string> a;
+//            for (int j=0; j<n; j++) if (i&(1<<j)) a.push_back(tmp[j]);
+//
+//            ans = min(ans, bf(a));
+//
+//        }
+//
+//        cout<<ans<<endl;
+
+
+        int res = 1000000;
+
+        for (int i=0; i<20010; i++) for (int j=0; j<=k; j++) for (int k=0; k<28; k++) dp[i][j][k] = -1;
+
+        res = solve(0, k, 0);
+
+        printf("Case #%d: %d\n", cas, res);
+
+    }
+
+    return 0;
+
+}

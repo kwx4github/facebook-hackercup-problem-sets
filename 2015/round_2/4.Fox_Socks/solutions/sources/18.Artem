@@ -1,0 +1,321 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#define _SECURE_SCL 0
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include <iostream>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <list>
+#include <cctype>
+#include <sstream>
+#include <cassert>
+#include <bitset>
+#include <memory.h>
+#include <complex>
+#include <iomanip>
+
+using namespace std;
+
+#pragma comment(linker, "/STACK:200000000")
+
+typedef long long int64;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define fore(i, a, n) for(int i = (int)(a); i < (int)(n); i++)
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+#define last(a) (int(a.size()) - 1)
+#define all(a) a.begin(), a.end()
+
+const double EPS = 1E-9;
+const int INF = 1000000000;
+const int64 INF64 = (int64) 1E18;
+const double PI = 3.1415926535897932384626433832795;
+
+const int MOD = INF;
+const int NMAX = 1100000;
+
+inline void add(int64& a, int64 b) {
+  a += b;
+  if (a >= MOD)
+    a -= MOD;
+}
+
+int n, m;
+int64 a[NMAX], b[NMAX], c[NMAX], d[NMAX], o[NMAX], s[NMAX];
+int64 sum[NMAX * 4], cnt_odd[2][NMAX * 4], set_val[NMAX * 4], add_c[NMAX * 4], add_d[NMAX * 4];
+
+void read(int64 a[NMAX], int cnt, int mod) {
+  int64 x, y, z;
+  cin >> a[0] >> a[1] >> x >> y >> z;
+  for (int i = 2; i < cnt; i++) {
+    a[i] = (a[i - 2] * x + a[i - 1] * y + z) % mod;
+    if (mod != INF)
+      a[i]++;
+  }
+}
+
+void read() {
+  scanf("%d%d", &n, &m);
+  read(s, n, INF);
+  read(o, m, 4);
+  read(a, m, n);
+  read(b, m, n);
+  read(c, m, INF);
+  read(d, m, INF);
+}
+
+void gen() {
+
+}
+
+void relax(int idx, int l, int r) {
+  int len = r - l + 1;
+  int len0 = (len + 1) >> 1;
+  int len1 = len - len0;
+  int mid = (l + r) >> 1;
+  int len_left = mid - l + 1;
+  if (set_val[idx] != -1) {
+    if (l < r) {
+      add_c[idx << 1] = add_c[idx << 1 | 1] = 0;
+      add_d[idx << 1] = add_d[idx << 1 | 1] = 0;
+      set_val[idx << 1] = set_val[idx << 1 | 1] = set_val[idx];
+    }
+    sum[idx] = len * set_val[idx] % MOD;
+    cnt_odd[0][idx] = set_val[idx] % 2 == 0 ? 0 : len0;
+    cnt_odd[1][idx] = set_val[idx] % 2 == 0 ? 0 : len1;
+    set_val[idx] = -1;
+  }
+  if (add_c[idx] || add_d[idx]) {
+    if (l < r) {
+      add(add_c[idx << 1], add_c[idx]);
+      add(add_c[idx << 1 | 1], (add_c[idx] + len_left * add_d[idx]) % MOD);
+      add(add_d[idx << 1], add_d[idx]);
+      add(add_d[idx << 1 | 1], add_d[idx]);
+    }
+    int64 delta = (len * add_c[idx] + len * int64(len - 1) / 2 % MOD * add_d[idx]) % MOD;
+    add(sum[idx], delta);
+    if (add_c[idx] & 1) {
+      cnt_odd[0][idx] = len0 - cnt_odd[0][idx];
+      cnt_odd[1][idx] = len1 - cnt_odd[1][idx];
+    }
+    if (add_d[idx] & 1) {
+      cnt_odd[1][idx] = len1 - cnt_odd[1][idx];
+    }
+
+    add_c[idx] = add_d[idx] = 0;
+  }  
+}
+
+void calc(int idx, int l, int r) {
+  int mid = (l + r) >> 1;
+  int len_left = mid - l + 1;
+  sum[idx] = sum[idx << 1];
+  add(sum[idx], sum[idx << 1 | 1]);
+  if ((len_left & 1) == 0) {
+    cnt_odd[0][idx] = cnt_odd[0][idx << 1] + cnt_odd[0][idx << 1 | 1];
+    cnt_odd[1][idx] = cnt_odd[1][idx << 1] + cnt_odd[1][idx << 1 | 1];
+  } else {
+    cnt_odd[0][idx] = cnt_odd[0][idx << 1] + cnt_odd[1][idx << 1 | 1];
+    cnt_odd[1][idx] = cnt_odd[1][idx << 1] + cnt_odd[0][idx << 1 | 1];
+  }
+}
+
+void md_build(int idx, int l, int r) {
+  add_c[idx] = add_d[idx] = 0;
+  set_val[idx] = -1;
+  if (l == r) {
+    sum[idx] = s[l];
+    cnt_odd[0][idx] = s[l] % 2;
+    cnt_odd[1][idx] = 0;
+    return;
+  }
+
+  int mid = (l + r) >> 1;
+  md_build(idx << 1, l, mid);
+  md_build(idx << 1 | 1, mid + 1, r);
+
+  calc(idx, l, r);
+}
+
+int64 md_count(int idx, int l, int r, int a, int b) {
+  relax(idx, l, r);
+  if (b < l || r < a)
+    return 0;
+  if (a <= l && r <= b)
+    return sum[idx];
+
+  int mid = (l + r) >> 1;
+  int64 res = md_count(idx << 1, l, mid, a, b);
+  add(res, md_count(idx << 1 | 1, mid + 1, r, a, b));
+  return res;
+}
+
+int64 md_count_odd(int idx, int l, int r, int a, int b) {
+  relax(idx, l, r);
+  if (b < l || r < a)
+    return 0;
+  if (a <= l && r <= b)
+    return cnt_odd[0][idx] + cnt_odd[1][idx];
+
+  int mid = (l + r) >> 1;
+  int64 res = md_count_odd(idx << 1, l, mid, a, b);
+  add(res, md_count_odd(idx << 1 | 1, mid + 1, r, a, b));
+  return res;
+}
+
+void md_add(int idx, int l, int r, int a, int b, int64 c, int64 d) {
+  relax(idx, l, r);
+  if (b < l || r < a)
+    return;
+  if (a <= l && r <= b) {
+    add_c[idx] = (c + (l - a) * d) % MOD;
+    add_d[idx] = d;
+    relax(idx, l, r);
+    return;
+  }
+
+  int mid = (l + r) >> 1;
+  md_add(idx << 1, l, mid, a, b, c, d);
+  md_add(idx << 1 | 1, mid + 1, r, a, b, c, d);
+  calc(idx, l, r);
+}
+
+void md_set(int idx, int l, int r, int a, int b, int64 nval) {
+  relax(idx, l, r);
+  if (b < l || r < a)
+    return;
+  if (a <= l && r <= b) {
+    set_val[idx] = nval;
+    relax(idx, l, r);
+    return;
+  }
+
+  int mid = (l + r) >> 1;
+  md_set(idx << 1, l, mid, a, b, nval);
+  md_set(idx << 1 | 1, mid + 1, r, a, b, nval);
+  calc(idx, l, r);
+}
+
+int64 tupo(int o, int a, int b, int64 c, int64 d) {
+  a--;
+  int64 cur = 0;
+  if (o == 1) {
+    forn(i, b) {
+      cur += c;
+      s[a] += c;
+      c += d;
+      a = (a + 1) % n;
+    }
+  } else if (o == 2) {
+    forn(i, b) {
+      cur += s[a] + c;
+      s[a] = c;
+      a = (a + 1) % n;
+    }
+  } else if (o == 3) {
+    forn(i, b) {
+      cur += s[a];
+      a = (a + 1) % n;
+    }
+  } else if (o == 4) {
+    forn(i, b) {
+      if (s[a] % 2)
+        cur++;
+      a = (a + 1) % n;
+    }
+  }
+  return cur % MOD;
+}
+
+void solve() {
+  md_build(1, 0, n - 1);
+
+  int64 res = 0;
+  forn(i, m) {
+    int64 cur;
+
+    if (o[i] == 1) {
+      cur = (c[i] * b[i] + b[i] * (b[i] - 1) / 2 % MOD * d[i]) % MOD;
+
+      int l = a[i] - 1;
+      int r = l + b[i] - 1;
+
+      if (r < n)
+        md_add(1, 0, n - 1, l, r, c[i], d[i]);
+      else {
+        md_add(1, 0, n - 1, l, n - 1, c[i], d[i]);
+        md_add(1, 0, n - 1, 0, r - n, (c[i] + d[i] * (n - l)) % MOD, d[i]);
+      }
+    } else if (o[i] == 2) {
+      int l = a[i] - 1;
+      int r = l + b[i] - 1;
+
+      if (r < n) {
+        cur = md_count(1, 0, n - 1, l, r);
+        md_set(1, 0, n - 1, l, r, c[i]);
+      } else {
+        cur = md_count(1, 0, n - 1, l, n - 1);
+        add(cur, md_count(1, 0, n - 1, 0, r - n));
+        md_set(1, 0, n - 1, l, n - 1, c[i]);
+        md_set(1, 0, n - 1, 0, r - n, c[i]);
+      }
+      add(cur, c[i] * b[i] % MOD);
+    } else if (o[i] == 3) {
+      int l = a[i] - 1;
+      int r = l + b[i] - 1;
+      
+      if (r < n) {
+        cur = md_count(1, 0, n - 1, l, r);
+      } else {
+        cur = md_count(1, 0, n - 1, l, n - 1);
+        add(cur, md_count(1, 0, n - 1, 0, r - n));
+      }
+    } else if (o[i] == 4) {
+      int l = a[i] - 1;
+      int r = l + b[i] - 1;
+      
+      if (r < n) {
+        cur = md_count_odd(1, 0, n - 1, l, r);
+      } else {
+        cur = md_count_odd(1, 0, n - 1, l, n - 1);
+        add(cur, md_count_odd(1, 0, n - 1, 0, r - n));
+      }
+    } else 
+      throw;
+
+    add(res, cur);
+  }
+
+  cout << res << endl;
+}
+
+int main() {
+  freopen("input.txt", "rt", stdin);
+  freopen("output.txt", "wt", stdout);
+  
+  int tests;
+  cin >> tests;
+  for (int test = 1; test <= tests; test++) {
+    cerr << "Solving test " << setw(2) << test << " of " << tests << ". Time = " << setw(5) << clock() << endl;
+    cout << "Case #" << test << ": ";
+    read();
+    //gen();
+    solve();
+  }
+  
+  return 0;
+}

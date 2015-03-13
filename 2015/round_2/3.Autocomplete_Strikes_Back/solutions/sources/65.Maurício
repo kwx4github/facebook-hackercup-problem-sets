@@ -1,0 +1,87 @@
+#include <cassert>
+#include <cstring>
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int trie[20001][26];
+int memo[20001][26][101];
+vector<int> compressed_trie[20001];
+
+int height[20001];
+bool isdict[20001];
+int ndict[20001];
+int nnodes;
+
+int doit(int v, int letter, int k) {
+    if (k == 0)
+        return 0;
+    if (letter == compressed_trie[v].size())
+        return 0x3f3f3f3f;
+
+    int& ret = memo[v][letter][k];
+    if (ret != -1) return ret;
+
+    int nxt = compressed_trie[v][letter];
+    ret = height[nxt] + doit(v, letter+1, k-1);
+
+    for (int i = 0; i <= k; i++) {
+        ret = min(ret, doit(nxt, 0, i) + doit(v, letter+1, k-i));
+        if (i && isdict[nxt])
+            ret = min(ret, doit(nxt, 0, i-1) + doit(v, letter+1, k-i) + height[nxt]);
+    }
+
+    return ret;
+}
+
+int new_node(int h) {
+    memset(trie[nnodes], -1, sizeof trie[nnodes]);
+    isdict[nnodes] = false;
+    height[nnodes] = h;
+    ndict[nnodes] = 0;
+    return nnodes++;
+}
+
+int main() {
+    cin.sync_with_stdio(false);
+
+    int t;
+    cin >> t;
+
+    for (int z = 1; z <= t; z++) {
+        nnodes = 0;
+        new_node(0);
+
+        int n, k;
+        cin >> n >> k;
+        ndict[0] = n;
+
+        int ans = 0;
+        for (int i = 0; i < n; i++) {
+            string word;
+            cin >> word;
+
+            int cur_node = 0;
+            for (int j = 0; j < word.size(); j++) {
+                if (trie[cur_node][word[j] - 'a'] == -1)
+                    trie[cur_node][word[j] - 'a'] = new_node(j+1);
+
+                cur_node = trie[cur_node][word[j] - 'a'];
+                ndict[cur_node]++;
+            }
+
+            isdict[cur_node] = true;
+        }
+
+        for (int i = 0; i < nnodes; i++) {
+            compressed_trie[i].clear();
+            for (int j = 0; j < 26; j++)
+                if (trie[i][j] != -1)
+                    compressed_trie[i].push_back(trie[i][j]);
+        }
+
+        memset(memo, -1, sizeof memo);
+        cout << "Case #" << z << ": " << doit(0, 0, k) << endl;
+    }
+}

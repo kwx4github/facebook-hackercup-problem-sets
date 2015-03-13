@@ -1,0 +1,105 @@
+#include <algorithm>
+#include <bitset>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <set>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+const int MAXL = 20020;
+const int MAXK = 110;
+
+struct node {
+    int next[ 26 ];
+    bool is_word;
+    node() {
+        memset( next, -1, sizeof( next ) );
+        is_word = false;
+    }
+};
+
+node tree[ MAXL ];
+int n, k, len, nodes;
+int f[ MAXL ][ MAXK ], g[ MAXK ];
+char word[ MAXL ];
+
+void clean_up() {
+    nodes = 1;
+    for ( int i = 0; i < MAXL; i++ ) tree[i] = node();
+}
+
+void add( int v, int pos ) {
+    // cerr << v << " ";
+    if ( pos == len ) {
+        tree[v].is_word = true;
+        return;
+    }
+    int c = word[pos] - 'a';
+    if ( tree[v].next[c] == -1 )
+        tree[v].next[c] = nodes++;
+    add( tree[v].next[c], pos + 1 );
+}
+
+void dfs( int v, int depth ) {
+    // cerr << v << " " << depth << "\n";
+    memset( f[v], -1, sizeof( f[v] ) );
+    f[v][0] = 0;
+    for ( int c = 0; c < 26; c++ ) 
+        if ( tree[v].next[c] != -1 ) {
+            int next = tree[v].next[c];
+            dfs( next, depth + 1 );
+            for ( int k1 = 0; k1 <= k; k1++ ) g[k1] = f[v][k1];
+            for ( int k1 = 0; k1 <= k; k1++ ) {
+                if ( f[v][k1] == -1 ) continue;
+                for ( int k2 = 0; k1 + k2 <= k; k2++ ) {
+                    if ( f[next][k2] == -1 ) continue;
+                    int cost = f[v][k1] + f[next][k2];
+                    if ( g[k1 + k2] == -1 ) g[k1 + k2] = cost;
+                    g[k1 + k2] = min( g[k1 + k2], cost );
+                }
+            }
+            for ( int k1 = 0; k1 <= k; k1++ ) f[v][k1] = g[k1];
+        }
+    if ( depth == 0 ) return;
+    
+    int limit = 1;
+    if ( tree[v].is_word ) limit = k;
+    for ( int k1 = 0; k1 <= k; k1++ ) g[k1] = f[v][k1];
+    for ( int k1 = 0; k1 + 1 <= limit; k1++ ) {
+        if ( f[v][k1] == -1 ) continue;
+        int cost = f[v][k1] + depth;
+        if ( g[k1 + 1] == -1 ) g[k1 + 1] = cost;
+        g[k1 + 1] = min( g[k1 + 1], cost );
+    }
+    for ( int k1 = 0; k1 <= k; k1++ ) f[v][k1] = g[k1];
+
+    // cerr << v << ": "; for ( int k1 = 0; k1 <= k; k1++ ) cerr << f[v][k1] << " "; cerr << "\n";
+}
+
+void solve( int test_case ) {
+    printf("Case #%d: ", test_case);
+    clean_up();
+    scanf("%d%d", &n, &k);
+    for ( int i = 0; i < n; i++ ) {
+        scanf("%s", word); len = strlen( word );
+        add( 0, 0 ); // cerr << "\n";
+    }
+    dfs( 0, 0 );
+    printf("%d\n", f[0][k]);
+}
+
+int main() {
+    time_t start = clock();
+    int t; scanf("%d", &t);
+    for ( int i = 1; i <= t; i++ ) solve( i );
+    fprintf( stderr, "Time: %lf\n", 1.0 * ( clock() - start ) / CLOCKS_PER_SEC );
+    return 0;
+}

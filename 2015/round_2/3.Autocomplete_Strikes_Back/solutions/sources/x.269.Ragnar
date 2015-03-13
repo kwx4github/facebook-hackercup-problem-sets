@@ -1,0 +1,137 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <queue>
+#include <bitset>
+#include <stack>
+#include <string>
+#include <sstream>
+#include <math.h>
+
+#define REP(i,n) for(int i = 0; i<(n); i++)
+#define ITER(i,v) for(auto i : v)
+#define INF 1000000000
+
+using namespace std;
+
+template <class T>
+using priority_queue_asc =  priority_queue<T,vector<T>, greater<T> >;
+typedef long long ll;
+typedef vector<int> vi;
+typedef pair<int,int> ii;
+typedef vector<ii> vii;
+typedef vector<vi> vvi;
+typedef vector<vii> vvii;
+typedef vector<bool> vb;
+
+
+struct Node{
+	int childs[26];
+	bool leaf;
+	Node(){
+		fill_n(childs,26,-1);
+		leaf = false;
+	}
+};
+
+struct Visit{
+	int node;
+	int depth;
+	int lastsplit;
+	int lastleaf;
+};
+
+vector<Node> nodes;
+
+int main(){
+	int TC;
+	scanf("%d",&TC);
+	for(int tc=1;tc<=TC;tc++){
+		nodes.clear();
+		nodes.reserve(20001);
+		nodes.push_back(Node());
+		int N,K;
+		cin >> N >> K;
+		// Fill the tree
+		REP(w,N){
+			string word;
+			cin >> word;
+			int node = 0;
+			ITER(c, word){
+				int& next = nodes[node].childs[c-'a'];
+				if(next>=0){
+					node = next;
+				} else {
+					node = next = nodes.size();
+					nodes.push_back(Node());
+				}
+			}
+			// set the last node to a leaf
+			nodes[node].leaf = true;
+		}
+		
+		vi ks;
+		queue<Visit> active;
+		active.push({0,0,0,0});
+		int letters = 0;
+		int	count = 1;
+		while(count < K && !active.empty()){
+			//cout << "POP\n";
+			Visit cur = active.front();
+			active.pop();
+			count--; // queue decreased size
+			int node = cur.node;
+			int childs = 0;
+			bool leaf = nodes[node].leaf;
+			if(leaf){
+				//cout << "adding leaf at depth "<<cur.depth<<"\n";
+				letters+=cur.depth;
+				count++;
+				//cout <<"count: "<<count<<"\n";
+				if(count==K)
+					break;
+
+				cur.lastleaf = cur.depth;
+				cur.lastsplit = cur.depth;
+			}
+			REP(c,26)
+				if(nodes[node].childs[c]>=0)
+					childs++;
+			if(childs>1){
+				//cout << "SPLIT\n";
+				cur.lastsplit = cur.depth;
+			}
+			REP(c,26){
+				if(nodes[node].childs[c]>=0){
+					active.push({
+							nodes[node].childs[c],	// node
+							cur.depth+1,				// depth
+							cur.lastsplit,				// lastsplit
+							cur.lastleaf			// last leaf
+							});
+					//cout << "pushing at depth "<<cur.depth+1<<" letter: "<<char('a'+c)<<" lastsplit: "<<cur.lastsplit<<" and lastleaf: "<<cur.lastleaf<<"\n";
+
+					count++;
+					//cout <<"count: "<<count<<"\n";
+					if(count==K)
+						break;
+				}
+			}
+		}
+
+		while(!active.empty()){
+			count++;
+			auto cur = active.front();
+			active.pop();
+			letters += cur.lastsplit+1;
+			//cout << "adding remaining queue node at depth "<<cur.depth<<" and with "<<cur.lastsplit+1<<" letters\n";
+		}
+
+		cout << "Case #"<<tc<<": "<<letters<<"\n";
+	}
+	return 0;
+}
+
+

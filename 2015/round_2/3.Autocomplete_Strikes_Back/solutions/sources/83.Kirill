@@ -1,0 +1,140 @@
+import java.util.*;
+import java.io.*;
+import java.math.*;
+
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		try {
+			inputStream = new FileInputStream("a.in");
+			outputStream = new FileOutputStream("a.out");
+		} catch (FileNotFoundException e) {
+			System.err.println("File not found");
+			return;
+		}
+		
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		Solver solver = new Solver();
+		int T = in.nextInt();
+		for (int i = 0; i < T; i++) {
+			out.format("Case #%d: ", i + 1);
+			solver.solve(in, out);
+		}
+		out.close();
+	}
+}
+
+class Solver {
+	int INF = 1000000;
+	int k;
+	class Trie extends HashMap<Character, Trie>{
+		boolean flag, sflag;
+		int[] d;
+		public Trie() {
+			super();
+			flag = false;
+			sflag = false;
+			d = new int[k + 1];
+		}
+		void addWord(String s, int d) {
+			if (d == s.length()) {
+				flag = true;
+				sflag = true;
+				return;
+			}
+			Trie next;
+			if (containsKey(s.charAt(d)))
+				next = get(s.charAt(d));
+			else {
+				next = new Trie();
+				put(s.charAt(d), next);
+			}
+			next.addWord(s, d + 1);
+		}
+		
+		void getDP() {
+			d[0] = 0;
+			for (Trie t : this.values()) {
+				t.getDP();
+				if (t.sflag)
+					sflag = true;
+			}
+			if (sflag)
+				d[1] = 0;
+			else
+				d[1] = INF;
+			int n = this.values().size();
+			int[][] dp = new int[n + 1][k + 1];
+			for (int i = 0; i <= n; i++) {
+				Arrays.fill(dp[i], INF);
+			}
+			dp[0][0] = 0;
+			if (flag)
+				dp[0][1] = 0;
+			
+			int p = 0;
+			for (Trie t : this.values()) {
+				for (int i = 0; i <= k; i++) {
+					for (int j = 0; j <= k - i; j++) {
+						dp[p + 1][i + j] = Math.min(dp[p + 1][i + j], dp[p][i] + t.d[j] + j);
+					}
+				}
+				p++;
+			}
+			for (int i = 2; i <= k; i++) {
+				d[i] = Math.min(dp[n][i], INF);
+			}
+		}
+	}
+	public void solve(InputReader in, PrintWriter out) {
+		int n = in.nextInt();
+		k = in.nextInt();
+		Trie root = new Trie();
+		int ans = 0;
+		for (int i = 0; i < n; i++) {
+			String w = in.next();
+			root.addWord(w, 0);
+		}
+		if (k == 1) {
+			out.println(1);
+			return;
+		}
+		root.getDP();
+		out.println(root.d[k]);
+	}
+}
+
+class InputReader {
+	private BufferedReader reader;
+	private StringTokenizer tokenizer;
+
+	public InputReader(InputStream stream) {
+		reader = new BufferedReader(new InputStreamReader(stream));
+		tokenizer = null;
+	}
+
+	public String next() {
+		while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+			try {
+				tokenizer = new StringTokenizer(reader.readLine());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return tokenizer.nextToken();
+	}
+
+	public long nextLong() {
+		return Long.parseLong(next());
+	}
+
+	public int nextInt() {
+		return Integer.parseInt(next());
+	}
+
+	public double nextDouble() {
+		return Double.parseDouble(next());
+	}
+}

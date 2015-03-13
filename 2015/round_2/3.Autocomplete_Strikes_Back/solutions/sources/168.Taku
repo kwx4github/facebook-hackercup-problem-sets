@@ -1,0 +1,95 @@
+{-# LANGUAGE MultiParamTypeClasses,FlexibleContexts,FlexibleInstances,TypeSynonymInstances,BangPatterns,RankNTypes,TupleSections #-}
+import Control.Monad
+import Control.Monad.ST
+import Control.Applicative hiding(empty)
+import Control.Arrow
+import Debug.Trace
+import Text.Printf
+
+--import Data.List
+import Data.Int
+import Data.Bits
+import Data.Maybe
+import Data.Array.Unboxed
+import Data.Array.ST
+import qualified Data.Map as M
+import qualified Data.Set as S
+import qualified Data.ByteString.Char8 as B
+import Data.Foldable(toList)
+import Test.QuickCheck
+
+readInt = fromJust . fmap fst . B.readInt
+readInts = map readInt . B.words <$> B.getLine
+
+stepM_ :: Monad m => a -> (a -> Bool) -> (a -> a) -> (a -> m ()) -> m ()
+stepM_ i judge incr step = sub i where 
+    sub i | judge i = step i >> sub (incr i) | otherwise = return ()
+
+data Tree = Leaf String | Node Bool (M.Map Char Tree) deriving(Show)
+
+empty :: Tree
+empty = Leaf ""
+
+insert :: String -> Tree -> Tree
+insert "" (Node _ t) = Node True t
+insert "" t = t
+insert (c:cs) (Leaf "") = Node True (M.singleton c (Leaf cs))
+insert (c:cs) (Leaf (c':cs')) 
+    | c == c'   = Node False (M.singleton c (insert cs (Leaf cs')))
+    | otherwise = Node False (M.fromList [(c,Leaf cs),(c',Leaf cs')])
+insert (c:cs) (Node b tbl) 
+    | M.member c tbl = Node b $ M.insert c (insert cs (tbl M.! c)) tbl
+    | otherwise = Node b $ M.insert c (Leaf cs) tbl
+
+depth :: String -> Tree -> Int
+depth "" _ = 0
+depth s  (Leaf s') | s == s' = 0
+depth (c:cs)  (Node _ tbl) = 1 + depth cs (tbl M.! c)
+
+naive n k ws = minimum $ do
+    vs <- comb k ws
+    let t = foldr insert empty vs
+    return $ sum [ depth v t | v <- vs ]
+
+comb :: Int -> [String] -> [[String]]
+comb 0 [] = return []
+comb _ [] = []
+comb k (w:ws) = (w:) <$> comb (k-1) ws <|> comb k ws
+
+main :: IO ()
+main = do
+    tests <- readLn :: IO Int
+    forM_ [1..tests] $ \caseNum -> do
+        [n,k] <- readInts
+        xs <- replicateM n getLine
+        printf "Case #%d: %d\n" caseNum $ solve n k xs
+
+solve :: Int -> Int -> [String] -> Int
+solve n 1 _ = 1
+solve n k (w:ws) = {-traceShow trie $ -} go trie ! k where
+    trie = foldr insert (Leaf w) ws
+    inf = 40000
+    go :: Tree -> UArray Int Int
+    go (Leaf s) = listArray (0,k) (0:0:repeat inf)
+    go t@(Node b m) = a `seq` {-traceShow (t,a3)-} a3 where
+        a1 = listArray (0,k) (0:0:[ min (i + a ! i) inf | i <- [2..k] ])
+        a2 = listArray (0,k) (0:0:[ (i - 1 + a ! (i-1)) | i <- [2..k] ])
+        a3 = if b then a2 else a1
+        a = foldl1 merge (map go $ M.elems m)
+    merge :: UArray Int Int -> UArray Int Int -> UArray Int Int
+    merge t1 t2 = listArray (0,k) $ map f [0..k] where
+        f 0 = 0
+        f 1 = 0
+        f i = minimum [ t1 ! j + t2 ! (i - j) | j <- [0..i] ]
+
+gen :: Gen [String]
+gen = sized $ \s -> do
+    n <- choose (2,10)
+    replicateM n $ do
+        c <- choose (1,s+1)
+        replicateM c (choose ('a','b'))
+
+prop_safe = forAll gen (\ss -> 
+                let ss' = S.toList $ S.fromList ss in
+                let n = length ss in
+                any (\k -> solve n k ss == naive n k ss) [1..n-1] )

@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <algorithm>
+#include <vector>
+#include <utility>
+#include <map>
+#include <set>
+
+using namespace std;
+
+const int maxtreetop = 21000;
+const int maxK = 110;
+
+struct Ttree{
+	int level,numword;
+	bool isword;
+	int son[26];
+}tree[maxtreetop+1];
+
+char s[maxtreetop+1];
+int f[maxtreetop+1][maxK+1], g[maxK+1];
+int n,K,top;
+
+void init() {
+	int i,j,k,t,p,len;	
+	scanf("%d%d",&n,&K);
+	top=1;
+	tree[1].level=0;
+	tree[1].isword=false;
+	for (i=0; i<26; ++i)
+		tree[1].son[i]=0;
+	for (i=1; i<=n; ++i) {
+		scanf("%s",s);
+		len=strlen(s);
+		p=1;
+		for (j=0; j<len; ++j) {
+			t = s[j]-'a';
+			if (!tree[p].son[t]) {
+				tree[p].son[t]=(++top);
+				for (k=0; k<26; ++k)
+					tree[top].son[k]=0;
+				tree[top].level=tree[p].level+1;
+				tree[top].isword=false;				
+			}
+			p=tree[p].son[t];
+		}
+		tree[p].isword=true;
+	}
+	for (p=top; p>=1; --p) {
+		if (tree[p].isword) tree[p].numword=1;
+		else tree[p].numword=0;
+		for (j=0; j<26; ++j)
+			if (tree[p].son[j])
+				tree[p].numword+=tree[tree[p].son[j]].numword;
+	}
+}
+
+void work() {
+	int w,i,j,k,t,t1,t2,p,gao;
+	
+	for (i=top; i>=1; --i) {
+		gao=K;
+		if (tree[i].numword<gao)
+			gao=tree[i].numword;
+
+		// calc dp2 for sons
+		for (j=0; j<=gao; ++j)
+			g[j]=1000000000;
+		g[0]=0;
+		for (j=0; j<26; ++j)
+			if (tree[i].son[j]) {
+				p=tree[i].son[j];
+				for (k=gao; k>=0; --k) {
+					if (g[k]==1000000000) continue;
+					for (t=0; t<=tree[p].numword; ++t) {
+						if (k+t>gao) break;
+						if (g[k]+f[p][t]<g[k+t]) g[k+t]=g[k]+f[p][t];
+					}
+				}
+			}
+
+		// calc f
+		f[i][0]=0;
+		f[i][1]=tree[i].level;
+		for (k=2; k<=gao; ++k) {
+			f[i][k]=1000000000;
+			if (tree[i].isword) f[i][k] = tree[i].level + g[k-1];
+			else f[i][k]=g[k];
+		}
+	}
+}
+
+void output() {
+	if (K==1)
+		printf("1\n");
+	else 
+		printf("%d\n",f[1][K]);
+}
+
+int main() {
+	int T, i;
+	freopen("C.in","r",stdin);
+	freopen("C.out","w",stdout);
+	scanf("%d",&T);	
+	for (i=1; i<=T; ++i) {
+		printf("Case #%d: ", i);
+		init();
+		work();
+		output();
+	}
+	return 0;
+}

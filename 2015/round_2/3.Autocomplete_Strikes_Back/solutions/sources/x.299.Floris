@@ -1,0 +1,125 @@
+#include <bits/stdc++.h>
+#include <cstdio>
+using namespace std;
+#define MAXN 102
+
+struct addition{
+	int total_cost;
+	char child;
+	addition(int cost, char c){
+		this->total_cost = cost;
+		this->child = c;
+	}
+
+	bool operator<(const addition &a)const{
+		return this->total_cost > a.total_cost;
+	}
+};
+
+struct node{
+	map<char, node*> children;
+	map<int, int> best;
+	int nb_children;
+	bool processed;
+	char c;
+	bool is_final;
+	node(){
+		this->nb_children = 0;
+		this->processed = false;
+		this->c = '0';
+		this->is_final = false;
+	}
+	int calculate_best(){
+		this->best[0] = 0;
+		this->best[1] = 0;
+		priority_queue<addition> pq;
+		if(this->is_final)
+			pq.push(addition(0, 0));
+		for(map<char,node*>::iterator it = this->children.begin(); it != this->children.end(); ++it){
+			for(int i = 1; i < it->second->best.size(); ++i){
+				pq.push(addition(it->second->get_best(i), it->first));
+			}
+		}
+		int amount = 1;
+		map<char, int> current_costs;
+		while(!pq.empty() && amount <= MAXN){
+			int extra = 0;
+			if(amount > 2 || (amount == 2 && this->is_final))
+				extra = 1;
+			else if(amount == 2)
+				extra = 2;
+			addition a = pq.top();
+//			int t = -pq.top();
+			int t = a.total_cost - current_costs[a.child];
+			current_costs[a.child] = a.total_cost;
+			int cost = this->best[amount-1] + t + extra;
+			this->best[amount] = cost;
+//			cout << "Calculated best for " << amount << ": " << this->best[amount] << endl;
+			pq.pop();
+			++amount;
+		}
+	}
+	int get_best(int n){
+		return this->best[n];
+	}
+};
+
+void add_word_to_tree(node* root, string s){
+	node* current_node = root;
+	int current_index = 0;
+	while(current_index < s.size() && current_node->children.find(s[current_index]) != current_node->children.end()){
+		current_node = current_node->children[s[current_index]];
+		++current_index;
+	}
+	while(current_index < s.size()){
+		current_node->children[s[current_index]] = new node();
+		current_node = current_node->children[s[current_index]];
+		current_node->c = s[current_index];
+		++current_index;
+	}
+	current_node->is_final = true;
+}
+void print_tree(node* n, int depth){
+	for(map<char, node*>::iterator it = n->children.begin(); it != n->children.end(); ++it){
+		print_tree(it->second, depth+1);
+	}
+	cout << "node " << n->c << endl;
+	for(map<int, int>::iterator it = n->best.begin(); it != n->best.end(); ++it){
+		for(int i = 0; i < depth; ++i) cout << " ";
+		cout << it->first <<": " << it->second << endl;
+	}
+}
+int main(){
+	std::ios::sync_with_stdio(false);
+	int T;
+	cin >> T;
+	for(int current_case = 1; current_case <= T; ++current_case){
+		int N;
+		cin >> N;
+		int K;
+		cin >> K;
+		node* root = new node();
+		for(int i = 0; i < N; ++i){
+			string s;
+			cin >> s;
+			add_word_to_tree(root, s);
+		}
+		stack<node*> to_process;
+		to_process.push(root);
+		while(!to_process.empty()){
+			node* t = to_process.top();
+			if(t->processed || t->children.size() == 0){
+				t->calculate_best();
+				to_process.pop();
+			}else{
+				for(map<char, node*>::iterator it = t->children.begin(); it != t->children.end(); ++it){
+					to_process.push(it->second);
+				}
+				t->processed = true;
+			}
+		}
+		cout << "Case #" << current_case << ": " << root->get_best(K) << endl;
+	}
+	
+    return 0;
+}

@@ -1,0 +1,111 @@
+#include <iostream>
+using namespace std;
+
+#define KMAX 101
+const int MAXX = 1 << 16;
+
+struct node{
+	char c;
+	node *child;
+	node *sibli;
+	int depth;
+	bool end;
+	int sum;
+	int dp[KMAX];
+};
+
+node trie[20000];
+node *queue[20000];
+
+void add2trie(node *p, char c, int depth, node *sibli, bool isEnd){
+	p->c = c;
+	p->child = NULL;
+	p->sibli = sibli;
+	p->depth = depth;
+	p->end = isEnd;
+	p->sum = 0;
+	for (int i = 0; i <= KMAX; i++)
+		p->dp[i] = MAXX;
+}
+
+void addstring(node *p, string &word, int &W){
+	for (int i = p->depth; i < word.length(); i++){
+		add2trie(&trie[W++], word[i], i + 1, p->child, i == word.length() - 1);
+		p->child = &trie[W - 1];
+		p = p->child;
+	}
+}
+
+node *lookup(node *here, string &word, int i){
+	if (i == word.length()){
+		return here;
+	}
+	//cout << here->c << " -> ";
+	for (node *p = here->child; p != NULL; p = p->sibli){
+		if (p->c == word[i]){
+			return lookup(p, word, i + 1);
+		}
+	}
+	return here;
+}
+
+int dfsum(node *p){
+	if (p == NULL){
+		return 0;
+	}
+	for (node *q = p->child; q != NULL; q = q->sibli){
+		p->sum += dfsum(q);
+	}
+	if (p->end){
+		p->sum++;
+	}
+	return p->sum;
+}
+
+inline int min(int x, int y){
+	return (x < y)? x : y;
+}
+
+int dfsdp(node *p, int k){
+	p->dp[0] = 0;
+	if (p->end){
+		p->dp[1] = p->depth;
+	}
+	for (node *q = p->child; q != NULL; q = q->sibli){
+		dfsdp(q, min(k, q->sum));
+		for (int i = k; i > 0; i--){
+			for (int j = i; j >0; j--){
+				p->dp[i] = min(p->dp[i - j] + q->dp[j], p->dp[i]);
+			}
+		}
+	}
+	if (p->depth > 0){
+		p->dp[1] = p->depth;
+	}
+	// cout << p->depth << "/" << p->c << ": " ;
+	// for (int i = 0; i <= k; i++){
+	// 	cout << p->dp[i] << " ";
+	// }
+	// cout << endl;
+	return p->dp[k];
+}
+
+int main(){
+	int nTest;
+	cin >> nTest;
+	for (int iTest = 1; iTest <= nTest; iTest++){
+		int N, K, W = 0;
+		string word;
+		cin >> N >> K;
+		add2trie(&trie[W++], '*', 0, NULL, false);
+		for (int i = 0; i < N; i++){
+			cin >> word;
+			node *prefix = lookup(trie, word, 0);
+			addstring(prefix, word, W);
+		}
+		dfsum(&trie[0]);
+		int S = dfsdp(&trie[0], K);
+		cout << "Case #" << iTest << ": " << S << endl;
+	}
+
+}

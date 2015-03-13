@@ -1,0 +1,259 @@
+#include <cstdio>
+#include <numeric>
+#include <iostream>
+#include <vector>
+#include <set>
+#include <cstring>
+#include <string>
+#include <map>
+#include <cmath>
+#include <ctime>
+#include <algorithm>
+#include <bitset>
+#include <queue>
+#include <sstream>
+#include <deque>
+
+using namespace std;
+
+#define mp make_pair
+#define pb push_back
+#define rep(i,n) for(int i = 0; i < (n); i++)
+#define re return
+#define fi first
+#define se second
+#define sz(x) ((int) (x).size())
+#define all(x) (x).begin(), (x).end()
+#define sqr(x) ((x) * (x))
+#define sqrt(x) sqrt(abs(x))
+#define y0 y3487465
+#define y1 y8687969
+#define fill(x,y) memset(x,y,sizeof(x))
+                         
+typedef vector<int> vi;
+typedef long long ll;
+typedef long double ld;
+typedef double D;
+typedef pair<int, int> ii;
+typedef vector<ii> vii;
+typedef vector<string> vs;
+typedef vector<vi> vvi;
+
+template<class T> T abs(T x) { re x > 0 ? x : -x; }
+
+const int MOD = 1000*1000*1000;
+const int N = 2000010;
+const int M = 1 << 21;
+
+struct node {
+	int len;
+	int sum;
+	int eq, val;
+	int add, C, D;
+	int cnt[2][2];
+	node () {
+		len = 0;
+		sum = 0;
+		eq = val = 0;
+		add = C = D = 0;
+		memset (cnt, 0, sizeof (cnt));
+	}
+};
+
+node merge (const node& a, const node& b) {
+	node c;
+	c.len = a.len + b.len;
+	c.sum = (a.sum + b.sum) % MOD;
+	c.eq = c.val = 0;
+	c.add = c.C = c.D = 0;
+	for (int i = 0; i < 2; i++)
+		for (int j = 0; j < 2; j++)
+			c.cnt[i][j] = a.cnt[i][j] + b.cnt[(i + a.len) % 2][j];
+	re c;
+}
+
+int n;
+int m;
+
+int f[6][N];
+int s[N];
+int s2[N];
+
+node tree[2 * M + 10];
+
+node build (int x, int l, int r) {
+	if (l == r) {
+		tree[x] = node ();
+		tree[x].len = 1;
+		tree[x].sum = s[l];
+		tree[x].cnt[0][s[l] & 1] = 1;
+		re tree[x];
+	}
+	int s = (l + r) / 2;
+	tree[x] = merge (build (x * 2 + 1, l, s), build (x * 2 + 2, s + 1, r));
+//	printf ("%d %d %d = %d\n", x, l + 1, r + 1, tree[x].sum);
+	re tree[x];
+}
+
+void push (int x) {
+	if (tree[x].eq) {
+		int val = tree[x].val;
+		int len = tree[x].len;
+		if (len > 1) {
+			tree[x * 2 + 1].add = tree[x * 2 + 2].add = 0;
+			tree[x * 2 + 1].C = tree[x * 2 + 2].C = 0;
+			tree[x * 2 + 1].D = tree[x * 2 + 2].D = 0;
+			tree[x * 2 + 1].eq = tree[x * 2 + 2].eq = 1;
+			tree[x * 2 + 1].val = tree[x * 2 + 2].val = val;
+		}
+		memset (tree[x].cnt, 0, sizeof (tree[x].cnt));
+		tree[x].cnt[0][val & 1] = (len + 1) / 2;
+		tree[x].cnt[1][val & 1] = len / 2;
+		tree[x].sum = ((ll)len * val) % MOD;
+		tree[x].eq = tree[x].val = 0;
+	}
+	if (tree[x].add) {
+		int C = tree[x].C;
+		int D = tree[x].D;
+		int len = tree[x].len;
+		if (len > 1) {
+			tree[x * 2 + 1].add = tree[x * 2 + 2].add = 1;
+			tree[x * 2 + 1].C = (tree[x * 2 + 1].C + C) % MOD;
+			tree[x * 2 + 2].C = (tree[x * 2 + 2].C + C + (ll)tree[x * 2 + 1].len * D) % MOD;
+			tree[x * 2 + 1].D = (tree[x * 2 + 1].D + D) % MOD;
+			tree[x * 2 + 2].D = (tree[x * 2 + 2].D + D) % MOD;
+		}
+		tree[x].sum = (tree[x].sum + (ll)C * len + ((ll)len * (len - 1) / 2) % MOD * D) % MOD;
+		int c = C & 1;
+		int d = D & 1;
+		if (d == 0) {
+			if (c == 1) {
+				swap (tree[x].cnt[0][0], tree[x].cnt[0][1]);
+				swap (tree[x].cnt[1][0], tree[x].cnt[1][1]);
+			}
+		} else {
+			if (c == 0)
+				swap (tree[x].cnt[1][0], tree[x].cnt[1][1]);
+			else
+				swap (tree[x].cnt[0][0], tree[x].cnt[0][1]);
+		}
+		tree[x].add = tree[x].C = tree[x].D = 0;
+	}
+}
+
+int getsum (int x, int l, int r, int lc, int rc) {
+	push (x);
+	if (r < lc || l > rc) re 0;
+	if (l >= lc && r <= rc) re tree[x].sum;
+	int s = (l + r) / 2;
+	re (getsum (x * 2 + 1, l, s, lc, rc) + getsum (x * 2 + 2, s + 1, r, lc, rc)) % MOD;
+}
+
+int getodd (int x, int l, int r, int lc, int rc) {
+	push (x);
+	if (r < lc || l > rc) re 0;
+	if (l >= lc && r <= rc) re tree[x].cnt[0][1] + tree[x].cnt[1][1];
+	int s = (l + r) / 2;
+	re (getodd (x * 2 + 1, l, s, lc, rc) + getodd (x * 2 + 2, s + 1, r, lc, rc)) % MOD;
+}
+
+node updeq (int x, int l, int r, int lc, int rc, int y) {
+	push (x);
+	if (r < lc || l > rc) re tree[x];
+	if (l >= lc && r <= rc) {
+		tree[x].eq = 1;
+		tree[x].val = y;
+		push (x);
+		re tree[x];
+	}
+	int s = (l + r) / 2;
+	re tree[x] = merge (updeq (x * 2 + 1, l, s, lc, rc, y), updeq (x * 2 + 2, s + 1, r, lc, rc, y));
+}
+
+node upd (int x, int l, int r, int lc, int rc, int C, int D) {
+	push (x);
+	if (r < lc || l > rc) re tree[x];
+	if (l >= lc && r <= rc) {
+		tree[x].add = 1;
+		tree[x].C = (C + (ll)(l - lc) * D) % MOD;
+		tree[x].D = D;
+		push (x);
+		re tree[x];
+	}
+	int s = (l + r) / 2;
+	re tree[x] = merge (upd (x * 2 + 1, l, s, lc, rc, C, D), upd (x * 2 + 2, s + 1, r, lc, rc, C, D));
+}
+
+int perform (int o, int a, int b, int c, int d) {
+//	printf ("perf %d %d %d %d %d\n", o, a, b, c, d);
+	int cur = 0;
+	if (o == 1) {
+		cur = ((ll)c * b + ((ll)b * (b - 1) / 2) % MOD * d) % MOD;
+		upd (0, 0, n - 1, a, a + b - 1, c, d);
+	} else
+	if (o == 2) {
+		cur = getsum (0, 0, n - 1, a, a + b - 1);
+		cur = (cur + (ll)c * b) % MOD;
+		updeq (0, 0, n - 1, a, a + b - 1, c);
+	} else
+	if (o == 3) {
+		cur = getsum (0, 0, n - 1, a, a + b - 1);
+	} else {
+		cur = getodd (0, 0, n - 1, a, a + b - 1);
+	}
+	re cur;
+}
+
+int cycle (int o, int a, int b, int c, int d) {
+	int cur = 0;
+	if (a + b <= n) cur = perform (o, a, b, c, d); else {
+		cur = perform (o, a, n - a, c, d);
+		if (o == 1)
+			cur += perform (o, 0, b - (n - a), (c + (ll)(n - a) * d) % MOD, d);
+		else
+		if (o == 2)
+			cur += perform (o, 0, b - (n - a), c, d);
+		else
+		if (o == 3)
+			cur += perform (o, 0, b - (n - a), c, d);
+		else
+			cur += perform (o, 0, b - (n - a), c, d);
+	}
+	re cur % MOD;
+}
+
+int main () {
+	int tt;
+	cin >> tt;
+	for (int it = 1; it <= tt; it++) {
+		scanf ("%d%d", &n, &m);		
+		for (int i = 0; i < 6; i++) {
+			int x, y, z;
+			scanf ("%d%d%d%d%d", &f[i][1], &f[i][2], &x, &y, &z);
+			int mod = MOD, add = 1, k = m;
+			if (i == 0) k = n;
+			if (i == 1) mod = 4; else
+			if (i == 2 || i == 3) mod = n; else add = 0;
+			for (int j = 3; j <= k; j++)
+				f[i][j] = ((ll)x * f[i][j - 2] + (ll)y * f[i][j - 1] + z) % mod + add;
+		}
+		for (int i = 0; i < n; i++) {
+			s[i] = f[0][i + 1];
+			s2[i] = s[i] % 2;
+		}	
+		build (0, 0, n - 1);
+		int ans = 0;
+		for (int i = 1; i <= m; i++) {
+			int o = f[1][i];
+			int a = f[2][i] - 1;
+			int b = f[3][i];
+			int c = f[4][i];
+			int d = f[5][i];
+			ans = (ans + cycle (o, a, b, c, d)) % MOD;
+		}
+		cout << "Case #" << it << ": " << ans;
+		cout << endl;
+		fprintf (stderr, "%d / %d = %.2f | %.2f\n", it, tt, (double)clock () / CLOCKS_PER_SEC, ((double)clock () / it * tt) / CLOCKS_PER_SEC);
+	}
+	return 0;
+}

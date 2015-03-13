@@ -1,0 +1,140 @@
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <string>
+#include <sstream>
+#include <iostream>
+#include <set>
+#include <map>
+#include <cassert>
+
+#define REP(AA,BB) for(int AA=0; AA<(BB); ++AA)
+#define FOR(AA,BB,CC) for(int AA=(BB); AA<(CC); ++AA)
+#define FC(AA,BB) for(__typeof((AA).begin()) BB=(AA).begin(); BB!=(AA).end(); ++BB)
+#define SZ(AA) ((int)((AA).size()))
+#define ALL(AA) (AA).begin(), (AA).end()
+#define PB push_back
+#define MP make_pair
+
+using namespace std;
+
+typedef vector<int> VI;
+typedef pair<int, int> PII;
+typedef long long LL;
+typedef long double LD;
+
+char buf[1000100];
+
+int CUR = 0;
+
+struct node {
+  int cnt, id, dep, sz;
+  map<int, node*> c;
+  node (int d) : cnt(0), dep(d), sz(0) {
+    id = CUR++;
+  }
+  int sons() {
+    return SZ(c);
+  }
+  void child(int k) {
+    if (!c.count(k)) {
+      c[k] = new node(dep + 1);
+    }
+  }
+  ~node() {
+    for (const auto &p : c) {
+      delete p.second;
+    }
+  }
+};
+
+void add(node *t, int m) {
+  REP (i, m) {
+    ++t->sz;
+    t->child(buf[i]);
+    t = t->c[buf[i]];
+  }
+  t->cnt = t->sz = 1;
+}
+
+const int INF = 1000000000;
+int dp[20100][110], K;
+int dt[110];
+
+void dfs(node *t) {
+  int v = t->id;
+  for (const auto &p : t->c) {
+    dfs(p.second);
+  }
+  dp[v][0] = dp[v][1] = 0;
+  for (int k = 2; k <= K; ++k) {
+    dp[v][k] = INF;
+  }
+  if (t->sons() == 1) {
+    node *son = t->c.begin()->second;
+    for (int k = 2; k <= K; ++k) {
+      if (t->cnt) {
+        dp[v][k] = t->dep + dp[son->id][k - 1] + (k == 2 ? t->dep + 1 : 0);
+      } else {
+        dp[v][k] = dp[son->id][k];
+      }
+    }
+  } else if (t->sons() > 1) {
+    dt[0] = 0;
+    for (int k = 1; k <= K; ++k) {
+      dt[k] = INF;
+    }
+    for (const auto &p : t->c) {
+      node *son = p.second;
+      for (int k = K; k >= 0; --k) {
+        for (int l = 0; l <= k; ++l) {
+          dt[k] = min(dt[k], dt[k - l] + dp[son->id][l] + (l == 1 ? t->dep + 1 : 0));
+        }
+      }
+    }
+    for (int k = 2; k <= K; ++k) {
+      if (t->cnt) {
+        dp[v][k] = t->dep + dt[k - 1];
+      } else {
+        dp[v][k] = dt[k];
+      }
+    }
+  }
+  /*
+  for (int k = 1; k <= K; ++k) {
+    printf("%d (%d) %d -> %d\n", v, t->dep, k, dp[v][k]);
+  }*/
+}
+
+void test() {
+  int n; scanf("%d%d", &n, &K);
+  assert(K <= 100);
+  if (K == 1) {
+    printf("%d\n", 1);
+  } else {
+    CUR = 0;
+    node t(0);
+    REP (i, n) {
+      scanf("%s", buf);
+      int m = strlen(buf);
+      REP (j, m) {
+        buf[j] -= 'a';
+      }
+      add(&t, m);
+    }
+    dfs(&t);
+    printf("%d\n", dp[t.id][K]);
+    assert(CUR <= 20001);
+  }
+}
+
+int main(void) {
+  int T; scanf("%d", &T);
+  for (int t = 1; t <= T; ++t) {
+    printf("Case #%d: ", t);
+    test();
+  }
+  return 0;
+}

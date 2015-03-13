@@ -1,0 +1,116 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+#define ll long long
+#define ull unsigned long long
+#define ld long double
+#define pb push_back
+#define popb pop_back
+
+#define pii pair<int,int>
+#define mp make_pair
+#define X first
+#define Y second
+#define vi vector<int>
+#define vii vector< pii >
+
+#define REP(i,n) for(int i=0;i<(n);i++)
+#define FOR(i,a,b) for(int i=(a);i<=(b);i++)
+#define FORD(i,a,b) for(int i=(a);i>=(b);i--)
+
+#define maxN 100005
+#define maxK 105
+
+#define INF 100000
+
+int T, N, K;
+int sons[maxN][26];
+bool word_end[maxN];
+int with_pre[maxN][maxK];
+//int with_max_pre[maxN][maxK];
+int last;
+
+void add(const string& w) {
+  int u = 0;
+  REP(i, (int)w.length()) {
+    if (sons[u][w[i] - 'a'] == 0) {
+      while (i < (int)w.length()) {
+        sons[u][w[i] - 'a'] = ++last;
+        u = last;
+        ++i;
+      }
+    } else {
+      u = sons[u][w[i] - 'a'];
+    }
+  }
+  word_end[u] = true;
+}
+
+int pre_to[maxK];
+int new_pre_to[maxK];
+
+// TODO unlimited stack size!
+void dfs(int u, int pref_len) {
+  if (u == maxN - 1) return;
+  vector<int> son;
+  REP(i, 26) if (sons[u][i]) son.pb(sons[u][i]);
+//  printf("%d: %d\n", u, (int)son.size());
+  if (son.empty()) {
+    REP(i, K + 1) with_pre[u][i] = INF;
+    with_pre[u][0] = 0;
+    with_pre[u][1] = 0;
+    return;
+  }
+  REP(i, (int)son.size()) {
+    dfs(son[i], pref_len + 1);
+  }
+  pre_to[0] = 0;
+  FOR(i, 1, K) pre_to[i] = INF;
+//  if (word_end[u]) pre_to[1] = 0;
+  REP(i, (int)son.size()) {
+    FOR(j, 1, K) {
+      new_pre_to[j] = INF;
+      REP(k, j + 1) {
+        /*
+        int sub = 0;
+        if (k == 1) sub += pref_len;
+        if (j - k == 1) sub += pref_len;
+        if (j == 1) sub -= pref_len;
+        printf("%d\n", sub);
+        */
+        new_pre_to[j] = min(new_pre_to[j], pre_to[k] + with_pre[son[i]][j-k]);
+//        printf("new_pre_to %d\n", new_pre_to[j]);
+//        printf("set u(%d), son %d(%d), j %d, k %d: pre_to[k] %d, with_pre[son[i]][j-k] %d\n", u, i, son[i], j, k, pre_to[k], with_pre[son[i]][j-k]);
+      }
+    }
+    FOR(j, 1, K) pre_to[j] = new_pre_to[j];
+  }
+  if (word_end[u]) FORD(j, K, 1) pre_to[j] = pre_to[j - 1];
+  with_pre[u][0] = 0;
+  with_pre[u][1] = 0;
+
+  int c = 0;
+  if (word_end[u]) c = -1;
+  FOR(i, 2, K) with_pre[u][i] = min(pre_to[i] + i + c, INF);
+//  REP(i, K + 1) printf("u %d: k %d, with_pre %d\n", u, i, with_pre[u][i]);
+}
+
+int main(){
+  cin >> T;
+  FOR(t, 1, T) {
+    last = 0;
+    REP(i, maxN) REP(j, 26) sons[i][j] = 0;
+    REP(i, maxN) word_end[i] = false;
+    cin >> N >> K;
+    REP(i, N) {
+      string word;
+      cin >> word;
+      add(word);
+    }
+    dfs(0, 0);
+    with_pre[0][1] = 1;
+    printf("Case #%d: %d\n", t, with_pre[0][K]);
+  }
+
+  return 0;
+}

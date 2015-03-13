@@ -1,0 +1,89 @@
+#include <iostream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <deque>
+#include <cmath>
+using namespace std;
+typedef long long LL;
+
+static vector<struct Node*> g_node_table;
+
+struct Node {
+	Node() : stop(false), children(26) { g_node_table.push_back(this); }
+	Node*& next(char c) { return children[c-'a']; }
+	void add(const char* p) { add(this, p); }
+
+	static void clear_memory() {
+		for(auto p: g_node_table)
+			delete p;
+		g_node_table.clear();
+	}
+
+	static void add(Node* node, const char* p) {
+		for(; *p; ++p) {
+			Node*& q = node->next(*p);
+			if(!q) q = new Node;
+			node = q;
+		}
+		node->stop = true;
+	}
+
+	void calc(int MAX_CHOOSE) {
+		static const int BAD = 0x1fffffff;
+
+		dp.assign(MAX_CHOOSE+1, BAD);
+		dp[0] = 0;
+		if(stop)
+			dp[1] = 0;
+		for(auto c: children) if(c) {
+			vector<int> dp_neo(MAX_CHOOSE+1, BAD);
+			for(int a=0; a<=MAX_CHOOSE; ++a) if(dp[a] != BAD)
+			for(int b=0; a+b<=MAX_CHOOSE; ++b) if(c->dp[b] != BAD) {
+				dp_neo[a+b] = min(dp_neo[a+b], dp[a]+c->dp[b]+b);
+			}
+			dp.swap(dp_neo);
+		}
+
+		dp[0] = 0;
+		dp[1] = 0;
+	}
+
+	vector<int> dp;
+private:
+	bool stop;
+	vector<Node*> children;
+};
+
+int solve(int N, int K, vector<string> W)
+{
+	if(K==1)
+		return 1;
+
+	Node* root = new Node;
+	for(auto& w: W)
+		root->add(w.c_str());
+
+	for(int i=g_node_table.size()-1; i>=0; --i)
+		g_node_table[i]->calc(K);
+
+	int ans = root->dp[K];
+	Node::clear_memory();
+	return ans;
+}
+
+int main()
+{
+	int T; cin>>T;
+	for(int C=1; C<=T; ++C) {
+		cout << "Case #" << C << ": ";
+
+		int N, K; cin>>N>>K;
+		vector<string> W(N);
+		for(auto& Wi: W) cin>>Wi;
+		cout << solve(N,K,W) << endl;
+	}
+}

@@ -1,0 +1,151 @@
+package abishev.fb2015.round2.p2;
+
+import java.io.*;
+import java.math.BigInteger;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class AllCritical implements TaskFactory {
+    @Override
+    public Task create() {
+        return new Task() {
+            double ans;
+            double p;
+
+            @Override
+            public void input(Scanner input) {
+                p = input.nextDouble();
+            }
+
+            @Override
+            public void run() {
+                double[] ps = new double[21];
+                ps[0] = 1;
+
+                ans = 0;
+
+                double[][] probs = new double[21][21];
+                for (int n = 0; n <= 20; n++) {
+                    // n free places
+                    for (int i = 0; i <= n; i++) {
+                        double prob = fact(n).divide(fact(i)).divide(fact(n - i)).doubleValue();
+                        for (int iter = 0; iter < n - i; iter++) {
+                            prob *= 1 - p;
+                        }
+                        for (int iter = 0; iter < i; iter++) {
+                            prob *= p;
+                        }
+                        probs[n][i] = prob;
+                    }
+                }
+
+                for (int iter = 1; iter < 1000000; iter++) {
+                    double[] nps = new double[21];
+                    // update
+                    for (int i = 0; i <= 20; i++) {
+                        for (int add = 0; add <= 20 - i; add++) {
+                            nps[i + add] += ps[i] * probs[20 - i][add];
+                        }
+                    }
+
+                    // add to ans
+                    ans += iter * (nps[20] - ps[20]);
+                    ps = nps;
+                }
+
+                System.out.println(">= 20: " + ps[20]);
+            }
+
+            @Override
+            public void output(PrintWriter output) {
+                DecimalFormat df = new DecimalFormat("#.#####");
+                output.println(df.format(ans));
+            }
+        };
+    }
+
+    public static BigInteger fact(int n) {
+        BigInteger res = BigInteger.ONE;
+        for (int i = 1; i <= n; i++) {
+            res = res.multiply(BigInteger.valueOf(i));
+        }
+        return res;
+    }
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+//        Runner.run(new AllCritical());
+        Runner.run(new AllCritical(), "all_critical");
+    }
+}
+
+interface TaskFactory {
+    Task create();
+}
+
+interface Task {
+    void input(Scanner input);
+
+    void run();
+
+    void output(PrintWriter output);
+}
+
+class Runner {
+    public static void run(TaskFactory taskFactory, InputStream is, OutputStream os) throws InterruptedException {
+        Scanner input = new Scanner(is);
+        PrintWriter output = new PrintWriter(os);
+        int t = input.nextInt();
+        input.nextLine();
+        List<Task> tasks = Collections.synchronizedList(new ArrayList<Task>());
+        for (int tt = 1; tt <= t; tt++) {
+            Task task = taskFactory.create();
+            task.input(input);
+            tasks.add(task);
+        }
+
+        final AtomicInteger doneTasks = new AtomicInteger(0);
+        final CountDownLatch latch = new CountDownLatch(t);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        for (final Task task : tasks) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    task.run();
+                    int doneTasksV = doneTasks.incrementAndGet();
+                    if (doneTasksV % 5 == 0) {
+                        System.out.println("done tasks: " + doneTasksV);
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+        executor.shutdown();
+
+        int tt = 0;
+        for (Task task : tasks) {
+            output.print("Case #" + (++tt) + ": ");
+            task.output(output);
+            output.flush();
+        }
+    }
+
+    public static void run(TaskFactory taskFactory) throws InterruptedException {
+        run(taskFactory, System.in, System.out);
+    }
+
+    public static void run(TaskFactory taskFactory, String taskName) throws IOException, InterruptedException {
+        FileInputStream is = new FileInputStream(new File(taskName + ".txt"));
+        FileOutputStream os = new FileOutputStream(new File(taskName + ".out"));
+        run(taskFactory, is, os);
+        is.close();
+        os.close();
+    }
+}

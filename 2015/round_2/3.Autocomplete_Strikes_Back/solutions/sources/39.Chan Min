@@ -1,0 +1,75 @@
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <vector>
+#include <memory.h>
+
+using namespace std;
+
+int n, K;
+
+struct node
+{
+	node() : hasword(false) {
+		fill(next,next+26,-1);
+	}
+	int next[26];
+	bool hasword;
+};
+
+vector<node> trie;
+int dt[20002][127];
+char buffer[20002];
+
+int main(){
+	int T;
+	scanf("%d",&T);
+	for (int testcase = 1; testcase <= T; testcase++) {
+		scanf("%d%d",&n,&K);
+		trie.clear();
+		trie.emplace_back();
+		for (int i = 0; i < n; i++) {
+			scanf("%s",buffer);
+			int p = 0;
+			for (int j = 0; buffer[j] != '\0'; j++) {
+				int next = buffer[j]-'a';
+				if (trie[p].next[next] == -1) {
+					int newp = trie.size();
+					trie[p].next[next] = newp;
+					trie.emplace_back();
+				}
+				p = trie[p].next[next];
+			}
+			trie[p].hasword = true;
+		}
+		for (int i = 0; i < trie.size(); i++) fill(dt[i], dt[i] + 127, -1);
+		for (int i = trie.size()-1; i >= 0; i--) {
+			int curmax = 0;
+			dt[i][0] = 0;
+			if (trie[i].hasword) {
+				dt[i][1] = 0;
+				curmax = 1;
+			}
+			for (int j = 0; j < 26; j++) {
+				int next = trie[i].next[j];
+				if (next == -1) continue;
+				for (int l = curmax; l >= 0; l--) {
+					for (int k = 1; k + l <= K; k++) {
+						if (dt[next][k] == -1) break;
+						int sub = 0;
+						if (!trie[next].hasword && k == 1) {
+							sub = 1;
+						}
+						if (dt[i][l+k] == -1 ||
+							dt[i][l+k] > dt[i][l] + dt[next][k] + k - sub) {
+							dt[i][l+k] = dt[i][l] + dt[next][k] + k - sub;
+							curmax = max(curmax, l+k);
+						}
+					}
+				}
+			}
+		}
+		printf("Case #%d: %d\n", testcase, dt[0][K]);
+	}
+	return 0;
+}

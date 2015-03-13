@@ -1,0 +1,225 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <stack>
+
+using namespace std;
+
+#define INF 1000000000
+
+struct Node
+{
+    Node *child[26];
+
+    int score[4001];
+
+    int count = 0;
+
+    char thisNode;
+
+    bool visited = false;
+
+    Node(){
+
+        for (int i = 0 ; i < 26 ; i++)
+            child[i] = nullptr;
+        for (int i = 0 ; i < 4001 ; i++)
+            score[i] = INF;
+
+        score[0] = 0;
+        score[1] = 1;
+
+    }
+
+
+
+};
+
+struct Trie
+{
+    Node * parent = new Node();
+
+
+    Trie(){}
+
+    void insertStr(string t)
+    {
+
+        parent->count++;
+        Node * currNode = parent;
+        for (int i  = 0 ; i < t.length(); i++ )
+        {
+            int c= t[i] - 'a';
+
+            if (currNode->child[ c ] == nullptr)
+            {
+
+                currNode->child[c] = new Node();
+
+            }
+
+
+            currNode = currNode->child[c];
+
+            currNode->count++;
+
+            currNode->thisNode = t[i];
+
+        }
+
+    }
+
+
+    int findMin(string t)
+    {
+
+        Node * currNode= parent;
+        int i;
+        for (i = 0; i < t.length(); i++)
+        {
+
+            int c= t[i] - 'a';
+
+            if (currNode->count == 1) break;
+
+            currNode= currNode->child[c];
+
+        }
+
+        return i;
+
+    }
+
+
+    int traverse(int k)
+    {
+
+        stack<Node*> st;
+
+        st.push(parent);
+
+        while (! st.empty() )
+        {
+            Node * n ;
+
+            n = st.top();
+            st.pop();
+
+            if (n->visited)
+            {
+
+                int s = 0;
+                for (int i = 0 ; i < 26; i++)
+                    if (n->child[i] != nullptr)
+                        s+= n->child[i]->count;
+
+                int freeNodes = n->count - s;
+
+
+                for (int ki = 2; ki <= k ; ki++)
+                {
+                    if (n->count < ki) break;
+
+                    int minScore = ki;
+                    int neededNodes = ki - freeNodes;
+
+                    int used[26];
+                    for (int j = 0 ; j < 26 ; j++)
+                        used[j] = 0;
+
+                    for (int h = 0 ; h< neededNodes ; h++)
+                    {
+                        int minCh = -1, minDiff = INF;
+                        for (int j = 0 ; j < 26; j++)
+                            if(n->child[j] != nullptr)
+                                if (n->child[j]->score[used[j] + 1] - n->child[j]->score[used[j]] < minDiff)
+                                {
+                                    minCh = j;
+                                    minDiff = n->child[j]->score[used[j] + 1] - n->child[j]->score[used[j]] ;
+                                }
+
+                        used[minCh] ++;
+
+                        minScore += minDiff;
+                    }
+
+                    n->score[ki] = minScore;
+
+
+
+                }
+
+
+
+            }
+
+            else
+            {
+                n->visited = true;
+
+                st.push(n);
+
+                for (int i = 0 ; i <  26 ; i ++)
+                    if (n->child[i] != nullptr)
+                        st.push(n->child[i]);
+
+
+            }
+
+        }
+
+        return ((parent->score[k] == k ) ? k+1 : parent->score[k] );
+
+    }
+
+
+};
+
+
+
+int main()
+{
+    ifstream in;
+    in.open("autocomplete_strikes_back.txt");
+
+    ofstream out;
+    out.open("solve.txt");
+
+    int t,n,k;
+
+    in >> t;
+
+
+
+    for (int ti = 1 ; ti <= t; ti++)
+    {
+
+        Trie *tr = new Trie();
+
+        in >> n >> k;
+
+        int sum = 0;
+
+        for (int i = 0 ; i < n ;i++ )
+
+        {
+
+            string s;
+            in >> s;
+
+            tr->insertStr(s);
+
+
+        }
+
+
+
+
+        out << "Case #" << ti << ": " << tr->traverse(k) - k << endl;
+
+    }
+
+
+
+    return 0;
+}

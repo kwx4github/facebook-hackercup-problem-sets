@@ -1,0 +1,428 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <bitset>
+#include <stack>
+#include <queue>
+#include <deque>
+#include <complex>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define sz(s) int((s).size())
+#define all(s) (s).begin(), (s).end()
+#if ( _WIN32 || __WIN32__ || _WIN64 || __WIN64__ )
+#define LLD "%I64d"
+#else
+#define LLD "%lld"
+#endif
+#ifdef LOCAL42
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define eprintf(...) 42
+#endif
+#define y0 yy0
+#define y1 yy1
+#define next _next
+#define prev _prev
+#define rank _rank
+#define link _link
+#define hash _hash
+#define fs first
+#define sc second
+
+typedef long long ll;
+typedef long long llong;
+typedef long long int64;
+typedef unsigned int uint;
+typedef long double ld;
+typedef unsigned long long ull;
+typedef unsigned long long ullong;
+typedef unsigned long long lint;
+typedef pair<int, int> pii;
+typedef vector<int> vi;
+
+const int inf = int(1e9);
+const double eps = 1e-9;
+const double pi = 4 * atan(double(1));
+const int MOD = int(1e9);
+const int N = int(1e6) + 100;
+
+struct node {
+    
+    bool need;
+    int l, r;
+    int val, addc, addd, mc, md, sum;
+    int cnt[2][2];
+    
+};
+
+int n, maxv, cur;
+int cnt[2][2];
+node rmq[4 * N];
+int s[N], o[N], a[N], b[N], c[N], d[N];
+
+inline void calc(int *s, int n, int MOD, int add) {
+    int x, y, z;
+    scanf("%d %d %d %d %d", &s[0], &s[1], &x, &y, &z);
+    for (int i = 2; i < n; ++i) {
+        s[i] = (1LL * x * s[i - 2] + 1LL * y * s[i - 1] + z) % MOD + add;
+    }
+}
+
+inline void norm(int &a) {
+    if (a >= MOD) {
+        a -= MOD;
+    }
+}
+
+inline void merge(node &a, node &b, node &c) {
+    c.sum = a.sum + b.sum;
+    norm(c.sum);
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            c.cnt[i][j] = a.cnt[i][j] + b.cnt[i][j];
+        }
+    }
+}
+
+inline void calc(int v) {
+    merge(rmq[v * 2], rmq[v * 2 + 1], rmq[v]);
+}
+
+inline int calc_cnt(int v, int c) {
+    if (rmq[v].l == rmq[v].r) {
+        if (rmq[v].l % 2 == c) {
+            return 1;
+        }
+        return 0;
+    }
+    return (rmq[v].r - rmq[v].l + 1) / 2;
+}
+
+inline void push_add(int pv, int v, bool is_right) {
+    if (rmq[v].need) {
+        rmq[v].sum = (1LL * (rmq[v].r - rmq[v].l + 1) * rmq[v].val) % MOD;
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                rmq[v].cnt[i][j] = 0;
+            }
+        }
+        rmq[v].cnt[0][rmq[v].val % 2] = calc_cnt(v, 0);
+        rmq[v].cnt[1][rmq[v].val % 2] = calc_cnt(v, 1);
+        if (v < maxv) {
+            rmq[v * 2].need = true;
+            rmq[v * 2].val = rmq[v].val;
+            rmq[v * 2 + 1].need = true;
+            rmq[v * 2 + 1].val = rmq[v].val;
+        }
+        rmq[v].addc = rmq[v].addd = rmq[v].mc = rmq[v].md = 0;
+        rmq[v].need = false;
+    }
+    int c = rmq[pv].addc, mc = rmq[pv].mc;
+    if (is_right) {
+        mc = (mc + 1LL * (rmq[v].r - rmq[v].l + 1) * rmq[pv].addd) % 2;
+        c = (c + 1LL * (rmq[v].r - rmq[v].l + 1) * rmq[pv].addd) % MOD;
+    }
+    rmq[v].addc += c;
+    norm(rmq[v].addc);
+    rmq[v].addd += rmq[pv].addd;
+    norm(rmq[v].addd);
+    rmq[v].mc = (rmq[v].mc + mc) % 2;
+    rmq[v].md = (rmq[v].md + rmq[pv].md) % 2;
+}
+
+inline void push(int v) {
+    if (rmq[v].addc == 0 && rmq[v].addd == 0 && !rmq[v].need) {
+        return;
+    }
+    
+    if (rmq[v].need) {
+        rmq[v].sum = (1LL * rmq[v].val * (rmq[v].r - rmq[v].l + 1)) % MOD;
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                rmq[v].cnt[i][j] = 0;
+            }
+        }
+        rmq[v].cnt[0][rmq[v].val % 2] = calc_cnt(v, 0);
+        rmq[v].cnt[1][rmq[v].val % 2] = calc_cnt(v, 1);
+        if (v < maxv) {
+            rmq[v * 2].need = true;
+            rmq[v * 2].val = rmq[v].val;
+            rmq[v * 2 + 1].need = true;
+            rmq[v * 2 + 1].val = rmq[v].val;
+        }
+        rmq[v].need = false;
+        rmq[v].addc = rmq[v].addd = rmq[v].mc = rmq[v].md = 0;
+        return;
+    }
+    
+    int len = rmq[v].r - rmq[v].l + 1, c = rmq[v].addc, d = rmq[v].addd;
+    
+    rmq[v].sum = (rmq[v].sum + 1LL * c * len) % MOD;
+    int add = (1LL * len * (len - 1) / 2) % MOD;
+    add = (1LL * add * d) % MOD;
+    rmq[v].sum += add;
+    norm(rmq[v].sum);
+    
+    // for even pos
+    int p = rmq[v].l % 2;
+    if (rmq[v].mc != 0) {
+        swap(rmq[v].cnt[p][0], rmq[v].cnt[p][1]);
+    }
+    
+    // for odd pos
+    p = 1 - p;
+    if ((rmq[v].mc + rmq[v].md) % 2 != 0) {
+        swap(rmq[v].cnt[p][0], rmq[v].cnt[p][1]);
+    }
+    
+    if (v < maxv) {
+        push_add(v, v * 2, false);
+        push_add(v, v * 2 + 1, true);
+    }
+    
+    rmq[v].addc = rmq[v].addd = rmq[v].mc = rmq[v].md = 0;
+}
+
+inline int count(int v, int l, int r) {
+    return max(min(rmq[v].r, r) - max(rmq[v].l, l) + 1, 0);
+}
+
+void add_val(int v, int l, int r, int c, int d, int mc, int md) {
+    push(v);
+    if (rmq[v].l > r || rmq[v].r < l) {
+        return;
+    }
+    if (rmq[v].l >= l && rmq[v].r <= r) {
+        //cerr << "b " << rmq[v].l << " " << rmq[v].r << " " << rmq[v].sum << endl;
+        rmq[v].addc += c;
+        norm(rmq[v].addc);
+        rmq[v].addd += d;
+        norm(rmq[v].addd);
+        rmq[v].mc = (rmq[v].mc + mc) % 2;
+        rmq[v].md = (rmq[v].md + md) % 2;
+        push(v);
+        //cerr << "a " << rmq[v].l << " " << rmq[v].r << " " << rmq[v].sum << endl;
+        
+        return;
+    }
+    add_val(v * 2, l, r, c, d, mc, md);
+    int len = count(v * 2, l, r);
+    mc = (mc + 1LL * len * d) % 2;
+    c = (c + 1LL * len * d) % MOD;
+    add_val(v * 2 + 1, l, r, c, d, mc, md);
+    calc(v);
+}
+
+inline void add_val(int a, int b, int c, int d) {
+    if (n - a >= b) {
+        add_val(1, a, a + b - 1, c, d, c % 2, d % 2);
+    } else {
+        add_val(1, a, n - 1, c, d, c % 2, d % 2);
+        b -= (n - a);
+        int mc = (c + 1LL * (n - a) * d) % 2;
+        c = (c + 1LL * (n - a) * d) % MOD;
+        add_val(1, 0, b - 1, c, d, mc, d % 2);
+    }
+}
+
+int get_sum(int v, int l, int r) {
+    push(v);
+    if (rmq[v].l > r || rmq[v].r < l) {
+        return 0;
+    }
+    if (rmq[v].l >= l && rmq[v].r <= r) {
+        return rmq[v].sum;
+    }
+    int res = get_sum(v * 2, l, r) + get_sum(v * 2 + 1, l, r);
+    norm(res);
+    return res;
+}
+
+int get_sum(int a, int b) {
+    if (n - a >= b) {
+        return get_sum(1, a, a + b - 1);
+    } else {
+        int res = get_sum(1, a, n - 1);
+        b -= n - a;
+        res += get_sum(1, 0, b - 1);
+        norm(res);
+        return res;
+    }
+}
+
+void set_val(int v, int l, int r, int val) {
+    push(v);
+    if (rmq[v].l > r || rmq[v].r < l) {
+        return;
+    }
+    if (rmq[v].l >= l && rmq[v].r <= r) {
+        rmq[v].need = true;
+        rmq[v].val = val;
+        push(v);
+        return;
+    }
+    set_val(v * 2, l, r, val);
+    set_val(v * 2 + 1, l, r, val);
+    calc(v);
+}
+
+inline void set_val(int a, int b, int c) {
+    if (n - a >= b) {
+        set_val(1, a, a + b - 1, c);
+    } else {
+        set_val(1, a, n - 1, c);
+        b -= (n - a);
+        set_val(1, 0, b - 1, c);
+    }
+}
+
+void get_cnt(int v, int l, int r) {
+    push(v);
+    if (rmq[v].l > r || rmq[v].r < l) {
+        return;
+    }
+    if (rmq[v].l >= l && rmq[v].r <= r) {
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                cnt[i][j] += rmq[v].cnt[i][j];
+            }
+        }
+        return;
+    }
+    get_cnt(v * 2, l, r);
+    get_cnt(v * 2 + 1, l, r);
+}
+
+void get_cnt(int a, int b) {
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            cnt[i][j] = 0;
+        }
+    }
+    if (n - a >= b) {
+        get_cnt(1, a, a + b - 1);
+    } else {
+        get_cnt(1, a, n - 1);
+        b -= (n - a);
+        get_cnt(1, 0, b - 1);
+    }
+}
+
+inline void solve() {
+    int m;
+    scanf("%d %d", &n, &m);
+    calc(s, n, MOD, 0);
+    calc(o, m, 4, 1);
+    calc(a, m, n, 1);
+    calc(b, m, n, 1);
+    calc(c, m, MOD, 0);
+    calc(d, m, MOD, 0);
+    
+    /*for (int i = 0; i < n; ++i) {
+        cerr << s[i] << " ";
+    }
+    cerr << endl;
+    for (int i = 0; i < m; ++i) {
+        cerr << o[i] << " " << a[i] << " " << b[i] << " " << c[i] << " " << d[i] << endl;
+    }*/
+    
+    maxv = 1;
+    while (maxv < n) {
+        maxv *= 2;
+    }
+    for (int i = 0; i < maxv; ++i) {
+        rmq[i + maxv].need = false;
+        rmq[i + maxv].l = rmq[i + maxv].r = i;
+        rmq[i + maxv].addc = rmq[i + maxv].addd = rmq[i + maxv].mc = rmq[i + maxv].md = 0;
+        rmq[i + maxv].sum = (i < n ? s[i] : 0);
+        for (int j = 0; j < 2; ++j) {
+            for (int z = 0; z < 2; ++z) {
+                rmq[i + maxv].cnt[j][z] = 0;
+            }
+        }
+        ++rmq[i + maxv].cnt[i % 2][rmq[i + maxv].sum % 2];
+    }
+    for (int i = maxv - 1; i > 0; --i) {
+        rmq[i].l = rmq[i * 2].l;
+        rmq[i].r = rmq[i * 2 + 1].r;
+        rmq[i].need = false;
+        rmq[i].addc = rmq[i].addd = rmq[i].mc = rmq[i].md = 0;
+        calc(i);
+    }
+    int ans = 0;
+    for (int i = 0; i < m; ++i) {
+        --a[i];
+        if (o[i] == 1) {
+            int res = (1LL * b[i] * c[i]) % MOD;
+            int add = (1LL * b[i] * (b[i] - 1) / 2) % MOD;
+            add = (1LL * add * d[i]) % MOD;
+            res += add;
+            norm(res);
+            //cerr << res << endl;
+            
+            ans += res;
+            norm(ans);
+            
+            add_val(a[i], b[i], c[i], d[i]);
+        }
+        if (o[i] == 2) {
+            int res1 = get_sum(a[i], b[i]);
+            int res2 = (1LL * b[i] * c[i]) % MOD;
+            
+            //cerr << res1 << " " <<  res2 << endl;
+            
+            ans += res1;
+            norm(ans);
+            ans += res2;
+            norm(ans);
+            
+            set_val(a[i], b[i], c[i]);
+        }
+        if (o[i] == 3) {
+            int res = get_sum(a[i], b[i]);
+            
+            //cerr << res << endl;
+            
+            ans += res;
+            norm(ans);
+        }
+        if (o[i] == 4) {
+            get_cnt(a[i], b[i]);
+            int res = cnt[0][1] + cnt[1][1];
+            //cerr << res << endl;
+            
+            ans += res;
+            norm(ans);
+        }
+    }
+    printf("%d\n", ans);
+}
+
+int main() {
+#ifdef LOCAL42
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+#else
+    
+#endif
+    int t;
+    cin >> t;
+    for (int i = 0; i < t; ++i) {
+        printf("Case #%d: ", i + 1);
+        solve();
+        cerr << "test " << i << endl;
+    }
+    return 0;
+}

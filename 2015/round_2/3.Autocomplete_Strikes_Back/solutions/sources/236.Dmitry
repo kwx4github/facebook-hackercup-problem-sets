@@ -1,0 +1,126 @@
+#pragma comment (linker, "/STACK:268435456")
+#include <algorithm>
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+#include <list>
+#include <queue>
+#include <cmath>
+#include <cctype>
+#include <sstream>
+#include <ctime>
+#include <tuple>
+#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>
+#include <ext/pb_ds/tree_policy.hpp>
+
+using namespace __gnu_pbds;
+using namespace std;
+template <typename T> using ordered_set = tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+template <typename T> T sqr(T r) { return r * r; }
+
+struct node
+{
+	vector<int> nxt;
+	int wc;
+	int deep;
+	int ep;
+};
+
+node nodes[20100];
+int dp[20100][110];
+int k, nc;
+
+int alloc()
+{
+	nodes[nc].nxt = vector<int>(26, -1);
+	nodes[nc].wc = 0;
+	nodes[nc].ep = 0;
+	return nc++;
+}
+
+void build(string s)
+{
+	int cur = 0;
+	int len = s.length();
+	nodes[cur].wc++;
+	//cout << s;
+	for (int i = 0; i < len; i++)
+	{
+		if (nodes[cur].nxt[s[i] - 'a'] == -1)
+			nodes[cur].nxt[s[i] - 'a'] = alloc();
+		cur = nodes[cur].nxt[s[i] - 'a'];
+		//cout << " " << cur;
+		nodes[cur].wc++;
+		nodes[cur].deep = i + 1;
+	}
+	//cout << endl;
+	nodes[cur].ep = 1;
+}
+
+int a[30][210];
+
+void upd(int i, int j, int value)
+{
+	if (a[i][j] == -1)
+		a[i][j] = value;
+	else
+		a[i][j] = min(a[i][j], value);
+}
+
+void dfs(int v)
+{
+	for (int i = 0; i < 26; i++)
+		if (nodes[v].nxt[i] != -1)
+			dfs(nodes[v].nxt[i]);
+	int t = min(nodes[v].wc, k);
+	dp[v][1] = nodes[v].deep;
+	for (int i = 2; i <= t; i++)
+	{
+		memset(a, -1, sizeof a);
+		a[0][0] = nodes[v].ep ? nodes[v].deep : 0;
+		int total = nodes[v].ep ? i - 1 : i;
+		for (int ii = 0; ii < 26; ii++)
+			for (int j = 0; j <= total; j++)
+				if (a[ii][j] + 1)
+				{
+					upd(ii + 1, j, a[ii][j]);
+					int child = nodes[v].nxt[ii];
+					if (child != -1)
+					{
+						for (int jj = 1; jj <= nodes[child].wc && jj <= k; jj++)
+							upd(ii + 1, j + jj, a[ii][j] + dp[child][jj]);
+					}
+				}
+		dp[v][i] = a[26][total];
+		//cout << v << " " << i << ": " << dp[v][i] << endl;
+	}
+}
+
+int main()
+{
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    int tn;
+    cin >> tn;
+    for (int tc = 0; tc < tn; tc++)
+    {
+    	int n;
+    	cin >> n >> k;
+    	nc = 0;
+    	alloc();
+    	for (int i = 0; i < n; i++)
+    	{
+    		string s;
+    		cin >> s;
+    		build(s);
+    	}
+    	dfs(0);
+    	cout << "Case #" << tc + 1 << ": " << dp[0][k] << endl;
+    }
+    return 0;
+}

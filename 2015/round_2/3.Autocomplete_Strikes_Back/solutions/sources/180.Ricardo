@@ -1,0 +1,116 @@
+#include <cstdio>
+#include <cstring>
+#include <vector>
+#include <algorithm>
+
+#define hash unsigned long long int
+#define B 33ull
+
+using namespace std;
+
+typedef pair<int,int> ii;
+
+int T, n, k, C=1;
+char aux[20020];
+int tam[4040];
+int tampref[4040][4040];
+vector<hash> h[4040];
+hash Bna[20020];
+int PD[20020][110];
+int tem[20020][110], TT;
+int somatam[4040];
+char v[4040][20020];
+int L[4040];
+
+inline hash gethash(int s, int a, int b) {
+    if (a > b) return 0;
+    if (a == 0) return h[s][b];
+    hash x = h[s][b] - h[s][a-1]*Bna[b-a+1];
+    return x;
+}
+
+inline int getpref(int a, int b) {
+    int ini = 0, fim = min(tam[a],tam[b]), r = 0;
+    while (ini <= fim) {
+        int m = (ini+fim)/2;
+        hash ha = gethash(a, 0, m-1);
+        hash hb = gethash(b, 0, m-1);
+        if (ha == hb) {
+            r = m;
+            ini = m+1;
+        } else
+            fim = m-1;
+    }
+    return r;
+}
+
+inline int getindx(int a, int l) {
+    return (a?somatam[a-1]:0) + l;
+}
+
+inline bool cmp(int a, int b) {
+    return strcmp(v[a],v[b]) < 0;
+}
+
+int calc(int ult, int letrasult, int k) {
+    if (n-ult-1 < k) return 0x3f3f3f3f;
+    if (k==0) return 0;
+    int indx = getindx(ult,letrasult);
+    if (tem[indx][k] == TT)
+        return PD[indx][k];
+    int ret = 0x3f3f3f3f;
+    int melhor, sec;
+    for (int prox=ult+1;prox<n-k+1;prox++) {
+        int soma=0;
+        int t = tampref[ult][prox];
+        int obrigult = min(t+1, tam[ult]);
+        if (letrasult < obrigult)
+            soma += obrigult - letrasult;
+        int obrigprox = min(t+1, tam[prox]);
+        soma += obrigprox + calc(prox, obrigprox, k-1);
+        ret = min(ret,soma);
+    }
+    tem[indx][k] = TT;
+    return PD[indx][k] = ret;
+}
+
+int main() {
+
+    memset(tem,0,sizeof(tem));
+    TT=0;
+    // Calculo das potencias da Base
+    Bna[0] = 1ull;
+    for (int i=1;i<20020;i++)
+        Bna[i] = Bna[i-1]*B;
+
+
+    for(scanf("%d",&T);T--;) {
+        printf("Case #%d: ",C++);
+        scanf("%d %d",&n,&k);
+        for (int i=0;i<n;i++)
+            scanf("%s",v[i]);
+        strcpy(v[n],"_");
+        n++;
+        for (int i=0;i<n;i++) L[i] = i;
+        sort(L,L+n,cmp);
+        for (int i=0;i<n;i++) {
+            tam[i] = strlen(v[L[i]]);
+            somatam[i] = (i?somatam[i-1]:0) + tam[i];
+
+            h[i].clear();
+            for (int j=0;j<tam[i];j++)
+                h[i].push_back( (j?h[i][j-1]:0)*B + (v[L[i]][j]-'a'+1) );
+
+        }
+
+        for (int i=0;i<n;i++)
+            for (int j=i+1;j<n;j++)
+                tampref[i][j] = getpref(i,j);
+
+        TT++;
+        int r = calc(0,1,k);
+        printf("%d\n",r);
+    }
+
+    return 0;
+}

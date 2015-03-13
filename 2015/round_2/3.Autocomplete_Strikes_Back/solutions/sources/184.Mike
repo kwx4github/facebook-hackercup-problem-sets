@@ -1,0 +1,161 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <iomanip>
+#include <string>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <ctime>
+#include <climits>
+#include <cassert>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <deque>
+#include <set>
+#include <map>
+#include <bitset>
+#include <utility>
+#include <algorithm>
+
+#define forn(i, n) for (int i = 0; i < int(n); i++)
+
+typedef long long li;
+typedef long double ld;
+
+const ld EPS = 1E-10;
+
+using namespace std;
+
+const int N = 115000;
+
+int n, K;
+string s[N];
+
+void read()
+{
+    cin >> n >> K;
+    forn(i, n)
+        cin >> s[i];
+}
+
+vector<int> d;
+vector<int> num;
+vector<int> nxt[N];
+set<string> ss;
+
+void getnum(int idx, vector<string>& pp)
+{
+    if (ss.count(pp[idx]))
+        num[idx] = 1;
+    else
+        num[idx] = 0;
+
+    forn(i, nxt[idx].size())
+    {
+        getnum(nxt[idx][i], pp);
+        num[idx] += num[nxt[idx][i]];
+    }
+}
+
+vector<int> z[N];
+
+void calcz(int idx, vector<string>& pp)
+{
+    z[idx] = vector<int>(num[idx] + 1, INT_MAX);
+    z[idx][0] = 0;
+
+    if (num[idx] == 0)
+        return;
+
+    if (ss.count(pp[idx]))
+		z[idx][1] = 0;
+
+    forn(i, nxt[idx].size())
+        calcz(nxt[idx][i], pp);
+
+    forn(i, nxt[idx].size())
+    {
+        vector<int> p(z[idx]);
+        
+        forn(j, num[idx] + 1)
+            forn(k, z[nxt[idx][i]].size())
+			if (k <= j && p[j - k] < INT_MAX && z[nxt[idx][i]][k] < INT_MAX)
+			{
+				z[idx][j] = min(z[idx][j], p[j - k] + z[nxt[idx][i]][k] + k);
+				if (k == 1)
+					z[idx][j] = min(z[idx][j], p[j - k] + k);
+			}
+    }
+}
+
+void solve()
+{
+    ss.clear();
+    forn(i, n)
+        ss.insert(s[i]);
+    set<string> p;
+    forn(i, n)
+    {
+        forn(j, s[i].length() + 1)
+            p.insert(s[i].substr(0, j));
+    }
+    vector<string> pp(p.begin(), p.end());
+    int m = pp.size();
+
+    d = vector<int>(m);
+    forn(i, m)
+        d[i] = pp[i].length();
+    forn(i, m)
+        nxt[i].clear();
+
+    forn(i, m)
+    {
+        for (char c = 'a'; c <= 'z'; c++)
+        {
+            string ss = pp[i] + c;
+            int pos = lower_bound(pp.begin(), pp.end(), ss) - pp.begin();
+            if (pos < m && pp[pos] == ss)
+                nxt[i].push_back(pos);
+        }
+    }
+
+    num = vector<int>(m);
+	
+	getnum(0, pp);
+	forn(i, m)
+        z[i].clear();
+
+
+	calcz(0, pp);
+}
+
+int main(int argc, char* argv[])
+{
+	freopen("input.txt", "rt", stdin);
+
+	int testCases;
+	cin >> testCases;
+
+    int minTestCase = 0;
+    if (argc >= 2)
+        minTestCase = atoi(argv[1]);
+
+    int maxTestCase = testCases - 1;
+    if (argc >= 3)
+        maxTestCase = atoi(argv[2]);
+
+	forn(testCase, testCases)
+	{
+        read();
+        if (testCase >= minTestCase && testCase <= maxTestCase)
+        {
+            solve();
+            cout << "Case #" << testCase + 1 << ": " << z[0][K] << endl;
+        }
+	}
+
+	return 0;
+}

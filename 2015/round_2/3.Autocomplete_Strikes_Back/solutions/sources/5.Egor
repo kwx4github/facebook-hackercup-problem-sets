@@ -1,0 +1,154 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cmath>
+#include <ctime>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <queue>
+#include <deque>
+#include <list>
+#include <set>
+#include <map>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define sz(x) ((int)(x).size())
+#define forn(i, n) for (int i = 0; i < (n); i++)
+
+typedef long long ll;
+typedef vector<ll> vll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<bool> vb;
+typedef vector<vb> vvb;
+typedef pair<int, int> pii;
+
+struct Node {
+  int ne[26];
+  int subCnt;
+  bool fin;
+
+  Node() {
+    memset(ne, -1, sizeof ne);
+    subCnt = 0;
+    fin = false;
+  }
+};
+
+void relax(int &a, int b) {
+  a = min(a, b);
+}
+
+const int inf = int(1e9);
+const int MAXL = int(20000) + 100;
+vector<Node> ns;
+int k;
+
+vvi dyn;
+
+void solve(int v) {
+  vi chi;
+  forn (c, 26) {
+    if (ns[v].ne[c] >= 0) {
+      chi.pb(ns[v].ne[c]);
+    }
+  }
+
+  for (int x : chi) solve(x);
+  assert(ns[v].subCnt >= 1);
+
+  vvi sdyn(sz(chi) + 1, vi(k + 1, inf));
+  sdyn[0][0] = 0;
+  if (ns[v].fin) {
+    sdyn[0][1] = 0;
+  }
+  forn (i, sz(chi)) {
+    vi &cdyn = dyn[chi[i]];
+
+    forn (old, k + 1) if (sdyn[i][old] < inf) {
+      for (int cur = 0; old + cur <= k; cur++) if (cdyn[cur] < inf) {
+        relax(sdyn[i + 1][old + cur], sdyn[i][old] + cdyn[cur] + cur);
+      }
+    }
+  }
+  dyn[v] = sdyn.back();
+  dyn[v][1] = 0;
+/*  eprintf("v=%d:", v);
+  forn (i, k + 1)
+    eprintf(" %d", dyn[v][i]);
+  eprintf("\n");*/
+}
+
+void solve() {
+  ns = vector<Node>(1);
+
+  int n;
+  scanf("%d%d", &n, &k);
+  forn (wid, n) {
+    static char buf[MAXL + 1];
+    scanf("%s", buf);
+
+    int v = 0;
+    int l = strlen(buf);
+    vi seq;
+    forn (i2, l) {
+      int c = buf[i2] - 'a';
+      assert(0 <= c && c < 26);
+      seq.pb(v);
+      if (ns[v].ne[c] < 0) {
+        ns[v].ne[c] = sz(ns);
+        ns.pb(Node());
+      }
+      v = ns[v].ne[c];
+    }
+    seq.pb(v);
+    if (!ns[v].fin) {
+      ns[v].fin = true;
+      for (int x : seq)
+        ns[x].subCnt++;
+    }
+  }
+  dyn = vvi(sz(ns), vi(k + 1, inf));
+  solve(0);
+  printf("%d\n", dyn[0][k]);
+}
+
+int main(int argc, char* argv[]) {
+  assert(argc <= 3);
+  if (argc == 3) {
+    assert(freopen(argv[1], "r", stdin));
+    assert(freopen(argv[2], "w", stdout));
+  } else {
+    string filename = ".in";
+    if (argc >= 2) filename = argv[1];
+
+    assert(freopen(filename.c_str(), "r", stdin));
+
+    if (filename.length() >= 3 && string(filename, filename.length() - 3, 3) == ".in") {
+      filename = string(filename, 0, filename.length() - 3);
+    }
+    filename += ".out";
+    assert(freopen(filename.c_str(), "w", stdout));
+  }
+
+  int TN;
+  char buf[16];
+  assert(fgets(buf, sizeof buf, stdin));
+  assert(sscanf(buf, "%d", &TN) >= 1);
+  for (int TID = 1; TID <= TN; TID++)
+    try {
+      eprintf("===== Solving test case #%d =====\n", TID);
+      printf("Case #%d: ", TID);
+      solve();
+    } catch (...) {
+      eprintf("Exception was caught while executing on test #%d\n", TID);
+      return 1;
+    }
+  return 0;
+}

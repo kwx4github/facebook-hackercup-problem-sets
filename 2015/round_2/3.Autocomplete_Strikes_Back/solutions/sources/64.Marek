@@ -1,0 +1,131 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+int N, K;
+
+const int MaxTotal = 20005;
+const int MaxLen = 20005;
+const int MaxK = 105;
+const int Infty = 101010101;
+
+
+char istr[MaxLen];
+
+
+struct TrieNode {
+	map<char,int> next;
+	bool isEnd;
+};
+
+TrieNode nodes[MaxTotal];
+int numNodes;
+int dp[MaxTotal][MaxK];
+
+
+void add_str(char* str){
+	int current = 0;
+	while(*str){
+		if(!nodes[current].next.count(*str)){
+			nodes[current].next[*str] = numNodes;
+			current = (numNodes++);
+		} else {
+			current = nodes[current].next[*str];
+		}
+		str++;
+	}
+	nodes[current].isEnd = true;
+}
+
+
+void cleanup(){
+	for(int i = 0; i <= numNodes; i++){
+		nodes[i].next.clear();
+		nodes[i].isEnd = false;
+	}
+	numNodes = 0;
+	for(int i = 0; i <= N; i++)
+		fill(dp[i], dp[i]+K+1, 0);
+}
+
+
+void input(){
+	scanf("%d%d", &N, &K);
+}
+
+
+// dfs(trie vertex, current depth) -> num ends in subtree
+int dfs(int v, int curDepth){
+	int numEnds = (nodes[v].isEnd ? 1 : 0);
+
+	for(auto P: nodes[v].next){
+		int s = P.second;
+
+		numEnds += dfs(s, curDepth+1);
+	}
+
+	fill(dp[v], dp[v]+K+1, Infty);
+	dp[v][0] = 0;
+
+	for(auto P: nodes[v].next){
+		int s = P.second;
+
+		for(int k = K; k >= 0; k--){
+			for(int pk = 0; pk <= k; pk++)
+				dp[v][k] = min(dp[v][k], dp[v][pk] + dp[s][k-pk]);
+		}
+	}
+
+	if(nodes[v].isEnd){
+		for(int k = K; k > 0; k--){
+			dp[v][k] = min(dp[v][k], dp[v][k-1] + curDepth);
+		}
+		dp[v][0] = 0;
+	}
+	
+	if(numEnds >= 1)
+		dp[v][1] = curDepth;
+
+//	for(int k = 0; k <= K; k++)
+//		printf("dp[%d][%d] = %d\n", v, k, dp[v][k]);
+
+	return numEnds;
+//#warning przesun gdy end
+}
+
+void test(){
+	cleanup();
+	input();
+	numNodes = 1;
+
+//	printf("%d\n", K);
+
+
+	//int result = 0;
+	for(int i = 0; i < N; i++){
+		scanf("%s", istr);
+		add_str(istr);
+	}
+
+	if(K == 1){
+		// hehe
+		printf("1\n");
+		return;
+	}
+
+	dfs(0, 0);
+
+
+	printf("%d\n", dp[0][K]);
+}
+
+int main(){
+
+	int T;
+	scanf("%d", &T);
+
+	for(int i = 1; i <= T; i++){
+		printf("Case #%d: ", i);
+		test();
+	}
+}

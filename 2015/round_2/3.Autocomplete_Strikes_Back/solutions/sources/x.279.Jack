@@ -1,0 +1,186 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <limits>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+#include <list>
+#include <string>
+using namespace std;
+typedef long long ll;
+typedef pair<int,int> pii;
+const int INF = numeric_limits<int>::max();
+
+#if 0
+#define DEBUG_PRINTF(...) printf(__VA_ARGS__)
+#else
+#define DEBUG_PRINTF(...)
+#endif
+
+const int nmax = 4005, kmax = 105;
+int n, k;
+char buf[20005];
+string s[nmax];
+int len[nmax];
+int overlap[nmax][nmax];
+bool used[nmax];
+int prevCost[kmax];
+
+int getTotalCost(const vector<int>& words)
+{
+	int q = words.size();
+	int maxOverlap[q];
+	memset(maxOverlap, 0, sizeof(maxOverlap));
+	for(int i=0;i<q;i++)
+		for(int j=0;j<q;j++)
+			if(i != j)
+				maxOverlap[i] = max(maxOverlap[i], overlap[words[i]][words[j]]);
+	int total = 0;
+	for(int i=0;i<q;i++)
+		total += min(len[words[i]], maxOverlap[i] + 1);
+	DEBUG_PRINTF("%d\n", total);
+	return total;
+}
+
+int bruteforceBest = INF;
+
+void bruteforce(int i, vector<int>& words)
+{
+	if(words.size() == k)
+	{
+		int r = getTotalCost(words);
+		if(r < bruteforceBest)
+		{
+			bruteforceBest = r;
+		}
+		return;
+	}
+	if(i == n)
+		return;
+	bruteforce(i+1, words);
+	words.push_back(i);
+	bruteforce(i+1, words);
+	words.pop_back();
+}
+
+int bruteforce()
+{
+	vector<int> words;
+	bruteforceBest = INF;
+	bruteforce(0, words);
+	return bruteforceBest;
+}
+
+int solve()
+{
+	for(int i=0; i<n; i++)
+		len[i] = s[i].length();
+			
+	for(int i=0; i<n; i++)
+		for(int j=0; j<n; j++)
+		{
+			int a;
+			for(a=0; a < min(len[i], len[j]) && s[i][a] == s[j][a]; a++);
+			overlap[i][j] = a;
+		}
+
+	memset(used, false, sizeof(used));
+	int total = 0;
+	vector<int> words;
+	for(int q=0; q<k; q++)
+	{
+		int best = 0;
+		int minAddedCost = INF;
+		for(int x=0; x<n; x++)
+			if(!used[x])
+			{
+				int addedCost = 0;
+				int maxOverlap = 0;
+				for(int i=0; i<q; i++)
+				{
+					addedCost += max(min(len[words[i]], overlap[words[i]][x] + 1), prevCost[i]) - prevCost[i];
+					maxOverlap = max(maxOverlap, overlap[words[i]][x]);
+				}
+				DEBUG_PRINTF("%10s: added prev %d, ", s[x].c_str(), addedCost);
+				int xCost = min(len[x], maxOverlap + 1);
+				addedCost += xCost;
+				DEBUG_PRINTF("total add cost %d\n", addedCost);
+
+				if(addedCost < minAddedCost || (addedCost == minAddedCost && len[x] < len[best]))
+				{
+					minAddedCost = addedCost;
+					best = x;
+					prevCost[q] = xCost;
+				}
+			}
+		DEBUG_PRINTF("best: %10s, %d\n", s[best].c_str(), minAddedCost);
+		words.push_back(best);
+		used[best] = true;
+		total += minAddedCost;
+		int x = best;
+		for(int i=0; i<q; i++)
+		{
+			prevCost[i] = max(min(len[words[i]], overlap[words[i]][x] + 1), prevCost[i]);
+		}
+	}
+
+	DEBUG_PRINTF("total: %d\n", total);
+	assert(total == getTotalCost(words));
+/*
+	int expect = bruteforce();
+	DEBUG_PRINTF("bf: %d\n", expect);
+	assert(total == expect);
+*/
+	return total;
+}
+
+void gen()
+{
+	for(int i=0;i<n;i++)
+	{
+		int l;
+		if(i & 1)
+			l = rand() % 50 + 1;
+		else
+			l = rand() % 5 + 1;
+		
+		for(int j=0;j<l;j++)
+			buf[j] = rand() % 26 + 'a';
+		buf[l] = 0;
+		s[i] = buf;					  // who cares about uniqueness
+	}
+}
+
+void test()
+{
+	n = 23;
+	k = 10;
+	gen();
+	solve();
+}
+
+int main(int argc,char* argv[])
+{
+	//test(); return 0;
+	
+	int num_test_cases;
+	scanf("%d",&num_test_cases);
+	for(int test_case=1; test_case<=num_test_cases; test_case++)
+	{
+		scanf("%d%d", &n, &k);
+		for(int i=0; i<n; i++)
+		{
+			scanf(" %s", buf);
+			s[i] = buf;
+		}
+
+		int r = solve();
+		printf("Case #%d: %d\n", test_case, r);
+	}
+	return 0;
+}

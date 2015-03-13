@@ -1,0 +1,499 @@
+//#define VALIDATE
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/resource.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    struct rlimit stack_limit;
+    getrlimit(RLIMIT_STACK, &stack_limit);
+    stack_limit.rlim_cur = 1024 * 1024 * 1024;
+    setrlimit(RLIMIT_STACK, &stack_limit);
+
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+template<typename T, T Modulus>
+class MR
+{
+private:
+    struct tag_plus {}; // indicates value is in range [0, 2 * Modulus)
+    struct tag_minus {}; // indicates value is in range (-Modulus, Modulus)
+
+    T value;
+
+    enum
+    {
+        ASSERT_FALSE = 0,
+        ASSERT_TEST = (T(1) << (std::numeric_limits<T>::digits - 1)) / Modulus / Modulus > 0 ? 1 : 0
+    };
+
+    void reduce()
+    {
+        value %= Modulus;
+        if (value < 0)
+            value += Modulus;
+    }
+
+    void reduce(tag_plus)
+    {
+        if (value >= Modulus)
+            value -= Modulus;
+    }
+
+    void reduce(tag_minus)
+    {
+        if (value < 0)
+            value += Modulus;
+    }
+
+public:
+    typedef T value_type;
+    static const T modulus = Modulus;
+
+    MR() : value(0) {}
+    MR(T value) : value(value) { reduce(); }
+    template<typename tag_t>
+    MR(T value, tag_t tag) : value(value) { reduce(tag); }
+
+    MR &operator=(T value) { this->value = value; reduce(); return *this; }
+
+    MR operator +(MR b) const { return MR(value + b.value, tag_plus()); }
+    MR operator -(MR b) const { return MR(value - b.value, tag_minus()); }
+    MR operator *(MR b) const { return MR(value * b.value); }
+    MR operator -() const { return MR(-value); }
+
+    MR &operator +=(MR b) { value += b.value; reduce(tag_plus()); return *this; }
+    MR &operator -=(MR b) { value -= b.value; reduce(tag_minus()); return *this; }
+    MR &operator *=(MR b) { value *= b.value; reduce(); return *this; }
+
+    bool operator==(MR b) const { return value == b.value; }
+    bool operator!=(MR b) const { return value != b.value; }
+
+    T get() const { return value; }
+};
+
+template<typename T, T Modulus>
+static inline std::ostream &operator<<(std::ostream &o, MR<T, Modulus> mr)
+{
+    return o << mr.get();
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+#define MOD 1000000000
+typedef MR<ll, MOD> mr;
+
+struct node
+{
+    bool replace = true;
+    array<mr, 2> co;
+    mr sum;
+    array<mr, 2> odd;
+};
+
+static vector<node> nodes;
+static int N;
+static int offset;
+#ifdef VALIDATE
+static vector<mr> socks;
+#endif
+
+static mr sum_co(ll A, ll B, mr c0, mr c1)
+{
+    mr c = mr(B - A) * c0;
+    c += mr((A + B - 1) * (B - A) / 2) * c1;
+    return c;
+}
+
+static void zero_node(node &n)
+{
+    n.replace = true;
+    n.co[0] = 0;
+    n.co[1] = 0;
+    n.sum = 0;
+    n.odd[0] = 0;
+    n.odd[1] = 0;
+}
+
+static void add_node(node &n, int A, int B, mr c0, mr c1)
+{
+    mr npar[2];
+    npar[1] = B / 2 - A / 2;
+    npar[0] = mr(B - A) - npar[1];
+    if ((c0 + c1).get() & 1)
+    {
+        n.odd[1] = npar[1] - n.odd[1];
+    }
+    if (c0.get() & 1)
+    {
+        n.odd[0] = npar[0] - n.odd[0];
+    }
+    n.sum += sum_co(A, B, c0, c1);
+    n.co[0] += c0;
+    n.co[1] += c1;
+}
+
+static void split(int cur, int A, int B)
+{
+    if (B - A == 1)
+        return;
+    node &n = nodes[cur];
+    int M = (A + B) / 2;
+    if (n.replace)
+    {
+        n.replace = false;
+        zero_node(nodes[2 * cur]);
+        zero_node(nodes[2 * cur + 1]);
+    }
+
+    add_node(nodes[2 * cur], A, M, n.co[0], n.co[1]);
+    add_node(nodes[2 * cur + 1], M, B, n.co[0], n.co[1]);
+    n.co[0] = 0;
+    n.co[1] = 0;
+}
+
+static void fix(int cur, int A, int B)
+{
+    if (B - A == 1)
+        return;
+    node &n = nodes[cur];
+    const node *ch[2] = {&nodes[2 * cur], &nodes[2 * cur + 1]};
+
+    assert(!n.replace);
+    assert(n.co[0] == 0);
+    assert(n.co[1] == 0);
+    n.sum = ch[0]->sum + ch[1]->sum;
+    for (int i = 0; i < 2; i++)
+        n.odd[i] = ch[0]->odd[i] + ch[1]->odd[i];
+}
+
+static void zero(int L, int R, int cur, int A, int B)
+{
+    L = max(L, A);
+    R = min(R, B);
+    if (R <= L)
+        return;
+
+    if (L == A && R == B)
+        zero_node(nodes[cur]);
+    else
+    {
+        split(cur, A, B);
+        int M = (A + B) / 2;
+        zero(L, R, 2 * cur, A, M);
+        zero(L, R, 2 * cur + 1, M, B);
+        fix(cur, A, B);
+    }
+}
+
+static mr sum(int L, int R, int cur, int A, int B)
+{
+    L = max(L, A);
+    R = min(R, B);
+    if (R <= L)
+        return 0;
+
+    const node &n = nodes[cur];
+    if (L == A && R == B)
+        return n.sum;
+    else
+    {
+        split(cur, A, B);
+        int M = (A + B) / 2;
+        mr sl = sum(L, R, 2 * cur, A, M);
+        mr sr = sum(L, R, 2 * cur + 1, M, B);
+        return sl + sr;
+    }
+}
+
+static mr zero_(int L, int R)
+{
+    mr ans = sum(L, R, 1, 0, offset);
+    zero(L, R, 1, 0, offset);
+    return ans;
+}
+
+static mr sum_(int L, int R)
+{
+    return sum(L, R, 1, 0, offset);
+}
+
+static mr count_odd(int L, int R, int cur, int A, int B)
+{
+    L = max(L, A);
+    R = min(R, B);
+    if (R <= L)
+        return 0;
+
+    node &n = nodes[cur];
+    if (L == A && R == B)
+        return n.odd[0] + n.odd[1];
+    else
+    {
+        split(cur, A, B);
+        int M = (A + B) / 2;
+        return count_odd(L, R, 2 * cur, A, M)
+            +  count_odd(L, R, 2 * cur + 1, M, B);
+    }
+}
+
+static mr count_odd_(int L, int R)
+{
+    return count_odd(L, R, 1, 0, offset);
+}
+
+static void add(int L, int R, int cur, int A, int B, mr c0, mr c1)
+{
+    L = max(L, A);
+    R = min(R, B);
+    if (R <= L)
+        return;
+
+    node &n = nodes[cur];
+    if (L == A && R == B)
+        add_node(n, A, B, c0, c1);
+    else
+    {
+        split(cur, A, B);
+        int M = (A + B) / 2;
+        add(L, R, 2 * cur, A, M, c0, c1);
+        add(L, R, 2 * cur + 1, M, B, c0, c1);
+        fix(cur, A, B);
+    }
+}
+
+static mr add_(int L, int R, mr c0, mr c1)
+{
+    add(L, R, 1, 0, offset, c0, c1);
+    return sum_co(L, R, c0, c1);
+}
+
+#ifdef VALIDATE
+static mr addv(int L, int R, mr c0, mr c1)
+{
+    mr tot = 0;
+    for (int i = L; i < R; i++)
+    {
+        mr v = c0 + c1 * mr(i);
+        socks[i] += v;
+        tot += v;
+    }
+    return tot;
+}
+
+static mr zerov(int L, int R)
+{
+    mr tot = 0;
+    for (int i = L; i < R; i++)
+    {
+        tot += socks[i];
+        socks[i] = 0;
+    }
+    return tot;
+}
+
+static mr sumv(int L, int R)
+{
+    mr tot = 0;
+    for (int i = L; i < R; i++)
+        tot += socks[i];
+    return tot;
+}
+
+static mr count_oddv(int L, int R)
+{
+    mr tot = 0;
+    for (int i = L; i < R; i++)
+        tot += (socks[i].get() & 1);
+    return tot;
+}
+
+static void check_integrity(int cur, int A, int B, mr c0, mr c1)
+{
+    node n = nodes[cur];
+    add_node(n, A, B, c0, c1);
+    mr sum = sumv(A, B);
+    assert(n.sum == sum);
+    mr odd[2] = {0, 0};
+    for (int i = A; i < B; i++)
+        odd[i & 1] += socks[i].get() & 1;
+    assert(n.odd[0] == odd[0]);
+    assert(n.odd[1] == odd[1]);
+    if (n.replace || B - A == 1)
+    {
+        for (int i = A; i < B; i++)
+            assert(socks[i] == n.co[0] + mr(i) * n.co[1]);
+    }
+    else
+    {
+        int M = (A + B) / 2;
+        check_integrity(2 * cur, A, M, n.co[0], n.co[1]);
+        check_integrity(2 * cur + 1, M, B, n.co[0], n.co[1]);
+    }
+}
+
+#endif
+
+template<typename Func, typename... Args>
+static mr run_loop(const Func &func, int first, int len, Args&&... args)
+{
+    if (first + len > N)
+        return func(first, N, args...) + func(0, first + len - N, args...);
+    else
+        return func(first, first + len, std::forward(args)...);
+}
+
+template<typename Func, typename... Args>
+static mr run_loop_add(const Func &func, int first, int len, mr c0, mr c1, Args&&... args)
+{
+    if (first + len > N)
+        return func(first, N, c0, c1, args...) + func(0, first + len - N, c0 + mr(N) * c1, c1, args...);
+    else
+        return func(first, first + len, c0, c1, std::forward(args)...);
+}
+
+static vector<ll> gen_seq(ll s1, ll s2, ll x, ll y, ll z, ll mod, int add, ll len)
+{
+    vector<ll> ans{s1, s2};
+    for (ll i = 2; i < len; i++)
+    {
+        ll s = (x * ans[i - 2] + y * ans[i - 1] + z) % mod + add;
+        ans.push_back(s);
+    }
+    return ans;
+}
+
+static vector<ll> load_seq(ll mod, int add, ll len)
+{
+    ll s1, s2, x, y, z;
+    cin >> s1 >> s2 >> x >> y >> z;
+    return gen_seq(s1, s2, x, y, z, mod, add, len);
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        ll N, M;
+        cin >> N >> M;
+        ::N = N;
+        vector<ll> S = load_seq(MOD, 0, N);
+        vector<ll> O = load_seq(4, 1, M);
+        vector<ll> A = load_seq(N, 1, M);
+        vector<ll> B = load_seq(N, 1, M);
+        vector<ll> C = load_seq(MOD, 0, M);
+        vector<ll> D = load_seq(MOD, 0, M);
+        mr ans = 0;
+        offset = 1;
+        while (offset < N)
+            offset <<= 1;
+        nodes.resize(2 * offset);
+        zero_node(nodes[1]);
+        for (int i = 0; i < N; i++)
+            add_(i, i + 1, S[i], 0);
+#ifdef VALIDATE
+        socks.resize(offset);
+        copy(RA(S), socks.begin());
+        check_integrity(1, 0, offset, 0, 0);
+#endif
+
+        for (int i = 0; i < M; i++)
+        {
+            A[i]--;
+            mr e;
+#ifdef VALIDATE
+            mr f;
+#endif
+            switch (O[i])
+            {
+            case 1:
+                e = run_loop_add(add_, A[i], B[i], C[i] - A[i] * D[i], D[i]);
+#ifdef VALIDATE
+                f = run_loop_add(addv, A[i], B[i], C[i] - A[i] * D[i], D[i]);
+#endif
+                break;
+            case 2:
+                e = run_loop(zero_, A[i], B[i]);
+#ifdef VALIDATE
+                f = run_loop(zerov, A[i], B[i]);
+                check_integrity(1, 0, offset, 0, 0);
+                assert(e.get() == f.get());
+#endif
+                e += run_loop_add(add_, A[i], B[i], C[i], 0);
+#ifdef VALIDATE
+                f += run_loop_add(addv, A[i], B[i], C[i], 0);
+#endif
+                break;
+            case 3:
+                e = run_loop(sum_, A[i], B[i]);
+#ifdef VALIDATE
+                f = run_loop(sumv, A[i], B[i]);
+#endif
+                break;
+            case 4:
+                e = run_loop(count_odd_, A[i], B[i]);
+#ifdef VALIDATE
+                f = run_loop(count_oddv, A[i], B[i]);
+#endif
+                break;
+            }
+            ans += e;
+#ifdef VALIDATE
+            assert(e.get() == f.get());
+            check_integrity(1, 0, offset, 0, 0);
+#endif
+            //cerr << "O[i] = " << O[i] << "\te = " << e << endl;
+        }
+        cout << "Case #" << cas + 1 << ": " << ans.get() << "\n" << flush;
+    }
+    return 0;
+}

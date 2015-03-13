@@ -1,0 +1,72 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+int idcc;
+
+struct trie {
+  trie *next[27];
+  int cnt, id, dep;
+  trie(int x, int p): cnt(0), id(x), dep(p)
+  { memset(next, 0, sizeof next); }
+};
+
+char buf[200010];
+int ans;
+
+void insert(trie *t, char *s) {
+  t->cnt++;
+  if (s[0] == '\0') return;
+  if (t->next[s[0] - 'a'] == NULL)
+    t->next[s[0] - 'a'] = new trie(idcc++, t->dep + (s[0] != 'a' + 26));
+  insert(t->next[s[0] - 'a'], s + 1);
+}
+
+void del(trie *t) {
+  for (int i = 0; i < 27; ++i)
+    if (t->next[i])
+      del(t->next[i]);
+  delete t;
+}
+
+const int oo = 0x3f3f3f3f;
+int f[40010][111];
+int n, k;
+
+void dfs(trie *root) {
+  const int v = root->id;
+  for (int i = 0; i < 27; ++i)
+    if (root->next[i]) {
+      const int u = root->next[i]->id;
+      copy(f[v], f[v] + k + 1, f[u]);
+      dfs(root->next[i]);
+      // f[v][0] = 0;
+      for (int j = k; j > 0; --j) {
+        if (f[v][j] > f[u][j])
+          f[v][j] = f[u][j];
+        if (f[v][j] > f[v][j - 1] + root->next[i]->dep)
+          f[v][j] = f[v][j - 1] + root->next[i]->dep;
+      }
+    }
+}
+
+char extra[] = {'a' + 26, '\0'};
+
+int main() {
+  int test; scanf("%d", &test);
+  for (int cas = 1; cas <= test; ++cas) {
+    scanf("%d%d", &n, &k);
+    idcc = 0;
+    trie *root = new trie(idcc++, 0);
+    for (int i = 0; i < n; ++i) {
+      scanf("%s", buf);
+      strcat(buf, extra);
+      insert(root, buf);
+    }
+    fill(f[0] + 1, f[0] + k + 1, oo);
+    // f[0][0] = 0;
+    dfs(root);
+    printf("Case #%d: %d\n", cas, f[0][k]);
+    del(root);
+  }
+  return 0;
+}

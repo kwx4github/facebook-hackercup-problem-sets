@@ -1,0 +1,166 @@
+/* gcc version 4.9.2 20141224
+ * g++ -Wall -Wextra -Wconversion -std=c++11 -g
+ */
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef pair<int, int> pii;
+
+const int oo = 0x3f3f3f3f;
+const double eps = 1e-9;
+
+#define sz(c) int((c).size())
+#define all(c) (c).begin(), (c).end()
+#define FOR(i,a,b) for (int i = (a); i < (b); i++)
+#define FORD(i,a,b) for (int i = int(b)-1; i >= (a); i--)
+#define FORIT(i,c) for(__typeof__((c).begin()) i=(c).begin(); i!=(c).end(); i++)
+#define mp make_pair
+#define pb push_back
+#define has(c,i) ((c).find(i) != (c).end())
+#define DBG(...) ({ if(1) fprintf(stderr, __VA_ARGS__); })
+#define DBGDO(X) ({ if(1) cerr << "DBGDO: " << (#X) << " = " << (X) << endl; })
+
+static const int maxN = 100*1000 + 2;
+
+static int TC;
+
+struct Case {
+	int N, K;
+	int result;
+	int cnt[maxN];
+	int cnt_sum[maxN];
+	int depth[maxN];
+	int lastchild[maxN];
+	int prevsibl[maxN];
+	bool isend[maxN];
+	map<int,int> adj[maxN];
+	int X = 1;
+	vs words;
+	map<pii, int> mem;
+
+	int query_one(int node, int used) {
+		if (used == 0) return 0;
+		if (used == 1) return depth[node];
+		int local = 0;
+		if (isend[node]) {
+			local = depth[node];
+			used--;
+		}
+		return local + query(lastchild[node], used);
+	}
+
+	int query(int node, int used) {
+		assert(node < X);
+		if (used == 0)
+			return 0;
+		if (used > cnt_sum[node])
+			return oo;
+
+		pii key (node, used);
+		if (has(mem, key)) return mem[key];
+
+		if (prevsibl[node] == -1) {
+			return mem[key] = query_one(node, used);
+		}
+
+		int result = oo;
+		FOR(i,0,used) {
+			result = min(
+				result,
+				query(prevsibl[node], used - i) + query_one(node, i)
+			);
+		}
+
+		return mem[key] = result;
+	}
+
+	void dfs_helper(int n) {
+		int to = -1, pred = -1;
+		for (const auto &x : adj[n]) {
+			to = x.second;
+			prevsibl[to] = pred;
+			pred = to;
+			dfs_helper(to);
+		}
+		lastchild[n] = to;
+
+		cnt_sum[n] = cnt[n];
+		if (prevsibl[n] != -1)
+			cnt_sum[n] += cnt_sum[prevsibl[n]];
+	}
+
+	Case();
+	void x(int n, int d) {
+		assert(n < X);
+		assert(depth[n] == d);
+
+		FOR(i,0,8-d) DBG(" __");
+		DBG("# c %d, cs %2d, lc %2d, ps %2d ", cnt[n], cnt_sum[n], lastchild[n], prevsibl[n]);
+		if (isend[n])
+			DBG(" *");
+		DBG("\n");
+
+		for (const auto &to : adj[n]) {
+			FOR(i,0,d) DBG("   ");
+			DBG("`-%c-> %2d  ", char(to.first), to.second);
+			if (to.second > n)
+				x(to.second, d+1);
+		}
+	};
+};
+
+Case::Case() {
+	FOR(i,0,maxN) adj[i].clear();
+	mem.clear();
+	words.clear();
+	X = 1;
+	fill_n(isend, maxN, false);
+
+	cin >> N >> K;
+	string word;
+	FOR(i,0,N) {
+		cin >> word;
+		words.pb(word);
+	}
+
+	depth[0] = 0;
+	cnt[0] = 0;
+	FOR(i,0,N) {
+		int n = 0;
+		cnt[n]++;
+		FOR(p,0,sz(words[i])) {
+			int c = words[i][p];
+			if (!has(adj[n], c)) {
+				int to = X++;
+				adj[n][c] = to;
+				depth[to] = depth[n]+1;
+				cnt[to] = 0;
+			}
+			int to = adj[n][c];
+			cnt[to]++;
+
+			n = to;
+		}
+		isend[n] = true;
+	}
+	result = 0;
+
+	prevsibl[0] = -1;
+	dfs_helper(0);
+	//x(0, 0);
+
+	result = query(lastchild[0], K);
+}
+
+int main() {
+	ios::sync_with_stdio(false);
+
+	cin >> TC;
+	FOR(tc, 1, TC+1) {
+		Case c;
+		printf("Case #%d: %d\n", tc, c.result);
+	}
+}

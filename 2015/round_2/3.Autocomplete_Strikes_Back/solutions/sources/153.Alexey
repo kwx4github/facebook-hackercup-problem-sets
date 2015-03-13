@@ -1,0 +1,157 @@
+import java.io.*;
+import java.util.*;
+import java.util.Map.Entry;
+import java.math.*;
+
+public class Autocomplete implements Runnable {
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer st;
+	static Random rnd;
+
+	private void solve() throws IOException {
+		int tests = nextInt();
+		for (int test = 1; test <= tests; test++) {
+			out.print("Case #" + test + ": ");
+			solveOne();
+			out.println();
+		}
+	}
+
+	class TrieNode {
+		private Map<Character, TrieNode> jumps;
+		private int depth;
+		private boolean isEnd;
+
+		public TrieNode(int depth) {
+			this.jumps = new TreeMap<Character, Autocomplete.TrieNode>();
+			this.depth = depth;
+		}
+
+		public boolean isEnd() {
+			return isEnd;
+		}
+
+		public void setEnd() {
+			isEnd = true;
+		}
+
+		public TrieNode getNext(char c, int depth) {
+			TrieNode result = jumps.get(c);
+			if (result == null) {
+				result = new TrieNode(depth);
+				jumps.put(c, result);
+			}
+			return result;
+		}
+
+		public Collection<TrieNode> getAllJumps() {
+			return jumps.values();
+		}
+	}
+
+	private void solveOne() throws IOException {
+		int wordsCount = nextInt(), haveToTakeCount = nextInt();
+		String[] words = new String[wordsCount];
+		for (int i = 0; i < wordsCount; i++) {
+			words[i] = nextToken();
+		}
+		TrieNode root = new TrieNode(0);
+		for (String word : words) {
+			addWord(root, word);
+		}
+		int[] minLetters = calcMinLetters(root, haveToTakeCount);
+		int result = minLetters[haveToTakeCount];
+		out.print(result);
+	}
+
+	private void addWord(TrieNode pointer, String word) {
+		for (int i = 0; i < word.length(); i++) {
+			char letter = word.charAt(i);
+			pointer = pointer.getNext(letter, i + 1);
+		}
+		pointer.setEnd();
+	}
+
+	final static int inf = Integer.MAX_VALUE / 2;
+
+	private int[] calcMinLetters(TrieNode node, int haveToTakeCount) {
+		int[] result = new int[haveToTakeCount + 1];
+		Arrays.fill(result, inf);
+		result[0] = 0;
+
+		for (TrieNode nextNode : node.getAllJumps()) {
+			int[] resultBelow = calcMinLetters(nextNode, haveToTakeCount);
+
+			int[] newResult = new int[haveToTakeCount + 1];
+			Arrays.fill(newResult, inf);
+
+			for (int currentCount = 0; currentCount <= haveToTakeCount; currentCount++) {
+				for (int belowCount = 0; belowCount + currentCount <= haveToTakeCount; belowCount++) {
+					newResult[currentCount + belowCount] = Math.min(
+							newResult[currentCount + belowCount],
+							result[currentCount] + resultBelow[belowCount]);
+				}
+			}
+
+			result = newResult;
+		}
+
+		if (node.isEnd) {
+			for (int i = haveToTakeCount; i > 0; i--) {
+				result[i] = Math.min(result[i], result[i - 1] + node.depth);
+			}
+		} else {
+
+			if (node.depth > 0)
+				result[1] = Math.min(result[1], node.depth);
+		}
+
+		return result;
+	}
+
+	public static void main(String[] args) {
+		new Thread(null, new Autocomplete(), "yarrr", 1 << 28).start();
+	}
+
+	public void run() {
+		try {
+			in = new BufferedReader(new InputStreamReader(System.in));
+			out = new PrintWriter(System.out);
+
+			rnd = new Random();
+
+			solve();
+
+			out.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+
+	private String nextToken() throws IOException {
+		while (st == null || !st.hasMoreTokens()) {
+			String line = in.readLine();
+
+			if (line == null)
+				return null;
+
+			st = new StringTokenizer(line);
+		}
+
+		return st.nextToken();
+	}
+
+	private int nextInt() throws IOException {
+		return Integer.parseInt(nextToken());
+	}
+
+	private long nextLong() throws IOException {
+		return Long.parseLong(nextToken());
+	}
+
+	private double nextDouble() throws IOException {
+		return Double.parseDouble(nextToken());
+	}
+}

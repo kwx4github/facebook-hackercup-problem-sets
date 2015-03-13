@@ -1,0 +1,97 @@
+#include <algorithm>
+#include <bitset>
+#include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <list>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+const int MAXK = 100;
+const int INF = 0x7f7f7f7f;
+
+template<char base = 'a', int size = 26>
+class Trie {
+public:
+	int dp[MAXK + 1];
+	bool end;
+	int count;
+	int depth;
+	Trie<base, size> * children[size];
+
+	Trie() : depth(0), count(0), end(false) {
+		memset(children, 0, sizeof(children));
+	}
+
+	inline void insert(const char * str) {
+		count++;
+		if (*str == '\0') {
+			end = true;
+		} else {
+			if (children[*str - base] == 0) {
+				children[*str - base] = new Trie<base, size>();
+				children[*str - base]->depth = depth + 1;
+			}
+			children[*str - base]->insert(str + 1);
+		}
+	}
+
+	void doDp() {
+		memset(dp, 0x7f, sizeof(dp));
+		dp[0] = 0;
+		if (end) {
+			dp[1] = depth;
+		}
+		for (int c = 0; c < size; c++) {
+			if (children[c] != 0) {
+				children[c]->doDp();
+				for (int i = min(MAXK, count); i >= 0; i--) {
+					if (dp[i] < INF) {
+						for (int j = min(MAXK, children[c]->count); j > 0; j--) {
+							if (children[c]->dp[j] < INF && i + j <= MAXK) {
+								dp[i + j] = min(dp[i + j], dp[i] + children[c]->dp[j]);
+							}
+						}
+					}
+				}
+			}
+		}
+		dp[1] = min(dp[1], depth);
+	}
+
+};
+
+char str[20001];
+
+int main() {
+	int caseNum;
+	scanf("%d", &caseNum);
+	for (int caseIndex = 1; caseIndex <= caseNum; caseIndex++) {
+		int n, k;
+		scanf("%d%d", &n, &k);
+		Trie<>* root = new Trie<>();
+		for (int i = 0; i < n; i++) {
+			scanf("%s", str);
+			root->insert(str);
+		}
+		root->doDp();
+		printf("Case #%d: %d\n", caseIndex, root->dp[k]);
+		delete root;
+	}
+
+	return 0;
+}

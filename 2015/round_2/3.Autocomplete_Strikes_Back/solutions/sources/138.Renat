@@ -1,0 +1,103 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
+#include <iostream>
+#include <set>
+#include <vector>
+#include <cstring>
+#include <string>
+#include <algorithm>
+#include <cmath>
+#include <map>
+using namespace std;
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<ll> vl;
+typedef vector<vl> vvl;
+typedef vector<vi> vvi;
+typedef vector<double> vd;
+typedef pair<int, int> pii;
+typedef pair<double, double> pdd;
+typedef vector<pii> vii;
+typedef vector<string> vs;
+
+int main() {
+    int T;
+    cin >> T;
+    for (int test = 1; test <= T; ++test) {
+        printf("Case #%d: ", test);
+        int n,k;
+        cin >> n >> k;
+        vs v(n);
+        int L = 0;
+        for (int i = 0; i < n; ++i) {
+            cin >> v[i];
+            L = max(L, (int)v[i].size());
+        }
+        if (k == 1) {
+            cout << 1 << endl;
+            continue;
+        }
+        sort(v.begin(), v.end());
+        vvi c(n);
+        for (int i = n-1; i >= 0; --i) {
+            c[i].assign(v[i].size() + 1, 0);
+            if (i == n-1) continue;
+            c[i][0] = n-1-i;
+            for (int j = 1; j < c[i].size(); ++j) {
+                if (v[i+1].size() <= j-1 || v[i][j-1] != v[i+1][j-1]) break;
+                c[i][j] = c[i+1][j] + 1;
+            }
+        }
+        vector<vvi> d(n);
+        for (int i = 0; i < n; ++i) {
+            d[i].assign(v[i].size() + 1, vi(k + 1, 1e9));
+            for (int j = 0; j < d[i].size(); ++j)
+                d[i][j][0] = 0;
+            if (v[i].size() == L) {
+                d[i][L][1] = 0;
+            }
+        }
+        for (int j = L-1; j >= 0; --j) {
+            for (int i = 0; i < n; ++i) {
+//                cerr << i << ' ' << j << endl;
+                if (v[i].size() < j) continue;
+                if (i && v[i-1].size() >= j && c[i-1][j]) {
+                    d[i][j] = d[i-1][j];
+                    continue;
+                }
+                if (c[i][j] == 0) {
+                    d[i][j][1] = 0;
+                    continue;
+                }
+                vvi x(1);
+                if (v[i].size() > j) {
+                    x[0] = d[i][j+1];
+                    for (int l = 0; l < x[0].size(); ++l)
+                        x[0][l] += l;
+                } else {
+                    x[0] = vi(k + 1, 1e9);
+                    x[0][0] = x[0][1] = 0;
+                }
+                for (int t = i + 1; t <= i + c[i][j]; ++t) {
+                    if (v[t].size() < j + 1) continue;
+                    if (v[t-1].size() < j + 1 || c[t-1][j+1] == 0) x.push_back(d[t][j+1]);
+                }
+                for (int t = 1; t < x.size(); ++t) {
+                    for (int l = 0; l < x[t].size(); ++l)
+                        x[t][l] += l;
+                    vi sum = x[t];
+                    for (int l1 = 0; l1 <= k; ++l1) for (int l2 = 0; l2 <= k-l1; ++l2) {
+                        sum[l1+l2] = min(sum[l1+l2], x[t-1][l1] + x[t][l2]);
+                    }
+                    x[t].swap(sum);
+                }
+                d[i][j] = x.back();
+                d[i][j][1] = 0;
+            }
+//            for (int i = 0; i < n; ++i) if (v[i].size() >= j) { cerr << i << ' ' << j << ' ' << d[i][j][1] << endl;}
+        }
+        cout << d[0][0][k] << endl;
+    }
+    return 0;
+}

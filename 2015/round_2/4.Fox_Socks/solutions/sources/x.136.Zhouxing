@@ -1,0 +1,332 @@
+/*
+    Author: Zhouxing Shi
+    Created on Jan25, 2014
+*/
+#include <bits/stdc++.h>
+#define rep(i, a, b) for (int i = (a); i <= (b); ++i)
+#define drep(i, a, b) for (int i = (a); i >= (b); --i)
+#define REP(i, a, b) for (int i = (a); i < (b); ++i)
+#define pb(x) push_back(x)
+#define mp(x, y) (make_pair(x, y))
+#define clr(x) memset(x, 0, sizeof(x))
+#define xx first
+#define yy second
+
+using namespace std;
+
+typedef long long ll;
+typedef pair<int, int> pii;
+const int inf = ~0U >> 1;
+const ll INF = ~0ULL >> 1;;
+const double pi = acos(-1.0);
+template <class T> inline T sqr(T a) { return a * a; }
+template <class T> inline void read(T &n)
+{
+    char c;
+	for (c = getchar(); !(c >= '0' && c <= '9'); c = getchar()); n = c - '0';
+    for (c = getchar(); c >= '0' && c <= '9'; c = getchar()) n = n * 10 + c - '0';
+}
+int Pow(int base, int n, int mo)
+{
+	if (n == 0) return 1;
+	if (n == 1) return base;
+	int tmp = Pow(base, n >> 1, mo);
+	tmp = (ll)tmp * tmp % mo;
+	if (n & 1) tmp = (ll)tmp * base % mo;
+	return tmp;
+}
+
+//***************************
+
+const int mo = 1000000000;
+const int maxn = 1200000;
+
+struct node
+{
+	int l, r;
+	int odd[2];
+	int sum;
+	pii lazyadd;
+	int lazycover;	
+} t[1200000 * 5];
+
+int s[maxn], a[maxn], b[maxn], c[maxn], d[maxn];
+int sodd[2][maxn];
+int N, M;
+int xs, ys, zs, xa, ya, za, xb, yb, zb, xc, yc, zc, xd, yd, zd;
+int xo, yo, zo;
+int o[maxn];
+
+void upd(int &x, int y)
+{
+	 x = (x + y) % mo;
+}
+
+
+void update(int p)
+{
+	t[p].sum = (t[p << 1].sum + t[p << 1 | 1].sum) % mo;
+	rep(k, 0, 1) t[p].odd[k] = t[p << 1].odd[k] + t[p << 1 | 1].odd[k];
+}
+
+void build(int p, int L, int R)
+{
+	t[p].l = L;
+	t[p].r = R;
+	if (L != R)
+	{
+		build(p << 1, L, L + R >> 1);
+		build(p << 1 | 1, (L + R >> 1) + 1, R);
+		update(p);
+	}
+	else
+	{
+		t[p].sum = s[L];
+		t[p].odd[L & 1] = s[L] & 1;
+	}
+	t[p].lazyadd = mp(0, 0);
+	t[p].lazycover = 0;
+}
+
+void readd(int p, int x, int y)
+{
+	t[p].lazyadd.xx = (t[p].lazyadd.xx + x) % mo;
+	t[p].lazyadd.yy = (t[p].lazyadd.yy + y) % mo;
+	t[p].sum = ((ll)t[p].sum + (ll) x * (t[p].r - t[p].l + 1)) % mo;
+	t[p].sum = ((ll)t[p].sum + (ll) y * ((ll) (t[p].l + t[p].r)  * (t[p].r - t[p].l + 1) / 2 % mo) % mo) % mo;
+	if (y % 2 == 0)
+	{
+		if (x & 1) 
+		{
+			t[p].odd[0] = sodd[0][t[p].r] - sodd[0][t[p].l - 1] - t[p].odd[1];
+			t[p].odd[1] = sodd[1][t[p].r] - sodd[1][t[p].l - 1] - t[p].odd[1];
+		}
+	}
+	else
+	{
+		if (x & 1)
+		{
+			t[p].odd[0] = sodd[0][t[p].r] - sodd[0][t[p].l - 1] - t[p].odd[1];				
+		}
+		else
+		{
+			t[p].odd[1] = sodd[1][t[p].r] - sodd[1][t[p].l - 1] - t[p].odd[1];			
+		}
+	}
+	
+}
+
+void recover(int p, int newd)
+{
+	t[p].lazyadd = mp(0, 0);
+	t[p].lazycover = newd;
+	t[p].sum = (ll) newd * (t[p].r - t[p].l + 1) % mo;
+	if (newd & 1) 
+	{
+		t[p].odd[0] = sodd[0][t[p].r] - sodd[0][t[p].l - 1];
+		t[p].odd[1] = sodd[1][t[p].r] - sodd[1][t[p].l - 1];
+	}
+	else t[p].odd[0] = t[p].odd[1] = 0;
+}
+
+
+void push(int p)
+{
+	if (t[p].lazycover)
+	{
+		recover(p << 1, t[p].lazycover);
+		recover(p << 1 | 1, t[p].lazycover);
+		t[p].lazycover = 0;		
+	}
+	if (t[p].lazyadd.xx || t[p].lazyadd.yy) 
+	{
+		readd(p << 1, t[p].lazyadd.xx, t[p].lazyadd.yy);
+		readd(p << 1 | 1, t[p].lazyadd.xx, t[p].lazyadd.yy);
+		t[p].lazyadd = mp(0, 0);
+	}
+}
+
+void modify(int p, int l, int r, int newd)
+{
+	if (t[p].l == l && t[p].r == r) 
+	{
+		recover(p, newd);
+		return;
+	}
+	push(p);
+	int m = t[p].l + t[p].r >> 1;
+	if (r <= m) modify(p << 1, l, r, newd);
+	else if (l > m) modify(p << 1 | 1, l, r, newd);
+	else
+	{
+		modify(p << 1, l, m, newd);
+		modify(p << 1 | 1, m + 1, r, newd);
+	}
+	update(p);
+}
+
+void add(int p, int l, int r, int x, int y)
+{
+	if (t[p].l == l && t[p].r == r) 
+	{
+		readd(p, x, y);
+		return;
+	}
+	push(p);
+	int m = t[p].l + t[p].r >> 1;
+	if (r <= m) add(p << 1, l, r, x, y);
+	else if (l > m) add(p << 1 | 1, l, r, x, y);
+	else
+	{
+		add(p << 1, l, m, x, y);
+		add(p << 1 | 1, m + 1, r, x, y);
+	}
+	update(p);
+}
+
+
+int calsum(int p, int l, int r)
+{
+	if (t[p].l == l && t[p].r == r) return t[p].sum;
+	push(p);
+	int m = t[p].l + t[p].r >> 1;
+	if (r <= m) return calsum(p << 1, l, r);
+	else if (l > m) return calsum(p << 1 | 1, l, r);
+	else return (calsum(p << 1, l, m) + calsum(p << 1 | 1, m + 1, r)) % mo;
+}
+
+int calodd(int p, int l, int r)
+{
+	if (t[p].l == l && t[p].r == r) return t[p].odd[0] + t[p].odd[1];
+	push(p);
+	int m = t[p].l + t[p].r >> 1;
+	if (r <= m) return calodd(p << 1, l, r);
+	else if (l > m) return calodd(p << 1 | 1, l, r);
+	else return (calodd(p << 1, l, m) + calodd(p << 1 | 1, m + 1, r)) % mo;
+}
+
+
+void work(int _)
+{
+	scanf("%d%d", &N, &M);
+	
+	scanf("%d%d%d%d%d", &s[1], &s[2], &xs, &ys, &zs);
+	scanf("%d%d%d%d%d", &o[1], &o[2], &xo, &yo, &zo);
+	scanf("%d%d%d%d%d", &a[1], &a[2], &xa, &ya, &za);
+	scanf("%d%d%d%d%d", &b[1], &b[2], &xb, &yb, &zb);
+	scanf("%d%d%d%d%d", &c[1], &c[2], &xc, &yc, &zc);
+	scanf("%d%d%d%d%d", &d[1], &d[2], &xd, &yd, &zd);
+	
+	clr(sodd);
+	rep(i, 1, N)
+	{
+		sodd[0][i] = sodd[0][i - 1];
+		sodd[1][i] = sodd[1][i - 1];
+		sodd[i & 1][i]++;
+	}
+	
+	rep(i, 3, N)
+		s[i] = ((ll)xs * s[i - 2] + (ll)ys * s[i - 1] + zs) % 1000000000;
+	rep(i, 3, M)
+	{
+		o[i] = ((ll)xo * o[i - 2] + (ll)yo * o[i - 1] + zo) % 4 + 1;
+		a[i] = ((ll)xa * a[i - 2] + (ll)ya * a[i - 1] + za) % N + 1;
+		b[i] = ((ll)xb * b[i - 2] + (ll)yb * b[i - 1] + zb) % N + 1;	
+		c[i] = ((ll)xc * c[i - 2] + (ll)yc * c[i - 1] + zc) % 1000000000;
+		d[i] = ((ll)xd * d[i - 2] + (ll)yd * d[i - 1] + zd) % 1000000000;	
+	}
+	
+	build(1, 1, N);
+	
+	int ans = 0;
+	
+	rep(i, 1, M)
+	{
+		if (o[i] == 1)
+		{
+			int x = a[i];
+			int y = a[i] + b[i] - 1;
+			if (y <= N) 
+			{
+				add(1, x, y, ((ll)c[i] - (ll)d[i] * x) % mo, d[i]);
+			}
+			else
+			{
+				add(1, x, N, ((ll)c[i] - (ll)d[i] * x) % mo, d[i]);
+				y = b[i] - (N - x + 1);
+				add(1, 1, y, ((ll)c[i] + (ll)d[i] * (N - x)) % mo, d[i]);
+			}			
+			
+			upd(ans, (ll) c[i] * b[i] % mo);
+			upd(ans, (ll) (0 + (ll)d[i] * (b[i] - 1) % mo) * b[i] / 2 % mo);
+		}
+		else if (o[i] == 2)
+		{
+			int x = a[i];
+			int y = a[i] + b[i] - 1;
+			if (y <= N) 
+			{
+				upd(ans, calsum(1, x, y));
+				modify(1, x, y, c[i]);
+			}
+			else
+			{
+				upd(ans, calsum(1, x, N));
+				y = b[i] - (N - x + 1);
+				upd(ans, calsum(1, 1, y));
+				
+				modify(1, x, N, c[i]);
+				modify(1, 1, y, c[i]);
+			}
+			
+			upd(ans, (ll)b[i] * c[i] % mo);
+			
+		
+		}
+		else if (o[i] == 3)
+		{
+			int x = a[i];
+			int y = a[i] + b[i] - 1;
+			if (y <= N) 
+				upd(ans, calsum(1, x, y));
+			else
+			{
+				upd(ans, calsum(1, x, N));
+				y = b[i] - (N - x + 1);
+				upd(ans, calsum(1, 1, y));
+			}
+		}
+		else
+		{
+			int x = a[i];
+			int y = a[i] + b[i] - 1;
+			if (y <= N) 
+				upd(ans, calodd(1, x, y));
+			else
+			{
+				upd(ans, calodd(1, x, N));
+				y = b[i] - (N - x + 1);
+				upd(ans, calodd(1, 1, y));
+			}			
+		}
+	}
+	
+	printf("Case #%d: %d\n", _, ans);
+	fprintf(stderr, "Case #%d: %d\n", _, ans);
+	
+}
+
+int main()
+{
+	freopen("D.txt", "r", stdin);
+	freopen("D.ans", "w", stdout);
+	
+	int cases;
+	scanf("%d", &cases);
+	rep(_, 1, cases) work(_);
+
+
+	return 0;
+}
+
+

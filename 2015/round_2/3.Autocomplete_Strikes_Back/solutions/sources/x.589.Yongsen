@@ -1,0 +1,121 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+using namespace std;
+
+const int KIND = 26;
+const int M = 22222;
+const int K = 111;
+char str[M];
+int dp[M][K];
+//int sum[K];
+int n, k;
+
+struct TrieNode {
+    int child[KIND], cnt, end;
+    void init() {
+        memset(child, 0, sizeof(child));
+        cnt = 0;
+        end = 0;
+    }
+} node[M];
+
+struct Trie {
+    int alloc, root;
+    void init() {
+        root = alloc = 0;
+        node[root].init();
+    }
+    void insert(const char *str) {
+        int p = root;
+        while (*str) {
+            int idx = *str - 'a';
+            if (!node[p].child[idx]) {
+                node[p].child[idx] = ++alloc;
+                node[alloc].init();
+            }
+            p = node[p].child[idx];
+            node[p].cnt++;
+            str++;
+        }
+        node[p].end = 1;
+    }
+    void dfs(int u) {
+        //cout << u << endl;
+        for (int i = 0; i <= node[u].cnt; i++) dp[u][i] = INT_MAX;
+        dp[u][0] = 0;
+        if (node[u].end) {
+            dp[u][1] = 0;
+            for (int j = 0; j < KIND; j++) {
+                if (node[u].child[j] == 0) continue;
+                int v = node[u].child[j];
+                dfs(v);
+                for (int i = node[u].cnt; i > 0; i--) {
+                    for (int ii = 0; ii < i && ii <= node[v].cnt; ii++) {
+                        if (dp[u][i - ii] == INT_MAX) continue;
+                        dp[u][i] = min(dp[u][i], dp[u][i - ii] + dp[v][ii]);
+                    }
+                }
+            }
+        } else {
+            for (int j = 0; j < KIND; j++) {
+                if (node[u].child[j] == 0) continue;
+                int v = node[u].child[j];
+                dfs(v);
+                for (int i = node[u].cnt; i > 0; i--) {
+                    for (int ii = 0; ii <= i && ii <= node[v].cnt; ii++) {
+                        if (dp[u][i - ii] == INT_MAX) continue;
+                        dp[u][i] = min(dp[u][i], dp[u][i - ii] + dp[v][ii]);
+                    }
+                }
+            }
+            dp[u][1] = 0;
+        }
+        for (int i = 1; i <= node[u].cnt; i++) {
+            dp[u][i] += i;
+        }
+    }
+    int query() {
+        int sum[K];
+        for (int i = 1; i < K; i++) sum[i] = INT_MAX;
+        sum[0] = 0;
+        for (int i = 0; i < KIND; i++) {
+            int u = node[root].child[i];
+            if (u) {
+                dfs(u);
+                for (int j = k; j >= 1; j--) {
+                    for (int jj = 0; jj <= j && jj <= node[u].cnt; jj++) {
+                        if (sum[j - jj] == INT_MAX) continue;
+                        sum[j] = min(sum[j], sum[j - jj] + dp[u][jj]);
+                    }
+                }
+            }
+        }
+        return sum[k];
+    }
+} trie;
+
+int main() {
+    int T, Case = 1;
+    scanf("%d", &T);
+    while (T--) {
+        trie.init();
+        scanf("%d%d", &n, &k);
+        for (int i = 0; i < n; i++) {
+            scanf("%s", str);
+            trie.insert(str);
+        }
+        trie.dfs(0);
+        int ans = trie.query();
+        /*
+        for (int i = 0; i <= trie.alloc; i++) {
+            for (int j = 0; j <= node[i].cnt; j++) {
+                cout << dp[i][j] << " ";
+            }
+            cout << endl;
+        }
+        */
+        cout << "Case #" << Case++ << " :" << ans << endl;
+    }
+    return 0;
+}

@@ -1,0 +1,103 @@
+exception Non_singular
+
+let inverse x =
+  let h = Array.length x in
+  let eps = 1e-9 in
+  let y = Array.make_matrix h (2 * h) 0.0 in
+    for i = 0 to h - 1 do
+      y.(i).(i + h) <- 1.0
+    done;
+    for i = 0 to h - 1 do
+      for j = 0 to h - 1 do
+	y.(i).(j) <- x.(i).(j)
+      done
+    done;
+    for k = 0 to h - 1 do
+      (let p = ref k in
+       let m = ref (abs_float y.(k).(k)) in
+	 for i = k + 1 to h - 1 do
+	   if (abs_float y.(i).(k)) > !m then (
+	     p := i;
+	     m := abs_float y.(i).(k);
+	   )
+	 done;
+	 if abs_float !m < eps
+	 then raise Non_singular;
+	 let p = !p in
+	   for j = k to 2 * h - 1 do
+	     let t = y.(k).(j) in
+	       y.(k).(j) <- y.(p).(j);
+	       y.(p).(j) <- t
+	   done
+      );
+      for i = k + 1 to h - 1 do
+	let c = y.(i).(k) /. y.(k).(k) in
+	  for j = k + 1 to 2 * h - 1 do
+	    y.(i).(j) <- y.(i).(j) -. (y.(k).(j) *. c);
+	  done;
+	  y.(i).(k) <- 0.0;
+      done;
+    done;
+    for k = h - 1 downto 0 do
+      for j = k + 1 to 2 * h - 1 do
+	y.(k).(j) <- y.(k).(j) /. y.(k).(k)
+      done;
+      y.(k).(k) <- 1.0;
+      for i = k - 1 downto 0 do
+	for j = k + 1 to 2 * h - 1 do
+	  y.(i).(j) <- y.(i).(j) -. (y.(k).(j) *. y.(i).(k));
+	done;
+	y.(i).(k) <- 0.0;
+      done;
+    done;
+    let z = Array.make_matrix h h 0.0 in
+      for i = 0 to h - 1 do
+	for j = 0 to h - 1 do
+	  z.(i).(j) <- y.(i).(j + h)
+	done
+      done;
+      z
+
+
+let _ =
+  let n = 20 in
+  let binomial = Array.make_matrix (n + 1) (n + 1) 0.0 in
+  let _ =
+    binomial.(0).(0) <- 1.0;
+    for i = 1 to n do
+      binomial.(i).(0) <- 1.0;
+      for j = 1 to n do
+	binomial.(i).(j) <- binomial.(i - 1).(j - 1) +. binomial.(i - 1).(j)
+      done
+    done
+  in
+  let sb = Scanf.Scanning.stdib in
+  let cases = Scanf.bscanf sb "%d " (fun s -> s) in
+    for ca = 1 to cases do
+      let p = Scanf.bscanf sb "%f " (fun s -> s) in
+      let a = Array.make_matrix n n 0.0 in
+      let _ =
+	for i = 0 to n - 1 do
+	  for j = i to n - 1 do
+	    a.(i).(j) <-
+	      p ** float_of_int (j - i) *.
+	      (1.0 -. p) ** float_of_int (n - j) *.
+	      binomial.(n - i).(j - i)
+	  done
+	done;
+	for i = 0 to n - 1 do
+	  for j = i to n - 1 do
+	    a.(i).(j) <-
+	      if i = j
+	      then 1.0 -. a.(i).(j)
+	      else -.a.(i).(j)
+	  done
+	done;
+      in
+      let b = inverse a in
+      let res = ref 0.0 in
+	for i = 0 to n - 1 do
+	  res := !res +. b.(0).(i)
+	done;
+	Printf.printf "Case #%d: %.5f\n" ca !res;
+    done

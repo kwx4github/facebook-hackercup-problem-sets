@@ -1,0 +1,405 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
+import java.io.OutputStream;
+import java.util.concurrent.Executors;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.concurrent.ExecutionException;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "fox.*socks.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxsocks.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxSocks solver = new FoxSocks();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class FoxSocks {
+    static final long MODULO = (long) 1e9;
+
+    static class Generator {
+        private final long modulo;
+        private final long extra;
+        private final int len;
+        private final long p1;
+        private final long p2;
+        private final long x;
+        private final long y;
+        private final long z;
+
+        public Generator(long modulo, long extra, int len, InputReader in) {
+            this.modulo = modulo;
+            this.extra = extra;
+            this.len = len;
+            p1 = in.nextLong();
+            p2 = in.nextLong();
+            x = in.nextLong();
+            y = in.nextLong();
+            z = in.nextLong();
+        }
+
+        long[] generate() {
+            long[] res = new long[len];
+            res[0] = p1;
+            res[1] = p2;
+            for (int i = 2; i < len; ++i) {
+                res[i] = (x * res[i - 2] + y * res[i - 1] + z) % modulo + extra;
+            }
+            return res;
+        }
+    }
+
+    static class MagicTree {
+        long extraConstant;
+        long extraLinear;
+        boolean childrenAllZero;
+        long overallSum;
+        long[] counts = new long[4];
+        long[] cnts = new long[4];
+        int firstPos;
+        int lastPos;
+
+        MagicTree left;
+        MagicTree right;
+
+        public MagicTree(int firstPos, int lastPos, long[] s) {
+            this.firstPos = firstPos;
+            this.lastPos = lastPos;
+            if (firstPos == lastPos) {
+                extraConstant = s[firstPos] % MODULO;
+            } else {
+                left = new MagicTree(firstPos, (firstPos + lastPos) / 2, s);
+                right = new MagicTree((firstPos + lastPos) / 2 + 1, lastPos, s);
+            }
+            update();
+        }
+
+        private void propagateZero() {
+            if (childrenAllZero) {
+                left.zero();
+                right.zero();
+                childrenAllZero = false;
+            }
+            if (extraConstant != 0 || extraLinear != 0) {
+                left.extraConstant = (left.extraConstant + extraConstant) % MODULO;
+                left.extraLinear = (left.extraLinear + extraLinear) % MODULO;
+                left.update();
+                right.extraConstant = (right.extraConstant + extraConstant) % MODULO;
+                right.extraLinear = (right.extraLinear + extraLinear) % MODULO;
+                right.update();
+                extraLinear = 0;
+                extraConstant = 0;
+            }
+        }
+
+        private void update() {
+            overallSum = (extraConstant * (lastPos - firstPos + 1) + extraLinear * ((firstPos + lastPos) * (long) (lastPos - firstPos + 1) / 2 % MODULO)) % MODULO;
+            Arrays.fill(counts, 0);
+            if (childrenAllZero || left == null) {
+                for (int posOdd = 0; posOdd < 2; ++posOdd) {
+                    int valueOdd = (int) ((posOdd * extraLinear + extraConstant) % 2);
+                    int count = getOddCount(posOdd);
+                    counts[posOdd * 2 + valueOdd] += count;
+                }
+            } else {
+                overallSum += left.overallSum;
+                overallSum += right.overallSum;
+                for (int posOdd = 0; posOdd < 2; ++posOdd) {
+                    for (int oldValueOdd = 0; oldValueOdd < 2; ++oldValueOdd) {
+                        int valueOdd = (int) ((oldValueOdd + posOdd * extraLinear + extraConstant) % 2);
+                        long count = left.counts[posOdd * 2 + oldValueOdd] + right.counts[posOdd * 2 + oldValueOdd];
+                        counts[posOdd * 2 + valueOdd] += count;
+                    }
+                }
+            }
+        }
+
+        private int getOddCount(int posOdd) {
+            if ((lastPos - firstPos + 1) % 2 == 0) {
+                return (lastPos - firstPos + 1) / 2;
+            } else {
+                if (firstPos % 2 == posOdd) {
+                    return (lastPos - firstPos + 1) / 2 + 1;
+                } else {
+                    return (lastPos - firstPos + 1) / 2;
+                }
+            }
+        }
+
+        private void zero() {
+            extraConstant = 0;
+            extraLinear = 0;
+            childrenAllZero = true;
+            update();
+        }
+
+        public void addLinear(int first, int last, long linear, long constant) {
+            first = Math.max(first, firstPos);
+            last = Math.min(last, lastPos);
+            if (first > last) return;
+            if (first == firstPos && last == lastPos) {
+                extraLinear = (extraLinear + linear) % MODULO;
+                extraConstant = (extraConstant + constant) % MODULO;
+                update();
+                return;
+            }
+            propagateZero();
+            left.addLinear(first, last, linear, constant);
+            right.addLinear(first, last, linear, constant);
+            update();
+        }
+
+        public long getSum(int first, int last) {
+            first = Math.max(first, firstPos);
+            last = Math.min(last, lastPos);
+            if (first > last) return 0;
+            if (first == firstPos && last == lastPos) {
+                return overallSum;
+            }
+            propagateZero();
+            long s = (extraConstant * (last - first + 1) + extraLinear * ((first + last) * (long) (last - first + 1) / 2 % MODULO)) % MODULO;
+            return (s + left.getSum(first, last) + right.getSum(first, last)) % MODULO;
+        }
+
+        public void setToConstant(int first, int last, long constant) {
+            first = Math.max(first, firstPos);
+            last = Math.min(last, lastPos);
+            if (first > last) return;
+            if (first == firstPos && last == lastPos) {
+                childrenAllZero = true;
+                extraLinear = 0;
+                extraConstant = constant;
+                update();
+                return;
+            }
+            propagateZero();
+            left.setToConstant(first, last, constant);
+            right.setToConstant(first, last, constant);
+            update();
+        }
+
+        public long[] getOdds(int first, int last) {
+            first = Math.max(first, firstPos);
+            last = Math.min(last, lastPos);
+            if (first > last) return new long[4];
+            if (first == firstPos && last == lastPos) {
+                return counts;
+            }
+            propagateZero();
+            long[] leftCnts = left.getOdds(first, last);
+            long[] rightCnts = right.getOdds(first, last);
+            if (extraLinear == 0 && extraConstant == 0) {
+                for (int i = 0; i < 4; ++i) cnts[i] = leftCnts[i] + rightCnts[i];
+            } else {
+                Arrays.fill(cnts, 0);
+                for (int posOdd = 0; posOdd < 2; ++posOdd) {
+                    for (int oldValueOdd = 0; oldValueOdd < 2; ++oldValueOdd) {
+                        int valueOdd = (int) ((oldValueOdd + posOdd * extraLinear + extraConstant) % 2);
+                        long count = leftCnts[posOdd * 2 + oldValueOdd] + rightCnts[posOdd * 2 + oldValueOdd];
+                        cnts[posOdd * 2 + valueOdd] += count;
+                    }
+                }
+            }
+            return cnts;
+        }
+    }
+
+    static class Testcase implements Callable<Testcase> {
+        int testNumber;
+        int n;
+        int m;
+        long res;
+        Generator sg;
+        Generator og;
+        Generator ag;
+        Generator bg;
+        Generator cg;
+        Generator dg;
+
+        Testcase(int testNumber) {
+            this.testNumber = testNumber;
+        }
+
+        public void readInput(InputReader in) {
+            n = in.nextInt();
+            m = in.nextInt();
+            sg = new Generator((int) 1e9, 0, n, in);
+            og = new Generator(4, 1, m, in);
+            ag = new Generator(n, 1, m, in);
+            bg = new Generator(n, 1, m, in);
+            cg = new Generator((int) 1e9, 0, m, in);
+            dg = new Generator((int) 1e9, 0, m, in);
+        }
+
+        public Testcase call() {
+            //if (testNumber != 4) return this;
+            long[] s = sg.generate();
+            long[] o = og.generate();
+            long[] a = ag.generate();
+            long[] b = bg.generate();
+            long[] c = cg.generate();
+            long[] d = dg.generate();
+
+            MagicTree tree = new MagicTree(0, n - 1, s);
+            long ans = 0;
+            for (int step = 0; step < m; ++step) {
+                long cans = 0;
+                int first = (int) (a[step] - 1);
+                int last = (int) ((first + b[step] - 1) % n);
+                switch ((int) o[step]) {
+                    case 1: {
+                        cans = (cans + c[step] * b[step] + (b[step] * (b[step] - 1)) / 2 % MODULO * d[step]) % MODULO;
+                        long extraConstant = ((c[step] - d[step] * first) % MODULO + MODULO) % MODULO;
+                        if (first <= last) {
+                            tree.addLinear(first, last, d[step] % MODULO, extraConstant);
+                        } else {
+                            tree.addLinear(first, n - 1, d[step] % MODULO, extraConstant);
+                            tree.addLinear(0, last, d[step] % MODULO, (extraConstant + d[step] * n) % MODULO);
+                        }
+                        break;
+                    }
+                    case 2: {
+                        cans = (cans + c[step] * b[step]) % MODULO;
+                        if (first <= last) {
+                            cans = (cans + tree.getSum(first, last)) % MODULO;
+                            tree.setToConstant(first, last, c[step]);
+                        } else {
+                            cans = (cans + tree.getSum(first, n - 1)) % MODULO;
+                            cans = (cans + tree.getSum(0, last)) % MODULO;
+                            tree.setToConstant(first, n - 1, c[step]);
+                            tree.setToConstant(0, last, c[step]);
+                        }
+                        break;
+                    }
+                    case 3: {
+                        if (first <= last) {
+                            cans = (cans + tree.getSum(first, last)) % MODULO;
+                        } else {
+                            cans = (cans + tree.getSum(first, n - 1)) % MODULO;
+                            cans = (cans + tree.getSum(0, last)) % MODULO;
+                        }
+                        break;
+                    }
+                    case 4: {
+                        if (first <= last) {
+                            long[] odds = tree.getOdds(first, last);
+                            cans = (cans + odds[1] + odds[3]) % MODULO;
+                        } else {
+                            long[] odds1 = tree.getOdds(first, n - 1);
+                            cans = (cans + odds1[1] + odds1[3]) % MODULO;
+                            long[] odds2 = tree.getOdds(0, last);
+                            cans = (cans + odds2[1] + odds2[3]) % MODULO;
+                        }
+                        break;
+                    }
+                }
+                ans = (ans + cans) % MODULO;
+            }
+            res = ans;
+            System.err.println("Done test " + testNumber);
+            return this;
+        }
+
+        public void writeOutput(PrintWriter out) {
+            out.println("Case #" + testNumber + ": " + res);
+        }
+    }
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int nt = in.nextInt();
+        List<Future<Testcase>> tests = new ArrayList<Future<Testcase>>();
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        for (int it = 0; it < nt; ++it) {
+            Testcase t = new Testcase(it + 1);
+            t.readInput(in);
+            tests.add(pool.submit(t));
+        }
+        for (Future<Testcase> test : tests) {
+            try {
+                Testcase t = test.get();
+                t.writeOutput(out);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        pool.shutdown();
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+    public long nextLong() {
+        return Long.parseLong(next());
+    }
+
+}
+

@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <string.h>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <iostream>
+#include <cmath>
+#include <queue>
+#include <cassert>
+using namespace std;
+
+/*
+ * Author: Veselin Georgiev
+ * Problem: "All Critical" (B)
+ * Contest: Facebook Hacker Cup 2015
+ */
+
+#define FOR(i,n) for (int i = 0; i < n; i++)
+#define abs(x) ((x)<0?(-(x)):(x))
+#define REP(i,v) for (unsigned i = 0; i < v.size(); i++)
+#define RL(i,v) for (unsigned i = 0; i < v.length(); i++)
+typedef long long ll;
+
+double dp[2][21];
+double tran[21][21][21];
+int counts[21];
+double odds[21];
+
+int iterations = 10000;
+
+void precalc(void)
+{
+	for (int mask = 0; mask < (1 << 20); mask++)
+		counts[__builtin_popcount(mask)]++;
+	
+	for (int w1 = 0; w1 <= 20; w1++)
+		for (int mask = 0; mask < (1 << 20); mask++) {
+			int newmask = mask | ((1 << w1) - 1);
+			tran[w1][__builtin_popcount(mask)][__builtin_popcount(newmask)]++;
+		}
+	for (int w1 = 0; w1 <= 20; w1++)
+		for (int w2 = 0; w2 <= 20; w2++)
+			for (int w3 = 0; w3 <= 20; w3++)
+				tran[w1][w2][w3] /= counts[w2];
+}
+
+double solve(double p)
+{
+	memset(odds, 0, sizeof(odds));
+	for (int mask = 0; mask < (1 << 20); mask++) {
+		double q = 1;
+		FOR(i, 20) if ((1 << i) & mask) q *= p; else q *= 1 - p;
+		odds[__builtin_popcount(mask)] += q;
+	}
+	double sum = 0;
+	for (int i = 0; i <= 20; i++) sum += odds[i];
+	for (int i = 0; i <= 20; i++) odds[i] /= sum;
+	
+	memset(dp, 0, sizeof(dp));
+	dp[0][0] = 1.0;
+	double avg = 0;
+	for (int i = 0; i < iterations; i++) {
+		int lvl = i % 2;
+		int next = !lvl;
+		memset(dp[next], 0, sizeof(dp[next]));
+		for (int w1 = 0; w1 < 20; w1++)
+			for (int w2 = 0; w2 <= 20; w2++)
+				for (int w3 = 0; w3 <= 20; w3++)
+					dp[next][w3] += dp[lvl][w1] * tran[w1][w2][w3] * odds[w2];
+		avg += dp[next][20] * (i + 1);
+	}
+	return avg;
+}
+
+int main(int argc, char** argv)
+{
+	if (argc == 2) sscanf(argv[1], "%d", &iterations);
+// 	freopen("/home/vesko/hackercup/b.in", "rt", stdin);
+	precalc();
+	int T;
+	scanf("%d", &T);
+	for (int tc = 1; tc <= T; tc++) {
+		double p;
+		scanf("%lf", &p);
+		printf("Case #%d: %.5lf\n", tc, solve(p));
+	}
+	
+	return 0;
+}

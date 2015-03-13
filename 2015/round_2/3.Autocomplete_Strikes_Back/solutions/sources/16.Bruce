@@ -1,0 +1,155 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/resource.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    struct rlimit stack_limit;
+    getrlimit(RLIMIT_STACK, &stack_limit);
+    stack_limit.rlim_cur = 1024 * 1024 * 1024;
+    setrlimit(RLIMIT_STACK, &stack_limit);
+
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+struct node
+{
+    char ch;
+    node *child;
+    node *sib;
+    bool stop = false;
+    int idx = -1;
+    int follow = -1;
+    int level = -1;
+
+    bool get_child(char l, node *&out_child);
+    void renumber(int level, vector<node *> &nodes);
+};
+
+static node node_pool[300000];
+static int next_node = 0;
+
+static node *alloc()
+{
+    return &node_pool[next_node++];
+}
+
+bool node::get_child(char l, node *&out_child)
+{
+    node **c = &child;
+    while (*c != NULL && (*c)->ch < l)
+        c = &(*c)->sib;
+    if (*c != NULL && (*c)->ch == l)
+    {
+        out_child = *c;
+        return false;
+    }
+
+    out_child = alloc();
+    out_child->ch = l;
+    out_child->child = NULL;
+    out_child->sib = *c;
+    *c = out_child;
+    return true;
+}
+
+void node::renumber(int level, vector<node *> &nodes)
+{
+    idx = nodes.size();
+    nodes.push_back(this);
+    this->level = level;
+    for (node *c = child; c != NULL; c = c->sib)
+        c->renumber(level + 1, nodes);
+    follow = nodes.size();
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        int N, K;
+        cin >> N >> K;
+        node *root = alloc();
+        root->child = NULL;
+        root->sib = NULL;
+        root->ch = 0;
+        for (int i = 0; i < N; i++)
+        {
+            string word;
+            cin >> word;
+            node *cur = root;
+            for (char c : word)
+                cur->get_child(c, cur);
+            cur->stop = true;
+        }
+
+        vector<node *> nodes;
+        root->renumber(0, nodes);
+        int C = nodes.size();
+        vector<vector<int> > dp(C + 1, vi(K + 1, INT_MAX / 2));
+        for (int i = 0; i <= C; i++)
+            dp[i][0] = 0;
+        for (int i = C - 1; i > 0; i--)
+        {
+            int follow = nodes[i]->stop ? i + 1 : nodes[i]->follow;
+            int level = nodes[i]->level;
+            for (int j = 1; j <= K; j++)
+            {
+                dp[i][j] = min(dp[i][j], dp[i + 1][j]);
+                dp[i][j] = min(dp[i][j], dp[follow][j - 1] + level);
+            }
+        }
+        cout << "Case #" << cas + 1 << ": " << dp[1][K] << "\n";
+    }
+    return 0;
+}

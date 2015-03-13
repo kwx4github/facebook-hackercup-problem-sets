@@ -1,0 +1,114 @@
+#include<fstream>
+#include<iostream>
+#include<sstream>
+#include<iomanip>
+#include<string>
+#include<vector>
+#include<list>
+#include<set>
+#include<map>
+#include<queue>
+#include<algorithm>
+#include<functional>
+#include<numeric>
+using namespace std;
+typedef pair<int, int> pii;
+typedef long long ll;
+
+namespace
+{
+	int N,K;
+	string ss[4005];
+	int simLen[4005][4005];
+
+	int sim(const string& a, const string& b)
+	{
+		int ret = 0;
+		while (ret < a.size() && ret < b.size() && a[ret] == b[ret])
+			++ret;
+
+		return ret;
+	}
+
+
+	map<int, int> mm[4005][105];
+}
+
+//int mainFHC15_R2_P3()
+int main()
+{
+	ifstream fin("FHC\\autocomplete_strikes_back.txt");
+	ofstream fout("FHC\\autocomplete_strikes_back_out.txt");	
+
+	unsigned int numberOfCases;
+	fin >> numberOfCases;
+
+	for (unsigned int zz=1; zz<=numberOfCases; ++zz)
+	{
+		for (auto& m : mm)
+			for (auto& l : m)
+				l.clear();
+
+		ss[0] = string(1, 'a' - 1);
+
+		fin >> N >> K;
+		for (int i = 1; i <= N; ++i)
+			fin >> ss[i];
+
+		++N;
+		sort(ss, ss + N);
+		for (int i = 0; i < N; ++i)
+			for (int j = i; j < N; ++j)
+				simLen[i][j] = simLen[j][i] = sim(ss[i], ss[j]);
+
+		int ret = 999999999;
+		mm[0][0].insert({ 1, 0 });
+
+		for (int i = 0; i <= N; ++i)
+		{
+			for (int k = 0; k <= K; ++k)
+			{
+				const map<int, int>& thisMap = mm[i][k];
+				if (thisMap.empty()) continue;
+
+				if (k == K)
+				{
+					for (auto p : thisMap)
+						ret = min(ret, p.second);
+
+					continue;
+				}
+				
+				if (i == N) continue;
+
+				int prevSim = 999999;
+				for (int j = i + 1; j < N; ++j)
+				{
+					int thisSim = simLen[i][j];
+					if (thisSim == prevSim) continue;
+					prevSim = thisSim;
+
+					int numThis = min<int>(ss[i].size(), thisSim + 1);
+					int numNext = min<int>(ss[j].size(), thisSim + 1);
+
+					int cheapest = 99999999;
+					for (auto p : thisMap)
+					{
+						int numAlreadyTyped = p.first, currentCost = p.second;
+						int thisCost = max(numThis - numAlreadyTyped, 0) + numNext + currentCost;
+						cheapest = min(thisCost, cheapest);
+					}
+
+					map<int, int>& targetMap = mm[j][k+1];
+					auto ib = targetMap.insert({ numNext, cheapest });
+					ib.first->second = min(ib.first->second, cheapest);
+				}
+			}
+		}
+		
+		fout << "Case #" << zz << ": ";
+		fout << ret << endl;
+	}
+
+	return 0;
+}

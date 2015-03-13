@@ -1,0 +1,120 @@
+#include <iostream>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <stack>
+#include <queue>
+#include <set>
+#include <map>
+#include <sstream>
+#include <complex>
+#include <ctime>
+#include <cassert>
+#include <functional>
+
+using namespace std;
+
+typedef long long ll;
+typedef vector<int> VI;
+typedef pair<int, int> PII;
+
+#define REP(i,s,t) for(int i=(s);i<(t);i++)
+#define FILL(x,v) memset(x,v,sizeof(x))
+
+const int INF = (int)1E9;
+#define MAXN 300005
+int L;
+int N, K;
+struct trnode{
+	int next[26], precnt;
+	int dp[101];
+	trnode(){
+		precnt = 0;
+		REP(i, 0, K + 1) dp[i] = INF;
+		dp[0] = 0;
+		FILL(next, 0);
+	}
+} nodes[MAXN];
+char str[MAXN];
+
+void add(int k, int pstr){
+	if (str[pstr] == 0){
+		nodes[k].precnt++;
+		return;
+	}
+	char c = str[pstr];
+	int t = c - 'a';
+	if (nodes[k].next[t] == 0){
+		nodes[k].next[t] = ++L;
+		nodes[L] = trnode();
+	}
+	add(nodes[k].next[t], pstr + 1);
+}
+
+void init(){
+	L = 0;
+	nodes[0] = trnode();
+}
+
+int sdp[27][101];
+void solve(int k){
+	REP(i, 0, 26){
+		if (nodes[k].next[i]){
+			solve(nodes[k].next[i]);
+		}
+	}
+	REP(i, 0, 26){
+		REP(t, 0, K + 1) sdp[i][t] = INF;
+	}
+	sdp[0][0] = 0;
+
+	REP(i, 1, 27){
+		int ch = nodes[k].next[i - 1];
+		if (!ch){
+			REP(t, 0, K + 1)
+				sdp[i][t] = sdp[i - 1][t];	// no child, copy
+		}
+		else {
+			REP(t, 0, K + 1){
+				REP(d, 0, t + 1){
+					sdp[i][t] = min(sdp[i][t], sdp[i - 1][t - d] + nodes[ch].dp[d]);
+				}
+			}
+		}
+	}
+	if (k) {
+		if (nodes[k].precnt > 0 || sdp[26][1] < INF) nodes[k].dp[1] = 1;
+		REP(t, 2, K + 1){
+			nodes[k].dp[t] = min(INF, sdp[26][t] + t);
+			if (nodes[k].precnt > 0){
+				nodes[k].dp[t] = min(nodes[k].dp[t], sdp[26][t - 1] + t - 1 + 1);
+			}
+		}
+	}
+	else {
+		REP(t, 0, K + 1){
+			nodes[k].dp[t] = sdp[26][t];
+		}
+	}
+}
+
+int main(){
+	int cs;
+	cin >> cs;
+	REP(csn, 1, cs + 1){
+		printf("Case #%d: ", csn);
+		//cerr << csn << endl;
+		cin >> N >> K;
+		init();
+		REP(i, 0, N){
+			scanf("%s", str);
+			add(0, 0);
+		}
+		solve(0);
+		cout << nodes[0].dp[K] << endl;
+	}
+	return 0;
+}

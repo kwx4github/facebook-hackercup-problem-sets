@@ -1,0 +1,109 @@
+#include <iostream>
+#include <string>
+#include <fstream>
+#define MAXN 30000
+using namespace std;
+#pragma comment(linker, "/STACK:50000000") 
+ifstream fin( "C.in" );
+ofstream fout( "C.out" );
+#define cin fin
+#define cout fout
+
+struct trie{
+	int cnt;
+	int idx[27];
+	int dp[27][101];
+	int sm;
+	void initialize(){ 
+		cnt = 0;
+		sm = 0;
+		memset( idx, -1, sizeof idx );
+		memset( dp, -1, sizeof dp );
+	}
+	bool operator == ( const trie& m ) const{
+		for( int i = 0; i < 26; i++ )
+			if( idx[i] != m.idx[i] )
+				return false;
+		return true;
+	}
+};
+
+int size = 1;
+trie tr[MAXN];
+
+int solve( trie& cur ){
+	cur.sm = cur.cnt;
+	for( int i = 0; i < 26; i++ )
+		if( cur.idx[i] != -1 )
+			cur.sm += solve( tr[cur.idx[i]] );
+	return cur.sm;
+}
+
+int Q( trie&, int );
+
+int query( trie& cur, int st, int k ){
+	if( k == 0 )
+		return 0;
+	if( st >= 26 )
+		return 1000000;
+	if( cur.dp[st][k] != -1 )
+		return cur.dp[st][k];
+	
+	cur.dp[st][k] = 1000000;
+	
+	if( cur.idx[st] == -1 )
+		return cur.dp[st][k] = query( cur, st + 1, k );
+
+	//if( k > cur.sm )
+	//	return cur.dp[st][k];
+	
+	for( int i = 0; i <= k; i++ ){
+		trie& nx = tr[cur.idx[st]];
+		cur.dp[st][k] = min( cur.dp[st][k], i + Q( nx, i ) + query( cur, st + 1, k - i ) );
+	}
+	return cur.dp[st][k];
+}
+
+int Q( trie& cur, int k ){
+	if( k == 1 ){
+		if( cur == tr[0] )
+			return 1;
+		return 0;
+	}
+	k -= cur.cnt;
+	return query( cur, 0, k );
+}
+
+void add( string s ){
+	int cur = 0;
+	for( int i = 0; i < s.length(); i++ ){
+		if( tr[cur].idx[s[i] - 'a'] == -1 ){
+			tr[cur].idx[s[i] - 'a'] = size++;
+			cur = size - 1;
+		}
+		else cur = tr[cur].idx[s[i] - 'a'];
+	}
+	tr[cur].cnt++;
+}
+
+int main()
+{
+	int test;
+	cin >> test;
+	for( int T = 1; T <= test; T++ ){
+		cerr << T << endl;
+		int n, k;
+		cin >> n >> k;
+		for( int i = 0; i < MAXN; i++ )
+			tr[i].initialize();
+		size = 1;
+		for( int i = 0; i < n; i++ ){
+			string s;
+			cin >> s;
+			add( s );
+		}
+		solve( tr[0] );
+		cout << "Case #" << T << ": " << Q( tr[0], k ) << endl;
+	}
+	return 0;
+}

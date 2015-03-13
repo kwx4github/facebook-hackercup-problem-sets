@@ -1,0 +1,235 @@
+#pragma comment(linker, "/STACK:500777216")
+
+#define _CRT_SECURE_NO_DEPRECATE
+#include<iostream>
+#include<vector>
+#include<set>
+#include<map>
+#include<stack>
+#include<queue>
+#include<string>
+#include<sstream>
+#include<deque>
+#include<math.h>
+#include<cstring>
+#include <bitset>
+#include<algorithm>
+#include<stdio.h>
+#include<stdlib.h>
+
+#define all(v) v.begin(),v.end()
+#define mpair make_pair
+
+using namespace std;
+typedef long double ld;
+const ld epsilon = 1e-9;
+typedef long long ll;
+
+const int ALPHABET_SIZE = 26;
+
+class Node {
+public:
+	Node* links[ALPHABET_SIZE];
+	Node * father;
+	bool finishing;
+	int numWords;
+	int depth;
+
+	Node() {
+		for (int i = 0; i < ALPHABET_SIZE; i++) {
+			links[i] = NULL;
+		}
+		finishing = false;
+		depth = 0;
+		numWords = 0;
+		father = NULL;
+	}
+    ~Node() {
+	   for (int i = 0; i <ALPHABET_SIZE; i++) {
+		   if (links[i] != NULL) {
+			   delete links[i];
+		   }
+	   }
+   }
+};
+
+class Trie {
+private:
+	Node* root;
+	string word;
+public:
+	Trie() {
+		root = new Node;
+	}
+
+	~Trie() {
+		delete root;
+	}
+
+	int addNewWord(const string& newWord) {
+		word = newWord;
+		return addWordAux(root, 0);
+	}
+
+	int doBfs(int k, int n) {
+		int numWords = n;
+		
+		priority_queue<pair<int, Node *> > prioQ;
+		prioQ.push(make_pair(0, root));
+		queue<Node *> toProcess;
+		toProcess.push(root);
+
+		Node * cur;
+		while(!toProcess.empty()) {
+			cur = toProcess.front();
+			toProcess.pop();
+			for (int i = 0; i < ALPHABET_SIZE; i++) {
+				if (cur->links[i] != NULL) {
+					toProcess.push(cur->links[i]);
+				}
+				if (cur->links[i] != NULL && cur->links[i]->numWords > 1) {
+					prioQ.push(make_pair(cur->links[i]->depth, cur->links[i]));
+				}
+			}
+		}
+		pair<int, Node*> cur2;
+		while(numWords > k) {
+			cur2 = prioQ.top();
+			if (cur2.second->numWords == 1) {
+				prioQ.pop();
+				continue;
+			}
+			for (int i = 0; i < ALPHABET_SIZE; i++) {
+				if (cur2.second->links[i] != NULL) {
+					delete cur2.second->links[i];
+					cur2.second->links[i] = NULL;
+					Node * tmp = cur2.second;
+					while(tmp != NULL) {
+						tmp->numWords--;
+						tmp = tmp->father;
+					}
+					numWords--;
+					break;
+				}
+			}
+		}
+		return count();
+	}
+	int count() {
+		return count_aux(root);
+	}
+private:
+	int addWordAux(Node * node, int idx) {
+		if (idx == word.size()) {
+			return idx;
+		}
+		if (node->links[word[idx] - 'a'] == NULL) {
+			Node * newNode = new Node;
+			node->links[word[idx] - 'a'] = newNode;
+			addWordAux(newNode, idx  + 1);
+			if (idx == word.size() - 1) {
+				newNode->finishing = true;
+			}
+			newNode->depth = idx + 1;
+			newNode->numWords = 1;
+			newNode->father = node;
+			return idx + 1;
+		} else {
+			if (idx == word.size() - 1) {
+				node->links[word[idx] - 'a']->finishing = true;
+			}
+			node->links[word[idx] - 'a']->depth = idx + 1;
+			node->links[word[idx] - 'a']->numWords++;
+			return addWordAux(node->links[word[idx] - 'a'], idx + 1);
+		}
+	}
+	int count_aux(Node * node) {
+		int res = 0;
+		if(node->finishing) {
+			res += node->depth;
+		}
+		for (int i = 0; i < ALPHABET_SIZE; i++) {
+			if (node->links[i] != NULL) {
+				if (node->links[i]->numWords == 1) {
+					res += node->links[i]->depth;
+				} else {
+					res += count_aux(node->links[i]);
+				}
+			}
+		}
+		return res;
+	}
+};
+
+const bool LOCAL_TESTS = false;
+const int N_CONST = 4000;
+const int K_CONST = 100;
+const int NUM_TESTS_CONST = 1;
+
+string getWord(int idx) {
+	string res;
+	if (LOCAL_TESTS) {
+		
+		if (idx == -1) {
+			res.resize(900000, 'a');
+		} else {
+			res.resize(10, 'a');
+		}
+	} else {
+		cin >> res;
+	}
+	return res;
+}
+
+int getN() {
+	if (LOCAL_TESTS) {
+		return N_CONST;
+	} else {
+		int n;
+		cin >> n;
+		return n;
+	}
+}
+
+int getK() {
+	if (LOCAL_TESTS) {
+		return K_CONST;
+	} else {
+		int k;
+		cin >> k;
+		return k;
+	}
+}
+
+int getNumTests() {
+	if (LOCAL_TESTS) {
+		return NUM_TESTS_CONST;
+	} else {
+		int numTests;
+		cin >> numTests;
+		return numTests;
+	}
+}
+
+int main()
+{
+	freopen("hacker.in", "r", stdin);
+	freopen("hacker.out", "w", stdout);
+
+	int numtests = getNumTests();
+	for (int o = 0; o < numtests; o++)
+	{
+		printf("Case #%d: ", o + 1);
+		int n = getN();
+		int k = getK();
+		Trie * trie = new Trie;
+		string word;
+		for (int i = 0; i < n; i++)	{
+			word = getWord(i);
+			trie->addNewWord(word);
+		}
+		cout << trie->doBfs(k, n) << endl;
+		delete trie;
+	}
+	return 0;
+}

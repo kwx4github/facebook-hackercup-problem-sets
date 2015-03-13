@@ -1,0 +1,149 @@
+package fb_round2;
+
+import java.io.*;
+import java.util.StringTokenizer;
+
+public class C {
+    public static void main(String[] args) throws FileNotFoundException {
+        Kattio io;
+
+//        io = new Kattio(System.in, System.out);
+//        io = new Kattio(new FileInputStream("fb_round2/C-sample.in"), System.out);
+//        io = new Kattio(new FileInputStream("fb_round2/Cgen.in"), System.out);
+        io = new Kattio(new FileInputStream("fb_round2/autocomplete_strikes_back.txt"), new FileOutputStream("fb_round2/autocomplete.out"));
+//        io = new Kattio(new FileInputStream("fb_round2/C-large-0.in"), new FileOutputStream("fb_round2/C-large-0.out"));
+
+        int cases = io.getInt();
+        for (int i = 1; i <= cases; i++) {
+            io.print("Case #" + i + ": ");
+            new C().solve(io);
+        }
+        io.close();
+    }
+
+    private class Trie {
+        private Trie[] next = new Trie[26];
+        private int noWords;
+        private boolean endWord;
+        private int index;
+    }
+
+    private final int INF = 100000000;
+    private int memo[][][];
+
+    private void solve(Kattio io) {
+        Trie root = new Trie();
+        int nodes = 0;
+        root.index = nodes++;
+        int n = io.getInt(), k = io.getInt();
+        for (int i = 0; i < n; i++)
+        {
+            String s = io.getWord();
+            Trie cur = root;
+            for (int j = 0; j < s.length(); j++)
+            {
+                int t = s.charAt(j) - 'a';
+                cur.noWords++;
+                if (cur.next[t] == null)
+                {
+                    cur.next[t] = new Trie();
+                    cur.next[t].index = nodes++;
+                }
+                cur = cur.next[t];
+            }
+            cur.endWord = true;
+            cur.noWords++;
+        }
+        memo = new int[nodes][k+1][26];
+        int ans = go(root, k, 0);
+        io.println(ans);
+    }
+
+    private int go(Trie node, int left, int cur)
+    {
+        if (left < 0) return INF;
+        if (left > 0 && cur == 0 && node.endWord) left--;
+        if (left == 0) return 0;
+        while (cur < 26 && node.next[cur] == null) cur++;
+        if (cur == 26) return INF;
+
+        if (memo[node.index][left][cur] > 0) {
+            return memo[node.index][left][cur] - 1;
+        }
+
+        int best = go(node, left, cur+1);
+
+        int v = 1 + go(node, left-1, cur+1);
+        best = Math.min(best, v);
+
+        for (int i = 2; i <= left && i <= node.next[cur].noWords; i++)
+        {
+            int sum = i + go(node.next[cur], i, 0) + go(node, left-i, cur+1);
+            best = Math.min(best, sum);
+        }
+
+        memo[node.index][left][cur] = best + 1;
+
+        return best;
+    }
+
+    public static class Kattio extends PrintWriter
+    {
+        public Kattio(InputStream i) {
+            super(new BufferedOutputStream(System.out));
+            r = new BufferedReader(new InputStreamReader(i));
+        }
+
+        public Kattio(InputStream i, OutputStream o) {
+            super(new BufferedOutputStream(o));
+            r = new BufferedReader(new InputStreamReader(i));
+        }
+
+        public boolean hasMoreTokens() {
+            return peekToken() != null;
+        }
+
+        public int getInt() {
+            return Integer.parseInt(nextToken());
+        }
+
+        public double getDouble() {
+            return Double.parseDouble(nextToken());
+        }
+
+        public long getLong() {
+            return Long.parseLong(nextToken());
+        }
+
+        public String getWord() {
+            return nextToken();
+        }
+
+
+        private BufferedReader r;
+        private String line;
+        private StringTokenizer st;
+        private String token;
+
+        private String peekToken() {
+            if (token == null)
+                try {
+                    while (st == null || !st.hasMoreTokens()) {
+                        line = r.readLine();
+                        if (line == null) return null;
+                        st = new StringTokenizer(line);
+                    }
+                    token = st.nextToken();
+                } catch (IOException e) {
+                }
+            return token;
+        }
+
+        private String nextToken() {
+            String ans = peekToken();
+            token = null;
+            return ans;
+        }
+    }
+
+}

@@ -1,0 +1,104 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+#include <utility>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
+
+#define X first
+#define Y second
+
+using namespace std;
+using i64 = long long;
+
+template<typename T> T modPow(T a, T b, T p) {
+	T ret = 1;
+	for (a %= p; b; b >>= 1) {
+		if (b & 1) ret = (ret * a) % p;
+		a = (a * a) % p;
+	}
+	return ret;
+}
+
+constexpr int MAX = 40010;
+constexpr int MAXC = 27;
+
+inline int chidx(char ch) {
+	return ch == '$' ? 26 : ch - 'a';
+}
+
+i64 dp[MAX][128];
+
+struct Trie {
+	int nxt[MAX][MAXC], cnt[MAX], tot;
+	bool tag[MAX];
+
+	void clear() {
+		memset(nxt, -1, sizeof(nxt));
+		memset(cnt, 0, sizeof(cnt));
+		memset(tag, 0, sizeof(tag));
+		tot = 1;
+	}
+
+	void insert(const char* str) {
+		int x = 0;
+		for (++cnt[x]; *str; ++str) {
+			int idx = chidx(*str);
+			if (nxt[x][idx] == -1) nxt[x][idx] = tot++;
+			x = nxt[x][idx]; ++cnt[x];
+		}
+		tag[x] = true;
+	}
+
+	void dfs(int x, int m) {
+		memset(dp[x], 0x3F, sizeof(dp[x]));
+		dp[x][0] = 0;
+		for (int i = 0; i < MAXC; ++i) {
+			//printf("i = %d, nxt = %d\n", i, nxt[x][i]);
+			if (nxt[x][i] == -1) continue;
+			int y = nxt[x][i];
+			dfs(y, m);
+			for (int j = min(m, cnt[x]); j >= 1; --j) {
+				for (int k = 1; k <= j; ++k) {
+					dp[x][j] = min(dp[x][j], dp[x][j - k] + dp[y][k]);
+				}
+			}
+		}
+		dp[x][1] = tag[x] ? 0 : 1;
+		for (int i = 2; i <= cnt[x] && i <= m; ++i) {
+			if (x) dp[x][i] += (i64)i;
+			//printf("x = %d, i = %d, dp = %lld\n", x, i, dp[x][i]);
+		}
+		//getchar();
+	}
+} trie;
+
+char buff[MAX];
+
+int main() {
+	int t;
+	scanf("%d", &t);
+	for (int ct = 1; ct <= t; ++ct) {
+		int n, m;
+		trie.clear();
+		scanf("%d%d", &n, &m);
+		for (int i = 0; i < n; ++i) {
+			scanf("%s", buff);
+			strcat(buff, "$");
+			trie.insert(buff);
+		}
+		trie.dfs(0, m);
+		printf("Case #%d: %lld\n", ct, dp[0][m]);
+	}
+	return 0;
+}

@@ -1,0 +1,150 @@
+#include <fstream>
+#include <vector>
+#include <iostream>
+#include <string>
+#include <set>
+#include <map>
+#include <stack>
+#include <list>
+#include <queue>
+#include <algorithm>
+#include <math.h>
+#include <stdlib.h>
+using namespace std;
+
+string myitoa (int i) {
+	string ret;
+	if (i == 0)
+		return string("0");
+	while (i > 0) {
+		ret.push_back('0' + i % 10);
+		i /= 10;
+	}
+	reverse(ret.begin(), ret.end());
+	return ret;
+}
+
+struct triNode {
+	int depth;
+	bool isword;
+	int count;
+	vector<triNode*> cds;
+	triNode (int depth, bool isword):depth(depth),isword(isword),count(0),cds(vector<triNode*>(26, NULL))	{}
+};
+
+struct cmp {
+	bool operator()(triNode* a, triNode* b) const {
+		if (a -> depth != b -> depth)
+			return a->depth < b->depth;
+		if (a -> count == 1 && b -> count > 1)
+			return true;
+		else if (a -> count > 1 && b -> count == 1)
+			return false;
+		if (a -> isword && ! b -> isword)
+			return true;
+		else if (!a-> isword && b -> isword)
+			return false;
+                return a < b;
+	}
+};
+
+void buildTrie(int cur , const string& word, triNode* root) 
+{
+	if (!root) {
+		cout << "Debug here!" << endl;
+		return;
+	}
+	if (cur == word.size())
+		return;
+	int a = word[cur] - 'a';
+	bool end = (cur + 1== word.size());
+	if (!root->cds[a])
+		root -> cds[a] = new triNode(cur + 1, end);
+	if (end)
+		root -> cds[a] -> isword = end;
+	root -> cds[a] -> count += 1;
+	buildTrie(cur + 1, word, root -> cds[a]);
+}
+
+void delTrie(triNode* root) {
+	if (!root)
+		return;
+	for (int i = 0 ; i < 26 ; i ++)
+		delTrie(root -> cds[i]);
+	delete root;
+}
+
+int main()
+{
+	ifstream curFile;
+	curFile.open("autocomplete_strikes_back.txt", ios::in);
+	vector<int> ret;
+	string src;
+	int T;
+	int N;
+	int K;
+	if(curFile)
+	{
+		curFile >> N;		
+		while (N -- > 0) {
+			curFile >> T;
+			curFile >> K;
+			triNode* root = new triNode (0, false);
+			while (T -- > 0) {
+				curFile >> src;
+				buildTrie(0, src, root);
+			}
+			set<triNode*, cmp> wq;
+			for (int i = 0 ; i < 26 ; i ++) {
+				if (root -> cds[i]) {
+					wq.insert(root -> cds[i]);
+				}
+			} 
+			int r = 0;
+			triNode* cur;
+			while (wq.size() < K) {
+				cur = * (wq.begin());
+				wq.erase(cur);
+				if (cur -> count == 1) { 					
+					K --;
+					r += cur -> depth;
+					continue;
+				}
+				if ( cur -> isword) {
+					K --;
+					r += cur -> depth;
+
+				}
+
+				if (cur -> count > 1){
+					for (int i = 0 ; i < 26 ; i ++) {
+					if (cur -> cds[i])
+						wq.insert(cur -> cds[i]);
+					} 
+				}
+			}
+			while(K --> 0) {
+				cur = *(wq.begin());
+				wq.erase(cur);
+				r += cur -> depth;
+			}
+			ret.push_back(r);
+			delTrie(root);
+		}
+	}
+	else {
+		cout << "Can't open input file << endl;";
+	}
+	curFile.close();
+	ofstream outfile;
+	outfile.open("output.txt", ios::out);
+	if(outfile)
+	{
+		for(int i = 0; i < ret.size() ; i++) {
+			outfile << "Case #" << i + 1<< ": " <<ret[i]  << endl;
+			cout << "Case #" << i + 1<< ": " <<ret[i] << endl;
+		}
+	}
+	outfile.close();
+	return 0;
+}

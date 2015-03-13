@@ -1,0 +1,124 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <algorithm>
+#include <queue>
+#include <vector>
+#include <set>
+#include <map>
+#include <cassert>
+#include <sys/resource.h>
+
+using namespace std;
+
+#define forn(i,n) for(int i=0;i<(int)(n);i++)
+#define forsn(i,s,n) for(int i=(s);i<(int)(n);i++)
+#define dforn(i,n) for(int i=(n)-1;i>=0;i--)
+#define dforsn(i,s,n) for(int i=(n)-1;i>=(int)(s);i--)
+
+#define forall(it,c) for(typeof((c).begin()) it = (c).begin(); it != (c).end(); it++)
+#define dforall(it,c) for(typeof((c).rbegin()) it = (c).rbegin(); it != (c).rend(); it++)
+
+#define esta(x,c) ((c).find(x) != (c).end())
+
+#define all(c) (c).begin(), (c).end()
+
+typedef long long tint;
+typedef pair<int,int> pint;
+typedef vector<int> vint;
+
+void set_stack()
+{
+    struct rlimit rl;
+    int result;
+
+    result = getrlimit(RLIMIT_STACK, &rl);
+    if (result != 0)
+    {
+        cerr << "getrlimit returned result = " << result << endl;
+        exit(1);
+    }
+    const rlim_t kStackSize = 1024 * 1024 * 1024;   // min stack size = 1GiB
+
+    if (rl.rlim_cur < kStackSize)
+    {
+        rl.rlim_cur = kStackSize;
+        result = setrlimit(RLIMIT_STACK, &rl);
+        if (result != 0)
+        {
+            cerr << "setrlimit returned result = " << result << endl;
+            exit(1);
+        }
+    }
+}
+
+const int INF = 1000000000;
+
+int K;
+
+vint combine(const vint &a, const vint &b)
+{
+    vint res(K+1, INF);
+    forn(i, K+1)
+    forn(j, K-i+1)
+        res[i+j] = min(res[i+j], a[i] + b[j]);
+    return res;
+}
+
+struct Trie
+{
+    map<char, Trie> hijos;
+    vint dp;
+    bool word;
+    Trie() : dp(K+1, INF), word(false) {}
+    void add(const char* w)
+    {
+        Trie *current = this;
+        for ( ; *w  ; w++)
+            current = &(current->hijos[*w]);
+        current->word = true;
+    }
+    void calc()
+    {
+        dp[0] = 0;
+        forall(it, hijos)
+        {
+            Trie &h = it->second;
+            // Es la primera vez que tengo un codigo con variable h.dp
+            // Sublime. Casi no me doy cuenta. QUEDA.
+            h.calc();
+            if (h.word)
+            {
+                dforsn(i, 1, K+1)
+                    h.dp[i] = h.dp[i-1];
+            }
+            forn(i,K+1) h.dp[i] += i;
+            if (h.dp[1] < INF)
+                h.dp[1] = 1; // Si hay una sola palabra, no se confunde con nadie, y no deberia pagar costo extra.
+            dp = combine(dp, h.dp);
+        }
+    }
+};
+
+int main()
+{   
+    set_stack();
+
+    int TT; cin >> TT;
+    forn(tt,TT)
+    {
+        int N; cin >> N >> K;
+        Trie t;
+        forn(i,N)
+        {
+            string w; cin >> w;
+            t.add(w.c_str());
+        }
+        t.calc();
+        int ret = t.dp[K];
+        cout << "Case #" << tt+1 << ": " << ret << endl;
+    }
+    return 0;
+}
+

@@ -1,0 +1,106 @@
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <cstdio>
+using namespace std;
+
+const int MAXN = 4000, MAXL = 30000;
+
+int N, K;
+int cpref[MAXN][MAXN];
+string words[MAXN];
+char tmp[MAXL + 1];
+
+int q1[MAXL], q2[MAXL], *prev, *next, Nprev, Nnext;
+int v1[MAXL], v2[MAXL], *prev_val, *next_val;
+bool next_add[MAXL];
+
+int **where;
+pair<int, int> what[MAXL];
+
+int main()
+{
+    int T; scanf("%d", &T);
+    for (int t = 0; t < T; ++t) {
+        printf("Case #%d: ", t + 1);
+
+        scanf("%d%d", &N, &K);
+        for (int i = 0; i < N; ++i) {
+            scanf("%s", tmp);
+            words[i] = tmp;
+        }
+
+        sort(words, words + N);
+        for (int j1 = 0; j1 < N; ++j1)
+            for (int j2 = j1 + 1; j2 < N; ++j2) {
+                cpref[j1][j2] = 0;
+
+                int bnd = (int)min(words[j1].length(), words[j2].length());
+                for (int p = 0; p < bnd; ++p)
+                    if (words[j1][p] == words[j2][p]) ++cpref[j1][j2]; else break;
+            }
+
+        int cur = 0;
+        where = new int*[N];
+        for (int j = 0; j < N; ++j) {
+            where[j] = new int[words[j].length()];
+            for (int p = 0; p < (int)words[j].length(); ++p) {
+                where[j][p] = cur;
+                what[cur++] = make_pair(j, p);
+            }
+       }
+
+        prev = &q1[0]; next = &q2[0];
+        prev_val = &v1[0]; next_val = &v2[0];
+        memset(prev_val, -1, sizeof(v1));
+        Nprev = 0;
+
+        for (int j = 0; j < N; ++j) {
+            prev[Nprev++] = where[j][0];
+            prev_val[where[j][0]] = 1;
+        }
+
+        for (int i = 2; i <= K; ++i) {
+            memset(next_val, -1, sizeof(v1));
+            memset(next_add, 0, sizeof(next_add));
+            Nnext = 0;
+
+            for (int q = 0; q < Nprev; ++q) {
+                int jprev = what[prev[q]].first, pprev = what[prev[q]].second;
+                int v0 = prev_val[prev[q]];
+
+                for (int j = jprev + 1; j < N; ++j) {
+                    int add = 0;
+
+                    int pnew1 = cpref[jprev][j] - 1;
+                    if (cpref[jprev][j] < (int)words[jprev].length()) ++pnew1;
+                    add += max(pnew1, pprev) - pprev;
+
+                    int pnew2 = cpref[jprev][j] - 1;
+                    if (cpref[jprev][j] < (int)words[j].length()) ++pnew2;
+                    add += pnew2 + 1;
+
+                    if (!next_add[where[j][pnew2]]) {
+                        next_add[where[j][pnew2]] = true;
+                        next[Nnext++] = where[j][pnew2];
+                        next_val[where[j][pnew2]] = v0 + add;
+                    } else {
+                        next_val[where[j][pnew2]] = min(next_val[where[j][pnew2]], v0 + add);
+                    }
+                }
+            }
+
+            swap(prev, next);
+            swap(prev_val, next_val);
+            Nprev = Nnext;
+        }
+
+        int answer = -1;
+        for (int q = 0; q < Nprev; ++q)
+            if (answer == -1 || answer > prev_val[prev[q]]) answer = prev_val[prev[q]];
+
+        printf("%d\n", answer);
+    }
+
+    return 0;
+}

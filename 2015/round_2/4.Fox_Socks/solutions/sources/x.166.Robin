@@ -1,0 +1,160 @@
+#include <bits/stdc++.h>/*{{{*/
+using namespace std; typedef long long ll; typedef long double ld; void run(); int main(){ios::sync_with_stdio(0); int tsts; cin>>tsts; for (int tst=1; tst<=tsts; ++tst) {cout<<"Case #"<<tst<<": "; run();}}/*}}}*/
+
+/*
+  Because apparently
+
+    "implement a segment tree with a million different fiddly and nonstandard, but not conceptually
+     difficult operations, and you know what do it twice for two very slightly different use-cases"
+
+  is what we're striving for now as a problemsetting standard.
+
+  Nice.
+*/
+
+ll const lots=1000000000ll;
+ll n;
+
+vector<int> linear_generate(int lim,ll mod,bool add){/*{{{*/
+  vector<int> res(lim);
+  ll x,y,z; cin>>res[0]>>res[1]>>x>>y>>z;
+  for (int i=2; i<lim; i++){
+    res[i]=((x*res[i-2]+y*res[i-1]+z)%mod)+add;
+  }
+  return res;
+}/*}}}*/
+
+struct{
+  ll invert(ll x,ll y){return 0;}
+  ll add(ll x,ll a,ll b,ll c){return 0;}
+  ll get(ll x,ll y){return 0;}
+  void clear(ll x,ll y){}
+} sums, signs;
+
+
+ll add_value(ll a,ll b,ll val){
+  if (a-b==n) b-=a, a-=a;
+  if (b<=a) return 0ll;
+
+  // split overextended ranges
+  if (b>n){
+    b%=n;
+    return add_value(a,n,val)
+          +add_value(0,b,val);
+  }
+
+  // fix up signs
+  if (val&1){
+    signs.invert(a/2,b/2);
+    signs.invert((a+1)/2+n/2,(b+1)/2+n/2);
+  }
+
+  // perform actual addition
+  sums.add(a, (  1-a)*+val, +val, 0); // line with gradient +val starting at a-1
+  sums.add(b, (b-a-1)*+val, -val, 0); // stop gradient but update sum
+}
+
+ll add_slope(ll a,ll b,ll val){
+  if (a-b==n) b-=a, a-=a;
+  if (b<=a) return 0ll;
+
+  // split overextended ranges
+  if (b>n){
+    b%=n;
+    return add_slope(a,n,val)
+          +add_slope(0,b,val);
+  }
+
+  if (val%2!=0){
+    // TODO similar to add_value but only perform signs.invert on one of the halves
+  }
+  return (b-a)*val;
+}
+
+ll get_sum(ll a,ll b){
+  if (a-b==n) b-=a, a-=a;
+  if (b<=a) return 0ll;
+
+  // split overextended ranges
+  if (b>n){
+    b%=n;
+    return get_sum(a,n)
+          +get_sum(0,b);
+  }
+
+  // retrieve and integrate results
+  return sums.get(a,b);
+}
+
+ll set_value(ll a,ll b,ll val){
+  if (a-b==n) b-=a, a-=a;
+  if (b<=a) return 0ll;
+
+  // split overextended ranges
+  if (b>n){
+    b%=n;
+    return set_value(a,n,val)
+          +set_value(0,b,val);
+  }
+
+  sums.clear(a,b);
+  signs.clear(a/2,b/2);
+  signs.clear((a+1)/2+n/2,(b+1)/2+n/2);
+
+  // compute result as total added
+  return add_value(a,b,val);
+}
+
+ll get_odds(ll a,ll b){
+  if (a-b==n) b-=a, a-=a;
+  if (b<=a) return 0ll;
+
+  // split overextended ranges
+  if (b>n){
+    b%=n;
+    return get_odds(a,n)
+          +get_odds(0,b);
+  }
+
+  // compute result
+  return signs.get(a/2, b/2)
+       + signs.get((a+1)/2+n/2,(b+1)/2+n/2);
+}
+
+void run(){
+  ll m; cin>>n>>m;
+  vector<int> s=linear_generate(n,1000000000ll,false),
+              o=linear_generate(m,4,true),
+              a=linear_generate(m,n,true),
+              b=linear_generate(m,n,true),
+              c=linear_generate(m,1000000000ll,false),
+              d=linear_generate(m,1000000000ll,false);
+
+  ll res=0;
+/*
+  for (int q=0; q<m; q++){
+    switch (o[q]){
+      case 1:{
+        res+=add_value(a[q]-1,a[q]+b[q]-1,c[q]);
+        res+=add_slope(a[q]-1,a[q]+b[q]-1,d[q]);
+        break;
+      }
+      case 2:{
+        res+=get_sum(a[q]-1,a[q]+b[q]-1);
+        res+=set_value(a[q]-1,a[q]+b[q]-1,c[q]);
+        break;
+      }
+      case 3:{
+        res+=get_sum(a[q]-1,a[q]+b[q]-1);
+        break;
+      }
+      case 4:{
+        res+=get_odds(a[q]-1,a[q]+b[q]-1);
+        break;
+      }
+    }
+    res%=lots;
+  }
+*/
+  cout<<res<<endl;
+}

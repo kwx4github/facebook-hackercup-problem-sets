@@ -1,0 +1,197 @@
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+#include <vector>
+#include <cassert>
+#include <queue>
+#include <unordered_map>
+#include <cassert>
+#include <string>
+#include <sstream>
+#include <string>
+#include <fstream>
+
+using namespace std;
+
+#define DB(x) cerr << #x << ": " << x << endl;
+
+const long long INF = 1e9;
+const int MAXK = 109;
+
+struct Trie {
+    Trie() {
+        root = getNode();
+    }
+
+    int addWord(const string& word) {
+        int curNode = root;
+        int prefixLen = -1;
+
+        ++nodes[root].paths;
+        for (int i = 0; i < word.length(); ++i) {
+            char c = word[i];
+            if (nodes[curNode].links.find(c) == nodes[curNode].links.end()) {
+                nodes[curNode].links[c] = getNode();
+                if (prefixLen == -1) {
+                    prefixLen = i + 1;
+                }
+            }
+            curNode = nodes[curNode].links[c];
+            ++nodes[curNode].paths;
+        }
+        nodes[curNode].isTerminal = true;
+
+        if (prefixLen == -1) {
+            prefixLen = word.length();
+        }
+        return prefixLen;
+    }
+
+    vector<int> getMinLength(int v) {
+        //DB(v);
+        //DB(nodes[v].paths);
+        //DB(nodes[v].isTerminal);
+        if (nodes[v].paths == 1) {
+            return vector<int> {0, 0};
+        }
+
+        vector<int> minLengths(MAXK, INF);
+        minLengths[0] = 0;
+
+        if (nodes[v].isTerminal) {
+            minLengths[1] = 0;
+        }
+
+        for (const auto& childPair : nodes[v].links) {
+            int child = childPair.second;
+            //DB(childPair.first);
+            //DB(childPair.second);
+
+            auto childMinLengths = getMinLength(child);
+
+            vector<int> nextMinLengths(minLengths.begin(), minLengths.end());
+            for (int i = 1; i < childMinLengths.size(); ++i) {
+                int price = childMinLengths[i] + i;
+                //if (price >= INF) {
+                    //break;
+                //}
+                
+                for (int j = 0; j < minLengths.size(); ++j) {
+                    if (i + j >= MAXK) {
+                        break;
+                    }
+
+                    //if (minLengths[j] >= INF) {
+                        //break;
+                    //}
+
+                    nextMinLengths[i + j] = min(nextMinLengths[i + j], price + minLengths[j]);
+                }
+            }
+            minLengths = nextMinLengths;
+        }
+        //DB(v);
+        //for (int i = 0; i < minLengths.size(); ++i) {
+            //if (minLengths[i] >= INF) {
+                //break;
+            //}
+            //DB(i);
+            //DB(minLengths[i]);
+        //}
+
+        if (nodes[v].paths >= 1) {
+            minLengths[1] = 0;
+        }
+
+        return minLengths;
+    }
+
+    struct Node {
+        Node() {
+            paths = 0;
+            isTerminal = false;
+        }
+
+        int paths;
+        bool isTerminal;
+        unordered_map<char, int> links;
+    };
+
+    int getNode() {
+        nodes.resize(nodes.size() + 1);
+        return nodes.size() - 1;
+    }
+
+    int root;
+    vector<Node> nodes;
+};
+
+struct Solver {
+    Solver()
+    { }
+
+    void readInput() {
+        cin >> n >> k;
+        words.resize(n);
+        for (int i = 0; i < n; ++i) {
+            cin >> words[i];
+        }
+    }
+
+    string solve() {
+        int answer = 0;
+
+        for (int i = 0; i < n; ++i) {
+            T.addWord(words[i]);
+        }
+
+        vector<int> minLengths = T.getMinLength(T.root);
+        answer = minLengths[k];
+        if (answer == 0) {
+            ++answer;
+        }
+
+        return to_string(answer);
+    }
+
+    int n, k;
+    vector<string> words;
+    Trie T;
+};
+
+void gen(int N, int K, int L, string filename) {
+    ofstream ofs(filename);
+    //freopen("big_input.txt", "w", stdout);
+    int T = 20;
+    ofs << T << endl;
+    for (int t = 0; t < T; ++t) {
+        ofs << N << " " << K << endl;
+        for (int i = 0; i < N; ++i) {
+            for (int j = 0; j < L; ++j) {
+                ofs << char((rand() % 26) + 'a');
+            }
+            ofs << endl;
+        }
+    }
+}
+
+int main() {
+    //gen(4000, 1, 50, "big_input.txt");
+    //freopen("big_input.txt", "r", stdin);
+    
+    //freopen("input.txt", "r", stdin);
+    freopen("autocomplete_strikes_back.txt", "r", stdin);
+    freopen("output1.txt", "w", stdout);
+    
+    int T;
+    cin >> T;
+    for (int t = 0; t < T; ++t) {
+        DB(t);
+        Solver solver;
+        solver.readInput();
+        string answer = solver.solve();
+        cout << "Case #" << (t + 1) << ": " << answer << endl;
+    }
+
+    return 0;
+}

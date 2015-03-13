@@ -1,0 +1,157 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <limits.h>
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
+class Solution
+{
+    const long double EPS = 1e-7;
+    const int N = 20;
+    vector<vector<long long> > c;
+
+    long long C(int n, int k)
+    {
+        if (k == 0) return 1;
+        if (k > n) return 0;
+        if (k == n) return 1;
+
+        if (n >= c.size())
+        {
+            c.resize(n + 1);
+        }
+
+        if (c[n].size() <= k)
+        {
+            c[n].resize(k + 1, -1);
+        }
+
+        if (c[n][k] == -1)
+        {
+            c[n][k] = C(n - 1, k - 1) + C(n - 1, k);
+        }
+
+        if (c[n][k] < 0)
+        {
+            cerr << "Oooops!" << endl;
+            c[n][k] = LLONG_MAX;
+        }
+
+        // cout << "C(" << n << ", " << k << ") = " << c[n][k] << endl;
+
+        return c[n][k];        
+    }
+
+    long double fast_pow(long double x, int pow)
+    {
+        if (pow == 0) return 1;
+        if (pow == 1) return x;
+        if (pow == 2) return x*x;
+
+        if (pow % 2)
+        {
+            return x * fast_pow(x, pow - 1);
+        }
+        else
+        {
+            return fast_pow(fast_pow(x, pow / 2), 2);
+        }
+    }
+
+    long double P_fail(int turn, long double p)
+    {
+        if (turn < 1) return 1;
+        long double prob = 0;
+
+        long double p_i_fail = fast_pow(1 - p, turn);
+        for (int i = 1; i <= N; i++)
+        {
+            long double add = C(N, i) * fast_pow(p_i_fail, i);
+            if (i % 2) prob += add;
+            else prob -= add;
+        }
+        return prob;
+    }
+
+public:
+    Solution()
+    {
+        c.push_back(vector<long long>(1, 1));
+
+        // cout << C(20, 10);
+    }
+    long double solve(long double p)
+    {
+        // cout << P_fail(2, p) << endl;
+
+        long double answer = fast_pow(p, N);
+        for (int i = 2;; i++)
+        {
+            long double prob = (1 - P_fail(i, p) - 1 + P_fail(i - 1, p));
+            long double add = i * prob;
+            answer += add;
+            if (i > 100 && add < EPS)
+                break;
+        }
+
+        return answer;
+    }
+};
+
+void test();
+
+int main(int argc, char* argv[])
+{
+    // test(); return 0;
+
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    int T;
+    cin >> T;
+
+    Solution solution;
+
+    for (int test = 1; test <= T; test++)
+    {
+        double time = clock();        
+
+        long double p;
+        cin >> p;
+        cout.precision(10);
+        cout << "Case #" << test << ": " << solution.solve(p) << endl;
+
+        time = (clock() - time) / CLOCKS_PER_SEC;
+        cerr << "Test #" << test << ": " << time << "sec" << endl;
+    }
+
+    return 0;
+}
+
+void test()
+{
+    double worst_time = 0;
+
+    Solution s;
+    for (long double p = 0.01; p <= 1; p += 0.0001)
+    {
+        cout << p << "\r";
+        double time = clock();
+        s.solve(p);
+        time = (clock() - time) / CLOCKS_PER_SEC;
+        if (time > worst_time)
+        {
+            worst_time = time;
+            cout << worst_time << "sec" << endl;
+        }
+    }
+}
+

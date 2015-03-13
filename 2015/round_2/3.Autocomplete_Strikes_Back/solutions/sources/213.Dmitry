@@ -1,0 +1,247 @@
+#pragma comment(linker, "/STACK:128777216")
+
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+#include <sstream>
+
+#include <algorithm>
+#include <vector>
+#include <map>
+#include <set>
+#include <bitset>
+#include <queue>
+#include <deque>
+#include <stack>
+
+#include <math.h>
+#include <cmath>
+#include <string>
+#include <cstring>
+#include <string.h>
+
+#include <memory.h>
+#include <cassert>
+#include <time.h>
+
+using namespace std;
+
+#define forn(i,n) for (int i = 0; i < (int)(n); i++)
+#define fornd(i, n) for (int i = (int)(n) - 1; i >= 0; i--)
+#define forab(i,a,b) for (int i = (int)(a); i <= (int)(b); i++)
+#define forabd(i, b, a) for (int i = (int)(b); i >= (int)(a); i--)
+#define forit(i, a) for (__typeof((a).begin()) i = (a).begin(); i != (a).end(); i++)
+
+#define _(a, val) memset (a, val, sizeof (a))
+#define sz(a) (int)((a).size())
+#define pb push_back
+#define mp make_pair
+#define all(v) (v).begin(), (v).end()
+
+typedef long long lint;
+typedef unsigned long long ull;
+typedef long double ld;
+typedef pair<int, int> pii;
+
+const lint LINF = 1000000000000000000LL;
+const int INF = 1000000000;
+const long double eps = 1e-9;
+const long double PI = 3.1415926535897932384626433832795l;
+
+#ifdef MY_DEBUG
+#define dbgx( x ) { cerr << #x << " = " << x << endl; }
+#define dbg( ... ) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+#else
+#define dbgx( x ) {  } 
+#define dbg( ... ) {  } 
+#endif
+
+void prepare (string s)
+{
+#ifdef MY_DEBUG
+	freopen ("input.txt", "r", stdin);
+	freopen ("output.txt", "w", stdout);
+#else
+	if (s.length() != 0)
+	{
+		freopen ((s + ".in").c_str(), "r", stdin);
+		freopen ((s + ".out").c_str(), "w", stdout);
+	}
+#endif
+}
+
+const int MAXLEN = 20010;
+const int NMAX = 200100;
+
+class Trie
+{
+public:
+	int nxt[NMAX][26], cnt[NMAX], FreeVertex;
+	int flag[NMAX];
+
+	void build()
+	{
+		_(flag, 0);
+		_(nxt, -1);
+		_(cnt, 0);
+		FreeVertex = 1;
+	}
+
+	void add(const string &s)
+	{
+		int len = s.length();
+		int cur = 0;
+		cnt[cur] ++;
+		forn(i, len)
+		{
+			int c = s[i] - 'a';
+			if (nxt[cur][c] == -1)
+				nxt[cur][c] = FreeVertex ++;
+			cur = nxt[cur][c];
+			cnt[cur] ++;
+		}
+		flag[cur] = 1;
+	}
+
+	int get(const string &s)
+	{
+		int len = s.length();
+		int cur = 0;
+		int ans = 0;
+		forn(i, len)
+		{
+			if (cnt[cur] == 1)
+				return max(1, ans);
+			ans ++;
+			cur = nxt[cur][s[i] - 'a'];
+		}
+
+		return len;
+	}
+};
+
+const int MAXK = 105;
+
+int n, k;
+char tmp[MAXLEN];
+Trie trie;
+int d[MAXLEN*2][MAXK];
+
+void read()
+{
+	trie.build();
+	scanf("%d %d\n", &n, &k);
+	forn(i, n)
+	{
+		scanf("%s", tmp);
+		string t = tmp;
+		trie.add(t);
+	}
+}
+
+void upd(int &v, int val)
+{
+	if (v == -1 || v != -1 && v > val)
+		v = val;
+}
+
+int get(int v, int j)
+{
+	if (j == 1)
+		return d[v][j];
+	return d[v][j] + j;
+}
+
+void merge(int v, int u)
+{
+	int tmp[MAXK];
+	forn(i, MAXK)
+		tmp[i] = -1;
+	tmp[0] = 0;
+
+	for(int i = 1; i <= k; i++)
+	{
+		for(int j = 0; j <= i; j++)
+		{
+			if (d[v][j] != -1 && d[u][i - j] != -1)
+				upd(tmp[i], d[v][j] + get(u, i - j));
+		}
+	}
+
+	for(int i = 0; i <= k; i++)
+		d[v][i] = tmp[i];
+}
+
+void add(int v)
+{
+	for(int i = k - 1; i >= 1; i--)
+	{
+		if (d[v][i] != -1)
+			upd(d[v][i + 1], d[v][i]);
+	}
+	d[v][1] = 1;
+}
+
+void dfs(int v)
+{
+	forn(i, k + 1)
+		d[v][i] = -1;
+	d[v][0] = 0;
+
+	forn(i, 26)
+	{
+		int u = trie.nxt[v][i];
+		if (u != -1)
+			dfs( u );
+	}
+
+	forn(i, 26)
+	{
+		int u = trie.nxt[v][i];
+		if (u != -1)
+			merge(v, u);
+	}
+
+	if (trie.flag[v])
+	{
+		add( v );
+	}
+}
+
+void solve()
+{
+	dfs( 0 );
+	printf("%d\n", d[0][k]);
+}
+
+void gen()
+{
+	trie.build();
+	n = 1000;
+	k = 100;
+	forn(i, n)
+	{
+		forn(j, 20)
+			tmp[j] = rand() % 26 + 'a';
+		tmp[5] = '\0';
+		string t = tmp;
+		trie.add(t);
+	}
+}
+
+
+int main()
+{
+	prepare("");
+
+	int t;
+	scanf("%d", &t);
+	forn(i, t)
+	{
+		printf("Case #%d: ", i + 1);
+		read();
+		solve();
+	}
+
+	return 0;
+}

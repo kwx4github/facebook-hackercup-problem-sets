@@ -1,0 +1,379 @@
+#include<cstdio>
+#include<algorithm>
+#include<vector>
+#include<cstring>
+#include<set>
+using namespace std;
+#define FOR(i,a,n) for(int i = (a); i <= (n); ++i)
+#define FORD(i,a,n) for(int i = (a); i >= (n); --i)
+#define REP(i,n) FOR(i,0,(n)-1)
+#define RI(i,n) FOR(i,1,(n))
+#define pb push_back
+#define mp make_pair
+#define st first
+#define nd second
+#define mini(a,b) a=min(a,(b))
+#define maxi(a,b) a=max(a,(b))
+#ifdef LOK
+#define debug printf
+#else
+#define debug if(0)printf
+#endif
+typedef vector<int> vi;
+typedef long long ll;
+typedef long double ld;
+typedef pair<int,int> pii;
+const int inf = 1e9 + 5;
+const int nax = 1e6 + 5;
+const int czapa = 1048576;
+const ll mod = 1e9;
+
+struct wezel{
+	ll suma;
+	ll ile_dodac;
+	ll aryt_skok;
+	ll nieparz_nieparz;
+	ll nieparz_parz;
+	//indeksujac od zera
+	bool czy_czyscimy;
+	
+	wezel (): suma(0), ile_dodac(0), aryt_skok(0), nieparz_nieparz(0), nieparz_parz(0), czy_czyscimy(false) {}
+};
+
+wezel drzewo[2*czapa];
+int testy,n,m;
+ll t[10][10];
+
+ll tab[5][nax];
+
+
+void wyczysc(int w) {
+	if (drzewo[w].czy_czyscimy) {
+		drzewo[w] = wezel();
+		if (w < czapa)
+			drzewo[w*2].czy_czyscimy = drzewo[w*2+1].czy_czyscimy = true;
+	}
+}
+
+void arithmethic_sum(int w, int nalewo, int rozmiar, int a, int b, ll start_val, ll skok) {
+	if (b - a + 1 == rozmiar) {
+		drzewo[w].ile_dodac += start_val;
+		drzewo[w].ile_dodac %= mod;
+		
+		drzewo[w].aryt_skok += skok;
+		drzewo[w].aryt_skok %= mod;
+		return;
+	} 
+
+	if (rozmiar != 1) {
+		wyczysc(w*2);
+		wyczysc(w*2+1);
+	}	
+	
+	drzewo[2*w].ile_dodac = (drzewo[2*w].ile_dodac + drzewo[w].ile_dodac)%mod;
+	drzewo[2*w].aryt_skok = (drzewo[2*w].aryt_skok + drzewo[w].aryt_skok)%mod;
+	
+	drzewo[2*w+1].ile_dodac = (drzewo[2*w+1].ile_dodac + drzewo[w].ile_dodac + drzewo[w].aryt_skok * ll(rozmiar/2))%mod;
+	drzewo[2*w+1].aryt_skok = (drzewo[2*w+1].aryt_skok + drzewo[w].aryt_skok)%mod;
+	
+	drzewo[w].ile_dodac = drzewo[w].aryt_skok = 0;
+	
+	if (a < nalewo + rozmiar/2) 
+		arithmethic_sum(w*2, nalewo, rozmiar/2, a, min(b, nalewo + rozmiar/2 - 1), start_val, skok);
+	
+	if (b >= nalewo + rozmiar/2) {
+		ll val = 0;
+		if (a < nalewo + rozmiar/2) 
+			val = (nalewo+rozmiar/2 - a)*skok;
+		arithmethic_sum(w*2 + 1, nalewo + rozmiar/2, rozmiar/2, max(a, nalewo + rozmiar/2), b, (start_val + val)%mod, skok);
+	}
+	
+	drzewo[w].suma = 0;
+	drzewo[w].suma += drzewo[2*w].suma + (drzewo[2*w].ile_dodac * ll(rozmiar/2));
+	drzewo[w].suma += drzewo[2*w+1].suma + (drzewo[2*w+1].ile_dodac * ll(rozmiar/2));
+		
+	drzewo[w].suma += ((ll(rozmiar/4) * drzewo[2*w].aryt_skok)%mod)*ll(rozmiar/2-1);
+	drzewo[w].suma += ((ll(rozmiar/4) * drzewo[2*w+1].aryt_skok)%mod)*ll(rozmiar/2-1);
+	
+	drzewo[w].suma %= mod;
+ 	
+	drzewo[w].nieparz_nieparz = 0;
+	drzewo[w].nieparz_parz = 0;
+	
+	if (rozmiar/2 == 1) {
+		drzewo[w].nieparz_parz = ((drzewo[2*w].suma + drzewo[2*w].ile_dodac)&1);
+		drzewo[w].nieparz_nieparz = ((drzewo[2*w+1].suma + drzewo[2*w+1].ile_dodac)&1);
+	}
+	else {
+		if (drzewo[2*w].aryt_skok&1) {
+			drzewo[w].nieparz_parz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_parz : drzewo[2*w].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w].ile_dodac&1) ? drzewo[2*w].nieparz_nieparz : rozmiar/4 - drzewo[2*w].nieparz_nieparz;	
+		}
+		else {
+			drzewo[w].nieparz_parz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_parz : drzewo[2*w].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_nieparz : drzewo[2*w].nieparz_nieparz;
+		}
+		
+		if (drzewo[2*w+1].aryt_skok&1) {
+			drzewo[w].nieparz_parz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_parz : drzewo[2*w+1].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w+1].ile_dodac&1) ? drzewo[2*w+1].nieparz_nieparz : rozmiar/4 - drzewo[2*w+1].nieparz_nieparz;	
+		}
+		else {
+			drzewo[w].nieparz_parz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_parz : drzewo[2*w+1].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_nieparz : drzewo[2*w+1].nieparz_nieparz;
+		}
+		
+		
+	}
+}
+
+ll erase(int w, int nalewo, int rozmiar, int a, int b, bool v) {
+	if (b - a + 1 == rozmiar) {
+		drzewo[w].czy_czyscimy = v;
+		ll kupa = (drzewo[w].suma + (drzewo[w].ile_dodac * ll(rozmiar)) + ((ll(rozmiar/2) * drzewo[w].aryt_skok)%mod)*ll(rozmiar-1))%mod;
+		//printf("zwracam %lld\n",kupa);
+		return kupa;
+	} 
+
+	if (rozmiar != 1) {
+		wyczysc(w*2);
+		wyczysc(w*2+1);
+	}	
+	
+	ll result = 0;
+	
+	drzewo[2*w].ile_dodac = (drzewo[2*w].ile_dodac + drzewo[w].ile_dodac)%mod;
+	drzewo[2*w].aryt_skok = (drzewo[2*w].aryt_skok + drzewo[w].aryt_skok)%mod;
+	
+	drzewo[2*w+1].ile_dodac = (drzewo[2*w+1].ile_dodac + drzewo[w].ile_dodac + drzewo[w].aryt_skok * ll(rozmiar/2))%mod;
+	drzewo[2*w+1].aryt_skok = (drzewo[2*w+1].aryt_skok + drzewo[w].aryt_skok)%mod;
+	
+	drzewo[w].ile_dodac = drzewo[w].aryt_skok = 0;
+	
+	if (a < nalewo + rozmiar/2) 
+		result += erase(w*2, nalewo, rozmiar/2, a, min(b, nalewo + rozmiar/2 - 1), v);
+	
+	if (b >= nalewo + rozmiar/2) 
+		result += erase(w*2 + 1, nalewo + rozmiar/2, rozmiar/2, max(a, nalewo + rozmiar/2), b, v);
+	
+	drzewo[w].suma = 0;
+	drzewo[w].suma += drzewo[2*w].suma + (drzewo[2*w].ile_dodac * ll(rozmiar/2));
+	drzewo[w].suma += drzewo[2*w+1].suma + (drzewo[2*w+1].ile_dodac * ll(rozmiar/2));
+		
+	drzewo[w].suma += ((ll(rozmiar/4) * drzewo[2*w].aryt_skok)%mod)*ll(rozmiar/2-1);
+	drzewo[w].suma += ((ll(rozmiar/4) * drzewo[2*w+1].aryt_skok)%mod)*ll(rozmiar/2-1);
+	
+	drzewo[w].suma %= mod;
+ 	
+	drzewo[w].nieparz_nieparz = 0;
+	drzewo[w].nieparz_parz = 0;
+	
+	if (rozmiar/2 == 1) {
+		drzewo[w].nieparz_parz = ((drzewo[2*w].suma + drzewo[2*w].ile_dodac)&1);
+		drzewo[w].nieparz_nieparz = ((drzewo[2*w+1].suma + drzewo[2*w+1].ile_dodac)&1);
+	}
+	else {
+		if (drzewo[2*w].aryt_skok&1) {
+			drzewo[w].nieparz_parz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_parz : drzewo[2*w].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w].ile_dodac&1) ? drzewo[2*w].nieparz_nieparz : rozmiar/4 - drzewo[2*w].nieparz_nieparz;	
+		}
+		else {
+			drzewo[w].nieparz_parz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_parz : drzewo[2*w].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_nieparz : drzewo[2*w].nieparz_nieparz;
+		}
+		
+		if (drzewo[2*w+1].aryt_skok&1) {
+			drzewo[w].nieparz_parz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_parz : drzewo[2*w+1].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w+1].ile_dodac&1) ? drzewo[2*w+1].nieparz_nieparz : rozmiar/4 - drzewo[2*w+1].nieparz_nieparz;	
+		}
+		else {
+			drzewo[w].nieparz_parz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_parz : drzewo[2*w+1].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_nieparz : drzewo[2*w+1].nieparz_nieparz;
+		}
+		
+		
+	}
+	
+	return result;
+}
+
+ll ile_nieparz(int w, int nalewo, int rozmiar, int a, int b) {
+	if (b - a + 1 == rozmiar) {
+		if (rozmiar == 1)
+			return ((drzewo[w].suma + drzewo[w].ile_dodac)&1);
+			
+		ll pom = 0;
+		if (drzewo[w].aryt_skok&1) {
+			pom += (drzewo[w].ile_dodac&1) ? rozmiar/2 - drzewo[w].nieparz_parz : drzewo[w].nieparz_parz;
+			pom += (drzewo[w].ile_dodac&1) ? drzewo[w].nieparz_nieparz : rozmiar/2 - drzewo[w].nieparz_nieparz;	
+		}
+		else {
+			pom += (drzewo[w].ile_dodac&1) ? rozmiar/2 - drzewo[w].nieparz_parz : drzewo[w].nieparz_parz;
+			pom += (drzewo[w].ile_dodac&1) ? rozmiar/2 - drzewo[w].nieparz_nieparz : drzewo[w].nieparz_nieparz;
+		}
+		
+		return pom;
+	} 
+
+	if (rozmiar != 1) {
+		wyczysc(w*2);
+		wyczysc(w*2+1);
+	}	
+	
+	ll result = 0;
+	
+	drzewo[2*w].ile_dodac = (drzewo[2*w].ile_dodac + drzewo[w].ile_dodac)%mod;
+	drzewo[2*w].aryt_skok = (drzewo[2*w].aryt_skok + drzewo[w].aryt_skok)%mod;
+	
+	drzewo[2*w+1].ile_dodac = (drzewo[2*w+1].ile_dodac + drzewo[w].ile_dodac + drzewo[w].aryt_skok * ll(rozmiar/2))%mod;
+	drzewo[2*w+1].aryt_skok = (drzewo[2*w+1].aryt_skok + drzewo[w].aryt_skok)%mod;
+	
+	drzewo[w].ile_dodac = drzewo[w].aryt_skok = 0;
+	
+	if (a < nalewo + rozmiar/2) 
+		result += ile_nieparz(w*2, nalewo, rozmiar/2, a, min(b, nalewo + rozmiar/2 - 1));
+	
+	if (b >= nalewo + rozmiar/2) 
+		result += ile_nieparz(w*2 + 1, nalewo + rozmiar/2, rozmiar/2, max(a, nalewo + rozmiar/2), b);
+	
+	drzewo[w].suma = 0;
+	drzewo[w].suma += drzewo[2*w].suma + (drzewo[2*w].ile_dodac * ll(rozmiar/2));
+	drzewo[w].suma += drzewo[2*w+1].suma + (drzewo[2*w+1].ile_dodac * ll(rozmiar/2));
+		
+	drzewo[w].suma += ((ll(rozmiar/4) * drzewo[2*w].aryt_skok)%mod)*ll(rozmiar/2-1);
+	drzewo[w].suma += ((ll(rozmiar/4) * drzewo[2*w+1].aryt_skok)%mod)*ll(rozmiar/2-1);
+	
+	drzewo[w].suma %= mod;
+ 	
+	drzewo[w].nieparz_nieparz = 0;
+	drzewo[w].nieparz_parz = 0;
+	
+	if (rozmiar/2 == 1) {
+		drzewo[w].nieparz_parz = ((drzewo[2*w].suma + drzewo[2*w].ile_dodac)&1);
+		drzewo[w].nieparz_nieparz = ((drzewo[2*w+1].suma + drzewo[2*w+1].ile_dodac)&1);
+	}
+	else {
+		if (drzewo[2*w].aryt_skok&1) {
+			drzewo[w].nieparz_parz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_parz : drzewo[2*w].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w].ile_dodac&1) ? drzewo[2*w].nieparz_nieparz : rozmiar/4 - drzewo[2*w].nieparz_nieparz;	
+		}
+		else {
+			drzewo[w].nieparz_parz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_parz : drzewo[2*w].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w].ile_dodac&1) ? rozmiar/4 - drzewo[2*w].nieparz_nieparz : drzewo[2*w].nieparz_nieparz;
+		}
+		
+		if (drzewo[2*w+1].aryt_skok&1) {
+			drzewo[w].nieparz_parz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_parz : drzewo[2*w+1].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w+1].ile_dodac&1) ? drzewo[2*w+1].nieparz_nieparz : rozmiar/4 - drzewo[2*w+1].nieparz_nieparz;	
+		}
+		else {
+			drzewo[w].nieparz_parz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_parz : drzewo[2*w+1].nieparz_parz;
+			drzewo[w].nieparz_nieparz += (drzewo[2*w+1].ile_dodac&1) ? rozmiar/4 - drzewo[2*w+1].nieparz_nieparz : drzewo[2*w+1].nieparz_nieparz;
+		}
+		
+		
+	}
+	
+	return result;
+}
+
+void solve() {
+	ll result = 0;
+	scanf("%d%d",&n,&m);
+	REP(i,6) REP(j,5) 
+		scanf("%lld",&t[i][j]);
+	
+	FOR(i,1,2*czapa-1) drzewo[i] = wezel();
+	
+	drzewo[1+czapa].suma = t[0][0];
+	drzewo[2+czapa].suma = t[0][1];
+	drzewo[1+czapa].nieparz_parz = (drzewo[1+czapa].suma&1);
+	drzewo[2+czapa].nieparz_parz = (drzewo[2+czapa].suma&1);
+	
+	
+	FOR(i,3,n) {
+		drzewo[i+czapa].suma = (drzewo[i-2+czapa].suma * t[0][2] + drzewo[i-1+czapa].suma * t[0][3] + t[0][4])%mod;
+		drzewo[i+czapa].nieparz_parz = (drzewo[i+czapa].suma&1);
+	}
+	
+	FORD(i,czapa-1,1) {
+		drzewo[i].suma = (drzewo[i*2].suma + drzewo[i*2+1].suma)%mod;
+		if (i*2 >= czapa) {
+			drzewo[i].nieparz_parz = (drzewo[i*2].suma&1);
+			drzewo[i].nieparz_nieparz = (drzewo[i*2+1].suma&1);
+		}
+		else {
+			drzewo[i].nieparz_nieparz = (drzewo[i*2].nieparz_nieparz + drzewo[i*2+1].nieparz_nieparz);
+			drzewo[i].nieparz_parz = (drzewo[i*2].nieparz_parz + drzewo[i*2+1].nieparz_parz);
+		}
+	}
+	
+	//printf("%lld\n",drzewo[1].suma);
+	
+	FOR(i,1,5) {
+		tab[i-1][1] = t[i][0];
+		tab[i-1][2] = t[i][1];
+		
+		ll pom = mod;
+		ll dodaj = (i <= 3);
+		if (i <= 3) 
+			pom = n;
+		if (i == 1)
+			pom = 4;
+		
+		FOR(j,3,m) tab[i-1][j] = (tab[i-1][j-2] * t[i][2] + tab[i-1][j-1] * t[i][3] + t[i][4]) % pom + dodaj; 
+	}
+	
+	FOR(i,1,m) {
+		//printf("%lld %lld %lld %lld %lld\n",tab[0][i], tab[1][i], tab[2][i], tab[3][i], tab[4][i]);
+		if (tab[0][i] == 1) {
+			result += (tab[2][i] * tab[3][i])%mod;
+			if (tab[2][i]&1) result += ((((tab[2][i] * tab[4][i]))%mod)*((tab[2][i]-1) / 2))%mod;
+			else result += (((((tab[2][i]/2) * tab[4][i]))%mod)*((tab[2][i]-1)))%mod;
+			
+			arithmethic_sum(1, 0, czapa, tab[1][i], min(tab[1][i] + tab[2][i] - 1, ll(n)), (tab[3][i] + mod)%mod, tab[4][i]);
+			if (tab[1][i] + tab[2][i] - 1 > n) {
+				arithmethic_sum(1, 0, czapa, 1, (tab[1][i] + tab[2][i] - 1)%n, ((tab[3][i] + tab[4][i] * (ll(n) - tab[1][i] + 1))%mod + mod)%mod, tab[4][i]);
+			}
+		}
+		
+		if (tab[0][i] == 2) {
+			result += (tab[2][i] * tab[3][i])%mod;
+			result += erase(1, 0, czapa, tab[1][i], min(tab[1][i] + tab[2][i] - 1, ll(n)), true);
+			arithmethic_sum(1, 0, czapa, tab[1][i], min(ll(n), tab[1][i] + tab[2][i] - 1), tab[3][i], 0);
+			if (tab[1][i] + tab[2][i] - 1 > n) {
+				result += erase(1, 0, czapa, 1, (tab[1][i] + tab[2][i] - 1)%n, true);
+				arithmethic_sum(1, 0, czapa, 1, (tab[1][i] + tab[2][i] - 1)%n, tab[3][i], 0);
+			}
+		}
+		
+		if (tab[0][i] == 3) {
+			result += erase(1, 0, czapa, tab[1][i], min(tab[1][i] + tab[2][i] - 1, ll(n)), false);
+			if (tab[1][i] + tab[2][i] - 1 > n) {
+				result += erase(1, 0, czapa, 1, (tab[1][i] + tab[2][i] - 1)%n, false);
+			}
+		}
+		
+		if (tab[0][i] == 4) {
+			result += ile_nieparz(1, 0, czapa, tab[1][i], min(tab[1][i] + tab[2][i] - 1, ll(n)));
+			if (tab[1][i] + tab[2][i] - 1 > n) {
+				result += ile_nieparz(1, 0, czapa, 1, (tab[1][i] + tab[2][i] - 1)%n);
+			}
+		}
+		
+		result %= mod;
+		//printf("%lld\n",result);
+		//printf("%lld\n",drzewo[1].suma);
+	
+	}
+	printf("%lld\n",result);
+}
+
+int main() {
+	scanf("%d",&testy);
+	FOR(g,1,testy) {
+		printf("Case #%d: ",g);
+		solve();
+	}
+	return 0;
+}

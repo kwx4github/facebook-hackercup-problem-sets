@@ -1,0 +1,81 @@
+#include <algorithm>
+#include <cstdio>
+#include <vector>
+
+#define MAX_LEN 20000
+
+using namespace std;
+
+struct Node {
+  bool flag;
+  Node* p[26];
+};
+Node nodes[MAX_LEN + 1];
+Node* node_alloc;
+
+Node* NewNode() {
+  Node* x = node_alloc++;
+  x->flag = false;
+  for (int i = 0; i < 26; ++i) {
+    x->p[i] = 0;
+  }
+  return x;
+}
+
+void Merge(vector<int>* parent, vector<int> const& child, int k) {
+  vector<int> new_parent;
+  int new_max = min(k, (int)parent->size() - 1 + (int)child.size() - 1);
+  new_parent.reserve(new_max + 1);
+  for (int sum = 0; sum <= new_max; ++sum) {
+    int best = 100000000;
+    for (int i = 0; i < parent->size(); ++i) {
+      int j = sum - i;
+      if (j < 0 || j >= child.size()) continue;
+      best = min(best, (*parent)[i] + j + child[j]);
+    }
+    new_parent.push_back(best);
+  }
+  parent->swap(new_parent);
+}
+
+vector<int> Solve(Node* x, bool is_root, int k) {
+  vector<int> parent;
+  parent.push_back(0);
+  if (x->flag) parent.push_back(0);
+
+  for (int i = 0; i < 26; ++i) {
+    if (!x->p[i]) continue;
+    Merge(&parent, Solve(x->p[i], false, k), k);
+  }
+  if (!is_root) {
+    parent[1] = 0;
+  }
+  return parent;
+}
+
+int main() {
+  int T;
+  scanf("%d", &T);
+  for (int tt = 1; tt <= T; ++tt) {
+    node_alloc = nodes;
+    Node* root = NewNode();
+    int n, k;
+    scanf("%d%d", &n, &k);
+    for (int i = 0; i < n; ++i) {
+      static char buff[MAX_LEN + 1];
+      scanf("%s", buff);
+      Node *x = root;
+      for (char *c = buff; *c; ++c) {
+        Node*& link = x->p[*c - 'a'];
+        if (!link) {
+          link = NewNode();
+        }
+        x = link;
+      }
+      x->flag = true;
+    }
+    vector<int> sol = Solve(root, true, k);
+    printf("Case #%d: %d\n", tt, sol[k]);
+  }
+  return 0;
+}

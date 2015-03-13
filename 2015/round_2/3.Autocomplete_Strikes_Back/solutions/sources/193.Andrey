@@ -1,0 +1,171 @@
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.FileOutputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("input.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("output.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		AutocompleteStrikesBack solver = new AutocompleteStrikesBack();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class AutocompleteStrikesBack {
+	static final int MAX = 100;
+
+	public void solve(int testNumber, InputReader in, PrintWriter out) {
+		int n = in.nextInt();
+		int k = in.nextInt();
+		TrieNode t = new TrieNode();
+		for (int i = 0; i < n; i++) {
+			String w = in.next();
+			insertString(t, w);
+		}
+
+		dfs(t, 0, 0);
+
+		int res = t.dp[k];
+		out.printf("Case #%d: %d\n", testNumber, res);
+	}
+
+	static void dfs(TrieNode root, int forkDepth, int depth) {
+		int childrenCount = 0;
+		for (TrieNode child : root.children) {
+			if (child == null) continue;
+			++childrenCount;
+		}
+		for (TrieNode child : root.children) {
+			if (child == null) continue;
+			dfs(child, root.leaf || childrenCount > 1 ? depth : forkDepth, depth + 1);
+		}
+		if (root.leaf) {
+			root.dp[1] = depth;
+		}
+		for (TrieNode child : root.children) {
+			if (child == null) continue;
+			int[] dp = new int[MAX + 1];
+			Arrays.fill(dp, Integer.MAX_VALUE);
+			for (int j = 0; j <= MAX; j++) {
+				for (int k = 0; k <= MAX; k++) {
+					if (j + k <= MAX && root.dp[j] != Integer.MAX_VALUE && child.dp[k] != Integer.MAX_VALUE) {
+						dp[j + k] = Math.min(dp[j + k], root.dp[j] + child.dp[k]);
+					}
+				}
+			}
+			root.dp = dp;
+		}
+		root.dp[1] = Math.min(root.dp[1], forkDepth + 1);
+	}
+
+	static class TrieNode {
+		TrieNode[] children = new TrieNode[26];
+		boolean leaf;
+		int[] dp = new int[MAX + 1];
+
+		{
+			Arrays.fill(dp, Integer.MAX_VALUE);
+			dp[0] = 0;
+		}
+	}
+
+	static void insertString(TrieNode root, String s) {
+		TrieNode cur = root;
+		for (char ch : s.toCharArray()) {
+			ch -= 'a';
+			if (cur.children[ch] == null) {
+				cur.children[ch] = new TrieNode();
+			}
+			cur = cur.children[ch];
+		}
+		cur.leaf = true;
+	}
+}
+
+class InputReader {
+	final InputStream is;
+	final byte[] buf = new byte[1024];
+	int pos;
+	int size;
+
+	public InputReader(InputStream is) {
+		this.is = is;
+	}
+
+	public int nextInt() {
+		int c = read();
+		while (isWhitespace(c))
+			c = read();
+		int sign = 1;
+		if (c == '-') {
+			sign = -1;
+			c = read();
+		}
+		int res = 0;
+		do {
+			if (c < '0' || c > '9')
+				throw new InputMismatchException();
+			res = res * 10 + c - '0';
+			c = read();
+		} while (!isWhitespace(c));
+		return res * sign;
+	}
+
+	public String next() {
+		int c = read();
+		while (isWhitespace(c))
+			c = read();
+		StringBuilder sb = new StringBuilder();
+		do {
+			sb.append((char) c);
+			c = read();
+		} while (!isWhitespace(c));
+		return sb.toString();
+	}
+
+	int read() {
+		if (size == -1)
+			throw new InputMismatchException();
+		if (pos >= size) {
+			pos = 0;
+			try {
+				size = is.read(buf);
+			} catch (IOException e) {
+				throw new InputMismatchException();
+			}
+			if (size <= 0)
+				return -1;
+		}
+		return buf[pos++] & 255;
+	}
+
+	static boolean isWhitespace(int c) {
+		return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+	}
+
+}
+

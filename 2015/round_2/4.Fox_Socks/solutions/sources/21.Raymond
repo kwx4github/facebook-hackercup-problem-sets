@@ -1,0 +1,161 @@
+#include <bits/stdc++.h>
+using namespace std;
+const int MAXN = 1000005;
+const int MAXM = 1000005;
+const int MAXS = 1 << 21;
+const int MOD = 1000000000;
+int S[MAXN], O[MAXM], A[MAXM], B[MAXM], C[MAXM], D[MAXM], N;
+int gen(int *f, int mod, int n, int add) {
+	int x, y, z;
+	scanf("%d%d%d%d%d", &f[1], &f[2], &x, &y, &z);
+	for (int i = 3; i <= n; ++i) {
+		f[i] = (((long long)x * f[i - 2] + (long long)y * f[i - 1] + z) % mod) + add;
+	}
+}
+int modit(long long a) {
+	a %= MOD;
+	if (a < 0) a += MOD;
+	return a;
+}
+struct Segment {
+	int toadd, apstart, sum, odds[2], toset;
+	void reset() {
+		toadd = apstart = sum = odds[0] = odds[1] = 0;
+		toset = -1;
+	}
+} segs[MAXS];
+void prop(int, int, int);
+void addap(int sn, int s, int e, int qs, int qe, long long c, long long d) {
+	Segment &seg = segs[sn];
+	int len = e - s + 1;
+	if (qs <= s && e <= qe) {
+		c = modit(c + d * (s - qs));
+		long long dpart = modit((long long)len * (len - 1) / 2);
+		seg.sum = modit(seg.sum + c * len + d * dpart);
+		if (c & 1) seg.odds[0] = (len + 1) / 2 - seg.odds[0];
+		if ((c + d) & 1) seg.odds[1] = len / 2 - seg.odds[1];
+		seg.apstart = modit(seg.apstart + d);
+		seg.toadd = modit(seg.toadd + c);
+		return;
+	}
+	int m = (s + e) >> 1, lsn = sn * 2, rsn = sn * 2 + 1;
+	prop(sn, s, e);
+	if (qs <= m) addap(lsn, s, m, qs, qe, c, d);
+	if (qe > m) addap(rsn, m + 1, e, qs, qe, c, d);
+	Segment &lseg = segs[lsn], &rseg = segs[rsn];
+	seg.sum = modit(lseg.sum + rseg.sum);
+	for (int i = 0; i < 2; ++i) {
+		int j = ((m - s + 1) & 1) ? 1 - i : i;
+		seg.odds[i] = lseg.odds[i] + rseg.odds[j];
+	}
+}
+void setsame(int sn, int s, int e, int qs, int qe, long long v) {
+	Segment &seg = segs[sn];
+	if (qs <= s && e <= qe) {
+		int len = e - s + 1;
+		seg.sum = modit(v * len);
+		seg.odds[0] = (v & 1) ? (len + 1) / 2 : 0;
+		seg.odds[1] = (v & 1) ? len / 2 : 0;
+		seg.apstart = 0;
+		seg.toset = v;
+		seg.toadd = 0;
+		return;
+	}
+	int m = (s + e) >> 1, lsn = sn * 2, rsn = sn * 2 + 1;
+	prop(sn, s, e);
+	if (qs <= m) setsame(lsn, s, m, qs, qe, v);
+	if (qe > m) setsame(rsn, m + 1, e, qs, qe, v);
+	Segment &lseg = segs[lsn], &rseg = segs[rsn];
+	seg.sum = modit(lseg.sum + rseg.sum);
+	for (int i = 0; i < 2; ++i) {
+		int j = ((m - s + 1) & 1) ? 1 - i : i;
+		seg.odds[i] = lseg.odds[i] + rseg.odds[j];
+	}
+}
+int query(int sn, int s, int e, int qs, int qe) {
+	if (qs <= s && e <= qe) return segs[sn].sum;
+	prop(sn, s, e);
+	int m = (s + e) >> 1, lsn = sn * 2, rsn = sn * 2 + 1, ret = 0;
+	if (qs <= m) ret = modit(ret + query(lsn, s, m, qs, qe));
+	if (qe > m) ret = modit(ret + query(rsn, m + 1, e, qs, qe));
+	return ret;
+}
+int queryodd(int sn, int s, int e, int qs, int qe) {
+	if (qs <= s && e <= qe) return segs[sn].odds[0] + segs[sn].odds[1];
+	prop(sn, s, e);
+	int m = (s + e) >> 1, lsn = sn * 2, rsn = sn * 2 + 1, ret = 0;
+	if (qs <= m) ret = modit(ret + queryodd(lsn, s, m, qs, qe));
+	if (qe > m) ret = modit(ret + queryodd(rsn, m + 1, e, qs, qe));
+	return ret;
+}
+void prop(int sn, int s, int e) {
+	Segment &seg = segs[sn];
+	int m = (s + e) >> 1, lsn = sn * 2, rsn = sn * 2 + 1;
+	if (seg.toset != -1) {
+		setsame(lsn, s, m, 1, N, seg.toset);
+		setsame(rsn, m + 1, e, 1, N, seg.toset);
+		seg.toset = -1;
+	}
+	addap(lsn, s, m, s, m, seg.toadd, seg.apstart);
+	addap(rsn, m + 1, e, m + 1, e, modit(seg.toadd + (long long)seg.apstart * (m + 1 - s)), seg.apstart);
+	seg.toadd = seg.apstart = 0;
+}
+int main() {
+	int TC;
+	scanf("%d", &TC);
+	for (int cn = 1; cn <= TC; ++cn) {
+		int M;
+		int ans = 0;
+		scanf("%d%d", &N, &M);
+		gen(S, MOD, N, 0);
+		gen(O, 4, M, 1);
+		gen(A, N, M, 1);
+		gen(B, N, M, 1);
+		gen(C, MOD, M, 0);
+		gen(D, MOD, M, 0);
+		for (int i = 1; i < MAXS; ++i) segs[i].reset();
+		for (int i = 1; i <= N; ++i) {
+			setsame(1, 1, N, i, i, S[i]);
+			//printf("S[%d] = %d\n",i,S[i]);
+		}
+		for (int i = 1; i <= M; ++i) {
+			//printf("%d: S=%d, O=%d, A=%d, B=%d, C=%d, D=%d\n",i,S[i],O[i],A[i],B[i],C[i],D[i]);
+			// Grab ranges
+			int R[2][2], rn = 0;
+			R[0][0] = A[i];
+			R[0][1] = A[i] + B[i] - 1;
+			if (R[0][1] > N) {
+				R[1][0] = 1;
+				R[1][1] = R[0][1] - N;
+				R[0][1] = N;
+				rn = 1;
+			}
+			for (int j = 0; j <= rn; ++j) {
+				if (O[i] == 1) {
+					long long initans = ans;
+					ans = modit(ans - query(1, 1, N, R[j][0], R[j][1]));
+					long long c = C[i];
+					if (j == 1) c = modit(C[i] + (long long)D[i] * (N - R[0][0] + 1));
+					addap(1, 1, N, R[j][0], R[j][1], c, D[i]);
+					ans = modit(ans + query(1, 1, N, R[j][0], R[j][1]));
+					long long len = R[j][1] - R[j][0] + 1;
+					long long dpart = modit(len * (len - 1) / 2);
+					long long v = modit(c * len + D[i] * dpart);
+					//printf("v=%lld,ac=%d\n",v,modit(ans-initans));
+					assert(v == modit(ans - initans));
+				} else if (O[i] == 2) {
+					ans = modit(ans + query(1, 1, N, R[j][0], R[j][1]));
+					setsame(1, 1, N, R[j][0], R[j][1], C[i]);
+					ans = modit(ans + query(1, 1, N, R[j][0], R[j][1]));
+				} else if (O[i] == 3) {
+					ans = modit(ans + query(1, 1, N, R[j][0], R[j][1]));
+				} else {
+					ans = modit(ans + queryodd(1, 1, N, R[j][0], R[j][1]));
+					//printf("ans=%d\n",ans);
+				}
+			}
+		}
+		printf("Case #%d: %d\n", cn, ans);
+	}
+}
+

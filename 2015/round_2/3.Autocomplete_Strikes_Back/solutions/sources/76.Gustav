@@ -1,0 +1,167 @@
+#include <cstdio>
+#include <cassert>
+#include <cstring>
+
+#include <algorithm>
+#include <iostream>
+
+using namespace std;
+
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define REP(i, n) FOR(i, 0, n)
+#define TRACE(x) cout << #x << " = " << x << endl
+#define _ << " _ " <<
+
+struct Node {
+  int end;
+  int cnt;
+  Node *c[26];
+};
+
+const int MAXMEM = 20005;
+
+Node mem[MAXMEM];
+Node *alloc;
+Node *root;
+
+Node *make_node() {
+  Node *ret = alloc++;
+  ret->end = 0;
+  ret->cnt = 0;
+  memset(ret->c, 0, sizeof ret->c);
+  return ret;
+}
+
+void init() { // call me!
+  alloc = mem;
+  root = make_node();
+}
+
+void insert(char *s) {
+  Node *it = root;
+
+  int n = strlen(s);
+  REP(i, n) {
+    ++it->cnt;
+    int v = s[i] - 'a';
+    if (it->c[v] == NULL) it->c[v] = make_node();
+    it = it->c[v];
+  }
+
+  ++it->cnt;
+  it->end = 1;
+}
+
+const int MAXN = 20005; // max broj znakova, ne n...!
+const int MAXK = 105; // pravi maxk!!
+const int inf = 1000000; // ???????????????????????????????????
+
+int N, K;
+int good[MAXN];
+int dep[MAXN];
+int gwei[MAXN]; // dobrih cvorova u podstablu
+vector< int > T[MAXN];
+
+void go(Node *it, int v, int d, int ld) {
+  if (it->cnt == 1 && ld == -1) ld = d;
+
+  //  printf("go %d %d %d\n", v, d, ld);
+
+  good[v] = it->end;
+  dep[v] = d;
+  //  printf("dep[%d] = %d\n", v, dep[v]);
+  gwei[v] = good[v];
+  REP(i, 26) if (it->c[i]) {
+    int nv = N++;
+    T[v].push_back(nv);
+    go(it->c[i], nv, d + 1, ld);
+    gwei[v] += gwei[nv];
+  }
+}
+
+void build() {
+  REP(i, MAXN) T[i].clear(); // !!
+  N = 1;
+  go(root, 0, 0, -1);
+}
+
+char buf[MAXN];
+int dp[MAXN][MAXK];
+int cdp[MAXN][MAXK]; // za djecu
+
+void calc_dps(int i) {
+  for (int j : T[i]) calc_dps(j);
+
+  if ((int)T[i].size() == 0) { 
+    //    printf("............leaf %d\n", i);
+    assert(good[i]); // mora biti end nekog stringa
+    dp[i][0] = 0;
+    dp[i][1] = dep[i];
+
+    return;
+  }
+
+  // cdp
+
+  int nc = (int)T[i].size();
+  for (int k = 0; k <= min(k, gwei[i]); ++k) cdp[nc][k] = inf;
+  cdp[nc][0] = 0;
+
+  for (int child = nc - 1; child >= 0; --child) {
+    int c = T[i][child];
+    //    printf("ide dijete %d\n", c);
+    for (int k = 0; k <= min(K, gwei[i]); ++k) {
+      cdp[child][k] = inf;
+      //      printf("cdp = %d\n", cdp[child][k]);
+      for (int l = 0; l <= min(k, gwei[c]); ++l) {
+	//	printf("gledam %d + %d\n", dp[c][l], cdp[child + 1][k - l]);
+	cdp[child][k] = min(cdp[child][k], dp[c][l] + cdp[child + 1][k - l]);
+      }
+      //      TRACE(child _ k _ cdp[child][k]);
+    }
+  }
+
+  dp[i][0] = 0;
+  for (int k = 1; k <= min(K, gwei[i]); ++k) {
+    dp[i][k] = cdp[0][k];
+    if (good[i]) dp[i][k] = min(dp[i][k], cdp[0][k - 1] + dep[i]);
+  }
+
+  if (gwei[i]) dp[i][1] = min(dp[i][1], dep[i]);
+
+  //  printf("calc_dps %d\n", i);
+  //  TRACE(nc _ cdp[0][1] _ dep[13] _ dp[13][1]);
+  //  REP(k, min(K, gwei[i]) + 1) printf("%d ", dp[i][k]);
+  //  puts("");
+}
+
+int solve() {
+  init(); // !!
+
+  int n, k;
+  scanf("%d%d", &n, &k);
+  K = k;
+
+  REP(i, n) {
+    scanf("%s", buf);
+    insert(buf);
+  }
+
+  build();
+  calc_dps(0);
+
+  //  TRACE(dp[14][2]);
+
+  return dp[0][k];
+}
+
+int main(void) 
+{
+  int T;
+  scanf("%d", &T);
+  
+  REP(tc, T) 
+    printf("Case #%d: %d\n", tc + 1, solve());
+
+  return 0;
+}

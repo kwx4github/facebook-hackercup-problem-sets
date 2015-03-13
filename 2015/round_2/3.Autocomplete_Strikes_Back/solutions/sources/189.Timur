@@ -1,0 +1,180 @@
+package abishev.fb2015.round2.p3;
+
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class AutocompleteStrikesBack implements TaskFactory {
+    public static final int INFI = Integer.MAX_VALUE / 3;
+
+    @Override
+    public Task create() {
+        return new Task() {
+            int n;
+            int k;
+            String[] s;
+            int[][] d;
+            int ans;
+
+            @Override
+            public void input(Scanner input) {
+                n = input.nextInt();
+                k = input.nextInt();
+                input.nextLine();
+                s = new String[n];
+                for (int i = 0; i < n; i++) {
+                    s[i] = input.nextLine();
+                }
+            }
+
+            @Override
+            public void run() {
+                Arrays.sort(s);
+
+                ans = solve(0, n, 0)[k];
+            }
+
+            // guaranteed exactly common common
+            public int[] solve(int l, int r, int common) {
+                int[] ans = new int[k + 1];
+                Arrays.fill(ans, INFI);
+                ans[0] = 0;
+
+                if (l + 1 == r) {
+                    ans[1] = 1;
+                    return ans;
+                }
+
+                int newCommon = common(l, r, common);
+
+                // if empty first or not?
+                boolean isEmpty = s[l].length() == newCommon;
+                if (isEmpty) {
+                    l++;
+                }
+                int lastL = l;
+                for (int i = l + 1; i < r; i++) {
+                    if (s[i].charAt(common) != s[lastL].charAt(common)) {
+                        // different!
+                        // [lastL..i)
+                        add(ans, solve(lastL, i, newCommon));
+
+                        lastL = i;
+                    }
+                }
+                // [lastL..r)
+                add(ans, solve(lastL, r, newCommon));
+                if (isEmpty) {
+                    for (int i = k; i >= 2; i--) {
+                        ans[i] = ans[i - 1];
+                    }
+                }
+
+                // apply newCommon to ans
+                for (int i = 2; i <= k; i++) {
+                    ans[i] += (newCommon - common) * i;
+                }
+
+                return ans;
+            }
+
+            private void add(int[] ans, int[] newAns) {
+                for (int i = k - 1; i >= 0; i--) {
+                    // add to ans[i] j new words
+                    for (int j = 1; j <= k - i; j++) {
+                        ans[i + j] = Math.min(ans[i + j], ans[i] + newAns[j]);
+                    }
+                }
+            }
+
+            public int common(int l, int r, int common) {
+                for (int i = common; i < s[l].length(); i++) {
+                    char c = s[l].charAt(i);
+                    for (int ss = l + 1; ss < r; ss++) {
+                        if (s[ss].length() < i || s[ss].charAt(i) != c) return i;
+                    }
+                }
+                return s[l].length();
+            }
+
+            @Override
+            public void output(PrintWriter output) {
+                output.println(ans);
+            }
+        };
+    }
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+        // check on a, aa, aaa...
+//        Runner.run(new AutocompleteStrikesBack());
+        Runner.run(new AutocompleteStrikesBack(), "autocomplete_strikes_back");
+    }
+}
+
+interface TaskFactory {
+    Task create();
+}
+
+interface Task {
+    void input(Scanner input);
+
+    void run();
+
+    void output(PrintWriter output);
+}
+
+class Runner {
+    public static void run(TaskFactory taskFactory, InputStream is, OutputStream os) throws InterruptedException {
+        Scanner input = new Scanner(is);
+        PrintWriter output = new PrintWriter(os);
+        int t = input.nextInt();
+        input.nextLine();
+        List<Task> tasks = Collections.synchronizedList(new ArrayList<Task>());
+        for (int tt = 1; tt <= t; tt++) {
+            Task task = taskFactory.create();
+            task.input(input);
+            tasks.add(task);
+        }
+
+        final AtomicInteger doneTasks = new AtomicInteger(0);
+        final CountDownLatch latch = new CountDownLatch(t);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        for (final Task task : tasks) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    task.run();
+                    int doneTasksV = doneTasks.incrementAndGet();
+                    if (doneTasksV % 5 == 0) {
+                        System.out.println("done tasks: " + doneTasksV);
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+        executor.shutdown();
+
+        int tt = 0;
+        for (Task task : tasks) {
+            output.print("Case #" + (++tt) + ": ");
+            task.output(output);
+            output.flush();
+        }
+    }
+
+    public static void run(TaskFactory taskFactory) throws InterruptedException {
+        run(taskFactory, System.in, System.out);
+    }
+
+    public static void run(TaskFactory taskFactory, String taskName) throws IOException, InterruptedException {
+        FileInputStream is = new FileInputStream(new File(taskName + ".txt"));
+        FileOutputStream os = new FileOutputStream(new File(taskName + ".out"));
+        run(taskFactory, is, os);
+        is.close();
+        os.close();
+    }
+}

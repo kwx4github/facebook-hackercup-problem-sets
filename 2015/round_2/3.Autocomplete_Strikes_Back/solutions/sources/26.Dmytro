@@ -1,0 +1,127 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <queue>
+#include <set>
+#include <map>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const int maxK = 110;
+const int inf = 1000000000;
+
+int n, k;
+
+struct Node {
+	Node *a[26];
+	int dp[maxK];
+	int depth;
+	bool isEnd;
+	Node() {
+		for (int i = 0; i < 26; ++i) {
+			a[i] = NULL;
+		}
+		for (int i = 0; i < maxK; ++i) {
+			dp[i] = inf;
+		}
+		depth = 0;
+		isEnd = false;
+	}
+};
+
+void cleanUp(Node *root) {
+	for (int i = 0; i < 26; ++i) {
+		if (root->a[i] != NULL) {
+			cleanUp(root->a[i]);
+		}
+	}
+	delete root;
+}
+
+void add(const string &s, Node *root) {
+	Node *current = root;
+	for (int i = 0; i < s.size(); ++i) {
+		if (current->a[s[i] - 'a'] == NULL) {
+			current->a[s[i] - 'a'] = new Node();
+			current->a[s[i] - 'a']->depth = current->depth + 1;
+		}
+		current = current->a[s[i] - 'a'];
+	}
+	current->isEnd = true;
+}
+
+void calc(Node *root) {
+	for (int i = 0; i < 26; ++i) {
+		if (root->a[i] != NULL) {
+			calc(root->a[i]);
+		}
+	}
+	vector < vector < int > > dp(2, vector < int > (maxK, inf));
+	int u = 0, v = 1;
+	dp[u][0] = 0;
+	for (int i = 0; i < 26; ++i, swap(u, v)) {
+		for (int j = 0; j <= k; ++j) {
+			dp[v][j] = inf;
+		}
+		if (root->a[i] == NULL) {
+			dp[v] = dp[u];
+			continue;
+		}
+
+		for (int j = 0; j <= k; ++j) {
+			if (dp[u][j] == inf) {
+				continue;
+			}
+			for (int t = 0; j + t <= k; ++t) {
+				dp[v][j + t] = min(dp[v][j + t], dp[u][j] + root->a[i]->dp[t]);
+			}
+		}
+	}
+	if (root->isEnd) {
+		for (int i = k - 1; i >= 0; --i) {
+			dp[u][i + 1] = min(dp[u][i + 1], dp[u][i] + root->depth);
+		}
+	}
+	if (root->depth != 0) {
+		dp[u][1] = min(dp[u][1], root->depth);
+	}
+
+	for (int i = 0; i <= k; ++i) {
+		root->dp[i] = dp[u][i];
+	}
+}
+
+void solve(int test) {
+	cin >> n >> k;
+	Node *root = new Node();
+	for (int i = 0; i < n; ++i) {
+		string s;
+		cin >> s;
+		add(s, root);
+	}
+
+	calc(root);
+	printf("Case #%d: %d\n", test, root->dp[k]);
+	cleanUp(root);
+}
+
+int main() {
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int t;
+	cin >> t;
+	for (int i = 1; i <= t; ++i) {
+		solve(i);
+		cerr << i << ": " << clock() << endl;
+	}
+
+	return 0;
+}

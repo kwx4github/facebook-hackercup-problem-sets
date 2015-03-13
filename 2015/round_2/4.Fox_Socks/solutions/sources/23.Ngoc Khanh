@@ -1,0 +1,230 @@
+#include <iostream>
+#include <cassert>
+#include <cstdio>
+using namespace std;
+
+const int MODULO = (int) 1e9;
+const int N = (int) 1e6;
+int s[N];
+int o[N];
+int a[N];
+int b[N];
+int c[N];
+int d[N];
+int n;
+int m;
+
+void enter() {
+   cin >> n >> m;
+   long long xs, ys, zs; cin >> s[0] >> s[1] >> xs >> ys >> zs;
+   long long xo, yo, zo; cin >> o[0] >> o[1] >> xo >> yo >> zo;
+   long long xa, ya, za; cin >> a[0] >> a[1] >> xa >> ya >> za;
+   long long xb, yb, zb; cin >> b[0] >> b[1] >> xb >> yb >> zb;
+   long long xc, yc, zc; cin >> c[0] >> c[1] >> xc >> yc >> zc;
+   long long xd, yd, zd; cin >> d[0] >> d[1] >> xd >> yd >> zd;
+   for (int i = 2; i < n; ++i) {
+        s[i] = (xs * s[i - 2] + ys * s[i - 1] + zs) % MODULO;
+   }
+   for (int i = 2; i < m; ++i) {
+        o[i] = ((xo * o[i - 2] + yo * o[i - 1] + zo) % 4) + 1;
+        a[i] = ((xa * a[i - 2] + ya * a[i - 1] + za) % n) + 1;
+        b[i] = ((xb * b[i - 2] + yb * b[i - 1] + zb) % n) + 1;
+        c[i] = (xc * c[i - 2] + yc * c[i - 1] + zc) % MODULO;
+        d[i] = (xd * d[i - 2] + yd * d[i - 1] + zd) % MODULO;
+   }
+   for (int i = 0; i < m; ++i) {
+        --a[i];
+        b[i] = (a[i] + b[i]) % n;
+   }
+}
+
+struct Data {
+    int commonValue;
+    int sum;
+    int numOddAtOdd;
+    int numOddAtEven;
+    int delta1;
+    int delta2;
+};
+
+Data data[1 << 21];
+int treeSize;
+
+void pullUp(int k, int l, int r) {
+    assert(k < 1 << 21);
+    data[k].sum = (data[2 * k + 1].sum + data[2 * k + 2].sum) % MODULO;
+    data[k].numOddAtEven = data[2 * k + 1].numOddAtEven + data[2 * k + 2].numOddAtEven;
+    data[k].numOddAtOdd = data[2 * k + 1].numOddAtOdd + data[2 * k + 2].numOddAtOdd;
+}
+
+void initTree(int k, int l, int r) {
+    assert(k < 1 << 21);
+    data[k].commonValue = -1;
+    data[k].delta1 = data[k].delta2 = 0;
+    if (l + 1 == r) {
+        data[k].sum = l < n ? s[l] : 0;
+        data[k].numOddAtEven = ((l + 1) % 2) & (data[k].sum % 2);
+        data[k].numOddAtOdd = (l % 2) & (data[k].sum % 2);
+    } else {
+        initTree(2 * k + 1, l, (l + r) / 2);
+        initTree(2 * k + 2, (l + r) / 2, r);
+        pullUp(k, l, r);
+    }
+}
+
+void pushDown(int k, int l, int r) {
+    assert(k < 1 << 21);
+    if (data[k].commonValue != -1) {
+        data[k].sum = 1LL * data[k].commonValue * (r - l) % MODULO;
+        if (l + 1 < r) {
+            data[k].numOddAtOdd = data[k].numOddAtEven = (r - l) / 2 * (data[k].commonValue % 2);
+        } else {
+            data[k].numOddAtEven = ((l + 1) % 2) & (data[k].sum % 2);
+            data[k].numOddAtOdd = (l % 2) & (data[k].sum % 2);
+        }
+        if (l + 1 < r) {
+            data[2 * k + 1].commonValue = data[2 * k + 2].commonValue = data[k].commonValue;
+            data[2 * k + 1].delta1 = data[2 * k + 2].delta1 = 0;
+            data[2 * k + 1].delta2 = data[2 * k + 2].delta2 = 0;
+        }
+        data[k].commonValue = -1;
+    }
+    if (data[k].delta1 != 0 || data[k].delta2 != 0) {
+        data[k].sum = (data[k].sum + 1LL * (r - l) * data[k].delta1 + 1LL * (r - l) * (r - l - 1) / 2 % MODULO * data[k].delta2) % MODULO;
+        if (l + 1 < r) {
+            if (data[k].delta1 % 2 != 0) {
+                if (data[k].delta2 % 2 != 0) {
+                    data[k].numOddAtEven = (r - l) / 2 - data[k].numOddAtEven;
+                } else {
+                    data[k].numOddAtEven = (r - l) / 2 - data[k].numOddAtEven;
+                    data[k].numOddAtOdd = (r - l) / 2 - data[k].numOddAtOdd;
+                }
+            } else {
+                if (data[k].delta2 % 2 != 0) {
+                    data[k].numOddAtOdd = (r - l) / 2 - data[k].numOddAtOdd;
+                } else {
+                }
+            }
+        } else {
+            data[k].numOddAtEven = ((l + 1) % 2) & (data[k].sum % 2);
+            data[k].numOddAtOdd = (l % 2) & (data[k].sum % 2);
+        }
+        if (l + 1 < r) {
+            data[2 * k + 1].delta1 = (data[2 * k + 1].delta1 + data[k].delta1) % MODULO;
+            data[2 * k + 1].delta2 = (data[2 * k + 1].delta2 + data[k].delta2) % MODULO;
+            data[2 * k + 2].delta1 = (data[2 * k + 2].delta1 + data[k].delta1 + 1LL * ((l + r) / 2 - l) * data[k].delta2) % MODULO;
+            data[2 * k + 2].delta2 = (data[2 * k + 2].delta2 + data[k].delta2) % MODULO;
+        }
+        data[k].delta1 = data[k].delta2 = 0;
+    }
+}
+
+void update(int k, int l, int r, int x, int y, int delta1, int delta2) {
+    pushDown(k, l, r);
+    if (x <= l && r <= y) {
+        data[k].delta1 = delta1;
+        data[k].delta2 = delta2;
+        pushDown(k, l, r);
+    } else {
+        int mid = (l + r) / 2;
+        if (y <= mid) update(2 * k + 1, l, mid, x, y, delta1, delta2);
+        else if (mid <= x) update(2 * k + 2, mid, r, x, y, delta1, delta2);
+        else {
+            update(2 * k + 1, l, mid, x, mid, delta1, delta2);
+            update(2 * k + 2, mid, r, mid, y, (delta1 + 1LL * delta2 * (mid - x)) % MODULO, delta2);
+        }
+        pushDown(2 * k + 1, l, (l + r) / 2);
+        pushDown(2 * k + 2, (l + r) / 2, r);
+        pullUp(k, l, r);
+    }
+}
+
+void update(int k, int l, int r, int x, int y, int commonValue) {
+    pushDown(k, l, r);
+    if (r <= x || y <= l) return;
+    if (x <= l && r <= y) {
+        data[k].commonValue = commonValue;
+        pushDown(k, l, r);
+    } else {
+        update(2 * k + 1, l, (l + r) / 2, x, y, commonValue);
+        update(2 * k + 2, (l + r) / 2, r, x, y, commonValue);
+        pullUp(k, l, r);
+    }
+}
+
+int getSum(int k, int l, int r, int x, int y) {
+    if (r <= x || y <= l) return 0;
+    pushDown(k, l, r);
+    if (x <= l && r <= y) return data[k].sum;
+    return (getSum(2 * k + 1, l, (l + r) / 2, x, y) + getSum(2 * k + 2, (l + r) / 2, r, x, y)) % MODULO;
+}
+
+int getNumOdds(int k, int l, int r, int x, int y) {
+    if (r <= x || y <= l) return 0;
+    pushDown(k, l, r);
+    if (x <= l && r <= y) return data[k].numOddAtEven + data[k].numOddAtOdd;
+    return getNumOdds(2 * k + 1, l, (l + r) / 2, x, y) + getNumOdds(2 * k + 2, (l + r) / 2, r, x, y);
+}
+
+int query1(int a, int b, int c, int d) {
+    if (a >= b) {
+        update(0, 0, treeSize, a, n, c, d);
+        if (b > 0) update(0, 0, treeSize, 0, b, (c + 1LL * (n - a) * d) % MODULO, d);
+    } else {
+        update(0, 0, treeSize, a, b, c, d);
+    }
+    long long cnt = (b - a + n) % n;
+    if (cnt == 0) cnt = n;
+    return (cnt * c + cnt * (cnt - 1) / 2 % MODULO * d) % MODULO;
+}
+
+int query3(int a, int b) {
+    if (a >= b) return (getSum(0, 0, treeSize, a, n) + (b == 0 ? 0 : getSum(0, 0, treeSize, 0, b))) % MODULO;
+    return getSum(0, 0, treeSize, a, b);
+}
+
+int query2(int a, int b, int c) {
+    int result = query3(a, b);
+    if (a >= b) {
+        update(0, 0, treeSize, a, n, c);
+        if (b > 0) update(0, 0, treeSize, 0, b, c);
+    } else {
+        update(0, 0, treeSize, a, b, c);
+    }
+    long long cnt = (b - a + n) % n;
+    if (cnt == 0) cnt = n;
+    result = (result + cnt * c) % MODULO;
+    return result;
+}
+
+int query4(int a, int b) {
+    if (a >= b) return (getNumOdds(0, 0, treeSize, a, n) + (b == 0 ? 0 : getNumOdds(0, 0, treeSize, 0, b))) % MODULO;
+    return getNumOdds(0, 0, treeSize, a, b);
+}
+
+int solve() {
+    int result = 0;
+    treeSize = n;
+    while ((treeSize & (treeSize - 1)) != 0) ++treeSize;
+//    for (int i = 0; i < n; ++i) s[i] = 0;
+    initTree(0, 0, treeSize);
+    for (int i = 0; i < m; ++i) {
+//        cin >> o[i] >> a[i] >> b[i] >> c[i] >> d[i]; --a[i]; b[i] %= n;
+        if (o[i] == 1) result += query1(a[i], b[i], c[i], d[i]);
+        else if (o[i] == 2) result += query2(a[i], b[i], c[i]);
+        else if (o[i] == 3) result += query3(a[i], b[i]);
+        else if (o[i] == 4) result += query4(a[i], b[i]);
+        if (result >= MODULO) result -= MODULO;
+    }
+    return result;
+}
+
+int main() {
+    assert(freopen("D.in", "r", stdin));
+    ios::sync_with_stdio(false);
+    int numTests; cin >> numTests;
+    for (int test = 0; test < numTests; ++test) {
+        enter();
+        printf("Case #%d: %d\n", test + 1, solve());
+    }
+}

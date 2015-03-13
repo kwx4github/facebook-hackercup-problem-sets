@@ -1,0 +1,229 @@
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <deque>
+#include <iostream>
+#include <limits>
+#include <numeric>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+#define MP make_pair
+#define all(v) (v).begin(), (v).end()
+#define PROBLEM_ID "back"
+
+#pragma comment(linker, "/STACK:256777216")
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<vvi> vvvi;
+typedef vector<bool> vb;
+typedef long long ll;
+typedef pair<int, int> pii;
+
+int ComputeCommonPrefix(const string& a, const string& b) {
+  int result = 0;
+  for (int i = 0; i < min(a.length(), b.length()); ++i) {
+    if (a[i] != b[i]) {
+      return result;
+    }
+    ++result;
+  }
+  return result;
+}
+
+vvi common_pref;
+
+int Solve(vector<string> words, int k) {
+  words.push_back("");
+  ++k;
+  sort(words.begin(), words.end());
+  int n = words.size();
+  vector<int> common(words.size() - 1);
+  for (int i = 0; i + 1 < n; ++i) {
+    common[i] = ComputeCommonPrefix(words[i], words[i + 1]);
+  }
+  common_pref.assign(n, vi(n, 0));
+  for (int i = 0; i + 1 < n; ++i) {
+    common_pref[i][i + 1] = common[i];
+  }
+  for (int length = 2; length + 1 <= n; ++length) {
+    for (int i = 0; i + length + 1 <= n; ++i) {
+      common_pref[i][i + length] = min(common_pref[i][i + length - 1], common_pref[i + length - 1][i + length]);
+    }
+  }
+  int result = 0;
+  for (int i = 0; i < k; ++i) {
+    result += words[i].length();
+  }
+  const int INF = result + 1;
+  //vvi dyn(k + 1, vi(n, INF));
+  cerr << "start dynamics" << endl;
+  vvi dyn(n);
+  for (int i = 0; i < n; ++i) {
+    dyn[i].assign(words[i].length() + 1, INF);
+  }
+  dyn[0][0] = 0;
+  for (int selected = 1; selected < k; ++selected) {
+    cerr << "selected = " << selected << endl;
+    vvi next_dyn(n);
+    for (int i = 0; i < n; ++i) {
+      next_dyn[i].assign(words[i].length() + 1, INF);
+    }
+    for (int view = 0; view + 1 < n; ++view) {
+      int last_to_try = n - 1;
+      for (int cnt = 0; cnt <= words[view].length(); ++cnt) {      
+        int curres = dyn[view][cnt];
+        if (cnt + 1 <= words[view].length() && curres + 1 < dyn[view][cnt + 1]) {
+          dyn[view][cnt + 1] = curres + 1;
+        }
+        for (int next_word = last_to_try; next_word > view; --next_word) {
+        //for (int edge_index = 0; edge_index < edges[view][cnt].size(); ++edge_index) {
+          int common_next = min(common_pref[view][next_word] + 1, (int)words[view].length());
+          if (common_next > cnt) {
+            last_to_try = next_word;
+            break;
+          }
+          int next_prefix = min((int)words[next_word].length(), common_pref[view][next_word] + 1);
+          int nextres = curres + next_prefix;
+          if (next_dyn[next_word][next_prefix] > nextres) {
+            next_dyn[next_word][next_prefix] = nextres;
+            if (selected + 1 == k) {
+              if (nextres < result) {
+                result = nextres;
+              }
+            }
+          }
+        }
+      }
+    }
+    dyn.swap(next_dyn);
+  }
+  return result;
+}
+
+int ComputeForSelected(vector<string> words) {
+  sort(words.begin(), words.end());
+  vector<int> common(words.size() - 1);
+  for (int i = 0; i + 1 < words.size(); ++i) {
+    common[i] = ComputeCommonPrefix(words[i], words[i + 1]);
+  }
+  int result = 0;
+  for (int i = 0; i < words.size(); ++i) {
+    int curres = words[i].length();
+    int lower_bound = 1;
+    if (i > 0) {
+      lower_bound = max(lower_bound, common[i - 1] + 1);
+    }
+    if (i + 1 < words.size()) {
+      lower_bound = max(lower_bound, common[i] + 1);
+    }
+    result += min(curres, lower_bound);
+  }
+  return result;
+}
+
+int SolveSlow(const vector<string>& words, int k) {
+  int n = words.size();
+  int result = 0;
+  for (int i = 0; i < k; ++i) {
+    result += words[i].length();
+  }
+  for (int mask = 0; mask < (1 << n); ++mask) {
+    vector<string> selected;
+    for (int i = 0; i < n; ++i) {
+      if ((mask >> i) & 1) {
+        selected.push_back(words[i]);
+      }
+    }
+    if (selected.size() == k) {
+      int curres = ComputeForSelected(selected);
+      if (curres < result) {
+        result = curres;
+      }
+    }
+  }
+  return result;
+}
+
+int main() {
+  /*freopen(PROBLEM_ID".in", "w", stdout);
+  cout << 1 << endl;
+  int n = 4000;
+  int k = 100;
+  cout << n << ' ' << k << endl;
+  string cur = "a";
+  for (int i = 1; i <= 100; ++i) {
+    cout << cur << endl;
+    cur += "a";
+  }
+  for (int i = 101; i <= 4000; ++i) {
+    string w = "";
+    int m = i;
+    w += ('b' + m % 25);
+    m /= 25;
+    if (m > 0) {
+      w += ('b' + m % 25);
+      m /= 25;
+      if (m > 0) {
+        w += ('b' + m % 25);
+      }
+    }
+    reverse(w.begin(), w.end());
+    cout << w << endl;
+  }
+  return 0;*/
+  /*while (true) {
+    int n = rand() % 10 + 1;
+    int k = rand() % n + 1;
+    vector<string> words;
+    cerr << n << ' ' << k << endl;
+    for (int i = 0; i < n; ++i) {
+      string word = "";
+      int length = rand() % 20 + 1;
+      for (int j = 0; j < length; ++j) {
+        word += 'a' + rand() % 5;
+      }
+      words.push_back(word);
+      cerr << word << endl;
+    }    
+    int result1 = Solve(words, k);
+    int result2 = SolveSlow(words, k);
+    cerr << result1 << ' ' << result2 << endl;
+    if (result1 != result2) {
+      cerr << "Wrong answer!" << endl;
+      return 0;
+    } else {
+      cerr << "OK" << endl;
+    }
+  }*/
+  freopen(PROBLEM_ID".in", "r", stdin);
+  freopen(PROBLEM_ID".out", "w", stdout);
+  int tests;
+  cin >> tests;
+  for (int test_index = 0; test_index < tests; ++test_index) {
+    long t = clock();
+    int n, k;
+    cin >> n >> k;
+    vector<string> words(n);
+    for (int i = 0; i < n; ++i) {
+      cin >> words[i];
+    }
+    int result = Solve(words, k);
+    cout << "Case #" << test_index + 1 << ": " << result << endl;
+    cerr << "Case #" << test_index + 1 << ": " << result << endl;
+    cerr << clock() - t << endl;
+  }
+  return 0;
+}

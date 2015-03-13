@@ -1,0 +1,172 @@
+#pragma comment(linker, "/STACK:64777216")
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <queue>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <memory.h>
+#include <ctime>
+#include <bitset>
+
+using namespace std;
+
+#define ABS(a) ((a>0)?a:-(a))
+#define MIN(a,b) ((a<b)?(a):(b))
+#define MAX(a,b) ((a<b)?(b):(a))
+#define FOR(i,a,n) for (int i=(a);i<(n);++i)
+#define FI(i,n) for (int i=0; i<(n); ++i)
+#define pnt pair <int, int>
+#define mp make_pair
+#define PI 3.1415926535897
+#define MEMS(a,b) memset(a,b,sizeof(a))
+#define LL long long
+#define U unsigned
+
+char s[20010];
+int len;
+int trie[20010][26];
+int cnt[20010];
+int ne[20010];
+int fi[20010];
+int dep[20010];
+int term[20010];
+
+int dp[20010][102];
+int r(int v, int k)
+{
+	if (cnt[v] < k)
+		return 1000000000;
+	if (k == 0)
+		return 0;
+	if (k == 1)
+		return dep[v];
+	if (dp[v][k] != -1)
+		return dp[v][k];
+	int res = 1000000000;
+	if (ne[v] == -1)
+	{
+		int res = r(fi[v], k);
+		if (term[v])
+		{
+			int res1 = dep[v] + r(fi[v], k - 1);
+			res = MIN(res, res1);
+		}
+		return dp[v][k] = res;
+	}
+	FOR(i, 0, k + 1)
+	{
+		int res1 = r(ne[v], k - i);
+		if (i == 1)
+			res1 += dep[v];
+		else
+			res1 += r(fi[v], i);
+		res = MIN(res, res1);
+	}
+	if (term[v])
+	{
+		FOR(i, 0, k)
+		{
+			int res1 = r(ne[v], k - i - 1);
+			res1 += r(fi[v], i);
+			res1 += dep[v];
+			res = MIN(res, res1);
+		}
+	}
+	return dp[v][k] = res;
+}
+vector<string> words;
+
+int main()
+{
+#ifdef Fcdkbear
+	freopen("in.txt", "r", stdin);
+	freopen("out.txt", "w", stdout);
+	double beg = clock();
+#else
+	freopen("in.txt", "r", stdin);
+	freopen("out.txt", "w", stdout);
+#endif
+
+	int t;
+	scanf("%d", &t);
+	for (int testNumber = 1; testNumber <= t; ++testNumber)
+	{
+		fprintf(stderr, "%d\n", testNumber);
+		int n, k;
+		scanf("%d%d", &n, &k);
+		int sz = 1;
+		words.clear();
+		FOR(i, 0, n)
+		{
+			scanf("%s", s);
+			words.push_back((string)s);
+		}
+		sort(words.begin(), words.end());
+		MEMS(trie[0], -1);
+		MEMS(term, 0);
+		FOR(j, 0, n)
+		{
+			int len = words[j].size();
+			int v = 0;
+			FOR(i, 0, len)
+			{
+				int c = words[j][i] - 'a';
+				if (trie[v][c] == -1)
+				{
+					trie[v][c] = sz;
+					dep[sz] = dep[v] + 1;
+					v = trie[v][c];
+					MEMS(trie[v], -1);
+					cnt[v] = 1;
+					sz++;
+				}
+				else
+				{
+					v = trie[v][c];
+					cnt[v]++;
+				}
+			}
+			term[v] = 1;
+		}
+		MEMS(ne, -1);
+		MEMS(fi, -1);
+		FOR(i, 0, sz)
+		{
+			int last = -1;
+			FOR(j, 0, 26)
+			{
+				if (trie[i][j] != -1)
+				{
+					if (last != -1)
+						ne[last] = trie[i][j];
+					else
+						fi[i] = trie[i][j];
+					last = trie[i][j];
+				}
+			}
+		}
+		for (int i = sz - 1; i >= 0; --i)
+		{
+			if (ne[i] != -1)
+				cnt[i] += cnt[ne[i]];
+		}
+		MEMS(dp, -1);
+		int res = r(1, k);
+		printf("Case #%d: %d\n", testNumber, res);
+	}
+
+
+#ifdef Fcdkbear
+	double end = clock();
+	fprintf(stderr, "*** Total time = %.3lf ***\n", (end - beg) / CLOCKS_PER_SEC);
+#endif
+	return 0;
+}
