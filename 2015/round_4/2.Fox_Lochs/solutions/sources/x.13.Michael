@@ -1,0 +1,276 @@
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Collection;
+import java.util.List;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Set;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.TreeSet;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("foxlochs.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxlochs.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxLochs solver = new FoxLochs();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class FoxLochs {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        Point[] botLeft = new Point[n];
+        Point[] topRight = new Point[n];
+        Set<Integer> allX = new TreeSet<>();
+        Set<Integer> allY = new TreeSet<>();
+        for (int i = 0; i < n; i++) {
+            botLeft[i] = new Point(in.nextInt(), in.nextInt());
+            topRight[i] = new Point(in.nextInt(), in.nextInt());
+        }
+        for (Point p : botLeft) {
+            allX.add((int) p.x);
+            allY.add((int) p.y);
+        }
+        for (Point p : topRight) {
+            allX.add((int) p.x);
+            allY.add((int) p.y);
+        }
+        int[] xArr = SortedArrays.toSortedArray(allX);
+        Segment[][] segments = new Segment[xArr.length - 1][];
+        for (int i = 0; i < xArr.length - 1; i++) {
+            segments[i] = getSegments(botLeft, topRight, xArr[i], xArr[i + 1]);
+//            System.err.println(xArr[i]+": "+Arrays.toString(segments[i]));
+        }
+        Segment[][] segmentsForFixedX = new Segment[xArr.length][];
+
+        for (int i = 0; i < xArr.length; i++) {
+            segmentsForFixedX[i] = getSegments(botLeft, topRight, xArr[i], xArr[i]);
+        }
+        double bestAnswer = 0;
+
+        for (int x1 : allX) {
+            for (int y1 : allY) {
+                for (int x2 : allX) {
+                    for (int y2 : allY) {
+                        if (x1 > x2 || x1 == x2 && y1 >= y2) {
+                            continue;
+                        }
+                        Point from = new Point(x1, y1);
+                        Point to = new Point(x2, y2);
+                        boolean contained;
+                        contained = checkContained(xArr, segments, segmentsForFixedX, from, to);
+                        if (contained) {
+                            double dx = x1 - x2;
+                            double dy = y1 - y2;
+                            bestAnswer = Math.max(bestAnswer, Math.sqrt(dx * dx + dy * dy));
+                        }
+                    }
+                }
+            }
+        }
+        System.err.println("done "+testNumber);
+
+        out.println("Case #" + testNumber + ": " + String.format(Locale.US, "%.6f", bestAnswer));
+    }
+
+    private boolean checkContained(int[] xArr, Segment[][] segments, Segment[][] segmentsForFixedX, Point from, Point to) {
+        if (from.x > to.x) {
+            return checkContained(xArr, segments, segmentsForFixedX, to, from);
+        }
+        if (from.x == to.x) {
+            int what = Arrays.binarySearch(xArr, from.x);
+            return checkSimple(segmentsForFixedX[what], from.y, to.y);
+        } else {
+            int start = Arrays.binarySearch(xArr, from.x);
+            int end = Arrays.binarySearch(xArr, to.x);
+            for (int i = start; i < end; i++) {
+                long num1 = (long) from.y * (long) (to.x - from.x) + (long) (xArr[i] - from.x) * (long) (to.y - from.y);
+                long den = to.x - from.x;
+                long num2 = (long) from.y * (long) (to.x - from.x) + (long) (xArr[i + 1] - from.x) * (long) (to.y - from.y);
+                int a = (int) floorFrac(num1, den);
+                int b = (int) ceilingFrac(num2, den);
+                if (!checkSimple(segments[i], a, b)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private long floorFrac(long num, long den) {
+        if (den <= 0) {
+            throw new AssertionError();
+        }
+        if (num >= 0) {
+            return num / den;
+        } else {
+            return -ceilingFrac(-num, den);
+        }
+    }
+
+    private long ceilingFrac(long num, long den) {
+        if (den <= 0) {
+            throw new AssertionError();
+        }
+        if (num >= 0) {
+            return (num + den - 1) / den;
+        } else {
+            return -floorFrac(-num, den);
+        }
+    }
+
+    private boolean checkSimple(Segment[] segments, int y1, int y2) {
+        if (y1 > y2) {
+            return checkSimple(segments, y2, y1);
+        }
+        for (Segment s : segments) {
+            if (s.from <= y1 && s.to >= y2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Segment[] getSegments(Point[] botLeft, Point[] topRight, int xFrom, int xTo) {
+        Segment[] stupid = new Segment[0];
+        for (int i = 0; i < botLeft.length; i++) {
+            if (botLeft[i].x <= xFrom && topRight[i].x >= xTo) {
+                stupid = unite(stupid, new Segment(botLeft[i].y, topRight[i].y));
+            }
+        }
+        return stupid;
+    }
+
+    private Segment[] unite(Segment[] stupid, Segment segment) {
+        List<Segment> result = new ArrayList<>();
+        int i = 0;
+        while (i < stupid.length && stupid[i].to < segment.from) {
+            result.add(stupid[i]);
+            i++;
+        }
+        int j = i;
+        while (j < stupid.length && stupid[j].from <= segment.to) {
+            j++;
+        }
+        if (i < j) {
+            int from = Math.min(stupid[i].from, segment.from);
+            int to = Math.max(stupid[j - 1].to, segment.to);
+            result.add(new Segment(from, to));
+            i = j;
+        } else {
+            result.add(segment);
+        }
+        while (i < stupid.length) {
+            result.add(stupid[i]);
+            i++;
+        }
+        for (int it = 1; it < result.size(); it++) {
+            if (result.get(it).from <= result.get(it - 1).to) {
+                throw new AssertionError();
+            }
+        }
+        return result.toArray(new Segment[result.size()]);
+    }
+
+    static class Segment {
+        final int from, to;
+
+        Segment(int from, int to) {
+            this.from = from;
+            this.to = to;
+        }
+
+        public String toString() {
+            return "Segment{" +
+                    "from=" + from +
+                    ", to=" + to +
+                    '}';
+        }
+    }
+
+    static class Point {
+        int x, y;
+
+        Point(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+
+class SortedArrays {
+
+    public static int[] toSortedArray(Collection<Integer> collection) {
+        int[] res = new int[collection.size()];
+        int i = 0;
+        for (int element : collection) {
+            res[i++] = element;
+        }
+        Arrays.sort(res);
+        return res;
+    }
+
+}
+

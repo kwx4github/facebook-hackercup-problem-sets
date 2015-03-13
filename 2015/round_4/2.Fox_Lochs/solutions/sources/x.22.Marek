@@ -1,0 +1,365 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const double Eps = 1e-8;
+
+bool is_zero(double v){
+    return (v >= -Eps) && (v <= Eps);
+}
+
+bool between(double a, double mid, double b){
+    if(is_zero(a-mid) || is_zero(mid-b)) return true;
+    return (a <= mid && mid <= b);
+}
+
+bool smalleq(double a, double b){
+    if(is_zero(a-b)) return true;
+    return a < b;
+}
+
+bool smallneq(double a, double b){
+    if(is_zero(a-b)) return false;
+    return a < b;
+}
+
+struct Point {
+    double x, y;
+
+    Point(){}
+    Point(double _x, double _y) : x(_x), y(_y) {}
+
+    Point operator+(const Point other){ return Point(x+other.x, y+other.y); }
+    Point operator-(const Point other){ return Point(x-other.x, y-other.y); }
+    Point operator*(const double coef){ return Point(x*coef, y*coef); }
+
+    double len() const {
+        return hypot(x, y);
+    }
+};
+
+pair<double,double> cut(pair<double,double> a, pair<double,double> b){
+    return {max(a.first, b.first), min(a.second, b.second)};
+}
+
+struct Segment {
+    Point P1, P2;
+
+    Segment(){}
+    Segment(Point A, Point B): P1(A), P2(B) {}
+
+    bool bad(){
+        return is_zero(P1.x) && is_zero(P2.x) && is_zero(P1.y) && is_zero(P1.x);
+    }
+
+    pair<double,double> get_interval_smaller_y(double y) const {
+        if(smallneq(y, P1.y) && smallneq(y, P2.y)) return {0,0};
+        
+        pair<double,double> result = {0,1};
+        if(smalleq(y, P1.y)){
+            result.first = (P1.y-y) / abs(P2.y-P1.y);
+        }
+        if(smalleq(y, P2.y)){
+            result.second= 1-(P2.y-y) / abs(P2.y-P1.y);
+        }
+
+        return result;
+    }
+
+    pair<double,double> get_interval_bigger_y(double y) const {
+        Segment S = Segment(Point(P1.x,-P1.y), Point(P2.x,-P2.y));
+        return S.get_interval_smaller_y(-y);
+    }
+
+    pair<double,double> get_interval_smaller_x(double x) const {
+        Segment S = Segment(Point(P1.y,P1.x), Point(P2.y,P2.x));
+        return S.get_interval_smaller_y(x);
+    }
+    pair<double,double> get_interval_bigger_x(double x) const {
+        Segment S = Segment(Point(-P1.x,P1.y), Point(-P2.x,P2.y));
+        return S.get_interval_smaller_x(-x);
+    }
+};
+
+struct Line {
+    Point P1, P2;
+
+    Line(){}
+
+    Line(Point A, Point B): P1(A), P2(B) {}
+};
+
+
+struct Rectangle {
+    Point P1, P2;
+
+    Rectangle(){}
+    Rectangle(const Point A, const Point B) : P1(A), P2(B) {}
+    Rectangle(const Segment S) : Rectangle(S.P1, S.P2) {}
+
+    bool is_inside(Point P) const {
+        return between(P1.x, P.x, P2.x) && between(P1.y, P.y, P2.y);
+    }
+
+    bool is_inside(Segment S) const {
+        return is_inside(S.P1) && is_inside(S.P2);
+    }
+
+    bool is_okay() const {
+        return smalleq(P1.x, P2.x) && smalleq(P1.y, P2.y);
+    }
+
+    Rectangle operator&(const Rectangle other) const {
+        return Rectangle(Point(max(P1.x, other.P1.x), max(P1.y, other.P1.y)),
+                         Point(min(P2.x, other.P2.y), min(P2.y, other.P2.y)));
+    }
+
+    pair<double,double> intersect(const Segment S) const {
+        pair<double,double> result = {0, 1};
+//        fprintf(stderr, "y1=%lf y2=%lf\n", P1.y, P2.y);
+//        fprintf(stderr, "cur interval is [%lf,%lf]\n", result.first, result.second);
+        result = cut(result, S.get_interval_smaller_y(P2.y));
+//        fprintf(stderr, "cur interval is [%lf,%lf]\n", result.first, result.second);
+        result = cut(result, S.get_interval_bigger_y(P1.y));
+//        fprintf(stderr, "cur interval is [%lf,%lf]\n", result.first, result.second);
+        result = cut(result, S.get_interval_smaller_x(P2.x));
+//        fprintf(stderr, "cur interval is [%lf,%lf]\n", result.first, result.second);
+        result = cut(result, S.get_interval_bigger_x(P1.x));
+//        fprintf(stderr, "cur interval is [%lf,%lf]\n", result.first, result.second);
+        return result;
+    }
+
+/*    Rectangle operator|(const Rectangle other) const {
+
+    }*/
+
+    Segment operator&(const Line line) const {
+        if(is_zero(line.P1.y-line.P2.y)){
+            if(between(P1.y, line.P1.y, P2.y)){
+                return Segment(Point(P1.x, line.P1.y), Point(P2.x, line.P1.y));
+            } else {
+                return Segment(Point(0,0), Point(0,0));
+            }
+        }
+
+        Point A = Point(line.P1.x - (line.P2.x-line.P1.x)/(line.P2.y-line.P1.y)
+                                          * (line.P1.y - P1.y), P1.y);
+        
+        Point B = Point(line.P1.x - (line.P2.x-line.P1.x)/(line.P2.y-line.P1.y)
+                                          * (line.P1.y - P2.y), P2.y);
+        
+        if(smalleq(A.x, P1.x) && smalleq(B.x, P1.x)) return Segment(Point(0,0),Point(0,0));
+        if(smalleq(P2.x, A.x) && smalleq(P2.x, A.x)) return Segment(Point(0,0),Point(0,0));
+
+        if(smalleq(B.x, A.x)) swap(A, B);
+
+        if(A.x < P1.x){
+            A.x = P1.x;
+            A.y = (P1.x-B.x)/(A.x-B.x) * (A.y-B.y) + B.y;
+        }
+
+        if(B.x > P2.x){
+            A.x = P2.x;
+            A.y = (P2.x-B.x)/(A.x-B.x) * (A.y-B.y) + B.y;
+        }
+
+        return Segment(A,B);
+    }
+    
+};
+
+struct Testcase {
+private:
+	int testnum;
+    vector<Rectangle> rects;
+    set<int> xcord, ycord;
+    set<Point> cuts;
+    int N;
+    double best;
+    bool debug;
+
+public:
+
+	void input(){
+        scanf("%d", &N);
+        for(int i = 0; i < N; i++){
+            int x1, y1, x2, y2;
+            scanf("%d%d%d%d", &x1, &y1, &x2, &y2);
+            xcord.insert(x1);
+            xcord.insert(x2);
+            ycord.insert(y1);
+            ycord.insert(y2);
+            rects.emplace_back(Point(x1,y1), Point(x2,y2));
+
+        } 
+	}
+
+    bool is_totally_inside(Segment S){
+        if(debug) fprintf(stderr, "[%lf,%lf] [%lf,%lf]\n", S.P1.x, S.P1.y, S.P2.x, S.P2.y);
+        map<double,int> positions;
+        for(auto& rect: rects){
+            pair<double,double> ends = rect.intersect(S);
+//            fprintf(stderr, "intervals is [%lf,%lf]\n", ends.first, ends.second);
+            positions[ends.first]++;
+            positions[ends.second]--;
+        }
+
+        int counter = 0;
+        double start = positions.begin()->first;
+        if(smallneq(0, start)) return false;
+//        fprintf(stderr, "!!\n");
+
+        for(auto P: positions){
+            double v;
+            int pos;
+            tie(v, pos) = P;
+
+            if(smalleq(1, v)){ /*fprintf(stderr, "OK!\n");*/ return true;}
+            counter += positions[v];
+            if(v >= 0 && counter <= 0) return false;
+
+            if(!counter) return false;
+        }
+        return false;
+    }
+
+	void output(){
+        printf("%.6lf\n", best);
+	}
+
+	void make_run(){
+        best = 0;
+
+        vector<Point> throughWhat;
+        for(double x: xcord)
+            for(double y: ycord){
+                bool ok = false;
+                for(auto& rect: rects)
+                    if(rect.is_inside(Point(x,y))) ok = true;
+
+                if(ok) throughWhat.emplace_back(x, y);
+            }
+
+        random_shuffle(throughWhat.begin(), throughWhat.end());
+
+
+        for(int i = 0; i < (int)throughWhat.size(); i++)
+            for(int j = (int)throughWhat.size()-1; j > i; j--){
+                Point P1 = throughWhat[i],
+                      P2 = throughWhat[j];
+
+                Segment S = Segment(P1, P2);
+
+                debug = false;
+//                debug = (is_zero(P1.x-1) && is_zero(P1.y-1) && is_zero(P2.x-7)
+//                        && is_zero(P2.y-1));
+//                if(debug)
+//                    fprintf(stderr, "[%lf,%lf][%lf,%lf]\n", P1.x,P1.y,P2.x,P2.y);
+
+                if(!is_totally_inside(S)) continue;
+//                fprintf(stderr, "RUN\n");
+
+                double coef = 1.0;
+                double lastLen = 0, newLen = (P1-P2).len();
+
+                for(int t = 0; t < 100; t++){
+//                while(newLen - lastLen > 1e-12){
+//                    if(debug)
+//                        fprintf(stderr, "{%lf, %lf}{%lf, %lf}\n", P1.x,P1.y,P2.x,P2.y);
+                    
+                    Point TT, UU;
+
+                    Point prv = P1;
+                    do {
+                        prv = P1;
+                        P1 = P1 + (P1-P2)*coef;
+                        S = Segment(P1,P2);
+                    } while(is_totally_inside(S));
+
+                    TT = P1;
+                    P1 = prv;
+                    prv = P2;
+
+                    do {
+                        prv = P2;
+                        P2 = P2 + (P2-P1)*coef;
+                        S = Segment(P1,P2);
+                    } while(is_totally_inside(S));
+
+                    UU = P2;
+                    P2 = prv;
+
+                    if((TT-UU).len() < best) break;
+
+                    coef *= 0.7;
+                    lastLen = newLen;
+                    newLen  = (P1-P2).len();
+                }
+
+//                fprintf(stdout, "res is (%lf %lf)(%lf %lf)\n", P1.x, P1.y, P2.x, P2.y);
+
+                best = max(best, (P1-P2).len());
+            }
+	}
+
+
+///////////////////////////////////////////////////////////////
+
+	void run(){
+		fprintf(stderr, "Case #%d started running\n", testnum);
+		make_run();
+		fprintf(stderr, "Case #%d FINISHED\n", testnum);
+	}
+
+	Testcase(int testno) : testnum(testno) {
+		input();
+	}
+};
+
+
+
+
+// a kind of wrapper
+int main(int argc, char** argv){
+	int numThreads = 1;
+	if(argc >= 2){
+		int newSetNum = atoi(argv[1]);
+		if(newSetNum >= 2)
+			numThreads = newSetNum;
+	}
+
+	int TT;
+	scanf("%d", &TT);
+
+
+	if(numThreads == 1){
+		for(int i = 1; i <= TT; i++){
+			Testcase tc(i);
+			tc.run();
+			printf("Case #%d: ", i);
+			tc.output();
+		}
+		return 0;
+	}
+
+
+	vector<Testcase> cases;
+
+	for(int i = 1; i <= TT; i++){
+		cases.push_back(Testcase(i));
+	}
+
+	vector<thread> threads;
+
+	for(int i = 1; i < TT+numThreads; i++){
+		if(i <= TT)
+			threads.push_back(thread(&Testcase::run, &cases[i-1]));
+		if(i >= numThreads)
+			threads[i-numThreads].join();
+	}
+
+	for(int i = 1; i <= TT; i++){
+		printf("Case #%d: ", i);
+		cases[i-1].output();
+	}
+}

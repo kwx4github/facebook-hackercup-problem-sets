@@ -1,0 +1,157 @@
+#include <cstdio>
+#include <set>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+/*
+a + t * (b-a)
+
+*/
+
+struct point
+{
+	point() : x(0), y(0) {}
+	point(int x_, int y_) : x(x_), y(y_) {}
+	int x;
+	int y;
+
+	bool operator < (const point &other) const { return (x == other.x) ? (y < other.y) : (x < other.x); }
+	bool operator == (const point &other) const { return (x == other.x) && (y == other.y); }
+	bool operator != (const point &other) const { return (x != other.x) || (y != other.y); }
+};
+
+const double eps = 1e-8;
+
+void updrange(pair<double, double> &range, double newval)
+{
+	range.first = min(range.first, newval);
+	range.second = max(range.second, newval);
+}
+
+pair<double, double> getTrange(point a, point b, point p1, point p2)
+{
+	pair<double, double> ret(1e60, -1e60);
+	if (a.x != b.x) {
+		// a.x + t * (b.x - a.x) = p1.x
+		double t1 = (p1.x - a.x) / (double)(b.x - a.x);
+		double yt1 = a.y + t1 * (b.y - a.y);
+		double t2 = (p2.x - a.x) / (double)(b.x - a.x);
+		double yt2 = a.y + t2 * (b.y - a.y);
+		if (p1.y - eps <= yt1 && yt1 <= p2.y + eps)
+		{
+			updrange(ret, t1);
+		}
+		if (p1.y - eps <= yt2 && yt2 <= p2.y + eps)
+		{
+			updrange(ret, t2);
+		}
+	}
+	if (a.y != b.y) {
+		// a.y + t * (b.y - a.y) = p1.y
+		double t1 = (p1.y - a.y) / (double)(b.y - a.y);
+		double xt1 = a.x + t1 * (b.x - a.x);
+		double t2 = (p2.y - a.y) / (double)(b.y - a.y);
+		double xt2 = a.x + t2 * (b.x - a.x);
+		if (p1.x - eps <= xt1 && xt1 <= p2.x + eps)
+		{
+			updrange(ret, t1);
+		}
+		if (p1.x - eps <= xt2 && xt2 <= p2.x + eps)
+		{
+			updrange(ret, t2);
+		}
+	}
+	return ret;
+}
+
+int n;
+vector<pair<point, point>> dat;
+
+bool inside(point a, pair<point, point> rect)
+{
+	return rect.first.x <= a.x && a.x <= rect.second.x &&
+		rect.first.y <= a.y && a.y <= rect.second.y;
+}
+
+int main()
+{
+	int T;
+	scanf("%d", &T);
+	for (int testcase = 1; testcase <= T; testcase++)
+	{
+		double ans = 0;
+		scanf("%d", &n);
+		dat.clear();
+		for (int i = 0; i < n; i++) {
+			point p1, p2;
+			scanf("%d%d%d%d", &p1.x, &p1.y, &p2.x, &p2.y);
+			dat.emplace_back(p1, p2);
+		}
+		vector<point> inter;
+		for (int i = 0; i < n; i++) {
+			inter.emplace_back(dat[i].first.x, dat[i].first.y);
+			inter.emplace_back(dat[i].first.x, dat[i].second.y);
+			inter.emplace_back(dat[i].second.x, dat[i].first.y);
+			inter.emplace_back(dat[i].second.x, dat[i].second.y);
+			for (int j = 0; j < i; j++) {
+				vector<int> xs;
+				vector<int> ys;
+				xs.push_back(dat[i].first.x);
+				xs.push_back(dat[i].second.x);
+				xs.push_back(dat[j].first.x);
+				xs.push_back(dat[j].second.x);
+				ys.push_back(dat[i].first.y);
+				ys.push_back(dat[i].second.y);
+				ys.push_back(dat[j].first.y);
+				ys.push_back(dat[j].second.y);
+				vector<point> pchecks;
+				pchecks.emplace_back(xs[0], ys[2]);
+				pchecks.emplace_back(xs[0], ys[3]);
+				pchecks.emplace_back(xs[1], ys[2]);
+				pchecks.emplace_back(xs[1], ys[3]);
+				pchecks.emplace_back(xs[2], ys[0]);
+				pchecks.emplace_back(xs[2], ys[1]);
+				pchecks.emplace_back(xs[3], ys[0]);
+				pchecks.emplace_back(xs[3], ys[1]);
+				for (const auto &p : pchecks)
+				{
+					if (inside(p, dat[i]) && inside(p, dat[j])) {
+						inter.emplace_back(p);
+					}
+				}
+			}
+		}
+		sort(inter.begin(), inter.end());
+		inter.resize(unique(inter.begin(), inter.end()) - inter.begin());
+		for (int i = 0; i < inter.size(); i++) {
+			for (int j = 0; j < i; j++) {
+				auto p1 = inter[i];
+				auto p2 = inter[j];
+				vector<pair<double, double>> ranges;
+				for (int k = 0; k < n; k++) {
+					auto res = getTrange(p1, p2, dat[k].first, dat[k].second);
+					if (res.first > res.second) continue;
+					ranges.push_back(res);
+				}
+				sort(ranges.begin(), ranges.end());
+				double mult = hypot((double)(p1.x - p2.x), (double)(p1.y - p2.y));
+				double beg = -1e60;
+				double last = -1e60;
+				for (auto r : ranges)
+				{
+					if (r.first > last + eps) {
+						beg = r.first;
+						last = r.second;
+					} else {
+						last = max(last, r.second);
+					}
+					ans = max(ans, (last-beg) * mult);
+				}
+			}
+		}
+		printf("Case #%d: %.6f\n", testcase, ans);
+	}
+	return 0;
+}

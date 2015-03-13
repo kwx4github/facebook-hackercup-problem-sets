@@ -1,0 +1,244 @@
+import static java.lang.Double.parseDouble;
+import static java.lang.Integer.parseInt;
+import static java.lang.Long.parseLong;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static java.lang.Math.sqrt;
+import static java.lang.System.exit;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.Locale;
+import java.util.StringTokenizer;
+
+public class B {
+	
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer tok;
+	static int test;
+	
+	static double vmul(double x1, double y1, double x2, double y2) {
+		return y2 * x1 - x2 * y1;
+	}
+	
+	static double ld(double x1, double y1, double x2, double y2, double x, double y) {
+		return vmul(x2 - x1, y2 - y1, x - x1, y - y1);
+	}
+	
+	static double rvlMin, rvlMax;
+	static boolean rectVsLine(double lx1, double ly1, double lx2, double ly2, double rx1, double ry1, double rx2, double ry2) {
+		double ld11 = ld(lx1, ly1, lx2, ly2, rx1, ry1);
+		double ld12 = ld(lx1, ly1, lx2, ly2, rx1, ry2);
+		double ld21 = ld(lx1, ly1, lx2, ly2, rx2, ry1);
+		double ld22 = ld(lx1, ly1, lx2, ly2, rx2, ry2);
+		boolean ans = false;
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		if ((ld11 > 0) != (ld12 > 0)) {
+			ans = true;
+			min = min(min, rx1);
+			max = max(max, rx1);
+		}
+		if ((ld12 > 0) != (ld22 > 0)) {
+			ans = true;
+			double x = lx1 + (lx2 - lx1) / (ly2 - ly1) * (ry2 - ly1);
+			min = min(min, x);
+			max = max(max, x);
+		}
+		if ((ld22 > 0) != (ld21 > 0)) {
+			ans = true;
+			min = min(min, rx2);
+			max = max(max, rx2);
+		}
+		if ((ld21 > 0) != (ld11 > 0)) {
+			ans = true;
+			double x = lx1 + (lx2 - lx1) / (ly2 - ly1) * (ry1 - ly1);
+			min = min(min, x);
+			max = max(max, x);
+		}
+		if (ans) {
+			rvlMin = min;
+			rvlMax = max;
+		}
+		return ans;
+	}
+	
+	static final double EPS = 1e-9;
+	
+	static double sqr(double a) {
+		return a * a;
+	}
+	
+	static void solve() throws Exception {
+		int n = nextInt();
+//		int n = 20;
+		int x1[] = new int[n];
+		int y1[] = new int[n];
+		int x2[] = new int[n];
+		int y2[] = new int[n];
+		int xs[] = new int[2 * n];
+		int ys[] = new int[2 * n];
+		for (int i = 0; i < n; i++) {
+			x1[i] = xs[2 * i] = nextInt();
+			y1[i] = ys[2 * i] = nextInt();
+			x2[i] = xs[2 * i + 1] = nextInt();
+			y2[i] = ys[2 * i + 1] = nextInt();
+//			x1[i] = xs[2 * i] = i;
+//			y1[i] = ys[2 * i] = n - i - 1;
+//			x2[i] = xs[2 * i + 1] = 2 * n - i;
+//			y2[i] = ys[2 * i + 1] = n + i;
+		}
+		double ans = 0;
+		for (int x: xs) {
+			int y = Integer.MIN_VALUE;
+			while (true) {
+				int ny = Integer.MAX_VALUE;
+				for (int i = 0; i < n; i++) {
+					if (x1[i] <= x && x <= x2[i] && y1[i] > y && y1[i] < ny) {
+						ny = y1[i];
+					}
+				}
+				if (ny == Integer.MAX_VALUE) {
+					break;
+				}
+				y = ny;
+				ny: while (true) {
+					for (int i = 0;; i++) {
+						if (i >= n) {
+							break ny;
+						}
+						if (x1[i] <= x && x <= x2[i] && y1[i] <= ny && y2[i] > ny) {
+							ny = y2[i];
+							break;
+						}
+					}
+				}
+				ans = max(ans, ny - y);
+				y = ny;
+			}			
+		}
+		for (int y: ys) {
+			int x = Integer.MIN_VALUE;
+			while (true) {
+				int nx = Integer.MAX_VALUE;
+				for (int i = 0; i < n; i++) {
+					if (y1[i] <= y && y <= y2[i] && x1[i] > x && x1[i] < nx) {
+						nx = x1[i];
+					}
+				}
+				if (nx == Integer.MAX_VALUE) {
+					break;
+				}
+				x = nx;
+				nx: while (true) {
+					for (int i = 0;; i++) {
+						if (i >= n) {
+							break nx;
+						}
+						if (y1[i] <= y && y <= y2[i] && x1[i] <= nx && x2[i] > nx) {
+							nx = x2[i];
+							break;
+						}
+					}
+				}
+				ans = max(ans, nx - x);
+				x = nx;
+			}			
+		}
+		int minx = Integer.MAX_VALUE;
+		for (int x: xs) {
+			minx = min(minx, x);
+		}
+		for (int cx1: xs) {
+			for (int cy1: ys) {
+				for (int cx2: xs) {
+					for (int cy2: ys) {
+						if (cx1 == cx2 || cy1 == cy2) {
+							continue;
+						}
+						double x = minx - 1;
+						while (true) {
+							double nx = Double.POSITIVE_INFINITY;
+							for (int i = 0; i < n; i++) {
+								if (rectVsLine(cx1, cy1, cx2, cy2, x1[i], y1[i], x2[i], y2[i]) && rvlMin > x + EPS && rvlMin < nx) {
+									nx = rvlMin;
+								}
+							}
+							if (nx == Double.POSITIVE_INFINITY) {
+								break;
+							}
+							x = nx;
+							nx: while (true) {
+								for (int i = 0;; i++) {
+									if (i >= n) {
+										break nx;
+									}
+									if (rectVsLine(cx1, cy1, cx2, cy2, x1[i], y1[i], x2[i], y2[i]) && rvlMin <= nx + EPS && rvlMax > nx) {
+										nx = rvlMax;
+										break;
+									}
+								}
+							}
+							ans = max(ans, (nx - x) * sqrt((sqr(cx2 - cx1) + sqr(cy2 - cy1)) / sqr(cx2 - cx1)));
+							x = nx;
+						}			
+					}
+				}
+			}
+		}
+		printCase();
+		out.printf(Locale.US, "%.6f\n", ans);
+	}
+	
+	static void printCase() {
+		out.print("Case #" + test + ": ");
+	}
+	
+	static void printlnCase() {
+		out.println("Case #" + test + ":");
+	}
+	
+	static int nextInt() throws IOException {
+		return parseInt(next());
+	}
+
+	static long nextLong() throws IOException {
+		return parseLong(next());
+	}
+
+	static double nextDouble() throws IOException {
+		return parseDouble(next());
+	}
+
+	static String next() throws IOException {
+		while (tok == null || !tok.hasMoreTokens()) {
+			tok = new StringTokenizer(in.readLine());
+		}
+		return tok.nextToken();
+	}
+
+	public static void main(String[] args) {
+		try {
+			in = new BufferedReader(new InputStreamReader(System.in));
+			out = new PrintWriter(new OutputStreamWriter(System.out));
+			int tests = nextInt();
+			for (test = 1; test <= tests; test++) {
+				solve();
+				out.flush();
+				System.err.print('.');
+				System.err.flush();
+			}
+			in.close();
+			out.close();
+			System.err.println();
+			System.err.flush();
+		} catch (Throwable e) {
+			e.printStackTrace();
+			exit(1);
+		}
+	}
+}

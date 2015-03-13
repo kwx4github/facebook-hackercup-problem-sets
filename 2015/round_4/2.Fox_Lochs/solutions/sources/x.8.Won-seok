@@ -1,0 +1,96 @@
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <vector>
+#include <string>
+#include <queue>
+#include <map>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <sstream>
+#include <set>
+using namespace std;
+
+set<pair<int, int> > POI;
+
+void update(int x1, int x2, int y1, int x3, int y3, int y4) {
+  // (x3, y1) ?
+  if (x1 <= x3 && x3 <= x2 && y3 <= y1 && y1 <= y4)
+    POI.insert(pair<int, int>(x3, y1));
+}
+
+long double solve() {
+  int N;
+  cin >> N;
+  POI.clear();
+  vector<int> x1(N), y1(N), x2(N), y2(N);
+  for (int i=0; i<N; i++) {
+    cin >> x1[i] >> y1[i] >> x2[i] >> y2[i];
+    POI.insert(pair<int, int>(x1[i], y1[i]));
+    POI.insert(pair<int, int>(x2[i], y1[i]));
+    POI.insert(pair<int, int>(x1[i], y2[i]));
+    POI.insert(pair<int, int>(x2[i], y2[i]));
+  }
+  for (int i=0; i<N; i++)
+    for (int j=0; j<N; j++) {
+      if (i == j) continue;
+      update(x1[i], x2[i], y1[i], x1[j], y1[j], y2[j]);
+      update(x1[i], x2[i], y1[i], x2[j], y1[j], y2[j]);
+      update(x1[i], x2[i], y2[i], x1[j], y1[j], y2[j]);
+      update(x1[i], x2[i], y2[i], x2[j], y1[j], y2[j]);
+    }
+
+  fprintf(stderr, "%d\n", POI.size());
+  long double res = 0.0;
+  for (auto a : POI)
+    for (auto b : POI) {
+      if (a < b) {
+        vector<pair<long double, int> > V;
+        for (int i=0; i<N; i++) {
+          long double mmin = -999999999.9, mmax = 999999999.9;
+          if (a.first == b.first) {
+            if (a.first < x1[i] || x2[i] < a.first) mmin = 999999999.9, mmax = -999999999.9;
+          } else {
+            long double t1 = (x1[i] - a.first) * 1.0 / (b.first - a.first);
+            long double t2 = (x2[i] - a.first) * 1.0 / (b.first - a.first);
+            mmin = max(mmin, min(t1, t2));
+            mmax = min(mmax, max(t1, t2));
+          }
+          if (a.second == b.second) {
+            if (a.second < y1[i] || y2[i] < a.second) mmin = 999999999.9, mmax = -999999999.9;
+          } else {
+            long double t1 = (y1[i] - a.second) * 1.0 / (b.second - a.second);
+            long double t2 = (y2[i] - a.second) * 1.0 / (b.second - a.second);
+            mmin = max(mmin, min(t1, t2));
+            mmax = min(mmax, max(t1, t2));
+          }
+          if (mmin < mmax) {
+            V.push_back(pair<long double, int>(mmin-(1e-10), 1));
+            V.push_back(pair<long double, int>(mmax+(1e-10), -1));
+          }
+        }
+        sort(V.begin(), V.end());
+        long double prv = 0.0;
+        long double max_len = 0.0;
+        int cc = 0;
+        for (int i=0; i<V.size(); i++) {
+          if (cc == 0) prv = V[i].first;
+          cc += V[i].second;
+          max_len = max(max_len, V[i].first-prv);
+        }
+        max_len *= sqrt(1LL*(a.first-b.first)*(a.first-b.first)+1LL*(a.second-b.second)*(a.second-b.second));
+        res = max(res, max_len);
+      }
+    }
+  return res;
+}
+
+int main()
+{
+  int T;
+  cin >> T;
+  for (int tt=1; tt<=T; tt++) {
+    printf("Case #%d: %.9Lf\n", tt, solve());
+  }
+}

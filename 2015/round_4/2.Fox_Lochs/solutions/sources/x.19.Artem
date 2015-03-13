@@ -1,0 +1,245 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#define _SECURE_SCL 0
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include <iostream>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <list>
+#include <cctype>
+#include <sstream>
+#include <cassert>
+#include <bitset>
+#include <memory.h>
+#include <complex>
+#include <iomanip>
+
+using namespace std;
+
+#pragma comment(linker, "/STACK:200000000")
+
+typedef long long int64;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define fore(i, a, n) for(int i = (int)(a); i < (int)(n); i++)
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+#define last(a) (int(a.size()) - 1)
+#define all(a) a.begin(), a.end()
+
+const double EPS = 1E-6;
+const int INF = 1000000000;
+const int64 INF64 = (int64) 1E18;
+const double PI = 3.1415926535897932384626433832795;
+
+double sum = 0;
+
+struct pt {
+  double x, y;
+
+  pt () {}
+  pt (double x, double y): x(x), y(y) {}
+};
+
+struct line {
+  double a, b, c;
+
+  line(const pt& p, const pt& q) {
+    a = p.y - q.y;
+    b = q.x - p.x;
+    c = -a * p.x - b * p.y;
+
+    double t = sqrt(a * a + b * b);
+    a /= t;
+    b /= t;
+    c /= t;
+  }
+
+  double dist(const pt& p) const {
+    return abs(a * p.x + b * p.y + c);
+  }
+};
+
+double dist(pt p, pt q) {
+  return sqrt((p.x - q.x) * (p.x - q.x) + (p.y - q.y) * (p.y - q.y));
+}
+
+bool operator< (const pt& a, const pt& b) {
+  return a.x < b.x || abs(a.x - b.x) < EPS && a.y < b.y - EPS;
+}
+
+bool operator== (const pt& a, const pt& b) {
+  return abs(a.x - b.x) < EPS && abs(a.y - b.y) < EPS;
+}
+
+int n;
+pt a[30], b[30];
+
+void read() {
+  cin >> n;
+  forn(i, n) {
+    cin >> a[i].x >> a[i].y >> b[i].x >> b[i].y;
+    if (a[i].x > b[i].x)
+      swap(a[i].x, b[i].x);
+    if (a[i].y > b[i].y)
+      swap(a[i].y, b[i].y);
+  }
+}
+
+#define det(a, b, c, d) (a * d - b * c)
+
+bool inters(const line& l1, const line& l2, pt& r) {
+  double z = det(l1.a, l1.b, l2.a, l2.b);
+  if (abs(z) < EPS)
+    return false;
+  r.x = -det(l1.c, l1.b, l2.c, l2.b) / z;
+  r.y = -det(l1.a, l1.c, l2.a, l2.c) / z;
+  return true;
+}
+
+void inters(const line& l, const pt& p, const pt& q, pt& r1, pt& r2) {
+  if (l.dist(p) < EPS && l.dist(q) < EPS) {
+    r1 = p;
+    r2 = q;
+    return;
+  }
+
+  line l2(p, q);
+  pt w;
+  if (inters(l, l2, w) && p.x - EPS <= w.x && w.x <= q.x + EPS && p.y - EPS <= w.y && w.y <= q.y + EPS) {
+    if (r1 == w || r2 == w)
+      return;
+
+    if (r1.x < -1E8)
+      r1 = w;
+    else if (r2.x < -1E8)
+      r2 = w;
+    else {
+      cerr << 'x';
+      cerr.setf(ios::fixed);
+      cerr.precision(10);
+      cerr << r1.x << ' ' << r1.y << endl;
+      cerr << r2.x << ' ' << r2.y << endl;
+      cerr << w.x << ' ' << w.y << endl;
+      throw;
+    }
+  }
+}
+
+void inters(line l, int i, vector<pair<pt, int> >& v) {
+  size_t osz = v.size();
+
+  pt r1(-1E9, -1E9);
+  pt r2(r1);
+  inters(l, pt(a[i].x, a[i].y), pt(b[i].x, a[i].y), r1, r2);
+  inters(l, pt(a[i].x, a[i].y), pt(a[i].x, b[i].y), r1, r2);
+  inters(l, pt(b[i].x, a[i].y), pt(b[i].x, b[i].y), r1, r2);
+  inters(l, pt(a[i].x, b[i].y), pt(b[i].x, b[i].y), r1, r2);
+
+  if (r2.x < -1E8)
+    return;
+
+  if (r2 < r1)
+    swap(r1, r2);
+
+  v.pb(mp(r1, -1));
+  v.pb(mp(r2, +1));
+}
+
+void solve() {
+  vector<double> xs, ys;
+  forn(i, n) {
+    xs.pb(a[i].x);
+    xs.pb(b[i].x);
+    ys.pb(a[i].y);
+    ys.pb(b[i].y);
+  }
+
+  sort(all(xs));
+  xs.erase(unique(all(xs)), xs.end());
+  sort(all(ys));
+  ys.erase(unique(all(ys)), ys.end());
+
+  double ans = 0;
+  forn(i2, xs.size())
+    forn(i1, i2)
+      forn(j2, ys.size())
+        forn(j1, j2) {
+          pt p(xs[i1], ys[j1]);
+          pt q(xs[i2], ys[j2]);
+          line l(p, q);
+
+          vector<pair<pt, int> > v;
+          forn(i, n)
+            inters(l, i, v);
+
+          sort(all(v));
+
+          pt prev;
+          int bal = 0;
+          forn(i, v.size()) {
+            bal += -v[i].sc;
+            if (bal == 1 && v[i].sc == -1)
+              prev = v[i].fs;
+            if (bal == 0)
+              ans = max(ans, dist(prev, v[i].fs));
+          }
+        }
+  printf("%.6lf\n", ans);
+
+  sum += ans;
+}
+
+int myrand() {
+  int res = abs(rand() * RAND_MAX + rand()) % 2000001 - 1000000;
+  return res;
+}
+
+void gen() {
+  n = 20;
+  forn(i, n) {
+    a[i].x = myrand();
+    a[i].y = myrand();
+    b[i].x = myrand();
+    b[i].y = myrand();
+
+    if (a[i].x > b[i].x)
+      swap(a[i].x, b[i].x);
+    if (a[i].y > b[i].y)
+      swap(a[i].y, b[i].y);
+  }
+}
+
+int main() {
+  freopen("input.txt", "rt", stdin);
+  freopen("output.txt", "wt", stdout);
+  
+  int tests;
+  cin >> tests;
+  for (int test = 1; test <= tests; test++) {
+    cerr << "Solving test " << setw(2) << test << " of " << tests << ". Time = " << setw(5) << clock() << endl;
+    cout << "Case #" << test << ": ";
+    read();
+    //gen();
+    solve();
+  }
+
+  cerr.setf(ios::fixed);
+  cerr.precision(10);
+  cerr << sum << endl;
+  
+  return 0;
+}

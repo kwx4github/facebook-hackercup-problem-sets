@@ -1,0 +1,328 @@
+import java.io.*;
+import java.math.BigInteger;
+import java.util.*;
+
+public class FoxLochs {
+
+	BufferedReader br;
+	PrintWriter out;
+	StringTokenizer st;
+	boolean eof;
+
+	enum InputType {
+		SAMPLE, SUBMIT
+	}
+
+	static final InputType INPUT_TYPE = InputType.SUBMIT;
+
+	static class Frac implements Comparable<Frac> {
+		/**
+		 * Public but read-only :)
+		 */
+		BigInteger x, y;
+
+		static final Frac ZERO = new Frac(0);
+		static final Frac ONE = new Frac(1);
+
+		@Override
+		public int hashCode() {
+			return (123182381 * x.hashCode()) ^ (192083 * y.hashCode());
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o)
+				return true;
+			if (!(o instanceof Frac))
+				return false;
+			Frac other = (Frac) o;
+			return x.equals(other.x) && y.equals(other.y);
+		}
+
+		public Frac(BigInteger x, BigInteger y) {
+			if (y.signum() == 0) {
+				throw new RuntimeException("Denominator is zero");
+			}
+			if (y.signum() < 0) {
+				y = y.negate();
+				x = x.negate();
+			}
+			BigInteger gcd = x.gcd(y);
+			this.x = x.divide(gcd);
+			this.y = y.divide(gcd);
+		}
+
+		public Frac(BigInteger x) {
+			this(x, BigInteger.ONE);
+		}
+
+		public Frac(long x, long y) {
+			this(BigInteger.valueOf(x), BigInteger.valueOf(y));
+		}
+
+		public Frac(long x) {
+			this(BigInteger.valueOf(x), BigInteger.ONE);
+		}
+
+		public Frac plus(Frac o) {
+			return new Frac(x.multiply(o.y).add(y.multiply(o.x)),
+					y.multiply(o.y));
+		}
+
+		public Frac negate() {
+			return new Frac(x.negate(), y);
+		}
+
+		public Frac minus(Frac o) {
+			return plus(o.negate());
+		}
+
+		public Frac times(Frac o) {
+			return new Frac(x.multiply(o.x), y.multiply(o.y));
+		}
+
+		public Frac inverse() {
+			if (x.signum() == 0) {
+				throw new RuntimeException("Division by zero");
+			}
+			return new Frac(y, x);
+		}
+
+		public Frac divide(Frac o) {
+			return times(o.inverse());
+		}
+
+		@Override
+		public int compareTo(Frac o) {
+			return x.multiply(o.y).compareTo(o.x.multiply(y));
+		}
+
+		public int signum() {
+			return x.signum();
+		}
+
+		@Override
+		public String toString() {
+			return x + "/" + y;
+		}
+
+		public String toDoubleString(int fracDigits) {
+			BigInteger scaledX = x.multiply(BigInteger.TEN.pow(fracDigits + 1));
+			BigInteger res = scaledX.divide(y);
+			BigInteger[] arr = res.divideAndRemainder(BigInteger.TEN);
+			BigInteger scaledRet = arr[0];
+			if (arr[1].intValue() >= 5) {
+				scaledRet = scaledRet.add(BigInteger.ONE);
+			}
+			String ret = scaledRet.toString();
+			while (ret.length() <= fracDigits) {
+				ret = "0" + ret;
+			}
+			return ret.substring(0, ret.length() - fracDigits) + "."
+					+ ret.substring(ret.length() - fracDigits);
+		}
+	}
+
+	static class Point {
+		int x, y;
+
+		public Point(int x, int y) {
+			this.x = x;
+			this.y = y;
+		}
+
+		Point to(Point p) {
+			return new Point(p.x - x, p.y - y);
+		}
+
+		long sqLen() {
+			return (long) x * x + (long) y * y;
+		}
+
+		@Override
+		public String toString() {
+			return "(" + x + ", " + y + ")";
+		}
+	}
+
+	static class Event implements Comparable<Event> {
+		Frac when;
+		boolean start;
+
+		public Event(Frac when, boolean start) {
+			this.when = when;
+			this.start = start;
+		}
+
+		@Override
+		public int compareTo(Event o) {
+			int tmp = when.compareTo(o.when);
+			if (tmp != 0) {
+				return tmp;
+			}
+			if (start != o.start) {
+				return start ? -1 : 1;
+			}
+			return 0;
+		}
+
+		@Override
+		public String toString() {
+			return "[when=" + when + ", start=" + start + "]";
+		}
+	}
+
+	Frac[] getSegm(int x0, int dx, int x1, int x2) {
+		x1 -= x0;
+		x2 -= x0;
+		if (dx == 0) {
+			if (x1 <= 0 && x2 >= 0) {
+				return new Frac[] { Frac.ZERO, Frac.ONE };
+			} else {
+				return null;
+			}
+		}
+		if (dx < 0) {
+			dx = -dx;
+			x1 = -x1;
+			x2 = -x2;
+		}
+		return new Frac[] { new Frac(x1, dx), new Frac(x2, dx) };
+	}
+
+	static Frac max(Frac x, Frac y) {
+		return x.compareTo(y) > 0 ? x : y;
+	}
+
+	static Frac min(Frac x, Frac y) {
+		return x.compareTo(y) < 0 ? x : y;
+	}
+
+	boolean cover(Point from, Point to, Point[] r) {
+		Point v0 = from;
+		Point d = from.to(to);
+		List<Event> evs = new ArrayList<>();
+		for (int i = 0; i < r.length; i += 2) {
+			Point c0 = r[i];
+			Point c1 = r[i + 1];
+			Frac[] xSegm = getSegm(v0.x, d.x, c0.x, c1.x);
+			Frac[] ySegm = getSegm(v0.y, d.y, c0.y, c1.y);
+			if (xSegm != null && ySegm != null) {
+				Frac t0 = max(Frac.ZERO, max(xSegm[0], ySegm[0]));
+				Frac t1 = min(Frac.ONE, min(xSegm[1], ySegm[1]));
+
+				if (t0.compareTo(t1) <= 0) {
+					evs.add(new Event(t0, true));
+					evs.add(new Event(t1, false));
+				}
+			}
+		}
+		Collections.sort(evs);
+//		System.err.println(from + " " + to + " " + evs);
+		int cnt = 0;
+		if (evs.isEmpty()) {
+			return false;
+		}
+		if (!evs.get(0).when.equals(Frac.ZERO)
+				|| !evs.get(evs.size() - 1).when.equals(Frac.ONE)) {
+			return false;
+		}
+		for (Event ev : evs) {
+			if (ev.start) {
+				cnt++;
+			} else {
+				cnt--;
+			}
+			if (cnt == 0) {
+
+				if (!ev.when.equals(Frac.ONE)) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	void solve() throws IOException {
+		int n = nextInt();
+		Point[] a = new Point[2 * n];
+		for (int i = 0; i < n; i++) {
+			int x1 = nextInt();
+			int y1 = nextInt();
+			int x2 = nextInt();
+			int y2 = nextInt();
+			a[2 * i] = new Point(x1, y1);
+			a[2 * i + 1] = new Point(x2, y2);
+		}
+		long ans = 0;
+		for (int i = 0; i < 2 * n; i++) {
+			for (int j = i + 1; j < 2 * n; j++) {
+				if (cover(a[i], a[j], a)) {
+					ans = Math.max(ans, a[i].to(a[j]).sqLen());
+				}
+			}
+		}
+		out.printf(Locale.US, "%.6f\n", Math.sqrt(ans));
+	}
+
+	FoxLochs() throws IOException {
+		switch (INPUT_TYPE) {
+		case SAMPLE: {
+			br = new BufferedReader(new FileReader("sample.in"));
+			out = new PrintWriter("sample.out");
+			break;
+		}
+		case SUBMIT: {
+			String taskName = "fox_lochs";
+			br = new BufferedReader(new FileReader(taskName + ".txt"));
+			out = new PrintWriter(taskName + ".out");
+			break;
+		}
+		}
+		int t = nextInt();
+		for (int i = 1; i <= t; i++) {
+			System.err.println("Test " + i);
+			out.print("Case #" + i + ": ");
+			solve();
+		}
+		out.close();
+	}
+
+	public static void main(String[] args) throws IOException {
+		new FoxLochs();
+	}
+
+	String nextToken() {
+		while (st == null || !st.hasMoreTokens()) {
+			try {
+				st = new StringTokenizer(br.readLine());
+			} catch (Exception e) {
+				eof = true;
+				return null;
+			}
+		}
+		return st.nextToken();
+	}
+
+	String nextString() {
+		try {
+			return br.readLine();
+		} catch (IOException e) {
+			eof = true;
+			return null;
+		}
+	}
+
+	int nextInt() throws IOException {
+		return Integer.parseInt(nextToken());
+	}
+
+	long nextLong() throws IOException {
+		return Long.parseLong(nextToken());
+	}
+
+	double nextDouble() throws IOException {
+		return Double.parseDouble(nextToken());
+	}
+}

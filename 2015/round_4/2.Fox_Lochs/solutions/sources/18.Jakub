@@ -1,0 +1,347 @@
+// tested by Hightail: https://github.com/dj3500/hightail
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+#include <sstream>
+#include <stack>
+#include <cstring>
+#include <iomanip>
+#include <ctime>
+#include <cassert>
+using namespace std;
+#define pb push_back
+#define INF 1001001001
+#define FOR(i,n) for(int (i)=0;(i)<(n);++(i))
+#define FORI(i,n) for(int (i)=1;(i)<=(n);++(i))
+#define mp make_pair
+#define pii pair<int,int>
+#define ll long long
+#define vi vector<int>
+#define SZ(x) ((int)((x).size()))
+#define fi first
+#define se second
+#define wez(n) int (n); scanf("%d",&(n));
+#define wez2(n,m) int (n),(m); scanf("%d %d",&(n),&(m));
+#define wez3(n,m,k) int (n),(m),(k); scanf("%d %d %d",&(n),&(m),&(k));
+inline void pisz(int n) { printf("%d\n",n); }
+template<typename T,typename TT> ostream& operator<<(ostream &s,pair<T,TT> t) {return s<<"("<<t.first<<","<<t.second<<")";}
+template<typename T> ostream& operator<<(ostream &s,vector<T> t){FOR(i,SZ(t))s<<t[i]<<" ";return s; }
+#define DBG(vari) cerr<<#vari<<" = "<<(vari)<<endl;
+#define ALL(t) t.begin(),t.end()
+#define FOREACH(i,t) for (__typeof(t.begin()) i=t.begin(); i!=t.end(); i++)
+#define TESTS wez(testow)while(testow--)
+#define REP(i,a,b) for(int (i)=(a);(i)<=(b);++i)
+#define REPD(i,a,b) for(int (i)=(a); (i)>=(b);--i)
+#define REMAX(a,b) (a)=max((a),(b));
+#define REMIN(a,b) (a)=min((a),(b));
+#define IOS ios_base::sync_with_stdio(0);
+
+// zastąpić tym maina
+// wypełnić readInput(), compute() i writeOutput(); zmienne definiować wewnątrz klasy Instance
+// PARALLEL - czy ma odpalić testy równolegle, CORES - liczba rdzeni
+// uwaga - wersja równoległa może potrzebować dużo pamięci! (T razy więcej)
+//         mozna sobie z tym poradzić tworząc duże tablice dynamicznie dopiero w compute()
+//         (bo naraz wykonywane są co najwyżej CORES=3 kopie compute())
+//         (pamiętać o delete [] na koniec compute)
+// linkować z pthreads
+
+#include <pthread.h>
+#include <semaphore.h>
+#define PARALLEL 1
+#define CORES 4
+const int N = 22;
+
+#define real double //albo long double
+const real eps=1e-9;
+inline bool iszero(real x){return x<=eps && x>=-eps;}
+struct pt {
+    real x,y;
+    pt(real xx=0,real yy=0):x(xx),y(yy){}
+    bool operator==(const pt &a)const{return iszero(a.x-x) && iszero(a.y-y);}
+}; 
+bool operator<(const pt &a, const pt &b) {
+    if (a.x!=b.x) return a.x<b.x;
+    return a.y<b.y;
+}
+ostream& operator<<(ostream &s,pt p) {return s<<"("<<p.x<<","<<p.y<<")";}
+
+pt operator+(pt a,pt b){return pt(a.x+b.x,a.y+b.y);}
+pt operator-(pt a,pt b){return pt(a.x-b.x,a.y-b.y);}
+pt operator*(pt a,real r){return pt(a.x*r,a.y*r);}
+real vec(pt a,pt b){return a.x*b.y-a.y*b.x;}
+real det(pt a,pt b,pt c){return vec(b-a,c-a);}
+
+pt operator*(pt a,pt b){return pt(a.x*b.x-a.y*b.y,b.x*a.y+b.y*a.x);}
+real sqabs(pt a){return a.x*a.x+a.y*a.y;}
+pt operator/(pt a,pt b) {return (a*pt(b.x,-b.y))/sqabs(b);}
+
+real abs(pt a){return sqrt(a.x*a.x+a.y*a.y);}
+real dist(pt a,pt b){return sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y));}
+real sqdist(pt a,pt b){return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y);}
+
+real arg(pt a){return atan2(a.y,a.x);}//z przedzialu [-pi,pi]
+real skal(pt a,pt b){return a.x*b.x+a.y*b.y;}
+
+bool przecinanie(pt a,pt b,pt c,pt d) { //czy przeciecie AB CD niepuste
+    real d1=vec(b-a,c-a),d2=vec(b-a,d-a);
+    if ((d1>eps && d2>eps) || (d1<-eps && d2<-eps)) return 0;
+    if (iszero(d1) && iszero(d2)) {
+        if (iszero(a.x-b.x) && iszero(c.x-d.x))
+            a=a*pt(0,1);b=b*pt(0,1);c=c*pt(0,1);d=d*pt(0,1);
+        if (a.x>b.x) swap(a,b);
+        if (c.x>d.x) swap(c,d);
+        if (a.x<c.x+eps && c.x<b.x+eps) return 1; 
+        if (a.x<d.x+eps && d.x<b.x+eps) return 1; 
+        if (c.x<a.x+eps && a.x<d.x+eps) return 1;
+        return 0; 
+    }
+    d1=vec(d-c,a-c),d2=vec(d-c,b-c);
+    if ((d1>eps && d2>eps) || (d1<-eps && d2<-eps)) return 0;
+    return 1;
+}
+
+int line_cross(pt a, pt b,pt c,pt d,pt& wyn) { // 0 brak, 1 przec, 2 pokrywaja
+    real pczw=vec(b-a,c-d);
+    if (iszero(pczw)) {
+        if (iszero(det(a,b,c))) return 2;
+        else return 0;
+    }
+    real ptr=vec(b-a,c-a);
+    wyn=c+(d-c)*(ptr/pczw);
+    return 1;
+}
+
+struct Instance {
+   pthread_mutex_t finished;
+   Instance() : finished(PTHREAD_MUTEX_INITIALIZER) { pthread_mutex_lock(&finished); }
+   
+   // define variables here
+   int n;
+   ll x1[N], x2[N], y1[N], y2[N];
+   double res;
+   
+   void readInput() { // should read input; will run sequentially
+      cin >> n;
+      FOR(i,n) {
+         cin >> x1[i] >> y1[i] >> x2[i] >> y2[i];
+      }
+   }
+   
+   bool in (pt a, int i) {
+      //DBG(a)
+      //DBG(i)
+      return a.x + eps > x1[i] && a.x < x2[i] + eps && a.y + eps > y1[i] && a.y < y2[i] + eps;
+   }
+   
+   bool inside (pt a) {
+      FOR(i,n) {
+         if (in(a,i)) return true;
+      }
+      return false;
+   }
+   
+   bool ok (pt a, pt b, pt c, pt d) {
+      if (!przecinanie(a,b,c,d)) return true;
+      // tna sie
+      pt wyn;
+      line_cross(a,b,c,d,wyn);
+      //DBG(a)DBG(b)DBG(c)DBG(d)
+      if (wyn == a || wyn == b) return true;
+      pt ap = wyn - (1e-8) * (wyn-a);
+      pt bp = wyn + (1e-8) * (b-wyn);
+      //DBG(wyn)
+      //DBG(ap)
+      //DBG(bp)
+      if (!inside(ap)) return false;
+      if (!inside(bp)) return false;
+      
+      return true;
+   }
+   
+   bool ok2 (pt a, pt b, pt c, pt d) {
+      return ok(a,b,c,d) && ok(a,b,d,c);
+   }
+   
+   bool inside (pt a, pt b) {
+      /*if (a == pt(2,0) && b == pt(5,5)) {
+         DBG("yeh")
+         DBG(inside(a))
+         DBG(inside(b))
+         DBG(inside(a + (b-a) * 0.765757567))
+         FOR(i,n) {
+            DBG(i)
+            DBG(ok2(a,b,pt(x1[i],y1[i]), pt(x2[i],y1[i])));
+            DBG(ok2(a,b,pt(x1[i],y1[i]), pt(x1[i],y2[i])));
+            DBG(ok2(a,b,pt(x2[i],y2[i]), pt(x2[i],y1[i])));
+            DBG(ok2(a,b,pt(x2[i],y2[i]), pt(x1[i],y2[i])));
+         }
+      }*/
+      if (!inside(a)) return false;
+      if (!inside(b)) return false;
+      if (!inside(a + (b-a) * 0.765757567)) return false;
+      FOR(i,n) {
+         if (!ok2(a,b,pt(x1[i],y1[i]), pt(x2[i],y1[i]))) return false;
+         if (!ok2(a,b,pt(x1[i],y1[i]), pt(x1[i],y2[i]))) return false;
+         if (!ok2(a,b,pt(x2[i],y2[i]), pt(x2[i],y1[i]))) return false;
+         if (!ok2(a,b,pt(x2[i],y2[i]), pt(x1[i],y2[i]))) return false;
+      }
+      return true;
+   }
+   
+   void compute() { // should produce output and store it, not use IO; will run in parallel
+      //DBG(ok(pt(2.0,0), pt(5,5), pt(2,3), pt(10,3)));
+      //return;
+      
+      
+      /*set<ll> xs, ys;
+      FOR(i,n) {
+         xs.insert(x1[i]);
+         xs.insert(x2[i]);
+         ys.insert(y1[i]);
+         ys.insert(y2[i]);
+      }
+      vector<pt> pts;
+      FOREACH(it,xs) FOREACH(jt,ys) pts.pb(pt(*it,*jt));*/
+      
+      //DBG(inside(pt(18467,12382), pt(21726,4e8)));
+      //DBG(inside(pt(21726,4e8)));
+      //return;
+      
+      set<pt> pts;
+      FOR(i,n) {
+         pts.insert(pt(x1[i],y1[i]));
+         pts.insert(pt(x2[i],y1[i]));
+         pts.insert(pt(x1[i],y2[i]));
+         pts.insert(pt(x2[i],y2[i]));
+      }
+      FOR(i,n) FOR(j,n) if (i != j) {
+         for (int x : {x1[i], x2[i]}) {
+            for (int y : {y1[j], y2[j]}) {
+               if (x1[j] <= x && x <= x2[j] && y1[i] <= y && y <= y2[i]) {
+                  pts.insert(pt(x,y));
+               }
+            }
+         }
+      }
+      
+      res = 0.0;
+      FOREACH(it,pts) FOREACH(jt,pts) if (!(*it == *jt)) {
+         /*if (*it == pt(2,0) && *jt == pt(5,5)) {
+            DBG(inside(*it,*jt));
+            DBG("ok");
+         }*/
+         if (inside(*it,*jt)) {
+            pt d = *jt - *it;
+            pt A, B;
+            {
+               double from = 0.0, to = 1e6;
+               FOR(u,100) {
+                  double mid = (from + to) / 2;
+                  if (inside(*it,*jt + d * mid)) {
+                     from = mid;
+                  } else {
+                     to = mid;
+                  }
+               }
+               B = *jt + d * from;
+            }
+            {
+               double from = 0.0, to = 1e6;
+               FOR(u,100) {
+                  double mid = (from + to) / 2;
+                  if (inside(*it - d * mid, *jt)) {
+                     from = mid;
+                  } else {
+                     to = mid;
+                  }
+               }
+               A = *it - d * from;
+            }
+            REMAX(res, dist(A,B));
+            //if (!inside(A) || !inside(B)) throw 0;
+            //if (!inside(A,B)) throw 0;
+            /*if (!inside(*it, *jt)) {
+                  DBG(A)
+                  DBG(*it)
+                  DBG(*jt)
+                  DBG(B)
+               throw 0;
+            }*/
+            
+            //if (dist(A,B) > 1e8) DBG(mp(A,B));
+         }
+      }
+   }
+   
+   void writeOutput () { // should write stored output, without newline; will run sequentially
+      cout << setprecision(6) << fixed << res;
+   }
+};
+
+Instance *instances;
+pthread_mutex_t cerr_lock = PTHREAD_MUTEX_INITIALIZER,
+                nextToStartLock = PTHREAD_MUTEX_INITIALIZER;
+int tests, finishedTests = 0, nextToStart = 0;
+void* runner (void* input) {
+   (void)(input);
+   while (1) {
+      pthread_mutex_lock(&nextToStartLock);
+      int testno = nextToStart++;
+      pthread_mutex_unlock(&nextToStartLock);
+      if (testno >= tests) return 0;
+
+      //pthread_mutex_lock(&cerr_lock);
+      //cerr << "test " << testno+1 << " is starting" << endl;
+      //pthread_mutex_unlock(&cerr_lock);
+      instances[testno].compute();
+      pthread_mutex_lock(&cerr_lock);
+      cerr << "test " << testno+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+      pthread_mutex_unlock(&cerr_lock);
+      pthread_mutex_unlock(&instances[testno].finished);
+   }
+}
+
+int main () {
+   string pierwszalinia;
+   getline(cin,pierwszalinia);
+   tests = atoi(pierwszalinia.c_str());
+   if (PARALLEL) {
+      instances = new Instance[tests];
+      // reading input
+      FOR(i,tests) {
+         instances[i].readInput();
+      }
+      
+      // running computations in parallel
+      pthread_t irrelevant;
+      FOR(i,CORES) {
+         pthread_create(&irrelevant, NULL, runner, NULL);
+      }
+      FOR(i,tests) pthread_mutex_lock(&instances[i].finished); // wait until all are finished
+      
+      // writing output
+      FOR(i,tests) {
+         printf("Case #%d: ", i+1);
+         instances[i].writeOutput();
+         printf("\n");
+      }
+   } else {
+      FOR(i,tests) {
+         instances = new Instance;
+         instances->readInput();
+         instances->compute();
+         printf("Case #%d: ", i+1);
+         instances->writeOutput();
+         printf("\n");
+         cerr << "test " << i+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+         delete instances;
+      }
+   }
+}
+

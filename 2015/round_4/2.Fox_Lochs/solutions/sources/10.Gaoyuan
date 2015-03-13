@@ -1,0 +1,261 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+double eps = 1e-8;
+double pi = atan(1) * 4;
+
+struct vect2D
+{
+    double x, y;
+    vect2D(){x = y = 0;}
+    vect2D(double _x, double _y){x = _x, y = _y;}
+    vect2D operator +(vect2D u){return vect2D(x+u.x, y+u.y);}
+    vect2D operator -(vect2D u){return vect2D(x-u.x, y-u.y);}
+    vect2D to(vect2D &u){return vect2D(u.x-x, u.y-y);}
+    vect2D operator *(double u){return vect2D(x*u, y*u);}
+    vect2D operator /(double u){return vect2D(x/u, y/u);}
+    bool operator == (vect2D that){return abs(x-that.x) + abs(y-that.y) < eps;}
+    double dotProd(vect2D u){return x*u.x + y*u.y;}
+    double crossProd(vect2D u){return x*u.y - y*u.x;}
+    double len(){return sqrt(x*x + y*y);}
+    double len2(){return x*x+y*y;}
+    double dist(){return sqrt(x*x + y*y);}
+    double signedAngleRad(vect2D u)
+    {
+        if(dotProd(u) < 0)
+        {
+            double v = asin(crossProd(u) / (len() * u.len()));
+            if(v > 0) return pi - v;
+            return -pi - v;
+        }
+        return asin(crossProd(u) / (len() * u.len()));
+    }
+    double signedAngleDeg(vect2D u){return signedAngleRad(u) / pi * 180;}
+    vect2D resize(double u){return (*this)*(u/len());}
+    vect2D normalize(){return resize(1);}
+    vect2D projectTo(vect2D u){return u.resize(dotProd(u.normalize()));}
+    vect2D tangentTo(vect2D u){return (*this) - projectTo(u);}
+    friend ostream& operator<< (ostream& os , const vect2D& v)
+    {
+        return os << "(" << v.x << ", " << v.y << ")";
+    }
+};
+
+int n;
+double X1[21], X2[21], Y1[21], Y2[21];
+int xs[41], ys[41];
+
+struct interval
+{
+	double L, R;
+	bool operator <(interval that) const
+	{
+		return L < that.L;
+	}
+};
+
+
+struct segment
+{
+	vect2D A, B;
+	segment(){}
+	segment(vect2D _A, vect2D _B){A = _A, B = _B;}
+	segment(double Ax, double Ay, double Bx, double By){A = vect2D(Ax, Ay), B = vect2D(Bx, By);}
+	bool isIntersect(segment u) // if they touch only on the end point, return False
+	{
+		if(A == u.A && B == u.B)
+			return true;
+		if(A == u.B && B == u.A)
+			return true;
+		if(A.to(B).crossProd(A.to(u.A)) == 0 && A.to(B).crossProd(A.to(u.B)) == 0)
+		{
+			if(A.to(B).dotProd(A.to(u.A)) >= 0 && A.to(B).dotProd(u.A.to(B)) >= 0)
+				return true;
+			if(A.to(B).dotProd(A.to(u.B)) >= 0 && A.to(B).dotProd(u.B.to(B)) >= 0)
+				return true;
+			if(u.A.to(u.B).dotProd(u.A.to(A)) >= 0 && u.A.to(u.B).dotProd(A.to(u.B)) >= 0)
+				return true;
+			if(u.A.to(u.B).dotProd(u.A.to(B)) >= 0 && u.A.to(u.B).dotProd(B.to(u.B)) >= 0)
+				return true;
+		}
+		if(A.to(B).crossProd(A.to(u.A)) * A.to(B).crossProd(A.to(u.B)) < eps)
+			if(u.A.to(u.B).crossProd(u.A.to(A)) * u.A.to(u.B).crossProd(u.A.to(B)) < eps)
+				return true;
+		return false;
+	}
+	vect2D intersection(segment u)
+	{
+		double area1 = A.to(B).crossProd(A.to(u.A));
+		double area2 = -A.to(B).crossProd(A.to(u.B));
+		return (u.A * area2 + u.B * area1) / (area1 + area2);
+	}
+};
+
+
+
+double calcIt(vect2D u, vect2D v, vect2D a, vect2D b, vect2D P, vect2D norm)
+{
+	segment seg1(u, v), seg2(a, b);
+	vect2D t = seg1.intersection(seg2);
+	return t.to(P).dotProd(norm);
+}
+
+bool check(vect2D u, vect2D v, vect2D a, vect2D b, int id)
+{
+	if(abs(u.to(v).crossProd(a.to(b))) < eps) return false;
+	segment seg1(u, v), seg2(a, b);
+	vect2D r = seg1.intersection(seg2);
+	//cout << r.x << ", " << r.y << endl;
+	if(X1[id] - 1e-6 <= r.x && r.x <= X2[id] + 1e-6)
+		if(Y1[id] - 1e-6 <= r.y && r.y <= Y2[id] + 1e-6)
+			return true;
+	return false;
+}
+
+double calc(vect2D P, vect2D norm)
+{
+	//if(!(norm.x > 0.2 && norm.y > 0.2)) return 0;
+
+
+	vect2D Pu = P - norm * 10000000;
+	vect2D Pv = P + norm * 10000000;
+	vector <interval> Is;
+	for(int i = 1; i <= n; i++)
+	{
+		vect2D A(X1[i], Y1[i]);
+		vect2D B(X1[i], Y2[i]);
+		vect2D C(X2[i], Y2[i]);
+		vect2D D(X2[i], Y1[i]);
+		//cout << Pu << " " << Pv << " " << A << " " << B << " " << C << " " << D << endl;
+
+		double minV = 1e10, maxV = -1e10;
+		int ct = 0;
+		//cout << check(Pu, Pv, A, B) << ",";
+		if(check(Pu, Pv, A, B, i))
+		{
+			ct ++;
+			double v = calcIt(Pu, Pv, A, B, P, norm);
+			minV = min(minV, v);
+			maxV = max(maxV, v);
+		}
+		//cout << check(Pu, Pv, B, C) << ",";
+		if(check(Pu, Pv, B, C, i))
+		{
+			ct ++;
+			double v = calcIt(Pu, Pv, B, C, P, norm);
+			minV = min(minV, v);
+			maxV = max(maxV, v);
+		}
+		//cout << check(Pu, Pv, C, D) << ",";
+		if(check(Pu, Pv, C, D, i))
+		{
+			ct ++;
+			double v = calcIt(Pu, Pv, C, D, P, norm);
+			minV = min(minV, v);
+			maxV = max(maxV, v);
+		}
+		//cout << check(Pu, Pv, D, A) << endl;
+		if(check(Pu, Pv, D, A, i))
+		{
+			ct ++;
+			double v = calcIt(Pu, Pv, D, A, P, norm);
+			minV = min(minV, v);
+			maxV = max(maxV, v);
+		}
+		//cout << ct << endl;
+		
+		if(minV < maxV)
+		{
+			interval t;
+			t.L = minV;
+			t.R = maxV;
+			Is.push_back(t);
+			//cout << minV << " ~ " << maxV << endl;
+		}
+
+	}
+	//cout << "!" << endl;
+
+	double ret = 0;
+	if(Is.size() > 0)
+	{
+		sort(Is.begin(), Is.end());
+		double currentL = Is[0].L;
+		double currentR = Is[0].R;
+		for(int i = 1; i < Is.size(); i++)
+			if(Is[i].L > currentR)
+			{
+				ret = max(ret, currentR - currentL);
+				currentL = Is[i].L;
+				currentR = Is[i].R;
+			}
+			else
+				currentR = max(currentR, Is[i].R);
+		ret = max(ret, currentR - currentL);
+	}
+
+
+	return ret;
+}
+
+void solve()
+{
+	cin >> n;
+	for(int i = 1; i <= n; i++)
+	{
+		cin >> X1[i] >> Y1[i] >> X2[i] >> Y2[i];
+		xs[i] = X1[i];
+		xs[i+n] = X2[i];
+		ys[i] = Y1[i];
+		ys[i+n] = Y2[i];
+		X1[i] -= eps;
+		X2[i] += eps;
+		Y1[i] -= eps;
+		Y2[i] += eps;
+	}
+
+	double ans = 0;
+	for(int i1 = 1; i1 <= 2*n; i1++)
+	for(int i2 = 1; i2 <= 2*n; i2++)
+	for(int i3 = 1; i3 <= 2*n; i3++)
+	for(int i4 = 1; i4 <= 2*n; i4++)
+	{
+		vect2D P(xs[i1], ys[i2]);
+		vect2D Q(xs[i3], ys[i4]);
+		if(P.to(Q).dist() > eps)
+		{
+			vect2D n = P.to(Q);
+			n = n.normalize();
+			ans = max(ans, calc(P, n));
+		}
+	}
+	cout << ans << endl;
+}
+
+int MAIN()
+{
+	int TestCase;
+	cin >> TestCase;
+	for(int caseID = 1; caseID <= TestCase; caseID ++)
+	{
+		cout << "Case #" << caseID << ": ";
+		solve();
+	}
+	return 0;
+}
+
+int main()
+{
+	int start = clock();
+	#ifdef LOCAL_TEST
+		freopen("in.txt", "r", stdin);
+		freopen("out.txt", "w", stdout);
+	#endif
+	ios :: sync_with_stdio(false);
+	cout << fixed << setprecision(16);
+	int ret = MAIN();
+	#ifdef LOCAL_TEST
+		cout << "[Finished in " << clock() - start << " ms]" << endl;
+	#endif
+	return ret;
+}

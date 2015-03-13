@@ -1,0 +1,238 @@
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <cassert>
+#include <ctime>
+#include <cstring>
+#include <string>
+#include <set>
+#include <map>
+#include <vector>
+#include <list>
+#include <deque>
+#include <queue>
+#include <sstream>
+#include <iostream>
+#include <algorithm>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+
+const double pi = acos(-1.0);
+const long double eps = 1e-10;
+const long double inf = 1e18;
+const int size = 10 * 1000;
+
+long double sqr(long double x) {
+	return x * x;
+}
+
+struct point {
+	long double x, y;
+
+	point(long double x_ = 0.0, long double y_ = 0.0) : x(x_), y(y_) {}
+
+	long double dist(const point& p) const {
+		return sqrt(sqr(p.x - x) + sqr(p.y - y));
+	}
+};
+
+point operator + (const point& a, const point& b) {
+	return point(a.x + b.x, a.y + b.y);
+}
+
+point operator - (const point& a, const point& b) {
+	return point(a.x - b.x, a.y - b.y);
+}
+
+point operator * (const point& a, double k) {
+	return point(a.x * k, a.y * k);
+}
+
+struct line {
+	long double a, b, c;
+
+	line (long double a_ = 1.0, long double b_ = 0.0, long double c_ = 0.0) : a(a_), b(b_), c(c_) {
+		norm();
+	}
+
+	line (const point& p1, const point& p2) {
+		a = p2.y - p1.y;
+		b = p1.x - p2.x;
+		c = -a * p1.x - b * p1.y;
+
+		norm();
+	}
+
+	void norm() {
+		long double k = sqrt(sqr(a) + sqr(b));
+
+		a /= k;
+		b /= k;
+		c /= k;
+	}
+
+	long double dist(const point& p) const {
+		return a * p.x + b * p.y + c;
+	}
+};
+
+point pld[size];
+point prd[size];
+point plu[size];
+point pru[size];
+
+line segleft[size];
+line segright[size];
+line segup[size];
+line segdown[size];
+
+int tc, n;
+int lx[size], rx[size], ly[size], ry[size];
+
+bool crosslines(const line& l1, const line& l2, point& p) {
+	long double d = (l1.a * l2.b - l1.b * l2.a);
+	if (fabs(d) < eps)
+		return false;
+
+	p.x = (l1.b * l2.c - l1.c * l2.b) / d;
+	p.y = (l2.a * l1.c - l1.a * l2.c) / d;
+
+//	cerr.precision(20);
+//	cerr << p.x << ' ' << p.y << endl;
+//	cerr << l1.dist(p) << endl;
+//	cerr << l2.dist(p) << endl;
+
+	assert(fabs(l1.dist(p)) < eps);
+	assert(fabs(l2.dist(p)) < eps);
+
+	return true;
+}
+
+bool onseg(const point& a, const point& b, const point& p) {
+	return p.dist(a) + p.dist(b) - a.dist(b) < eps;
+}
+
+int main() {
+ /*
+	freopen("input.txt", "w", stdout);
+	int tnum = 20;
+	int n = 20;
+	int maxc = 1000 * 1000;
+	cout << tnum << endl;
+	for (int t = 0; t < tnum; t++) {
+		cout << n << endl;
+		for (int i = 0; i < n; i++) {
+			int minx = rand() % maxc - maxc;
+			int miny = rand() % maxc - maxc;
+			int maxx = minx + rand() % maxc + 1;
+			int maxy = miny + rand() % maxc + 1; 
+			cout << minx << ' ' << miny << ' ' << maxx << ' ' << maxy << endl;
+		}
+	}
+
+	return 0;
+*/
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    scanf("%d", &tc);
+    for (int tnum = 0; tnum < tc; tnum++) {
+    	scanf("%d", &n);
+
+    	vector <int> allx;
+    	vector <int> ally;
+
+    	for (int i = 0; i < n; i++) {
+    		scanf("%d%d%d%d", &lx[i], &ly[i], &rx[i], &ry[i]);
+
+    		pld[i] = point(lx[i], ly[i]);
+    		plu[i] = point(lx[i], ry[i]);
+    		prd[i] = point(rx[i], ly[i]);
+    		pru[i] = point(rx[i], ry[i]);
+    		segleft[i] = line(pld[i], plu[i]);
+    		segup[i] = line(plu[i], pru[i]);
+    		segright[i] = line(pru[i], prd[i]);
+    		segdown[i] = line(pld[i], prd[i]);
+
+    		allx.pb(lx[i]);
+    		allx.pb(rx[i]);
+    		ally.pb(ly[i]);
+    		ally.pb(ry[i]);
+    	}
+
+    	sort(allx.begin(), allx.end());
+    	sort(ally.begin(), ally.end());
+
+    	allx.resize(unique(allx.begin(), allx.end()) - allx.begin());
+    	ally.resize(unique(ally.begin(), ally.end()) - ally.begin());
+
+    	vector <point> pts;
+    	for (int i = 0; i < (int) allx.size(); i++)
+    		for (int j = 0; j < (int) ally.size(); j++)
+    			pts.pb(point(allx[i] * 1.0, ally[j] * 1.0));
+
+    	double ans = 0.0;
+    	for (int i = 0; i < (int) pts.size(); i++)
+    		for (int j = i + 1; j < (int) pts.size(); j++) {
+    			line myline = line(pts[i], pts[j]);
+    			line ort = line(-myline.b, myline.a, 0.0);
+                
+                vector <pair <long double, long double> > segs;
+
+                for (int k = 0; k < n; k++) {
+                	point h;
+                	long double curmin = inf;
+                	long double curmax = -inf;
+                	if (crosslines(myline, segleft[k], h) && onseg(pld[k], plu[k], h)) {
+						curmin = min(curmin, ort.dist(h));
+						curmax = max(curmax, ort.dist(h));                		                		
+                	}
+                	if (crosslines(myline, segright[k], h) && onseg(prd[k], pru[k], h)) {
+						curmin = min(curmin, ort.dist(h));
+						curmax = max(curmax, ort.dist(h));                		                		
+                	}	
+                	if (crosslines(myline, segdown[k], h) && onseg(pld[k], prd[k], h)) {
+						curmin = min(curmin, ort.dist(h));
+						curmax = max(curmax, ort.dist(h));                		                		
+                	}
+                	if (crosslines(myline, segup[k], h) && onseg(plu[k], pru[k], h)) {
+						curmin = min(curmin, ort.dist(h));
+						curmax = max(curmax, ort.dist(h));                		                		
+                	}
+
+               // 	cerr << curmin << ' ' << curmax << endl;
+                	if (curmin < curmax + eps)
+                		segs.pb(mp(curmin, curmax));
+                }
+
+                if (segs.empty())
+                	continue;
+
+               	//cerr << segs.size() << endl;
+                sort(segs.begin(), segs.end());
+                long double lst = segs[0].fs;
+                long double rgt = segs[0].sc;
+                for (int k = 0; k < (int) segs.size(); k++) {
+                	if (segs[k].fs > rgt + eps) {
+                		ans = max((long double) ans, rgt - lst);
+                		lst = segs[k].fs;
+                		rgt = segs[k].sc;
+                	}
+                	rgt = max(rgt, segs[k].sc);
+                } 
+
+                ans = max((long double) ans, rgt - lst);
+    		}
+
+       printf("Case #%d: %.6lf\n", tnum + 1, ans);
+
+       cerr << tnum + 1 << ' ' << (clock() + 0.0) / CLOCKS_PER_SEC << endl;
+    }
+
+    return 0;
+}

@@ -1,0 +1,189 @@
+#include<cmath>
+#include<vector>
+#include<cstdio>
+#include<cstring>
+#include<iostream>
+#include<algorithm>
+using namespace std;
+
+inline double sqr(double x) {
+    return x * x;
+}
+
+struct Point {
+    double x, y;
+
+    Point (double x = 0, double y = 0) : x(x), y(y) {}
+    
+    double dis() const { 
+        return sqrt(x * x + y * y);
+    }
+};
+
+Point operator + (const Point &a, const Point &b) {
+    return Point(a.x + b.x, a.y + b.y);
+}
+
+Point operator - (const Point &a, const Point &b) {
+    return Point(a.x - b.x, a.y - b.y);
+}
+
+Point operator * (const Point &a, const double &k) {
+    return Point(a.x * k, a.y * k);
+}
+
+Point operator / (const Point &a, const double &k) {
+    return Point(a.x / k, a.y / k);
+}
+
+double dot(const Point &a, const Point &b) {
+    return a.x * b.x + a.y * b.y;
+}
+
+double det(const Point &a, const Point &b) {
+    return a.x * b.y - a.y * b.x;
+}
+
+int sign(const double x, const double eps = 1e-8) {
+    return x < -eps ? -1 : x > eps;
+}
+
+struct Line {
+    Point a, b;
+
+    Line(Point a = Point(0, 0), Point b = Point(0, 0)) : a(a), b(b) {}
+
+};
+
+Point intersection(const Line &l0, const Line &l1) {
+    double s1 = det(l0.b - l0.a, l1.a - l0.a),
+           s2 = det(l0.b - l0.a, l1.b - l0.a);
+    return (l1.a * s2 - l1.b * s1) / (s2 - s1);
+}
+
+bool parallel(const Line &l0, const Line &l1) {
+    return sign(det(l0.b - l0.a, l1.b - l1.a)) == 0;
+}
+
+bool onLine(const Line &l, const Point &p) { //点在线段上
+    return sign(det(p - l.a, l.b - l.a)) == 0;
+}
+
+bool onSeg(const Line &l, const Point &p) { //点在线段上
+    return sign(det(p - l.a, l.b - l.a)) == 0 && sign(dot(p - l.a, p - l.b)) <= 0;
+}
+
+const int N = 25;
+
+#define y1 Y1
+
+int n;
+
+int x1[N], y1[N], x2[N], y2[N];
+
+Point p[N][4];
+
+bool in(pair<int, int> p, int i) {
+    return p.first >= x1[i] && p.first <= x2[i] &&
+           p.second >= y1[i] && p.second <= y2[i];
+}
+
+bool check(Point s, Point t) {
+    vector<pair<double, int> > covers;
+    Line ll(s, t);
+    Point dir = (t - s) / (t - s).dis();
+    for (int i = 0; i < n; ++i) {
+        vector<Point> p;
+        for (int j = 0; j < 4; ++j) {
+            Line l(::p[i][j], ::p[i][(j + 1) & 3]);
+            if (parallel(ll, l)) {
+                if (sign(det(l.a - s, dir)) == 0) {
+                    p.push_back(l.a);
+                    p.push_back(l.b);
+                }
+            } else {
+                Point q = intersection(ll, l);
+cout << l.a.x << ' ' << l.a.y << ' ' << l.b.x << ' ' << l.b.y << endl;
+cout << ll.a.x << ' ' << ll.a.y << ' ' << ll.b.x << ' ' << ll.b.y << endl;
+cout << q.x << ' ' << q.y << endl;
+                if (onSeg(l, q) && onLine(ll, q)) {
+                    p.push_back(q);
+                }
+            }
+        } 
+        if (p.size() > 1) {
+            double l = 1e100, r = -l, d;
+            for (int i = 0; i < (int)p.size(); ++i) {
+                d = dot(p[i] - s, dir);
+                l = min(l, d), r = max(r, d);
+            }
+            covers.push_back(make_pair(l, -1));
+            covers.push_back(make_pair(r, 1));
+        }
+    }
+    if (covers.size() == 0) {
+        return false;
+    }
+    sort(covers.begin(), covers.end());
+    double ret = 0, last = covers[0].first;
+    int cnt = 1;
+    for (int i = 1; i < (int)covers.size(); ++i) {
+        cnt += covers[i].second;
+        if (cnt == 0 && (i == (int)covers.size() - 1 || sign(covers[i + 1].first - covers[i].first) > 0)) {
+            ret = max(ret, covers[i].first - last);
+            if (i != (int)covers.size() - 1) {
+                last = covers[i + 1].first;
+            }
+        }
+    }
+    return ret;
+}
+int main() {
+    int t;
+    scanf("%d", &t);
+    while (t--) {
+        static int id = 0;
+        printf("Case #%d: ", ++id);
+        scanf("%d", &n);
+        double ans = 0;
+        vector<int> xs, ys;
+        for (int i = 0; i < n; ++i) {
+            scanf("%d%d%d%d", x1 + i, y1 + i, x2 + i, y2 + i);
+            p[i][0] = Point(x1[i], y1[i]);
+            p[i][1] = Point(x1[i], y2[i]);
+            p[i][2] = Point(x2[i], y2[i]);
+            p[i][3] = Point(x2[i], y1[i]);
+            xs.push_back(x1[i]), xs.push_back(x2[i]);
+            ys.push_back(y1[i]), ys.push_back(y2[i]);
+            ans = max(ans, sqrt(sqr(x2[i] - x1[i]) + sqr(y2[i] - y1[i])));
+        }
+        sort(xs.begin(), xs.end());
+        xs.erase(unique(xs.begin(), xs.end()), xs.end());
+        sort(ys.begin(), ys.end());
+        ys.erase(unique(ys.begin(), ys.end()), ys.end());
+        vector<Point> p;
+        for (int i = 0; i < (int)xs.size(); ++i) {
+            for (int j = 0; j < (int)ys.size(); ++j) {
+                pair<int, int> pp = make_pair(xs[i], ys[j]);
+                for (int k = 0; k < n; ++k) {
+                    if (in(pp, k)) {
+                        p.push_back(Point(xs[i], ys[j]));
+                        continue;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < (int)p.size(); ++i) {
+            for (int j = i + 1; j < (int)p.size(); ++j) {
+                if ((p[j] - p[i]).dis() < ans) {
+                    continue;
+                }
+                if (check(p[i], p[j])) {
+                    ans = (p[j] - p[i]).dis();
+                }
+            }
+        }
+        printf("%.6f\n", ans);
+    }
+    return 0;
+}

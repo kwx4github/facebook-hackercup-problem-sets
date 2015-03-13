@@ -1,0 +1,232 @@
+#include <map>
+#include <set>
+#include <cmath>
+#include <vector>
+#include <cstdio>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <climits>
+#include <iostream>
+#include <algorithm>
+
+using namespace std;
+
+const int N = 20 + 10;
+const double EPS = 1e-8;
+
+inline int sign(double a) {
+	return a < -EPS ? -1 : a > EPS;
+}
+
+struct Point {
+	double x, y;
+	Point() {
+	}
+	Point(double _x, double _y) :
+		x(_x), y(_y) {
+		}
+	Point operator+(const Point&p) const {
+		return Point(x + p.x, y + p.y);
+	}
+	Point operator-(const Point&p) const {
+		return Point(x - p.x, y - p.y);
+	}
+	Point operator*(double d) const {
+		return Point(x * d, y * d);
+	}
+	Point operator/(double d) const {
+		return Point(x / d, y / d);
+	}
+	bool operator<(const Point&p) const {
+		int c = sign(x - p.x);
+		if (c)
+			return c == -1;
+		return sign(y - p.y) == -1;
+	}
+	double dot(const Point&p) const {
+		return x * p.x + y * p.y;
+	}
+	double det(const Point&p) const {
+		return x * p.y - y * p.x;
+	}
+	double alpha() const {
+		return atan2(y, x);
+	}
+	double distTo(const Point&p) const {
+		double dx = x - p.x, dy = y - p.y;
+		return hypot(dx, dy);
+	}
+	double alphaTo(const Point&p) const {
+		double dx = x - p.x, dy = y - p.y;
+		return atan2(dy, dx);
+	}
+	//clockwise
+	Point rotAlpha(const double &alpha, const Point &o = Point(0, 0)) const {
+		double nx = cos(alpha) * (x - o.x) + sin(alpha) * (y - o.y);
+		double ny = -sin(alpha) * (x - o.x) + cos(alpha) * (y - o.y);
+		return Point(nx, ny) + o;
+	}
+	Point rot90() const {
+		return Point(-y, x);
+	}
+	Point unit() {
+		return *this / abs();
+	}
+	void read() {
+		scanf("%lf%lf", &x, &y);
+	}
+	double abs() {
+		return hypot(x, y);
+	}
+	double abs2() {
+		return x * x + y * y;
+	}
+	void write() {
+		cout << "(" << x << "," << y << ")" << endl;
+	}
+};
+
+#define cross(p1,p2,p3) ((p2.x-p1.x)*(p3.y-p1.y)-(p3.x-p1.x)*(p2.y-p1.y))
+
+#define crossOp(p1,p2,p3) sign(cross(p1,p2,p3))
+
+Point isSS(Point p1, Point p2, Point q1, Point q2) {
+	double a1 = cross(q1,q2,p1), a2 = -cross(q1,q2,p2);
+	return (p1 * a2 + p2 * a1) / (a1 + a2);
+}
+
+int isIntersect(Point p1, Point p2, Point q1, Point q2)
+{
+	return crossOp(p1, p2, q1) * crossOp(p1, p2, q2) <= 0;
+}
+
+int isParallel(Point p1, Point p2, Point q1, Point q2)
+{
+	return sign((p2 - p1).det(q2 - q1)) == 0;
+}
+
+int n;
+int l[N], r[N], u[N], d[N];
+vector<int> vx;
+
+bool checkOk(Point p)
+{
+	for(int i = 0; i < n; ++ i) {
+		if (sign(p.x - l[i]) >= 0 && sign(p.x - r[i]) <= 0 && sign(p.y - d[i]) >= 0 && sign(p.y - u[i]) <= 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+long double checkAns(pair<int, int> a, pair<int, int> b)
+{
+	//cout << "now is " << a.first << ' ' << a.second << endl;
+	//cout << "now is " << b.first << ' ' << b.second << endl;
+	if (a.first == b.first && a.second == b.second) {
+		return 0;
+	}
+	if (a.first == b.first) {
+		vector<pair<int, int> > ranges;
+		for(int j = 0; j < n; ++ j) {
+			if (l[j] <= a.first && r[j] >= a.first) {
+				ranges.push_back(make_pair(d[j], u[j]));
+			}
+		}
+		sort(ranges.begin(), ranges.end());
+		if (ranges.size() == 0) return 0;
+		vector<pair<double, double> > nranges;
+		int far = ranges[0].second;
+		int low = ranges[0].first;
+		for(int j = 1; j < ranges.size(); ++ j) {
+			if (ranges[j].first > far) {
+				nranges.push_back(make_pair(low, far));
+				far = ranges[j].second;
+				low = ranges[j].first;
+			} else {
+				far = max(far, ranges[j].second);
+			}
+		}
+		nranges.push_back(make_pair(low, far));
+		double ret = 0;
+		for(int i = 0; i < nranges.size(); ++ i) {
+			ret = max(ret, nranges[i].second - nranges[i].first);
+		}
+		return ret;
+	}
+	Point from(a.first, a.second);
+	Point to(b.first, b.second);
+	vector<Point> vec;
+	for(int i = 0; i < n; ++ i) {
+		Point p, q;
+		p = Point(l[i], d[i]); q = Point(l[i], u[i]);
+		if (! isParallel(from, to, p, q) && isIntersect(from, to, p, q)) {
+			vec.push_back(isSS(from, to, p, q));
+		}
+		p = Point(r[i], d[i]); q = Point(r[i], u[i]);
+		if (! isParallel(from, to, p, q) && isIntersect(from, to, p, q)) {
+			vec.push_back(isSS(from, to, p, q));
+		}
+		p = Point(l[i], d[i]); q = Point(r[i], d[i]);
+		if (! isParallel(from, to, p, q) && isIntersect(from, to, p, q)) {
+			vec.push_back(isSS(from, to, p, q));
+		}
+		p = Point(l[i], u[i]); q = Point(r[i], u[i]);
+		if (! isParallel(from, to, p, q) && isIntersect(from, to, p, q)) {
+			vec.push_back(isSS(from, to, p, q));
+		}
+	}
+	sort(vec.begin(), vec.end());
+	
+	long double answer = 0, last = 0;
+	for(int i = 1; i < vec.size(); ++ i) {
+		Point mid = (vec[i - 1] + vec[i]) * 0.5;
+		if (checkOk(mid)) {
+			last += vec[i].distTo(vec[i - 1]);
+		} else {
+			last = 0;
+		}
+		answer = max(answer, last);
+	}
+	return answer;
+}
+
+void solve()
+{
+	cin >> n;
+	vx.clear();
+	vector<pair<int, int> > points;
+	for(int i = 0; i < n; ++ i) {
+		cin >> l[i] >> d[i] >> r[i] >> u[i];
+		points.push_back(make_pair(l[i], d[i]));
+		points.push_back(make_pair(l[i], u[i]));
+		points.push_back(make_pair(r[i], d[i]));
+		points.push_back(make_pair(r[i], u[i]));
+		vx.push_back(l[i]);
+		vx.push_back(r[i]);
+	}
+	sort(vx.begin(), vx.end());
+	vx.resize(unique(vx.begin(), vx.end()) - vx.begin());
+
+	long double answer = 0;
+	for(int i = 0; i < points.size(); ++ i) {
+		for(int j = i + 1; j < points.size(); ++ j) {
+			long double tmp = checkAns(points[i], points[j]);
+			//cout << tmp << endl;
+			answer = max(answer, tmp);
+		}
+	}
+	printf("%.6f\n", (double)answer);
+}
+
+int main()
+{
+	int t;
+	cin >> t;
+	for(int i = 0; i < t; ++ i) {
+		cout << "Case #" << i + 1 << ": ";
+		solve();
+	}
+	return 0;
+}
