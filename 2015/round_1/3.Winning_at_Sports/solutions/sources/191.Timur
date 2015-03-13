@@ -1,0 +1,147 @@
+package abishev.fb2015.round1.p3;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class WinningAtSports implements TaskFactory {
+    public static final int MODU = 1000000007;
+
+    public enum Strategy {
+        STRESS_FREE {
+            @Override
+            public boolean canBe(int curA, int curB, int a, int b) {
+                return curA > curB;
+            }
+        },
+        STRESSFUL {
+            @Override
+            public boolean canBe(int curA, int curB, int a, int b) {
+                return curA <= curB || (curB == b);
+            }
+        };
+
+        public abstract boolean canBe(int curA, int curB, int a, int b);
+    }
+
+    @Override
+    public Task create() {
+        return new Task() {
+            int a, b;
+            int ans1, ans2;
+
+            @Override
+            public void input(Scanner input) {
+                String s = input.nextLine();
+                if (s.trim().isEmpty()) s = input.nextLine();
+                a = Integer.parseInt(s.substring(0, s.indexOf('-')));
+                b = Integer.parseInt(s.substring(s.indexOf('-') + 1));
+            }
+
+            @Override
+            public void run() {
+                ans1 = run(Strategy.STRESS_FREE);
+                ans2 = run(Strategy.STRESSFUL);
+            }
+
+            public int run(Strategy s) {
+                int[][] d = new int[a + 1][b + 1];
+                d[0][0] = 1;
+                for (int aa = 0; aa <= a; aa++) {
+                    for (int bb = 0; bb <= b; bb++) {
+                        if (aa != 0 || bb != 0) {
+                            if (s.canBe(aa, bb, a, b)) {
+                                int cur = 0;
+                                if (aa != 0) cur += d[aa - 1][bb];
+                                if (bb != 0) cur += d[aa][bb - 1];
+                                d[aa][bb] = cur % MODU;
+                            }
+                        }
+                    }
+                }
+                return d[a][b];
+            }
+
+            @Override
+            public void output(PrintWriter output) {
+                output.println(ans1 + " " + ans2);
+            }
+        };
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+//        Runner.run(new WinningAtSports());
+        Runner.run(new WinningAtSports(), "winning_at_sports.txt", "winning_at_sports.out");
+    }
+}
+
+interface TaskFactory {
+    Task create();
+}
+
+interface Task {
+    void input(Scanner input);
+
+    void run();
+
+    void output(PrintWriter output);
+}
+
+class Runner {
+    public static void run(TaskFactory taskFactory, InputStream is, OutputStream os) throws InterruptedException {
+        Scanner input = new Scanner(is);
+        PrintWriter output = new PrintWriter(os);
+        int t = input.nextInt();
+        input.nextLine();
+        List<Task> tasks = Collections.synchronizedList(new ArrayList<Task>());
+        for (int tt = 1; tt <= t; tt++) {
+            Task task = taskFactory.create();
+            task.input(input);
+            tasks.add(task);
+        }
+
+        final AtomicInteger doneTasks = new AtomicInteger(0);
+        final CountDownLatch latch = new CountDownLatch(t);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        for (final Task task : tasks) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    task.run();
+                    int doneTasksV = doneTasks.incrementAndGet();
+                    if (doneTasksV % 5 == 0) {
+                        System.out.println("*done tasks: " + doneTasksV + "*");
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+        executor.shutdown();
+
+        int tt = 0;
+        for (Task task : tasks) {
+            output.print("Case #" + (++tt) + ": ");
+            task.output(output);
+            output.flush();
+        }
+    }
+
+    public static void run(TaskFactory taskFactory) throws InterruptedException {
+        run(taskFactory, System.in, System.out);
+    }
+
+    public static void run(TaskFactory taskFactory, String inFileName, String outFileName) throws IOException, InterruptedException {
+        FileInputStream is = new FileInputStream(new File(inFileName));
+        FileOutputStream os = new FileOutputStream(new File(outFileName));
+        run(taskFactory, is, os);
+        is.close();
+        os.close();
+    }
+}

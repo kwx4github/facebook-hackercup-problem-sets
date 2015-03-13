@@ -1,0 +1,150 @@
+local string = require "string"
+
+function string:split(sSeparator, nMax, bRegexp)
+	assert(sSeparator ~= '')
+	assert(nMax == nil or nMax >= 1)
+
+	local aRecord = {}
+
+	if self:len() > 0 then
+		local bPlain = not bRegexp
+		nMax = nMax or -1
+
+		local nField=1 nStart=1
+		local nFirst,nLast = self:find(sSeparator, nStart, bPlain)
+		while nFirst and nMax ~= 0 do
+			aRecord[nField] = self:sub(nStart, nFirst-1)
+			nField = nField+1
+			nStart = nLast+1
+			nFirst,nLast = self:find(sSeparator, nStart, bPlain)
+			nMax = nMax-1
+		end
+		aRecord[nField] = self:sub(nStart)
+	end
+
+	return aRecord
+end
+
+function print_r ( t )  
+    local print_r_cache={}
+    local function sub_print_r(t,indent)
+        if (print_r_cache[tostring(t)]) then
+            print(indent.."*"..tostring(t))
+        else
+            print_r_cache[tostring(t)]=true
+            if (type(t)=="table") then
+                for pos,val in pairs(t) do
+                    if (type(val)=="table") then
+                        print(indent.."["..pos.."] => "..tostring(t).." {")
+                        sub_print_r(val,indent..string.rep(" ",string.len(pos)+8))
+                        print(indent..string.rep(" ",string.len(pos)+6).."}")
+                    elseif (type(val)=="string") then
+                        print(indent.."["..pos..'] => "'..val..'"')
+                    else
+                        print(indent.."["..pos.."] => "..tostring(val))
+                    end
+                end
+            else
+                print(indent..tostring(t))
+            end
+        end
+    end
+    if (type(t)=="table") then
+        print(tostring(t).." {")
+        sub_print_r(t,"  ")
+        print("}")
+    else
+        sub_print_r(t,"  ")
+    end
+    print()
+end
+
+function newStack ()
+  return {""}   -- starts with an empty string
+end
+
+function addString (stack, s)
+  table.insert(stack, s)    -- push 's' into the the stack
+  for i=table.getn(stack)-1, 1, -1 do
+    if string.len(stack[i]) > string.len(stack[i+1]) then
+      break
+    end
+    stack[i] = stack[i] .. table.remove(stack)
+  end
+end
+
+function calculatePrimacity() 
+	
+	local file = io.open("Primes.txt", "r")
+	local str = file:read()
+	file:close()
+	local primes = string.split(str, ",")
+
+	for i = 1,#primes do
+
+		primes[i] = tonumber(primes[i])
+	end
+	
+	local primacity = {}
+	local stack = newStack()
+	local nextPrimeIndex = 1
+	primacity[1] = 1
+
+	for i = 1,10000000 do
+
+		if i == primes[nextPrimeIndex] then
+			primacity[i] = 1
+			nextPrimeIndex = nextPrimeIndex + 1
+		else	
+			local test = i
+			for j = 1,#primes do
+
+				local prime = primes[j]
+				if test == 1 then 
+					break
+				elseif test % prime == 0 then
+					while test % prime == 0 do test = test/prime end
+					if primacity[i] == nil then primacity[i] = 1
+					else primacity[i] = primacity[i] + 1 end
+				end
+			end
+		end
+		-- print("i:" .. i .. " primacity:" .. primacity[i])
+		addString(stack, primacity[i] .. ",")
+	end
+	file = io.open("Primacity.txt", "w")
+	file:write(table.concat(stack, ""))
+	file:close()
+end
+
+local file = io.open("Primacity.txt", "r")
+local str = file:read()
+file:close()
+local primacity = string.split(str, ",")
+for i = 1,#primacity do
+
+	primacity[i] = tonumber(primacity[i])
+end
+
+file = io.open("homework.txt", "r")
+file:read("*number")
+local caseNo = 0
+while true do 
+	local targetStart, targetEnd, targetPrimacity = file:read("*number", "*number",
+	                                 "*number")	
+	caseNo = caseNo + 1
+	if not targetStart then break end
+	if targetPrimacity then 
+			
+		local primacityCounter = 0
+		for i = targetStart, targetEnd do
+		
+			if primacity[i] == targetPrimacity then
+			
+				primacityCounter = primacityCounter + 1
+			end
+		end	
+		print("Case #" .. caseNo .. ": " .. primacityCounter)
+	end
+end
+

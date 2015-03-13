@@ -1,0 +1,138 @@
+var fs  = require("fs"),
+    index = 0,
+    Combinatorics = require('js-combinatorics').Combinatorics,
+    score = [],
+    _ = require("underscore");
+
+console.time('process');
+
+/*
+* Reads the file and generates expected output.
+*/
+fs.readFileSync('./winning_at_sports.txt').toString().split('\n').forEach(function (line) { 
+    if (index > 0 && line != "") {
+        var arguments = line.split("-");
+
+        fs.appendFileSync("./output.txt", "Case #" + index + ": " + stressFree(parseInt(arguments[0]), parseInt(arguments[1])) + " " +
+                                                                    stressful(parseInt(arguments[0]), parseInt(arguments[1])) + "\n");
+    }
+   	index ++;
+    score = [];
+});
+
+console.timeEnd('process');
+
+/*
+* Returns the number of possible stress-free victories.
+* In a stress-free victory, you score the first point and from then on you always have more points than your opponent.
+*/
+function stressFree (me, opponent) {
+    var totalScore = me + opponent,
+        scoreMe = 1,
+        scoreOpponent = 0,
+        permutations = [{'score': "1-0", 'count': 1}],
+        perms = [];
+
+    if ((me + "-" + opponent).toString() == permutations.score) { return 1};
+
+    for (var i = 1; i < totalScore; i ++) {
+        var length = permutations.length;
+
+        for (var index = 0; index < length; index ++) {
+            var permutation = permutations[index].score.split("-"),
+                count = permutations[index].count,
+                currMe = parseInt(permutation[0]),
+                currOp = parseInt(permutation[1]);
+
+            if (currOp < currMe + 1 && currMe + 1 <= me) {
+                perms.push({'score': (currMe + 1).toString() + "-" + currOp.toString(), 'count': count});
+            }
+
+            if (currOp + 1 < currMe && currOp + 1 <= opponent) {
+                perms.push({'score': currMe.toString() + "-" + (currOp + 1).toString(), 'count': count});
+            }
+
+        }
+        if (i < totalScore - 1) {
+            perms = sortAndCount(perms);
+            permutations = perms.slice();
+            perms = [];
+        } else {
+            return perms.map(function(currentValue, index, array){
+                        return currentValue['count']
+                    }).reduce(function(previousValue, currentValue, index, array) {
+                            return ((previousValue + currentValue));
+                    },
+                    0) % 1000000007;
+        }
+    }
+}
+
+/*
+* Returns the number of possible stressful victories.
+* In a stressful victory, you never have more points than your opponent until after their score is equal to their final score.
+*/
+function stressful (me, opponent) {
+    var totalScore = me + opponent,
+        scoreMe = 1,
+        scoreOpponent = 0,
+        permutations = [{'score': "0-1", 'count': 1}],
+        perms = [];
+
+    if ((me + "-" + opponent).toString() == permutations.score) { return 1};
+
+    for (var i = 1; i < totalScore; i ++) {
+        var length = permutations.length;
+
+        for (var index = 0; index < length; index ++) {
+            var permutation = permutations[index].score.split("-"),
+                count = permutations[index].count,
+                currMe = parseInt(permutation[0]),
+                currOp = parseInt(permutation[1]);
+
+            if (currOp < opponent) {
+                perms.push({'score': currMe.toString() + "-" + (currOp + 1).toString(), 'count': count});
+                if (currMe + 1 <= currOp) {
+                    perms.push({'score': (currMe + 1).toString() + "-" + currOp.toString(), 'count': count});
+                }
+            }
+
+            if (currOp == opponent && currMe + 1 <= me ) {
+                perms.push({'score': (currMe + 1).toString() + "-" + currOp.toString(), 'count': count})
+            }
+        }
+
+        if (i < totalScore - 1) {
+            perms = sortAndCount(perms);
+            permutations = perms.slice();
+            perms = [];
+        } else {
+            return perms.map(function(currentValue, index, array){
+                        return currentValue['count']
+                    }).reduce(function(previousValue, currentValue, index, array) {
+                            return ((previousValue + currentValue));
+                    },
+                    0) % 1000000007;
+        }
+    }
+}
+
+function sortAndCount (arr) {
+    var a = [], b = [], prev = {score: "0-0", count: 0};
+
+    b = _.sortBy(arr, function(num){ return num.score; });
+    for (var i = 0; i < arr.length; i ++) {
+        var score = b[i].score,
+        newCount = b[i].count;
+
+        if (score !== prev.score) {
+            a.push({score: score, count: newCount});
+        } else {
+            a[a.length - 1].count += newCount % 1000000007;
+        }
+
+        prev = b[i];
+    }
+
+    return a;
+}

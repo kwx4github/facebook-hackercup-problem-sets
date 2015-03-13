@@ -1,0 +1,125 @@
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.PrintWriter;
+import java.util.*;
+
+public class CorporateGifting {
+    private static final String inFile = "corporate_gifting.txt";
+    private static final String outFile = "4-out.txt";
+
+    static class Node {
+        private static final int MAX = 2000;
+        private static long[] scores = new long[MAX];
+
+        private List<Node> children = new ArrayList<Node>();
+        private Node parent = null;
+        private int processed = 0;
+
+        private long minScore0;
+        private long minScore1;
+        private int minPrice;
+
+        public void addChild(Node child) {
+            children.add(child);
+        }
+
+        public boolean canProcess() {
+            return processed == children.size();
+        }
+
+        public Iterable<Node> getChildren() {
+            return children;
+        }
+
+        public long getScore() {
+            return minScore0;
+        }
+
+        public void setParent(Node parent) {
+            this.parent = parent;
+        }
+
+        public void process() {
+            fillScore();
+            if (parent != null) {
+                parent.processed++;
+            }
+        }
+
+        private void fillScore() {
+            long total = 0;
+            for (Node child : children) {
+                total += child.minScore0;
+            }
+
+            for (int i = 1; i < MAX; ++i) {
+                scores[i] = total + i;
+            }
+
+            for (Node child : children) {
+                scores[child.minPrice] += child.minScore1 - child.minScore0;
+            }
+
+            minPrice = -1;
+            minScore0 = Long.MAX_VALUE;
+            minScore1 = Long.MAX_VALUE;
+
+            for (int i = 1; i < MAX; ++i) {
+                if (scores[i] < minScore0) {
+                    minScore0 = scores[i];
+                    minPrice = i;
+                }
+            }
+
+            for (int i = 1; i < MAX; ++i) {
+                if (scores[i] < minScore1 && i != minPrice) {
+                    minScore1 = scores[i];
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        try {
+            FileReader reader = new FileReader(inFile);
+            PrintWriter writer = new PrintWriter(outFile);
+            Scanner scanner = new Scanner(reader);
+            int t = scanner.nextInt();
+            for (int i = 1; i <= t; ++i) {
+                int n = scanner.nextInt();
+                int[] a = new int[n];
+                for (int j = 0; j < n; ++j) {
+                    a[j] = scanner.nextInt();
+                }
+                writer.println("Case #" + i + ": " + solve(a));
+            }
+            writer.close();
+        } catch (FileNotFoundException ignored) {
+        }
+    }
+
+    private static long solve(int[] a) {
+        Node[] nodes = new Node[a.length];
+        for (int i = 0; i < a.length; ++i) {
+            nodes[i] = new Node();
+        }
+        for (int i = 1; i < a.length; ++i) {
+            nodes[i].setParent(nodes[a[i] - 1]);
+            nodes[a[i] - 1].addChild(nodes[i]);
+        }
+        Stack<Node> s = new Stack<Node>();
+        s.add(nodes[0]);
+        while (s.size() > 0) {
+            Node current = s.peek();
+            if (current.canProcess()) {
+                current.process();
+                s.pop();
+            } else {
+                for (Node child : current.getChildren()) {
+                    s.add(child);
+                }
+            }
+        }
+        return nodes[0].getScore();
+    }
+}

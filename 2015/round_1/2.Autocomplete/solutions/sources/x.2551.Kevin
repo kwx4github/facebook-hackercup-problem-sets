@@ -1,0 +1,97 @@
+#include <iostream>
+#include <cstdio>
+#include <cassert>
+#include <vector>
+#include <cstring>
+#include <set>
+#include <utility>
+using namespace std;
+
+#define MAXN 100001
+#define ENDCHR 'z'+1
+
+struct node {
+  string ref;
+  int begin;
+  int end;
+  int children[27];
+};
+
+node nodes[2*MAXN+2];
+
+int solve() {
+  int N;
+  cin >> N;
+  node* root = &nodes[0];
+  root->ref = "";
+  root->begin = 0;
+  root->end = 0;
+  memset(root->children, -1, sizeof(root->children));
+  int numNodes =1;
+  int totalUsed = 0;
+  for (int w=0; w<N; w++) {
+    string word;
+    cin >> word;
+    int pos=0;
+    int curId = 0;
+    node *cur = &nodes[curId];
+    node *parent = NULL;
+    for (;pos<word.length();pos++) {
+      if (pos >= cur->end) {
+        int next = cur->children[word[pos]-'a'];
+        if (next >= 0) {
+          parent = cur;
+          curId = next;
+          cur = &nodes[next];
+        } else {
+          node *newNode = &nodes[numNodes];
+          newNode->ref = word;
+          newNode->begin = pos;
+          newNode->end = word.length();
+          memset(newNode->children, -1, sizeof(newNode->children));
+          cur->children[word[pos]-'a'] = numNodes;
+          numNodes++;
+          pos++;
+          break;
+        }
+      } else {
+        if (cur->ref[pos] != word[pos]) {
+          int branchIndex = numNodes;
+          int leafIndex = numNodes+1;
+          numNodes += 2;
+          node *branch = &nodes[branchIndex];
+          branch->ref = word;
+          branch->begin = cur->begin;
+          branch->end = pos;
+          memset(branch->children, -1, sizeof(branch->children));
+          branch->children[word[pos]-'a'] = leafIndex;
+          node *newNode = &nodes[leafIndex];
+          newNode->ref = word;
+          newNode->begin = pos;
+          newNode->end = word.length();
+          memset(newNode->children, -1, sizeof(newNode->children));
+          branch->children[word[pos]-'a'] = numNodes;
+          branch->children[cur->ref[pos] - 'a'] = curId;
+          cur->begin = pos;
+          assert(parent != NULL);
+          parent->children[word[branch->begin]-'a'] = branchIndex;
+          pos++;
+          break;
+        }
+      }
+    }
+    totalUsed += pos;
+  }
+  return totalUsed;
+}
+
+int main() {
+  int T;
+  cin >> T;
+  for (int tcs=1; tcs <= T; tcs++) {
+    int answer = solve();
+    cout << "Case #" << tcs << ": " << answer << endl;
+  }
+
+  return 0;
+}

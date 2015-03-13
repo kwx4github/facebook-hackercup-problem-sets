@@ -1,0 +1,363 @@
+#include <cstdio>
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+#include <cstring>
+#include <cstdlib>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <bitset>
+#include <algorithm>
+#include <cassert>
+#include <ctime>
+#include <queue>
+#include <fstream>
+#include <list>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <stack>
+#include <ctime>
+using namespace std;
+
+
+
+//int2string
+string intToString(int val) {
+    stringstream ss;
+    ss <<val;
+    return ss.str();
+}
+
+
+//***************************
+//Tree related
+//***************************
+struct BinaryTree {
+    BinaryTree *left;
+    BinaryTree *right;
+    BinaryTree *parent;
+    int data;
+    BinaryTree() {}
+    BinaryTree(int v) : data(v) {}
+};
+
+template <class T> int maxHeight(T* root) {
+    if (root == NULL) return 0;
+    int left_height = maxHeight(root->left);
+    int right_height = maxHeight(root->right);
+    return max(left_height, right_height)+1;
+}
+
+// //print and test
+// Print the arm branches (eg, /    \ ) on a line
+void printBranches(int branchLen, int nodeSpaceLen, int startLen, int nodesInThisLevel, const deque<BinaryTree* > &nodesQueue, ostream& out) {
+  deque<BinaryTree*>::const_iterator iter = nodesQueue.begin();
+  for (int i = 0; i < nodesInThisLevel / 2; i++) {
+    out << ((i == 0) ? setw(startLen-1) : setw(nodeSpaceLen-2)) << "" << ((*iter++) ? "/" : " ");
+    out << setw(2*branchLen+2) << "" << ((*iter++) ? "\\" : " ");
+  }
+  out << endl;
+}
+
+// Print the branches and node (eg, ___10___ )
+void printNodes(int branchLen, int nodeSpaceLen, int startLen, int nodesInThisLevel, const deque<BinaryTree*>& nodesQueue, ostream& out) {
+  deque<BinaryTree*>::const_iterator iter = nodesQueue.begin();
+  for (int i = 0; i < nodesInThisLevel; i++, iter++) {
+    out << ((i == 0) ? setw(startLen) : setw(nodeSpaceLen)) << "" << ((*iter && (*iter)->left) ? setfill('_') : setfill(' '));
+    out << setw(branchLen+2) << ((*iter) ? intToString((*iter)->data) : "");
+    out << ((*iter && (*iter)->right) ? setfill('_') : setfill(' ')) << setw(branchLen) << "" << setfill(' ');
+  }
+  out << endl;
+}
+
+// Print the leaves only (just for the bottom row)
+void printLeaves(int indentSpace, int level, int nodesInThisLevel, const deque<BinaryTree*>& nodesQueue, ostream& out) {
+  deque<BinaryTree*>::const_iterator iter = nodesQueue.begin();
+  for (int i = 0; i < nodesInThisLevel; i++, iter++) {
+    out << ((i == 0) ? setw(indentSpace+2) : setw(2*level+2)) << ((*iter) ? intToString((*iter)->data) : "");
+  }
+  out << endl;
+}
+
+// Pretty formatting of a binary tree to the output stream
+// @ param
+// level  Control how wide you want the tree to sparse (eg, level 1 has the minimum space between nodes, while level 2 has a larger space between nodes)
+// indentSpace  Change this to add some indent space to the left (eg, indentSpace of 0 means the lowest level of the left node will stick to the left margin)
+void printPretty(BinaryTree *root, int level, int indentSpace, ostream& out) {
+  int h = maxHeight(root);
+  int nodesInThisLevel = 1;
+
+  int branchLen = 2*((int)pow(2.0,h)-1) - (3-level)*(int)pow(2.0,h-1);  // eq of the length of branch for each node of each level
+  int nodeSpaceLen = 2 + (level+1)*(int)pow(2.0,h);  // distance between left neighbor node's right arm and right neighbor node's left arm
+  int startLen = branchLen + (3-level) + indentSpace;  // starting space to the first node to print of each level (for the left most node of each level only)
+
+  deque<BinaryTree*> nodesQueue;
+  nodesQueue.push_back(root);
+  for (int r = 1; r < h; r++) {
+    printBranches(branchLen, nodeSpaceLen, startLen, nodesInThisLevel, nodesQueue, out);
+    branchLen = branchLen/2 - 1;
+    nodeSpaceLen = nodeSpaceLen/2 + 1;
+    startLen = branchLen + (3-level) + indentSpace;
+    printNodes(branchLen, nodeSpaceLen, startLen, nodesInThisLevel, nodesQueue, out);
+
+    for (int i = 0; i < nodesInThisLevel; i++) {
+      BinaryTree *currNode = nodesQueue.front();
+      nodesQueue.pop_front();
+      if (currNode) {
+       nodesQueue.push_back(currNode->left);
+       nodesQueue.push_back(currNode->right);
+      } else {
+        nodesQueue.push_back(NULL);
+        nodesQueue.push_back(NULL);
+      }
+    }
+    nodesInThisLevel *= 2;
+  }
+  printBranches(branchLen, nodeSpaceLen, startLen, nodesInThisLevel, nodesQueue, out);
+  printLeaves(indentSpace, level, nodesInThisLevel, nodesQueue, out);
+}
+
+BinaryTree* constructBinaryTree(string &tree, int &i) {
+    if (tree[i] == '#' || i >= tree.size()) return NULL;
+    BinaryTree *root = new BinaryTree(tree[i]-'0');
+    root->left = constructBinaryTree(tree, ++i);
+    root->right = constructBinaryTree(tree, ++i);
+    return root;
+}
+
+BinaryTree* constructBinaryTree(string tree) {
+    int i = 0;
+    return constructBinaryTree(tree, i);
+}
+
+template <class T>
+void priorder(T root) {
+    if (root == NULL) return;
+    cout <<root->data <<" ";
+    priorder(root->left);
+    priorder(root->right);
+}
+
+
+//others...
+template<class T>
+vector<vector<T> > constructMatrix(T *m, int width, int height) {
+    vector<vector<T> > results;
+    vector<T> temp;
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            temp.push_back(*(m+i*width+j));
+        }
+        results.push_back(temp);
+        temp.clear();
+    }
+    return results;
+}
+
+vector<vector<char> > convert(vector<string> &data) {
+    vector<vector<char> > results(data.size(), vector<char>{});
+    for (int i = 0; i < data.size(); ++i) {
+        for (int j = 0; j < data[i].size(); ++j) {
+            results[i].push_back(data[i][j]);
+        }
+    }
+    return results;
+}
+
+template<class T>
+void print(vector<vector<T> > data) {
+    cout <<"{\n";
+    for (int i = 0; i != data.size(); ++i) {
+        if (data[i].size() == 0) {
+            cout <<"{ }\n";
+        } else {
+            cout <<"{";
+            int j = 0;
+            for (; j < data[i].size()-1; ++j) {
+                cout <<data[i][j] <<", ";
+            }
+            cout <<data[i][j] <<"}\n";
+        }
+    }
+    cout <<"}" <<endl;
+}
+
+void print(bool b) {
+    if (b) cout <<"true" <<endl;
+    else cout <<"false" <<endl;
+}
+
+template<class T> void print(vector<T> data) {
+    cout <<"s = " <<data.size() <<"; ";
+    if (data.size() == 0) {
+        cout <<"{ }\n";
+    } else {
+        cout <<"{";
+        int i = 0;
+        for (; i < int(data.size())-1; ++i) {
+            cout <<data[i] <<", ";
+        }
+        cout <<data[i] <<"}\n";
+    }
+}
+//end print and test
+
+//this function is a dp implementation of C(i,j);
+void prepareC(vector<vector<int> > &C, int threshold){
+    for (int m = 1; m <= 100; m++) {
+        C[0][m] = 1;
+        C[1][m] = m;
+        int i = 2;
+        for (; i <= m/2; i++) {
+            C[i][m] = (C[i-1][m-1] + C[i][m-1]) % threshold;
+        }
+        for (; i <= m; i++) {
+            C[i][m] = C[m-i][m];
+        }
+    }
+}
+
+//this function is a dp implementation of Pow(m, n);
+void preparePow(vector<vector<int> > &mypow, int threshold){
+    for (int m = 1; m <= 100; m++) {
+        mypow[m][1] = m;
+        for (int n = 2; n <= 100; n++) {
+            mypow[m][n] = 0;
+            for (int j = 1; j <= m; j++) {
+                mypow[m][n] = (mypow[m][n] + mypow[m][n-1])%threshold;
+            }
+        }
+    }
+}
+
+
+void turnLeft(vector<vector<int> > &nums, int N) {
+    for (int i = 0; i < N/2; ++i) {
+        for (int j = 0; j < N; ++j) {
+            swap(nums[i][j], nums[N-i-1][j]);
+        }
+    }
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N-i-1; ++j) {
+            swap(nums[i][j], nums[N-j-1][N-i-1]);
+        }
+    }
+}
+
+struct Trie {
+  int sum;
+  Trie* children[26];
+  Trie() {
+    sum = 0;
+    for (int i = 0; i < 26; ++i) {
+      children[i] = NULL;
+    }
+  }
+};
+
+
+void addWord(Trie *root, string word) {
+  int ws = word.size();
+  for (int i = 0; i < ws; ++i) {
+    char c = word[i] - 'a';
+    root->sum++;
+    if (root->children[c] == NULL) {
+      root->children[c] = new Trie();
+    }
+    root = root->children[c];
+  }
+  root->sum++;
+}
+
+  // [] sum = 2;
+  // h sum = 2;
+  // i sum = 0; e sum = 1;
+int getNum(Trie *root, string word) {
+  int ws = word.size();
+  Trie *curr = root;
+  for (int i = 0; i < ws; ++i) {
+    char c = word[i] - 'a';
+    curr = curr->children[c];
+    if (curr->sum == 1) {
+      return i+1;
+    }
+  }
+  return ws;
+}
+
+void bfs(Trie *root) {
+  if (root == NULL) return;
+  queue<Trie *> Q;
+  Q.push(root);
+  while (!Q.empty()) {
+    Trie* curr = Q.front();
+    cout <<"(" <<curr->sum <<",";
+    for (int i = 0; i < 26; ++i) {
+      if (curr->children[i] != NULL) {
+        cout <<char('a'+i) <<". ";
+        Q.push(curr->children[i]);
+      }
+    }
+    Q.pop();
+    cout <<")" <<endl;
+  }
+}
+
+int getNumCharacters(vector<string> words) {
+  Trie *root = new Trie();
+  int result = 0;
+  for (int i = 0; i < words.size(); ++i) {
+    addWord(root, words[i]);
+    result += getNum(root, words[i]);
+  }
+  return result;
+}
+
+void HackerCup(string inFileName, string outFileName) {
+  ifstream input(inFileName);
+  ofstream output(outFileName);
+  if (!input.is_open() || !output.is_open()) {
+    cout <<"Failed to open file" <<endl;
+    return;
+  }
+  int T;
+  input >>T;
+  // cout <<T <<endl;
+  for (int i = 0; i < T; ++i) {
+    int N;
+    input >>N;
+    vector<string> words(N);
+    for (int j = 0; j < N; ++j) {
+      input >>words[j];
+    }
+    // cout <<"tst" <<endl;
+    // print(words);
+    output <<"Case #" <<i+1 <<": " <<getNumCharacters(words) <<endl;
+  }
+}
+void generateInput(string inFileName) {
+  ofstream output(inFileName);
+  if (!output.is_open()) {
+    cout <<"Failed to open" <<endl;
+    return;
+  }
+  output <<1 <<endl;
+  output <<100000 <<endl;
+  for (int i = 0; i < 100000; ++i) {
+    for (int j = 0; j < 200; ++j) {
+      char c = rand()%26 + 'a';
+      output <<c;
+    }
+    output <<endl;
+  }
+}
+int main() {
+  // generateInput("input.txt");
+  HackerCup("autocomplete.txt", "output.txt");
+}

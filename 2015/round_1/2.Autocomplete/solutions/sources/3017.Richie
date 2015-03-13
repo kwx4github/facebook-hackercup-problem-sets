@@ -1,0 +1,158 @@
+
+#define _CRT_SECURE_NO_WARNINGS
+
+#include "stdafx.h"
+#include <string.h>
+#include <cstdlib>
+#include <stdio.h>
+
+typedef struct stringpointer
+{
+	char *string;
+};
+
+int comparestrings(const void *a, const void *b)
+{
+	stringpointer *a1, *b1;
+
+	a1 = (stringpointer *) a;
+	b1 = (stringpointer *) b;
+
+	return strcmp(a1->string, b1->string);
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	FILE *input, *output;
+	unsigned long i, j, k, Totalcases, Totalwords, TotalPresses, TotalMatchesBefore, TotalMatchesAfter, CurrentTotal, NextCompare;
+	signed long LowerLimit, UpperLimit;
+	char *inputword;
+	stringpointer *wordlist, *Insertionpoint;
+	int finished;
+	char *stringbuffer;
+
+	input = fopen("C:\\Users\\user\\Documents\\Visual Studio 2013\\Projects\\Autocomplete\\Debug\\Autocomplete.txt", "r");
+	output = fopen("C:\\Users\\user\\Documents\\Visual Studio 2013\\Projects\\Autocomplete\\Debug\\fred.txt", "wb");
+
+	fscanf(input, "%d", &Totalcases);
+
+	stringbuffer = (char *) malloc(20000000);
+
+	for (i = 0; i < Totalcases; i++)
+	{
+		CurrentTotal = 0;
+		fscanf(input, "%ld", &Totalwords);
+		wordlist = (stringpointer *)malloc(sizeof(stringpointer *) * Totalwords);
+		for (j = 0; j < Totalwords; j++)
+			wordlist[j].string = NULL;
+		TotalPresses = 0;
+
+		fgetc(input);
+		for (j = 0; j < Totalwords; j++)
+		{
+			char *stringbufferpointer;
+
+			finished = 0;
+			stringbufferpointer = stringbuffer;
+			while (!finished)
+			{
+				char inputchar;
+
+				inputchar = fgetc(input);
+				if (inputchar == '\n')
+				{
+					*stringbufferpointer = 0;
+					finished = 1;
+				}
+				else
+					*stringbufferpointer++ = inputchar;
+			}
+			inputword = (char *) malloc(strlen(stringbuffer)+1);
+			//fscanf(input, "%s", &inputword);
+			//inputword = (char *)realloc(inputword, strlen(inputword) + 1);
+			strcpy(inputword, stringbuffer);
+
+			if (CurrentTotal != 0)
+			{
+				LowerLimit = 0;
+				UpperLimit = CurrentTotal - 1;
+				finished = 0;
+				while (!finished)
+				{
+					NextCompare = (LowerLimit + UpperLimit) / 2;
+					if (strcmp(inputword, wordlist[NextCompare].string) > 0)
+					{
+						if (LowerLimit == UpperLimit)
+						{
+							finished = 1;
+							NextCompare = LowerLimit + 1;
+						}
+						else
+						{
+							LowerLimit = NextCompare + 1;
+							if (LowerLimit > UpperLimit)
+							{
+								finished = 1;
+								NextCompare = LowerLimit;
+							}
+						}
+					}
+					else
+					{
+						if (LowerLimit == UpperLimit)
+						{
+							finished = 1;
+							NextCompare = LowerLimit;
+						}
+						else
+						{
+							UpperLimit = NextCompare - 1;
+							if (UpperLimit < LowerLimit)
+							{
+								finished = 1;
+								NextCompare = LowerLimit;
+							}
+						}
+					}
+				}
+				for (k = CurrentTotal; k > NextCompare; k--)
+					wordlist[k].string = wordlist[k - 1].string;
+				wordlist[NextCompare].string = inputword;
+				CurrentTotal++;
+				TotalMatchesBefore = 0;
+				if (NextCompare != 0)
+				{
+					for (k = 0; k < strlen(inputword); k++)
+					{
+						if (wordlist[NextCompare - 1].string[k] != inputword[k]) break;
+						TotalMatchesBefore++;
+					}
+				}
+				TotalMatchesAfter = 0;
+				if (NextCompare != CurrentTotal - 1)
+				{
+					for (k = 0; k < strlen(inputword); k++)
+					{
+						if (wordlist[NextCompare + 1].string[k] != inputword[k]) break;
+						TotalMatchesAfter++;
+					}
+				}
+				if (TotalMatchesBefore > TotalMatchesAfter)
+					TotalMatchesAfter = TotalMatchesBefore;
+				TotalMatchesAfter++;
+				if (TotalMatchesAfter > strlen(inputword))
+					TotalMatchesAfter = strlen(inputword);
+				TotalPresses += TotalMatchesAfter;
+			}
+			else
+			{
+				TotalPresses++;
+				wordlist[0].string = inputword;
+				CurrentTotal = 1;
+			}
+		}
+		fprintf(output, "Case #%d: %ld\n", i + 1, TotalPresses);
+	}
+	return 0;
+}
+

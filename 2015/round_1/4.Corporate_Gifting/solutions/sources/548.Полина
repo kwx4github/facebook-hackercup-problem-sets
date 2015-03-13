@@ -1,0 +1,125 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const int MAXV = 2e5 + 4;
+const long long MAXC = 5e10;
+
+struct Vertex {
+    int id;
+    set<pair<long long, int> > min_cost;
+
+    Vertex(int id = -1): id(id) {
+        min_cost.insert(make_pair(MAXC, 0));
+        min_cost.insert(make_pair(MAXC + 1, 0));
+    }
+
+    long long GetMax () const {
+        return min_cost.rbegin() -> first;
+    }
+
+    long long GetMin () const {
+        return min_cost.begin() -> first;
+    }
+
+    long long Cost (int color) const {
+        return min_cost.begin() -> second == color ? min_cost.rbegin() -> first : min_cost.begin() -> first;
+    }
+    
+    int first_col () const {
+        return min_cost.begin()->second;
+    }
+
+    int second_col () const {
+        return min_cost.rbegin()->second;
+    }
+
+    void incl (long long cost, int v_id) {
+        if (min_cost.rbegin() -> first < cost) {
+            return;
+        }
+        min_cost.erase(*min_cost.rbegin());
+        min_cost.insert(make_pair(cost, v_id));
+    }
+};
+
+Vertex ver[MAXV];
+vector<int> e[MAXV];
+
+bool cmp(pair<int, int> first, pair<int, int> second) {
+    return first.second > second.second;
+}
+
+void Test(int test_num) {
+    for (int i = 0; i < MAXV; ++i) {
+        e[i].clear();
+    }
+    int V;
+    scanf("%d", &V);
+    for (int i = 0; i < V; ++i) {
+        int a;
+        scanf("%d", &a);
+        ver[i + 1] = Vertex(i + 1);
+        e[a].push_back(i + 1);
+    }
+    vector<pair<int, int> > order;
+    order.resize(V + 1);
+    order[1] = make_pair(1, 0);
+    order[0] = make_pair(0, -1);
+    {
+        queue<int> q;
+        q.push(1);
+        while(!q.empty()) {
+            int v = q.front();
+            q.pop();
+            for (int i = 0; i < e[v].size(); ++i) {
+                  order[e[v][i]] = make_pair(e[v][i], order[v].second + 1);
+                  q.push(e[v][i]);
+            }
+        }
+    }
+    sort(order.begin(), order.end(), cmp);
+    for (int i = 0; i < V; ++i) {
+        int id = order[i].first;
+        Vertex& v = ver[id];
+        set<int> colors;
+        map<int, long long> delta;
+        long long min_sum = 0;
+        for (int j = 0; j < e[id].size(); ++j) {
+            Vertex& to = ver[e[id][j]];
+            colors.insert(to.first_col());
+            colors.insert(to.second_col());
+            delta[to.first_col()] += to.GetMax() - to.GetMin();
+            min_sum += to.GetMin();
+        }
+        colors.erase(0);
+        {
+            int j = 1, tot = 0;
+            while (j <= V && tot < 2) {
+                if (colors.find(j) == colors.end()) {
+                    ++tot;
+                    colors.insert(j);
+                }
+                ++j;
+            }
+        }
+        for (auto color : colors) {
+            v.incl(min_sum + delta[color] + color, color);
+        }
+    }
+
+    printf("Case #%d: %d\n", test_num, ver[1].GetMin());
+    cerr << "OK\n" << ver[1].GetMin() << "\n";;
+}
+
+
+int main() {
+    freopen("corporate_gifting.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; ++i) {
+        Test(i + 1);
+    }
+}
+

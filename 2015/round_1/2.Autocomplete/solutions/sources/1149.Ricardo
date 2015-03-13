@@ -1,0 +1,81 @@
+import qualified Data.Map as M
+import Data.Maybe
+import Data.List hiding (lookup)
+import Prelude hiding (lookup)
+
+{-
+data Trie = Branch Bool (M.Map Char Trie)
+  deriving Show
+
+create_trie :: String -> Trie
+create_trie [x] = Branch True (M.singleton x M.empty)
+create_trie (x:xs) = Branch False (M.singleton x $ create_trie xs)
+
+add_word :: String -> Trie -> Trie
+add_word [x] (Branch b m)
+  | M.member x m = Branch b (M.adjust (\(Branch _ m') -> Branch True m') x m)
+  | otherwise  = Branch b (M.insert x (Branch True M.empty) m)
+add_word (x:xs) (Branch b m)
+  | M.member x m = Branch b (M.adjust (add_word xs) x m)
+  | otherwise  = Branch b (M.insert x (create_trie xs) m)
+-}
+
+
+data Trie = Empty | Branch (M.Map (Maybe Char) Trie)
+  deriving Show
+
+create_trie :: String -> Trie
+create_trie [] = Branch (M.singleton Nothing Empty)
+create_trie (x:xs) = Branch (M.singleton (Just x) $ create_trie xs)
+
+add_word :: String -> Trie -> Trie
+add_word xs Empty = create_trie xs
+add_word [] (Branch m) = Branch (M.insert Nothing Empty m)
+add_word (x:xs) (Branch m)
+  | M.member (Just x) m = Branch (M.adjust (add_word xs) (Just x) m)
+  | otherwise  = Branch (M.insert (Just x) (create_trie xs) m)
+
+lookup :: String -> Trie -> Bool
+lookup [] Empty = True
+lookup [] (Branch m) = M.member Nothing m
+lookup (x:xs) (Branch m)
+  | M.member (Just x) m =
+    let Just m' = M.lookup (Just x) m
+    in  lookup xs m'
+  | otherwise = False
+
+deep :: String -> Trie -> Int
+deep [] _ = 0
+deep (x:xs) Empty = 0
+deep (x:xs) (Branch m)
+  | M.member (Just x) m =
+    let Just m' = M.lookup (Just x) m
+    in  1 + deep xs m'
+  | otherwise = 0
+
+get_min :: [String] -> Trie -> Int
+get_min [] _ = 0
+get_min (x:xs) t = 
+  let len  = length x
+      cost = 1 + deep x t
+      nt   = add_word x t
+  in (min cost len) + get_min xs nt
+
+treat_case :: Int -> [String] -> [String]
+treat_case 0 _ = []
+treat_case t (nstr:wrds) =
+  let n                = read nstr
+      (current, later) = splitAt n wrds
+  in (show $ get_min current Empty) : treat_case (t-1) later
+
+myPrint :: Int -> String -> String
+myPrint i s = "Case #" ++ (show i) ++ ": " ++ s
+
+parse_input :: String -> String
+parse_input str =
+  let (tstr:wrds) = words str
+      t = read tstr
+  in unlines $ zipWith myPrint [1..] $ treat_case t wrds
+
+main :: IO ()
+main = interact parse_input

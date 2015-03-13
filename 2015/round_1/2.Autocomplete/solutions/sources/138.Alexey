@@ -1,0 +1,161 @@
+#include <cstdint>
+#include <cassert>
+#include <x86intrin.h>
+
+#include <iostream>
+#include <string>
+#include <memory>
+#include <unordered_map>
+#include <vector>
+#include <random>
+
+class Autocomplete {
+  class State {
+
+  public:
+    bool has_next(char c) const {
+      return jumps_.find(c) != jumps_.end();
+    }
+
+    std::shared_ptr<State> get_next(char c) {
+      auto it = jumps_.find(c);
+      if (it == jumps_.end()) {
+        auto p = jumps_.emplace(c, std::make_shared<State>());
+        assert(p.second);
+        it = p.first;
+      }
+      assert(it != jumps_.end());
+      return it->second;
+    }
+
+  private:
+    std::unordered_map<char, std::shared_ptr<State>> jumps_;
+  };
+
+  public:
+    Autocomplete() : root_(new State()) {
+    }
+
+    uint64_t get_penalty(const std::string& word) {
+      uint64_t result = 0;
+      bool found_end = false;
+      auto cursor = root_;
+      for (uint32_t i = 0; i < word.length(); i++) {
+        char c = word[i];
+        if (!found_end && !cursor->has_next(c)) {
+          result = i + 1;
+          found_end = true;
+        }
+        cursor = cursor->get_next(c);
+      }
+      if (!found_end) {
+        result = word.length();
+      }
+      return result;
+    }
+
+  private:
+    std::shared_ptr<State> root_;
+};
+
+class AutocompleteDumb {
+
+  public:
+    uint64_t get_penalty(const std::string& word_to_add) {
+      uint64_t max_prefix = 0;
+
+      for (auto word : words_) {
+        max_prefix = std::max(max_prefix, get_prefix(word, word_to_add));
+      }
+
+      words_.push_back(word_to_add);
+      return std::min(static_cast<uint64_t>(word_to_add.length()),
+          max_prefix + 1);
+    }
+
+  private:
+    static uint64_t get_prefix(const std::string& fi, const std::string& se) {
+      uint64_t result = 0;
+      while (result < fi.length() && result < se.length() &&
+          fi[result] == se[result]) {
+        ++result;
+      }
+      return result;
+    }
+
+    std::vector<std::string> words_;
+};
+
+uint32_t get_rand(uint32_t l, uint32_t r) {
+  assert(l <= r);
+  static std::mt19937 rng(__rdtsc());
+  std::uniform_int_distribution<uint32_t> dist(l, r);
+  return dist(rng);
+}
+
+char get_rand_letter() {
+  static std::mt19937 rng(__rdtsc());
+  std::uniform_int_distribution<char> dist('a', 'z');
+  return dist(rng);
+}
+
+std::string get_rand_word(uint32_t word_length) {
+  std::string string(word_length, 0);
+  for (uint32_t i = 0; i < word_length; i++) {
+    string[i] = get_rand_letter();
+  }
+  return string;
+}
+
+template<typename X, typename Y>
+void stress() {
+  static const uint32_t kMinWords = 1, kMaxWords = 5000;
+  static const uint32_t kMinWordLength = 1, kMaxWordLength = 5000;
+  while (true) {
+    uint32_t words_count = get_rand(kMinWords, kMaxWords);
+    uint64_t x_result = 0, y_result = 0;
+
+    X x;
+    Y y;
+    
+    for (uint32_t i = 0; i < words_count; i++) {
+      uint32_t word_length = get_rand(kMinWordLength, kMaxWordLength);
+      std::string word = get_rand_word(word_length);
+      x_result += x.get_penalty(word);
+      y_result += y.get_penalty(word);
+    }
+
+    std::cout << x_result << " " << y_result << std::endl;
+    
+    assert(x_result == y_result);
+  }
+}
+
+void solve() {
+  //std::cout << "wtf" << std::endl;
+  uint64_t result = 0;
+  uint32_t words_count;
+  Autocomplete * autocomplete = new Autocomplete();
+  std::cin >> words_count;
+  for (uint32_t i = 0; i < words_count; i++) {
+    //std::cout << i << std::endl;
+    std::string word;
+    std::cin >> word;
+    result += autocomplete->get_penalty(word); 
+  }
+  std::cout << result;
+  //std::cout << "end";
+}
+
+int main() {
+  //stress<Autocomplete, AutocompleteDumb>();
+
+  uint32_t tests;
+  std::cin >> tests;
+  for (uint32_t test = 1; test <= tests; test++) {
+    std::cout << "Case #" << test << ": ";
+    solve();
+    std::cout << std::endl;
+  }
+  return 0;
+}

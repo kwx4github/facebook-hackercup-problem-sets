@@ -1,0 +1,235 @@
+program AutoComplete;
+
+{$mode objfpc}{$H+}
+
+uses
+  {$IFDEF UNIX}{$IFDEF UseCThreads}
+  cthreads,
+  {$ENDIF}{$ENDIF}
+  Classes, fgl
+  { you can add units after this };
+
+function ReadData: TStringList;
+var
+  i: Integer;
+  N : Integer;
+  S: AnsiString;
+begin
+  Result := TStringList.Create;
+
+  ReadLn(N);
+  for i := 1 to N do
+  begin
+    ReadLn(S);
+    Result.Add(S);
+
+  end;
+
+end;
+
+type
+  TNode = class;
+  TCharNodeMap = specialize TFPGMap<char, TNode>;
+  { TNode }
+
+  TNode = class(TObject)
+  private
+    FParent: TNode;
+    FChildren: array ['a'..'z'] of TNode;
+    WordEndBeneath: Integer;
+    EndOfWord: Boolean;
+    procedure Add(S: AnsiString);
+    function GetChild(c: Char): TNode;
+    procedure AddChild(c: Char; node: TNode);
+    function ID: AnsiString;
+  public
+    property Parent: TNode read FParent;
+    property Child[c: Char]: TNode read GetChild;
+    function Traverse(S: AnsiString): Integer;
+    function Count(S: AnsiString): Integer;
+    procedure Print(S: AnsiString);
+
+    constructor Create(p: TNode);
+    destructor Destroy; override;
+
+  end;
+
+function Solve(Words: TStringList): Integer;
+var
+  i: Integer;
+  Root: TNode;
+
+begin
+  Result := 0;
+  Root := TNode.Create(nil);
+
+  for i := 0 to Words.Count - 1 do
+  begin
+    Root.Traverse(Words[i]);
+//    Root.Print('');
+    Result += Root.Count(Words[i]);
+//    Root.Print('');
+//    WriteLn;
+  end;
+end;
+
+var
+  TCount: Integer;
+  i: Integer;
+
+  Words: TStringList;
+
+{ TNode }
+
+procedure TNode.Add(S: AnsiString);
+var
+  i: Integer;
+  Current, NewNode: TNode;
+
+begin
+  Current := Self;
+
+  for i := 1 to Length(S) do
+  begin
+    NewNode := TNode.Create(Current);
+    Current.AddChild(S[i], NewNode);
+    Current := NewNode;
+  end;
+
+  Current.EndOfWord := True;
+  while Current <> nil do
+  begin
+    Inc(Current.WordEndBeneath);
+    Current := Current.Parent;
+  end;
+
+end;
+
+function TNode.GetChild(c: Char): TNode;
+begin
+  Result := FChildren[c];
+
+end;
+
+procedure TNode.AddChild(c: Char; node: TNode);
+begin
+  FChildren[c] := node;
+
+end;
+
+function TNode.ID: AnsiString;
+var
+  c: char;
+begin
+  Result := '';
+
+  if Parent <> nil then
+    for c := 'a' to 'z' do
+      if Parent.Child[c] = Self then
+        Result := Parent.ID + c;
+end;
+
+function TNode.Traverse(S: AnsiString): Integer;
+var
+  p, Current: TNode;
+  Index: Integer;
+
+begin
+  Index := 1;
+  p := Self;
+  Current := Self.Child[S[Index]];
+  Result := 0;
+
+
+  while Current <> nil do
+  begin
+    Inc(Result);
+
+    Inc(Index);
+    if Length(S) < Index  then
+      break;
+
+    p := Current;
+    Current := Current.Child[S[Index]];
+
+  end;
+
+  if Index <= Length(S) then
+    p.Add(Copy(S, Index, Length(S)))
+  else
+  begin
+    Current.EndOfWord := True;
+    while Current <> nil do
+    begin
+      Inc(Current.WordEndBeneath);
+      Current := Current.Parent;
+    end;
+  end;
+
+end;
+
+function TNode.Count(S: AnsiString): Integer;
+var
+  Current: TNode;
+  i: Integer;
+
+begin
+  i := 1;
+  Current := Self.Child[S[i]];
+  if Current.WordEndBeneath = 1 then
+    Exit(i);
+  for i := 2 to Length(S) do
+  begin
+    Current := Current.Child[S[i]];
+    if Current.WordEndBeneath = 1 then
+      Exit(i);
+  end;
+  Result := Length(S);
+end;
+
+procedure TNode.Print(S: AnsiString);
+var
+  c: char;
+  Flag: Boolean;
+
+begin
+  WriteLn(ID, ' ', WordEndBeneath);
+
+  for c := 'a' to 'z' do
+    if Child[c] <> nil then
+      Child[c].Print(S + c);
+
+end;
+
+constructor TNode.Create(p: TNode);
+begin
+  inherited Create;
+
+  FillChar(FChildren, SizeOf(FChildren), 0);
+  EndOfWord := False;
+  FParent := p;
+end;
+
+destructor TNode.Destroy;
+var
+  c: char;
+begin
+
+  for c := 'a' to 'z' do
+    FChildren[c].Free;
+
+  inherited Destroy;
+end;
+
+begin
+  ReadLn(TCount);
+
+  for i := 1 to TCount do
+  begin
+    Words := ReadData;
+    WriteLn('Case #', i, ': ', Solve(Words));
+    Words.Free;
+  end;
+
+end.
+

@@ -1,0 +1,123 @@
+package nl.dcm360.fbhc15.r1
+
+import scala.io.Source
+
+object Homework {
+  val inputFile = "input/homework.txt"
+  
+  def output(no:Int, answer:Int, duration: Long, dur2: Long){
+    val dstr = ""// ("+duration+", "+dur2+")"
+    if (answer == -1)
+      println("Case #"+no+": impossible" + dstr)
+    else
+      println("Case #"+no+": "+answer + dstr)
+  }
+  
+  def recSolve(list:List[Int], count:Int, target:Int, test:Int, abort:Int):Boolean = list match{
+    case List() => {
+      val tc = if(isPrime(primeCache1, test, Math.ceil(Math.sqrt(test)).toInt)){
+        //Special case: target of 1 is looking for primes, and count of zero means this is a prime
+          count + 1
+        }else {
+          count 
+        }
+      //if(tc <= target){// Caching has more use than early-abort 1)
+        primacityCache(test) = tc
+      //}
+      tc == target
+      }
+    
+      
+    //case _ if count > target => false // Caching has more use than early-abort 2)
+    case head::_ if head > abort => recSolve(List(), count, target, test, abort)
+    case head::tail => recSolve(tail, count + (
+        if(test % head == 0 && test != head) {
+          if((test / head) > abort && isPrime(primeCache1, test / head, Math.ceil(Math.sqrt(test / head)).toInt)){
+            2
+          }else{
+            1 
+          }
+        }else{
+          0
+        }), target, test, (if(test % head == 0) {test/head}else{abort}))
+  }
+  
+  var lastUpper:Int = 1
+  
+  var primeCache1 = List[Int]()
+  var primacityCache:Array[Int] = Array.ofDim(100000001)
+  
+  def isPrime(list:List[Int], num:Int, abort:Int):Boolean = {
+    if(num < lastUpper){
+      primeCache1.contains(num)
+    }else{
+      isPrimeSlow(list, num, abort)
+    }
+  }
+  
+  def isPrimeSlow(list:List[Int], num:Int, abort:Int):Boolean = list match{
+    case List() => true
+    case head::_ if head > abort => true
+    case head::_ if head == num => true
+    case head::_ if num % head == 0 => false
+    case _::tail => isPrimeSlow(tail, num, abort)
+  }
+  
+  def calcPrimes(low:Int, high: Int){
+    var primeCache2 = List[Int]()
+    for(newNum <- low to high){
+      val abort = Math.ceil(Math.sqrt(newNum)).toInt
+      if(isPrime(primeCache1, newNum, abort) && isPrime(primeCache2, newNum, newNum)){
+        primeCache2 = newNum :: primeCache2
+      }
+      if((newNum - low) % 10000 == 0){
+        primeCache1 = primeCache1 ::: primeCache2.reverse
+        primeCache2.map(primacityCache(_) = 1)
+        primeCache2 = List[Int]()
+      }
+    }
+    primeCache1 = primeCache1 ::: primeCache2.reverse
+  }
+  
+  def calcMaxPrimacity(from:Int, upper:Int, primes:List[Int]):Int = primes match{
+    case _ if(from > upper) => -1
+    case head::tail => 1 + calcMaxPrimacity(from*head, upper, tail)
+  }
+  
+  def main(args: Array[String]): Unit = {
+    val inputLines = Source.fromFile(inputFile).getLines
+    val challengeCount = inputLines.next.toInt
+    for(challenge <- 1 to challengeCount){
+      val primeTime = System.currentTimeMillis()
+      val nums = inputLines.next.split("\\s").map(_.toInt)
+      val lower = nums(0)
+      val upper = nums(1)
+      val primacity = nums(2)
+      if(Math.ceil(Math.sqrt(upper)) + 1 > lastUpper){
+        val start = lastUpper+1
+        val end = Math.ceil(Math.sqrt(upper)).toInt + 100
+        calcPrimes(start, end)
+        lastUpper = end
+      }
+      val solStart = System.currentTimeMillis()
+      val maxPrimacity = calcMaxPrimacity(1, upper, primeCache1)      
+      if(primacity > maxPrimacity){
+        //Calculating is useless: smallest number with the asked primacity is larger than the upper bound
+        output(challenge, 0,  -1, solStart - primeTime)
+      }else{
+        //Adjust lower bound to lowest number possible with the asked primacity if needed
+        val minWithprimacity = primeCache1.take(primacity).foldLeft(1)(_*_)
+        val calcLower = if(minWithprimacity > lower) minWithprimacity else lower
+        val counts = (for(ind <- calcLower to upper) yield {
+          if(primacityCache(ind) == 0){
+            recSolve(primeCache1, 0, primacity, ind, Math.ceil(Math.sqrt(ind)).toInt + 100)
+          }else{
+            primacityCache(ind) == primacity
+          }
+        })     
+        val now = System.currentTimeMillis()
+        output(challenge, counts.foldLeft(0)((a, b) => if(b) a + 1 else a),  now - solStart, solStart - primeTime)
+      }
+    }
+  }
+}

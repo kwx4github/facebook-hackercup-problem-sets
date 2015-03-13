@@ -1,0 +1,192 @@
+import java.util.Vector;
+import java.io.OutputStream;
+import java.util.Stack;
+import java.io.PrintWriter;
+import java.util.Queue;
+import java.io.IOException;
+import java.io.FileInputStream;
+import java.util.HashSet;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Collection;
+import java.util.Locale;
+import java.util.PriorityQueue;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "corporate.*gifting.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("corporategifting.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		CorporateGifting solver = new CorporateGifting();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class CorporateGifting {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        out.print("Case #" + (testNumber) + ": ");
+        int n = in.nextInt();
+        int a[] = in.parseInt1D(n);
+        Node ceo = new Node(0);
+        ceo.h = 1;
+        Node all[] = new Node[n];
+        all[0] = ceo;
+        for (int i = 1;i < a.length;i++) {
+            all[i] = new Node(i);
+        }
+        for (int i = 1;i < a.length;i++) {
+            all[a[i] - 1].children.add(all[i]);
+            all[i].parent = all[a[i] - 1];
+        }
+
+        Stack<Node> stack = new Stack<Node>();
+        stack.push(ceo);
+        int maxHeight = 0;
+        while (!stack.isEmpty()) {
+            Node cn = stack.pop();
+            for (Node c : cn.children) {
+                c.h = cn.h + 1;
+                stack.push(c);
+            }
+            maxHeight = Math.max(cn.h, maxHeight);
+        }
+        Queue<Node> queue = new PriorityQueue<Node>();
+        for (int i = 0;i < all.length;i++) {
+            if (all[i].children.size() == 0) {
+                all[i].spend = 1;
+                queue.add(all[i]);
+            }
+        }
+
+        long ans = 0;
+        HashSet<Node> added = new HashSet<Node>();
+        while (!queue.isEmpty()) {
+            Node cn = queue.poll();
+            HashSet<Integer> hs = new HashSet<Integer>();
+            for (Node c : cn.children) {
+                hs.add(c.spend);
+            }
+            int cv = 0;
+            for (int i = 1;i <= n;i++) {
+                if (!hs.contains(i)) {
+                    cv = i;
+                    break;
+                }
+            }
+            cn.spend = cv;
+            ans += cv;
+            if (cn.parent != null && !added.contains(cn.parent)) {
+                queue.add(cn.parent);
+                added.add(cn.parent);
+            }
+        }
+        out.println(ans);
+
+
+    }
+
+}
+
+class Node implements Comparable<Node>{
+    int id;
+    HashSet<Node> children = new HashSet<Node>();
+    int h;
+    int spend;
+    Node parent;
+    Node(int id) {
+        this.id = id;
+    }
+    public int hashCode() {
+        return id;
+    }
+
+    public boolean equals(Object obj) {
+        Node n = (Node)obj;
+        return n.id == this.id;
+    }
+
+    public int compareTo(Node o) {
+        return Integer.compare(o.h, this.h);
+    }
+}
+
+class InputReader {
+	private BufferedReader br;
+	private StringTokenizer st;
+	public InputReader(InputStream in) {
+		br=new BufferedReader(new InputStreamReader(in));
+		try {
+			st=new StringTokenizer(br.readLine());
+		} catch (IOException ignored) {
+
+		}
+	}
+
+	public boolean readLine() {
+		try {
+			st=new StringTokenizer(br.readLine());
+		} catch (IOException e) {
+			return false;
+		}
+		return true;
+	}
+	public int nextInt(){
+		if(!st.hasMoreTokens()) readLine();
+		return Integer.parseInt(st.nextToken());
+	}
+
+    public String next(){
+		if(!st.hasMoreTokens()) readLine();
+		return st.nextToken();
+	}
+
+	/**
+	 * Parse 1D array from current StringTokenizer
+	 */
+	public int[] parseInt1D(int n){
+		readLine();
+		int r[]=new int[n];
+		for(int i=0;i<n;i++){
+			r[i]=nextInt();
+		}
+		return r;
+	}
+
+}
+

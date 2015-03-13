@@ -1,0 +1,170 @@
+import java.io.*;
+import java.util.*;
+
+public class Gift
+{
+	public static void main(String[] args) throws IOException {
+		// System.setIn(new FileInputStream("in"));
+		BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+		int ts = Integer.parseInt(in.readLine());
+		for (int t = 1; t <= ts; t++) {
+			int n = Integer.parseInt(in.readLine());
+			int[] parents = new int[n];
+			StringTokenizer tokens = new StringTokenizer(in.readLine(), " ");
+			for (int i = 0; i < n; i++) {
+				parents[i] = Integer.parseInt(tokens.nextToken()) - 1;
+			}
+			long result = new Gift(parents).solve();
+			System.out.format("Case #%d: %d\n", t, result);
+		}
+	}
+
+	int n;
+	int[] parents, deps, groups, neighbours;
+	int[] preferred;
+	long[] best, penalty;
+	Array childrenPenalties;
+	ArrayList<Integer> free;
+
+	Gift(int[] parents) {
+		n = parents.length;
+		this.parents = parents;
+		deps = new int[n];
+		groups = new int[n];
+		neighbours = new int[n];
+		preferred = new int[n];
+		best = new long[n];
+		penalty = new long[n];
+		childrenPenalties = new Array(n);
+		free = new ArrayList<Integer>();
+	}
+
+	long solve() {
+		countDeps();
+		findFree();
+		buildGroups();
+		while (!free.isEmpty()) {
+			int person = free.remove(free.size() - 1);
+			calculatePerson(person);
+			removeDep(parents[person]);
+		}
+		checkCycles();
+		return best[0];
+	}
+
+	void countDeps() {
+		for (int i = 1; i < n; i++) {
+			deps[parents[i]]++;
+		}
+	}
+
+	void findFree() {
+		for (int i = 0; i < n; i++) {
+			if (deps[i] == 0) {
+				free.add(i);
+			}
+		}
+	}
+
+	void buildGroups() {
+		for (int child = 1; child < n; child++) {
+			int parent = parents[child];
+			neighbours[child] = groups[parent];
+			groups[parent] = child;
+		}
+	}
+
+	void calculatePerson(int person) {
+		long childrenBestSum = 0;
+		childrenPenalties.clear();
+		for (int child = groups[person]; child != 0; child = neighbours[child]) {
+			childrenBestSum += best[child];
+			childrenPenalties.add(preferred[child], penalty[child]);
+		}
+		best[person] = Long.MAX_VALUE;
+		long secondBest = Long.MAX_VALUE;
+		for (int gift = 0; gift < n && (childrenBestSum + gift+1 < secondBest); gift++) {
+			long cost = childrenBestSum + childrenPenalties.get(gift) + gift+1;
+			if (cost < best[person]) {
+				secondBest = best[person];
+				best[person] = cost;
+				preferred[person] = gift;
+			} else if (cost < secondBest) {
+				secondBest = cost;
+			}
+		}
+		penalty[person] = secondBest - best[person];
+	}
+
+	void removeDep(int person) {
+		if (person != -1 && --deps[person] == 0) {
+			free.add(person);
+		}
+	}
+
+	void checkCycles() {
+		boolean broken = false;
+		for (int i = 0; i < n; i++) {
+			if (deps[i] != 0) {
+				if (!broken) {
+					broken = true;
+					System.err.print("warning: cyclic dependencies:");
+				}
+				System.err.print(" ");
+				System.err.print(i+1);
+			}
+		}
+		if (broken) {
+			System.err.println();
+		}
+	}
+}
+
+class Array
+{
+	private long[] data, versions;
+	private long currentVersion;
+
+	public Array(int length) {
+		data = new long[length];
+		versions = new long[length];
+		currentVersion = 0L;
+	}
+
+	public int size() {
+		return data.length;
+	}
+
+	public long get(int index) {
+		return currentVersion == versions[index] ? data[index] : 0L;
+	}
+
+	public void set(int index, long value) {
+		data[index] = value;
+		versions[index] = currentVersion;
+	}
+
+	public void add(int index, long value) {
+		if (versions[index] != currentVersion) {
+			data[index] = 0;
+			versions[index] = currentVersion;
+		}
+		data[index] += value;
+	}
+
+	public void clear() {
+		currentVersion++;
+	}
+
+	public long[] toArray() {
+		long[] copy = new long[data.length];
+		for (int i = 0; i < data.length; i++) {
+			copy[i] = get(i);
+		}
+		return copy;
+	}
+
+	public String toString() {
+		return Arrays.toString(toArray());
+	}
+}

@@ -1,0 +1,140 @@
+#include <algorithm>
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <queue>
+using namespace std;
+
+class Coorporate {
+    int solve_from_root(
+        const vector<vector<int>>& adj,
+        const int initial_gift
+    ) {
+        queue<pair<int, int>> q;
+        q.push(make_pair(0, initial_gift));
+
+        int ans = 0;
+        while (!q.empty()) {
+            const auto p = q.front();
+            q.pop();
+
+            const int node = p.first;
+            const int gift = p.second;
+
+            ans += gift;
+            for (auto next : adj[node]) {
+                q.emplace(next, (gift == 1) ? 2 : 1);
+            }
+        }
+
+        return ans;
+    }
+
+    int minimum_possible(const vector<int>& children) {
+        int use = 1;
+        for (int i = 0; i < children.size(); ) {
+            if (children[i] != use) {
+                break;
+            }
+
+            use++;
+            int j = i;
+            while (j < children.size() && children[j] == children[i]) {
+                j++;
+            }
+
+            i = j;
+        }
+
+        return use;
+    }
+
+    int solve_from_leaves(
+        const vector<vector<int>>& adj,
+        const vector<int>& parents,
+        const int initial_gift
+    ) {
+        const int n = parents.size();
+        vector<int> degrees(n, 0);
+        for (auto parent : parents) {
+            if (parent != -1) {
+                degrees[parent]++;
+            }
+        }
+
+        queue<int> q;
+        for (int i = 0; i < degrees.size(); i++) {
+            if (degrees[i] == 0) {
+                q.push(i);
+            }
+        }
+
+        vector<int> gifts(n, 0);
+        while (!q.empty()) {
+            const int node = q.front();
+            q.pop();
+
+            vector<int> children;
+            for (auto child : adj[node]) {
+                children.push_back(gifts[child]);
+            }
+
+            sort(children.begin(), children.end());
+            const int use = minimum_possible(children);
+            gifts[node] = (children.size() == 0 ? initial_gift : use);
+
+            const int parent = parents[node];
+            if (parent == -1) {
+                continue;
+            }
+
+            degrees[parent]--;
+            if (degrees[parent] == 0) {
+                q.push(parent);
+            }
+        }
+
+        return accumulate(gifts.begin(), gifts.end(), 0);
+    }
+
+  public:
+    int solve(const vector<int>& parents) {
+        const int n = parents.size();
+        vector<vector<int>> adj(n);
+        for (int i = 0; i < n; i++) {
+            if (parents[i] != -1) {
+                adj[parents[i]].push_back(i);
+            }
+        }
+
+        return min({
+            solve_from_leaves(adj, parents, 1),
+            solve_from_leaves(adj, parents, 2),
+            solve_from_root(adj, 1),
+            solve_from_root(adj, 2)
+        });
+    }
+};
+
+int main() {
+    Coorporate c;
+
+    int t;
+    cin >> t;
+    for (int tt = 1; tt <= t; tt++) {
+        int n;
+        cin >> n;
+
+        vector<int> parents(n);
+        for (int i = 0; i < n; i++) {
+            int parent;
+            cin >> parent;
+
+            parents[i] = parent - 1;
+        }
+
+        cout << "Case #" << tt << ": " << c.solve(parents) << endl;
+    }
+
+    return 0;
+}

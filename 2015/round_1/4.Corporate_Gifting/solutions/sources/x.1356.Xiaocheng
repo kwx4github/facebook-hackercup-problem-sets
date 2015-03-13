@@ -1,0 +1,127 @@
+#include <iostream>
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <vector>
+#include <queue>
+#include <stack>
+using namespace std;
+
+#define MAXN 200010
+
+vector<int> children[MAXN];
+int indeg[MAXN];
+int parent[MAXN];
+
+int f[MAXN]; // best choice of each subtree, when the parent has no restriction
+int best_color[MAXN]; // in the best choice of each subtree, the color of the root of the subtree
+int g[MAXN]; // best choice of each subtree when the parent has color best_color[i]
+
+pair<int, pair<int, int> > groups[MAXN];
+
+int main()
+{
+    int casen;
+    scanf("%d", &casen);
+    for (int casei = 1; casei <= casen; casei++)
+    {
+        int n;
+        scanf("%d", &n);
+        
+        for (int i = 1; i <= n; i++)
+        {
+            children[i].clear();
+            indeg[i] = 0;
+        }
+        
+        for (int i = 1; i <= n; i++)
+        {
+            int a;
+            scanf("%d", &a);
+            if (a)
+            {
+                parent[i] = a;
+                children[a].push_back(i);
+                indeg[a]++;
+            }
+        }
+        
+        stack<int> to_process;
+        
+        for (int i = 1; i <= n; i++)
+            if (indeg[i] == 0)
+                to_process.push(i);
+        
+        while (to_process.size())
+        {
+            int i = to_process.top();
+            to_process.pop();
+            
+            if (i != 1)
+            {
+                indeg[parent[i]]--;
+                if (indeg[parent[i]] == 0)
+                    to_process.push(parent[i]);
+            }
+            
+            if (!children[i].size())
+            {
+                f[i] = 1;
+                best_color[i] = 1;
+                g[i] = 2;
+                
+                continue;
+            }
+            
+            for (int j = 0; j < children[i].size(); j++)
+            {
+                int k = children[i][j];
+                groups[j].first = best_color[k];
+                groups[j].second = make_pair(f[k], g[k]);
+            }
+            sort(groups, groups + children[i].size());
+            
+            int m = 0;
+            for (int j = 1; j < children[i].size(); j++)
+            {
+                if (groups[j].first == groups[m].first)
+                {
+                    groups[m].second.first += groups[j].second.first;
+                    groups[m].second.second += groups[j].second.second;
+                }
+                else
+                    groups[++m] = groups[j];
+            }
+            m++;
+            
+            int base_cost = 0;
+            for (int j = 0; j < m; j++)
+                base_cost += groups[j].second.first;
+
+            g[i] = 0x7FFFFFFF;
+
+            best_color[i] = 1;
+            for (int j = 0; j < m; j++)
+                if (groups[j].first == best_color[i])
+                    best_color[i]++;
+            f[i] = base_cost + best_color[i];
+            
+            for (int j = 0; j < m; j++)
+            {
+                int cur_cost = base_cost - groups[j].second.first + groups[j].second.second + groups[j].first;
+                if (cur_cost < f[i])
+                {
+                    g[i] = f[i];
+                    f[i] = cur_cost;
+                    best_color[i] = groups[j].first;
+                }
+                else if (cur_cost < g[i])
+                    g[i] = cur_cost;
+            }
+        }
+        
+        printf("Case #%d: %d\n", casei, f[1]);
+    }
+    
+    return 0;
+}

@@ -1,0 +1,129 @@
+// -Wl,-stack_size -Wl,0x4000000 -O2 --std=c++11
+
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+#include <cassert>
+#include <limits>
+using namespace std;
+
+const int MAX = 200256;
+
+int n;
+int parent[MAX];
+int degree[MAX];
+vector<vector<int>> children;
+
+void init()
+{
+	memset(parent, 0, sizeof(parent));
+	memset(degree, 0, sizeof(degree));
+	children = vector<vector<int>>(n);
+}
+
+void solve(int current, vector<long long> &exclude)
+{
+	assert(current < n);
+	const int Bound = degree[current] + 1;
+	assert(Bound >= 2);
+
+	exclude.resize(Bound + 1);
+	vector<long long> select(Bound + 1);
+
+	const int ChildrenCount = children[current].size();
+
+	for (int cost = 1; cost <= Bound; cost++)
+	{
+		select[cost] = cost;
+	}
+
+	for (int i = 0; i < ChildrenCount; i++)
+	{
+		int childId = children[current][i];
+
+		vector<long long> childExclude;
+		solve(childId, childExclude);
+
+		for (int cost = 1; cost <= Bound; cost++)
+		{
+			if (childExclude.size() > cost)
+			{
+				select[cost] += childExclude[cost];
+			}
+			else
+			{
+				select[cost] += childExclude[0];
+			}
+		}
+	}
+
+	vector<long long>
+		prefix(Bound + 1, numeric_limits<long long>::max()),
+		suffix(Bound + 2, numeric_limits<long long>::max());
+
+	prefix[1] = select[1];
+	suffix[Bound] = select[Bound];
+
+	for (int i = 2; i <= Bound; i++)
+	{
+		prefix[i] = min(prefix[i - 1], select[i]);
+	}
+	for (int i = Bound - 1; 1 <= i; i--)
+	{
+		suffix[i] = min(suffix[i + 1], select[i]);
+	}
+	for (int i = 1; i <= Bound; i++)
+	{
+		exclude[i] = min(prefix[i - 1], suffix[i + 1]);
+	}
+	exclude[0] = prefix[Bound];
+
+	if (ChildrenCount == 0)
+	{
+		assert(exclude[0] == 1);
+		assert(exclude[1] == 2);
+		assert(exclude[2] == 1);
+	}
+}
+
+long long testCase()
+{
+	scanf("%d", &n);
+
+	init();
+
+	for (int i = 0; i < n; i++)
+	{
+		scanf("%d", &parent[i]);
+		parent[i]--;
+	}
+
+	for (int i = 1; i < n; i++)
+	{
+		assert(parent[i] >= 0);
+		degree[parent[i]]++;
+		degree[i]++;
+		children[parent[i]].push_back(i);
+	}
+
+	for (int i = 0; i < n; i++)
+	{
+		assert(degree[i] >= 1);
+	}
+
+	vector<long long> exclude;
+	solve(0, exclude);
+
+	return exclude[0];
+}
+
+int main()
+{
+	int t;
+	scanf("%d", &t);
+	for (int i = 1; i <= t; i++)
+	{
+		printf("Case #%d: %lld\n", i, testCase());
+	}
+	return 0;
+}

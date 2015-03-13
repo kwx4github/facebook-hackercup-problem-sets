@@ -1,0 +1,216 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <climits>
+#include <cmath>
+#include <cstring>
+#include <string>
+#include <vector>
+#include <stack>
+#include <queue>
+#include <set>
+#include <map>
+#include <algorithm>
+#define N1INDEXED 200001
+#define N0INDEXED 200000
+#pragma comment(linker, "/STACK:50000000")
+using namespace std;
+
+vector<int> children[N1INDEXED];
+bool isVisited[N1INDEXED];
+int parent[N1INDEXED];
+long long vals[N1INDEXED];
+int n;
+
+stack<int> activeNode;
+long long K1[N1INDEXED];
+long long K2[N1INDEXED];
+int C[N1INDEXED];
+long long DELTA[N1INDEXED];
+
+long long postfix2()
+{
+    long long result = 0;
+    int top;
+    set<int> s;
+    bool allChildrenVisited;
+
+    activeNode.push(1);
+
+    for(int i=1; i <= n; ++i)
+    {
+        isVisited[i] = false;
+    }
+    while(!activeNode.empty())
+    {
+        top = activeNode.top();
+        isVisited[top] = true;
+        allChildrenVisited = true;
+        for(int i=children[top].size() - 1; i >= 0; --i)
+        {
+            if( !isVisited[ children[top][i] ] )
+            {
+                activeNode.push( children[top][i] );
+                allChildrenVisited = false;
+            }
+        }
+        if(allChildrenVisited)
+        {
+            if(children[top].size() <= 0)
+            {
+                C[top] = 1;
+                K1[top] = 1;
+                K2[top] = 2;
+            }
+            else
+            {
+                long long K = 0, d = children[top].size(), KVC;
+                for(int i=children[top].size() - 1; i >= 0; --i)
+                {
+                    K += K1[ children[top][i] ];
+                }
+
+                for(int i = children[top].size() + 1; i > 0; --i)
+                {
+                    DELTA[i] = K;
+                }
+
+                for(int i=children[top].size() - 1; i >= 0; --i)
+                {
+                    if( C[ children[top][i] ] <= d + 1)
+                    {
+                        DELTA[ C[ children[top][i] ] ] += K2[ children[top][i] ] -
+                                                         K1[ children[top][i] ];
+                    }
+                }
+
+                K1[top] = 1000000000000000LL;
+                K2[top] = 1000000000000000LL;
+                for(int i = children[top].size() + 1; i > 0; --i)
+                {
+                    KVC = DELTA[i] + i;
+                    if(KVC < K1[top])
+                    {
+                        K1[top] = KVC;
+                        C[top] = i;
+                    }
+                }
+
+                for(int i = children[top].size() + 1; i > 0; --i)
+                {
+                    if(i != C[top])
+                    {
+                        KVC = DELTA[i] + i;
+                        if(KVC < K2[top])
+                        {
+                            K2[top] = KVC;
+                        }
+                    }
+                }
+            }
+            activeNode.pop();
+        }
+    }
+
+    return K1[1];
+}
+
+
+long long postfix()
+{
+    long long result = 0;
+    int top;
+    set<int> s;
+    bool allChildrenVisited;
+
+    activeNode.push(1);
+
+    for(int i=1; i <= n; ++i)
+    {
+        isVisited[i] = false;
+    }
+    while(!activeNode.empty())
+    {
+        top = activeNode.top();
+        isVisited[top] = true;
+        allChildrenVisited = true;
+        for(int i=children[top].size() - 1; i >= 0; --i)
+        {
+            if( !isVisited[ children[top][i] ] )
+            {
+                activeNode.push( children[top][i] );
+                allChildrenVisited = false;
+            }
+        }
+        if(allChildrenVisited)
+        {
+            for(int i = children[top].size(); i > 0; --i)
+            {
+                s.insert(i);
+            }
+            s.insert(children[top].size() + 1);
+            for(int i = children[top].size() - 1; i >= 0; --i)
+            {
+                s.erase(vals[children[top][i]]);
+            }
+            vals[top] = children[top].size() > 0 ? *s.begin() : 1LL;
+            activeNode.pop();
+        }
+    }
+
+    for(int i=1; i <= n; ++i)
+    {
+        result += vals[i];
+    }
+
+    return result;
+}
+
+long long postfixTraversal(int u)
+{
+    set<int> s;
+    long long result = 0;
+
+    for(int i = children[u].size() - 1, j = i+1; i >= 0; --i, --j)
+    {
+        result += postfixTraversal(children[u][i]);
+        s.insert(j);
+    }
+    s.insert(children[u].size() + 1);
+
+    for(int i = children[u].size() - 1; i >= 0; --i)
+    {
+        s.erase(vals[children[u][i]]);
+    }
+    vals[u] = children[u].size() > 0 ? *s.begin() : 1LL;
+    return result + vals[u];
+}
+
+int main()
+{
+    int t, T;
+    int tmp;
+    long long minResult;
+
+    scanf("%d", &T);
+    for(int t=1; t <= T; ++t)
+    {
+        scanf("%d", &n);
+        for(int i=0; i <= n; ++i)
+        {
+            children[i].clear();
+        }
+
+        for(int i=1; i <= n; ++i)
+        {
+            scanf("%d", &tmp);
+            children[tmp].push_back(i);
+        }
+
+//        printf("Case #%d: %lld\n", t, postfixTraversal(1));
+//        printf("Case #%d: %lld\n", t, postfix());
+        printf("Case #%d: %lld\n", t, postfix2());
+    }
+
+    return 0;
+}

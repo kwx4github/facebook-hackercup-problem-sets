@@ -1,0 +1,131 @@
+<Query Kind="Program">
+  <Namespace>System</Namespace>
+  <Namespace>System.Collections.Generic</Namespace>
+  <Namespace>System.Linq</Namespace>
+</Query>
+
+static void Main()
+{
+    string outputDir = @"C:\Temp";
+    string inputFile = Path.Combine(outputDir, "input.txt");
+    string outputFile = Path.Combine(outputDir, "output.txt");
+    
+    string[] input = File.ReadAllLines(inputFile);
+    StringBuilder sb = new StringBuilder();
+    
+    int lineNum = 0;
+    int numCases = int.Parse(input[lineNum++]);
+     
+    for (int i = 1; i < numCases + 1; i++)
+    {
+        // Debug = false;
+    
+        Node.Head = new Node('#');
+    
+        string[] dim = input[lineNum++].Split(new string[] { " " }, StringSplitOptions.None);
+        int numWords = int.Parse(dim[0]);
+        
+        List<string> words = new List<string>();
+        for (int j = 0; j < numWords; j++)
+        {
+            words.Add(input[lineNum++]);
+        }
+                    
+        string result = GetAnswer(words);        
+        sb.AppendLine("Case #" + i + ": " + result);
+    }
+    
+    File.WriteAllText(outputFile, sb.ToString());
+}
+
+// static bool Debug;
+
+static string GetAnswer(List<string> words)
+{
+    int charsTyped = 0;
+    foreach (string word in words)
+    {
+        // Increment while we see no real words, reset on real word (unless it's the target word).
+        // This is the number of letters we *don't* need to type.
+        // Starting at -1 as a dirty hackish way of forcing the first letter to be typed.
+        int lettersSaved = -1;
+    
+        // Add to dictionary
+        Node node = Node.Head;
+        for (int i = 0; i < word.Length; i++)
+        {   
+            char c = word[i];
+            if (!node.Children.ContainsKey(c))
+            {
+                Node newNode = new Node(c);
+                node.Children.Add(c, newNode);
+                node = newNode;
+            }
+            else
+            {
+                node = node.Children[c];
+            }
+            
+            // If there is only one branch left, and we don't hit a real word...
+            if (node.Length == 0 && (node.Children.Count == 0 || (node.Children.Count == 1 && node.Children.ContainsKey(c))))
+            {
+                ++lettersSaved;
+                
+                /*
+                if (lettersSaved > 0 && Debug)
+                {
+                    Console.WriteLine("Might not need to type " + c + " at index " + i + " for word " + word);
+                }
+                */
+            }
+            else
+            {
+                // If it is a word other than the word we are looking for...
+                if (node.Length != word.Length)
+                {
+                /*
+                    if (lettersSaved > 0 && Debug)
+                    {
+                        Console.WriteLine("Scratch that, had to type all that crap for word " + word);
+                    } */
+                
+                    // We must always type the first new letter each time we are reset.
+                    lettersSaved = -1;
+                }
+            }
+        }
+        
+        // This signifies the node is a real word
+        node.Length = word.Length;
+        
+        // We can't save negative letters, clean that up (what a dirty hack).
+        // Another hack here- we don't save any letters if we have children.
+        if (lettersSaved < 0 || node.Children.Count > 0)
+        {
+            lettersSaved = 0;
+        }
+        
+        int charsTypedThisWord = word.Length - lettersSaved;
+        
+        charsTyped += charsTypedThisWord;
+    }
+    
+    return "" + charsTyped;
+}
+
+public class Node
+{
+    public static Node Head;
+
+    public Node(char c)
+    {
+        this.Character = c;
+        this.Children = new Dictionary<char, Node>();
+    }
+    
+    public char Character { get; private set; }
+    
+    public int Length { get; set; }
+    
+    public Dictionary<char, Node> Children { get; private set; }
+}

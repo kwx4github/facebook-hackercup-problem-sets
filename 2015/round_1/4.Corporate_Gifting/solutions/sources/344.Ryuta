@@ -1,0 +1,223 @@
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <set>
+#include <map>
+#include <queue>
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cctype>
+#include <cassert>
+#include <limits>
+#include <functional>
+#define rep(i,n) for(int (i)=0;(i)<(int)(n);++(i))
+#define rer(i,l,u) for(int (i)=(int)(l);(i)<=(int)(u);++(i))
+#define reu(i,l,u) for(int (i)=(int)(l);(i)<(int)(u);++(i))
+#if defined(_MSC_VER) || __cplusplus > 199711L
+#define aut(r,v) auto r = (v)
+#else
+#define aut(r,v) __typeof(v) r = (v)
+#endif
+#define each(it,o) for(aut(it, (o).begin()); it != (o).end(); ++ it)
+#define all(o) (o).begin(), (o).end()
+#define pb(x) push_back(x)
+#define mp(x,y) make_pair((x),(y))
+#define mset(m,v) memset(m,v,sizeof(m))
+#define INF 0x3f3f3f3f
+#define INFL 0x3f3f3f3f3f3f3f3fLL
+using namespace std;
+typedef vector<int> vi; typedef pair<int,int> pii; typedef vector<pair<int,int> > vpii; typedef long long ll;
+template<typename T, typename U> inline void amin(T &x, U y) { if(y < x) x = y; }
+template<typename T, typename U> inline void amax(T &x, U y) { if(x < y) x = y; }
+
+#include "C:\Dropbox\backup\implements\Util\MyAssert.hpp"
+#undef assert
+#define assert my_assert
+
+vector<int> t_parent;
+vi t_ord;
+
+void tree_getorder(const vector<vi> &g, int root) {
+	int n = g.size();
+	t_parent.assign(n, -1);
+	t_ord.clear();
+
+	vector<int> stk; stk.push_back(root);
+	while(!stk.empty()) {
+		int i = stk.back(); stk.pop_back();
+		t_ord.push_back(i);
+		for(int j = (int)g[i].size()-1; j >= 0; j --) {
+			int c = g[i][j];
+			if(t_parent[c] == -1 && c != root)
+				stk.push_back(c);
+			else
+				t_parent[i] = c;
+		}
+	}
+}
+
+struct Val {
+	long long cost1;
+	int gift1;
+	long long cost2;
+	int gift2;
+	Val(): cost1(INFL), gift1(-1), cost2(INFL), gift2(-1) {}
+
+	void update(long long cost, int gift) {
+		assert(gift != gift1 && gift != gift2);
+		if(cost < cost1) {
+			cost2 = cost1;
+			gift2 = gift1;
+			cost1 = cost;
+			gift1 = gift;
+		}else if(cost < cost2) {
+			cost2 = cost;
+			gift2 = gift;
+		}
+	}
+};
+
+long long solve(const vector<vi> &g) {
+	int N = g.size();
+	vector<Val> dp(N);
+	vector<pair<int,long long> > events;
+	for(int ix = N-1; ix >= 0; -- ix) {
+		int i = t_ord[ix];
+		events.clear();
+		long long curcost = 0;
+		each(j, g[i]) if(*j != t_parent[i]) {
+			const Val &v = dp[*j];
+			assert(v.gift1 != -1 && v.gift2 != -1);
+			assert(v.gift1 != v.gift2);
+			assert(v.cost1 != INFL && v.cost2 != INFL);
+			assert(v.cost1 <= v.cost2);
+			curcost += v.cost1;
+			long long diff = v.cost2 - v.cost1;
+			events.push_back(mp(v.gift1, +diff));
+			events.push_back(mp(v.gift1 + 1, -diff));
+		}
+		sort(all(events));
+		Val x;
+		for(int gift = 1, ei = 0; ; ++ gift) {
+			while(ei < (int)events.size() && events[ei].first == gift) {
+				curcost += events[ei].second;
+				++ ei;
+			}
+			x.update(curcost + gift, gift);
+			if(x.cost2 < curcost + gift && ei == events.size())
+				break;
+		}
+		dp[i] = x;
+	}
+	return dp[0].cost1;
+}
+
+long long solve_naive(const vector<vi> &g) {
+	int N = g.size();
+	vector<vector<long long> > dp(N, vector<long long>(N+1, INFL));
+	for(int ix = N-1; ix >= 0; -- ix) {
+		int i = t_ord[ix];
+		rer(j, 1, N) {
+			long long x = j;
+			each(c, g[i]) if(*c != t_parent[i]) {
+				long long y = INFL;
+				rer(k, 1, N) if(j != k)
+					amin(y, dp[*c][k]);
+				x += y;
+			}
+			dp[i][j] = x;
+		}
+	}
+	if(0) {
+		vector<int> conf(N, -1);
+		conf[0] = min_element(all(dp[0])) - dp[0].begin();
+		rep(ix, N) {
+			int i = t_ord[ix];
+			int j = conf[i];
+			each(c, g[i]) if(*c != t_parent[i]) {
+				pair<long long,int> y = mp(INFL,-1);
+				rer(k, 1, N) if(j != k)
+					amin(y, mp(dp[*c][k], k));
+				conf[*c] = y.second;
+			}
+		}
+		rep(i, N) {
+			each(c, g[i]) if(*c != t_parent[i])
+				cerr << i << "." << conf[i] << " " << *c << "." << conf[*c] << endl;
+		}
+	}
+	return *min_element(all(dp[0]));
+}
+
+void random_test() {
+	vector<vi> g;
+	rep(ii, 10000000) {
+		if(ii % 10000 == 0) cerr << ii << "..." << endl;
+		int N = 1 + rand() % 50;
+		vi perm(N);
+		iota(all(perm), 0);
+		random_shuffle(perm.begin() + 1, perm.end());
+		g.assign(N, vi());
+		vector<int> p(N, -1);
+		reu(ix, 1, N) {
+			int jx = rand() % ix;
+			int i = perm[ix], j = perm[jx];
+			p[i] = j;
+			g[i].push_back(j);
+			g[j].push_back(i);
+		}
+		tree_getorder(g, 0);
+		long long ans1 = solve(g);
+		long long ans2 = solve_naive(g);
+		if(ans1 != ans2) {
+			cerr << ans1 << " != " << ans2 << endl;
+			cerr << "p:"; rep(i, N) cerr << " " << p[i]+1; cerr << endl;
+		}
+	}
+}
+
+void performance_test() {
+	rep(ii, 100) {
+		int N = 200000;
+		vector<vi> g(N);
+		rep(i, N-1) {
+//			int a = i, b = i+1;
+//			int a = 0, b = i+1;
+			int a = i+1, b = rand() % (i+1);
+			g[a].push_back(b);
+			g[b].push_back(a);
+		}
+		tree_getorder(g, 0);
+		long long ans = solve(g);
+		cerr << "Case #" << ii+1 << " = " << ans << endl;
+	}
+}
+
+int main() {
+//	random_test();
+//	performance_test();
+	int T;
+	scanf("%d", &T);
+	rep(ii, T) {
+		int N;
+		scanf("%d", &N);
+		vector<vi> g(N);
+		rep(i, N) {
+			int p;
+			scanf("%d", &p), -- p;
+			if(p != -1) {
+				g[p].push_back(i);
+				g[i].push_back(p);
+			}
+		}
+		tree_getorder(g, 0);
+		long long ans = solve(g);
+		printf("Case #%d: %lld\n", ii+1, ans);
+	}
+	return 0;
+}

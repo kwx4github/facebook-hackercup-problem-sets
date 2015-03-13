@@ -1,0 +1,158 @@
+import java.io.File;
+import java.io.FileReader;
+import java.io.PrintWriter;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class Problem3 implements Runnable {
+	
+	private int m, n, start, goal;
+	private ArrayList<Integer> dist;
+	private ArrayList<ArrayList<ArrayList<Byte> > > maps = new ArrayList<ArrayList<ArrayList<Byte> > >();
+	
+	private byte nextTurretPos(byte currentPos) {
+		switch (currentPos) {
+		case '>':
+			return 'v';
+		case 'v':
+			return '<';
+		case '<':
+			return '^';
+		default: 
+			return '>';
+		}
+	}
+	
+	private int getDx(byte turretPos) {
+		switch (turretPos) {
+		case '>':
+			return 1;
+		case 'v':
+			return 0;
+		case '<':
+			return -1;
+		default: 
+			return 0;
+		}
+	}
+	
+	private int getDy(byte turretPos) {
+		switch (turretPos) {
+		case '>':
+			return 0;
+		case 'v':
+			return 1;
+		case '<':
+			return 0;
+		default: 
+			return -1;
+		}
+	}
+	
+	private boolean isAllowedPosition(int i, int j, int l, boolean forLaser) {
+		if (i >= 0 && i < m && j >= 0 && j < n && (maps.get(l).get(i).get(j) == '.' || maps.get(l).get(i).get(j) == 'S' || maps.get(l).get(i).get(j) == 'G' || (maps.get(l).get(i).get(j) == '!' && forLaser))) {
+			return true;
+		}
+		return false;
+	}
+	
+	private void solve () {
+		dist = new ArrayList<Integer>();
+		for (int i = 0; i < (m - 1) * n * 4 + (n - 1) * 4 + 4; ++i) {
+			dist.add(Integer.MAX_VALUE);
+		}
+		ArrayDeque<Integer> ad = new ArrayDeque<Integer>();
+		ad.addLast(start);
+		dist.set(start, 0);
+		while (!ad.isEmpty()) {
+			int curPos = ad.pollFirst();
+			int tmp = curPos;
+			int l = tmp % 4;
+			tmp /= 4;
+			int j = tmp % n;
+			int i = tmp / n;
+			int nextL = (l + 1) % 4;
+			for (int dx = -1; dx <= 1; dx += 2) {
+				if (isAllowedPosition(i, j + dx, nextL, false) && dist.get(i * n * 4 + (j + dx) * 4 + nextL) == Integer.MAX_VALUE) {
+					ad.addLast(i * n * 4 + (j + dx) * 4 + nextL);
+					dist.set(i * n * 4 + (j + dx) * 4 + nextL, dist.get(curPos) + 1);
+				}
+			}
+			for (int dy = -1; dy <= 1; dy += 2) {
+				if (isAllowedPosition(i + dy, j, nextL, false) && dist.get((i + dy) * n * 4 + j * 4 + nextL) == Integer.MAX_VALUE) {
+					ad.addLast((i + dy) * n * 4 + j * 4 + nextL);
+					dist.set((i + dy) * n * 4 + j * 4 + nextL, dist.get(curPos) + 1);
+				}
+			}
+		}
+	}
+
+	@Override
+	public void run() {
+		try {
+			Scanner s = new Scanner(new File("input.txt"));
+			PrintWriter pw = new PrintWriter(new File("output.txt"));
+			int t = s.nextInt();
+			for (int i = 0; i < t; ++i) {
+				m = s.nextInt();
+				n = s.nextInt();
+				maps.clear();
+				for (int j = 0; j < 4; ++j) {
+					maps.add(new ArrayList<ArrayList<Byte> >());
+				}
+				for (int j = 0; j < m; ++j) {
+					for (int l = 0; l < 4; ++l) {
+						maps.get(l).add(new ArrayList<Byte>());
+					}
+					String tmp = s.next();
+					for (int k = 0; k < n; ++k) {
+						byte pos = (byte) tmp.charAt(k);
+						if (pos == 'S') {
+							start = j * n * 4 + k * 4;
+						}
+						if (pos == 'G') {
+							goal = j * n * 4 + k * 4;
+						}
+						for (int l = 0; l < 4; ++l) {
+							maps.get(l).get(j).add(pos);
+							if (pos == '>' || pos == '<' || pos == 'v' || pos == '^') {
+								pos = nextTurretPos(pos);
+							}
+						}
+					}
+				}
+				for (int l = 0; l < 4; ++l) {
+					for (int j = 0; j < m; ++j) {
+						for (int k = 0; k < n; ++k) {
+							byte pos = maps.get(l).get(j).get(k);
+							if (pos == '>' || pos == '<' || pos == 'v' || pos == '^') {
+								int dy =  getDy(pos), dx = getDx(pos);
+								int newY = j + dy, newX = k + dx;
+								while (isAllowedPosition(newY, newX, l, true)) {
+									maps.get(l).get(newY).set(newX, (byte) '!');
+									newY += dy;
+									newX += dx;
+								}
+							}
+						}
+					}
+				}
+				solve();
+				int min = Integer.MAX_VALUE;
+				for (int l = 0; l < 4; ++l) {
+					if (dist.get(goal + l) < min) {
+						min = dist.get(goal + l);
+					}
+				}
+				pw.println("Case #" + (i + 1) + ": " + (min == Integer.MAX_VALUE ? "impossible" : min + ""));
+			}
+			pw.flush();
+			pw.close();
+			s.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+}

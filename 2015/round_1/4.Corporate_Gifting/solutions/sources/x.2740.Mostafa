@@ -1,0 +1,176 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <string>
+#include <cstring>
+#include <fstream>
+
+using namespace std;
+
+#define MIN(a,b) ((a < b)?a:b)
+#define MAX(a,b) ((a > b)?a:b)
+
+struct Node
+{
+	Node* parent;
+	//int level;
+	int grp;
+	//int cntChildwChild;
+	vector<Node*> children;
+	void init()
+	{
+		grp = 0;
+		parent = 0;
+		//level = 0;
+		//cntChildwChild = 0;
+		children.clear();
+	}
+	Node()
+	{
+		init();
+	}
+};
+
+Node all[200001];
+
+int solveBruteForce(int n)
+{
+	int flag = false;
+	while(!flag)
+	{
+		flag = true;
+		for(int i = 0;i < n;i++)
+		{
+			if(all[i].grp == 0)
+			{
+				map<int,int> grp;
+				for(int j = 0;j < all[i].children.size();j++)
+				{
+					grp[all[i].children[j]->grp] = 1;
+				}
+				if(!grp[0])
+				{
+					for(int j = 1;!all[i].grp;j++)
+					{
+						if(!grp[j])
+						{
+							all[i].grp = j;
+						}
+					}
+				}
+			}
+			flag = (flag && all[i].grp);
+		}
+	}
+	int res = 0;
+	for(int i = 0;i < n;i++)
+	{
+		res += all[i].grp;
+	}
+	return res;
+}
+
+int solveDAG(int n)
+{
+	map<Node*,int> temp[2];
+	// leaves
+	int count = 0;
+	for(int i = 0;i < n;i++)
+	{
+		if(all[i].children.size() == 0)
+		{
+			all[i].grp = 1;
+			temp[0][all[i].parent] = 1;
+			count++;
+		}
+	}
+	// levels
+	int ind = 0;
+	while(count < n)
+	{
+		++ind;
+		temp[ind&1].clear();
+		map<Node*,int>::iterator end =  temp[(ind+1)&1].end();
+		for(map<Node*,int>::iterator itr = temp[(ind+1)&1].begin();itr != end;itr++)
+		{
+			map<int,int> grp;
+			for(int j = 0;j < itr->first->children.size();j++)
+			{
+				grp[itr->first->children[j]->grp] = 1;
+			}
+			if(!grp[0])
+			{
+				for(int j = 1;!itr->first->grp;j++)
+				{
+					if(!grp[j])
+					{
+						itr->first->grp = j;
+						count++;
+						temp[ind&1][itr->first->parent] = 1;
+					}
+				}
+			}
+		}
+	}
+	// 
+	int res = 0;
+	for(int i = 0;i < n;i++)
+	{
+		res += all[i].grp;
+	}
+	return res;
+}
+
+int main()
+{
+	/*ofstream testfile("test.txt");
+	testfile << "1\n200000\n";
+	for(int i = 0;i < 200000;i++)
+	{
+		testfile << i << " ";
+	}
+	testfile.close();
+	return 0;*/
+	int t;
+	cin >> t;
+	for(int ti = 1;ti <= t;ti++)
+	{
+		int n;
+		cin >> n;
+		int test;
+		scanf("%d", &test);
+		all[0].init();
+		all[0].parent = &all[0];
+		for(int i = 1;i < n;i++)
+		{
+			all[i].init();
+			scanf("%d", &test);
+			all[i].parent = &all[--test];
+			all[test].children.push_back(&all[i]);
+			/*if(all[test].children.size() == 1 && all[i].parent != all[i].parent->parent)
+			{
+				all[test].parent->cntChildwChild++;
+			}*/
+		}
+		// count ones
+		int res = solveDAG(n);// solveBruteForce(n);
+		printf("Case #%d: %d\n",ti, res);
+	}
+	return 0;
+}

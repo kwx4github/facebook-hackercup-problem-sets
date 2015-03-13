@@ -1,0 +1,92 @@
+from collections import defaultdict
+import fileinput
+import time
+
+start_t = time.clock()
+
+try:
+    import psyco
+    psyco.full()
+except:
+    pass
+
+psyco_t = time.clock()
+
+TARGET_VAL_FOR_SEARCH = 10**7
+
+def primes(n):
+	if n==2: return [2]
+	elif n<2: return []
+	s=range(3,n+1,2)
+	first_divs = range(3,n+1,2)
+	mroot = n ** 0.5
+	half=(n+1)/2-1
+	i=0
+	m=3
+	while m <= mroot:
+		if s[i]:
+			j=(m*m-3)/2
+			if s[j]:
+				first_divs[j] = m
+			s[j]=0
+			while j<half:
+				if s[j]:
+					first_divs[j] = m
+				s[j]=0
+				j+=m
+		i=i+1
+		m=2*i+3
+	return [2]+[x for x in s if x],first_divs
+
+
+[mega_primes,first_divs_vec] = primes(TARGET_VAL_FOR_SEARCH+100)
+
+primes_t = time.clock()
+#print "Prime calc completed"
+#primes_set = set(mega_primes)
+#print "Prime set ready"
+div_cache = dict([(x,1) for x in mega_primes])
+def get_primacity(x):
+	orig = x
+	if x in div_cache:
+		return div_cache[x]
+	div_counter = 0
+	while x % 2 == 0:
+            div_counter = 1
+            x = x / 2
+	if x in div_cache:
+            div_counter = div_counter + div_cache[x]
+            div_cache[orig] = div_counter
+            return div_counter
+        while x > 2:
+            div = first_divs_vec[(x-3)/2]
+            while x % div == 0:
+                x = x / div
+            div_counter += 1
+            if x in div_cache:
+                div_counter = div_counter + div_cache[x]
+                div_cache[orig] = div_counter
+                return div_counter
+	div_cache[orig] = div_counter
+	return div_counter
+
+counters_time = time.clock()
+
+counters = [0,0] + [get_primacity(x) for x in range(2,10**7+1)]
+ready_time = time.clock()
+
+#print psyco_t, primes_t, counters_time, ready_time
+
+def count_matches(counters, A, B, K):
+    return sum(1 for x in counters[A:(B+1)] if x==K)
+
+
+def main():
+    it = fileinput.input()
+    num_case = it.next()
+    for i,l in enumerate(it):
+        A,B,K = [int(x) for x in l.split()]
+        print "Case #%d: %d" % (i+1, count_matches(counters, A, B, K))
+
+if __name__ == "__main__":
+    main()

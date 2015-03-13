@@ -1,0 +1,87 @@
+#include <algorithm>
+#include <stdexcept>
+#include <fstream>
+#include <iostream>
+#include <unordered_map>
+
+std::size_t distance(const std::string & lhs, const std::string & rhs, std::size_t i = 0) {
+	std::size_t minSize = std::min(lhs.size(), rhs.size());
+	for (; i < minSize; ++i) {
+		if (lhs[i] != rhs[i]) {
+			return i + 1;
+		}
+	}
+	return lhs.size();
+}
+
+template<typename T, typename U, typename...R>
+std::ostream & operator<<(std::ostream & out, std::unordered_map<T, U, R...> map) {
+	for (auto && pair : map) {
+		out << pair.first << ':' << pair.second << ' ';
+	}
+	return out;
+}
+
+std::string test(std::ifstream & inFile) {
+	int32_t wordCount;
+	inFile >> wordCount;
+
+	std::vector<std::string> words;
+	for (int i = 0; i < wordCount; ++i) {
+		std::string word;
+		inFile >> word;
+		words.emplace_back(word);
+	}
+
+	std::unordered_map<std::string, std::string> wordMap;
+	std::unordered_map<std::string, std::size_t> wordValue;
+	for (int i = 0; i < wordCount; ++i) {
+		auto word = words[i];
+		auto it = wordMap.find(word);
+		if (it != std::end(wordMap) && it->second != word && wordValue[it->second] == word.size()) {
+			wordValue[word] = word.size();
+			std::swap(it->second, word);
+			wordValue[word] = word.size();
+			--i;
+		} else {
+			wordMap[word] = word;
+			wordValue[word] = word.size();
+		}
+//		std::cout << wordMap << '\n' << wordValue << std::endl;
+		for (std::size_t i = 0; i < word.size(); ++i) {
+			auto val = word.substr(0, i+1);
+			auto it = wordMap.find(val);
+			if (it == std::end(wordMap)) {
+				wordMap[val] = word;
+				wordValue[word] = i + 1;
+//				std::cout << wordMap << '\n' << wordValue << std::endl;
+				break;
+			} else if (it->second.size() != i + 1 && it->second.size() < word.size()) {
+				wordValue[word] = i + 1;
+				std::swap(it->second, word);
+				wordValue[word] = word.size();
+//				std::cout << wordMap << '\n' << wordValue << std::endl;
+			}
+		}
+	}
+
+	int64_t letterCount = 0;
+	for (auto && pair : wordValue) {
+		letterCount += pair.second;
+	}
+
+	return std::to_string(letterCount);
+}
+
+int main() {
+	std::ifstream inFile("autocomplete.txt");
+	inFile.exceptions(std::ifstream::failbit);
+
+	std::string line;
+	std::getline(inFile, line);
+	std::size_t testCaseCount{std::stoull(line)};
+
+	for (std::size_t testCase = 1; testCase <= testCaseCount; ++testCase) {
+		std::cout << "Case #" << testCase << ": " << test(inFile) << std::endl;
+	}
+}

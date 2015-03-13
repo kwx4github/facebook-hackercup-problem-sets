@@ -1,0 +1,162 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+)
+
+const MOD=1000000007
+
+var sols []string
+
+func intersection(l, r map[string]bool) (int map[string]bool) {
+	int = make(map[string]bool)
+	for k := range l {
+		if _, ok := r[k]; ok {
+			int[k] = true
+		}
+	}
+
+	return
+}
+
+func file_Put_Contents(filename string, content []byte) error {
+	fp, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
+
+	if err != nil {
+		return err
+	}
+
+	defer fp.Close()
+
+	_, err = fp.Write(content)
+
+	return err
+}
+
+func addSolution(pos int, sol string, c chan bool) {
+	sols[pos] = fmt.Sprintf("Case #%d: %s", pos+1, sol)
+	c <- true
+	file_Put_Contents("/tmp/prob_sols", []byte(fmt.Sprintf("%s\n", sols[pos])))
+}
+
+// Just another BFS problem...
+func solveProblem(scores [2]int, pos int, c chan bool) {
+	// Search for the stress-free
+	path := [2]int{1, 0}
+	queue := [][2]int{
+		path,
+	}
+	paths := map[[2]int]int{
+		path: 1,
+	}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if current[0] == scores[0] && current[1] == scores[1] {
+			continue
+		}
+
+		if current[1]+1 < current[0] && current[1]+1 <= scores[1] {
+			newPath := [2]int{current[0], current[1]+1}
+			if _, ok := paths[newPath]; ok {
+				paths[newPath] += paths[current]
+				if paths[newPath] > MOD {
+					paths[newPath] %= MOD
+				}
+			} else {
+				paths[newPath] = paths[current]
+				queue = append(queue, newPath)
+			}
+		}
+		if current[0]+1 <= scores[0] {
+			newPath := [2]int{current[0]+1, current[1]}
+			if _, ok := paths[newPath]; ok {
+				paths[newPath] += paths[current]
+				if paths[newPath] > MOD {
+					paths[newPath] %= MOD
+				}
+			} else {
+				paths[newPath] = paths[current]
+				queue = append(queue, newPath)
+			}
+		}
+	}
+	stressFree := paths[scores]
+
+	// Search for the stressfil
+	path = [2]int{0, 1}
+	queue = [][2]int{
+		path,
+	}
+	paths = map[[2]int]int{
+		path: 1,
+	}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		if current[0] == scores[0] && current[1] == scores[1] {
+			continue
+		}
+
+		if (current[0]+1 <= current[1] || current[1] == scores[1]) && current[0]+1 <= scores[0] {
+			newPath := [2]int{current[0]+1, current[1]}
+			if _, ok := paths[newPath]; ok {
+				paths[newPath] += paths[current]
+				if paths[newPath] > MOD {
+					paths[newPath] %= MOD
+				}
+			} else {
+				paths[newPath] = paths[current]
+				queue = append(queue, newPath)
+			}
+		}
+		if current[1]+1 <= scores[1] {
+			newPath := [2]int{current[0], current[1]+1}
+			if _, ok := paths[newPath]; ok {
+				paths[newPath] += paths[current]
+				if paths[newPath] > MOD {
+					paths[newPath] %= MOD
+				}
+			} else {
+				paths[newPath] = paths[current]
+				queue = append(queue, newPath)
+			}
+		}
+	}
+	stressFul := paths[scores]
+
+	addSolution(pos, fmt.Sprintf("%d %d", stressFree, stressFul), c)
+}
+
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	reader := bufio.NewReader(os.Stdin)
+
+	text, _ := reader.ReadString('\n')
+	problems, _ := strconv.ParseInt(text[:len(text)-1], 10, 64)
+	sols = make([]string, problems)
+	solsChan := make(chan bool)
+	for p := 0; p < int(problems); p++ {
+		scoresS, _ := reader.ReadString('\n')
+		scoresL := strings.Split(scoresS[:len(scoresS)-1], "-")
+		s, _ := strconv.ParseInt(scoresL[0], 10, 64)
+		o, _ := strconv.ParseInt(scoresL[1], 10, 64)
+
+		go solveProblem([2]int{int(s), int(o)}, p, solsChan)
+	}
+
+	for p := 0; p < int(problems); p++ {
+		<-solsChan
+	}
+	for p := 0; p < int(problems); p++ {
+		fmt.Println(sols[p])
+	}
+}

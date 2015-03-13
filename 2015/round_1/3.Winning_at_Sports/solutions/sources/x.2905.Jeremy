@@ -1,0 +1,117 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Policy;
+
+namespace Problem3
+{
+    internal class Program
+    {
+        public static void RunTestCases(string[] rawTestCases,
+            int numTestCases,
+            Action<String> outputAction,
+            Action<String> debugAction)
+        {
+            int currentLine = 0;
+            for (int i = 0; i < numTestCases; i++)
+            {
+                var rawTest = rawTestCases[currentLine++].Trim().Split(new char[]{'-'}).Select(int.Parse).ToArray();
+                int myFinal = rawTest[0];
+                int theirFinal = rawTest[1];
+                if (theirFinal == 0)
+                {
+                    outputAction("Case #" + (i + 1) + ": 1 0");
+                    continue;
+                }
+                long stressful = StressFree(theirFinal,myFinal,true);
+                long stressfree = StressFree(myFinal, theirFinal,false);
+                
+                string answer = "";
+                outputAction("Case #" + (i + 1) + ": " + stressfree + " " + stressful );
+            }
+        }
+
+        private static long StressFree(int myFinal, int theirFinal, bool tieAllowed)
+        {
+            //Debug.WriteLine("Starting...");
+            long[,] totals = new long[myFinal+1, theirFinal+1];
+            totals[0, 0] = 1;
+            for (int i = 0; i <= myFinal; i++)
+            {
+                for (int j = 0; j <= theirFinal; j++)
+                {
+                   //Debug.WriteLine(i + ":" + j);
+                    if (i > j || (i>0 && tieAllowed && i==j))
+                    {
+                        //Debug.WriteLine("Copying  " + (i > 0 ? totals[i - 1, j] : 0) + " " + (j > 0 ? totals[i, j - 1] : 0));
+                        var nTotal = ((i>0?totals[i - 1, j]:0) + (j > 0?totals[i,j-1]:0))%1000000007;
+                        totals[i, j] = nTotal;
+                    }
+                    else if(i==myFinal)
+                    {
+                        totals[i, j] = totals[i, j - 1];
+                    }
+                }
+            }
+            return totals[myFinal,theirFinal];
+        }
+
+        private static long StressFul(int myFinal, int theirFinal, int theirlimit)
+        {
+            if (myFinal == 2 && theirFinal == 1) return 1;
+            return 0;
+        }
+
+
+        private static void Main(string[] args)
+        {
+            string filename = args.Length == 0 ? "" : args[0];
+            if (filename == "")
+            {
+                var filenames = Directory.GetFiles(Environment.CurrentDirectory).Where(x => x.EndsWith(".in")).ToArray();
+                Console.WriteLine("Test file?");
+                int n = 0;
+                foreach (var f in filenames)
+                {
+                    Console.WriteLine(n++ + ":" + f);
+                }
+                var i = int.Parse(Console.ReadLine());
+                filename = filenames[i];
+            }
+            if (filename == "")
+            {
+                filename = Directory.GetFiles(Environment.CurrentDirectory).First(x => x.EndsWith(".in"));
+            }
+
+            string[] testFile = File.ReadAllLines(filename);
+            int NumberOfTestCases = int.Parse(testFile.First().Trim());
+
+            List<string> output = new List<string>();
+            RunTestCases(testFile.Skip(1).ToArray(),
+                NumberOfTestCases,
+                output.Add,
+                Console.WriteLine);
+            File.WriteAllLines("output.out", output);
+            Console.WriteLine("Finished " + filename);
+            Console.WriteLine("-- press any key --");
+            Console.ReadKey();
+        }
+    }
+
+   
+
+    internal static class Helpers
+    {
+        public static int[] GetSettings(this string[] rawFile, int line)
+        {
+            return rawFile[line].Split(' ')
+                .Select(x => int.Parse(x.Trim())).ToArray();
+        }
+    }
+}

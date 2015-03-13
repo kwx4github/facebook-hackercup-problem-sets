@@ -1,0 +1,194 @@
+#include<cstdio>
+#include<iostream>
+#include<algorithm>
+#include<cstring>
+#include<string>
+using namespace std;
+
+#define MAX 200004
+
+
+///////////TRIE
+//call global function initialize() before using this class.
+//root.add(char *t, flag, len_of_t);  -- here flag is some unique id, count is updated based if a different flag is supplied.
+//insert cod eto trav functions
+
+#define TRIE_MAX 3000000
+#define TRIE_CHARS 26
+#define TRIE_OFF 'a'
+
+char trie_buf[TRIE_MAX]; // this is where all the 'strings' are saved
+int trie_nbuf;
+
+class Trie{
+   
+public:
+   
+    Trie *ch[TRIE_CHARS],*parent;
+    char* s;
+    int len,h,count,substrcount,lastflag;
+   
+    static void initialize(){
+ 	   trie_nbuf=0;
+    }
+
+    void clear();
+   
+    void add(const char*, int, int);
+   
+    //not tested
+    Trie* find(const char* t, int tlen=-1){
+ 	   if (tlen==-1) tlen=strlen(t); 	  
+ 	   if (len==tlen && strncmp(s,t,len)==0) return this;
+ 	   if (tlen<len) return NULL;
+ 	   if (strncmp(s,t,len)!=0) return NULL;
+ 	   if (ch[t[len]-TRIE_OFF]==NULL) return NULL;
+ 	   return ch[t[len]-TRIE_OFF]->find(t+len,tlen-len);
+    }
+   
+    /*
+    string getstring(){
+ 	   if (parent==NULL) return s;
+ 	   return parent->getstring()+s;
+    }
+    */
+
+    void prints(){     for (int i=0; i<len; i++) cout<<s[i]; }
+
+    void printstring(){
+ 	   if (parent!=NULL) parent->printstring();
+ 	   prints();
+    }
+   
+    void trav();
+
+    void trav2();
+   
+    void print(int lev=0){
+ 	   cout<<string(lev,'.');
+ 	   prints();
+ 	   cout<<"(@"<<h<<",*"<<count<<",[]"<<substrcount<<")"<<endl;
+ 	   for (int i=0; i<TRIE_CHARS; i++) if (ch[i]!=NULL) ch[i]->print(lev+1);
+    }
+   
+}nodes[TRIE_MAX],root;
+
+int nodec;
+
+void Trie::clear(){
+    for (int i=0; i<TRIE_CHARS; i++) ch[i]=NULL;
+    h=substrcount=count=len=lastflag=0;
+    s=trie_buf;
+    parent=NULL;
+    //  nodec=0;
+}
+
+Trie* newTrie(){
+    nodes[nodec].clear();
+    return &nodes[nodec++];
+}
+
+void Trie::add(const char* t, int flag, int tlen=-1){
+    if (tlen==-1) tlen=strlen(t);
+    int i;
+    //cout<<"[add] ";    prints(); cout<<","<<t<<endl;
+    for (i=0; i<len && i<tlen; i++)
+ 	   if (s[i]!=t[i]) break;
+    if (i==len && i==tlen){
+ 	   count++;
+ 	   return;
+    }
+    if (i<len){
+ 	   //create a new node to hold the bottom part
+ 	   Trie* node=newTrie();
+ 	   node->parent=this;
+ 	   node->s=s+i;
+ 	   node->len=len-i;
+ 	   node->count=count;
+ 	   node->substrcount=substrcount;
+ 	   node->lastflag=lastflag;
+ 	   node->h=h+i;
+ 	   for (int j=0; j<TRIE_CHARS; j++){
+ 		   node->ch[j]=ch[j];
+ 		   if (ch[j]) ch[j]->parent=node;
+ 		   ch[j]=NULL;
+ 	   }
+ 	   //keep the top part in 'this'
+ 	   ch[s[i]-TRIE_OFF]=node;
+ 	   len=i;
+ 	   if (i==tlen) count++;
+    }
+    if (i<tlen){
+ 	   if (ch[t[i]-TRIE_OFF]==NULL){
+ 		   Trie* node=newTrie();
+ 		   node->parent=this;
+ 		   strcpy(trie_buf+trie_nbuf,t+i);
+ 		   node->s=trie_buf+trie_nbuf;
+ 		   node->len=tlen-i;
+ 		   trie_nbuf+=tlen-i;
+ 		   node->count=1;
+ 		   node->substrcount=1;
+ 		   node->lastflag=flag;
+ 		   node->h=h+i;
+ 		   ch[t[i]-TRIE_OFF]=node;
+ 	   }
+ 	   else ch[t[i]-TRIE_OFF]->add(t+i,flag,tlen-i); //sometimes when i==s.length()
+    }
+    if (lastflag!=flag) substrcount++;
+    lastflag=flag;
+}
+
+int n,maxlen;
+
+void Trie::trav(){
+    /* insert code */
+    if (substrcount*2>n && h+(signed)len>maxlen)
+ 	   maxlen=h+(signed)len;
+    /* end insert */
+    for (int i=0; i<TRIE_CHARS; i++){
+ 	   if (ch[i]!=NULL)
+ 		   ch[i]->trav();
+    }
+}
+
+void Trie::trav2(){
+    /* insert code */
+    if (substrcount*2>n && h+(signed)len==maxlen){
+ 	   printstring();
+ 	   cout<<endl;
+    }
+    /* end insert */
+    for (int i=0; i<TRIE_CHARS; i++){
+ 	   if (ch[i]!=NULL)
+ 		   ch[i]->trav2();
+    }
+}
+
+void initialize(){
+    Trie::initialize();
+    root.clear();
+    nodec=0;
+}
+
+/////////////
+
+int main(){
+	int t,u,i,j,k,a,b;
+	cin>>t; string s;
+	for (u=0; u<t; u++){
+		int res=0;
+		initialize();
+		cin>>n;
+		for (i=0; i<n; i++){
+			cin>>s;
+			root.add(s.c_str(),1,s.length());
+			Trie* t=root.find(s.c_str(),s.length());
+			for (j=0; j<26; j++) if (t->ch[j]) break;
+			res+=s.length()-((j==26)?(t->len-1):0);
+		}
+		//for (i=0; i<n; i++)
+		cout<<"Case #"<<(u+1)<<": "<<res<<endl;
+	}
+	return 0;
+}
+

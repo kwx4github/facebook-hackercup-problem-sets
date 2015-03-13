@@ -1,0 +1,174 @@
+package hackercode;
+
+import com.sun.xml.internal.ws.api.pipe.NextAction;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Locale;
+import java.util.StringTokenizer;
+
+/**
+ *
+ * @author Dinnot
+ */
+public class HackerCode implements Runnable{
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        new Thread(null, new HackerCode(), "", 256 * (1L << 20)).start();
+    }
+    
+    BufferedReader in;
+    PrintWriter out;
+    StringTokenizer tok = new StringTokenizer("");
+    
+    public void run() {
+        try {
+            long t1 = System.currentTimeMillis();
+            in = new BufferedReader(new FileReader("E:\\xampp\\htdocs\\HackerCode\\src\\hackercode\\corporate_gifting.txt"));
+            out = new PrintWriter("E:\\xampp\\htdocs\\HackerCode\\src\\hackercode\\output.txt");
+            Locale.setDefault(Locale.US);
+            int T = readInt();
+            for(int i = 0; i < T; i++)
+                solve(i+1);
+            in.close();
+            out.close();
+            long t2 = System.currentTimeMillis();
+            System.err.println("Time = " + (t2 - t1));
+        } catch (Throwable t) {
+            t.printStackTrace(System.err);
+            System.exit(-1);
+        }
+    }
+    
+    String readString() throws IOException {
+            while (!tok.hasMoreTokens()) {
+                    tok = new StringTokenizer(in.readLine());
+            }
+            return tok.nextToken();
+    }
+
+    String readLine() throws IOException {
+        return in.readLine();
+    }
+    
+    int readInt() throws IOException {
+            return Integer.parseInt(readString());
+    }
+
+    long readLong() throws IOException {
+            return Long.parseLong(readString());
+    }
+
+    double readDouble() throws IOException {
+            return Double.parseDouble(readString());
+    }
+    
+    // solution
+
+    void solve(int caseNr) throws IOException {
+        int n = readInt();
+        int[] manager = new int[n];
+        int[] level = new int[n];
+        ArrayList<ArrayList<Integer>> children = new ArrayList<ArrayList<Integer>>();
+        for(int i = 0; i < n; i++) {
+            manager[i] = readInt()-1;
+        }
+        level[0] = 1;
+        boolean found = true;
+        //calc levels
+        while(found) {
+            found = false;
+            for(int i = 1; i < n; i++) {
+                if(level[i] == 0) {
+                    if(level[manager[i]] != 0) {
+                        found = true;
+                        level[i] = level[manager[i]] + 1;
+                    }
+                }
+            }
+        }
+        //calc children
+        for(int i = 0; i < n; i++) {
+            children.add(new ArrayList<Integer>());
+        }
+        for(int i = 1; i < n; i++) {
+            int man = manager[i];
+            children.get(man).add(Integer.valueOf(i));
+        }
+        int[] leafChildren = new int[n];
+        for(int i = 0; i < n; i++) {
+            ArrayList<Integer> ch = children.get(i);
+            int len = ch.size();
+            for(int j = 0; j < len; j++) {
+                int child = ch.get(j).intValue();
+                if(children.get(child).size() == 0)
+                    leafChildren[i]++;
+            }
+        }
+        int[] gift = new int[n];
+        int max_cost = Integer.MAX_VALUE;
+        //try 1-2-1
+        for(int i = 0; i < n; i++) {
+            if(level[i] % 2 == 1)
+                gift[i] = 1;
+            else
+                gift[i] = 2;
+        }
+        int Cost121 = calcCost(gift);
+        max_cost = Math.min(Cost121, max_cost);
+        
+        optimizeTree(n, gift, children, leafChildren);
+        int Opt121 = calcCost(gift);
+        max_cost = Math.min(Opt121, max_cost);
+        
+        //try 2-1-2
+        for(int i = 0; i < n; i++) {
+            if(level[i] % 2 == 1)
+                gift[i] = 2;
+            else
+                gift[i] = 1;
+        }
+        int Cost212 = calcCost(gift);
+        max_cost = Math.min(Cost212, max_cost);
+        
+        optimizeTree(n, gift, children, leafChildren);
+        int Opt212 = calcCost(gift);
+        max_cost = Math.min(Opt212, max_cost);
+        
+        out.print("Case #");
+        out.print(caseNr);
+        out.print(": ");
+        out.println(max_cost);
+    }
+    
+    int calcCost(int[] gift) {
+        int cost = 0;
+        for(int i = 0; i < gift.length; i++) {
+            cost += gift[i];
+        }
+        return cost;
+    }
+    
+    void optimizeTree(int n, int[] gift, ArrayList<ArrayList<Integer>> children, int[] no_leafs) {
+        for(int i = 0; i < n; i++) {
+            if(no_leafs[i] > 2 && gift[i] == 1) {
+                gift[i] = 3;
+                ArrayList<Integer> ch = children.get(i);
+                int len = ch.size();
+                for(int j = 0; j < len; j++) {
+                    int child = ch.get(j).intValue();
+                    if(children.get(child).size() == 0) {
+                        gift[child] = 1;
+                    }
+                }
+            }
+        }
+    }
+}

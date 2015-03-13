@@ -1,0 +1,145 @@
+#include <iostream>
+#include <list>
+#include <vector>
+using namespace std;
+
+static const int MAX_N = 200000;
+
+struct Node {
+    Node() :
+        child(0),
+        num_children(0),
+        sibling(0),
+        parent(0)
+    {
+    }
+    Node *child;
+    int num_children;
+    int cost;
+    int proposed;
+    bool cached;
+    int cached_cost;
+    int cached_age;
+    Node *sibling;
+    Node *parent;
+};
+
+bool try_update(Node *node, int updates)
+{
+    int cost = 1;
+    Node *iter = node->parent;
+    Node *prev;
+    node->proposed = 2;
+    prev = node;
+    static vector<bool> used(MAX_N);
+
+    for (iter = node->parent; iter; iter = iter->parent) {
+        if (iter->cached && iter->cached_age == updates) {
+            // shortcut
+            cost += iter->cached_cost;
+            break;
+        } else {
+            int valid = 0;
+            for (Node *n = iter->child; n != 0; n=n->sibling) {
+                int x;
+                if (prev == n) {
+                    x = prev->proposed;
+                } else {
+                    x = n->cost;
+                }
+                while (valid <= (x-1)) {
+                    used[valid++] = false;
+                }
+                used[x - 1] = true;
+            }
+            for (int i = 0; i <= valid; i++) {
+                if (i == valid || !used[i]) {
+                    iter->proposed = i+1;
+                    cost += ((i + 1) - iter->cost);
+                    break;
+                }
+            }
+            prev = iter;
+        }
+    }
+    // cout << "Cost: " << cost << " vs. num children: " << node->num_children << endl;
+
+    node->cached = true;
+    node->cached_cost = cost;
+    node->cached_age = updates;
+
+    if (cost < node->num_children) {
+        // apply updates
+        for (; node; node = node->parent) {
+            node->cost = node->proposed;
+        }
+        return true;
+    }
+    return false;
+}
+
+void update_children(Node *node, int& updates)
+{
+    if (node->child == 0) {
+        return;
+    }
+    if (node->cost > 1) {
+        for (Node *n = node->child; n != 0; n=n->sibling) {
+            n->cost = 1;
+        }
+    } else {
+        if (try_update(node, updates)) {
+            updates++;
+            for (Node *n = node->child; n != 0; n=n->sibling) {
+                n->cost = 1;
+            }
+        } else {
+            for (Node *n = node->child; n != 0; n=n->sibling) {
+                n->cost = 2;
+            }
+        }
+    }
+}
+
+int main(void)
+{
+    int maxtc;
+    cin >> maxtc;
+    Node *nodes = new Node[MAX_N];
+
+    for (int tc = 1; tc <= maxtc; tc++) {
+        int n;
+        int updates = 0;
+        cin >> n;
+        memset(nodes, 0, sizeof(Node) * MAX_N);
+        for (int i = 0; i < n; i++) {
+            int emp;
+            cin >> emp;
+            if (emp != 0) {
+                nodes[i].parent = &nodes[emp - 1];
+                nodes[i].sibling = nodes[i].parent->child;
+                nodes[i].parent->child = &nodes[i];
+                nodes[i].parent->num_children++;
+            }
+        }
+        /* We've got everything loaded, now we start assigning down the way */
+        nodes[0].cost = 1;
+
+        list<Node *> q;
+        q.push_back(&nodes[0]);
+        while (!q.empty()) {
+            Node *node = q.front();
+            update_children(node, updates);
+            for (Node *iter = node->child; iter != 0; iter=iter->sibling) {
+                q.push_back(iter);
+            }
+            q.pop_front();
+        }
+        int total = 0;
+        for (int i = 0; i < n; i++) {
+            total += nodes[i].cost;
+        }
+        cout << "Case #" << tc << ": " << total << endl;
+    }
+    return 0;
+}

@@ -1,0 +1,60 @@
+open Printf
+open Scanf
+
+external id : 'a -> 'a = "%identity"
+
+let solve () =
+  let n = scanf " %d" id in
+  let a = Array.make n [] in
+  let p = Array.init n (fun _ -> scanf " %d" id) in
+(*   print_endline @@ String.concat " " @@ List.map string_of_int @@ Array.to_list p; *)
+  Array.iteri (fun i p -> if p > 0 then a.(p - 1) <- i :: a.(p - 1)) p;
+(*   print_endline @@ String.concat " " @@ List.map (fun x -> "[" ^ (String.concat " " @@ List.map string_of_int x) ^ "]") @@ Array.to_list a; *)
+  let r = ref [] in
+  let q = Queue.create () in
+  Queue.push 0 q;
+  while not (Queue.is_empty q) do
+    let i = Queue.pop q in
+    r := i :: !r;
+    List.iter (fun i -> Queue.push i q) a.(i)
+  done;
+(*   print_endline @@ String.concat " " @@ List.map string_of_int !r; *)
+  let dp = Array.make n (0, 0, 0) in
+  List.iter begin fun i ->
+    dp.(i) <-
+    match a.(i) with
+    | [] -> 1, 0, 2
+    | v ->
+      let d = List.length v in
+      let k = List.fold_left (+) 0 @@ List.map (fun i -> let k1, _, _ = dp.(i) in k1) v in
+      let e = Array.make (d + 1) k in
+      List.iter (fun i -> match dp.(i) with k1, c, k2 when c <= d -> e.(c) <- e.(c) + k2 - k1 | _ -> ()) v;
+      let e = Array.mapi (fun i e -> 1 + i + e) e in
+      let k1 = ref e.(0) and c = ref 0 in
+      for i = 1 to d do
+        let f = e.(i) in
+        if f < !k1 then begin
+          k1 := f;
+          c := i
+        end
+      done;
+      let c = !c in
+      let k2 = ref e.(if c = 0 then 1 else 0) in
+      for i = 0 to d do
+        if i <> c then
+        let f = e.(i) in
+        if f < !k2 then k2 := f
+      done;
+      !k1, c, !k2
+  end !r;
+(*   Array.iteri (fun i (k1, c, k2) -> printf "%2d: %d %d %d\n" i k1 c k2) dp; *)
+  let k1, _, _ = dp.(0) in
+  printf "%d" k1
+
+let () =
+  let t' = scanf " %d" id in
+  for i' = 1 to t' do
+    printf "Case #%d: " i';
+    solve ();
+    printf "\n"
+  done

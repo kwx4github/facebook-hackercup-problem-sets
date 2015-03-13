@@ -1,0 +1,135 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+sub catalan($);
+sub compute_total_combos($$);
+sub reduce($);
+
+my $file = shift @ARGV;
+my @rows = split /\n/, `cat $file`;
+my $num_cases = shift @rows;
+
+my $precomputed_stressfree = {};
+
+foreach my $i (1 .. 2000) {
+#  print "precompute $i\n";
+  foreach my $j (0 .. $i - 1) {
+    if ($j == 0) {
+      $precomputed_stressfree->{$i}{$j} = 1;
+    } else {
+      my $stressfree_he_scores_last = $precomputed_stressfree->{$i}{$j - 1};
+      my $stressfree_i_score_last = 0;
+      if ($i > $j + 1) {
+        $stressfree_i_score_last = $precomputed_stressfree->{$i - 1}{$j};
+      }
+      $precomputed_stressfree->{$i}{$j} = ($stressfree_he_scores_last + $stressfree_i_score_last) % 1000000007;
+    }
+  }
+}
+
+foreach my $casenum (1 .. $num_cases) {
+  my $row = shift @rows;
+  my $score = $row;
+  my ($a, $b) = split '-', $score;
+
+#  print "scored $a vs $b - hint is $hint\n";
+  my $total_combos = compute_total_combos($a, $b);
+#  print "catalan $b-1 is ".catalan($b-1)."\n";
+  my $stressful = catalan($b);
+# "catalan $b is ".catalan($b)."\n";
+#  print "catalan $b+1 is ".catalan($b+1)."\n";
+  my $stressfree = $precomputed_stressfree->{$a}{$b};
+#  print "ans is $ans\n";
+#  print "Case #$casenum: $ans ".reduce($total_combos - $hint)."\n";
+  print "Case #$casenum: $stressfree $stressful\n";
+}
+
+sub catalan($) {
+  my $n = shift;
+
+  if ($n == 0) {
+    return 1;
+  }
+
+  return reduce(
+    compute_total_combos($n, $n) - compute_total_combos($n+1, $n-1));
+}
+
+sub abreduce($$) {
+  my $a = shift;
+  my $b = shift;
+  if ($a < 0) {
+    $a = $b - ((-$a) % $b);
+  }
+  return $a % $b;
+}
+
+sub reduce($) {
+  my $a = shift;
+  return abreduce($a, 1000000007);
+}
+
+
+sub mult($$) {
+  my $a = shift;
+  my $b = shift;
+
+  return reduce(reduce($a) * reduce($b));
+}
+
+sub divide($$) {
+  my $a = shift;
+  my $b = shift;
+
+  return mult($a, invert($b));
+}
+
+sub invert($) {
+  my $a = shift;
+  return abinvert($a, 1000000007);
+}
+
+sub abinvert($$) {
+  my $x = shift;
+  my $y = shift;
+
+  my ($a, $b) = ($x, $y);
+  my @cfrac = ();
+  while ($a > 0) {
+    my $c = $b % $a;
+    push @cfrac, ($b - $c) / $a;
+    ($a, $b) = ($c, $a);
+  }
+  my $p = 0;
+  my $q = 1;
+  foreach my $c (@cfrac) {
+    ($p, $q) = ($q, $c * $q + $p);
+  }
+
+  if (abreduce($x * $p, $y) == 1) {
+    return $p;
+  } elsif (abreduce($x * ($y - $p), $y) == 1) {
+    return $y - $p;
+  } else {
+    die("$p was not a reduce of $x and $y...\n");
+  }
+}
+
+sub compute_total_combos($$) {
+  my $a = shift;
+  my $b = shift;
+
+  my $total = 1;
+  if ($b == 0) {
+    return $total;
+  }
+  foreach my $i (0 .. $b - 1) {
+    my $num = $a + $b - $i;
+    my $denom = $i + 1;
+    $total = mult($total, $num);
+    $total = divide($total, $denom);
+#    print "multiply by $num, divide by $denom ... arrive at $total\n";
+  }
+  return $total;
+}

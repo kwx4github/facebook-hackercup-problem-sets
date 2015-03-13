@@ -1,0 +1,79 @@
+(ns fb.problem2015-2-1
+  (:require [numberto.primes :as primes]))
+
+(defn primacity [n]
+  (-> (primes/factorize n)
+      (distinct)
+      (count)))
+
+
+(def all-primes (take-while #(< % 10000000) (primes/primes)))
+(def all-primes-set (atom #{}))
+
+(defn prime? [n]
+  (not (nil? (get @all-primes-set n))))
+
+(defn init-precalc []
+  (swap! all-primes-set (set all-primes))
+  (println "Init done"))
+
+(defn primacity-force [n]
+  (loop [x n fact []]
+    (if (= 1 x) (count (distinct fact))
+        (let [d (first (drop-while #(not (zero? (rem x %))) all-primes))]
+          (recur (/ x d) (conj fact d))))))
+
+(def cache (atom{}))
+
+(defn primacity-new [n]
+  (if (prime? n) 1
+      (let [pre (get @cache n)]
+        (if pre pre
+            (let [pre2 (primacity-force n)]
+              (swap! cache (fn [m]
+                             (assoc m n pre2)))
+              pre2
+              )))))
+
+
+(defn solve [a b k]
+  (->> (range a (inc b))
+       (map primacity-new)
+       (filter #(= k %))
+       (count)))
+
+(defn load-cache [file]
+  (loop [[a b & tail] (map read-string (re-seq #"[0-9]+" (slurp file)))]
+    (if a
+      (do
+        (swap! cache (fn [m] (assoc m a b)))
+        (recur tail))
+      :done)))
+
+(defn problem1 [in out]
+  (let [raw-data (map read-string (re-seq #"[0-9]+" (slurp in)))
+        tests (rest raw-data)]
+    (loop [data tests cnt 1 result []]
+      (let [[a b k] (take 3 data)]
+        (if a
+          (let [case-result (solve a b k)
+                case-string (format "Case %d: %d\n" cnt case-result)]
+            (print case-string)
+            (recur (drop 3 data) (inc cnt) (conj result case-string))
+            )
+          ;; print to file
+          (spit out (apply str result)))))))
+
+(defn generate [file n]
+  (spit file (apply str
+                    (cons (format "%d\n" n)
+                          (repeatedly n (fn []
+                                          (let [a (rand-int 1000000)
+                                                b (rand-int 1000000)
+                                                left (min a b)
+                                                right (max a b)
+                                                k (rand-int 100)]
+                                            (format "%d %d %d\n" left right k))))))))
+
+
+;; Precalculate sieve

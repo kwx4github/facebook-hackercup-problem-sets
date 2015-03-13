@@ -1,0 +1,152 @@
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.Locale;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.io.File;
+import java.util.StringTokenizer;
+import java.io.FilenameFilter;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "winning.*at.*sports.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("winningatsports.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		FastScanner in = new FastScanner(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		WinningAtSports solver = new WinningAtSports();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class WinningAtSports {
+	public void solve(int testNumber, FastScanner in, PrintWriter out) {
+		int[][] stressFree = calculateStressFree();
+		int numTests = in.nextInt();
+		for (int test = 1; test <= numTests; test++) {
+			String[] scores = in.next().split("-");
+			int a = Integer.parseInt(scores[0]);
+			int b = Integer.parseInt(scores[1]);
+			int[][] stressful = calculateStressful(a, b);
+			out.printf("Case #%d: %d %d\n", test, stressFree[a][b], stressful[a][b]);
+		}
+	}
+
+	final int N = 2015;
+	final int MOD = 1000000007;
+
+	private int[][] calculateStressFree() {
+		int[][] d = new int[N][N];
+		d[1][0] = 1;
+		for (int sum = 0; sum < 2*N; sum++) {
+			for (int a = 0; a < N; a++) {
+				int b = sum - a;
+				if (b < 0 || b >= N) {
+					continue;
+				}
+				if (a + 1 < N && a + 1 > b) {
+					d[a + 1][b] += d[a][b];
+					if (d[a + 1][b] >= MOD) {
+						d[a + 1][b] -= MOD;
+					}
+				}
+				if (b + 1 < N && a > b + 1) {
+					d[a][b + 1] += d[a][b];
+					if (d[a][b + 1] >= MOD) {
+						d[a][b + 1] -= MOD;
+					}
+				}
+			}
+		}
+		return d;
+	}
+
+	private int[][] calculateStressful(int maxA, int maxB) {
+		int[][] d = new int[maxA + 1][maxB + 1];
+		d[0][0] = 1;
+		for (int sum = 0; sum <= maxA + maxB; sum++) {
+			for (int a = 0; a <= maxA; a++) {
+				int b = sum - a;
+				if (b < 0 || b > maxB) {
+					continue;
+				}
+				if (a + 1 <= maxA && (b == maxB || a + 1 <= b)) {
+					d[a + 1][b] += d[a][b];
+					if (d[a + 1][b] >= MOD) {
+						d[a + 1][b] -= MOD;
+					}
+				}
+				if (b + 1 <= maxB) {
+					d[a][b + 1] += d[a][b];
+					if (d[a][b + 1] >= MOD) {
+						d[a][b + 1] -= MOD;
+					}
+				}
+			}
+		}
+		return d;
+	}
+
+}
+
+class FastScanner {
+
+	private BufferedReader in;
+	private StringTokenizer st;
+
+	public FastScanner(InputStream stream) {
+		in = new BufferedReader(new InputStreamReader(stream));
+	}
+
+	public String next() {
+		while (st == null || !st.hasMoreTokens()) {
+			try {
+				String rl = in.readLine();
+				if (rl == null) {
+					return null;
+				}
+				st = new StringTokenizer(rl);
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return st.nextToken();
+	}
+
+	public int nextInt() {
+		return Integer.parseInt(next());
+	}
+
+}
+

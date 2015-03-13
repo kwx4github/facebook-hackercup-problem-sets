@@ -1,0 +1,140 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <vector>
+#include <map>
+#include <queue>
+
+using namespace std;
+
+ifstream in("D.in");
+ofstream out("D.out");
+
+vector < vector <int> > tree;
+
+vector <int> level;
+
+struct Vertex
+{
+    long long minSum;
+    int rColor;
+    long long delta;
+    int nextColor;
+};
+
+vector <Vertex> T;
+
+vector <int> numberOfChildren;
+vector <int> father;
+
+int n;
+
+long long Solve()
+{
+    queue <int> q;
+
+    for (int i = 0; i < n; ++i)
+        numberOfChildren[i] = tree[i].size();
+
+    for (int i = 0; i < n; ++i)
+        if (numberOfChildren[i] == 0)
+        {
+            T[i].minSum = 1;
+            T[i].rColor = 1;
+            T[i].delta  = 1;
+            T[i].nextColor = 2;
+            if (i != 0)
+            {
+                numberOfChildren[father[i]]--;
+                if (numberOfChildren[father[i]] == 0)
+                    q.push(father[i]);
+            }
+        }
+
+    while (!q.empty())
+    {
+        int p = q.front(); q.pop();
+        if (p != 0)
+        {
+            numberOfChildren[father[p]]--;
+            if (numberOfChildren[father[p]] == 0)
+                q.push(father[p]);
+        }
+
+        vector <long long> colorAdd(tree[p].size() + 3);
+        for (int i = 0; i < colorAdd.size(); ++i)
+            colorAdd[i] = i;
+
+        long long minTotal = 0;
+        for (int i = 0; i < tree[p].size(); ++i)
+        {
+            int child = tree[p][i];
+            minTotal += T[child].minSum;
+            colorAdd[T[child].rColor] += T[child].delta;
+        }
+
+        long long sum1 = -1, sum2 = -1;
+        int color1 = 1, color2 = 2;
+
+        for (int i = 1; i < colorAdd.size(); ++i)
+        {
+            long long value = colorAdd[i];
+            if (value < sum1 || sum1 == -1)
+            {
+                color2 =  color1;
+                sum2   =  sum1;
+                color1 =  i;
+                sum1   =  value;
+            }
+            else
+                if (value < sum2 || sum2 == -1)
+                {
+                    color2 = i;
+                    sum2 = value;
+                }
+        }
+
+        T[p].minSum    = sum1 + minTotal;
+        T[p].rColor    = color1;
+        T[p].delta     = sum2 - sum1;
+        T[p].nextColor = color2;
+    }
+
+    return T[0].minSum;
+}
+
+int main()
+{
+    int test;
+    in >> test;
+    for (int testNumber = 1; testNumber <= test; ++testNumber) 
+    {
+        tree.clear();
+        level.clear();
+        T.clear();
+        father.clear();
+        numberOfChildren.clear();
+
+        in >> n;
+
+        tree.resize(n);
+        level.resize(n);
+        T.resize(n);
+        father.resize(n);        
+        numberOfChildren.resize(n);
+
+        for (int i = 0; i < n; ++i)
+        {
+            in >> father[i];
+            father[i]--;
+            if (i != 0)
+                tree[father[i]].push_back(i);
+        }
+
+        long long answer = Solve();
+
+        out << "Case #" << testNumber << ": " << answer << endl;
+    }
+    return 0;
+}

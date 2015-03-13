@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import argparse
+import sys, os, shutil
+import time
+import math
+import random
+import multiprocessing as mp
+import pickle
+
+MOD = 1000000007
+L = [[0 for i in range(2001)] for j in range(2001)]
+for i in range(2001): L[i][0] = 1
+L[0][0] = 0
+
+for j in range(1, 2001):
+  L[0][j] = 0
+  for i in range(1, 2001):
+    if i > j: L[i][j] = (L[i-1][j] + L[i][j-1]) % MOD
+
+F = [[0 for i in range(2001)] for j in range(2001)]
+F[0][0] = 1
+
+for j in range(1, 2001):
+  F[0][j] = 1
+  for i in range(1, 2001):
+    if i <= j: F[i][j] = (F[i-1][j] + F[i][j-1]) % MOD
+
+class TestCase():
+  def __init__(self, testId=None):
+    self.testId = testId
+    self.A, self.B = 0, 0
+
+  def readFromFile(self, f):
+    self.A, self.B = map(int, f.readline().split('-'))
+  
+  def solve(self, f):
+    f.write('Case #%d: ' % self.testId)
+    assert self.A > self.B
+    f.write('%d %d\n' % (L[self.A][self.B], F[self.B][self.B]))
+
+
+class Application():
+  def __init__(self, args):
+    self.args = args
+    self.inputFilename = args.filename
+    assert self.inputFilename.endswith('.txt')
+    self.testSetName = self.inputFilename[:-len('.txt')]
+    if self.testSetName.endswith('_input'): self.testSetName = self.testSetName[:-len('_input')]
+    self.outputsDirname = self.testSetName + '_outs'
+    self.outputFilename = self.testSetName + '_my_output.txt'
+  
+  def run(self):
+    self.readTestCases()
+    self.runSolvers()
+    self.joinAnswers()
+  
+  def readTestCases(self):
+    f = open(self.inputFilename, 'rt')
+    T = int(f.readline())
+    self.testCases = []
+    for i in range(1, T+1):
+      tc = TestCase(i)
+      tc.readFromFile(f)
+      self.testCases.append(tc)
+    f.close()
+  
+  def testCaseOutputFilename(self, i):
+    return os.path.join(self.outputsDirname, '%.5d.out' % i)
+  
+  def testCaseOutputTemporaryFilename(self, i):
+    return self.testCaseOutputFilename(i) + '.tmp'
+  
+  def generateSolution(self, tc, sem):
+    sem.acquire()
+    assert tc.testId >= 1
+    fn0 = self.testCaseOutputTemporaryFilename(tc.testId)
+    fn = self.testCaseOutputFilename(tc.testId)
+    if not os.path.exists(fn):
+      f = open(fn0, 'wt')
+      tc.solve(f)
+      f.close()
+      shutil.move(fn0, fn)
+    sem.release()
+  
+  def clearDirs(self):
+    for bfn in os.listdir(self.outputsDirname):
+      fn = os.path.join(self.outputsDirname, bfn)
+      if os.path.isfile(fn): os.unlink(fn)
+  
+  def runSolvers(self):
+    if self.args.clear and os.path.exists(self.outputsDirname): self.clearDirs()
+    if not os.path.exists(self.outputsDirname): os.mkdir(self.outputsDirname)
+    sem = mp.BoundedSemaphore(self.args.jobs)
+    processes = []
+    for tc in self.testCases: processes.append(mp.Process(target=self.generateSolution, args=(tc, sem)))
+    random.shuffle(processes)
+    for p in processes: p.start()
+    for p in processes: p.join()
+  
+  def joinAnswers(self):
+    g = open(self.outputFilename, 'wt')
+    for tc in self.testCases:
+      fn = self.testCaseOutputFilename(tc.testId)
+      f = open(fn, 'rt')
+      g.write(f.read())
+      f.close()
+    g.close()
+
+if __name__ == '__main__':
+  os.chdir(os.path.dirname(sys.argv[0]))
+  parser = argparse.ArgumentParser(description='facebook Hacker Cup solution runner.')
+  parser.add_argument('filename', help='Filename of the test set')
+  parser.add_argument('-j', '--jobs', type=int, default=1, help='number of workers')
+  parser.add_argument('-c', '--clear', action='store_true', help='clear pickles directory first')
+  args = parser.parse_args()
+  a = Application(args)
+  a.run()
+

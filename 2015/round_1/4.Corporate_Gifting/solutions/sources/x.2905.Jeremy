@@ -1,0 +1,155 @@
+﻿using System;
+using System.CodeDom.Compiler;
+using System.Collections.Generic;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Policy;
+using System.Xml.Schema;
+
+namespace Problem4
+{
+    internal class Program
+    {
+        public static void RunTestCases(string[] rawTestCases,
+            int numTestCases,
+            Action<String> outputAction,
+            Action<String> debugAction)
+        {
+            List<Func<string>> calls = new List<Func<string>>();
+            int currentLine = 0;
+            for (int i = 0; i < numTestCases; i++)
+            {
+                int N = int.Parse(rawTestCases[currentLine++]);
+                int[] nodes = rawTestCases.GetSettings(currentLine++).OrderBy(x=>x).ToArray();
+                Dictionary<int, List<int>> org = BuildOrg(nodes);
+                long minCost = FindMinCost(org);
+                string answer = minCost.ToString();
+                outputAction("Case #" + (i + 1) + ": " + answer);
+            }
+        }
+
+        private static long FindMinCost(Dictionary<int, List<int>> org)
+        {
+            var cache = new Dictionary<int, Dictionary<int, long>>();
+             long minCost = long.MaxValue;
+            for (int i = 1; i < 4; i++)
+            {
+                long newMin = CheckMin(org, cache, i);
+                minCost = newMin < minCost ? newMin : minCost;
+            }
+
+            return minCost;
+        }
+
+        private static long CheckMin(Dictionary<int, List<int>> org, Dictionary<int,Dictionary<int,long>> cache, int giftPrice)
+        {
+            Stack<Tuple<int, int>> stack = new Stack<Tuple<int, int>>(200000);
+            //Seed the first one.
+            stack.Push(new Tuple<int, int>(1,giftPrice));
+            
+            StackStart:
+            while (stack.Count > 0)
+            {
+                var cItem = stack.Peek();
+                var id = cItem.Item1;
+                long cprice = cItem.Item2;
+                var children = org[id];
+                bool restart = false;
+                foreach (var child in children)
+                {
+                    if (!cache.ContainsKey(child))
+                    {
+                        for (int i = 1; i < 4; i++)
+                        {
+                            stack.Push(new Tuple<int, int>(child, i));
+                        }
+                        restart = true;
+                    }
+                    else if(!restart)
+                    {
+                        var childCache = cache[child];
+                        long best = long.MaxValue;
+                        for (int i = 1; i < 4; i++)
+                        {
+                            if (i != cItem.Item2 && childCache[i] < best)
+                            {
+                                best = childCache[i];
+                            }
+                        }
+                        cprice += best;
+                    }
+                }
+                if (restart) goto StackStart;
+                stack.Pop();
+                if (!cache.ContainsKey(cItem.Item1))
+                {
+                    cache[cItem.Item1] = new Dictionary<int, long>();
+                }
+                cache[cItem.Item1][cItem.Item2] = cprice;
+            }
+
+            return cache[1][giftPrice];
+        }
+
+        private static Dictionary<int, List<int>> BuildOrg(int[] nodes)
+        {
+            Dictionary<int,List<int>> result = new Dictionary<int, List<int>>();
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                result[i+1] = new List<int>();
+                if (nodes[i] != 0)
+                {
+                    result[nodes[i]].Add((i+1));
+                }
+            }
+            return result;
+        }
+
+        private static void Main(string[] args)
+        {
+            string filename = args.Length == 0 ? "" : args[0];
+            if (filename == "")
+            {
+                var filenames = Directory.GetFiles(Environment.CurrentDirectory).Where(x => x.EndsWith(".in")).ToArray();
+                Console.WriteLine("Test file?");
+                int n = 0;
+                foreach (var f in filenames)
+                {
+                    Console.WriteLine(n++ + ":" + f);
+                }
+                var i = int.Parse(Console.ReadLine());
+                filename = filenames[i];
+            }
+            if (filename == "")
+            {
+                filename = Directory.GetFiles(Environment.CurrentDirectory).First(x => x.EndsWith(".in"));
+            }
+
+            string[] testFile = File.ReadAllLines(filename);
+            int NumberOfTestCases = int.Parse(testFile.First().Trim());
+
+            List<string> output = new List<string>();
+            RunTestCases(testFile.Skip(1).ToArray(),
+                NumberOfTestCases,
+                output.Add,
+                Console.WriteLine);
+            File.WriteAllLines("output.out", output);
+            Console.WriteLine("Finished " + filename);
+            //Console.WriteLine("-- press any key --");
+            //Console.ReadKey();
+        }
+    }
+
+    internal static class Helpers
+    {
+        public static int[] GetSettings(this string[] rawFile, int line)
+        {
+            return rawFile[line].Split(' ')
+                .Select(x => int.Parse(x.Trim())).ToArray();
+        }
+    }
+}

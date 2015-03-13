@@ -1,0 +1,125 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Corporate {
+
+    private static class Tree {
+
+        int size;
+        Node[] nodes;
+
+        private Tree(int size) {
+            this.size = size;
+            this.nodes = new Node[size + 1];
+
+
+            for (int i = 1; i <= size; i++) {
+                this.nodes[i] = new Node();
+            }
+        }
+
+        private static class Node {
+            List<Node> childs = new ArrayList<Node>();
+
+            long first;
+            long firstTotal;
+
+            long second;
+            long secondTotal;
+        }
+
+        public void insert(int parent, int id) {
+            Node parentNode = nodes[parent];
+
+
+            Node newNode = nodes[id];
+            nodes[id] = newNode;
+            parentNode.childs.add(newNode);
+        }
+
+        private Node getRoot() {
+            return nodes[1];
+        }
+
+        public long calculate() {
+            calculateStats(getRoot());
+
+            return getRoot().firstTotal;
+        }
+
+        private void calculateStats(Node n) {
+
+            n.first = 1;
+            n.firstTotal = 1;
+
+            if (!n.childs.isEmpty()) {
+                for (Node ch : n.childs) {
+                    calculateStats(ch);
+
+                    if (ch.first != 1) {
+                        n.firstTotal += ch.firstTotal;
+                    } else {
+                        n.firstTotal += ch.secondTotal;
+                    }
+                }
+            } else {
+                //leaf node
+                n.second = 2;
+                n.secondTotal = 2;
+            }
+
+            // try different prices for current node
+            for (int p = 2; p <= size; p++) {
+                long optimum = p;
+
+                for (Node ch : n.childs) {
+                    if (ch.first != p) {
+                        optimum += ch.firstTotal;
+                    } else {
+                        optimum += ch.secondTotal;
+                    }
+                }
+
+                if (optimum <= n.firstTotal) {
+                    n.second = n.first;
+                    n.secondTotal = n.firstTotal;
+                    n.first = p;
+                    n.firstTotal = optimum;
+                } else if (optimum < n.secondTotal || n.secondTotal == 0) {
+                    n.second = p;
+                    n.secondTotal = optimum;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+        final int count = Integer.parseInt(br.readLine());
+
+        for (int i = 1; i <= count; i++) {
+
+            final int employeesCount = Integer.parseInt(br.readLine());
+            Tree tree = new Tree(employeesCount);
+
+            String[] numbers = br.readLine().split(" ");
+
+            for (int j = 0; j < numbers.length; j++) {
+                int managerId = Integer.parseInt(numbers[j]);
+
+                if (managerId == 0) continue; // skip CEO
+
+                tree.insert(managerId, j + 1);
+            }
+
+            long result = tree.calculate();
+
+            System.out.println("Case #" + i + ": " + result);
+        }
+    }
+}

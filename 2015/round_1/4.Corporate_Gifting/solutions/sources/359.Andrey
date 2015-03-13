@@ -1,0 +1,157 @@
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+#include <vector>
+#include <cassert>
+#include <queue>
+#include <unordered_map>
+#include <cassert>
+
+using namespace std;
+
+const long long INF = 1e9;
+const int MAXN = 200 * 1000 + 9;
+
+struct Solver {
+    Solver()
+    { }
+
+    void readInput() {
+        cin >> N;
+        p.resize(N);
+        children.resize(N);
+        ready.resize(N, false);
+        answers.resize(N);
+        for (int i = 0; i < N; ++i) {
+            cin >> p[i];
+            --p[i];
+
+            if (p[i] >= 0) {
+                children[p[i]].push_back(i);
+            }
+        }
+    }
+
+    string solve() {
+        for (int i = N - 1; i >= 0; --i) {
+            calcAnswer(i);
+        }
+        auto answer = calcAnswer(0);
+        long long totalPrice = answer.firstMin.cost;
+        return to_string(totalPrice);
+    }
+
+    struct Answer {
+        Answer(long long cost, int number)
+            : cost(cost)
+            , number(number)
+        { }
+
+        Answer(): Answer(1e17, -1) {
+        }
+
+        long long cost;
+        int number;
+    };
+
+    struct AnswerPair {
+        Answer firstMin;
+        Answer secondMin;
+    };
+
+    std::vector<char> ready;
+    std::vector<AnswerPair> answers;
+
+    AnswerPair calcAnswer(int v) {
+        if (!ready[v]) {
+            ready[v] = true;
+
+        int maxPossibleNumber = children[v].size() + 10;
+        vector<long long> possibleNumbersCosts(maxPossibleNumber + 1, 0);
+        for (int i = 1; i <= maxPossibleNumber; ++i) {
+            possibleNumbersCosts[i] = i;
+        }
+        long long totalCost = 0;
+        for (int i = 0; i < children[v].size(); ++i) {
+            int child = children[v][i];
+            auto childAnswer = calcAnswer(child);
+
+            totalCost += childAnswer.firstMin.cost;
+            if (childAnswer.firstMin.number <= maxPossibleNumber) {
+                possibleNumbersCosts[childAnswer.firstMin.number] += 
+                    childAnswer.secondMin.cost - childAnswer.firstMin.cost;
+            }
+        }
+
+        AnswerPair answer;
+        for (int i = 1; i <= maxPossibleNumber; ++i) {
+            long long cost = totalCost + possibleNumbersCosts[i];
+
+            if (cost < answer.firstMin.cost) {
+                answer.secondMin = answer.firstMin;
+                answer.firstMin.cost = cost;
+                answer.firstMin.number = i;
+            } else {
+                if (cost < answer.secondMin.cost) {
+                    answer.secondMin.cost = cost;
+                    answer.secondMin.number = i;
+                }
+            }
+        }
+        assert(answer.secondMin.cost >= answer.firstMin.cost);
+        assert(answer.firstMin.number != -1);
+        answers[v] = answer;
+        }
+
+        return answers[v];
+    }
+
+    int N;
+    vector<int> p;
+
+    vector<vector<int>> children;
+};
+
+struct Test {
+    Test()
+    { }
+
+    bool answer;
+};
+
+void gen(int N) {
+    freopen("big_input.txt", "w", stdout);
+    int T = 100;
+    cout << T << endl;
+    for (int t = 0; t < T; ++t) {
+        cout << N << endl;
+        cout << 0;
+        for (int i = 1; i < N; ++i) {
+            cout << " " << (rand() % i) + 1;
+        }
+        cout << endl;
+    }
+}
+
+int main() {
+    //gen(200000);
+    //return 0;
+    //freopen("input.txt", "r", stdin);
+    //freopen("big_input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    // freopen("corporate_gifting_small.txt", "r", stdin);
+    freopen("corporate_gifting.txt", "r", stdin);
+    //freopen("autocomplete.out.txt", "w", stdout);
+    
+    int T;
+    cin >> T;
+    for (int t = 0; t < T; ++t) {
+        cerr << t << endl;
+        Solver solver;
+        solver.readInput();
+        string answer = solver.solve();
+        cout << "Case #" << (t + 1) << ": " << answer << endl;
+    }
+
+    return 0;
+}

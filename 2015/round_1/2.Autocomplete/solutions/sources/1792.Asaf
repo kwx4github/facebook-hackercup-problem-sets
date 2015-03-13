@@ -1,0 +1,115 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace AutoComplete
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var rows = GetRows(args);
+            int inputs = int.Parse(rows[0]);
+            int j = 1;
+            var cases = new List<List<string>>();
+            for (int i = 1; i <= inputs; i++)
+            {
+                var lst = GetWordList(j, rows);
+                cases.Add(lst);
+                j += lst.Count + 1;
+            }
+
+            j = 1;
+            foreach (var casei in cases)
+            {
+                HandleCase(casei, j);
+                j++;
+            }
+        }
+
+        private static void HandleCase(List<string> casei, int i)
+        {
+            var root = new Node();
+            long types = 0;
+
+            foreach (var word in casei)
+            {
+                long currentTypes = 1;
+                var node = root;
+                bool isNodeAdded = false;
+                long longestType = 0;
+                foreach (char c in word)
+                {
+                    var current = node.nexts.FirstOrDefault(t => t.c == c);
+                    if (current == null)
+                    {
+                        node.nexts.Add(new Node { c = c });
+                        isNodeAdded = true;
+                    }
+                    else
+                    {
+                        currentTypes++;
+                    }
+
+                    if (node.nexts.Count > 1 || node.terminatesHere)
+                    {
+                        longestType = currentTypes;
+                    }
+                    node = node.nexts.FirstOrDefault(t => t.c == c);
+                }
+                node.terminatesHere = true;
+
+                currentTypes = Math.Min(currentTypes, word.Length);
+
+                if (!isNodeAdded && !node.nexts.Any())
+                {
+                    if (longestType == 0)
+                    {
+                        currentTypes = 1;
+                    }
+                    else
+                    {
+                        currentTypes = longestType - 1;
+                    }
+                }
+                types += currentTypes;
+            }
+
+            Console.WriteLine(string.Format("Case #{0}: {1}", i, types));
+        }
+
+        class Node
+        {
+            public char c;
+            public List<Node> nexts;
+            public bool terminatesHere;
+
+            public Node()
+            {
+                nexts = new List<Node>();
+                terminatesHere = false;
+            }
+        }
+
+        private static List<string> GetWordList(int j, string[] rows)
+        {
+            int numRows = int.Parse(rows[j]);
+            var lst = new List<string>();
+            for (int i = j+1; i <= j + numRows; i++)
+            {
+                lst.Add(rows[i]);
+            }
+            return lst;
+        }
+
+        public static string[] GetRows(string[] args)
+        {
+            var s = File.ReadAllText(args[0]);
+            var rows = s.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            return rows;
+        }
+    }
+}

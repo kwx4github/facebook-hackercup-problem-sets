@@ -1,0 +1,158 @@
+#include <stdio.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <vector>
+#include <sstream>
+#include <assert.h>
+#include <queue>
+#include <set>
+#include <unordered_map>
+#include <stack>
+
+#define OUPUT_FILE "out.txt"
+
+using namespace std;
+
+
+typedef struct _treeNode
+{
+    int id; 
+    int unvisitedReports;
+    int cost;
+    _treeNode* boss;
+    vector<_treeNode*> reports;
+} TreeNode;
+
+unordered_map<int, TreeNode*> cache;
+
+TreeNode* ceo;
+
+TreeNode* GetNodeByID(int id)
+{
+    if (cache.find(id) != cache.end())
+        return cache[id];
+
+    TreeNode* node = new TreeNode();
+    node->id = id;
+    node->boss = NULL;
+    node->cost = 1;
+    node->unvisitedReports = 0;
+    cache[id] = node;
+
+    return node;
+}
+
+void AddReport(int bossID, int reportID)
+{
+    TreeNode* boss = GetNodeByID(bossID);
+    if (bossID == 1)
+        ceo = boss;
+
+    TreeNode* report = GetNodeByID(reportID);
+    report->boss = boss;
+    boss->reports.push_back(report);
+    boss->unvisitedReports++;
+}
+
+long long SolveMinCompanyCost(int N)
+{
+    //bottom up
+    queue<TreeNode*> q;
+
+    // put all leaf nodes
+    for (auto v : cache)
+    {
+        TreeNode* node = v.second;
+        if (node->reports.size() == 0)
+        {
+            q.push(node);
+        }
+    }
+
+    long long result = 0;
+    set<long> costs;
+
+    while (!q.empty())
+    {
+        TreeNode* guy = q.front(); q.pop();
+
+        // Compute its min cost
+        for (auto report : guy->reports)
+        {
+            costs.insert(report->cost);
+        }
+        int minCost;
+        for (minCost = 1; minCost <= N; minCost++)
+        {
+            if (costs.find(minCost) == costs.end())
+                break;
+        }
+        costs.clear();
+        guy->cost = minCost;
+
+        result += guy->cost;
+
+
+        // add boss to queue
+        if (guy->boss != NULL)
+        {
+            guy->boss->unvisitedReports--;
+            if (guy->boss->unvisitedReports == 0)
+            {
+                q.push(guy->boss);
+            }
+        }
+    }
+
+    for (auto n : cache)
+    {
+        TreeNode* node = n.second;
+        delete node;
+    }
+    cache.clear();
+
+    return result;
+}
+
+void parseInputAndSolve(const string& inFileName)
+{
+    int T;
+    int N;
+
+    ifstream in(inFileName);
+    ofstream out(OUPUT_FILE);
+
+    if (!out.is_open())
+        cout << "Error!" << endl;
+
+    in >> T;
+    for (int testCase = 1; testCase <= T; testCase++)
+    {
+        in >> N;
+        for (int i = 1; i <= N; i++)
+        {
+            int bossID;
+            in >> bossID;
+            if (bossID != 0)
+                AddReport(bossID, i);
+        }
+
+        long long result = SolveMinCompanyCost(N);
+        out << "Case #" << testCase << ": " << result << endl;
+    }
+
+    out.close();
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc < 2)
+        cout << "Please pass your input file... dude!" << endl;
+
+    parseInputAndSolve(string(argv[1]));    
+
+    return 0;
+}
+

@@ -1,0 +1,119 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Locale;
+import java.util.StringTokenizer;
+import java.util.concurrent.*;
+
+public class D {
+    static BufferedReader br;
+    static StringTokenizer in;
+    static PrintWriter out;
+
+    static public String nextToken() throws IOException {
+        while (in == null || !in.hasMoreTokens())
+            in = new StringTokenizer(br.readLine());
+        return in.nextToken();
+    }
+
+    static public int nextInt() throws IOException {
+        return Integer.parseInt(nextToken());
+    }
+
+    static public double nextDouble() throws IOException {
+        return Double.parseDouble(nextToken());
+    }
+
+    int n;
+    int MAX = 30;
+
+    int[][] ans;
+    int[][] best;
+    ArrayList<Integer>[] e;
+
+    public void recalc(int v) {
+        int min1 = Integer.MAX_VALUE;
+        int min2 = Integer.MAX_VALUE;
+        for (int i = 0; i < ans[v].length; i++) {
+            if (min1 > ans[v][i]) {
+                min2 = min1;
+                min1 = ans[v][i];
+            } else if (min2 > ans[v][i]) {
+                min2 = ans[v][i];
+            }
+        }
+        for (int i = 0; i < ans[v].length; i++) {
+            if (ans[v][i] == min1) {
+                best[v][i] = min2;
+            } else {
+                best[v][i] = min1;
+            }
+        }
+    }
+
+    public void go(int v) {
+        for (int i = 0; i < ans[v].length; i++) {
+            ans[v][i] = i + 1;
+        }
+
+        for (int u : e[v]) {
+            go(u);
+            for (int i = 0; i < ans[v].length; i++)
+                ans[v][i] += best[u][i];
+        }
+
+        recalc(v);
+    }
+
+    String solve() {
+        ans = new int[n][MAX];
+        best = new int[n][MAX];
+
+        go(0);
+
+        int best = Integer.MAX_VALUE;
+        for (int i = 0; i < ans[0].length; i++) {
+            best = Math.min(best, ans[0][i]);
+        }
+
+        return "" + best;
+    }
+
+    public D() throws IOException {
+        n = nextInt();
+        e = new ArrayList[n];
+        for (int i = 0; i < n; i++)
+            e[i] = new ArrayList<Integer>();
+
+        for (int i = 0; i < n; i++) {
+            int p = nextInt() - 1;
+            if (p != -1) e[p].add(i);
+        }
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException, ExecutionException {
+        ExecutorService executor = Executors.newFixedThreadPool(4);
+        Locale.setDefault(Locale.US);
+        br = new BufferedReader(new FileReader("input.txt"));
+        PrintWriter out = new PrintWriter("output.txt");
+        int tests = nextInt();
+        @SuppressWarnings("unchecked")
+        Future<String>[] outputs = new Future[tests];
+        for (int t = 0; t < tests; t++) {
+            final D testCase = new D();
+            outputs[t] = executor.submit(new Callable<String>() {
+                @Override
+                public String call() {
+                    return testCase.solve();
+                }
+            });
+        }
+        for (int t = 0; t < tests; t++) {
+            out.println("Case #" + (t + 1) + ": " + outputs[t].get());
+        }
+        out.close();
+        executor.shutdown();
+    }
+}

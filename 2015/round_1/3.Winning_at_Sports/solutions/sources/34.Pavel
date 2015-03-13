@@ -1,0 +1,204 @@
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Threading;
+using kp.Algo;
+
+namespace HackerCup
+{
+	class Solution
+	{
+		private const bool UseMultiThreading = false;
+		private const bool UseStandardIO = false;
+		private const string InputFile = @"C:\Users\kp\Downloads\winning_at_sports.txt";
+		private const string OutputFile = @"D:\docs\Dropbox\Olymp\Sources\_submit\HackerCup 2015 Round 1\C.cs" + ".output.txt";
+
+		private const int MOD = 1000000007;
+		private int A, B, resFree, resFull;
+
+		void ReadData()
+		{
+			var data = NextToken().Split( new[] { '-' }, StringSplitOptions.RemoveEmptyEntries );
+			A = int.Parse( data[0] );
+			B = int.Parse( data[1] );
+		}
+
+		static void PreSolve()
+		{
+
+		}
+
+		void Solve()
+		{
+			var dpFree = new int[A + 2, B + 2];
+			dpFree[A, B] = 1;
+			for ( int a = A; a >= 0; a-- )
+			{
+				for ( int b = B; b >= 0; b-- )
+				{
+					int res;
+
+					if ( a == A && b == B )
+						res = 1;
+					else if ( b >= a && ( a != 0 || b != 0 ) )
+						res = 0;
+					else
+						res = ( dpFree[a + 1, b] + dpFree[a, b + 1] ) % MOD;
+
+					dpFree[a, b] = res;
+				}
+			}
+
+			resFree = dpFree[0, 0];
+
+			var dpFull = new int[A + 2, B + 2];
+			dpFull[A, B] = 1;
+			for ( int a = A; a >= 0; a-- )
+			{
+				for ( int b = B; b >= 0; b-- )
+				{
+					int res;
+
+					if ( a == A && b == B )
+						res = 1;
+					else if ( a > b && b != B )
+						res = 0;
+					else
+						res = ( dpFull[a + 1, b] + dpFull[a, b + 1] ) % MOD;
+
+					dpFull[a, b] = res;
+				}
+			}
+
+			resFull = dpFull[0, 0];
+		}
+
+		void WriteAnswer()
+		{
+			Out.WriteLine( resFree + " " + resFull );
+		}
+
+		#region ...
+
+		void run()
+		{
+			if ( UseStandardIO )
+			{
+				var inputFileName = Path.Combine( Path.GetDirectoryName( GetType().Assembly.Location ), "input.txt" );
+				_inputStream = File.OpenText( inputFileName );
+				_outputStream = Console.Out;
+			}
+			else
+			{
+				_inputStream = File.OpenText( InputFile );
+				_outputStream = File.CreateText( OutputFile );
+			}
+
+			PreSolve();
+
+			int testsCount = int.Parse( _inputStream.ReadLine() );
+			var solvers = new Solution[testsCount];
+			for ( int i = 0; i < testsCount; ++i )
+			{
+				solvers[i] = new Solution();
+				solvers[i].ReadData();
+			}
+
+			int done = 0;
+			if ( UseMultiThreading )
+			{
+				solvers.AsParallel().WithDegreeOfParallelism( Math.Min( Environment.ProcessorCount, 2 ) - 1 ).ForAll(
+					solver => { solver.Solve(); Console.Title = ( ++done ).ToString() + " of " + testsCount; } );
+			}
+			else
+			{
+				for ( int i = 0; i < testsCount; ++i )
+				{
+					solvers[i].Solve();
+					Console.Title = ( ++done ).ToString() + " of " + testsCount;
+				}
+			}
+			for ( int i = 0; i < testsCount; ++i )
+			{
+				Out.Write( string.Format( "Case #{0}: ", i + 1 ) );
+				solvers[i].WriteAnswer();
+			}
+			Out.Flush();
+			if ( UseStandardIO )
+			{
+				Console.ReadLine();
+			}
+			else
+			{
+				Out.Close();
+			}
+		}
+
+		static TextWriter Out { get { return _outputStream; } }
+
+		private static TextReader _inputStream;
+		private static TextWriter _outputStream;
+
+		public BigInteger NextBigInteger()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return BigInteger.Parse( token );
+		}
+
+		public double NextDouble()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return double.Parse( token, CultureInfo.InvariantCulture );
+		}
+
+		public long NextLong()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return long.Parse( token );
+		}
+
+		public int NextInt()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return int.Parse( token );
+		}
+
+		private static readonly Queue<string> Tokens = new Queue<string>();
+		public string NextToken()
+		{
+			if ( Tokens.Count > 0 )
+			{
+				return Tokens.Dequeue();
+			}
+			while ( Tokens.Count == 0 )
+			{
+				var line = _inputStream.ReadLine();
+				if ( line == null ) return null;
+				foreach ( var token in line.Split( _whiteSpaces, StringSplitOptions.RemoveEmptyEntries ) )
+				{
+					Tokens.Enqueue( token );
+				}
+			}
+			return Tokens.Count == 0 ? null : Tokens.Dequeue();
+		}
+
+		private readonly char[] _whiteSpaces = { ' ', '\r', '\n', '\t' };
+
+		static void Main()
+		{
+			new Thread( new Solution().run, 64 * 1024 * 1024 ).Start();
+		}
+
+		#endregion
+	}
+}
+
+namespace kp.Algo { }

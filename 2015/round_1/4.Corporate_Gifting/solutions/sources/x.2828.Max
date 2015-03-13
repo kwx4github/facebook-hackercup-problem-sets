@@ -1,0 +1,103 @@
+from collections import defaultdict
+from itertools import takewhile, count
+import sys
+
+class Tree(object):
+    def __init__(self, idx):
+        self.id = idx
+        self.underlings = []
+        self.manager = None
+        self.invalids = set()
+        self.price = -1
+
+    def __repr__(self):
+        return "(Node:" + str(self.id) + ")"
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def __neq__(self, other):
+        return self.id != other.id
+
+def sort_topologically_stackless(graph):
+    levels_by_name = {}
+    names_by_level = defaultdict(set)
+    def add_level_to_name(name, level):
+        levels_by_name[name] = level
+        names_by_level[level].add(name)
+    def walk_depth_first(name):
+        stack = [name]
+        while(stack):
+            name = stack.pop()
+            if name in levels_by_name:
+                continue
+            if name not in graph or not graph[name]:
+                level = 0
+                add_level_to_name(name, level)
+                continue
+            children = graph[name]
+            children_not_calculated = [child for child in children if child not in levels_by_name]
+            if children_not_calculated:
+                stack.append(name)
+                stack.extend(children_not_calculated)
+                continue
+            level = 1 + max(levels_by_name[lname] for lname in children)
+            add_level_to_name(name, level)
+    for name in graph:
+        walk_depth_first(name)
+    return list(takewhile(lambda x: x is not None, (names_by_level.get(i, None) for i in count())))
+
+def calculate_price(node):
+    if len(node.underlings) == 0:
+        node.price = 1
+        node.manager.invalids.add(1)
+        return node.price
+    for i in xrange(1, 500000):
+        if i not in node.invalids:
+            node.price = i
+            if node.manager != None:
+                node.manager.invalids.add(i)
+            return i
+    assert(False)
+
+def solve(n_people, connections):
+    people = {}
+    for i, connection in enumerate(connections):
+        people[i+1] = Tree(i+1)
+        
+    for i, connection in enumerate(connections):
+        if connection != 0:
+            if connection not in people:
+                people[connection] = Tree(connection)
+            people[connection].underlings.append(people[i+1])
+            people[i+1].manager = people[connection]
+    graph = {}
+    for i, connection in enumerate(connections):
+        graph[i+1] = []
+        if connection != 0:
+            if connection not in graph:
+                graph[connection] = []
+            graph[connection].append(i+1)
+    groups = sort_topologically_stackless(graph)
+    #print(groups)
+    result = 0
+    for group in groups:
+        for node in group:
+            result += calculate_price(people[node])
+    return result
+    
+"""def test():
+    n_people = 200000
+    connections = [x for x in range(0, n_people)]
+    print(solve(n_people, connections))
+
+test()
+sys.exit(0)"""
+ 
+n_cases = int(sys.stdin.readline())
+for i in range(n_cases):
+    n_people = int(sys.stdin.readline())
+    connections = [int(x) for x in sys.stdin.readline().split()]
+    result = solve(n_people, connections)
+    print("Case #%d: %d" % (i+1, result))
+    

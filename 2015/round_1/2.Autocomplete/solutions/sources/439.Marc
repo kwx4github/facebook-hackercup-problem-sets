@@ -1,0 +1,111 @@
+package de.mprengemann.fb.hackercup15.problem5;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.HashMap;
+import java.util.Queue;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+public class Problem5 {
+    private String pathToFile;
+    private Queue<String> inputFileLines = new ArrayDeque<String>();
+
+    public Problem5(String pathToFile) {
+        this.pathToFile = pathToFile;
+    }
+
+    public void solve(String outputFile) {
+        PrintWriter out = null;
+        try {
+            inputFileLines = new ArrayDeque<String>(Files.readAllLines(Paths.get(pathToFile), UTF_8));
+            out = new PrintWriter(outputFile);
+            int testCases = Integer.parseInt(inputFileLines.poll());
+            for (int testCase = 1; testCase <= testCases; testCase++) {
+                solveTestCase(testCase, out);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+        }
+        System.out.println("Finished");
+    }
+
+    private void solveTestCase(int testCaseNumber, PrintWriter out) {
+        TestCase testCase = new TestCase();
+        testCase.setWordCount(inputFileLines.poll());
+        int letterCount = 0;
+        for (int i = 0; i < testCase.getWordCount(); i++) {
+            String word = inputFileLines.poll();
+            int letters = testCase.addWord(word);
+            letterCount += letters;
+        }
+        System.out.println(String.format("Case #%d: %s", testCaseNumber, letterCount));
+        out.println(String.format("Case #%d: %s", testCaseNumber, letterCount));
+    }
+
+    private class TestCase {
+
+        private HashMap<Character, Node> roots = new HashMap<Character, Node>();
+        private int wordCount;
+
+        public TestCase() {
+        }
+
+        private int insertWord(String string, Node node, int number) {
+            final Node nextChild;
+            final int nextNumber;
+            if (node != null) {
+                if (node.children.containsKey(string.charAt(0))) {
+                    nextChild = node.children.get(string.charAt(0));
+                    nextNumber = number + 1;
+                } else {
+                    if (node.children.size() == 0 && !node.endOfWord) {
+                        nextNumber = number;
+                    } else {
+                        nextNumber = number + 1;
+                    }
+                    nextChild = new Node();
+                    node.children.put(string.charAt(0), nextChild);
+                }
+            } else {
+                if (!roots.containsKey(string.charAt(0))) {
+                    roots.put(string.charAt(0), new Node());
+                }
+                nextChild = roots.get(string.charAt(0));
+                nextNumber = 1;
+            }
+
+            if (string.length() == 1) {
+                nextChild.endOfWord = true;
+                return nextNumber;
+            } else {
+                return insertWord(string.substring(1), nextChild, nextNumber);
+            }
+        }
+
+        public void setWordCount(String input) {
+            this.wordCount = Integer.parseInt(input);
+        }
+
+        public int getWordCount() {
+            return wordCount;
+        }
+
+        public int addWord(String word) {
+            return insertWord(word, null, 0);
+        }
+
+        class Node {
+            public Node parent;
+            public Boolean endOfWord = false;
+            public HashMap<Character, Node> children = new HashMap<Character, Node>();
+        }
+    }
+}

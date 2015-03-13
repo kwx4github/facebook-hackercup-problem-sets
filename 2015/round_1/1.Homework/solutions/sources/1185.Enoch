@@ -1,0 +1,246 @@
+import org.apache.commons.math3.primes.Primes;
+
+import java.io.*;
+import java.util.*;
+
+public class Homework {
+    static Map<Integer, Integer> primeMap = new HashMap<Integer, Integer>();
+    static Map<Integer, Integer> knownPrimacity = new HashMap<Integer, Integer>();
+
+    public static void main(String[] args) {
+        BufferedReader br = null;
+        PrintWriter out = null;
+        ObjectInputStream ois = null;
+        ObjectOutputStream oos =null;
+        int T;
+        try {
+            ois = new ObjectInputStream(new FileInputStream("primacity.ser"));
+            knownPrimacity = (Map<Integer, Integer>) ois.readObject();
+            ois.close();
+
+
+            br = new BufferedReader(new FileReader("homework_example_input.txt"));
+            out
+                    = new PrintWriter(new BufferedWriter(new FileWriter("homework_output.txt")));
+
+            T = Integer.valueOf(br.readLine());
+            ArrayList<Case> cases = new ArrayList<Case>(T);
+            for (int i = 0; i < T; i++) {
+
+                String line = br.readLine();
+                String[] lineArray = line.split(" ");
+
+                int A = Integer.valueOf(lineArray[0]);
+                int B = Integer.valueOf(lineArray[1]);
+                int K = Integer.valueOf(lineArray[2]);
+
+                Case thisCase = new Case(i+1,A,B,K);
+                cases.add(thisCase);
+
+            }
+
+            Map<Integer,Integer> solutions = new HashMap<Integer,Integer>();
+            Collections.sort(cases);
+            for (Case thisCase : cases) {
+                int solution = count2(thisCase.A,thisCase.B,thisCase.K);
+                solutions.put(thisCase.caseNum,solution);
+            }
+
+            for (int i=1; i<= T; i++) {
+
+                out.println("Case #" + i + ": " + solutions.get(i));
+            }
+
+
+            /*
+            oos = new ObjectOutputStream(
+                    new FileOutputStream("primacity.ser")
+            );
+            oos.writeObject(knownPrimacity);
+            oos.flush();
+            */
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                br.close();
+                ois.close();
+                if (oos!=null) {
+                    oos.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            out.close();
+
+        }
+
+
+    }
+
+    static int count1(int i, int A, int B, int K) {
+        if (K == 0) {
+            return 1;
+        }
+
+        if (A <= 1 && B <= 1) {
+            return 0;
+        }
+
+
+        int p = prime(i);
+        if (p > B) {
+            return 0;
+        }
+
+        int total = 0;
+
+        int pPow = p;
+        while (true) {
+            if (pPow > B) {
+                break;
+            }
+
+            int newA = (int) Math.ceil(((double) A) / pPow);
+            int newB = (int) Math.floor(((double) B) / pPow);
+
+            total += count1(i + 1, newA, newB, K - 1);
+
+            pPow = pPow * p;
+        }
+
+        total += count1(i + 1, A, B, K);
+        return total;
+    }
+
+    static int count2(int A, int B, int K) {
+        if (K>8) {
+            return 0;
+        }
+
+        if (K==8) {
+            knownPrimacity.put(9699690,8);
+            return (A<= 9699690 && B>= 9699690)? 1: 0;
+        }
+
+
+        int count = 0;
+        for (int n = A; n <= B; n++) {
+            Integer primacity = primacity2(n, K, 1);
+            if (primacity!= null) {
+                // System.out.println(n + "\t" + primacity);
+
+                if ((primacity.equals(K))) {
+                    count += 1;
+                }
+            }
+        }
+        return count;
+    }
+
+    static Integer primacity2(int n, int K, int startPrime) {
+        if (K == 0) {
+            return (n == 1) ? 0 : null;
+        }
+
+        if (n==1) {
+            return 0;
+        }
+
+        Integer primacity = knownPrimacity.get(n);
+        if (primacity != null) {
+            return primacity;
+        }
+
+        for (int i = startPrime; true; i++) {
+            int p = prime(i);
+            if (p > n) {
+                break;
+            }
+
+            if (n % p == 0) {
+
+                // find highest power of p that divides it
+                int pPow = p;
+                int highestPow = p;
+
+                while (n % pPow == 0) {
+                    highestPow = pPow;
+                    pPow = pPow * p;
+                }
+
+                int m = n / highestPow;
+
+                Integer mPrimacity = primacity2(m, K - 1, i);
+                if (mPrimacity != null) {
+                    knownPrimacity.put(n, 1 + mPrimacity);
+                    return 1 + mPrimacity;
+                } else {
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    static boolean primacity(int n, int K) {
+
+
+        int factors = 0;
+        int half = (int) (Math.floor((double) n / 2));
+        for (int i = 1; true; i++) {
+            int p = prime(i);
+            if (p > n || (K > 1) && (p > half)) {
+                break;
+            }
+            if (n % p == 0) {
+                factors += 1;
+                if (factors > K) {
+                    break;
+                }
+            }
+        }
+
+        return factors == K;
+    }
+
+    static int prime(int i) {
+        Integer p = primeMap.get(i);
+        if (p != null) {
+            return p;
+        }
+
+        if (i == 1) {
+            primeMap.put(1, 2);
+            return 2;
+        }
+
+
+        p = Primes.nextPrime(prime(i - 1) + 1);
+        primeMap.put(i, p);
+        return p;
+    }
+}
+
+class Case implements Comparable<Case>{
+    public final int caseNum;
+    public final int A;
+    public final int B;
+    public final int K;
+
+    public Case(int caseNum, int A, int B, int K) {
+        this.caseNum = caseNum;
+        this.A = A;
+        this.B = B;
+        this.K = K;
+    }
+
+    @Override
+    public int compareTo(Case case2){
+        return case2.K-this.K;
+    }
+}

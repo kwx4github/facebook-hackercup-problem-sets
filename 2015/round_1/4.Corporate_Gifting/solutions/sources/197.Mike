@@ -1,0 +1,85 @@
+package main
+
+import (
+  "os"
+  "bufio"
+  "strconv"
+  "fmt"
+)
+
+func scanInt(scanner *bufio.Scanner) int {
+  scanner.Scan()
+  x, _ := strconv.Atoi(scanner.Text())
+  return x
+}
+
+var numColors int = 100
+
+type Node struct {
+  id int
+  costs []int
+  children []*Node
+}
+
+func descend(node *Node) {
+  for _, child := range(node.children) {
+    descend(child)
+  }
+  for i := 0; i < numColors; i++ {
+    cost := i+1
+    for _, child := range(node.children) {
+      childCost := -1
+      for j := 0; j < numColors; j++ {
+        if j != i && (childCost == -1 || child.costs[j] < childCost) {
+          childCost = child.costs[j]
+        }
+      }
+      cost += childCost
+    }
+    node.costs[i] = cost
+  }
+}
+
+func main() {
+  scanner := bufio.NewScanner(os.Stdin)
+  scanner.Split(bufio.ScanWords)
+  writer := bufio.NewWriter(os.Stdout)
+  defer writer.Flush()
+
+  if len(os.Args) == 2 {
+    numColors, _ = strconv.Atoi(os.Args[1])
+  }
+
+  numCases := scanInt(scanner)
+  for caseIndex := 1; caseIndex <= numCases; caseIndex++ {
+    n := scanInt(scanner)
+    nodes := []*Node{ nil }
+    for v := 1; v <= n; v++ {
+      nodes = append(nodes, &Node{ v, make([]int, numColors), []*Node{} })
+    }
+    scanInt(scanner)
+    for v := 2; v <= n; v++ {
+      u := scanInt(scanner)
+      nodes[u].children = append(nodes[u].children, nodes[v])
+    }
+    /*
+    for u := 1; u <= n; u++ {
+      writer.WriteString(fmt.Sprintf("%d:", u))
+      for _, v := range nodes[u].children {
+        writer.WriteString(fmt.Sprintf(" %d", v.id))
+      }
+      writer.WriteString("\n")
+    }
+    */
+    descend(nodes[1])
+    root := nodes[1]
+    best := root.costs[0]
+    for i := 1; i < numColors; i++ {
+      cost := root.costs[i]
+      if cost < best {
+        best = cost
+      }
+    }
+    writer.WriteString(fmt.Sprintf("Case #%d: %d\n", caseIndex, best))
+  }
+}

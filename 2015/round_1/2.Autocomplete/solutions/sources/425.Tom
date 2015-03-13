@@ -1,0 +1,112 @@
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#define MAX 26
+#define MAX_WORD_LEN 1000000
+
+typedef struct Tree {
+	struct Tree *children;
+} Tree;
+
+int is_empty(Tree *tree) {
+	return tree->children == NULL;
+}
+
+void init_children(Tree *tree) {
+	if (is_empty(tree)) {
+		tree->children = (Tree *) calloc(sizeof(Tree), MAX);
+	}
+}
+
+void free_tree(Tree *root) {
+	Tree* children;
+	Tree dummy = {0};
+	init_children(&dummy);
+	children = dummy.children;
+	children[0].children = children;
+	children[1].children = root->children;
+	root->children = NULL;
+	while (1) {
+		int i = 1;
+		while (i < MAX && is_empty(children + i)) {
+			i++;
+		}
+		if (i == MAX) {
+			Tree* next = children[0].children;
+			children[0].children = NULL;
+			free(children);
+			if (children == dummy.children) {
+				return;
+			}
+			children = next;
+		} else {
+			Tree* next = children[i].children;
+			children[i].children = next[0].children;
+			next[0].children = children;
+			children = next;
+		}
+	}
+
+	/*
+	if (tree->children != NULL) {
+		int i;
+		for (i = 0; i < MAX; i++) {
+			free_tree(tree->children + i);
+		}
+		free(tree->children);
+		tree->children = NULL;
+	}
+	*/
+}
+
+Tree *get_child(Tree *tree, char letter) {
+	if (letter < 'a' || letter > 'z') {
+		fprintf(stderr, "invalid letter: %c\n", letter);
+	}
+	init_children(tree);
+	return tree->children + (letter - 'a');
+}
+
+void insert(Tree *node, char *word) {
+	while (*word != '\0') {
+		node = get_child(node, *word);
+		word++;
+	}
+	init_children(node);
+}
+
+int prefix_length(Tree *node, char *word) {
+	int i;
+	for (i = 0; *word != '\0'; i++, word++) {
+		node = get_child(node, *word);
+		if (is_empty(node)) {
+			return i + 1;
+		}
+	}
+	return i;
+}
+
+int main() {
+	int ts, t, n, i, count, len;
+	char word[MAX_WORD_LEN + 2];
+	Tree tree = {0};
+	scanf("%d ", &ts);
+	for (t = 1; t <= ts; t++) {
+		count = 0;
+		scanf("%d ", &n);
+		for (i = 0; i < n; i++) {
+			fgets(word, MAX_WORD_LEN + 1, stdin);
+			len = strlen(word);
+			if (word[len - 1] == '\n') {
+				word[len - 1] = '\0';
+			}
+			//printf("%d\n", prefix_length(&tree, word));
+			count += prefix_length(&tree, word);
+			insert(&tree, word);
+		}
+		free_tree(&tree);
+		printf("Case #%d: %d\n", t, count);
+	}
+	return 0;
+}

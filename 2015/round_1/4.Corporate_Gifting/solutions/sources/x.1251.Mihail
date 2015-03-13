@@ -1,0 +1,202 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+
+
+public class Solution4 {
+	public static void main(String[] args){
+		Solution4 solution = new Solution4();
+		TestCase[] tests = solution.readFile(args[0]);
+		solution.process(tests);
+		solution.writeFile(args[1], tests);
+	}	
+	
+	private TestCase[] readFile(String fileName) {
+		TestCase[] result = null;
+		FileReader fr = null;
+		BufferedReader br = null;
+		try {
+			fr = new FileReader(fileName); 
+			br = new BufferedReader(fr);
+			String s = br.readLine();
+			int n = Integer.parseInt(s);
+			result = new TestCase[n];
+			for (int i = 0; i < n; i++) {
+				int nodes = Integer.parseInt(br.readLine());
+				String[] line = br.readLine().split(" ");
+				int[] ids = new int[nodes];
+				for (int j = 0; j < line.length; j++) {
+					ids[j] = Integer.parseInt(line[j]); 
+				}
+				result[i] = new TestCase(ids);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (br != null) {
+				try {
+					br.close();
+				} catch (Exception e) {
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	private void writeFile(String fileName, TestCase[] list) {
+		File fout = new File(fileName);
+		FileOutputStream fos;
+		BufferedWriter bw = null;
+		try {
+			fos = new FileOutputStream(fout);
+			bw = new BufferedWriter(new OutputStreamWriter(fos));
+			for (int i = 0; i < list.length; i++) {
+				bw.write("Case #" + (i + 1) +  ": " + list[i].MinTotalExpenditure);
+				bw.newLine();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (bw != null) {
+				try {
+					bw.close();
+				} catch (Exception e) {
+				}
+			}
+		}
+	}
+	
+	private void process(TestCase[] input) {
+		for (TestCase t : input) {
+			t.process(t);
+		}
+	}
+	
+	public class TestCase {
+		public long MinTotalExpenditure = 0;
+		public int[] ids;
+		private TreeNode[] idsNode;
+		private TreeNode root;
+		
+		public TestCase(int[] ids) {
+			this.ids = ids;
+		}
+				
+		public void process(TestCase test) {
+			MinTotalExpenditure = 0;
+			idsNode = new TreeNode[ids.length];
+			buildTree();
+			traverse();
+			// traverseRecursive();
+		}
+		
+		private void buildTree() {
+			root = new TreeNode(null);
+			idsNode[0] = root;
+			for (int i = 1; i < ids.length; i++) {
+				TreeNode parent = idsNode[ids[i] - 1]; 
+				TreeNode node = new TreeNode(parent);
+				if (parent != null)
+					parent.children.add(node);
+				idsNode[i] = node;
+			}
+		}
+		
+		private void traverseRecursive() {
+			traverseRecursive(root);
+		}
+		
+		private int traverseRecursive(TreeNode node) {
+			if (node.children.size() == 0) {
+				// terminal node
+				int gift = 1;
+				MinTotalExpenditure += gift;
+				return gift;
+			}
+			
+			for (TreeNode child : node.children) {
+				int weight = traverseRecursive(child);
+				node.hash.add(weight);
+			}
+			
+			int gift = ids.length;
+			for (int i = 1; i <= ids.length; i++) {
+				if (!node.hash.contains(i)) {
+					gift = i;
+					break;
+				}
+			}
+			
+			MinTotalExpenditure += node.getGift(ids.length);
+			return gift;
+		}
+		
+		private void traverse() {
+			Stack<TreeNode> stack = new Stack<TreeNode>();
+			stack.add(root);
+			while (!stack.empty()) {
+				TreeNode node = stack.peek();
+				if (node.children.size() == 0) {
+					int gift = 1;
+					if (node.parent != null) {
+						node.parent.hash.add(gift);
+					}
+					MinTotalExpenditure += gift;
+					stack.pop();
+				} else {
+					if (!node.visited) {
+						for(TreeNode child : node.children) {
+							stack.push(child);
+						}
+						
+						node.visited = true;
+					} else {
+						int gift = node.getGift(ids.length);
+						if (node.parent != null) {
+							node.parent.hash.add(gift);
+						}
+						MinTotalExpenditure += gift;
+						stack.pop();
+					}
+				}
+			}
+		}
+	}
+	
+	public class TreeNode {
+		public List<TreeNode> children;
+		public TreeNode parent;
+		public Set<Integer> hash;
+		public boolean visited;
+		
+		public TreeNode(TreeNode parent) {
+			this.parent = parent;
+			this.hash = new HashSet<Integer>();
+			children = new ArrayList<TreeNode>();
+			visited = false;
+		}
+		
+		private int getGift(int nodesCount) {
+			int gift = nodesCount;
+			for (int i = 1; i <= nodesCount; i++) {
+				if (!hash.contains(i)) {
+					gift = i;
+					break;
+				}
+			}
+			
+			return gift;
+		}
+	}
+}

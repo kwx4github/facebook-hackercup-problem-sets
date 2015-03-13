@@ -1,0 +1,134 @@
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <deque>
+#include <iostream>
+#include <limits>
+#include <numeric>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+#define MP make_pair
+#define all(v) (v).begin(), (v).end()
+#define PROBLEM_ID "corporate"
+
+#pragma comment(linker, "/STACK:36777216")
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<vvi> vvvi;
+typedef vector<bool> vb;
+typedef long long ll;
+typedef pair<int, int> pii;
+
+const int MAXV = 30;
+const int INF = 1000000000;
+
+int Go(int root, const vvi& children, vvi& min_sum, vvi& min_sum_except) {
+  if (children.empty()) {
+    for (int i = 1; i < MAXV; ++i) {
+      min_sum[root][i] = i;
+      min_sum_except[root][i] = (i == 1 ? 2 : 1);
+    }
+    return *min_element(min_sum[root].begin() + 1, min_sum[root].end());
+  }
+  for (int i = 0; i < children[root].size(); ++i) {
+    Go(children[root][i], children, min_sum, min_sum_except);
+  }
+  for (int v = 1; v < MAXV; ++v) {
+    int s = v;
+    for (int i = 0; i < children[root].size(); ++i) {
+      int child = children[root][i];
+      s += min_sum_except[child][v];
+    }
+    min_sum[root][v] = s;
+  }
+  vi min_less(MAXV);
+  min_less[1] = INF;
+  for (int v = 2; v < MAXV; ++v) {
+    min_less[v] = min(min_less[v - 1], min_sum[root][v - 1]);
+  }
+  vi min_more(MAXV);
+  min_more[MAXV - 1] = INF;
+  for (int v = MAXV - 2; v >= 1; --v) {
+    min_more[v] = min(min_more[v + 1], min_sum[root][v + 1]);
+  }
+  for (int v = 1; v < MAXV; ++v) {
+    min_sum_except[root][v] = min(min_less[v], min_more[v]);
+  }
+  return *min_element(min_sum[root].begin() + 1, min_sum[root].end());
+}
+
+void GetEdges(int root, int value, const vvi& children, const vvi& min_sum, vi& edges) {
+  edges[root] = value;
+  for (int i = 0; i < children[root].size(); ++i) {
+    int child = children[root][i];
+    int min_v = -1;
+    int min_min_sum = INF;
+    for (int v = 1; v < MAXV; ++v) {
+      if (v == value) {
+        continue;
+      }
+      if (min_sum[child][v] < min_min_sum) {
+        min_min_sum = min_sum[child][v];
+        min_v = v;
+      }
+    }
+    GetEdges(child, min_v, children, min_sum, edges);
+  }
+}
+
+int main() {
+  /*vi min_size;
+  min_size.push_back(2);
+  min_size.push_back(3);
+  for (int v = 3; v <= 100; ++v) {
+    int s = 1;
+    for (int i = 0; i < v - 1; ++i) {
+      s += min_size[i] - 1;
+    }
+    min_size.push_back(s);
+    cerr << v << ' ' << min_size.back() << endl;
+  }*/
+  freopen(PROBLEM_ID".in", "r", stdin);
+  freopen(PROBLEM_ID".out", "w", stdout);
+  int tests;
+  cin >> tests;
+  for (int test_index = 0; test_index < tests; ++test_index) {
+    int n;
+    cin >> n;
+    vvi children(n);
+    for (int i = 0; i < n; ++i) {
+      int p;
+      cin >> p;
+      if (i == 0) {
+        continue;
+      }
+      children[p - 1].push_back(i);
+    }
+    vvi min_sum(n, vi(MAXV, INF));
+    vvi min_sum_except(n, vi(MAXV, INF));
+    int result = Go(0, children, min_sum, min_sum_except);
+    cout << "Case #" << test_index + 1 << ": " << result << endl;
+    cerr << "Case #" << test_index + 1 << ": " << result << endl;
+    vi edges(n);
+    int top_value = min_element(min_sum[0].begin() + 1, min_sum[0].end()) - min_sum[0].begin();
+    cerr << "top_value = " << top_value << endl;
+    /*GetEdges(0, top_value, children, min_sum, edges);
+    for (int i = 0; i < n; ++i) {
+      cerr << i + 1 << ' ' << edges[i] << endl;
+    }
+    cerr << endl;*/
+  }
+  return 0;
+}

@@ -1,0 +1,205 @@
+package abishev.fb2015.round1.p4;
+
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class CorporateGifting implements TaskFactory {
+    static class Result {
+        final int k1;
+        final long min1;
+        final int k2;
+        final long min2;
+
+        Result(int k1, long min1, int k2, long min2) {
+            this.k1 = k1;
+            this.min1 = min1;
+            this.k2 = k2;
+            this.min2 = min2;
+        }
+    }
+
+    static class StackFrame {
+        final int v;
+        final Queue<Integer> queue;
+
+        public StackFrame(int v, Queue<Integer> queue) {
+            this.v = v;
+            this.queue = queue;
+        }
+    }
+
+    @Override
+    public Task create() {
+
+        return new Task() {
+            int n;
+            int[] p;
+
+            Result[] results;
+
+            @Override
+            public void input(Scanner input) {
+                n = input.nextInt();
+                p = new int[n];
+                for (int i = 0; i < n; i++) {
+                    p[i] = input.nextInt() - 1;
+                }
+            }
+
+            @Override
+            public void run() {
+                results = new Result[n];
+
+                Map<Integer, List<Integer>> backRefs = new HashMap<Integer, List<Integer>>();
+                for (int i = 0; i < n; i++) {
+                    backRefs.put(i, new ArrayList<Integer>());
+                }
+                for (int i = 1; i < n; i++) {
+                    backRefs.get(p[i]).add(i);
+                }
+
+                Stack<StackFrame> stack = new Stack<StackFrame>();
+                stack.add(new StackFrame(0, new LinkedList<Integer>(backRefs.get(0))));
+                while (!stack.isEmpty()) {
+                    StackFrame cur = stack.peek();
+                    if (cur.queue.isEmpty()) {
+                        List<Integer> curBackRefs = backRefs.get(cur.v);
+                        Result[] children = new Result[curBackRefs.size()];
+                        for (int i = 0; i < children.length; i++) {
+                            children[i] = results[curBackRefs.get(i)];
+                        }
+                        results[cur.v] = solve(children);
+
+                        stack.pop();
+                    } else {
+                        int newElement = cur.queue.poll();
+                        assert results[newElement] == null;
+                        stack.add(new StackFrame(newElement, new LinkedList<Integer>(backRefs.get(newElement))));
+                    }
+                }
+            }
+
+            private Result solve(Result[] children) {
+                int k1 = -1, k2 = -1;
+                long min1 = Long.MAX_VALUE, min2 = Long.MAX_VALUE;
+
+                long commonSum = 0;
+                for (Result child : children) {
+                    commonSum += child.min1;
+                }
+
+                Map<Integer, Long> delta = new HashMap<Integer, Long>();
+                for (Result child : children) {
+                    delta.put(child.k1, delta.getOrDefault(child.k1, 0L) + child.min2 - child.min1);
+                }
+
+                int added = 0;
+                for (int i = 1; i <= n; i++) {
+                    if (!delta.containsKey(i)) {
+                        delta.put(i, 0L);
+                        added++;
+                    }
+                    if (added == 2) {
+                        break;
+                    }
+                }
+
+                for (Map.Entry<Integer, Long> entry : delta.entrySet()) {
+                    int k = entry.getKey();
+                    long min = commonSum + k + entry.getValue();
+
+                    if (min <= min1) {
+                        min2 = min1;
+                        k2 = k1;
+                        min1 = min;
+                        k1 = k;
+                    } else if (min <= min2) {
+                        min2 = min;
+                        k2 = k;
+                    }
+                }
+
+                return new Result(k1, min1, k2, min2);
+            }
+
+            @Override
+            public void output(PrintWriter output) {
+                output.println(results[0].min1);
+            }
+        };
+    }
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+//        Runner.run(new CorporateGifting());
+        Runner.run(new CorporateGifting(), "corporate_gifting.txt", "corporate_gifting.out");
+    }
+}
+
+interface TaskFactory {
+    Task create();
+}
+
+interface Task {
+    void input(Scanner input);
+
+    void run();
+
+    void output(PrintWriter output);
+}
+
+class Runner {
+    public static void run(TaskFactory taskFactory, InputStream is, OutputStream os) throws InterruptedException {
+        Scanner input = new Scanner(is);
+        PrintWriter output = new PrintWriter(os);
+        int t = input.nextInt();
+        input.nextLine();
+        List<Task> tasks = Collections.synchronizedList(new ArrayList<Task>());
+        for (int tt = 1; tt <= t; tt++) {
+            Task task = taskFactory.create();
+            task.input(input);
+            tasks.add(task);
+        }
+
+        final AtomicInteger doneTasks = new AtomicInteger(0);
+        final CountDownLatch latch = new CountDownLatch(t);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        for (final Task task : tasks) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    task.run();
+                    int doneTasksV = doneTasks.incrementAndGet();
+                    if (doneTasksV % 5 == 0) {
+                        System.out.println("*done tasks: " + doneTasksV + "*");
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+        executor.shutdown();
+
+        int tt = 0;
+        for (Task task : tasks) {
+            output.print("Case #" + (++tt) + ": ");
+            task.output(output);
+            output.flush();
+        }
+    }
+
+    public static void run(TaskFactory taskFactory) throws InterruptedException {
+        run(taskFactory, System.in, System.out);
+    }
+
+    public static void run(TaskFactory taskFactory, String inFileName, String outFileName) throws IOException, InterruptedException {
+        FileInputStream is = new FileInputStream(new File(inFileName));
+        FileOutputStream os = new FileOutputStream(new File(outFileName));
+        run(taskFactory, is, os);
+        is.close();
+        os.close();
+    }
+}

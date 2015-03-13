@@ -1,0 +1,121 @@
+//Written by Matheus Mostiack Pomaleski
+
+#include <bits/stdc++.h>
+
+using namespace std;
+
+typedef struct {
+	int cost1;
+	int cost2;
+	int colour;
+	int numchildren;
+	int idchildrenstart;
+	int i;
+} node;
+
+node no[200001];
+int id[200001];
+int father[200001];
+int dp[200001];
+
+int recursion(int j, int depth){
+	if(no[j].cost1 != -1)
+		return 0;
+	if(depth == 100000)
+		return j;
+
+	int n = no[j].numchildren;
+	int start = no[j].idchildrenstart;
+	int i;
+	
+	for(i = 0; i < n; i++){
+		int debug = recursion(id[start+i], depth+1);
+		if(debug != 0)
+			return debug;
+	}
+	int cost = 0;
+	for(i = 0; i < n; i++){
+		cost += no[id[start+i]].cost1;
+	}
+	for(i = 1; i <= n+1; i++){
+		dp[i] = cost+i;
+	}
+	for(i = 0; i < n; i++){
+		int colour = no[id[start+i]].colour;
+		if(colour <= n+1)
+			dp[colour] = dp[colour] + no[id[start+i]].cost2 - no[id[start+i]].cost1;
+	}
+	
+	if(dp[1] <= dp[2]){
+		no[j].cost1 = dp[1];
+		no[j].colour = 1;
+		no[j].cost2 = dp[2];
+	} else {
+		no[j].cost1 = dp[2];
+		no[j].colour = 2;
+		no[j].cost2 = dp[1];
+	}
+	
+	for(i = 3; i <= n+1; i++){
+		if(dp[i] < no[j].cost1){
+			no[j].cost2 = no[j].cost1;
+			no[j].cost1 = dp[i];
+			no[j].colour = i;
+		} else if(dp[i] < no[j].cost2){
+			no[j].cost2 = dp[i];
+		}
+	}
+	
+	return 0;
+}
+
+int main(){
+
+	int t, n;
+	int j, k;
+
+	scanf(" %d", &t);
+	for(k = 1; k <= t; k++){
+		scanf(" %d", &n);
+
+		for(j = 0; j < n; j++){
+			no[j].numchildren = 0;
+		}
+
+		for(j = 1; j <= n; j++){
+			scanf(" %d", &(father[j]));
+			no[father[j]].numchildren++;
+		}
+
+		no[1].idchildrenstart = 0;
+		no[1].i = 0;
+		for(j = 2; j <= n; j++){
+			no[j].idchildrenstart = no[j-1].idchildrenstart+no[j-1].numchildren;
+			no[j].i = 0;
+		}
+
+		for(j = 2; j <= n; j++){
+			id[no[father[j]].idchildrenstart+no[father[j]].i] = j;
+			no[father[j]].i++;
+		}
+
+		for(j = 1; j <= n; j++){
+			if(no[j].numchildren == 0){
+				no[j].cost1 = 1;
+				no[j].cost2 = 2;
+				no[j].colour = 1;
+			}
+			else no[j].cost1 = -1;
+		}
+
+		int debug = recursion(1, 0);
+		while (debug != 0){
+			debug = recursion(debug, 0);
+			if(debug == 0)
+				debug = recursion(1,0);
+		}
+		
+		printf("Case #%d: %d\n", k, no[1].cost1);
+	}
+	return 0;
+}

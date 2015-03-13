@@ -1,0 +1,131 @@
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
+
+public class D {
+
+    public static void main(String[] args) throws IOException {
+        Scanner in = new Scanner(new FileInputStream("in.txt"));
+        
+        int T = in.nextInt();
+        
+        for (int id = 0; id < T; ++ id) {
+            int N = in.nextInt();
+            int[] parent = new int[N + 1];
+            List<List<Integer>> children = new ArrayList<>();
+            for (int i = 0; i <= N; ++ i) {
+                List<Integer> list = new ArrayList<>();
+                children.add(list);
+            }
+            
+            for (int i = 1; i <= N; ++ i) {
+                parent[i] = in.nextInt();
+                children.get(parent[i]).add(i);
+            }
+            
+            int maxPrice = calcDepth(children, 1, 0) + 1;
+            if (maxPrice > calcWidth(children, 1) + 1) {
+                maxPrice = calcWidth(children, 1) + 1;
+            }
+            maxPrice = 100;
+
+            int[][] dp = new int[N + 1][maxPrice + 1];
+            runDP(children, dp, 1, maxPrice);
+            
+            int ans = Integer.MAX_VALUE;
+            for (int price = 1; price <= maxPrice; ++ price) {
+                if (ans > dp[1][price]) {
+                    ans = dp[1][price];
+                }
+            }
+            
+            System.out.println(String.format("Case #%d: %d", id + 1, ans));
+        }
+        
+        in.close();
+    }
+    
+    private static int calcDepth(List<List<Integer>> children, int me, int depth) {
+        int max = depth;
+        
+        for (int child : children.get(me)) {
+            int childrenDepth = calcDepth(children, child, depth + 1);
+            if (max < childrenDepth) {
+                max = childrenDepth;
+            }
+        }
+        
+        return max;
+    }
+    
+    private static int calcWidth(List<List<Integer>> children, int me) {
+        int max = children.get(me).size();
+        
+        for (int child : children.get(me)) {
+            int childrenDepth = calcWidth(children, child);
+            if (max < childrenDepth) {
+                max = childrenDepth;
+            }
+        }
+        
+        return max;
+    }
+    
+    private static void runDP(List<List<Integer>> children, int[][] dp, int me, int maxPrice) {
+        if (children.get(me).size() == 0) {
+            for (int price = 1; price <= maxPrice; ++ price) {
+                dp[me][price] = price;
+            }
+            return;
+        }
+        
+        for (int child : children.get(me)) {
+            runDP(children, dp, child, maxPrice);
+        }
+        
+        Map<Integer, Integer> bestPrice = new HashMap<>();
+        for (int child : children.get(me)) {
+            int best = 0;
+            int min = Integer.MAX_VALUE;
+            for (int price = 1; price <= maxPrice; ++ price) {
+                if (min > dp[child][price]) {
+                    best = price;
+                    min = dp[child][price];
+                }
+            }
+            bestPrice.put(child, best);
+        }
+        
+        Map<Integer, Integer> secondBestPrice = new HashMap<>();
+        for (int child : children.get(me)) {
+            int secondBest = 0;
+            int min = Integer.MAX_VALUE;
+            for (int price = 1; price <= maxPrice; ++ price) {
+                if (price == bestPrice.get(child)) {
+                    continue;
+                }
+                if (min > dp[child][price]) {
+                    secondBest = price;
+                    min = dp[child][price];
+                }
+            }
+            secondBestPrice.put(child, secondBest);
+        }
+        
+        for (int price = 1; price <= maxPrice; ++ price) {
+            dp[me][price] = price;
+            for (int child : children.get(me)) {
+                int min = dp[child][bestPrice.get(child)];
+                if (bestPrice.get(child) == price) {
+                    min = dp[child][secondBestPrice.get(child)];
+                }
+                dp[me][price] += min;
+            }
+        }
+    }
+}

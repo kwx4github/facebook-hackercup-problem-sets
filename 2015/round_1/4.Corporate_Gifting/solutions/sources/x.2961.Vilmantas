@@ -1,0 +1,123 @@
+import java.io.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * @author vilmantas baranauskas
+ */
+public class CorporateGifting {
+
+    private static HashMap<Integer, Employee> employees;
+    private static HashSet<Employee> bottom;
+
+    public static void main(String[] args) throws IOException {
+
+        BufferedReader in = new BufferedReader(new FileReader("in.txt"));
+        BufferedWriter out = new BufferedWriter(new FileWriter("out.txt"));
+
+        // number of test cases
+        int t = Integer.valueOf(in.readLine());
+
+        for (int i = 0; i < t; i++) {
+            String solution = "Case #" + (i + 1) + ": " + solveTestCase(in);
+            System.out.println(solution);
+            out.write(solution);
+            out.newLine();
+        }
+
+        in.close();
+        out.close();
+
+    }
+
+    private static int solveTestCase(BufferedReader in) throws IOException {
+
+        int n = Integer.valueOf(in.readLine());
+        int[] hierarchy = readLineOfInts(in);
+
+        employees = new HashMap<Integer, Employee>();
+        bottom = new HashSet<Employee>();
+
+        for (int i = 0; i < hierarchy.length; i++) {
+            int managerId = hierarchy[i];
+            Employee manager;
+            if (managerId != 0) {
+                manager = employees.get(managerId);
+            } else {
+                manager = null;
+            }
+            int employeeId = i + 1;
+            getEmployee(employeeId, manager);
+        }
+
+        int sum;
+        Employee b;
+        do {
+            b = bottom.iterator().next();
+            bottom.remove(b);
+            sum = b.eliminate();
+        } while (!bottom.isEmpty());
+
+        return sum;
+    }
+
+    private static Employee getEmployee(int employeeId, Employee manager) {
+        Employee e = employees.get(employeeId);
+        if (e == null) {
+            e = new Employee(manager, employeeId);
+            bottom.add(e);
+            employees.put(employeeId, e);
+        }
+        return e;
+    }
+
+    private static int[] readLineOfInts(BufferedReader in) throws IOException {
+        String[] v1Str = in.readLine().split(" ");
+        int[] items = new int[v1Str.length];
+        for (int i = 0; i < v1Str.length; i++) {
+            items[i] = Integer.parseInt(v1Str[i]);
+        }
+        return items;
+    }
+
+    static class Employee {
+
+        final int id;
+        Employee parent;
+        Set<Employee> subordinates = new HashSet<Employee>();
+        Set<Integer> used = new HashSet<Integer>();
+        int sum;
+
+        Employee(Employee parent, int id) {
+            this.parent = parent;
+            if (parent != null) {
+                this.parent.add(this);
+            }
+            this.id = id;
+        }
+        void add(Employee employee) {
+            subordinates.add(employee);
+            bottom.remove(this);
+        }
+
+        public int eliminate() {
+            int mine = 1;
+            while (used.contains(mine)) {
+                mine++;
+            }
+
+            if (parent != null) {
+                parent.sum += sum + mine;
+                parent.used.add(mine);
+                parent.subordinates.remove(this);
+                if (parent.subordinates.isEmpty()) {
+                    bottom.add(parent);
+                }
+            }
+
+            return sum + mine;
+        }
+    }
+
+}

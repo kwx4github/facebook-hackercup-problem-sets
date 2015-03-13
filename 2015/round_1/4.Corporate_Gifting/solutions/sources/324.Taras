@@ -1,0 +1,172 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+
+namespace FacebookHackercup2015
+{
+    public class CorporateGifting
+    {
+        public static void Main(string[] args)
+        {
+
+            Thread T = new Thread(RunCases, 100000000);
+            T.Start();
+            
+            //RunTests();
+            //RunCases(args[0]);
+
+            Console.ReadLine();
+        }
+
+        private static void RunCases()
+        {
+            string fileName = @"data\corporate_gifting.txt";
+            //string fileName = @"data\corporate_gifting_example_input.txt";
+            
+            StreamReader sr = new StreamReader(fileName);
+            int testCases = int.Parse(sr.ReadLine());
+
+            for (int i = 0; i < testCases; i++)
+            {
+                RunCase(sr, i + 1);
+            }
+        }
+
+        private static void RunCase(StreamReader sr, int caseNumber)
+        {
+            int n = int.Parse(sr.ReadLine()); 
+            int[] employees = new int[n];
+            string[] parts = sr.ReadLine().Split(' ');
+            for (int i = 0; i < n; i++)
+            {
+                employees[i] = int.Parse(parts[i]);
+            }
+            
+
+            TestCase tc = new TestCase(employees);
+            
+            Console.WriteLine("Case #{0}: {1}", caseNumber, tc.FindMin());
+        }
+
+        private static void RunTests()
+        {
+            int[] employees = new[] {0, 1, 1, 1, 1, 2, 2, 2};
+            TestCase tc = new TestCase(employees);
+            
+            Console.WriteLine(tc.FindMin());
+        }
+
+        private class TestCase
+        {
+            private readonly int[] Employees;
+            private readonly int N;
+            private readonly int MaxGift;
+            private List<int>[] subordinates;
+            private readonly int[][] MinSumGifts;
+
+            public TestCase(int[] employees)
+            {
+                Employees = employees;
+                N = employees.Length;
+                MaxGift = 20;
+                MinSumGifts = new int[N][];
+                for (int i = 0; i < N; i++)
+                {
+                    MinSumGifts[i] = new int[MaxGift];
+                }
+                Precalculation();
+
+                // for all gifts of CEO
+                for (int i = 1; i < MaxGift; i++)
+                {
+                     MinSumGifts[0][i] = FindMin(0, i);
+                }
+            }
+
+            public int FindMin()
+            {
+                int min = int.MaxValue;
+                for (int i = 1; i < MaxGift; i++)
+                {
+                    if (MinSumGifts[0][i] < min)
+                    {
+                        min = MinSumGifts[0][i];
+                    }
+                }
+
+                return min;
+            }
+
+            private void Precalculation()
+            {
+                subordinates = new List<int>[N];
+                for (int i = 0; i < N; i++)
+                {
+                    if (Employees[i] == 0) continue;
+
+                    int manager = Employees[i] - 1;
+                    if (subordinates[manager] == null)
+                    {
+                        subordinates[manager] = new List<int>();
+                    }
+                    subordinates[manager].Add(i);
+                }
+            }
+
+            private bool HasSubordinates(int manager)
+            {
+                return subordinates[manager] != null;
+            }
+
+            private int FindMin(int manager, int managerGift)
+            {
+                if (HasSubordinates(manager))
+                {
+                    if (MinSumGifts[manager][managerGift] == 0)
+                    {
+                        int minGifts = int.MaxValue;
+                        for (int i = 1; i < MaxGift; i++)
+                        {
+                            if (i != managerGift)
+                            {
+                                int gifts = i;  // this manager gift + all subordinates
+                                foreach (int sub in subordinates[manager])
+                                {
+                                    gifts += FindMin(sub, i);
+                                    if (gifts > minGifts) break;
+                                }
+
+                                if (gifts < minGifts)
+                                {
+                                    minGifts = gifts;
+                                }
+                            }
+                            
+                        }
+                        
+                        MinSumGifts[manager][managerGift] = minGifts;
+                    }
+
+                    return MinSumGifts[manager][managerGift];
+
+                }
+                else // child
+                {
+                    // find first min
+                    int gift = Int32.MaxValue;
+                    for (int i = 1; i < MaxGift; i++)
+                    {
+                        if (i != managerGift)
+                        {
+                            gift = i;
+                            break;
+                        }
+                    }
+
+                    return gift;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,137 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+
+namespace ConsoleApplication1
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {   
+            DirectoryInfo di = new DirectoryInfo(System.Environment.CurrentDirectory);
+            string input = di.GetFiles().Where(fi => 
+                fi.Extension == ".txt" 
+                && !fi.Name.Contains("output")
+                ).First().FullName;
+
+            using (StreamWriter sw = new StreamWriter("output.txt"))
+            {
+                using (StreamReader sr = new StreamReader(input))
+                {
+                    var txt = sr.ReadToEnd().Split('\n').ToList();
+                    int cnt = int.Parse(txt[0]);
+                    txt.RemoveAt(0);
+
+                    for (int i = 0; i < cnt; i++)
+                    {
+                        int cnt2 = int.Parse(txt[0]);
+                        txt.RemoveAt(0);
+                        
+                        Tri t = new Tri();
+                        int result = 0;
+                        for (int j = 0; j < cnt2; j++)
+                        {
+                            result += t.GetNumberOfCharactersToType(txt[j]);
+                        }
+                        sw.WriteLine("Case #{0}: {1}\n", i + 1, result);
+                        txt.RemoveRange(0, cnt2);
+                    }                    
+                }                
+            }
+        }       
+    }
+
+    public class Tri
+    {
+        public Tri()
+        {
+        }
+
+        public Tri(char? c)
+        {
+            this.CurrentChar = c;
+        }
+
+        public char? CurrentChar = null;
+        public SortedDictionary<char?, Tri> NextChar = new SortedDictionary<char?, Tri>();
+
+        private void Add(string word)
+        {
+            //char? next = new char();
+            //if (word.Length > 0)
+            //    next = word[0];
+            //if (!this.NextChar.ContainsKey(next))
+            //{
+            //    this.NextChar.Add(next, new Tri(next));
+            //}
+            //if (word.Length > 0)
+            //    this.NextChar[next].Add(word.Substring(1));
+
+            Tri t = this;
+            int id = 0;
+            while (true)
+            {
+                char? next = new char();
+                if (id < word.Length)
+                    next = word[id];
+
+                if (!t.NextChar.ContainsKey(next))
+                {
+                    Tri tt = new Tri(next);
+                    t.NextChar.Add(next, tt);
+                    t = tt;
+                }
+                else
+                    t = t.NextChar[next];
+
+                if (id < word.Length)
+                    id++;
+                else
+                    break;
+            }
+        }
+
+        public int GetNumberOfChildren()
+        {
+            return NextChar.Count;
+        }
+
+        public int GetNumberOfCharactersToType(string s)
+        {
+            this.Add(s);
+            List<int> cnt = new List<int>();
+            Tri currentTri = this;
+            foreach (char c in s)
+            {
+                cnt.Add(currentTri.NextChar.Count);
+                currentTri = currentTri.NextChar[c];
+            }
+
+            cnt.Add(currentTri.NextChar.Count);
+            currentTri = currentTri.NextChar[new char()];
+
+            int result = cnt.Count;
+
+            for (int i = cnt.Count - 1; i >= 0; i--)
+            {
+                if (cnt[i] == 1)
+                    result--;
+                else
+                {
+                    break;
+                }
+            }
+
+            if (result == 0)
+                return 1;
+
+            if (result > s.Length)
+                return s.Length;
+
+            return result;
+        }
+    }
+}

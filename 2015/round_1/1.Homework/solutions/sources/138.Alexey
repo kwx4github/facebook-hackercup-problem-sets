@@ -1,0 +1,125 @@
+#include <cstdint>
+#include <cassert>
+#include <ctime>
+#include <x86intrin.h>
+
+#include <iostream>
+#include <vector>
+#include <random>
+
+class Primacity {
+  static const uint64_t kMaxValue = 10000000L;
+
+  public:
+    Primacity() : primacity_value_(kMaxValue + 1, 0) {
+      calc_primacity_values();
+    }
+
+    uint64_t how_much(uint32_t l, uint32_t r, uint32_t k) const {
+      assert(l <= r && r <= kMaxValue);
+      uint64_t result = 0;
+      for (uint32_t i = l; i <= r; i++) {
+        if (primacity_value_[i] == k) {
+          ++result;
+        }
+      }
+      return result;
+    }
+
+    void debug_output() const {
+      for (uint32_t i = 2; i <= 15; i++) {
+        std::cout << i << " " << primacity_value_[i] << std::endl;
+      }
+    }
+
+  private:
+    void calc_primacity_values() {
+      for (uint64_t i = 2; i <= kMaxValue; i++) {
+        if (primacity_value_[i] == 0) {
+          for (uint64_t j = 2 * i; j <= kMaxValue; j += i) {
+            ++primacity_value_[j];
+          }
+        }
+      }
+      for (uint64_t i = 2; i <= kMaxValue; i++) {
+        if (primacity_value_[i] == 0) {
+          primacity_value_[i] = 1;
+        }
+      }
+    }
+
+    std::vector<uint32_t> primacity_value_;
+};
+
+class PrimacityDumb {
+
+  public:
+    uint64_t how_much(uint32_t l, uint32_t r, uint32_t k) const {
+      assert(l <= r);
+      uint64_t result = 0;
+      for (uint32_t i = l; i <= r; i++) {
+        if (get_primacity_value(i) == k) {
+          ++result;
+        }
+      }
+      return result;
+    }
+
+  private:
+    static uint32_t get_primacity_value(uint64_t number) {
+      uint32_t result = 0;
+      for (uint64_t i = 2; i * i <= number; i++) {
+        if (number % i == 0) {
+          ++result;
+          while (number % i == 0) {
+            number /= i;
+          }
+        }
+      }
+      if (number > 1) {
+        ++result;
+      }
+      return result;
+    }
+};
+
+uint32_t get_rand(uint32_t l, uint32_t r) {
+  assert(l <= r);
+  static std::mt19937 rng(__rdtsc());
+  std::uniform_int_distribution<uint32_t> dist(l, r);
+  return dist(rng);
+}
+
+template<typename X, typename Y>
+void stress(X x, Y y) {
+  static const uint32_t kNumberMinValue = 2, kNumberMaxValue = 10000000;
+  static const uint32_t kPrimacityMinValue = 1, kPrimacityMaxValue = 10;
+  while (true) {
+    uint32_t l = get_rand(kNumberMinValue, kNumberMaxValue);
+    uint32_t r = get_rand(kNumberMinValue, kNumberMaxValue);
+    if (l > r) {
+      std::swap(l, r);
+    }
+    uint32_t k = get_rand(kPrimacityMinValue, kPrimacityMaxValue);
+    uint64_t x_result = x.how_much(l, r, k);
+    uint64_t y_result = y.how_much(l, r, k);
+    std::cout << l << " " << r << " " << k << " "
+        << x_result << " " << y_result << std::endl;
+    assert(x_result == y_result);
+  }
+}
+
+int main() {
+  //stress(Primacity(), PrimacityDumb());
+
+  PrimacityDumb primacity;
+  int tests;
+  std::cin >> tests;
+  for (int test = 1; test <= tests; test++) {
+    uint32_t l, r, k;
+    std::cin >> l >> r >> k;
+    std::cout << "Case #" << test << ": " <<
+        primacity.how_much(l, r, k) << std::endl;
+  }
+  return 0;
+}

@@ -1,0 +1,238 @@
+#include <algorithm>
+#include <numeric>
+#include <functional>
+
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <set>
+#include <map>
+#include <stack>
+#include <unordered_set>
+#include <unordered_map>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+#include <cassert>
+
+#include <cmath>
+#include <complex>
+#include <ctime>
+using namespace std;
+
+#define debug(x) cerr<<#x<<" = "<<(x)<<endl;
+
+void bf(vector<vector<int> > g){
+  int n = g.size();
+  int depth = 0;
+  vector<int> order;
+  vector<int> a(1, 1), b;
+  while(!a.empty()){
+    swap(a, b);
+    a.clear();
+    depth++;
+    for(auto x : b){
+      order.push_back(x);
+      for(auto son : g[x])
+        a.push_back(son);
+    }
+  }
+  debug(depth);
+  for(auto zz: order)cout<<zz<<" ";cout<<endl;
+
+
+  if(depth==1){
+    cout<<"=======1111111111111"<<endl;
+  }else{
+    //depth--;
+    vector<int> fath(n);
+    for(int i=1;i<n;i++){
+      for(auto son : g[i]) fath[son] = i;
+    }
+    vector<int> sel(n);
+    long long ans = numeric_limits<long long> :: max();
+    function<void(int, int)> dfs;
+    dfs = [&](int pn, int sm){
+      if(sm>ans)return;
+      //cout<<"::";
+      //for(int i = 0 ; i < pn; i++){
+      //  cout<<order[i]<<","<<sel[order[i]]<<"  ";
+      //}cout<<endl;
+
+      if(pn == n-1){
+        if(sm < ans){
+          cout<<"NEW NEW "<<sm<<endl;
+          for(auto idx : order){
+            cout<<idx<<","<<sel[idx]<<" ";
+          }
+          cout<<endl;
+          ans = sm;
+        }
+        return;
+      }
+      int rt = order[pn];
+      for(int i=depth;i>=1;i--)
+      {
+        if(i!=sel[fath[rt]]){
+          sel[rt] = i;
+          dfs(pn+1, sm+i);
+        }
+      }
+    };
+    for(int i=depth;i>=1;i--){
+      sel[1]=i;
+      dfs(1, i);
+    }
+  }
+
+}
+
+
+int main(int argc, char *argv[])
+{
+  int ttt;cin>>ttt;
+  for(int tt_ = 1 ; tt_ <= ttt; tt_++){
+    int n; cin>>n;
+    vector<int> v(n+1);
+    vector<vector<int> > g(n+1);
+    for(int i = 0 ; i < n; i++){
+      cin>>v[i];
+      g[v[i]].push_back(i+1);
+      //cerr<<v[i]<<","<<i<<endl;
+    }
+    vector<int> special(n+1), other(n+1);
+    vector<long long> special_val(n+1), other_val(n+1);
+    long long ans = -1;
+
+    vector<int> order;
+    queue<int> q;
+    q.push(1);
+    while(!q.empty()){
+      int x = q.front();q.pop();
+      order.push_back(x);
+      for(auto son:g[x]){
+        q.push(son);
+      }
+    }
+    reverse(order.begin(), order.end());
+
+    function<void(int)> dfs;
+    dfs = [&](int root){
+      //cerr<<"deal"<<root<<endl;
+      if(g[root].size()==0){
+        special[root]     = 1;
+        special_val[root] = 2;
+        other[root] = 2;
+        other_val[root]   = 1;
+      }else{
+        //for(auto & son: g[root])dfs(son);
+        map<int, long long> point;
+        long long other_sum = 0, other_min = 0;
+        for(auto & son : g[root]){
+          other_sum += other_val[son];
+          if(special[son]!=-1){
+            point[special[son]] += special_val[son] - other_val[son];
+          }
+        }
+
+        if(point.size() == 0){
+          special[root] = 1;
+          special_val[root] = 2 + other_sum;
+          other_val[root] = 1 + other_sum;
+          other[root] = 2;
+        }else{
+          //at least two special points or one special and one other
+          //if son is leaf then must two points
+          //if not leaf must have one special, there must be other range
+          int pre_idx = 0;
+          vector<pair<long long, int> > tm;
+          for(auto & p : point){
+            if(p.first > pre_idx+1){
+              if(other_min==0){
+                other_min = pre_idx + 1 + other_sum;
+                tm.push_back({other_min, pre_idx + 1});
+              }
+            }
+            pre_idx = p.first;
+            tm.push_back({other_sum + p.first + p.second, p.first});
+          }
+          //other_sum == 0 when??
+          if(point.size()!=n && other_min==0){
+            other_min = pre_idx + 1 + other_sum;
+            tm.push_back({other_min, pre_idx + 1ll});
+          }
+          assert(tm.size()>1);
+          //for(auto & p : tm)cout<<p.first<<","<<p.second<<endl;
+          sort(tm.begin(), tm.end());
+          //no special point
+          if(tm[0].first == tm[1].first){
+            special[root]     = -1;
+            other_val[root]   = tm[0].first;
+            other[root] = pre_idx+1;
+          }else{
+            special[root]     = tm[0].second;
+            special_val[root] = tm[1].first;
+            other_val[root]   = tm[0].first;
+            other[root] = pre_idx+1;
+          }
+        }
+      }
+
+      //cout<<"root="<<root<<",special="<<special[root]<<",special_val="<<special_val[root]<<",other_val="<<other_val[root]<<endl;
+    };
+
+
+    function<void(int, int, int)> dfs_solve;
+    dfs_solve = [&](int root, int select, int father){
+      int my;
+      if(g[root].size() == 0)
+        my = select == 1? 2 : 1;
+      else{
+        long long pre = numeric_limits<long long> :: max();
+        for(int i = 1 ; i <= n; i++){
+          if(i==select)continue;
+          long long tp=i;
+          for(auto & son : g[root]){
+            if(special[son] != -1 && i == special[son])
+              tp += special_val[son];
+            else
+              tp += other_val[son];
+          }
+          if(tp < pre){
+            my = i;
+            pre = tp;
+          }
+        }
+      }
+      cout<<"root="<<root<<" father="<<father<<" father select="<<select<<" my="<<my<<endl;
+      for(auto & son : g[root]){
+        dfs_solve(son, my, root);
+      }
+    };
+
+    //bf(g);
+
+    for(auto & x:order){
+      dfs(x);
+    }
+
+    //dfs(1);
+    //dfs_solve(1, 0, 0);
+    if(special[1] == -1) {
+      ans = other_val[1];
+    }
+    else{
+      ans = min(other_val[1], special_val[1]);
+    }
+    cout<<"Case #"<<tt_<<": "<<ans<<endl;
+
+
+  }
+
+    return 0;
+}

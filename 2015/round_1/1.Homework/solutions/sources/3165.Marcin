@@ -1,0 +1,112 @@
+#include <iostream>
+#include <vector>
+#include <assert.h>
+
+using namespace std;
+
+const size_t MAX_N = 1000 * 1000 * 10;
+const int MAX_PRIMACITY = 10;
+
+vector<bool> is_prime;
+vector<int> primes;
+vector<int> primacity;
+vector<vector<int>> lookup;
+
+int gcd(int a, int b) {
+    if (a < b)
+        swap(a, b);
+
+    while (b != 0) {
+        a = a % b;
+        swap(a, b);
+    }
+
+    return a;
+}
+
+void generatePrimes() {
+    is_prime.resize(MAX_N + 1, true);
+    is_prime[0] = is_prime[1] = false;
+
+    for (int i = 2; i <= MAX_N; ++i) {
+        if (is_prime[i]) {
+            primes.push_back(i);
+            for (int j = 2 * i; j <= MAX_N; j += i)
+                is_prime[j] = false;
+        }
+    }
+}
+
+int findFirstDivider(int value) {
+    for (auto prime : primes) {
+        if (value % prime == 0)
+            return prime;
+    }
+
+    assert(false);
+    return 0;
+}
+
+void generatePrimacity() {
+    generatePrimes();
+    primacity.resize(MAX_N + 1);
+
+    primacity[0] = primacity[1] = 0;
+    for (int i = 2; i <= MAX_N; ++i) {
+        if (is_prime[i]) {
+            primacity[i] = 1;
+        } else {
+            auto divider = findFirstDivider(i);
+            auto ancestor = i / divider;
+            primacity[i] = primacity[ancestor];
+            if (gcd(i, ancestor) % divider != 0) {
+                primacity[i]++;
+            }
+        }
+    }
+}
+
+void generateLookup() {
+    lookup.resize(MAX_PRIMACITY, vector<int>(MAX_N + 1, 0));
+    for (int i = 2; i <= MAX_N; ++i) {
+        for (int j = 1; j <= MAX_PRIMACITY; ++j) {
+            if (primacity[i] == j) {
+                lookup[j - 1][i] = 1;
+            }
+            lookup[j - 1][i] += lookup[j - 1][i - 1];
+        }
+    }
+}
+
+int calc(int a, int b, int k) {
+    int result = 0;
+    while (a <= b) {
+        if (primacity[a] == k)
+            ++result;
+        ++a;
+    }
+    return result;
+}
+
+int main() {
+    generatePrimacity();
+    generateLookup();
+
+    int t;
+    cin >> t;
+    for (int i = 1; i <= t; ++i) {
+        int a, b, k;
+        cin >> a >> b >> k;
+
+        int result;
+        if (k > MAX_PRIMACITY) {
+            result = 0;
+        } else {
+            result = lookup[k - 1][b] - lookup[k - 1][a - 1];
+        }
+
+        //result = calc(a, b, k);
+        cout << "Case #" << i << ": " << result << endl;
+    }
+    return 0;
+}

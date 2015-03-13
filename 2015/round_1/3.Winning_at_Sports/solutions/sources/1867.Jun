@@ -1,0 +1,119 @@
+{-# OPTIONS_GHC -O2 -funbox-strict-fields #-}
+{-# LANGUAGE BangPatterns, ViewPatterns, TupleSections #-}
+import Control.Applicative
+import Control.Exception hiding (mask)
+import Control.Monad
+import Control.Monad.ST
+import Data.Array.Base
+import Data.Array.ST (runSTUArray, runSTArray)
+import Data.Bits
+import qualified Data.ByteString.Char8 as B
+import Data.Char
+import Data.Function
+import Data.Int
+import Data.List
+import qualified Data.Map as M
+import qualified Data.IntMap as IM
+import qualified Data.Set as S
+import qualified Data.IntSet as IS
+import Data.STRef
+import GHC.Arr (Array, STArray, Ix(..))
+import Debug.Trace
+
+import Data.Fixed
+import Data.Time.Clock
+import Data.Time.Clock.POSIX
+import System.IO
+
+rep, rev :: Monad m => Int -> (Int -> m ()) -> m ()
+rep n f=foldr((>>).f)(return())[0..n-1]
+rev n f=foldr((>>).f.negate)(return())[1-n..0]
+for :: Monad m => Int -> Int -> (Int -> m ()) -> m ()
+for a b f=foldr((>>).f)(return())[a..b]
+{-# INLINE rep #-}
+{-# INLINE rev #-}
+{-# INLINE for #-}
+modifyArray :: (MArray a e m, Ix i) => a i e -> i -> (e -> e) -> m ()
+modifyArray a i f=readArray a i>>=writeArray a i.f
+{-# INLINE modifyArray #-}
+unsafeModify :: (MArray a e m, Ix i) => a i e -> Int -> (e -> e) -> m ()
+unsafeModify a i f=unsafeRead a i>>=unsafeWrite a i.f
+{-# INLINE unsafeModify #-}
+
+runGCJ :: IO () -> IO ()
+runGCJ main_ = do
+  t <- readLn
+  forM_ [1..t] $ \i -> do
+    putStr $ "Case #" ++ shows i ": "
+    hPutStr stderr $ shows i "/" ++ shows t ": "
+    hFlush stderr
+    start <- getPOSIXTime
+    main_
+    end <- getPOSIXTime
+    hPutStrLn stderr $ (shows.msec) (end - start) "ms"
+    hFlush stderr
+
+msec :: NominalDiffTime -> Int
+msec s = let t = realToFrac s :: Milli in fromEnum t
+
+type IntMod = Int64
+
+modulus :: IntMod
+modulus = 1000000007
+
+infixl 7 *%, /%
+infixl 6 +%, -% 
+
+(+%), (-%), (*%), (/%) :: IntMod -> IntMod -> IntMod
+x +% y = case x + y of xy -> if xy < modulus then xy else xy - modulus
+x -% y = case x - y of xy -> if xy >= 0  then xy else xy + modulus
+x *% y = x * y `rem` modulus
+x /% y = go x y 1 0
+   where
+     go !a !b !u !v
+       | b > 0 = case a `quot` b of q -> go b (a-q*b) u (u-q*v)
+       | otherwise = x * u `mod` modulus
+{-# INLINE (+%) #-}
+{-# INLINE (-%) #-}
+{-# INLINE (*%) #-}
+{-# INLINE (/%) #-}
+
+main :: IO ()
+main = runGCJ $ do
+  (x, '-':y) <- break ('-'==) <$> getLine
+  putStrLn.unwords.map show $ solve (read x) (read y)
+
+solve :: Int -> Int -> [IntMod]
+solve _ 0 = [1, 1]
+solve x y = [stressFree x y, stressful x y]
+
+stressFree :: Int -> Int -> IntMod
+stressFree totalWin totalLose = runST $ do
+  dp <- newArray ((0,0), (totalWin + totalLose, totalWin)) 0 :: ST s (STUArray s (Int, Int) IntMod)
+  writeArray dp (1,1) 1
+
+  for 2 (totalWin + totalLose) $ \n -> do
+    for 1 (min totalWin n) $ \win -> do
+      w <- readArray dp (n-1, win-1)
+      modifyArray dp (n, win) (w+%)
+      when (win > n - win) $ do
+        l <- readArray dp (n-1, win)
+        modifyArray dp (n, win) (l+%)
+
+  readArray dp (totalWin + totalLose, totalWin)
+
+stressful :: Int -> Int -> IntMod
+stressful _ totalLose = runST $ do
+  dp <- newArray ((0,0), (totalLose * 2 , totalLose)) 0 :: ST s (STUArray s (Int, Int) IntMod)
+
+  writeArray dp (1,1) 1
+
+  for 2 (totalLose * 2) $ \n -> do
+    for 1 (min totalLose n) $ \lose -> do
+      l <- readArray dp (n-1, lose-1)
+      modifyArray dp (n, lose) (l+%)
+      when (lose >= n - lose) $ do
+        w <- readArray dp (n-1, lose)
+        modifyArray dp (n, lose) (w+%)
+
+  readArray dp (totalLose * 2, totalLose)

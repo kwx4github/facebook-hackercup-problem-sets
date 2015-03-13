@@ -1,0 +1,345 @@
+﻿namespace Autocomplete
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
+
+    class Program
+    {
+        private static int timeLimit;
+
+        static void Main(string[] args)
+        {
+            var sw = Stopwatch.StartNew();
+
+            using (var reader = new StreamReader("autocomplete.txt"))
+            using (var writer = new StreamWriter("autocomplete_OUTPUT.txt"))
+            {
+                var T = int.Parse(reader.ReadLine());
+                timeLimit = 100000 / T;
+
+                Console.WriteLine("Cases: {0}, time limit: {1}s", T, timeLimit / 1000);
+
+                for (int caseNumber = 1; caseNumber <= T; caseNumber++)
+                {
+                    var N = int.Parse(reader.ReadLine());
+                    var words = new string[N];
+
+                    for (int i = 0; i < N; i++)
+                        words[i] = reader.ReadLine();
+
+                    var solutions = new HashSet<int>();
+
+                    var solution1 = new SolverOne(words, timeLimit).Solve();
+                    if (solution1 >= 0)
+                        solutions.Add(solution1);
+
+                    var solution2 = new SolverTwo(words, timeLimit).Solve();
+                    if (solution2 >= 0)
+                        solutions.Add(solution2);
+
+                    var solution3 = new SolverThree(words, timeLimit).Solve();
+                    if (solution3 >= 0)
+                        solutions.Add(solution3);
+
+
+                    Console.Write("Case #{0}: [1] = {1}, [2] = {2}, [3] = {3} ::: {4:0.0}s", caseNumber, solution1, solution2, solution3, (double)sw.ElapsedMilliseconds / (caseNumber * 1000));
+
+                    int solution;
+
+                    if (solutions.Count == 1)
+                    {
+                        solution = solutions.First();
+                        Console.WriteLine(" Everything OK, solution = {0}", solution);
+                    }
+                    else if (solutions.Count == 0)
+                    {
+                        solution = 0;
+                        Console.WriteLine(" VERY WRONG, NO SOLUTIONS FOUND!!!");
+                    }
+                    else
+                    {
+                        long sum = 0;
+
+                        foreach (var sol in solutions)
+                            sum += sol;
+
+                        solution = (int)(sum / solutions.Count);
+
+                        Console.WriteLine(" Something wrong, different solutions found. Average = {0}", solution);
+                    }
+
+                    writer.WriteLine("Case #{0}: {1}", caseNumber, solution);
+                }
+            }
+
+            sw.Stop();
+
+            Debug.WriteLine(sw.ElapsedMilliseconds / 1000);
+            Console.WriteLine("Finished!");
+            Console.ReadLine();
+        }
+    }
+
+
+
+    public class SolverOne
+    {
+        HashSet<string> prefixes;
+        private readonly string[] words;
+        private Stopwatch sw;
+        private readonly int timeLimit;
+
+        public SolverOne(string[] words, int timeLimit)
+        {
+            this.sw = Stopwatch.StartNew();
+            this.timeLimit = timeLimit;
+            this.words = words;
+            this.prefixes = new HashSet<string>();
+        }
+
+        public int Solve()
+        {
+            int sum = 0;
+            for (int i = 0; i < words.Length; i++)
+            {
+                //Debug.WriteLine("prefixes = {0}, word = {1} / {2}", prefixes.Count, i + 1, words.Length);
+                var ret = HowMany(words[i]);
+
+                if (ret == -1 || sw.ElapsedMilliseconds > timeLimit)
+                    return -1;
+
+                sum += ret;
+            }
+
+            return sum;
+        }
+
+        private int HowMany(string word)
+        {
+            int needed = 1;
+
+
+            try
+            {
+                while (needed < word.Length && prefixes.Contains(word.Substring(0, needed)))
+                    needed++;
+
+
+                for (int i = needed; i <= word.Length; i++)
+                    prefixes.Add(word.Substring(0, i));
+            }
+            catch
+            {
+                prefixes = null;
+                return -1;
+            }
+
+            return needed;
+        }
+    }
+
+    public class SolverTwo
+    {
+        private SortedSet<string> sortedWords = new SortedSet<string>();
+        private readonly string[] words;
+        private Stopwatch sw;
+        private readonly int timeLimit;
+
+        public SolverTwo(string[] words, int timeLimit)
+        {
+            this.sw = Stopwatch.StartNew();
+            this.timeLimit = timeLimit;
+            this.words = words;
+        }
+
+        public int Solve()
+        {
+            int sum = 0;
+            for (int i = 0; i < words.Length; i++)
+            {
+                //Debug.WriteLine("    word {0} / {1}", i + 1, words.Length);
+                var ret = HowMany(words[i]);
+                if (ret == -1 || sw.ElapsedMilliseconds > timeLimit)
+                    return -1;
+
+                sum += ret;
+            }
+
+            return sum;
+        }
+
+        private int HowMany(string word)
+        {
+            int ret;
+
+            try
+            {
+                if (sortedWords.Count == 0)
+                    ret = 1;
+                else
+                {
+
+                    int low = 0;
+                    int high = sortedWords.Count - 1;
+
+                    while (high - low > 1)
+                    {
+                        var mid = (high + low) / 2;
+
+                        if (string.Compare(sortedWords.ElementAt(mid), word) < 0)
+                            low = mid;
+                        else
+                            high = mid;
+
+                        if (sw.ElapsedMilliseconds > timeLimit)
+                            return -1;
+                    }
+
+                    ret = Math.Max(Common(word, sortedWords.ElementAt(low)), Common(word, sortedWords.ElementAt(high)));
+
+                    if (ret < word.Length)
+                        ret++;
+                }
+
+                sortedWords.Add(word);
+            }
+            catch
+            {
+                return -1;
+            }
+
+            return ret;
+        }
+
+        private int Common(string word, string otherWord)
+        {
+            var common = 0;
+
+            while (common < word.Length && common < otherWord.Length && word[common] == otherWord[common])
+                common++;
+
+            return common;
+        }
+    }
+
+
+    public class SolverThree
+    {
+        private const int N = 20;
+        private readonly int nullCode;
+        private HashSet<int>[,] prefixes;
+        private readonly string[] words;
+        private Stopwatch sw;
+        private readonly int timeLimit;
+
+        public SolverThree(string[] words, int timeLimit)
+        {
+            this.sw = Stopwatch.StartNew();
+            this.timeLimit = timeLimit;
+            this.words = words;
+            this.nullCode = (int)'a';
+            this.prefixes = new HashSet<int>[26, N];
+
+            for (int i = 0; i < 26; i++)
+                for (int j = 0; j < N; j++)
+                    prefixes[i, j] = new HashSet<int>();
+        }
+
+        public int Solve()
+        {
+            int sum = 0;
+            for (int i = 0; i < words.Length; i++)
+            {
+                var ret = HowMany(i);
+                if (ret == -1 || sw.ElapsedMilliseconds > timeLimit)
+                    return -1;
+
+                sum += ret;
+            }
+
+            return sum;
+        }
+
+        private int HowMany(int index)
+        {
+            string word = words[index];
+            var candidates = prefixes[Code(word[0]), 0];
+            int k = 1;
+
+            while (candidates.Count > 0 && k < word.Length - 1 && k < N)
+            {
+                candidates = Intersect(candidates, prefixes[Code(word[k]), k]);
+                k++;
+            }
+
+            if (candidates.Count > 0)
+            {
+                k = -1;
+
+                foreach (var candidate in candidates)
+                {
+                    var common = Common(word, words[candidate]);
+                    if (common > k)
+                        k = common;
+
+                    if (sw.ElapsedMilliseconds > timeLimit)
+                        return -1;
+                }
+
+                if (k < word.Length)
+                    k++;
+            }
+
+            for (int i = 0; i < word.Length && i < N; i++)
+                prefixes[Code(word[i]), i].Add(index);
+
+            //Console.WriteLine("    " + k);
+            return k;
+        }
+
+        // faster intersect
+        private HashSet<int> Intersect(HashSet<int> first, HashSet<int> second)
+        {
+            HashSet<int> smaller;
+            HashSet<int> bigger;
+            var intersection = new HashSet<int>();
+
+            if (first.Count < second.Count)
+            {
+                smaller = first;
+                bigger = second;
+            }
+            else
+            {
+                smaller = second;
+                bigger = first;
+            }
+
+            foreach (var element in smaller)
+                if (bigger.Contains(element))
+                    intersection.Add(element);
+
+            return intersection;
+        }
+
+        private int Code(char x)
+        {
+            return (int)x - nullCode;
+        }
+
+        private int Common(string word, string otherWord)
+        {
+            var common = 0;
+
+            while (common < word.Length && common < otherWord.Length && word[common] == otherWord[common])
+                common++;
+
+            return common;
+        }
+    }
+}

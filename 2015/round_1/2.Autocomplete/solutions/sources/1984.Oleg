@@ -1,0 +1,209 @@
+#include <iostream>
+#include <cstdio>
+#include <sstream>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <cmath>
+#include <ctime>
+#include <utility>
+#include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
+#include <queue>
+
+
+using namespace std;
+
+typedef long long LL;
+template<class T> inline T Abs(const T& x) { return x < 0 ? -x : x; }
+template<class T> inline T Sqr(const T& x) { return x * x; }
+
+struct TNode {
+    int Next[26];
+    int Prev;
+    int Length;
+    int Size;
+    bool IsTerm;
+    TNode(bool isTerm = false)
+        : Prev(0)
+        , Length(0)
+        , Size(0)
+        , IsTerm(isTerm)
+    {
+        memset(Next, 0, sizeof(Next));
+    }
+};
+
+vector<TNode> nodes;
+int root = 0;
+
+
+int MakeNew(bool isTerm = false) {
+    nodes.push_back(TNode(isTerm));
+    return static_cast<int>(nodes.size()) - 1;
+}
+
+
+int AddWord(const std::string& s) {
+    int cur = root;
+    for (size_t i = 0; i < s.length(); ++i) {
+        int letter = s[i] - 'a';
+        if (nodes[cur].Next[letter] != 0) {
+            cur = nodes[cur].Next[letter];
+        } else {
+            nodes[cur].Next[letter] = MakeNew(false);
+            int pr = cur;
+            cur = nodes[cur].Next[letter];
+            nodes[cur].Length = i + 1;
+            nodes[cur].Prev = pr;
+        }
+    }
+    nodes[cur].IsTerm = true;
+    nodes[cur].Length = s.length();
+    return cur;
+}
+
+
+void Update(int cur) {
+    while (cur != 0) {
+        nodes[cur].Size = 0;
+        if (nodes[cur].IsTerm) {
+            nodes[cur].Size += 1;
+        }
+        for (int i = 0; i < 26; ++i) {
+            if (nodes[cur].Next[i]) {
+                nodes[cur].Size += nodes[nodes[cur].Next[i]].Size;
+            }
+        }
+        cur = nodes[cur].Prev;
+    }
+}
+
+void Clear() {
+    nodes.clear();
+    nodes.push_back(TNode(false));
+}
+
+
+int testCaseNum = 0;
+
+
+int Fast(const vector<string>& lines) {
+    Clear();
+    int n = lines.size();
+    vector<int> ptrs;
+    int ans = 0;
+    for (int i = 0; i < n; ++i) {
+        const string& s = lines[i];
+        ptrs.push_back(AddWord(s));
+        int cur = ptrs[i];
+        Update(cur);
+        int pr = cur;
+        while (cur != 0 && nodes[cur].Size == 1) {
+            pr = cur;
+            cur = nodes[cur].Prev;
+        }
+        ans += nodes[pr].Length;
+    }
+    return ans;
+}
+
+
+void Solution() {
+    int n;
+    cin >> n;
+    string s;
+    getline(cin, s);
+    vector<string> lines;
+    for (int i = 0; i < n; ++i) {
+        getline(cin, s);
+        lines.push_back(s);
+    }
+    cout << Fast(lines) << endl;
+}
+
+
+int Stupid(const vector<string>& lines) {
+    int n = lines.size();
+    unordered_set<string> p;
+    int ans = 0;
+    for (int i = 0; i < n; ++i) {
+        const string& s = lines[i];
+        bool was = false;
+        for (size_t i = 0; i < s.length(); ++i) {
+            if (!p.count(s.substr(0, i + 1))) {
+                was = true;
+                ans += i + 1;
+                break;
+            }
+        }
+        if (!was) {
+            ans += s.length();
+        }
+        for (size_t i = 0; i < s.length(); ++i) {
+            p.insert(s.substr(0, i + 1));
+        }
+    }
+    return ans;
+}
+
+
+string GenString(int len, int alpha) {
+    string res(len, ' ');
+    for (int i = 0; i < len; ++i) {
+        res[i] = 'a' + rand() % alpha;
+    }
+    return res;
+}
+
+vector<string> GenTest() {
+    int n = 1000;
+    unordered_set<string> was;
+    for (int i = 0; i < n; ++i) {
+        string s;
+        do {
+            s = GenString(2 + rand() % 30, 2 + rand() % 4);
+        } while (was.count(s));
+        was.insert(s);
+    }
+    return vector<string>(was.begin(), was.end());
+}
+
+
+
+int main() {
+    ios_base::sync_with_stdio(false);
+
+    /*
+    while (true) {
+        auto test = GenTest();
+        int fast = Fast(test);
+        int stupid = Stupid(test);
+        if (fast != stupid) {
+            cerr << fast << " " << stupid << endl;
+            cerr << test.size() << endl;
+            for (size_t i = 0; i < test.size(); ++i) {
+                cerr << test[i] << endl;
+            }
+            exit(0);
+        } else {
+            cerr << "Test of size " << test.size() << "is ok " << fast << ' ' << stupid << endl;
+        }
+    }
+*/
+    int testNum = 0;
+    cin >> testNum;
+    for (int t = 1; t <= testNum; ++t) {
+        testCaseNum = t;
+        cout << "Case #" << t << ": ";
+        //Stupid();
+        Solution();
+    }
+
+    return 0;
+}
+
+

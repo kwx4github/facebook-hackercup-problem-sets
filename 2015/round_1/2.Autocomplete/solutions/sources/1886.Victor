@@ -1,0 +1,83 @@
+type dico = Dico of (char, int * dico) Hashtbl.t
+
+let new_dico () = Dico(Hashtbl.create 13)
+
+let add_to_dico s (Dico t) = 
+  let rec add_aux i t = 
+    try
+      let (n, Dico(t')) = Hashtbl.find t s.[i] in
+      Hashtbl.replace t s.[i] (n+1, Dico(t'));
+      add_aux (i+1) t'
+    with
+      |Not_found ->
+        let t' = Hashtbl.create 13 in 
+        Hashtbl.add t s.[i] (1, Dico(t'));
+        add_aux (i+1) t'
+      |Invalid_argument(_) -> ()
+  in add_aux 0 t
+
+let rem_of_dico s (Dico t) = 
+  let rec rem_aux i t = 
+    try 
+      let (n,Dico(t')) = Hashtbl.find t s.[i] in
+      if n = 1 then 
+        Hashtbl.remove t s.[i]
+      else begin
+        Hashtbl.replace t s.[i] (n-1, Dico(t'));
+        rem_aux (i+1) t'
+      end
+    with
+      |Not_found -> assert false
+      |Invalid_argument(_) -> ()
+  in rem_aux 0 t
+
+let total_words_in t = 
+  Hashtbl.fold (fun _ (n,_) r -> r + n) t 0
+
+let is_in_dico s (Dico t) = 
+  let ns = String.length s in 
+  let rec is_aux i t =
+    try 
+      let (n,Dico(t')) = Hashtbl.find t s.[i] in
+      if i+1 = ns && total_words_in t' = n-1 then true
+      else is_aux (i+1) t'
+    with
+      |Invalid_argument(_) -> false
+      |Not_found -> false
+  in is_aux 0 t
+  
+let max_prefix s (Dico t) =
+  let rec max_aux i t = 
+    try 
+      let (n,Dico(t')) = Hashtbl.find t s.[i] in
+      max_aux (i+1) t'
+    with
+      |Not_found -> i+1
+      |Invalid_argument(_) -> i
+  in max_aux 0 t
+
+let chars_to_type s dico = 
+  max_prefix s dico
+
+let solve_input input output = 
+  let n = int_of_string (input_line input) in
+  for i = 1 to n do 
+    let n' = int_of_string (input_line input) in
+    let res = ref 0 in
+    let dico = new_dico () in 
+    for j = 1 to n' do 
+      let msg = input_line input in 
+      if is_in_dico msg dico then 
+        rem_of_dico msg dico;
+      let r = chars_to_type msg dico in
+      res := !res + r;
+      add_to_dico msg dico
+    done;
+    Printf.fprintf output "Case #%i: %i\n" i !res
+  done
+
+let () = 
+  let inp = open_in Sys.argv.(1) in
+  let oup = open_out Sys.argv.(2) in
+  solve_input inp oup
+

@@ -1,0 +1,79 @@
+package com.mantastyle.hackercup.round1
+
+import java.io._
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+object CorporateGifting extends App {
+
+  class Node(val id: Int) {
+    val children = ArrayBuffer[Node]()
+    var computed = false
+    var bestWeight = -1
+    var bestSubtreeWeight = -1
+    var secondBestSubtreeWeight = -1
+  }
+
+  def solve(managerIds: IndexedSeq[Int]): Int = {
+    val fixedIds = managerIds.map(_ - 1)
+    val root = buildTree(fixedIds)
+    val stack = mutable.Stack(root)
+    while (stack.nonEmpty) {
+      val top = stack.top
+      if (top.children.forall(_.computed)) {
+        resolve(top)
+        stack.pop()
+      } else {
+        stack.pushAll(top.children.filterNot(_.computed))
+      }
+    }
+    root.bestSubtreeWeight
+  }
+
+  def resolve(node: Node): Unit = {
+    if (node.children.isEmpty) {
+      node.bestWeight = 1
+      node.bestSubtreeWeight = 1
+      node.secondBestSubtreeWeight = 2
+      node.computed = true
+      return
+    }
+    val maxWeightToTry = node.children.map(_.bestWeight).max + 1
+    def computeWeight(w: Int): Int = {
+      val childWeights = for (c <- node.children) yield {
+        if (w == c.bestWeight)
+          c.secondBestSubtreeWeight
+        else
+          c.bestSubtreeWeight
+      }
+      childWeights.sum + w
+    }
+    val weights = (1 to maxWeightToTry).map(w => (w, computeWeight(w)))
+    val sortedWeights = weights.sortBy(_._2)
+    node.bestWeight = sortedWeights.head._1
+    node.bestSubtreeWeight = sortedWeights.head._2
+    node.secondBestSubtreeWeight = sortedWeights.tail.head._2
+    node.computed = true
+  }
+
+  def buildTree(managerIds: IndexedSeq[Int]): Node = {
+    val nodes = (0 to managerIds.size).map(new Node(_))
+    for ((parent, i) <- managerIds.zipWithIndex.tail) {
+      nodes(parent).children += nodes(i)
+    }
+    nodes(0)
+  }
+
+  val reader = new BufferedReader(new FileReader("input.txt"))
+  val writer = new PrintWriter(new BufferedWriter(new FileWriter("output.txt")))
+  val numCases = reader.readLine().toInt
+  for (i <- 1 to numCases) {
+    reader.readLine()
+    val managerIds = reader.readLine().split(" ").toIndexedSeq.map(_.trim.toInt)
+    val result = solve(managerIds)
+    writer.println(s"Case #$i: $result")
+    println(s"Case #$i: $result")
+  }
+  writer.close()
+}

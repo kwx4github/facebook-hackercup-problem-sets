@@ -1,0 +1,77 @@
+#include <iostream>
+#include <vector>
+#include <map>
+using namespace std;
+#pragma comment(linker, "/STACK:36777216")
+
+tuple<int, long long, long long> dfs(int me, int n, vector<int> const& boss, vector<int> const& last_child, vector<int> const& next_bro)
+{
+    int u; long long m, M;
+    map<int, long long> penalty;
+    long long opt = 0;
+    for (int i = last_child[me]; i != -1; i = next_bro[i]) {
+        tie(u, m, M) = dfs(i, n, boss, last_child, next_bro);
+        penalty[u] += M - m;
+        opt += m;
+    }
+    int check[] = {1, 2};
+    m = M = numeric_limits<long long>::max();
+    for (auto&& u_penalty : penalty) {
+        int u_child = u_penalty.first;
+        if (check[0] == u_child) {
+            check[0] = u_child + 1; check[1] = u_child + 2;
+        } else if (check[1] == u_child) {
+            check[1] = u_child + 1;
+        }
+        long long cost = u_child + opt + u_penalty.second;
+        if (cost <= m) {
+            M = m; m = cost;
+            u = u_child;
+        } else if (cost < M) {
+            M = cost;
+        }
+    }
+    for (int i = 0; i < 2; ++i) {
+        long long cost = check[i] + opt;
+        if (cost <= m) {
+            M = m; m = cost;
+            u = check[i];
+        } else if (cost < M) {
+            M = cost;
+        }
+    }
+    return make_tuple(u, m, M);
+}
+
+long long solve(int n, vector<int> const& boss)
+{
+    vector<int> last_child(n, -1), next_bro(n, -1);
+    for (int i = 1; i < n; ++i) {
+        int b = boss[i];
+        if (last_child[b] == -1) {
+            last_child[b] = i;
+        } else {
+            next_bro[i] = last_child[b];
+            last_child[b] = i;
+        }
+    }
+    int u; long long m, M;
+    tie(u, m, M) = dfs(0, n, boss, last_child, next_bro);
+    return m;
+}
+
+int main()
+{
+    cin.sync_with_stdio(false);
+    int tests;
+    cin >> tests;
+    for (int test = 1; test <= tests; ++test) {
+        int n;
+        cin >> n;
+        vector<int> boss(n);
+        for (int i = 0; i < n; ++i) {
+            cin >> boss[i]; --boss[i];
+        }
+        cout << "Case #" << test << ": " << solve(n, boss) << endl;
+    }
+}

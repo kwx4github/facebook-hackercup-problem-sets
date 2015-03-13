@@ -1,0 +1,150 @@
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.StringTokenizer;
+
+public class D {
+    final long MOD = 1_000_000_007;
+
+    ArrayList<Integer>[] ch;
+
+    long[][] dp;
+
+    class Child implements Comparable<Child> {
+        long[] dp;
+
+        Child(long[] dp) {
+            this.dp = dp;
+        }
+
+        @Override
+        public int compareTo(Child o) {
+            return Integer.compare(dp.length, o.dp.length);
+        }
+    }
+
+    void dfs(int v) {
+        if (ch[v].size() == 0) {
+            dp[v] = new long[3];
+            dp[v][1] = 2;
+            dp[v][2] = 1;
+            return;
+        }
+
+        int sz = 2;
+        int chn = ch[v].size();
+        Child[] c = new Child[chn];
+        int index = 0;
+        for (int u : ch[v]) {
+            dfs(u);
+            c[index++] = new Child(dp[u]);
+            if (dp[u].length + 2 > sz) {
+                sz = dp[u].length + 2;
+            }
+        }
+        Arrays.sort(c);
+        long[] ans = new long[sz];
+        int curc = 0;
+        long sumo = 0;
+        for (int i = 1; i < sz; i++) {
+            while (curc < chn && c[curc].dp.length <= i) {
+                sumo += c[curc].dp[c[curc].dp.length - 1];
+                curc++;
+            }
+            ans[i] = sumo + i;
+            for (int j = curc; j < chn; j++) {
+                ans[i] += c[j].dp[i];
+            }
+        }
+
+        long[] prefmin = new long[sz];
+        prefmin[0] = Long.MAX_VALUE;
+        for (int i = 1; i < sz; i++) {
+            prefmin[i] = Math.min(prefmin[i - 1], ans[i]);
+        }
+        long[] sufmin = new long[sz + 1];
+        sufmin[sz] = Long.MAX_VALUE;
+        for (int i = sz - 1; i >= 1; i--) {
+            sufmin[i] = Math.min(sufmin[i + 1], ans[i]);
+        }
+
+        long[] other = new long[sz];
+        for (int i = 1; i < sz; i++) {
+            other[i] = Math.min(prefmin[i - 1], sufmin[i + 1]);
+        }
+        int j = sz - 1;
+        while (j > 1 && other[j] == other[sz - 1]) {
+            j--;
+        }
+        dp[v] = Arrays.copyOfRange(other, 0, j + 2);
+    }
+
+    public void run() throws IOException {
+        in = new FastScanner(new FileInputStream("corporate_gifting.txt"));
+        out = new PrintWriter(new FileOutputStream("corporate_gifting.out"));
+
+        int testNo = in.nextInt();
+        for (int test = 1; test <= testNo; test++) {
+            int n = in.nextInt();
+            int[] p = new int[n];
+            ch = new ArrayList[n];
+            for (int i = 0; i < n; i++) {
+                ch[i] = new ArrayList<>();
+            }
+            for (int i = 0; i < n; i++) {
+                p[i] = in.nextInt() - 1;
+                if (p[i] != -1) {
+                    ch[p[i]].add(i);
+                }
+            }
+
+            dp = new long[n][];
+            dfs(0);
+
+            long res = Long.MAX_VALUE;
+            for (int i = 1; i < dp[0].length; i++) {
+                res = Math.min(res, dp[0][i]);
+            }
+            out.printf("Case #%d: %d\n", test, res);
+        }
+
+        out.close();
+    }
+
+    FastScanner in;
+    PrintWriter out;
+
+    public static void main(String[] args) throws IOException {
+        new D().run();
+    }
+
+    static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+
+        FastScanner(InputStream in) throws IOException {
+            br = new BufferedReader(new InputStreamReader(in));
+        }
+
+        String next() {
+            try {
+                while (st == null || !st.hasMoreTokens()) {
+                    st = new StringTokenizer(br.readLine());
+                }
+            } catch (IOException e) {
+                System.err.println(e);
+                System.exit(1);
+            }
+            return st.nextToken();
+        }
+
+        int nextInt() {
+            return Integer.parseInt(next());
+        }
+
+        long nextLong() {
+            return Long.parseLong(next());
+        }
+    }
+}

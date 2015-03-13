@@ -1,0 +1,114 @@
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+public class PrefixTree {
+	static TrieNode createTree() {
+		return (new TrieNode('\0', false));
+	}
+
+	static void insertWord(TrieNode root, String word) {
+		int offset = 97;
+		int l = word.length();
+		char[] letters = word.toCharArray();
+		TrieNode curNode = root;
+
+		for (int i = 0; i < l; i++) {
+			if (curNode.links[letters[i] - offset] == null)
+				curNode.links[letters[i] - offset] = new TrieNode(letters[i], i == l - 1 ? true : false);
+			curNode = curNode.links[letters[i] - offset];
+		}
+	}
+
+	static boolean find(TrieNode root, String word) {
+		char[] letters = word.toCharArray();
+		int l = letters.length;
+		int offset = 97;
+		TrieNode curNode = root;
+
+		int i;
+		for (i = 0; i < l; i++) {
+			if (curNode == null)
+				return false;
+			curNode = curNode.links[letters[i] - offset];
+		}
+
+		if (i == l && curNode == null)
+			return false;
+
+		if (curNode != null)
+			return true;
+
+		return true;
+	}
+
+	static void printTree(TrieNode root, int level, char[] branch) {
+		if (root == null)
+			return;
+
+		for (int i = 0; i < root.links.length; i++) {
+			branch[level] = root.letter;
+			printTree(root.links[i], level + 1, branch);
+		}
+
+		if (root.fullWord) {
+			for (int j = 1; j <= level; j++)
+				System.out.print(branch[j]);
+			System.out.println();
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+		FileInputStream fis = new FileInputStream("autocomplete.txt");
+		DataInputStream in = new DataInputStream(fis);
+		BufferedReader br = new BufferedReader(new InputStreamReader(in));
+		FileWriter fw = new FileWriter(new File("output.txt"));
+		String line = br.readLine();
+		int T = Integer.parseInt(line);
+
+		for (int i = 0; i < T; i++) {
+			line = br.readLine();
+			int N = Integer.parseInt(line);
+
+			TrieNode tree = createTree();
+			int total = 0;
+			for (int j = 0; j < N; j++) {
+				line = br.readLine();
+				int x = solve(tree, line);
+				total += x;
+				insertWord(tree, line);
+			}
+
+			fw.write("Case #" + (i + 1) + ": " + total);
+			if (i + 1 < T)
+				fw.write("\n");
+		}
+		fw.flush();
+	}
+
+	private static int solve(TrieNode tree, String string) {
+		for (int i = 0; i < string.length(); i++) {
+			if (!find(tree, string.substring(0, i + 1)))
+				return i + 1;
+			else if (i + 1 == string.length())
+				return string.length();
+		}
+		return -1;
+	}
+}
+
+class TrieNode {
+	char letter;
+	TrieNode[] links;
+	boolean fullWord;
+
+	TrieNode(char letter, boolean fullWord) {
+		this.letter = letter;
+		links = new TrieNode[26];
+		this.fullWord = fullWord;
+	}
+}

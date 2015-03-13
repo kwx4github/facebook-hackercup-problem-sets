@@ -1,0 +1,103 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <sstream>
+#include <stack>
+
+using namespace std;
+typedef long long llong;
+
+struct best_result
+{
+	int price1;
+	int price2;
+	llong cost1;	
+	llong cost2;	
+};
+
+vector<pair<llong, int>> tmp;
+void chef_best(vector<best_result>& B, best_result& result)
+{
+	if (B.size() == 0)
+	{
+		result.price1 = result.cost1 = 1;
+		result.price2 = result.cost2 = 2;
+	}
+	else
+	{
+		int maxprice1 = B[0].price1;
+		for (int i = 1; i < B.size(); ++i)
+			maxprice1 = max(maxprice1, B[i].price1);
+		tmp.clear();		
+		for (int chef_price = 1; chef_price <= maxprice1 + 2; ++chef_price)
+		{
+			llong cost = chef_price;
+			for (int j = 0; j < B.size(); ++j)
+				cost += chef_price == B[j].price1 ? B[j].cost2 : B[j].cost1;
+			tmp.push_back(make_pair(cost, chef_price));
+		}
+		nth_element(tmp.rbegin(), tmp.rbegin() + 1, tmp.rend());
+		sort(tmp.rbegin(), tmp.rbegin() + 2);
+		auto it = tmp.rbegin();
+		result.cost1 = it->first;
+		result.price1 = it->second;
+		++it;
+		result.cost2 = it->first;
+		result.price2 = it->second;
+	}
+}
+
+llong solve(vector<int>& A)
+{
+	int n = A.size();
+	vector<int> num_dir_lower(n, 0);	
+	for (int i = 1; i < n; ++i)
+		++num_dir_lower[A[i]];
+	vector<vector<best_result>> best_results(n);
+	for (int i = 0; i < n; ++i)
+		best_results[i].reserve(num_dir_lower[i]);
+	stack<int> S;
+	for (int i = 0; i < n; ++i)
+		if (num_dir_lower[i] == 0)
+			S.push(i);
+	best_result ceo_result;
+	while (!S.empty())
+	{
+		int empl = S.top();
+		S.pop();
+		int manager = A[empl];
+		if (manager != -1)
+			best_results[manager].push_back(best_result());
+		best_result& br = manager == -1 ? ceo_result : best_results[manager].back();
+		chef_best(best_results[empl], br);
+		if (manager != -1)
+		{
+			--num_dir_lower[manager];
+			if (num_dir_lower[manager] == 0)
+				S.push(manager);
+		}
+	}
+	return ceo_result.cost1;
+}
+
+int main()
+{
+	int T;
+	cin>>T;
+	vector<int> A;
+	A.reserve(200000);
+	for (int z = 1, N; z <= T; ++z)
+	{
+		cerr<<z<<endl;
+		cin>>N;
+		A.resize(N);
+		for (int i = 0; i < N; ++i)
+		{
+			cin>>A[i];
+			--A[i];
+		}
+		cout<<"Case #"<<z<<": "<<solve(A)<<endl;
+	}
+	return 0;
+}
+

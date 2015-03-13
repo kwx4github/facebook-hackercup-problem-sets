@@ -1,0 +1,140 @@
+#include <cstdio>
+
+using namespace std;
+
+struct tree_t {
+    int id;
+    tree_t *children;
+    tree_t *next;
+};
+
+int N;
+const int MAXN = 200020;
+const int MAXM = 200;
+tree_t tree[MAXN];
+int father[MAXN];
+int best_sum[MAXN][2];
+int best_val[MAXN][2];
+int out_degree[MAXN];
+int queue[MAXN];
+int front, rear;
+
+void make_tree()
+{
+    for (int i = 0; i <= N; ++i) {
+        tree[i].id = i;
+        tree[i].children = NULL;
+        tree[i].next = NULL;
+    }
+    
+    for (int i = 1; i <= N; ++i) {
+        tree[i].next = tree[ father[i] ].children;
+        tree[ father[i] ].children = &tree[i];
+        ++ out_degree[ father[i] ];
+    }
+}
+
+void get_best(int now)
+{
+    //printf("%d---->\n", now);
+    int largest = 1;
+    for (tree_t *p = tree[now].children; p != NULL; p = p->next) {
+        //dfs(p->id);
+        if (best_val[p->id][0] > largest) {
+            largest = best_val[p->id][0];
+        }
+        if (best_val[p->id][1] > largest) {
+            largest = best_val[p->id][1];
+        }
+    }
+    
+    for (int i  = 1; i <= largest+1; ++i) {
+        int sum = i;
+        int val = i;
+        
+        for (tree_t *p = tree[now].children; p != NULL; p = p->next) {
+            if (best_val[p->id][0] == val) {
+                sum += best_sum[p->id][1];
+            }
+            else {
+                sum += best_sum[p->id][0];
+            }
+        }
+        
+        if (i <= 2) {
+            best_sum[now][i-1] = sum;
+            best_val[now][i-1] = val;
+        }
+        if (i == 2) {
+            if (best_sum[now][0] > best_sum[now][1]) {
+                best_sum[now][1] = best_sum[now][0];
+                best_val[now][1] = best_val[now][0];
+                best_sum[now][0] = sum;
+                best_val[now][0] = val;
+            }
+        }
+        if (i <= 2) {
+            continue;
+        }
+        
+        if (sum < best_sum[now][0]) {
+            best_sum[now][1] = best_sum[now][0];
+            best_val[now][1] = best_val[now][1];
+            best_sum[now][0] = sum;
+            best_val[now][0] = val;
+        }
+        else if (sum < best_sum[now][1]) {
+            best_sum[now][1] = sum;
+            best_val[now][1] = val;
+        }
+    }
+    //printf("---->%d: %d %d, %d %d\n", now, best_sum[now][0], best_val[now][0], best_sum[now][1], best_val[now][1]);
+}
+
+int corporate_gifting()
+{
+    make_tree();
+    
+    front = 0, rear = 0;
+    for (int i = 1; i <= N; ++i) {
+        if (out_degree[i] == 0) {
+            queue[rear++] = i;
+        }
+    }
+    
+    while (front < rear) {
+        int now = queue[front++];
+        
+        --out_degree[ father[now] ];
+        if (out_degree[ father[now] ] == 0) {
+            queue[rear++] = father[now];
+        }
+        
+        get_best(now);
+    }
+    
+    return best_sum[1][0];
+}
+
+int main()
+{
+    FILE *fin = fopen("corporate_gifting.txt", "r");
+    FILE *fout = fopen("corporate_gifting.out", "w");
+    
+    int T;
+    fscanf(fin, "%d", &T);
+    
+    for (int caseId = 1; caseId <= T; ++caseId) {
+        fscanf(fin, "%d", &N);
+        for (int i = 1; i <= N; ++i) {
+            fscanf(fin, "%d", &father[i]);
+        }
+        
+        fprintf(fout, "Case #%d: %d\n", caseId, corporate_gifting());
+        //printf("Case #%d: %d\n", caseId, corporate_gifting());
+    }
+    
+    fclose(fout);
+    fclose(fin);
+    return 0;
+}

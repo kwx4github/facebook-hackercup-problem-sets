@@ -1,0 +1,71 @@
+#include <stdio.h>
+#include <string.h>
+#include <algorithm>
+
+const int MAXN = 200001;
+int deg[MAXN], degidx[MAXN+1], manager[MAXN], edge[MAXN], stack[MAXN], cost[MAXN];
+std::pair<int, int> dif[MAXN];
+
+int solve() {
+    int N;
+    scanf("%d", &N);
+    memset(deg, 0, sizeof(deg));
+    for (int i = 1; i <= N; i ++) {
+        scanf("%d", &manager[i]);
+        deg[manager[i]] ++;
+    }
+	degidx[0] = deg[0];
+    for (int i = 0; i <= N; i ++) {
+        degidx[i + 1] = degidx[i] + deg[i + 1];
+    }
+    for (int i = 1; i <= N; i ++) {
+        edge[--degidx[manager[i]]] = i;
+    }
+    
+    memset(cost, 0, sizeof(cost));
+    int stp = 0;
+    for (int i = 1; i <= N; i ++) if (deg[i] == 0) {
+        stack[stp++] = i;
+    }
+    deg[0]++;
+    while (stp > 0) {
+        int cur = stack[--stp];
+        if (--deg[manager[cur]] == 0) {
+            stack[stp++] = manager[cur];
+        }
+        std::sort(edge + degidx[cur], edge + degidx[cur + 1], [](int a, int b) -> bool {
+        	return dif[a].first < dif[b].first;
+        });
+        int p = degidx[cur], mn[2], mnid;
+        mn[0] = mn[1] = 0x7FFFFFFF;
+        for (int i = 1; i < mn[1]; i ++) {
+            int sm = 0;
+            for (; p < degidx[cur+1] && dif[edge[p]].first == i; p++) {
+                sm += dif[edge[p]].second;
+            }
+            int c = sm + i;
+			// printf("Turn %d: sm %d  c %d\n", i, sm, c);
+            if (c < mn[0]) {
+                mn[1] = mn[0];
+                mn[0] = c;
+                mnid = i;
+            } else if (c < mn[1]) {
+                mn[1] = c;
+            }
+        }
+		mn[0] += cost[cur];
+		mn[1] += cost[cur];
+        cost[manager[cur]] += mn[0];
+        dif[cur] = std::make_pair(mnid, mn[1] - mn[0]);
+		// printf("%d: mn: %d, mnid: %d, diff: %d\n", cur, mn[0], mnid, mn[1] - mn[0]);
+    }
+    return cost[0];
+}
+
+int main() {
+    int T;
+    scanf("%d", &T);
+    for (int i = 1; i <= T; i++) {
+        printf("Case #%d: %d\n", i, solve());
+    }
+}

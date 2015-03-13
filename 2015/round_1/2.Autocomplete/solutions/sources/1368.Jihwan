@@ -1,0 +1,84 @@
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+type wordTree struct {
+	pathNum int
+	child   [26]*wordTree
+}
+
+func traverse(remain string, position *wordTree, steps int) int {
+	if position.pathNum == 0 {
+		// There is no other world predicted. remains will be auto-completed.
+		makeRemain(remain, position)
+		return steps
+	} else if len(remain) == 0 {
+		// All world are typed.
+		return steps
+	}
+
+	position.pathNum++
+	steps++
+	next := int(remain[0] - 'a')
+	if position.child[next] == nil {
+		position.child[next] = new(wordTree)
+	}
+
+	return traverse(remain[1:], position.child[next], steps)
+}
+
+func makeRemain(remain string, position *wordTree) {
+	position.pathNum++
+	if len(remain) == 0 {
+		return
+	}
+
+	next := int(byte(remain[0]) - 'a')
+	if position.child[next] == nil {
+		position.child[next] = new(wordTree)
+	}
+
+	makeRemain(remain[1:], position.child[next])
+}
+
+func main() {
+	fileIn, err := os.Open("autocomplete.txt")
+	check(err)
+	defer fileIn.Close()
+	fileOut, err := os.Create("output.txt")
+	check(err)
+	defer fileOut.Close()
+
+	var problems int
+
+	var (
+		root      *wordTree
+		wordCount int
+		ans       int
+		newWord   string
+	)
+
+	fmt.Fscanf(fileIn, "%d\n", &problems)
+	for cases := 1; cases <= problems; cases++ {
+		fmt.Fscanf(fileIn, "%d\n", &wordCount)
+		root = new(wordTree)
+		root.pathNum = 1
+		ans = 0
+
+		for i := 0; i < wordCount; i++ {
+			fmt.Fscanf(fileIn, "%s\n", &newWord)
+			ans += traverse(newWord, root, 0)
+		}
+
+		fmt.Fprintf(fileOut, "Case #%d: %d\n", cases, ans)
+	}
+}

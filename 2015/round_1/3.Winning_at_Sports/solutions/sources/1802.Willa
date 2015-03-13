@@ -1,0 +1,70 @@
+package main
+
+import (
+  "bufio"
+  "io/ioutil"
+  "log"
+  "os"
+  "strconv"
+  "strings"
+)
+
+var freemap [][]int64
+var m int64 = 1000000007
+
+var maxsteps int = 4003
+var maxlead int = 4002
+
+func populate() {
+	freemap = make([][]int64, maxsteps)
+	freemap[0] = make([]int64, maxlead + 1)
+	freemap[0][0] = 1
+	for steps := 1; steps < maxsteps; steps++ {
+		freemap[steps] = make([]int64, maxlead + 1)
+		for lead := 0; lead < maxlead; lead++ {
+			if (lead > 0) {
+				freemap[steps][lead] += freemap[steps-1][lead-1]
+			}
+			freemap[steps][lead] += freemap[steps-1][lead+1]
+			if freemap[steps][lead] > m {
+				freemap[steps][lead] %= m
+			}
+		}
+		
+	}
+}
+
+func stressfree(me, them int) int64 {
+	return freemap[me + them - 1][me - them - 1]
+}
+
+func stressful(me, them int) int64 {
+	return freemap[them * 2][0]
+}
+
+func getAnswer(me, them int) string {
+	return strconv.FormatInt(stressfree(me, them), 10) + " " + strconv.FormatInt(stressful(me, them), 10)
+}
+
+func main() {
+    file, _ := os.Open("winning_at_sports.txt")
+    scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanWords)
+    scanner.Scan()
+    T, _ := strconv.Atoi(scanner.Text())
+    answer := ""
+	populate()
+    for i := 1; i <= T; i++ {
+      scanner.Scan()
+      line := scanner.Text()
+	  spl := strings.Split(line, "-")
+	  me, _ := strconv.Atoi(spl[0])
+	  them, _ := strconv.Atoi(spl[1])
+      header := "Case #" + strconv.Itoa(i) + ": "
+      answer += header + getAnswer(me, them) + "\n"
+    }
+    if err := scanner.Err(); err != nil {
+      log.Fatal(err)
+    }
+    _ = ioutil.WriteFile("winning_at_sports_output.txt", []byte(answer), 0755)
+}

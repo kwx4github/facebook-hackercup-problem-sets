@@ -1,0 +1,145 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
+
+public class CorporateGifting {
+  final String IN_FILENAME = "corporate_gifting.txt";
+  final String OUT_FILENAME = "corporate_gifting_output.txt";
+
+  final int MAX = 200001, MAX_COST = 21;
+  int color[] = new int[MAX];
+  int cost[][] = new int[200001][MAX_COST];
+  int res;
+  Map<Integer, Set<Integer>> m;
+
+  private void solve() {
+    Arrays.fill(color, 1);
+    for (int[] r : cost) Arrays.fill(r, 0);
+    int n = ni();
+    m = new HashMap<>();
+    ni(); // 0
+
+    for (int i = 2; i <= n; ++i) {
+      int e = ni();
+      if (!m.containsKey(e)) {
+        m.put(e, new HashSet<Integer>());
+      }
+      m.get(e).add(i);
+    }
+
+    res = 0;
+    dfs(1);
+    prln(res);
+  }
+
+  void dfs(int v) {
+    if (!m.containsKey(v)) {
+      res++;
+      for (int i = 1; i < MAX_COST; ++i)
+        cost[v][i] = i - 1;
+      return;
+    }
+
+    Map<Integer, List<Integer>> map = new HashMap<>();
+    int min = 1;
+
+    for (Integer to : m.get(v)) {
+      dfs(to);
+      if (!map.containsKey(color[to]))
+        map.put(color[to], new ArrayList<Integer>());
+      map.get(color[to]).add(to);
+      while (map.containsKey(min)) min++;
+    }
+
+    color[v] = min;
+
+    int win = 0, wcolor = min;
+    for (Map.Entry<Integer, List<Integer>> chld : map.entrySet()) {
+      if (color[v] > chld.getKey()) {
+        int c = 0;
+        for (Integer to : chld.getValue()) {
+          c += cost[to][chld.getKey() + 1];
+        }
+        if (color[v] - chld.getKey() - c > win) {
+          win = color[v] - chld.getKey() - c;
+          wcolor = chld.getKey();
+        }
+      }
+    }
+
+    res += color[v] - win;
+    color[v] = wcolor;
+
+    for (int i = 1; i < MAX_COST; ++i) {
+      cost[v][i] = i - color[v];
+      if (i == color[v]) continue;
+      List<Integer> to = map.get(i);
+      if (to != null) {
+        for (Integer tt : to) {
+          cost[v][i] += cost[tt][i + 1];
+        }
+      }
+      if (i - 1 != min && i - 1 == wcolor) {
+        for (Integer tt : map.get(i - 1)) {
+          cost[v][i] -= cost[tt][i];
+          cost[v][i] += cost[tt][i + 1];
+        }
+      }
+    }
+  }
+
+  public static void main(String ... args) throws FileNotFoundException {
+    new CorporateGifting().run();
+  }
+
+  private PrintWriter pw;
+  private BufferedReader br;
+  private StringTokenizer st;
+
+  private void run() throws FileNotFoundException {
+    Locale.setDefault(Locale.US);
+    pw = new PrintWriter(new File(OUT_FILENAME));
+    br = new BufferedReader(new FileReader(IN_FILENAME));
+    int T = ni();
+
+    for (int i = 1; i <= T; ++i) {
+      pr("Case #" + i + ": ");
+      solve();
+    }
+
+    pw.close();
+
+    try {
+      br.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void pr(Object o) { pw.print(o); }
+  private void prln(Object o) {pw.println(o);}
+
+  private int ni() { return Integer.parseInt(nt()); }
+
+  private String nt() {
+    if (st == null || !st.hasMoreTokens())
+      try {
+        st = new StringTokenizer(br.readLine());
+      } catch (IOException e) {
+        System.exit(666);
+      }
+    return st.nextToken();
+  }
+}

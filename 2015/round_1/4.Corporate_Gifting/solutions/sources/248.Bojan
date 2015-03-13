@@ -1,0 +1,155 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.StringTokenizer;
+
+public class CorporateGifting {
+
+	public static void main(String[] args) throws Exception {
+		CorporateGifting object = new CorporateGifting();
+		String className = object.getClass().getSimpleName();
+
+		FileReader fileReader = new FileReader(new File(className.toLowerCase()
+				+ ".in"));
+		BufferedReader br = new BufferedReader(fileReader);
+
+		FileWriter wr = new FileWriter(className.toLowerCase() + ".out");
+
+		int testCases = Integer.parseInt(br.readLine().trim());
+
+		for (int tc = 1; tc <= testCases; tc++) {
+
+			int N = Integer.parseInt(br.readLine().trim());
+
+			int array[] = new int[N];
+
+			StringTokenizer tokenizer = new StringTokenizer(br.readLine());
+			for (int i = 0; i < N; i++)
+				array[i] = Integer.parseInt(tokenizer.nextToken());
+
+			int result = object.solveSmart(array);
+			wr.write("Case #" + tc + ": " + result + "\r\n");
+		}
+
+		br.close();
+		wr.close();
+	}
+
+	public static void add(HashMap<Integer, ArrayList<Integer>> managers,
+			int ind, int val) {
+		if (managers.containsKey(ind)) {
+			managers.get(ind).add(val);
+		} else {
+			managers.put(ind, new ArrayList<Integer>(Arrays.asList(val)));
+		}
+	}
+
+	int solveSmart(int[] array) {
+
+		int result = solve(array, 71);
+		return result;
+	}
+
+	int solve(int[] array, int maxGift) {
+
+		int N = array.length;
+
+		HashMap<Integer, ArrayList<Integer>> managers = new HashMap<Integer, ArrayList<Integer>>();
+		HashMap<Integer, ArrayList<Integer>> workers = new HashMap<Integer, ArrayList<Integer>>();
+
+		int deg[] = new int[N + 1];
+		Arrays.fill(deg, 0);
+		
+		int kids[] = new int[N + 1];
+		Arrays.fill(kids, 0);
+
+		for (int p = 1; p < N; p++) {
+			int boss = array[p];
+			int worker = p + 1;
+
+			add(managers, worker, boss);
+			add(workers, boss, worker);
+			deg[boss]++;
+		}
+		
+		for (int i = 1; i <= N; i++) {
+
+			if (workers.containsKey(i))
+				kids[i] = workers.get(i).size();
+		}
+
+		// sort
+		ArrayList<Integer> queue = new ArrayList<Integer>();
+
+		for (int i = 1; i <= N; i++)
+			if (deg[i] == 0)
+				queue.add(i);
+
+		if (queue.size() == 0) {
+			System.out.println("Graph is bad!");
+		}
+
+		for (int i = 0; i < N; i++) {
+			if (queue.size() <= i) {
+				System.out.println("Graph is bad 2!");
+			}
+
+			ArrayList<Integer> conn = managers.get(queue.get(i));
+
+			if (conn != null) {
+				for (Integer next : conn) {
+
+					deg[next]--;
+					if (deg[next] == 0)
+						queue.add(next);
+				}
+			}
+		}
+
+		// we need to set them in the order of the queue
+		int best[][] = new int[N + 1][maxGift + 1];
+
+		for (int i = 0; i < N + 1; i++)
+			Arrays.fill(best[i], 1000000000);
+
+		for (Integer q : queue) {
+			// calculate best for each possible position
+			int lastGift = kids[q] + 3;
+
+			for (int set = 1; set <= maxGift && set <= lastGift; set++) {
+
+				// can we set this?
+				int bestCost = set;
+
+				if (workers.containsKey(q)) {
+					List<Integer> work = workers.get(q);
+
+					for (Integer w : work) {
+						int cheapest = 1000000000;
+
+						for (int prev = 1; prev <= maxGift && prev <= kids[w] + 3; prev++)
+							if (prev != set) {
+								cheapest = Math.min(cheapest, best[w][prev]);
+							}
+
+						bestCost += cheapest;
+					}
+				}
+
+				best[q][set] = bestCost;
+			}
+		}
+
+		int result = 1000000000;
+
+		for (int k = 1; k <= maxGift; k++)
+			result = Math.min(result, best[1][k]);
+
+		return result;
+	}
+}

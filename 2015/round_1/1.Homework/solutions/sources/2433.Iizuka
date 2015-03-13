@@ -1,0 +1,270 @@
+#include <cstdint>
+#include <cassert>
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <utility>
+#include <tuple>
+#include <type_traits>
+#include <array>
+
+using namespace std;
+
+namespace bit_operation {
+template <class T> bool get_bit(const T c, int i) {
+  typedef typename make_unsigned<T>::type unsignedT;
+  return (static_cast<unsignedT>(c) >> i) & static_cast<unsignedT>(1);
+}
+
+template <class T> T pop_bit(const T c, int i) {
+  typedef typename make_unsigned<T>::type unsignedT;
+  return c | (static_cast<unsignedT>(1) << i);
+}
+};
+
+namespace bitvector_private {
+
+typedef uint64_t Index;
+inline Index ceil(Index a, Index b) { return (a + b - 1) / b; }
+
+constexpr int kSizeS = 64;
+constexpr int kSizeL = 4;
+
+class BitVectorBacket {
+  std::array<uint64_t, kSizeL> B;
+  std::array<uint8_t, kSizeL> S;
+#ifndef NDEBUG
+  bool built;
+#endif
+
+public:
+  BitVectorBacket() {
+    B.fill(0ULL);
+#ifndef NDEBUG
+    built = false;
+#endif
+  }
+  void set(Index i) {
+#ifndef NDEBUG
+    built = false;
+    assert(i < kSizeS * kSizeL);
+#endif
+    const Index a = i / kSizeS;
+    const Index b = i % kSizeS;
+    B[a] |= 1ULL << b;
+  }
+  bool get(Index i) const {
+#ifndef NDEBUG
+    assert(i < kSizeS * kSizeL);
+#endif
+    const Index a = i / kSizeS;
+    const Index b = i % kSizeS;
+    return (B[a] >> b) & 1ULL;
+  }
+  Index build() {
+#ifndef NDEBUG
+    built = true;
+#endif
+    Index cur = 0;
+    for (int i = 0; i < kSizeL; ++i) {
+      S[i] = cur;
+      cur += __builtin_popcountll(B[i]);
+    }
+    return cur;
+  }
+  uint8_t rank(Index i) const {
+#ifndef NDEBUG
+    assert(built);
+    assert(i < kSizeS * kSizeL);
+#endif
+    const Index a = i / kSizeS;
+    const Index b = i % kSizeS;
+    const uint64_t mask = (1ULL << b) - 1;
+    const uint8_t r = S[a] + __builtin_popcountll(B[a] & mask);
+    return r;
+  }
+}; // class BitVectorBacket
+}; // namespace bitvector_private
+
+class BitVector {
+  typedef bitvector_private::Index Index;
+  static constexpr Index kSize =
+      bitvector_private::kSizeS * bitvector_private::kSizeL;
+  const Index n;
+  std::vector<bitvector_private::BitVectorBacket> backets;
+  std::vector<Index> S;
+#ifndef NDEBUG
+  bool built;
+#endif
+
+public:
+  BitVector(Index n_)
+      : n(n_), backets(bitvector_private::ceil(n_, kSize)),
+        S(bitvector_private::ceil(n_, kSize)) {
+#ifndef NDEBUG
+    built = false;
+#endif
+  }
+  Index build() {
+#ifndef NDEBUG
+    built = true;
+#endif
+    Index cur = 0;
+    for (Index i = 0; i < backets.size(); ++i) {
+      S[i] = cur;
+      cur += backets[i].build();
+    }
+    return cur;
+  }
+  void set(Index i) {
+#ifndef NDEBUG
+    built = false;
+    assert(i < n);
+#endif
+    Index a = i / kSize;
+    Index b = i % kSize;
+    backets[a].set(b);
+  }
+  bool get(Index i) const {
+#ifndef NDEBUG
+    assert(i < n);
+#endif
+    Index a = i / kSize;
+    Index b = i % kSize;
+    return backets[a].get(b);
+  }
+  Index rank1(Index i) const {
+#ifndef NDEBUG
+    assert(built);
+    assert(i < n);
+#endif
+    Index a = i / kSize;
+    Index b = i % kSize;
+    return S[a] + backets[a].rank(b);
+  }
+  Index rank0(Index i) const {
+#ifndef NDEBUG
+    assert(built);
+    assert(i < n);
+#endif
+    Index a = i / kSize;
+    Index b = i % kSize;
+    return kSize * a - S[a] + b - backets[a].rank(b);
+  }
+  Index rank(bool b, Index i) { return b ? rank1(i) : rank0(i); }
+}; // class BitVector
+
+class WaveletMatrix {
+public:
+  typedef uint64_t Index;
+private:
+  Index n;
+  const int log_sigma;
+  std::vector<BitVector> BV;
+  std::vector<Index> Z;
+
+  Index down0(int depth, Index pos) const {
+    if (pos == n)
+      return Z[depth];
+    return BV[depth].rank0(pos);
+  }
+
+  Index down1(int depth, Index pos) const {
+    if (pos == n)
+      return n;
+    return Z[depth] + BV[depth].rank1(pos);
+  }
+
+  template <class T>
+  std::pair<Index, Index> equal_range(const T c, const Index st,
+                                      const Index en) const {
+    Index L = st, R = en;
+    for (int i = 0; i < log_sigma; ++i) {
+      if (!bit_operation::get_bit(c, i)) {
+        L = down0(i, L);
+        R = down0(i, R);
+      } else {
+        L = down1(i, L);
+        R = down1(i, R);
+      }
+    }
+    return std::make_pair(L, R);
+  }
+
+public:
+  WaveletMatrix(const int log_sigma_) : log_sigma(log_sigma_), Z(log_sigma_) {}
+
+  std::vector<BitVector> BV_() { return BV; }
+  Index length() const {
+    return n;
+  }
+
+  template <class V> void init(const V &vec) {
+    n = vec.size();
+    BV.reserve(log_sigma);
+    std::fill(Z.begin(), Z.end(), 0ULL);
+    for (int d = 0; d < log_sigma; ++d) {
+      BV.emplace_back(n);
+      for (Index i = 0; i < n; ++i) {
+        if (!bit_operation::get_bit(vec[i], d)) {
+          ++Z[d];
+        }
+      }
+    }
+
+    {
+      V cur = vec;
+      for (int d = 0; d < log_sigma; ++d) {
+        V next(n);
+        Index zero_pos = 0;
+        Index one_pos = Z[d];
+
+        for (Index i = 0; i < n; ++i) {
+          if (bit_operation::get_bit(cur[i], d)) {
+            BV[d].set(i);
+            next[one_pos++] = cur[i];
+          } else {
+            next[zero_pos++] = cur[i];
+          }
+        }
+        BV[d].build();
+        cur = next;
+      }
+    }
+  }
+
+  template <class T> Index rank(const T c, const Index pos) const {
+    const auto eq_range = equal_range(c, 0, pos);
+    return eq_range.second - eq_range.first;
+  }
+
+}; // class WaveletMatrix
+
+unsigned computeK(int n) {
+  unsigned ret = 0;
+  for(int i = 2; i * i <= n; ++i) {
+    if(n % i == 0) {
+      ret++;
+      while(n % i == 0) n /= i;
+    }
+  }
+  if(n > 1) ret++;
+  return ret;
+}
+
+const int MAX_AB = 10000000;
+
+int main() {
+  vector<unsigned> omega(MAX_AB + 1, 0);
+  for(int i = 2; i <= MAX_AB; ++i) {
+    omega[i] = computeK(i);
+  }
+  WaveletMatrix wm(31);
+  wm.init(omega);
+  int T; cin >> T;
+  for(int t = 1; t <= T; ++t) {
+    int A, B, K; cin >> A >> B >> K;
+    cout << "Case #" << t << ": " << wm.rank(K, B + 1) - wm.rank(K, A) << endl;
+  }
+}

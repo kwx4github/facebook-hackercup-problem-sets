@@ -1,0 +1,195 @@
+//
+//  main.c
+//  Autocomplete
+//
+//  Created by Nikolaus Grogger on 18/01/15.
+//  Copyright (c) 2015 Nikolaus Grogger. All rights reserved.
+//
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define ALPHABET_SIZE 26
+#define LOWER_TO_INDEX(c) (c - 'a')
+
+typedef struct trie_node {
+    unsigned char marked[ALPHABET_SIZE];
+    struct trie_node *next[ALPHABET_SIZE];
+} trie_node;
+
+typedef struct trie {
+    trie_node *root;
+} trie;
+
+
+char* lineFromFile(FILE *fp);
+
+void initTrie(trie *trie);
+trie_node* newNode();
+void insertIntoTrie(trie *trie, char *word);
+int shortestUnique(trie *trie, char *word);
+int insertAndShortestUnique(trie *trie, char *word);
+
+int main(int argc, const char * argv[]) {
+
+    // get handle to input file
+    FILE *input_file;
+    input_file = fopen("autocomplete.txt", "r");
+    if (input_file == NULL) {
+        printf("error reading input.\n");
+        return -1;
+    }
+    
+    // get handle to ouput file
+    FILE *output_file;
+    output_file = fopen("output.txt", "w");
+    if (output_file == NULL) {
+        printf("error opening output.\n");
+        return -1;
+    }
+
+    trie auto_trie;
+    
+    int caseNumber = 0;
+    int numberOfCases = 0;
+    
+    int numberOfWords = 0;
+    char *word = NULL;
+    
+    int typeCount = 0;
+
+    while (!feof(input_file)) {
+        
+        // read number of cases
+        if (caseNumber == 0) {
+            word = lineFromFile(input_file);
+            numberOfCases = atoi(word);
+        }
+        else {
+            initTrie(&auto_trie);
+
+            word = lineFromFile(input_file);
+            if (strcmp(word, "") == 0) break;
+            numberOfWords = atoi(word);
+            
+            typeCount = 0;
+            // read n words
+            for (int i = 0; i < numberOfWords; i++) {
+                word = lineFromFile(input_file);
+                
+                //printf("%s: ", word);
+                //printf("%d\n", insertAndShortestUnique(&auto_trie, word));
+                
+                typeCount += insertAndShortestUnique(&auto_trie, word);
+            }
+            printf("Case #%d: %d\n", caseNumber, typeCount);
+            fprintf(output_file, "Case #%d: %d\n", caseNumber, typeCount);
+        }
+        caseNumber++;
+    }
+    
+    // check if correct number of cases were processed
+    caseNumber--;
+    if (numberOfCases != caseNumber) {
+        printf("\nshould: %d, is: %d\n", numberOfCases, caseNumber);
+    }
+    
+    // close files and return
+    fclose(input_file);
+    fclose(output_file);
+    return 0;
+}
+
+char* lineFromFile(FILE *fp) {
+    
+    char *str;
+    char ch;
+    
+    int size = 20;
+    int len = 0;
+    
+    str = (char *)malloc(sizeof(char) * size);
+    
+    while (1) {
+        ch = fgetc(fp);
+        if (ch == EOF || ch == '\n') break;
+        
+        str[len] = ch;
+        len++;
+        if (len == size) {
+            size += 10;
+            str = (char *)realloc((char *)str, sizeof(char) * size);
+        }
+    }
+    len++;
+    str[len] = '\0';
+    
+    return realloc((char *)str, sizeof(char) * len);
+}
+
+
+void initTrie(trie *trie) {
+    trie->root = newNode();
+}
+
+trie_node* newNode() {
+    // create new node
+    trie_node *node;
+    node = (trie_node *)malloc(sizeof(trie_node));
+    
+    // init trie node
+    if (node) {
+        for (int i = 0; i < ALPHABET_SIZE; i++) {
+            node->marked[i] = 0;
+            node->next[i] = NULL;
+        }
+    }
+    
+    return node;
+}
+
+void insertIntoTrie(trie *trie, char *word) {
+    unsigned long len = strlen(word);
+    int index = 0;
+    
+    trie_node *current_node = trie->root;
+    
+    for (int i = 0; i < len; i++) {
+        index = LOWER_TO_INDEX(word[i]);
+        
+        if (current_node->next[index] == NULL) {
+            current_node->next[index] = newNode();
+        }
+        current_node = current_node->next[index];
+    }
+}
+
+int shortestUnique(trie *trie, char *word) {
+    
+    unsigned long len = strlen(word);
+    int index = 0;
+    
+    int k = 0;
+    
+    trie_node *current_node = trie->root;
+    
+    for (int i = 0; i < len; i++) {
+        index = LOWER_TO_INDEX(word[i]);
+        
+        if (current_node->marked[index] == 0 && k == 0) k = i + 1;
+        current_node->marked[index] = 1;
+        
+        current_node = current_node->next[index];
+    }
+    
+    if (k == 0) k = (int)len;
+    
+    return k;
+}
+
+int insertAndShortestUnique(trie *trie, char *word) {
+    insertIntoTrie(trie, word);
+    return shortestUnique(trie, word);
+}
+

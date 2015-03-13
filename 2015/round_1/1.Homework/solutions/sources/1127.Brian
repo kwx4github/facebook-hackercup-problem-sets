@@ -1,0 +1,86 @@
+import std.stdio, std.array, std.range, std.string, std.typecons;
+import std.algorithm, std.container, std.math, std.numeric, std.random;
+void scan(T...)(ref T args) { foreach (ref arg; args) readf(" %s", &arg); }
+void minify(T)(ref T a, in T b) { if (a > b) a = b; }
+void maxify(T)(ref T a, in T b) { if (a < b) a = b; }
+void ewriteln(T...)(T args) { stderr.writeln("\033[35m", args, "\033[0m"); }
+
+enum int MAX_PRIMACITY = 8;
+enum int N = 10 ^^ 7 + 8;
+
+bool isSmallPrime(int a)
+in { assert(a >= 2); }
+body {
+	if (a == 2) return true;
+	if (a % 2 == 0) return false;
+	for (int p = 3; p * p <= a; p += 2) {
+		if (a == p) return true;
+		if (a % p == 0) return false;
+	}
+	return true;
+}
+enum int[] smallPrimes = iota(2, 3200).filter!isSmallPrime.array;
+
+int primacity(int a)
+in { assert(a >= 2); }
+out (result) {
+	assert(result >= 1);
+	assert(result <= MAX_PRIMACITY);
+}
+body {
+	int y = 0;
+	foreach (p; smallPrimes) {
+		if (p * p > a) break;
+		if (a % p == 0) {
+			y++;
+			while (a % p == 0) a /= p;
+		}
+	}
+	assert(a >= 1);
+	if (a > 1) return y + 1;
+	return y;
+}
+
+int[][] computeCumulativePrimacities()
+out (result) {
+	assert(result.length == MAX_PRIMACITY + 1);
+	foreach (ref a; result) {
+		assert(a.length == N);
+	}
+}
+body {
+	int[][] res;
+	foreach (_; 0 .. MAX_PRIMACITY + 1) {
+		res ~= [0, 0];
+	}
+	assert(res.length == MAX_PRIMACITY + 1);
+	foreach (i; 2..N) {
+		if (i % (2 * 10^^5) == 0) {
+			ewriteln("precompute ... ", i);
+		}
+		int y = primacity(i);
+		foreach (ri, ref a; res) {
+			if (ri == y) a ~= a.back + 1;
+			else a ~= a.back;
+		}
+	}
+	return res;
+}
+int[][] table;
+int a, b, k;
+int solve() {
+	if (k > MAX_PRIMACITY) return 0;
+	return table[k][b] - table[k][a-1];
+}
+
+void main() {
+	// it is amazing how badly my computer crashes if I try to do this
+	// compile-time
+	table = computeCumulativePrimacities();
+	int tcn;
+	scan(tcn);
+	foreach (tci; 1..tcn + 1) {
+		scan(a, b, k);
+		writefln("Case #%d: %d", tci, solve());
+	}
+}

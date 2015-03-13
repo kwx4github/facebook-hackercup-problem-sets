@@ -1,0 +1,58 @@
+console.time('EXEC');
+var inputFile = 'corporate_gifting.txt';
+var outputFile = 'output.txt';
+
+var fs = require('fs');
+var readline = require('readline');
+var output = fs.createWriteStream(outputFile);
+var input = readline.createInterface(fs.createReadStream(inputFile), process.stdout);
+
+var testCaseCount;
+var currentTestCase = 0;
+var MAX_PAY = 14;
+
+var nodes = [];
+input.on('line', function (line) {
+	if (!testCaseCount) {
+		return testCaseCount = +line;
+	}
+	if (nodes) {
+		return nodes = null;
+	}
+	nodes = Array.prototype.map.call(line.split(' '), function (parent) {
+		return {
+			parent  : parent,
+			children: [],
+			costs   : new Array(MAX_PAY)
+		};
+	});
+
+	console.time('TEST');
+	output.write('Case #' + ++currentTestCase + ': ' + solve() + '\n');
+	console.timeEnd('TEST');
+});
+input.on('close', function(){
+	console.timeEnd('EXEC');
+});
+
+function solve() {
+	for (var i = 1; i < nodes.length; i++) {
+		nodes[nodes[i].parent - 1].children.push(nodes[i]);
+	}
+	for (var k=nodes.length-1; k>=0; k--) {
+		var node = nodes[k];
+		node.costs[0] = 1000000000;
+		for (var i = 1; i < MAX_PAY; i++) {
+			node.costs[i] = 1000000000;
+			for (var j = 1; j < MAX_PAY; j++) {
+				if (i == j) continue;
+				var option = j;
+				node.children.forEach(function (c) {
+					option += c.costs[j] || 0;
+				});
+				if (node.costs[i] > option) node.costs[i] = option;
+			}
+		}
+	}
+	return Math.min.apply(null, nodes[0].costs);
+}

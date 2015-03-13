@@ -1,0 +1,110 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+
+namespace ConsoleApplication1
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {   
+            DirectoryInfo di = new DirectoryInfo(System.Environment.CurrentDirectory);
+            string input = di.GetFiles().Where(fi => 
+                fi.Extension == ".txt" 
+                && !fi.Name.Contains("output")
+                ).First().FullName;
+
+            using (StreamWriter sw = new StreamWriter("output.txt"))
+            {
+                using (StreamReader sr = new StreamReader(input))
+                {
+                    var txt = sr.ReadToEnd().Split('\n').ToList();
+                    int cnt = int.Parse(txt[0]);
+                    txt.RemoveAt(0);
+
+                    for (int k = 0; k < cnt; k++)
+                    {
+                        var score = txt[k].Split('-').ToList();
+                        int l = int.Parse(score[1]) + 1;
+                        int w = int.Parse(score[0]) + 1;
+                        bool[,] stressFree = new bool[l, w];
+                        bool[,] stressful = new bool[l, w];
+
+                        // setting up maps
+                        for (int i = 0; i < l; i++)
+                        {
+                            for (int j = 0; j < w; j++)
+                            {
+                                if (i == j && i == 0)
+                                {
+                                    stressful[i, j] = true;
+                                    stressFree[i, j] = true;
+                                }
+                                else if (i == j && i == l - 1)
+                                {
+                                    stressful[i, j] = true;
+                                    stressFree[i, j] = false;
+                                }
+                                else if (i == l - 1 && j > i)
+                                {
+                                    stressful[i, j] = true;
+                                    stressFree[i, j] = true;
+                                }
+                                else if (i > j)
+                                {
+                                    stressful[i, j] = true;
+                                    stressFree[i, j] = false;
+                                }
+                                else if (j > i)
+                                {
+                                    stressful[i, j] = false;
+                                    stressFree[i, j] = true;
+                                }
+                                else if (i == j)
+                                {
+                                    stressful[i, j] = true;
+                                    stressFree[i, j] = false;
+                                }
+                            }
+                        }
+
+                        sw.WriteLine("Case #{0}: {1} {2}\n", k + 1,
+                           GetNumberOfWays(stressFree, l, w) % 1000000007,
+                           GetNumberOfWays(stressful, l, w) % 1000000007);
+                    }                    
+                }                
+            }
+        }
+
+        static BigInteger GetNumberOfWays(bool[,] map, int l, int w)
+        {
+            BigInteger[,] ways = new BigInteger[l, w];
+
+            ways[0, 0] = 1;
+
+            for (int s = 1; s < l + w - 1; s++)
+            {
+                for (int i = 0; i < l && i <= s; i++)
+                {
+                    if (s - i >= w)
+                        continue;
+
+                    ways[i, s - i] = 0;
+                    if (i > 0)
+                        ways[i, s - i] += ways[i - 1, s - i];
+                    if (s - i > 0)
+                        ways[i, s - i] += ways[i, s - i - 1];
+
+                    if (!map[i, s - i])
+                        ways[i, s - i] = 0;
+                }
+            }
+
+            return ways[l - 1, w - 1];
+        }
+    }    
+}

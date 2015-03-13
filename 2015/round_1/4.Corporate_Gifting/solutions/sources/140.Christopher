@@ -1,0 +1,83 @@
+#ifdef DEBUG
+	#define D(x...) fprintf(stderr,x);
+#else
+	#define D(x...) 0
+#endif
+#include <cstdio>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+
+int main() {
+    int nTests;
+    scanf("%d ",&nTests);
+    for (int test=1;test<=nTests;test++) {
+        if (1) fprintf(stderr,"Case %d/%d\n",test,nTests);
+
+        int N;
+        scanf("%d", &N);
+        vector<int> parent(N);
+        vector<int> childrenLeft(N);
+        vector<int> rawCost(N);
+
+        vector<map<int, int> > childDeltas(N); // key: id forcing cost, value: additional cost
+        // cost; id used
+        for (int i = 0; i < N; i++) {
+            scanf("%d", &parent[i]);
+            parent[i]--;
+            if (parent[i] != -1) {
+                childrenLeft[parent[i]]++;
+            }
+        }
+        queue<int> topsortQueue;
+        for (int i =0; i < N; i++) {
+            if (!childrenLeft[i]) topsortQueue.push(i);
+        }
+        while (!topsortQueue.empty()) {
+            int t = topsortQueue.front();
+            topsortQueue.pop();
+
+            // calculate best, secondBestCost
+            int bestCost, secondBestCost, bestId;
+            vector<pair<int, int> > costs; // cost, id
+            for (map<int, int>::iterator itr = childDeltas[t].begin(); itr != childDeltas[t].end(); itr++) {
+                costs.push_back(make_pair(itr->first + itr->second, itr->first));
+            }
+            {
+                int i = 1;
+                while (childDeltas[t].count(i)) i++;
+                costs.push_back(make_pair(i, i));
+                i++; while (childDeltas[t].count(i)) i++;
+                costs.push_back(make_pair(i, i));
+            }
+            sort(costs.begin(), costs.end());
+            bestCost = costs[0].first + rawCost[t];
+            bestId = costs[0].second;
+            secondBestCost = costs[1].first + rawCost[t];
+
+            // ADD RAW COST!
+            if (parent[t] != -1) {
+                childrenLeft[parent[t]]--;
+                if (!childDeltas[parent[t]].count(bestId)) {
+                    childDeltas[parent[t]][bestId] = 0;
+                }
+                childDeltas[parent[t]][bestId] += secondBestCost - bestCost;
+                rawCost[parent[t]] += bestCost;
+                if (!childrenLeft[parent[t]]) {
+                    topsortQueue.push(parent[t]);
+                }
+            }
+            assert(topsortQueue.empty() == (t == 0));
+            if (t == 0) {
+                // print answer
+                printf("Case #%d: %d\n", test, bestCost);
+            }
+            //printf("%d : %d(%d) %d\n", t, bestCost, bestId, secondBestCost);
+        }
+    }
+}

@@ -1,0 +1,283 @@
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+struct node{
+	int id;
+	int a;
+	int b;
+	int cost;
+	vector<int> list; 
+	vector< pair <int, int> > arr;
+};
+
+typedef struct node node;
+
+vector< node > g;
+
+vector< node > build(int a[], int n){
+
+	vector< node > grph(n + 1);
+
+	for(int i=1;i<=n;i++){
+		node n;
+		n.id = 1;
+		n.a = -1;
+		n.b = -1;
+		n.cost = -1;
+		vector<int> v(0);
+		n.list = v;
+
+		vector< pair<int, int> > vv(21);
+
+		for(int i =0;i<=20;i++){
+			vv[i] = make_pair(0,0);
+		}
+		n.arr = vv;
+
+		grph[i] = n;
+	}
+
+	for(int i=2;i<=n;i++){
+		grph[a[i]].list.push_back(i);
+	}
+
+	return grph;
+}
+
+void print_graph(int n){
+
+	for(int i=1;i<=n;i++){
+		cout << i << "(" << g[i].cost << ") " <<" :";
+
+		int s = g[i].list.size();
+
+		for(int j=0;j<s;j++){
+			cout << g[i].list[j] << " ";
+		}
+		cout << endl;
+
+		for(int j = 0;j<=20;j++){
+			cout << g[i].arr[j].first << " ";
+		}
+		cout << endl;
+
+	}
+}
+
+void dfs_set(int id, bool poss , int cost){
+
+	if(g[id].cost == 0){
+		poss = false;
+	}
+
+	if(poss){
+
+		if( g[id].a <= g[id].b)
+			poss = false;
+	}
+
+	bool future = true;
+	if(poss){
+		g[id].cost = cost;
+		future = false;
+	}
+
+	int s = g[id].list.size();
+	for(int i = 0;i<s;i++){
+			dfs_set(g[id].list[i], future, cost);
+	}
+
+}
+
+bool check(int n){
+
+	for(int i=1;i<=n;i++){
+		if(g[i].cost == -1)
+			return false;
+	}
+
+	return true;
+}
+
+void dfs_find(int id){
+
+	int s = g[id].list.size();
+
+	if(s == 0){
+		if(g[id].cost == -1)
+			g[id].a = 1;
+		else
+			g[id].a = -1;
+		g[id].b = 0;
+	}
+	else{
+		for(int i = 0;i<s;i++){
+			dfs_find(g[id].list[i]);
+		}
+
+		int a = 1;
+		//A(i) = 1 + sum(B(j) for j in children(i))
+		for(int i=0;i<s;i++){
+			a += g[ g[id].list[i] ].b;
+		}
+
+		if(g[id].cost == -1)
+			g[id].a = a;
+		else
+			g[id].a = -1;
+
+		int b = 0;
+		//B(i) = sum(max(A(j),B(j)) for j in children(i))
+		for(int i=0;i<s;i++){
+			b += max( g[ g[id].list[i] ].a, g[ g[id].list[i] ].b );
+		}
+		g[id].b =b;
+
+	}	
+
+	//cout << id <<" " << g[id].a <<" " << g[id].b << endl;
+}
+
+
+void dfs_dp(int id){
+	int s = g[id].list.size();
+
+	if(s == 0){
+		for(int i = 1; i<= 20;i++){
+			g[id].arr[i].first = i;
+			g[id].arr[i].second = i;
+		}
+	}
+	else{
+
+		for(int i = 0;i<s;i++){
+			dfs_dp(g[id].list[i]);
+		}
+		for(int i=1;i<=20;i++){
+
+			int val = 0;
+			for(int j = 0;j<s;j++){
+
+				int child = g[id].list[j];
+				for(int k = 1; k<= 20; k++){
+					if( g[child].arr[k].second != i){
+						val += g[child].arr[k].first;
+						break;
+					}
+				}
+
+			}
+
+			g[id].arr[i].second = i;
+			g[id].arr[i].first = val + i;
+		}
+	}
+
+	sort(g[id].arr.begin(), g[id].arr.end());
+	//cout << id << endl;
+
+}
+
+
+void iter_dp(int n){
+
+	for(int id =n;id>=1;id--){
+		int s = g[id].list.size();
+
+		if(s == 0){
+			for(int i = 1; i<= 20;i++){
+				g[id].arr[i].first = i;
+				g[id].arr[i].second = i;
+			}
+		}
+
+		else{
+
+			for(int i=1;i<=20;i++){
+
+				int val = 0;
+				for(int j = 0;j<s;j++){
+
+					int child = g[id].list[j];
+					for(int k = 1; k<= 20; k++){
+						if( g[child].arr[k].second != i){
+							val += g[child].arr[k].first;
+							break;
+						}
+					}
+
+				}
+
+				g[id].arr[i].second = i;
+				g[id].arr[i].first = val + i;
+			}
+		}
+
+		sort(g[id].arr.begin(), g[id].arr.end());
+
+	}
+}
+
+
+void get_dp(int n){
+	iter_dp(n);
+
+	int min = 999999999;
+
+	for(int i=1;i<=20;i++){
+		if( g[1].arr[i].first < min)
+			min = g[1].arr[i].first;
+	}
+	cout << min << endl;
+
+}
+int get_cost(int n){
+
+	int c = 0;
+	for(int i=1;i<=n;i++){
+		c+= g[i].cost;
+	}
+	return c;
+}
+
+int main(){
+
+	int t;
+	cin >> t;
+
+	int tt = 0;
+
+
+	while(t--){
+		tt++;
+		cout << "Case #" << tt << ": " ;
+
+		int n;
+		cin >> n;
+
+		int emp[n+1];
+
+		for(int i=1;i<=n;i++){
+			cin >> emp[i];
+		}
+
+		g = build(emp, n);
+		//print_graph(n);
+		//independet(n);
+		//print_graph(n);
+
+		//cout << get_cost(n) << endl;;
+		//vector<int> col = get_color(g, n);
+
+		//cout << val(col, n) << endl;
+
+		get_dp(n);
+		//print_graph(n);
+	}
+
+	return 0;
+}
+
+	

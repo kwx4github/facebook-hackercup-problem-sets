@@ -1,0 +1,40 @@
+import scala.io.Source
+import java.io.File
+import scala.annotation.tailrec
+import scala.collection.mutable.ListBuffer
+
+case class Node(var value: Int, var childValues: Set[Int])
+
+object FB1HC4 extends App {
+  val lines = Source.fromFile("/home/husrev/Downloads/corporate_gifting.txt").getLines.drop(1).toList.zipWithIndex
+  val relevantLines = lines.filterNot { case (line, index) => index % 2 == 0 }
+  val values = relevantLines.map(tuple => tuple._1).map(line => line.split(' ').map(value => value.toInt))
+
+  val resultsUnordered = values.zipWithIndex.par.map { case (parents, index) => (findSolution(parents), index) }
+  val resultsWithIndexes = resultsUnordered.toList.sortBy(_._2)
+  val resultLines = resultsWithIndexes map { case (count, index) => s"Case #${index + 1}: $count" }
+  val output = printToFile(new File("/home/husrev/fb1hc4.txt")) { pw =>
+    resultLines.foreach { l => println(l); pw.println(l) }
+  }
+
+  def findSolution(parents: Array[Int]): Int = {
+
+    val nodes = Array.fill(parents.size)(Node(1, Set.empty))
+    for (i <- (0 until parents.size).toList.reverse) {
+      val node = nodes(i)
+      node.value = (1 to parents.size).find(!node.childValues.contains(_)).get
+      val parent = parents(i)
+      if (parent > 0) {
+        val parentNode = nodes(parent - 1)
+        parentNode.childValues += node.value
+      }
+    }
+    nodes.map(_.value).sum
+  }
+
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+}
+

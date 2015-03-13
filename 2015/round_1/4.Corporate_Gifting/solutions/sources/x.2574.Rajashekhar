@@ -1,0 +1,159 @@
+package com.facebook;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.Scanner;
+
+public class CorporateGifting {
+    static boolean[] mapScore;
+    public static void main(String[] args) throws FileNotFoundException {
+        Scanner in = new Scanner(System.in);
+        //Scanner in = new Scanner(new FileInputStream("/Users/rajashekhar.c/Documents/InterviewFeedbackReview/hackerrank"));
+        int t = in.nextInt();
+        for (int i = 0; i < t; i++) {
+            calculateCorporateGift(i, in);
+         }
+        in.close();
+    }
+
+    private static void calculateCorporateGift(int caseno, Scanner in){
+        int n = in.nextInt();
+        Node[] ar = new Node[n];
+        for (int i = 0; i < n; i++) {
+            int score = in.nextInt();
+            ar[i] = new Node();
+            ar[i].data = score;
+        }
+        calculateReportees(ar);
+        
+        mapScore = new boolean[n+1];
+        StackNode[] stackAr = new StackNode[n];
+        
+        stackAr[0] = new StackNode();
+        stackAr[0].index = 0;
+        stackAr[0].parent = -1;
+        ar[0].score = startDFS(stackAr, ar, 0);
+        calculateSum(caseno, ar);
+    }
+    
+    private static int startDFS(StackNode[] stackAr, Node[] nodeAr, int topOfStack){
+        int start;
+        int end;;
+        int[] scoreAr;
+        int i;
+        int index;
+        int parent;
+        
+        while(topOfStack >= 0){
+            StackNode stackNode = stackAr[topOfStack];
+            index = stackNode.index;
+            if(stackNode.start == -1){
+                start = nodeAr[index].startChild;
+                end = nodeAr[index].endChild;
+                scoreAr = new int[end - start + 1];
+                i = start;
+                
+                stackNode.start = start;
+                stackNode.end = end;
+                stackNode.scoreAr = scoreAr;
+            }else{
+                start = stackNode.start;
+                end = stackNode.end;
+                scoreAr = stackNode.scoreAr;
+                i = stackNode.i;
+            }
+            
+            
+            
+            for (; i <= end; i++) {
+                int childStart = nodeAr[i].startChild;
+                
+                if(childStart == 0){
+                    nodeAr[i].score = 1;
+                    scoreAr[i-start] = nodeAr[i].score;
+                } else if(nodeAr[i].score > 0){
+                    scoreAr[i-start] = nodeAr[i].score;
+                } else {
+                    stackAr[topOfStack].i = i;
+                    topOfStack++;                    
+                    stackAr[topOfStack] = new StackNode();
+                    stackAr[topOfStack].parent = i;
+                    stackAr[topOfStack].index = i;
+                    break;
+//                    scoreAr[i-start] = startDFS(nodeAr, i);
+//                    nodeAr[i].score = scoreAr[i-start];
+                }
+            }
+            
+            if(i == end + 1){
+                for (int j = 0; j < scoreAr.length; j++) {
+                    mapScore[scoreAr[j]] = true;
+                }
+                
+                int minScore = -1;
+                for (int j = 1; j <= mapScore.length; j++) {
+                    if(mapScore[j] == false){
+                        minScore = j;
+                        break;
+                    }
+                }
+                
+                for (int j = 0; j < scoreAr.length; j++) {
+                    mapScore[scoreAr[j]] = false;
+                }
+                
+                if(stackAr[topOfStack].parent == -1){
+                    return minScore;    
+                }else{
+                    parent = stackAr[topOfStack].parent;
+                    nodeAr[parent].score = minScore;
+                }
+                topOfStack--;
+            }
+        }
+        return 0;
+    }
+    
+    private static void calculateReportees(Node[] nodeAr){
+        int i = 1;
+        int end = -1;
+        while(i < nodeAr.length){
+            int start = i;
+            while(i < nodeAr.length && nodeAr[start].data == nodeAr[i].data){
+                i++;
+            }
+            end = i - 1;
+            int item;
+            item = nodeAr[start].data - 1;    
+            
+            nodeAr[item].startChild = start;
+            nodeAr[item].endChild = end;
+        }
+    }
+    
+    private static void calculateSum(int caseno, Node[] nodeAr){
+        long sum = 0;
+        for (int i = 0; i < nodeAr.length; i++) {
+            sum += nodeAr[i].score;
+        }
+        String temp = "Case #" + (caseno+1) + ": " + sum;
+        System.out.println(temp);
+    }
+    
+}
+
+class Node{
+    int data;
+    int startChild;
+    int endChild;
+    int score;
+}
+
+class StackNode{
+    int start = -1;
+    int end = -1;
+    int[] scoreAr = null;
+    int index = -1;
+    int i = -1;
+    int parent = -1;
+}

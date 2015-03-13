@@ -1,0 +1,206 @@
+#include <iostream>
+#include <fstream>
+#include <list>
+#include <algorithm>
+using namespace std;
+
+ifstream fin("corporate_gifting.txt");
+//ifstream fin("large.txt");
+ofstream fout("output4.txt");
+
+int n;
+int parent[200001];
+
+int child[200001];
+int ch_n[200001];
+int ch_range[200001][2];
+
+list<int> bfs;
+int level[200001];
+int order[200001];
+
+int check[200005];
+
+int mingift[200001];
+int mintotal[200001];
+int subgift[200001];
+int subtotal[200001];
+
+int childmingiftlist[200001];
+int loss[200001];
+
+bool comp(int a, int b)
+{
+	return level[a] > level[b];
+}
+
+void makechild()
+{
+	int i;
+	
+	for(i=1; i<=n; i++)
+		ch_n[i] = 0;
+
+	for(i=2; i<=n; i++)
+		ch_n[parent[i]]++;
+
+	ch_range[1][0] = 0;
+	ch_range[1][1] = -1;
+	for(i=2; i<=n; i++)
+	{
+		ch_range[i][0] = ch_range[i-1][0] + ch_n[i-1];
+		ch_range[i][1] = ch_range[i][0] - 1;
+	}
+
+
+	for(i=2; i<=n; i++)
+	{
+		ch_range[parent[i]][1]++;
+		child[ch_range[parent[i]][1]] = i;
+	}
+
+	////////////////////////////////////
+	/*
+	for(i=1; i<=n; i++)
+	{
+		cout <<"ID:"<<i<<") "<<ch_n[i]
+			 <<"["<<ch_range[i][0]<<","<<ch_range[i][1]<<"]"<<endl;
+		for(int j=ch_range[i][0] ; j<=ch_range[i][1]; j++)
+			cout << " " << child[j];
+		cout << endl;
+	}
+	*/
+}
+
+void makeorder()
+{
+	int i;
+
+	level[1] = 0;
+	bfs.push_back(1);
+	while(!bfs.empty())
+	{
+		int cur = bfs.front();
+		bfs.pop_front();
+
+		for(i=ch_range[cur][0]; i<=ch_range[cur][1]; i++)
+		{
+			level[child[i]] = level[cur]+1;
+			bfs.push_back(child[i]);
+		}
+	}
+
+	for(i=0; i<n; i++)
+		order[i] = i+1;
+	sort(order, order+n, comp);
+
+	////////////////////////////////////////
+	/*
+	cout<<"LEVEL"<<endl;
+	for(i=1; i<=n; i++)
+		cout<<level[i]<<' ';
+	cout<<endl<<"ORDER"<<endl;
+	for(i=0; i<n; i++)
+		cout<<order[i]<<' ';
+	cout <<endl;
+	for(i=0; i<n; i++)
+		cout<<level[order[i]] << ' ';
+	cout << endl<<endl;
+	*/
+}
+
+int main()
+{
+	int tt, ti;
+	fin >> tt;
+
+	for(ti=1; ti<=tt; ti++)
+	{
+		int i, j;
+
+		fin >> n;
+		for(i=1; i<=n; i++)
+			fin >> parent[i];
+
+		makechild();
+		makeorder();
+
+		for(i=0; i<n; i++)
+		{
+			int cur = order[i];
+			int childminsum=0;
+
+			//if leaf
+			if(ch_n[cur]==0)
+			{
+				mingift[cur] = 1;
+				mintotal[cur] = 1;
+				subgift[cur] = 2;
+				subtotal[cur] = 2;
+				continue;
+			}
+
+			//
+			for(j=1; j<=ch_n[cur]+2; j++)
+				check[j]=0;
+
+			int jj=0;
+			//
+			for(j=ch_range[cur][0]; j<=ch_range[cur][1]; j++)
+			{
+				check[mingift[child[j]]]=1;
+				childminsum += mintotal[child[j]];
+				childmingiftlist[jj] = mingift[child[j]];
+				loss[mingift[child[j]]] = 0;
+				jj++;
+			}
+
+			//find two gifts out of child gifts
+			for(j=1; j<=n; j++)
+			{
+				if(check[j]==0)
+				{
+					childmingiftlist[jj] = j;
+					loss[j] = 0;
+					jj++;
+				}
+				if(jj==ch_n[cur]+2)
+					break;
+			}
+
+			//calculate loss
+			for(j=ch_range[cur][0]; j<=ch_range[cur][1]; j++)
+			{
+				loss[mingift[child[j]]]
+					+= (subtotal[child[j]] - mintotal[child[j]]);
+			}
+			for(j=0; j<jj; j++)
+			{
+				loss[childmingiftlist[j]] += childmingiftlist[j];
+			}
+
+			//find min and sub
+			int minlossgift, sublossgift;
+			minlossgift = childmingiftlist[0];
+			sublossgift = childmingiftlist[1];
+			for(j=1; j<jj; j++)
+			{
+				if(loss[childmingiftlist[j]]<loss[minlossgift])
+				{
+					sublossgift = minlossgift;
+					minlossgift = childmingiftlist[j];
+				}
+			}
+
+			mingift[cur] = minlossgift;
+			subgift[cur] = sublossgift;
+			
+			mintotal[cur] = childminsum + loss[minlossgift];
+			subtotal[cur] = childminsum + loss[sublossgift];
+		}
+
+		fout << "Case #" << ti << ": " << mintotal[1] << endl;
+	}
+
+	return 0;
+}

@@ -1,0 +1,72 @@
+#include<stdio.h>
+#include<algorithm>
+using namespace std;
+
+#define MAXNUM 10000000
+//#define MAXNUM 50
+
+int T, nA;
+long long A[10485760];
+int MP[10485760] = {0};
+
+inline long long enc(long long m, int x) {
+    return (m<<30) | x;
+}
+
+void build() {
+    for(int i = 3; i <= MAXNUM; i += 2) {
+        if(MP[i] != 0) {
+            int p = MP[i], j = i/p;
+            MP[i] = (j%p!=0) ? MP[j]+1 : MP[j];
+            //fprintf(stderr, "i=%d, p=%d, j=%d, MPj=%d, MPi=%d\n", i, p, j, MP[j], MP[i]);
+            A[nA++] = enc(MP[i], i);
+        } else {
+            A[nA++] = enc(1, i);
+            MP[i] = 1;
+            if(i > 4000) continue;
+            for(int j = i*i; j <= MAXNUM; j += i) {
+                MP[j] = i;
+                //fprintf(stderr, "i=%d, j=%d, set MPj=%d\n", i, j, MP[j]);
+            }
+        }
+    }
+    A[nA++] = enc(1, 2);
+    MP[2] = 1;
+    for(int i = 4; i <= MAXNUM; i += 2) {
+        int j = i>>1;
+        MP[i] = (j&1) ? MP[j]+1 : MP[j];
+        A[nA++] = enc(MP[i], i);
+    }
+    sort(A, A+nA);
+/*    for(int i = 0; i < nA; ++i) {
+        fprintf(stderr, "(%d,%d) ", A[i]>>30, A[i]&0x3fffffff);
+    }
+    fprintf(stderr, "\n");*/
+}
+
+int binSearch(long long x) {
+    int s = 0, e = nA;
+    while(e-s > 1) {
+        int m = (s+e) >> 1;
+        if(A[m] == x) return m;
+        else if(A[m] < x) s = m;
+        else e = m;
+    }
+    return s;
+}
+
+int main() {
+    build();
+    scanf("%d", &T);
+    for(int tt = 1; tt <= T; ++tt) {
+        int a, b, k;
+        scanf("%d %d %d", &a, &b, &k);
+        long long ka = enc(k,a), kb = enc(k,b);
+        int ika = binSearch(ka), ikb = binSearch(kb);
+//        fprintf(stderr, "ka=%llx ika=%d Aika=%llx, kb=%llx ikb=%d Aikb=%llx\n", ka, ika, A[ika], kb, ikb, A[ikb]);
+        if(A[ika] < ka) ++ika;
+        if(A[ikb] <= kb) ++ikb;
+//        fprintf(stderr, "ka=%llx ika=%d Aika=%llx, kb=%llx ikb=%d Aikb=%llx\n", ka, ika, A[ika], kb, ikb, A[ikb]);
+        printf("Case #%d: %d\n", tt, ikb-ika);
+    }
+}

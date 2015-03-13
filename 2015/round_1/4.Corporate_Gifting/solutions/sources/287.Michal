@@ -1,0 +1,197 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Linq;
+
+class Program
+{
+
+    class Node
+    {
+        public int i; // label
+        public int minsum; // sum of colors in this subtree
+        public int color1; // best color
+        public int color2; // second best color
+        public int increase; // how much minsum increases if we switch from color1 to color2
+        public List<Node> sons = new List<Node>();
+        public Node(int i)
+        {
+            this.i = i;
+        }
+
+        public override string ToString()
+        {
+            return "" + i;
+        }
+    }
+
+    static int[] increase; // increase[k] = sum increase if we choose color k for current node
+
+    static void Color(Node node)
+    {
+        if (node.sons.Count == 0)
+        {
+            node.minsum = 1;
+            node.color1 = 1;
+            node.color2 = 2;
+            node.increase = 1;
+        }
+        else
+        {
+            // color subtree first
+            // not necessary since we color in topological order
+            foreach (Node son in node.sons)
+            {
+                if(son.minsum == 0)
+                    Color(son);
+            }
+            for (int k = 1; k <= node.sons.Count + 2; ++k)
+            {
+                increase[k] = k; // we must add k to the sum if we color this node with k
+            }
+            int minsubtree = 0; // minimal sum of subtree
+            foreach (Node son in node.sons)
+            {
+                minsubtree = minsubtree + son.minsum; // add sum of son's subtree
+                increase[son.color1] += son.increase; // add sum of son's increase if we color this node with son.color1 and son with son.color2
+            }
+            int sum1 = int.MaxValue; // best sum
+            int sum2 = int.MaxValue; // second best sum
+            int color1 = 0; // best color
+            int color2 = 0; // second best color
+            for (int k = 1; k <= node.sons.Count + 2; ++k)
+            {
+                // increase for color k
+                int value = increase[k];
+                // new best option found
+                if (value < sum1)
+                {
+                    // push current best option to the second place
+                    color2 = color1;
+                    sum2 = sum1;
+                    // save the new best
+                    color1 = k;
+                    sum1 = value;
+                }
+                // new second best option found
+                else if (value < sum2)
+                {
+                    // save the new second best
+                    color2 = k;
+                    sum2 = value;
+                }
+            }
+            node.minsum = minsubtree + sum1; // sum the best option
+            node.color1 = color1;
+            node.color2 = color2;
+            node.increase = sum2 - sum1; // increase in case we wanted to switch to the second best option later
+        }
+    }
+
+    static int Solve(int[] parents)
+    {
+        int N = parents.Length;
+        increase = new int[N + 3];
+        Node[] nodes = new Node[N + 1];
+        for (int i = 1; i <= N; i++)
+        {
+            nodes[i] = new Node(i);
+        }
+        int[] incoming = new int[N + 1];
+        for (int i = 1; i <= N; i++)
+        {
+            int p = parents[i - 1];
+            if (p == 0)
+                continue;
+            ++incoming[p];
+            Node parent = nodes[p];
+            parent.sons.Add(nodes[i]);
+        }
+        // sort topologically
+        Queue<int> queue = new Queue<int>();
+        for (int i = 1; i <= N; i++)
+        {
+            if (incoming[i] == 0)
+                queue.Enqueue(i);
+        }
+        while (queue.Count > 0)
+        {
+            int node = queue.Dequeue();
+            Color(nodes[node]);
+            int parent = parents[node - 1];
+            if (parent > 0 && --incoming[parent] == 0)
+            {
+                queue.Enqueue(parent);
+            }
+        }
+        return nodes[1].minsum;
+    }
+
+    static void Main(string[] args)
+    {
+        int T = ReadInt();
+        for (int t = 1; t <= T; ++t)
+        {
+            int N = ReadInt();
+            int[] P = ReadInts();
+            Console.WriteLine("Case #{0}: {1}", t, Solve(P));
+        }
+    }
+
+    // INPUT READING
+    static string ReadLine()
+    {
+        return Console.ReadLine();
+    }
+
+    static string[] ReadWords()
+    {
+        return ReadLine().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    static int ReadInt()
+    {
+        return int.Parse(ReadLine());
+    }
+
+    static long ReadLong()
+    {
+        return long.Parse(ReadLine());
+    }
+
+    static double ReadDouble()
+    {
+        return double.Parse(ReadLine());
+    }
+
+    static int[] ReadInts()
+    {
+        return Array.ConvertAll(ReadWords(), int.Parse);
+    }
+
+    static long[] ReadLongs()
+    {
+        return Array.ConvertAll(ReadWords(), long.Parse);
+    }
+
+    static double[] ReadDoubles()
+    {
+        return Array.ConvertAll(ReadWords(), double.Parse);
+    }
+
+    static void WriteList<T>(List<T> col)
+    {
+        int count = col.Count;
+        for (int i = 0; i < count - 1; i++)
+            Console.Write(col[i] + " ");
+        Console.WriteLine(col[count - 1]);
+    }
+
+    static void WriteArray<T>(T[] col)
+    {
+        int count = col.Length;
+        for (int i = 0; i < count - 1; i++)
+            Console.Write(col[i] + " ");
+        Console.WriteLine(col[count - 1]);
+    }
+}

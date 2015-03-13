@@ -1,0 +1,139 @@
+#include <iostream>
+#include <map>
+#include <string>
+#include <memory>
+
+// build a trie
+
+template <typename Iter, typename Iter2>
+size_t first_diff(Iter begin, Iter end, Iter2 begin2, Iter2 end2)
+{
+    Iter it = begin;
+    Iter2 it2 = begin2;
+    while (it != end && it2 != end2)
+    {
+        if (*it != *it2)
+            break;
+        it++, it2++;
+    }
+    return std::distance(begin, it);
+}
+
+class node
+{
+public:
+    typedef std::unique_ptr<node> node_ptr;
+
+    node() = default;
+    
+    node(node_ptr &&child, const std::string &name)
+    {
+        children[name] = std::move(child);
+    }
+    
+    bool is_leaf()
+    {
+        return children.empty();
+    }
+    
+    template <typename Iter>
+    void add_word(Iter begin, Iter end)
+    {
+        if (begin == end)
+            return;
+        // check for any common prefix...
+        for (auto it = children.begin(); it != children.end(); it++)
+        {
+            auto it_begin = it->first.begin();
+            auto it_end = it->first.end();
+            size_t distance = first_diff(begin, end, it_begin, it_end);
+            if (distance == 0) // no common part
+                continue;
+            else if (it_begin+distance == it_end) // fully inside of that node
+            {
+                it->second->add_word(begin+distance, end);
+                return;
+            }
+            else
+            {
+                // some common part {else}
+                node_ptr new_node = node_ptr(new node(std::move(it->second), std::string(it->first.begin()+distance, it->first.end())));
+                new_node->add_word(begin+distance, end);
+                children.erase(it);
+                children[std::string(begin, begin+distance)] = std::move(new_node);
+                return;
+            }
+        }
+        // not part of any child
+        children[std::string(begin, end)] = node_ptr(new node());
+    }
+    
+    template <typename Iter>
+    size_t common_length(const Iter begin, const Iter end)
+    {
+        if (begin == end)
+            return 0;
+        for (auto it = children.begin(); it != children.end(); it++)
+        {
+            auto it_begin = it->first.begin();
+            auto it_end = it->first.end();
+            size_t distance = first_diff(begin, end, it_begin, it_end);
+            if (distance == 0)
+                continue;
+            else if (it_begin+distance == it_end) // fully inside of that node
+                return distance + it->second->common_length(begin+distance, end);
+            else
+                return distance;
+        }
+        return 0; // nothing in common
+    }
+    
+    template <typename Range>
+    void add_word(const Range &r)
+    {
+        add_word(r.begin(), r.end());
+    }
+    
+    template <typename Range>
+    size_t common_length(const Range &r)
+    {
+        return common_length(r.begin(), r.end());
+    }
+
+private:
+    std::map<std::string, node_ptr> children;
+};
+
+size_t testcase()
+{
+    int n;
+    node trie;
+    size_t res = 0;
+
+    std::cin >> n;
+    
+    for (int i = 0; i < n; i++)
+    {
+        std::string word;
+        std::cin >> word;
+
+        res += std::min(trie.common_length(word)+1, word.size());
+        trie.add_word(word);
+    }
+    return res;
+}
+
+int main(int argc, char **argv)
+{
+    int t;
+
+    std::cin >> t;
+    
+    for (int i = 0; i < t; i++)
+    {
+        size_t res = testcase();
+        std::cout << "Case #" << (i+1) << ": " << res << std::endl;
+    }
+
+    return 0;
+}

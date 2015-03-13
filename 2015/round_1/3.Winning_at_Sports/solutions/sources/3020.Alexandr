@@ -1,0 +1,330 @@
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <queue>
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <stack>
+#include <ctime>
+#include <conio.h>
+#include <algorithm>
+#include <set>
+
+#define ll long long 
+#define ull unsigned long long
+#define mp make_pair
+#define eb emplace_back
+#define y yyy
+#define N 10000000
+#define md 1000000007
+#define sqr(x) ((x) * (x))
+#define INF (1 << 30)
+#define maxN 2000
+//#define LOCAL
+
+using namespace std;
+
+int ld[N];
+int answers[N];
+
+class taskA
+{
+public:
+	int tests;
+	vector <int> primes;
+
+
+	taskA()
+	{
+		scanf("%d", &tests);
+		primes.resize(0);
+		getPrimes();
+
+		for (int test = 1; test <= tests; test++)
+		{
+			int a, b, k;
+			scanf("%d %d %d", &a, &b, &k);
+			printCase(test, getAns(a, b, k));
+		}
+	}
+
+	void getPrimes()
+	{
+		for (int i = 2; i < N; ++i)
+		{
+			if (!ld[i])
+			{
+				primes.emplace_back(i);
+				ld[i] = i;
+				answers[i] = 1;
+			}
+			else
+			{
+				int t = i;
+				while (!(t % ld[i]))
+					t /= ld[i];
+				answers[i] = answers[t] + 1;
+			}
+			for (int j = 0; j < primes.size() && primes[j] <= ld[i] && i * primes[j] <= N; ++j)
+				ld[i * primes[j]] = primes[j];
+		}
+	}
+
+	int getK(int n)
+	{
+		return answers[n];
+	}
+
+	int getAns(int a, int b, int k)
+	{
+		int result = 0;
+		for (int i = a; i <= b; i++)
+		{
+			if (k == getK(i)) ++result;
+		}
+		return result;
+	}
+
+	void printCase(int test, int ans)
+	{
+		printf("Case #%d: %d", test, ans);
+		if (test < tests)
+			printf("\n");
+	}
+};
+
+vector < set < char > > levels;
+
+class taskB
+{
+public:
+
+	struct letter
+	{
+		char c;
+		vector <letter*> next;
+		int level;
+
+		letter(char c, int level) : c(c), level(level) {}
+
+		letter* writeAfter(letter* new_node)
+		{
+			next.emplace_back(new_node);
+			if (levels.size() - 1 < level + 1)
+				levels.emplace_back(set<char>());
+			levels[level + 1].insert(new_node->c);
+			return next[next.size() - 1];
+		}
+
+		void writeAfter(char* s)
+		{
+			letter* cur_node = this;
+			for (int i = 0; i < strlen(s); ++i)
+			{
+				cur_node = cur_node->writeAfter(new letter(s[i], cur_node->level + 1));
+			}
+		}
+
+		letter* getNextNode(char c)
+		{
+			for (int i = 0; i < next.size(); ++i)
+			{
+				if (next[i]->c == c)
+					return next[i];
+			}
+			return NULL;
+		}
+	};
+
+	letter* head = NULL;
+	int tests;
+
+	taskB()
+	{
+		scanf("%d", &tests);
+		for (int test = 1; test <= tests; ++test)
+		{
+			init();
+			int n;
+			scanf("%d", &n);
+			ll ans = 0;
+			for (int i = 0; i < n; ++i)
+			{
+				string s;
+				cin >> s;
+				ans += getAns(s);
+			}
+			printCase(test, ans);
+		}
+	}
+
+	void deleteTree(letter* node)
+	{
+		if (node->next.size())
+			deleteTree(node->next[0]);
+		delete node;
+	}
+
+	void init()
+	{
+		if (head) 
+			deleteTree(head);
+		levels.resize(0);
+		set < char > temp;
+		char temp_char = (char)(((int) 'a') - 1);
+		temp.insert(temp_char);
+		levels.emplace_back(temp);
+		levels.emplace_back(temp);
+		head = new letter(temp_char, 0);
+	}
+
+	int getAns(string s)
+	{
+		int level = 1;
+		int pos = 0;
+		letter* cur = head;
+		while (level < levels.size() && levels[level].find(s[pos]) != levels[level].end())
+		{
+			letter* next_node = cur->getNextNode(s[pos]);
+			if (next_node == NULL)
+				break;
+			cur = next_node;
+			++level; ++pos;
+		}
+		char* str = new char;
+		s.copy(str, s.length() - pos, pos);
+		str[s.length() - pos] = '\0';
+		cur->writeAfter(str);
+		if (pos == s.length()) return pos;
+		return level;
+	}
+
+	void printCase(int test, ll ans)
+	{
+		printf("Case #%d: %d", test, ans);
+		if (test < tests)
+			printf("\n");
+	}
+};
+
+
+ll winning[maxN][maxN];
+ll loosing[maxN][maxN];
+
+class taskC
+{
+public:
+	int tests;
+	int iiw, jjw;
+	int iil, jjl;
+
+	taskC()
+	{
+		
+		for (int i = 1; i < maxN; ++i)
+		{
+			winning[i][0] = 1;
+			loosing[0][i] = 1;
+		}
+		iiw = 2;
+		jjw = 1;
+		iil = 1;
+		jjl = 1;
+		scanf("%d", &tests);
+		for (int test = 1; test <= tests; ++test)
+		{
+			int a, b;
+
+			scanf("%d-%d", &a, &b);
+			if (!winning[a][b])
+			{
+				for (int i = iiw; i <= a; ++i)
+				{
+					for (int j = 0; j < i; ++j)
+					{
+						winning[i][j] = winning[i - 1][j] + winning[i][j - 1];
+						winning[i][j] += md;
+						winning[i][j] %= md;
+					}
+				}
+				iiw = a + 1;
+			}
+			if (!loosing[b][b])
+			{
+				for (int i = iil; i <= a; ++i)
+				{
+					for (int j = i; j <= maxN; ++j)
+					{
+						loosing[i][j] = loosing[i - 1][j] + loosing[i][j - 1];
+						loosing[i][j] += md;
+						loosing[i][j] %= md;
+					}
+					cout << "";
+				}
+				iil = a + 1;
+			}
+			printCase(test, winning[a][b], loosing[b][b]);
+		}
+	}
+
+	void printCase(int test, ll ans_win, ll ans_loose)
+	{
+		cout << "Case #" << test << ": " << ans_win << " " << ans_loose;
+		//printf("Case #%d: %d %d", test, ans_win, ans_loose);
+		if (test < tests)
+			printf("\n");
+	}
+};
+
+void gen()
+{
+	freopen("input.txt", "w", stdout);
+	cout << 100 << endl;
+	for (int i = 0; i < 100; i++)
+	{
+		cout << 100 << endl;
+		string s = "a";
+		for (int j = 0; j < 100; j++)
+			s.append("a");
+		for (int j = 0; j < 100; j++)
+		{
+			cout << s << endl;
+			s.erase(s.length() - 1);
+		}
+	}
+}
+
+void genC()
+{
+	freopen("input.txt", "w", stdout);
+	cout << "100\n";
+	for (int i = 0; i < 100; i++)
+	{
+		cout << "2000-1999\n";
+	}
+}
+
+bool checker()
+{
+	freopen("input.txt", "r", stdin);
+	return true;
+}
+
+int main()
+{
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+#ifdef LOCAL
+	//gen();
+	genC();
+	//checker();
+	return 0;
+
+#endif
+	//new taskA();
+	//new taskB();
+	new taskC();
+	//cout << endl << (double)clock() / CLOCKS_PER_SEC;
+	return 0;
+}

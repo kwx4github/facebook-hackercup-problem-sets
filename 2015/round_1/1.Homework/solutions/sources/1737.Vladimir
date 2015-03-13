@@ -1,0 +1,108 @@
+#! /usr/bin/python
+
+# By Vladimir Svoboda
+
+import sys
+from argparse import ArgumentParser, FileType
+import numpy as np
+from math import sqrt
+from collections import defaultdict
+
+
+class ProblemInstance(object):
+    def __init__(self, a, b, k):
+        self.a = a
+        self.b = b
+        self.k = k
+
+
+def parseInput(inFile):
+    nbOfProblems = int(inFile.readline().strip())
+    pList = list()
+
+    for i in range(nbOfProblems):
+        a, b, k = map(int, inFile.readline().strip().split())
+        p = ProblemInstance(a, b, k)
+
+        pList.append(p)
+
+    return pList
+
+
+def intSqrt(x):
+    return int(floor(sqrt(x)))
+
+def createPrimeList(n):
+    """ Input n>=6, Returns a array of primes, 2 <= p < n """
+    sieve = np.ones(n/3 + (n%6==2), dtype=np.bool)
+    sieve[0] = False
+    for i in range(int(int(n**0.5)/3)+1):
+        if sieve[i]:
+            k = 3*i+1|1
+            sieve[((k*k)/3)::2*k] = False
+            sieve[(k*k+4*k-2*k*(i&1))/3::2*k] = False
+    return np.r_[2, 3, ((3 * np.nonzero(sieve)[0] + 1)|1)]
+
+
+class Solver(object):
+    def __init__(self):
+        N = 10**7
+        primes = createPrimeList(N)
+        factDict = defaultdict(set)
+
+        for p in primes:
+            factDict[p].add(p)
+
+        for i in range(2, N+1):
+            if (i % (10**6)) == 0:
+                print(i)
+
+            for p in primes:
+                if i % p == 0:
+                    div = int(i/p)
+
+                    factDict[i].add(p)
+
+                    if div in factDict:
+                        factDict[i].update(factDict[div])
+                        break
+                elif p*p > i:
+                    break
+
+        self.factDict = factDict
+
+    def solve(self, pb):
+        a, b, k = pb.a, pb.b, pb.k
+        res = 0
+
+        for i in range(a, b+1):
+            nbP = len(self.factDict[i])
+
+            if nbP == k:
+                res += 1
+
+        return res
+
+
+def getCommandLineParser():
+    parser = ArgumentParser(description='Homework solver.')
+    parser.add_argument('inFile', nargs=1, type=FileType('r'),
+                        help='Input file')
+
+    return parser
+
+
+def main(args):
+    pbList = parseInput(args.inFile[0])
+    solver = Solver()
+
+    for i, pb in enumerate(pbList):
+        print("Case #{i}: {answer}"
+              "".format(i=i+1, answer=solver.solve(pb)))
+
+
+if __name__ == "__main__":
+    parser = getCommandLineParser()
+
+    main(parser.parse_args())
+

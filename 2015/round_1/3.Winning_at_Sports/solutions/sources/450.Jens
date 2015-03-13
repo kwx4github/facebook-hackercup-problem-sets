@@ -1,0 +1,161 @@
+package fbhackercup;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Scanner;
+
+import com.google.common.base.Charsets;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.Files;
+
+public class Q3 {
+
+	// ********** parsing ********** //
+	static final String FILENAME = "winning_at_sports";
+	static final String IN_FILE = FILENAME + ".in";
+	static final String OUT_FILE = "output";
+	static final String CORRECT_OUT_FILE = FILENAME + ".out";
+
+	public static void main(String[] args) throws IOException {
+		// parse and solve
+		StringBuilder outputBuilder;
+		try (Scanner sc = new Scanner(new File(IN_FILE))) {
+			int numTestcases = sc.nextInt();
+			sc.nextLine();
+			outputBuilder = new StringBuilder();
+			for (int i = 1; i <= numTestcases; i++) {
+				// parse input
+				Iterator<String> numbIt = Splitter.on('-').split(sc.nextLine().trim()).iterator();
+				int us = Integer.parseInt(numbIt.next());
+				int them = Integer.parseInt(numbIt.next());
+
+				// calculate answer
+				Object solution = new Q3().solve(us, them);
+				checkNotNull(solution);
+
+				// output
+				String answerString = String.format("Case #%s: %s", i, solution);
+				outputBuilder.append(answerString).append("\n");
+				System.out.println(answerString);
+			}
+
+			// sanity check
+			while (sc.hasNextLine()) {
+				String nextLine = sc.nextLine().trim();
+				if (!nextLine.isEmpty()) {
+					System.err.format("Warning: unused input line '%s'\n", nextLine);
+				}
+			}
+		}
+
+		// write output
+		String output = outputBuilder.toString();
+		Files.write(output, new File(OUT_FILE), Charsets.UTF_8);
+
+		// test (comment this out if no test)
+//		test(output);
+	}
+
+	// ********** testing ********** //
+	static void test(String calculatedOutput) throws IOException {
+		System.out.println();
+		List<String> calculatedLines = ImmutableList.copyOf(Splitter.on('\n').trimResults().split(calculatedOutput.trim()));
+		List<String> correctLines = Files.readLines(new File(CORRECT_OUT_FILE), Charsets.UTF_8);
+
+		checkState(calculatedLines.size() == correctLines.size(), "calculated %s lines but expected %s lines", calculatedLines.size(), correctLines.size());
+		
+		int numProblems = 0;
+		for (int i = 0; i < calculatedLines.size(); i++) {
+			if (!calculatedLines.get(i).equals(correctLines.get(i))) {
+				System.out.format("Warning: expected '%s' but calculated '%s'\n", correctLines.get(i), calculatedLines.get(i));
+				numProblems++;
+			}
+		}
+
+		if(numProblems==0) {
+			System.out.println("\n\nSuccessfully ran all tests.");
+		}else {
+			System.out.format("\n\nDetected %d problems.\n", numProblems);
+		}
+	}
+
+	// ********** solution ********** //
+	private static final PossibilityKeeper stressfreeKeeper = PossibilityKeeper.stressfree();
+	private static final PossibilityKeeper stressfulKeeper = PossibilityKeeper.stressful();
+
+	String solve(int us, int them) {
+		System.out.format("%s-%s\n", us, them);
+		long stressfree = stressfreeKeeper.numPossibilities(us, them);
+		long stressful = stressfulKeeper.numPossibilities(them, them);
+		return String.format("%d %d", stressfree, stressful);
+	}
+
+	static class PossibilityKeeper {
+		private final long numPossibilities[][];
+
+		PossibilityKeeper(long[][] numPossibilities) {
+			this.numPossibilities = numPossibilities;
+		}
+
+		long numPossibilities(int us, int them) {
+			long result = numPossibilities[us + them][us];
+			checkState(result != 0, "result 0 for %s-%s", us, them);
+			return result;
+		}
+
+		public static PossibilityKeeper stressfree() {
+			long[][] numPossibilities = getEmptyMatrix();
+
+			// populate
+			numPossibilities[0][0] = 1;
+			for (int pointNum = 1; pointNum < numPossibilities.length; pointNum++) {
+				int minimWinsByUs = pointNum / 2 + 1;
+				for (int winsByUs = minimWinsByUs; winsByUs <= pointNum; winsByUs++) {
+					int winsByThem = pointNum - winsByUs;
+					checkState(winsByUs > winsByThem);
+					numPossibilities[pointNum][winsByUs] = (numPossibilities[pointNum - 1][winsByUs] + numPossibilities[pointNum - 1][winsByUs - 1]) % 1000000007;
+				}
+			}
+
+			return new PossibilityKeeper(numPossibilities);
+		}
+
+		public static PossibilityKeeper stressful() {
+			long[][] numPossibilities = getEmptyMatrix();
+
+			// populate
+			numPossibilities[0][0] = 1;
+			for (int pointNum = 1; pointNum < numPossibilities.length; pointNum++) {
+				int maxWinsByUs = pointNum / 2;
+				for (int winsByUs = 0; winsByUs <= maxWinsByUs; winsByUs++) {
+					int winsByThem = pointNum - winsByUs;
+					checkState(winsByThem >= winsByUs);
+					if (winsByUs == 0) {
+						numPossibilities[pointNum][winsByUs] = numPossibilities[pointNum - 1][winsByUs];
+					} else {
+						numPossibilities[pointNum][winsByUs] = (numPossibilities[pointNum - 1][winsByUs] + numPossibilities[pointNum - 1][winsByUs - 1]) % 1000000007;
+					}
+				}
+			}
+
+			return new PossibilityKeeper(numPossibilities);
+		}
+
+		private static long[][] getEmptyMatrix() {
+			// get empty matrix
+			long numPossibilities[][] = new long[4001][4001];
+			for (int pointNum = 0; pointNum < numPossibilities.length; pointNum++) {
+				for (int winsByUs = 0; winsByUs < numPossibilities[pointNum].length; winsByUs++) {
+					numPossibilities[pointNum][winsByUs] = 0;
+				}
+			}
+			return numPossibilities;
+		}
+	}
+}

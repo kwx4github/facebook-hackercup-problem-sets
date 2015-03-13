@@ -1,0 +1,159 @@
+require 'pp'
+
+# returns nil if empty line
+def input_line
+  # if not defined, set to nil and read from stdinput
+  @input_filename ||= 'winning_at_sports.txt'
+
+  if @input_filename
+    @lines ||= File.read(@input_filename).each_line.map(&:chomp)
+    # read from file line by line
+    @lines.shift
+  else
+    # read from stdin
+    $stdin.read
+  end
+end
+
+def letter?(char)
+  char =~ /[a-z]/
+end
+
+def my_plus(a, b)
+  (a + b) % 1000000007
+end
+
+def my_mul(a, b)
+  a * b % 1000000007
+end
+
+def cache_key(a, b)
+  a * 10000 + b
+end
+
+# def num_stressfree(winner_score, loser_score)
+#   return 1 if loser_score == 0
+
+#   key = cache_key(winner_score, loser_score)
+#   return @cache[key] if @cache.has_key?(key)
+
+#   children = get_stressfree_children(winner_score, loser_score)
+
+#   sum = 0
+#   children.each do |(child_wscore, child_lscore)|
+#     child_sum = num_stressfree(child_wscore, child_lscore)
+#     sum = (sum + child_sum) % 1000000007
+#   end
+#   @cache[key] = sum
+
+#   sum
+# end
+
+# def get_stressfree_children(winner_score, loser_score)
+#   ret = []
+#   if (winner_score > 1 && winner_score - loser_score > 1)
+#     ret << [winner_score-1, loser_score]
+#   end
+#   if loser_score > 0
+#     ret << [winner_score, loser_score-1]
+#   end
+#   ret
+# end
+
+# def num_stressful(winner_score, loser_score)
+#   num_stressful_walk(0, 1, winner_score, loser_score)
+# end
+
+# def num_stressful_walk(winner_score, loser_score, fwin, flose)
+#   return 1 if loser_score == flose
+
+#   key = cache_key(winner_score, loser_score)
+#   return @cache[key] if @cache.has_key?(key)
+
+#   children = get_stressful_children(winner_score, loser_score, fwin, flose)
+
+#   sum = 0
+#   children.each do |(child_wscore, child_lscore)|
+#     child_sum = num_stressful_walk(child_wscore, child_lscore, fwin, flose)
+#     sum = (sum + child_sum) % 1000000007
+#   end
+#   @cache[key] = sum
+
+#   sum
+# end
+
+# def get_stressful_children(winner_score, loser_score, fwin, flose)
+#   ret = []
+#   if (winner_score < fwin && winner_score < loser_score)
+#     ret << [winner_score+1, loser_score]
+#   end
+#   if (loser_score < flose)
+#     ret << [winner_score, loser_score+1]
+#   end
+#   ret
+# end
+
+$stressfree = {}
+def sf(w, l)
+  key = cache_key(w,l)
+  $stressfree.has_key?(key) ? $stressfree[key] : 0
+end
+def setsf(w, l, v)
+  $stressfree[cache_key(w,l)] = v
+end
+
+def build_stressfree_cache(maxw, maxl)
+  $stressfree = {}
+  (0..maxw).each do |w|
+    setsf(w,0,1)
+  end
+  (1..maxw).each do |w|
+    (0..maxl).each do |l|
+      if (w > l)
+        setsf(w, l, (sf(w-1, l) + sf(w, l-1)) % 1000000007)
+      end
+    end
+  end
+end
+
+$stressful = {}
+def sf2(w, l)
+  key = cache_key(w,l)
+  $stressful.has_key?(key) ? $stressful[key] : 0
+end
+def setsf2(w, l, v)
+  $stressful[cache_key(w,l)] = v
+end
+def build_stressful_cache(maxw, maxl)
+  $stressful = {}
+  (0..maxl).each do |l|
+    setsf2(0,l,1)
+  end
+  (1..maxw).each do |w|
+    (0..maxl).each do |l|
+      if (w <= l)
+        # pp (sf2(w-1, l) + sf2(w, l-1)) % 1000000007
+        setsf2(w, l, (sf2(w-1, l) + sf2(w, l-1)) % 1000000007)
+      end
+    end
+  end
+end
+
+def solve_case(winner_score, loser_score)
+  stressfree = sf(winner_score, loser_score)
+  stressful = sf2(loser_score, loser_score)
+  # @cache = {}
+  # stressful = num_stressful(winner_score, loser_score)
+  # @cache = {}
+  [stressfree, stressful]
+end
+
+build_stressfree_cache(2000, 2000)
+build_stressful_cache(2000, 2000)
+
+num_cases = input_line.to_i
+(1..num_cases).each do |case_num|
+  (winner_score, loser_score) = input_line.split('-').map(&:to_i)
+  (stressfree, stressful) = solve_case(winner_score, loser_score)
+  puts "Case ##{case_num}: #{stressfree} #{stressful}"
+end

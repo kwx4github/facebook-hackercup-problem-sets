@@ -1,0 +1,145 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+
+namespace FacebookHackercup2015
+{
+    public class WinningSports
+    {
+        public static void Main(string[] args)
+        {
+            RunCases(args[0]);
+            //RunTests();
+        }
+
+        private static void RunCases(string fileName)
+        {
+            int max = 10000000;
+            StreamReader sr = new StreamReader(fileName);
+            int testCases = int.Parse(sr.ReadLine());
+
+            for (int i = 0; i < testCases; i++)
+            {
+                RunCase(sr, i + 1);
+            }
+        }
+
+        private static void RunCase(StreamReader sr, int i)
+        {
+            string line = sr.ReadLine();
+            string[] parts = line.Split('-');
+            int my = int.Parse(parts[0]);
+            int other = int.Parse(parts[1]);
+            Console.WriteLine("Case #{0}: {1} {2}", i, new StressFreeStrategy(my, other).Combinations, new StresslessStrategy(my, other).Combinations);
+        }
+
+        private static void RunTests()
+        {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            StressFreeStrategy sfs = new StressFreeStrategy(1000, 500);
+            Console.WriteLine(sfs.Combinations);
+            Console.WriteLine("Time elapsed: {0}", sw.Elapsed);
+            sw.Restart();
+            StresslessStrategy sls = new StresslessStrategy(1000, 500);
+            Console.WriteLine(sls.Combinations);
+            Console.WriteLine("Time elapsed: {0}", sw.Elapsed);
+        }
+
+        private abstract class StrategyBase
+        {
+            private const long Modulo = 1000000007;
+            protected const int Base = 10000;
+
+            protected int My;
+            protected int Other;
+
+            protected abstract int InitValue { get; }
+
+            private Dictionary<int, long> Cache { get; set; }
+
+            public long Combinations { get; private set; }
+
+            public StrategyBase(int my, int other)
+            {
+                My = my;
+                Other = other;
+                Cache = new Dictionary<int, long>();
+                Combinations = CombinationCount(InitValue);
+            }
+
+            private long CombinationCount(int score)
+            {
+                int my = score / Base;
+                int other = score % Base;
+
+                if (my == My && other == Other)
+                {
+                    return 1;
+                }
+
+                if (!Cache.ContainsKey(score))
+                {
+                    long childs = 0;
+
+                    if (!Vialotes(my + 1, other))
+                    {
+                        long c = CombinationCount(Base * (my + 1) + other);
+                        childs += c % Modulo;
+                    }
+
+                    if (!Vialotes(my, other + 1))
+                    {
+                        long c = CombinationCount(Base * my + other + 1);
+                        childs += c % Modulo;
+                    }
+
+                    Cache[score] = childs % Modulo;
+                }
+
+                return Cache[score];
+            }
+
+            protected abstract bool Vialotes(int my, int other);
+        }
+
+        private class StressFreeStrategy : StrategyBase
+        {
+            public StressFreeStrategy(int my, int other) : base(my, other) {}
+
+            protected override int InitValue
+            {
+                get
+                {
+                    return 1 * Base + 0;
+                }
+            }
+
+            protected override bool Vialotes(int my, int other)
+            {
+                return (my > My || other > Other) || (my <= other);
+            }
+        }
+
+        private class StresslessStrategy : StrategyBase
+        {
+            public StresslessStrategy(int my, int other) : base(my, other) { }
+
+            protected override int InitValue
+            {
+                get
+                {
+                    if (Other == 0) return 1*Base;
+                    else return 0 * Base + 1;
+                }
+            }
+
+            protected override bool Vialotes(int my, int other)
+            {
+                return (my > My || other > Other) || (other != Other && my > other);
+            }
+        }
+    }
+    
+}

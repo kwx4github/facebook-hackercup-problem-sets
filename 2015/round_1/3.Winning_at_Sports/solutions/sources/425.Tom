@@ -1,0 +1,87 @@
+mod = 1000000007
+max = 2000
+
+#def raw_input(f = open("in")): return f.readline().rstrip()
+
+def xxrange(dims):
+    if len(dims) == 0:
+        yield ()
+    else:
+        for i in xrange(dims[0]):
+            for rest in xxrange(dims[1:]):
+                yield tuple([i]) + rest
+
+def matrix(dims):
+    if len(dims) == 0:
+        return None
+    return [matrix(dims[1:]) for _ in xrange(dims[0])]
+
+def get(matrix, dims):
+    for i in dims:
+        matrix = matrix[i]
+    return matrix
+
+def set(matrix, dims, value):
+    for i in dims[:-1]:
+        matrix = matrix[i]
+    matrix[dims[-1]] = value
+
+def cached(*dims):
+    def cacher(fn):
+        cache = [None]
+        def cached_fn(*args):
+            if cache[0] is None:
+                cache[0] = matrix(dims)
+                for warmup in xxrange(dims):
+                    set(cache[0], warmup, fn(*warmup))
+            result = get(cache[0], args)
+            if result is None:
+                result = fn(*args)
+                set(cache[0], args, result)
+            return result
+        return cached_fn
+    return cacher
+
+def modulo(fn):
+    return lambda *args: fn(*args) % mod
+
+def logged(fn):
+    def logged_fn(*args):
+        print "%s(%s)" % (fn.func_name, args)
+        return fn(*args)
+    return logged_fn
+
+@cached(max+1, max+1)
+@modulo
+def get_stress_free(my_score, his_score):
+    if my_score == 0 and his_score == 0:
+        return 1
+    if my_score < 0 or his_score < 0 or my_score <= his_score:
+        return 0
+    return (get_stress_free(my_score - 1, his_score) +
+            get_stress_free(my_score, his_score - 1))
+
+@cached(max+1, max+1)
+@modulo
+def get_stressful(my_score, his_score):
+    if my_score == 0 and his_score == 0:
+        return 1
+    if my_score < 0 or his_score < 0 or my_score > his_score:
+        return 0
+    return (get_stressful(my_score - 1, his_score) +
+            get_stressful(my_score, his_score - 1))
+
+def main():
+    for i in xrange(max+1):
+        for j in xrange(max+1):
+            get_stress_free(i, j)
+            get_stressful(i, j)
+    ts = int(raw_input())
+    for t in xrange(ts):
+        my_score, his_score = map(int, raw_input().split("-"))
+        stress_free = get_stress_free(my_score, his_score)
+        stressful = get_stressful(his_score, his_score)
+        print "Case #%d: %d %d" % (t+1, stress_free, stressful)
+
+if __name__ == "__main__":
+    main()

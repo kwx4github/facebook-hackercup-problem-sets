@@ -1,0 +1,213 @@
+package com.jmc;
+
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class CorporateGifting {
+    static List<String> getLines(String fileName) throws IOException {
+        if (new File(fileName).exists()) {
+            String line;
+            ArrayList<String> lines = new ArrayList<String>();
+            BufferedReader reader = new BufferedReader(new FileReader(fileName));
+            while((line=reader.readLine()) != null) {
+                lines.add(line);
+            }
+            return lines;
+        } else {
+            return null;
+        }
+    }
+
+    static class FrameLite {
+        public FrameLite(int parent) {this.parent = parent;}
+        int numReport;
+        int newParent;
+        int parent;
+        int stage;
+    }
+    static void genTree(int buf[], AtomicInteger currId, int maxDepth, int numReports, int maxEmp) {
+        Stack<FrameLite> stack = new Stack<FrameLite>();
+        stack.push(new FrameLite(0));
+        while(!stack.empty()) {
+            FrameLite frame = stack.peek();
+            if (frame.stage == 0) {
+                buf[currId.get() - 1] = frame.parent;
+                if (stack.size() >= maxDepth) {
+                    stack.pop();
+                    continue;
+                }
+                frame.newParent = currId.get();
+                frame.stage = 1;
+            } else {
+                if (frame.numReport < numReports) {
+                    if (currId.get() >= maxEmp) {
+                        return;
+                    }
+                    currId.incrementAndGet();
+                    stack.push(new FrameLite(frame.newParent));
+                    frame.numReport++;
+                } else {
+                    stack.pop();
+                }
+            }
+        }
+    }
+      
+    public static void generate() {
+        int[] buf = new int[200000];
+        AtomicInteger size = new AtomicInteger(1);
+        genTree(buf, size, 2, 200000, 200000);
+        if (size.get() > 1) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < size.get(); i++) {
+                if (i > 0) {
+                    builder.append(" ");
+                }
+                builder.append(buf[i]);
+            }
+            System.out.println(size.get());
+            System.out.println(builder.toString());
+            System.exit(0);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+//        generate();
+//        System.exit(0);
+        String filename;
+        if (args.length < 1) {
+            filename = CorporateGifting.class.getSimpleName() + ".txt";
+        } else {
+            filename = args[0];
+        }
+        System.out.println("Running with filename: " + filename);
+
+        List<String> lines = getLines(filename);
+        if (lines == null) {
+            System.out.println("Error: can't find file [" + filename + "]");
+            System.exit(0);
+        }
+
+        String outfile = filename.replace("txt", "out");
+        PrintWriter out = new PrintWriter(new FileOutputStream(outfile));
+
+        int tests = Integer.parseInt(lines.get(0));
+        int currLine = 1;
+        for (int i = 0; i < tests; i++) {
+            String num = lines.get(currLine++);
+            String empString = lines.get(currLine++);
+            String[] emps = empString.split(" ");
+            int min = findMin(emps);
+            out.println("Case #" + (i+1) + ": " + min);
+        }
+        out.close();
+        System.out.println("Output in filename: " + outfile);
+    }
+
+    static class Pair implements Comparable<Pair> {
+        public Pair(int gift, int minAmount) {this.gift = gift; this.minAmount = minAmount;}
+        public int gift;
+        public int minAmount;
+        public int compareTo(Pair p) {
+            return minAmount < p.minAmount ? -1 : (minAmount > p.minAmount ? 1 :
+                    (gift < p.gift ? -1 : (gift > p.gift ? 1 : 0)));
+        }
+    }
+
+    static class Node {
+        TreeSet<Pair> sortedList = new TreeSet<Pair>();
+        LinkedList<Node> children = new LinkedList<Node>();
+        Pair secondBest = null;
+        HashSet<Integer> bestGifts = new HashSet<Integer>();
+    }
+
+    static int findMin(String[] emps) {
+        Node ceo = null;
+        HashMap<Integer, Node> nodes = new HashMap<Integer, Node>();
+        for (int i = 0; i < emps.length; i++) {
+            Node n = new Node();
+            nodes.put(i+1, n);
+        }
+        for (int i = 0; i < emps.length; i++) {
+            int parentId = Integer.parseInt(emps[i]);
+            Node n = nodes.get(i+1);
+            if (parentId == 0) {
+                ceo = n;
+            } else {
+                Node parent = nodes.get(parentId);
+                if (parent == null) {
+                    System.out.println("Bogus parentId = " + parentId);
+                    System.exit(1);
+                }
+                parent.children.add(n);
+            }
+        }
+        findMinIter(ceo);
+        return ceo.sortedList.first().minAmount;
+    }
+
+    static class Frame {
+        public Frame(Node n) {this.n = n; this.iter = n.children.iterator();}
+        int maxMinGift = 0;
+        int minSum = 0;
+        Node n;
+        Node child;
+        Iterator<Node> iter;
+        int stage;
+    }
+    static void findMinIter(Node top) {
+        Stack<Frame> stack = new Stack<Frame>();
+        stack.push(new Frame(top));
+        while(!stack.empty()) {
+            Frame frame = stack.peek();
+            switch (frame.stage) {
+                case 0:
+                    if (frame.iter.hasNext()) {
+                        frame.child = frame.iter.next();
+                        stack.push(new Frame(frame.child));
+                        frame.stage = 1;
+                    } else {
+                        frame.stage = 2;
+                    }
+                continue;
+                case 1:
+                    Pair first = frame.child.sortedList.first();
+                    if (first.gift > frame.maxMinGift) {
+                        frame.maxMinGift = first.gift;
+                    }
+                    frame.n.bestGifts.add(first.gift);
+                    frame.minSum += first.minAmount;
+                    frame.stage = 0;
+                continue;
+                case 2:
+                    for (int i = 1; i <= frame.maxMinGift + 1; i++) {
+                        int sum = 0;
+                        if (frame.n.bestGifts.contains(i)) {
+                            for (Node child : frame.n.children) {
+                                Pair childFirst = child.sortedList.first();
+                                int min = childFirst.minAmount;
+                                if (childFirst.gift == i) {
+                                    min = child.secondBest.minAmount;
+                                }
+                                sum += min;
+                            }
+                        } else {
+                            sum = frame.minSum;
+                        }
+                        frame.n.sortedList.add(new Pair(i, sum + i));
+                    }
+                    if (frame.n.sortedList.size() > 1) {
+                        Iterator<Pair> iter = frame.n.sortedList.iterator();
+                        iter.next();
+                        frame.n.secondBest = iter.next();
+                    } else {
+                        frame.n.secondBest = new Pair(2, 2);
+                    }
+                    stack.pop();
+                continue;
+            }
+        }
+    }
+
+}

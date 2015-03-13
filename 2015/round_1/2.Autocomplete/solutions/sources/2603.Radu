@@ -1,0 +1,144 @@
+#include <cstring>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <unordered_map>
+#include <queue>
+#include <stack>
+
+#include <algorithm>
+
+#include <fstream>
+#include <iostream>
+
+using namespace std;
+
+class Trie {
+private:
+	const char eow = 'z' + 1;
+
+	struct node {
+		int refcnt;
+		map<char, node*> children;
+		node() : refcnt(0), children() { }
+	} root;
+
+public:
+	void insert(string &word) {
+		node *n = &root;
+		n->refcnt++;
+		word.push_back(eow);
+		for (char c : word) {
+			auto it = n->children.find(c);
+			if (it == n->children.end()) {
+				node *nn = new node();
+				n->children[c] = nn;
+				n = nn;
+			}
+			else {
+				n = it->second;
+			}
+			n->refcnt++;
+		}
+	}
+	void remove(string &word) {
+		/* we're assuming that word is definitely present;
+		* otherwise we'd first have to look it up. */
+		node *n = &root;
+		n->refcnt--;
+		word.push_back(eow);
+		for (char c : word) {
+			node *prev = n;
+			n = n->children[c];
+			n->refcnt--;
+			if (prev->refcnt == 0 && prev != &root) {
+				delete prev;
+			}
+			else if (n->refcnt == 0) {
+				prev->children.erase(c);
+			}
+		}
+		if (n->refcnt == 0) {
+			delete n;
+		}
+	}
+	int count(string &word) {
+		node *n = &root;
+		word.push_back(eow);
+		for (char c : word) {
+			auto it = n->children.find(c);
+			if (it == n->children.end()) {
+				return 0;
+			}
+			n = it->second;
+		}
+		return n->refcnt;
+	}
+	int max_common_prefix_len(string &word) {
+		int ret = 0;
+		node *n = &root;
+		for (char c : word) {
+			auto it = n->children.find(c);
+			if (it == n->children.end()) {
+				break;
+			}
+			n = it->second;
+			ret++;
+		}
+		return ret;
+	}
+	int min_unique_prefix_len(string &word){
+		int ret = 0;
+		node *n = &root;
+		int it = 0;
+		while (n->refcnt!=1&&it!=word.length()-1){
+			n = n->children[word[it]];
+			it++;
+		}
+
+		if (it == 0)
+			return 1;
+		if (it == word.length() - 1&&n->refcnt!=1)
+			return it + 1;
+		return it;
+
+	}
+};
+
+ifstream fin("autocomplete.in");
+ofstream fout("autocomplete.out");
+string v[100000];
+int main()
+{
+	int t,n;
+	{
+		fin >> t;
+		for (int i = 1; i <= t; i++)
+		{
+			fin >> n;
+			Trie trie;
+			string s;
+			int sum = 0;
+			for (int i = 0; i < n; i++)
+			{
+				fin >> s;
+				v[i] = s;
+				trie.insert(s);
+				sum += trie.min_unique_prefix_len(v[i]);
+			}
+			for (int i = 0; i < n; i++)
+			{
+				trie.remove(v[i]);
+			}
+			fout <<"Case #"<<i<<": "<< sum << '\n';
+		}
+		fin.close();
+		fout.flush();
+		fout.close();
+		
+	}
+
+
+
+}

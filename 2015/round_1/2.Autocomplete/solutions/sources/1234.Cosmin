@@ -1,0 +1,139 @@
+//package hackercup.round01.problem02;
+
+import java.io.*;
+
+/**
+ * Facebook Hacker Cup 2015
+ * @author Cosmin Dumitrache (cosmin.m.dumitrache@gmail.com)
+ */
+public class Autocomplete {
+
+    /**
+     * Using a Trie data structure to do efficient storage and lookups
+     */
+    static class Trie {
+
+        class Node {
+
+            static final int ALPHABET_SIZE = 26;
+            Node[] children;
+            String word;
+            int childCount;
+
+            public Node() {
+                children = new Node[ALPHABET_SIZE]; //Assuming ASCII, lower case english alphabet
+                childCount = 0;
+            }
+
+            Node getChild(char c) {
+                return children[c-'a'];
+            }
+
+            void setChild(char c, Node child) {
+                children[c-'a'] = child;
+                childCount++;
+            }
+
+            Node getFirstChild() {
+                for (char c=0;c<children.length;c++) {
+                    if (children[c]!=null)
+                        return children[c];
+                }
+                return null;
+            }
+
+            String getFullWord() {
+                return word;
+            }
+
+            void setAsFullWord(String word) {
+                this.word = word;
+                childCount++;
+            }
+
+            boolean isFullWord() {
+                return word!=null;
+            }
+
+            int getChildCount() {
+                return childCount;
+            }
+
+            boolean isBranching() {
+                return childCount > 1;
+            }
+        }
+
+        Node root;
+
+        public Trie() {
+            root = new Node();
+        }
+
+        public void addWord(String word) {
+            Node currentNode = root;
+            int i;
+            for (i=0;i<word.length();i++) {
+                char c = word.charAt(i);
+                if (currentNode.getChild(c)!=null)
+                    currentNode = currentNode.getChild(c);
+                else
+                    break;
+            }
+            // add suffix that is not currently in the tree
+            StringBuilder buffer = new StringBuilder();
+            for (int j=i;j<word.length();j++) {
+                char c = word.charAt(j);
+                buffer.append(c);
+                Node newNode = new Node();
+                currentNode.setChild(c, newNode);
+                currentNode = newNode;
+            }
+            // mark the last node as a full word
+            currentNode.setAsFullWord(word);
+        }
+
+        public int getMinPrefixLength(String word) {
+            Node currentNode = root;
+            int count = 0; // last non-branching sequence length
+            for (int i=0; i<word.length(); i++) {
+                char c = word.charAt(i);
+                currentNode = currentNode.getChild(c);
+                if (currentNode.isBranching())
+                    count = 0;
+                else
+                    count++;
+            }
+            if (currentNode.isBranching())
+                return word.length() - count;
+            return word.length() - count + 1;
+        }
+
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length != 2) {
+            System.err.printf("Usage: java %s <input file> <output file>\n", Autocomplete.class.getCanonicalName());
+            System.exit(1);
+        }
+        String inputFile = args[0];
+        String outputFile = args[1];
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)));
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile)));
+        int t = Integer.parseInt(reader.readLine());
+        for (int i=1; i<=t; i++) {
+            int n = Integer.parseInt(reader.readLine());
+            Trie dictionary = new Trie();
+            int minChars = 0;
+            for (int j=0; j<n; j++) {
+                String word = reader.readLine();
+                dictionary.addWord(word);
+                minChars += dictionary.getMinPrefixLength(word);
+            }
+            writer.write(String.format("Case #%d: %d\n", i, minChars));
+        }
+        reader.close();
+        writer.close();
+    }
+
+}

@@ -1,0 +1,270 @@
+(* compiled on 64-bit system with ocamlopt -pp camlp4o $file *)
+
+open Printf
+open Scanf
+open Array
+
+module S = String
+module Q = Queue
+module T = Stack
+module H = Hashtbl
+module L = List
+
+module IntSet = Set.Make (struct
+  type t = int 
+  let compare = (compare : int -> int -> int)
+end)
+
+
+(* misc *)
+let neg_compare x y = compare y x
+let min3 a b c = min a (min b c)
+let mid3 a b c = if a < b then max a (min b c) else max b (min a c) 
+let max3 a b c = max a (max b c)
+let min4 a b c d = min (min a b) (min c d)
+let max4 a b c d = max (max a b) (max c d)
+let itb a = a <> 0
+let bti b = if b then 1 else 0
+let rec bsearch_min a b test =
+  (* b must be valid value *)
+  if b - a = 1 then b else 
+  let mid = (a-b)/2 + b in 
+  if test mid then bsearch_min a mid test else 
+  bsearch_min mid b test
+let rec bsearch_max a b test =
+  (* a must be valid value *) 
+  if b - a = 1 then a else 
+  let mid = (a-b)/2 + b in 
+  if test mid then bsearch_max mid b test else 
+  bsearch_max a mid test
+(* boolean *) 
+let xor a b = not a && b || not b && a 
+(* int *)
+let sign n = if n < 0 then -1 else if n > 0 then 1 else 0 
+let sqrt_floor n = bsearch_max 0 (1 lsl 31) (fun i -> i*i <= n)
+let sqrt_ceil n = bsearch_min (-1) (1 lsl 31) (fun i -> n <= i*i) 
+(* float *)
+let round f = truncate (f +. 0.5)
+let inv_float f = 1. /. f
+(* functional *)
+let id x = x
+let const x _ = x
+let (|>) x f = f x
+let (^>) x f = f x
+let (@@) a b = a b 
+let on g f a b = g (f a) (f b)
+let rec fix f = f (fun x -> fix f x)
+let if_ cond a b = if cond then a else b
+(* follow ocaml for convention *)
+let rec for_ i j c f = if i > j then c else for_ (i+1) j (f i c) f
+(* predicate *)
+let is_odd x = x land 1 = 1
+let is_even x = x land 1 = 0
+(* ref *)
+let (+=) a b = a := !a + b
+let (-=) a b = a := !a - b 
+let ( *= ) a b = a := !a * b
+let assign_min x y = x := min !x y 
+let assign_max x y = x := max !x y
+(* array *) 
+let set_min x i v = x.(i) <- min x.(i) v 
+let set_max x i v = x.(i) <- max x.(i) v 
+let swap arr i j = let t = arr.(i) in arr.(i) <- arr.(j); arr.(j) <- t 
+(* int, int *)
+let (++) (a,b) (c,d) = (a+c,b+d)
+let (--) (a,b) (c,d) = (a-c,b-d)
+let ( ** ) (a,b) (c,d) = (a*b,c*d) 
+let cross2 (a,b) (c,d) = a*d-b*c 
+let det2 a b c d = a*d - b*c 
+(* Arithmetic *)
+let negate x = -x
+let rec factorial n = if n = 0 then 1 else n * factorial (n-1)
+let rec gcd a b = if b = 0 then a else gcd b (a mod b)
+let rec extgcd a b = (* NOTE: g could be negative *)
+  if b = 0 then 1,0,a else
+  let x,y,g = extgcd b (a mod b) in 
+  y,x-(a/b)*y,g
+let log_int b n = 
+  (* when b = 1, dead loop *)
+  let rec run cnt m =
+    if m*b > n then cnt else 
+    run (cnt+1) (m*b)
+  in 
+  run 0 1
+let pow x n = 
+  let rec run acc y n = 
+    if n = 0 then acc else 
+    if n land 1 = 0 then run acc (y*y) (n lsr 1) else 
+    run (acc*y) (y*y) (n lsr 1) 
+  in 
+  run 1 x n
+let rec modpow m x n = 
+  let rec run acc y n = 
+    if n = 0 then acc else 
+    if n land 1 = 0 then run acc (y*y mod m ) (n lsr 1) else 
+    run (acc*y mod m ) (y*y mod m) (n lsr 1) 
+  in 
+  run 1 (x mod m) n 
+let modnorm m i = 
+  let t = i mod m in 
+  if t >= 0 then t else t + abs m 
+let modinv m i = (* 0 < g && 0 <= x < m *) 
+  let _,x,g = extgcd m i in 
+  modnorm m (sign g * x)
+(* IO *)
+let is_digit c =
+  let i = int_of_char c in
+  48 <= i && i < 58
+let is_space c = c = ' ' || c = '\n' || c = '\t' || c = '\r' 
+let read_char () = try input_char stdin with End_of_file -> '\000'
+let rec read_digit () = 
+  let c = read_char() in 
+  if is_digit c then int_of_char c - 48 else read_digit()
+let rec read_letter () = 
+  let c = read_char() in 
+  if is_space c then read_letter() else c 
+let read_int () = 
+  let digit c = int_of_char c - 48 in
+  let rec read n = 
+    let c = read_char() in 
+    if is_digit c then read (10*n + (digit c)) else 
+    n 
+  in
+  let rec run c = 
+    if is_digit c then read (digit c) else 
+    if c = '-' then begin 
+      let c = read_char() in 
+      if is_digit c then -read (digit c) else run c 
+    end else 
+    if c = '\000' then 0 else 
+    run (read_char())
+  in 
+  run (read_char())
+let read_float () = 
+  let digit c = float (int_of_char c - 48) in
+  let rec read_decimial m f = 
+    let c = read_char () in 
+    if is_digit c then read_decimial (m /. 10.) (f +. m *. digit c) else f
+  in 
+  let rec read_integral n = 
+    let c = read_char () in 
+    if is_digit c then read_integral (10. *. n +. digit c) else 
+    if c = '.' then n +. read_decimial 0.1 0.0 else 
+    n 
+  in 
+  let rec run c = begin 
+    if is_digit c then read_integral (digit c) else 
+    if c = '-' then begin 
+      let c = read_char() in 
+      if is_digit c then -. read_integral (digit c) else 
+      run c 
+    end else 
+    if c = '.' then read_decimial 0.1 0.0 else 
+    if c = '\000' then 0.0 else 
+    run (read_char())
+  end in 
+  run (read_char())
+let read_word () = 
+  let buf = Buffer.create 128 in 
+  let rec read c = 
+    if is_space c || c = '\000' then Buffer.contents buf else begin  
+      Buffer.add_char buf c; 
+      read (read_char())
+    end 
+  in
+  let rec run c = 
+    if is_space c then run (read_char()) else 
+    if c = '\000' then "" else 
+    read c 
+  in 
+  run (read_char())
+let read_line () = 
+  let buf = Buffer.create (4*1024) in 
+  let rec run c = 
+    if c = '\n' || c = '\000' then Buffer.contents buf else begin 
+      Buffer.add_char buf c;
+      run (read_char())
+    end 
+  in
+  run (read_char()) 
+let newline () = print_newline()
+let okay n = printf "okay %d\n" n; flush_all() (* for debug *)
+let print_int n = printf "%d\n" n
+let print_tuple s (x,y) = printf s x y 
+let print_array s arr = Array.iter (printf s) arr; print_newline()
+let print_matrix s mat = Array.iter (print_array s) mat
+let print_list s lis = List.iter (printf s) lis; print_newline()
+;;
+
+let sieve_under len = 
+  (* useful when under 10^6 and O(1) query is necessary *)
+  let sieve  = Array.make len true in 
+  Array.fill sieve 0 (min len 2) false;
+  let rec erase i k = if i < len then (sieve.(i) <- false; erase (i+k) k) in 
+  for i = 2 to sqrt_floor len do if sieve.(i) then erase (2*i) i done;
+  sieve
+let prime_under len = 
+  let sieve = sieve_under len in 
+  let cnt = for_ 0 (len-1) 0 (fun i c -> if sieve.(i) then c+1 else c) in 
+  let primes = make cnt 0 in 
+  let rec run i j = 
+    if i = len then primes else 
+    if sieve.(i) then (primes.(j) <- i; run (i+1) (j+1)) else run (i+1) j 
+  in 
+  run 0 0  
+let factorize_list ps n = 
+  let rec run i n = 
+    if n = 1 then [] else 
+    if i = length ps then [n] else 
+    if n mod ps.(i) = 0 then ps.(i) :: run i (n/ps.(i)) else 
+    run (i+1) n 
+  in 
+  run 0 n 
+let factorize_bag ps n = 
+  (* bottom if 1 is in ps *)
+  let rec factor_cnt p n cnt = 
+    if n = 1 || n mod p != 0 then cnt,n else 
+    factor_cnt p (n/p) (cnt+1)
+  in
+  let rec run i n = 
+    if n = 1 then [] else 
+    if i = length ps then [(n,1)] else 
+    if n mod ps.(i) = 0 then begin 
+      let cnt,n' = factor_cnt ps.(i) n 0 in 
+      (ps.(i), cnt) :: run (i+1) n' 
+    end else run (i+1) n 
+  in 
+  run 0 n  
+
+let _ = 
+  let n = 10_000_000 in 
+  let ps = prime_under n in 
+  let len = n + 1 in
+  let arr = make len 0 in 
+  for i = 0 to length ps -1 do 
+    let p = ps.(i) in 
+    let rec loop j = 
+      if j >= len then () else begin 
+        arr.(j) <- arr.(j) + 1;
+        loop (j+p)
+      end
+    in 
+    loop p
+  done;
+
+  let mat = init len (fun i -> make 9 0) in
+  for i = 1 to n do 
+    for j = 0 to 8 do 
+      mat.(i).(j) <- mat.(i-1).(j)
+    done;
+    mat.(i).(arr.(i)) <- mat.(i).(arr.(i)) + 1
+  done;
+
+  let tc = read_int() in 
+  for tci = 1 to tc do 
+    let a = read_int() in 
+    let b = read_int() in 
+    let c = read_int() in 
+    let ans = if c >= 9 then 0 else mat.(b).(c) - mat.(a-1).(c) in 
+    printf "Case #%d: %d\n" tci ans 
+  done

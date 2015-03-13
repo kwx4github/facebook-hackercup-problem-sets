@@ -1,0 +1,146 @@
+(ns fb.problem2015-2-2)
+
+
+(defn init-prefix-tree [] {})
+
+
+;; FIXME update-in causes stackoverflow
+(defn add-to-prefix-tree [tree word]
+  (update-in tree (vec (seq word))
+             (fn [old-value]
+               (if old-value (merge old-value {:stop true})
+                   {:stop :true}))))
+
+(defn deflatten [word-seq map]
+  (let [w (first word-seq)]
+    (if (nil? w) map
+        (recur (rest word-seq) {w map}))))
+
+(defn deep-merge
+  "Deeply merges maps so that nested maps are combined rather than replaced.
+  For example:
+  (deep-merge {:foo {:bar :baz}} {:foo {:fuzz :buzz}})
+  ;;=> {:foo {:bar :baz, :fuzz :buzz}}
+  ;; contrast with clojure.core/merge
+  (merge {:foo {:bar :baz}} {:foo {:fuzz :buzz}})
+  ;;=> {:foo {:fuzz :quzz}} ; note how last value for :foo wins"
+  [& vs]
+  (if (every? map? vs)
+    (apply merge-with deep-merge vs)
+    (last vs)))
+
+(defn deep-merge-with
+  "Deeply merges like `deep-merge`, but uses `f` to produce a value from the
+  conflicting values for a key in multiple maps."
+  [f & vs]
+  (if (every? map? vs)
+    (apply merge-with (partial deep-merge-with f) vs)
+    (apply f vs)))
+
+;; CIDER bug
+(defn add-to-prefix-tree2 [tree word-seq]
+  (deep-merge-with merge
+              tree
+         (deflatten (reverse word-seq) {:stop true})))
+        
+
+
+
+(defn starts-with [string prefix]
+  (.startsWith string prefix))
+
+(defn valid-prefix? [tree ks]
+  (nil? (get-in tree (into [] ks))))
+
+(defn generate-prefix [word tree]
+  (loop [c 1]
+    (let [ks (take c word)]
+      (if (or (valid-prefix? tree ks)
+              (= c (count word)))
+        ks
+        (recur (inc c))))))
+
+(defn generate-prefix2 [word tree so-far]
+  (let [w (first word)]
+    (cond (nil? w) so-far
+          (nil? (get tree w)) (conj so-far w)
+          :else
+          (recur (rest word)
+               (get tree w)
+               (conj so-far w)))))
+
+
+(defn solve [words]
+  (loop [[w & ws] words tree (init-prefix-tree) prefixes []]
+    (if w
+      (let [prefix (generate-prefix2 w tree [])]
+        (recur ws (add-to-prefix-tree2 tree w) (conj prefixes prefix)))
+      (reduce + (map count prefixes)))))
+
+
+(defn problem2 [in out]
+  (let [raw-data (re-seq #"\w+" (slurp in))
+        test-count (read-string (first raw-data))
+        tests (rest raw-data)]
+    (loop [data tests cnt 1 result []]
+      (let [case-count-s (first data)
+            case-count (if case-count-s (read-string case-count-s) 0)
+            words (take case-count (drop 1 data))]
+        (if case-count-s
+          (let [case-result (solve words)
+                case-string (format "Case #%d: %d\n" cnt case-result)]
+            (print case-string)
+            (recur (drop (+ 1 case-count) data) (inc cnt) (conj result case-string))
+            )
+          ;; print to file
+          (spit out (apply str result)))))))
+
+
+(defn generate
+  "Examples for matching"
+  [file n]
+  (let [alphabet "abcdefghijklmnopqrstuvwxyz"]
+    (->> (repeatedly n (fn []
+                         (let [size (inc (rand-int 13))]
+                           (apply str (repeatedly size #(rand-nth alphabet)))
+                           )))
+         (distinct)
+         ((fn [seq] (cons (count seq) seq)))
+         (cons 1)
+         (interpose "\n")
+         (apply str)
+         (spit file))
+    
+    ))
+
+(defn generate-long [file]
+  (let [long-string (apply str (repeat 100000 \a))]
+    (->> (loop [c 1 ss (into [] [long-string]) prev long-string]
+           (if (= 10 c) ss
+               (let [split (rand-int (count prev))
+                     new-str (apply str (concat (take split prev)
+                                                (drop (inc split) prev)))]
+                 (recur (inc c) (conj ss new-str) new-str)
+
+                 )))
+         (cons 10)
+         (cons 1)
+         (interpose "\n")
+         (apply str)
+         (spit file))))
+
+
+
+;; SPIZHENO
+
+(defn add-to-trie [trie x]
+  (assoc-in trie x (merge (get-in trie x) {:terminal true})))
+
+(defn in-trie? [trie x]
+  "Returns true if the value x exists in the specified trie."
+  (:terminal (get-in trie x) false))
+
+
+(defn build-trie [coll]
+  "Builds a trie over the values in the specified seq coll."
+  (reduce add-to-trie {} coll))

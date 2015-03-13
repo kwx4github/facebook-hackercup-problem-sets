@@ -1,0 +1,131 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define NR 200100
+
+typedef struct list {
+  int n; int finished;
+  int degree;
+  int level;
+  int children[NR];
+}list;
+
+int nodes;
+int cost[NR], price[NR], alternate[NR], levelSort[NR];
+int priceCosts[NR];
+list *adjancency;
+
+int isLeaf(int v)
+{
+  return adjancency[v].degree == 0;
+}
+
+void setValue(int v) {
+  if (isLeaf(v))
+  {
+    cost[v] = 1;
+    price[v] = 1;
+    alternate[v] = 2;
+  }
+  else
+  {
+    int neigh = adjancency[v].degree;
+    int againstC = 0;
+    for (int c = 1; c <= neigh + 1; c++) {
+      priceCosts[c] = 0;
+    }
+
+    for (int i = 0; i < neigh; i++) {
+      int kid = adjancency[v].children[i];
+      againstC += cost[kid];
+      if (price[kid] < neigh + 1) 
+        priceCosts[price[kid]] += (alternate[kid] - cost[kid]);
+    }
+
+    for (int c = 1; c <= neigh + 1; c++) {
+      priceCosts[c] += againstC;
+    }
+
+    int min = NR;
+    for (int c = 1; c <= neigh + 1; c++) {
+      if (min > priceCosts[c]) {
+        min = priceCosts[c];
+      }
+    }
+
+    cost[v] = min;
+    for (int c = 1; c <= neigh + 1; c++) {
+      if (min == priceCosts[c]) {
+        price[v] = c;
+        break;
+      }
+    }
+    min = NR;
+    for (int c = 1; c <= neigh + 1; c++) {
+      if (min > priceCosts[c] && cost[v] != priceCosts[c]) {
+        min = priceCosts[c];
+      }
+    }
+    alternate[v] = min;
+  }
+}
+
+void sort() {
+  int i, j;
+  int max = 0;
+  int ind = 0;
+  int crt = 0;
+  levelSort[ind++] = 1;
+  while (ind < nodes) {
+    int v = levelSort[crt++];
+    for (j = 0; j < adjancency[v].degree; j++) {
+      levelSort[ind++] = adjancency[v].children[j];
+    }
+  }
+}
+
+int solve() {
+  int finalCost = 0;
+  sort();
+  
+  int i;
+  for (i = nodes - 1; i >= 0; i-- ){
+    int v = levelSort[i];
+    setValue(v);
+    finalCost += price[v];
+  }
+
+  return finalCost;
+}
+
+int main() 
+{
+  int tests;
+
+  scanf("%d", &tests);
+
+  for (int i = 0; i < tests; i++) 
+  {
+    scanf("%d", &nodes);
+    adjancency = (list*) calloc(nodes + 1, sizeof(list));
+    memset(cost, 0, NR * sizeof(int));
+    memset(price, 0, NR * sizeof(int));
+    memset(alternate, 0, NR * sizeof(int));
+    memset(levelSort, 0, NR * sizeof(int));
+    memset(priceCosts, 0, NR * sizeof(int));
+    
+    for (int j = 1; j <= nodes; j++)
+    {
+      int parent;
+      scanf("%d", &parent);
+      adjancency[parent].children[adjancency[parent].degree] = j;
+      adjancency[parent].degree++;
+    }
+
+    printf("Case %d: %d\n", i+1, solve());
+    free(adjancency);
+  }
+
+  return 0;
+}

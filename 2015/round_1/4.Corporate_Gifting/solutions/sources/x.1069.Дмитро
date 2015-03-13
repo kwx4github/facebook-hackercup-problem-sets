@@ -1,0 +1,98 @@
+//
+//  main.cpp
+//  Corporate Gifting
+//
+//  Created by Dmytro Kotsur on 1/18/15.
+//  Copyright (c) 2015 Dmytro Kotsur. All rights reserved.
+//
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <set>
+
+#define MAX_N 200100
+
+using namespace std;
+
+struct sol {
+    long long best_solution[2];
+    int best_label[2];
+};
+
+int T, N;
+int p[MAX_N];
+sol solutions[MAX_N];
+
+ifstream in("corporate_gifting.txt");
+ofstream out("result.txt");
+
+long long getSolution(int id, int parent_k) {
+    if (solutions[id].best_label[0] == parent_k)
+        return solutions[id].best_solution[1];
+    else
+        return solutions[id].best_solution[0];
+}
+
+struct compare_solutinos {
+    bool operator()(pair<long long, int> s1, pair<long long, int> s2) {
+        return (s1.first < s2.first) || (s1.first == s2.first && s1.second < s2.second);
+    }
+};
+
+int main(int argc, const char * argv[])
+{
+    if (!in)
+        return -1;
+    
+    in >> T;
+    for (int t = 1; t <= T; ++t) {
+        in >> N;
+        vector<vector<int>> g(N + 1, vector<int>());
+        for (int n = 1; n <= N; ++n) {
+            in >> p[n];
+            g[p[n]].push_back(n);
+        }
+        
+        for (int i = N; i > 0; --i) {
+            if (g[i].size() == 0) {
+                for (int j = 1; j <= 2; ++j) {
+                    solutions[i].best_label[j-1] = j;
+                    solutions[i].best_solution[j-1] = j;
+                }
+            } else {
+                int max_k = 1;
+                for (int j = 0; j < g[i].size(); ++j) {
+                    if (max_k < solutions[g[i][j]].best_label[0])
+                        max_k = solutions[g[i][j]].best_label[0];
+                    if (max_k < solutions[g[i][j]].best_label[1])
+                        max_k = solutions[g[i][j]].best_label[1];
+                }
+                
+                
+                set<pair<long long, int>, compare_solutinos> best_solutions;
+                for (int k = 1; k <= max_k + 1; ++k) {
+                    long long solution = k;
+                    for (int j = 0; j < g[i].size(); ++j) {
+                        solution += getSolution(g[i][j], k);
+                    }
+                    best_solutions.insert(make_pair(solution, k));
+                }
+                
+                set<pair<long long, int>, compare_solutinos>::iterator it = best_solutions.begin();
+                for (int j = 0; j < 2; ++j, ++it) {
+                    solutions[i].best_label[j] = it->second;
+                    solutions[i].best_solution[j] = it->first;
+                }
+            }
+        }
+        
+        out << "Case #" << t << ": " << solutions[1].best_solution[0] << endl;
+        
+    }
+    
+    return 0;
+}
+
+
+

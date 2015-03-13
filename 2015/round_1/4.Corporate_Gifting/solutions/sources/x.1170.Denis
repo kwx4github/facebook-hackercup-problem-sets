@@ -1,0 +1,228 @@
+#include <stdio.h>
+#include <string>
+#include <math.h>
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <deque>
+#include <map>
+#include <set>
+#include <list>
+#include <cstdlib>
+#include <algorithm>
+using namespace std;
+
+//2015 Hacker Cup Round 1, Corporate Gifting
+//facebook.com/hackercup/problems.php?pid=759650454070547&round=344496159068801
+//Disable warning messages C4996.
+#pragma warning(disable:4996)
+
+#define INPUT_FROM 0
+#if INPUT_FROM
+#define fromc from
+#else
+#define fromc cin
+#endif
+
+/*typedef struct item * pitem;
+struct item{
+	bool color;
+	int k;// key
+	pitem p, l, r;
+};*/
+
+
+//long long fr(vector<long long>&, long long);
+
+int main(int argc, char **argv)
+{
+	//ifstream from;
+	const int nmin = 1, nmax = 200000;
+	int cases, n, m, nt, mt, res, i, j, k, t, rt, ax, bx;
+	int a, b, c, r0, r1, q;
+	int r;
+	int i0, i1, j0, j1;
+	//char ch;
+	//string sres[2]={"YES", "NO"};
+	//string s, st, sr;
+	//long double dt, dt0, dt1, dt2, dtr;
+
+	//if(INPUT_FROM) from.open("test.txt");
+	//freopen("input.txt","r",stdin);
+	//freopen("output.txt","w",stdout);
+
+	//vector<long long> v(nmax+1), vq(nmax+1);
+	//vector<long double> v00, v01, v10, v11;
+	vector<vector<int> > gg, vv;
+	//static char vvc[nmax][mmax];
+	//deque<pair<int,int> > dq;
+	vector<int> v, va, vt, gi, g0;
+	deque<int> dq;
+	//vector<vector<int> > vv(nmax+1);
+	//vector<vector<vector<int> > > vvv(nmax+1);
+	//map<char, long long> mi;
+	//map<char, long long>::iterator it;
+	//typedef map<string, long long>::const_iterator CI;
+	//pitem root, p0, p1, pt, px, pMemory;
+	//map<pair<int,int>,long double>::iterator it, it0, it1;
+	//map<pair<int,int>, long double> mp0, mp1;
+	//pair<int,int> pr;
+
+
+	//fromc>>cases;
+	scanf("%d\n", &cases);
+	for(int test = 1;test <= cases;++test){
+		scanf("%d\n", &n);
+		//fromc>>n>>k;
+
+		//pMemory = pt = (pitem)calloc(k+1, sizeof(item));
+
+		gg.resize(n);   // children
+		g0.resize(n);   // parent
+		gi.resize(n,0); // to store the current number of a child
+
+		vv.resize(n);  // to store (q0,a,b) values for nodes
+		for(int i=0;i<n;++i) vv[i].resize(3,0);
+
+		scanf("%d", &i0); // root
+		for(int i=1;i<n;++i){
+			scanf("%d", &i0);
+			--i0;
+			gg[i0].push_back(i);// child
+			g0[i] = i0;         // parent
+		}
+
+		for(int i=0;i<n;++i){
+			if(gg[i].size() == 0){
+				dq.push_back(i); // leaf node
+				vv[i][0] = 1; // optimal q0 for the leaf
+				vv[i][1] = 1; // the value of this subgraph for q0
+				vv[i][2] = 2; // 2nd optimal value if not q0
+			}
+		}
+
+
+		// start from root
+		/*vt.push_back(0); mt = 1;
+		while(mt > 0){
+			int i0 = vt.back();
+			if(gi[i0] < gg[i0].size()){
+				int i1 = gg[i0][gi[i0]++];
+				vt.push_back(i1); ++mt;
+			}else{
+				vt.pop_back(); --mt;
+				gi[i0] = 0;  // reset
+				// leaf node
+				if(gg[i0].size() == 0) dq.push_back(i0);
+			}
+		}*/
+
+
+		mt = dq.size();
+		// bottom-up
+		while(mt > 0){
+			for(int i=0;i<mt;++i){
+				int i1 = dq.front(); dq.pop_front();
+				int i0 = g0[i1];
+				++gi[i0];
+				if(gi[i0] == gg[i0].size()){
+					gi[i0] = 0;
+					if(i0 > 0) dq.push_back(i0);// not a root
+
+					vector<vector<int> > vvt;
+					multiset<vector<int> > ssv;
+					multiset<vector<int> >::iterator it, it0, it1;
+
+					int m = gg[i0].size();
+					//if(i0 == 0) cout << m << endl;
+					for(int j=0;j<m;++j){
+						int i1 = gg[i0][j];
+						ssv.insert(vv[i1]);
+						//if(i0 == 0) cout << vv[i1][1] << endl;
+					}
+
+					it0 = ssv.begin(); it1 = ssv.end();
+					for(it = it0;it!= it1;++it){
+						if((vvt.size() > 0)&&(vvt.back()[0] == (*it)[0])){
+							vvt.back()[1] += (*it)[1];
+							vvt.back()[2] += (*it)[2];
+						}else vvt.push_back(*it);
+					}
+
+					//if(i0 == 0) cout << vvt.size() << ' ' << vvt[0][1] << endl;
+
+					int d0 = 1;// d0 - 1 = mex{i_0 - 1,i_1 - 1,...,i_(m-1) - 1}
+					int d1 = -1;// 2nd best value
+
+					int kt = vvt.size();
+					int ax = 1, bx = 1;
+					int a = 0;
+					for(int j=0;j<kt;++j){
+						if(ax == 1){
+							if(d0 == vvt[j][0]) ++d0;
+							else ax = 0, d1 = d0 + 1; // vvt[j-1][0] < d0 < vvt[j][0]
+						}else if(bx == 1){
+							if(d1 == vvt[j][0]) ++d1;
+							else bx = 0;
+						}
+						a += vvt[j][1];
+					}
+					if(d1 == -1) d1 = d0 + 1;
+
+					//cout << i0 << ' ' << d0 << ' ' << d1 << endl;
+
+					// q0 in (1,...,d0)
+					int r0 = a + d0, r1 = a + d1;
+					int d2 = d0;
+					//if(i0 == 0) cout << a <<' ' << r0 << ' ' << r1 << endl;
+					for(int j = 0;(j < d2 - 1)&&(j < kt);++j){
+						// q = j + 1
+						int rt = j + 1 + a - vvt[j][1] + vvt[j][2];
+						if(rt < r0){
+							d0 = j + 1;
+							r1 = r0;
+							r0 = rt;
+						}else if(rt < r1) r1 = rt;
+					}
+					for(int j = d2;(j < d1 - 1)&&(j < kt);++j){
+						// q = j + 1
+						int rt = j + 1 + a - vvt[j][1] + vvt[j][2];
+						if(rt < r1) r1 = rt;
+					}
+
+					vv[i0][0] = d0; // optimal q0 for the leaf
+					vv[i0][1] = r0; // the value of this subgraph for q0
+					vv[i0][2] = r1; // 2nd optimal value if not q0
+
+					//cout << i0 << ' ' << d0 <<' ' << r0 << ' ' << r1 << endl;
+
+					ssv.clear();
+					vvt.clear();
+
+				}
+			}
+			mt = dq.size();
+		}
+
+		r = vv[0][1];
+
+		//printf("Case #%d: %.6Lf\n", test, dtr);;
+		//cout<<"Case #"<<test<<": "<<dt<<endl;
+		cout<<"Case #"<<test<<": "<<r<<endl;
+		//printf("%lld\n", res);
+
+		//free(pMemory);
+		dq.clear();
+		gg.clear();
+		g0.clear();
+		gi.clear();
+		vv.clear();
+	}
+
+	//vvv.clear();
+
+	return 0;
+}
+
+
+

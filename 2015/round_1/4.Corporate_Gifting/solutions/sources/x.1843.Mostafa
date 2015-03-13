@@ -1,0 +1,213 @@
+package com.meg7.training.facebook.hackerCup15.round1;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Random;
+import java.util.Scanner;
+
+public class Problem_4 {
+
+    public static void main(String[] args) {
+//        // Generate large test file.
+//        try {
+//            Random randomGenerator = new Random();
+//
+//            File file = new File("input.txt");
+//            PrintWriter out = new PrintWriter(file);
+//
+//            int numberOfTests = 20;
+//            out.println(numberOfTests);
+//            for (int t = 0; t < numberOfTests; t++) {
+//                int employees = randomGenerator.nextInt(200001) + 1;// I know misses up with random!
+//                out.println(employees);
+//
+//                out.print("0 ");
+//                for (int i = 1; i < employees; i++) {
+//                    out.print((randomGenerator.nextInt(i) + 1) + " ");// I know misses up with random!
+//                }
+//
+//                out.println();
+//            }
+//
+//            out.close();
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        }
+
+//        try {
+//            File file = new File("input.txt");
+//            Scanner scanner = new Scanner(file);
+
+            Scanner scanner = new Scanner(System.in);
+
+            int numberOfTests = scanner.nextInt();
+
+            int n;
+            Tree orgChart;
+            for (int i = 0; i < numberOfTests; i++) {
+                n = scanner.nextInt();
+                orgChart = new Tree();
+
+                scanner.nextInt();// Skip CEO!
+                for (int j = 2; j <= n; j++) {
+                    orgChart.insert(j, scanner.nextInt());
+                }
+
+                solveAndPrint(i + 1, orgChart);
+            }
+
+//            scanner.close();
+//        } catch (FileNotFoundException e) {
+//            // Do nothing!
+//        }
+    }
+
+    private static void solveAndPrint(int caseNumber, Tree orgChart) {
+        int minSpend = orgChart.exchangeGifts();
+
+        System.out.println("Case #" + caseNumber + ": " + minSpend);
+    }
+
+    private static class Tree {
+
+        private Node mRoot;
+
+        public Tree() {
+            mRoot = new Node(1, -1);
+        }
+
+        public void insert(int employee, int manager) {
+            Node employeeManager = get(manager);
+            employeeManager.children.add(new Node(employee, manager));
+        }
+
+        public Node get(int employee) {
+            return get(mRoot, employee);
+        }
+        private Node get(Node root, int employee) {
+            if (root.employee == employee) { return root; }
+
+            Node employeeManager = null;
+            for (Node node : root.children) {
+                if (node.employee == employee) {
+                    return node;
+                }
+
+                employeeManager = get(node, employee);
+                if (employeeManager != null && employeeManager.employee == employee) {
+                    return employeeManager;
+                }
+            }
+
+            return employeeManager;
+        }
+
+        public int exchangeGifts() {
+            return exchangeGifts(mRoot);
+        }
+        private int exchangeGifts(Node root) {
+            int gifts = 0;
+
+            Queue<Node> traverseQueue = new LinkedList<Node>();
+            List<Queue<Node>> levelNodesQueues = new LinkedList<Queue<Node>>();
+            Queue<Node> leafNodesQueue = new LinkedList<Node>();
+
+            Queue<Node> tempQueue;
+
+            tempQueue = new LinkedList<Node>();
+            tempQueue.add(root);
+            levelNodesQueues.add(tempQueue);
+            traverseQueue.add(root);
+            while (!traverseQueue.isEmpty()) {
+                Node next = traverseQueue.remove();
+
+                tempQueue = new LinkedList<Node>();
+                for (Node node : next.children) {
+                    if (node.isLeaf()) {
+                        leafNodesQueue.add(node);
+                        continue;
+                    }
+
+                    tempQueue.add(node);
+                    traverseQueue.add(node);
+                }
+                levelNodesQueues.add(tempQueue);
+            }
+
+            while (!leafNodesQueue.isEmpty()) {
+                Node leaf = leafNodesQueue.remove();
+                leaf.gift = 1;
+                gifts += leaf.gift;
+//                System.out.print(leaf.employee + ":" + leaf.gift + " ");
+            }
+
+//            System.out.println();
+
+            int levels = levelNodesQueues.size();
+            for (int i = levels - 1; i >= 0; i--) {
+                for (Node node : levelNodesQueues.get(i)) {
+                    node.gift = node.calculatePossibleGiftPrice();
+                    gifts += node.gift;
+//                    System.out.println(node.employee + ":" + node.gift);
+                }
+            }
+
+            return gifts;
+        }
+
+        public static class Node {
+
+            int employee;
+            int manager;
+            List<Node> children = new ArrayList<Node>();
+            int gift;
+
+            public Node (int employee, int manager) {
+                this.employee = employee;
+                this.manager = manager;
+            }
+
+            public Node getNode(int employee) {
+                for (Node node : children) {
+                    if (node.employee == employee) {
+                        return node;
+                    }
+                }
+
+                return null;
+            }
+
+            public int calculatePossibleGiftPrice() {
+                int gift = 1;
+
+                List<Integer> cannotBeList = new ArrayList<Integer>();
+                for (Node node : children) {
+                    if (gift == node.gift || cannotBeList.contains(gift)) {
+                        gift++;
+
+                        // Keep increasing gift till it is valid.
+                        while (gift == node.gift || cannotBeList.contains(gift)) {
+                            gift++;
+                        }
+                    } else {
+                        cannotBeList.add(node.gift);
+                    }
+                }
+
+                return gift;
+            }
+
+            public boolean isLeaf() {
+                return children.size() == 0;
+            }
+
+        }
+
+    }
+
+}

@@ -1,0 +1,162 @@
+/*
+ *  Facebook Hacker Cup 2015
+ *  Round 1 - Autocomplete
+ */
+
+#include <cstdio>
+#include <vector>
+#include <list>
+
+#define INPUT	  "autocomplete.txt"
+#define OUTPUT	"autocomplete.out"
+// MODE 0 -> for submission, 1 -> for local 
+#define MODE    1
+
+int N;
+char W[1000001];
+
+struct Node
+{
+  char letter;
+  // TODO: make this a user-defined list (for exercise)
+  std::list<Node*> sons;
+};
+
+std::list<Node*> AllNodes;
+
+Node *R;
+
+// TODO: do this iteratively, not recursive -> stack overflow
+void Deallocate()
+{
+  std::list<Node*>::iterator it;
+
+  for (it = AllNodes.begin(); it != AllNodes.end(); ++it)
+  {
+    delete *it;
+  }
+  R = NULL;
+  AllNodes.clear();
+}
+
+void ReadTestData()
+{
+  // not needed, we solve it "as we read"
+}
+
+// adds word W through the R prefix tree
+int AddWord()
+{
+  int len = strlen(W);
+  Node *curNode = R;
+
+  for (int i = 0; i < len; ++i)
+  {
+    // we go in parallel with the current node's letter and the current W's
+    // letter
+    
+    // look for the character through the current siblings
+    bool found = false;
+    std::list<Node*>::const_iterator it;
+    for (it = curNode->sons.begin(); it != curNode->sons.end(); ++it)
+    {
+      if ((*it)->letter == W[i])
+      {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found)
+    {
+      // not found! lots of stuff happens:
+      // - put the remaining characters in the tree, going in depth
+      // - return the depth until now + 1
+
+      for (int j = i; j < len; ++j)
+      {
+        Node *n = new Node;
+
+        n->letter = W[j];
+        AllNodes.push_back(n);
+        curNode->sons.push_back(n); // add this new node to the parent's sons
+        curNode = n; // "recursively"
+      }
+
+      // we can autocomplete this word by first i characters (which are already
+      // in the tree) + 1 (first letter of the remaining letters from the word)
+      // => this guarantees that this prefix is unique
+      return i + 1;
+    }
+    else
+    {
+      // found, go forward with next char/son
+      curNode = *it;
+    }
+  }
+
+  // if we reached this line, it means that the whole word exists in the tree,
+  // so we cannot autocomplete it from a shorter prefix; return its length in
+  // this case...
+  return len;
+}
+
+void Solve()
+{
+  R = new Node();
+  R->letter = '*';
+  AllNodes.push_back(R);
+
+  scanf("%d", &N);
+
+  int len = 0;
+  for (int i = 0; i < N; ++i)
+  {
+    scanf("%s\n", &W);
+    len += AddWord();
+  }
+
+  printf("%d\n", len);
+
+  Deallocate();
+}
+
+void PreGen()
+{
+}
+
+int main()
+{
+  /*freopen(INPUT, "w", stdout);
+
+  for (int i = 0; i < 500000; ++i)
+  {
+    printf("a");
+  }
+  printf("\n");
+  for (int i = 0; i < 500000; ++i)
+  {
+    printf("a");
+  }
+  printf("\n");
+
+  return 0;*/
+#if MODE
+	freopen(INPUT, "r", stdin);
+	freopen(OUTPUT, "w", stdout);
+#endif
+
+  PreGen();
+  int nrTests;
+  scanf("%d", &nrTests);
+
+  for (int test = 1; test <= nrTests; ++test)
+  {
+	  ReadTestData();
+
+    printf("Case #%d: ", test);
+	  Solve();
+  }
+
+	return 0;
+}

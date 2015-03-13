@@ -1,0 +1,146 @@
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "autocomplete.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("autocomplete.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		Autocomplete solver = new Autocomplete();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class Autocomplete {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        out.print("Case #" + (testNumber) + ": ");
+        int n = in.nextInt();
+        TrieNode roots[] = new TrieNode[26];
+        int ans = 0;
+        StringBuilder sb = new StringBuilder(1000000);
+        for (int i = 0;i < n;i++) {
+            String s = in.next();
+            int l = sb.length();
+            sb.append(s);
+            int aa = add(sb, l, sb.length() - 1, roots);
+            ans += aa;
+        }
+        out.println(ans);
+    }
+
+    private int add(StringBuilder sb, int si, int ei, TrieNode roots[]) {
+        if (si > ei) return 0;
+        int st = sb.charAt(si) - 'a';
+        if (roots[st] != null) {
+            TrieNode t = roots[st];
+            int lp = longestPrefix(sb, si, ei, roots[st].si, roots[st].ei);
+            int r  = 0;
+            int tsi = roots[st].si;
+            int tei = roots[st].ei;
+            if (lp != ei - si + 1) { // no full match
+
+                roots[st].ei = roots[st].si + lp - 1;
+                add(sb,roots[st].si + lp, tei, roots[st].children);
+            }
+            r += add(sb, si + lp, ei, roots[st].children) + lp;
+
+            return r;
+        } else {
+            roots[st] = new TrieNode(si, ei);
+            return 1;
+        }
+    }
+
+    private int longestPrefix(StringBuilder sb, int si1, int ei1, int si2, int ei2) {
+        int i = 0;
+        for (;si1 <= ei1 && si2 <= ei2 ;si1++, si2++, i++) {
+            if (sb.charAt(si1) != sb.charAt(si2)) return i;
+        }
+        return i;
+    }
+
+}
+
+class TrieNode {
+    int si, ei;
+	TrieNode children[] = new TrieNode[26];
+    TrieNode(int si, int ei) {
+        this.si = si;
+        this.ei = ei;
+    }
+
+}
+
+class InputReader {
+	private BufferedReader br;
+	private StringTokenizer st;
+	public InputReader(InputStream in) {
+		br=new BufferedReader(new InputStreamReader(in));
+		try {
+			st=new StringTokenizer(br.readLine());
+		} catch (IOException ignored) {
+
+		}
+	}
+
+	public boolean readLine() {
+		try {
+			st=new StringTokenizer(br.readLine());
+		} catch (IOException e) {
+			return false;
+		}
+		return true;
+	}
+	public int nextInt(){
+		if(!st.hasMoreTokens()) readLine();
+		return Integer.parseInt(st.nextToken());
+	}
+
+	public String next(){
+		if(!st.hasMoreTokens()) readLine();
+		return st.nextToken();
+	}
+
+}
+

@@ -1,0 +1,103 @@
+import pprint
+
+def commonPrefixIndex(word1, word2):
+#    """Returns none if one word is consumed by the other"""
+    l = min(len(word1), len(word2))
+    for index in range(l):
+        if word1[index] is not word2[index]: 
+            return index
+    return l
+
+#==============================================================================
+# # test this
+# print commonPrefixIndex("none", "zero")  # 0
+# print commonPrefixIndex("none", "nero")  # 1
+# print commonPrefixIndex("none", "not")  # 2
+# print commonPrefixIndex("not", "none")  # 2
+# print commonPrefixIndex("none", "no")  # 2
+# print commonPrefixIndex("no", "no")  # 2
+# print commonPrefixIndex("no", "none")  # 2
+#==============================================================================
+
+
+class Node(object):
+    
+    def __init__(self, string = None):
+        """not supplying a string creates a root"""
+        self.string = string
+        self.children = {}
+
+    def _addSuffix(self, suffix):
+        """Returns how many steps in trie to this new suffix"""
+        ch = suffix[0]
+        try:
+            child = self.children[ch]
+            # find (longest) common prefix, separate it out
+            comIndex = commonPrefixIndex(suffix, child.string)
+            comString = suffix[0:comIndex]
+            remChild = child.string[comIndex:]
+            remSuffix = suffix[comIndex:]
+            # if remChild is nothing, we go to that node and extend it
+            if remChild is '':
+                return comIndex + child._addSuffix(remSuffix)
+            # make a new node with the common stuff,
+            # 1) add the new suffix to it (unless it is empty)
+            # 2) add original child (with word replaced by suffix) to it if needed
+            nNode = Node(comString)
+            
+            nNode.children[remChild[0]] = child
+            child.string = remChild
+            self.children[ch] = nNode
+            
+            if remSuffix is not '':
+                # did not run out of the new suffix, make node for it -- no other such common suffix
+                nNode.children[remSuffix[0]] = Node(remSuffix)
+                return comIndex+1
+            else:
+                # ran out of the new suffix .. just have to type it in
+                return comIndex
+        except:
+            # we had no child starting with this character
+            # -- just add the child
+            # need to type just the first letter
+            self.children[ch] = Node(suffix)
+            return 1
+        
+
+class Trie(object):
+    """A Trie is a special tree. Each node has:
+    
+    - my_suffix
+    - my_suffix_startletter
+    - a bunch of children
+    """
+
+    def __init__(self):
+        """Creates an empty trie"""
+        self._root = Node()
+    
+    def add(self, word):
+        """Adds the given word -- returns the number of chars to type"""
+        return self._root._addSuffix(word)
+
+
+def solve(words):
+    t = Trie()
+    total = 0
+    chars = []
+    for word in words:
+        num = t.add(word)
+        chars.append(num)
+        total += num
+#s    pprint.pprint(chars)
+    return total
+
+T = int(raw_input())
+for t in range(1, T+1):
+    N = int(raw_input())
+    words = []
+    for n in range(N):
+        words.append( raw_input().strip() )
+    print 'Case #{0}: {1}'.format(t, solve(words) )
+
+

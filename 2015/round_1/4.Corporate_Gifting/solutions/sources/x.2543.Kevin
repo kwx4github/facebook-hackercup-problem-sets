@@ -1,0 +1,72 @@
+import sys
+
+if __name__ == "__main__":
+    f = sys.stdin
+    if len(sys.argv) >= 2:
+        fn = sys.argv[1]
+        if fn != '-':
+            f = open(fn)
+
+    T = int(f.readline())
+    for _T in xrange(T):
+        N = int(f.readline())
+        managers = map(int, f.readline().split())
+        assert len(managers) == N
+        managers = [m-1 for m in managers]
+        reports = [[] for i in xrange(N)]
+
+        for i in xrange(1, N):
+            reports[managers[i]].append(i)
+
+        ordered = [False] * N
+        order = []
+        stack = [0]
+
+        while stack:
+            d = stack[-1]
+            if not ordered[d]:
+                stack.extend(reports[d])
+                ordered[d] = True
+            else:
+                order.append(d)
+                stack.pop()
+
+        # Maps, for each non-leaf, ID-1 to
+        # (best_gift_for_tree, cheapest_for_tree, cheapest_if_cant_get_best_gift)
+        best = [None] * N
+
+        for i in order:
+            ideal = 0
+            penalty = {}
+
+            for r in reports[i]:
+                g = best[r]
+                assert len(g) == 3
+                ideal += g[0]
+                k = g[1]
+                penalty[k] = penalty.get(k, 0) + g[2]
+
+
+            first_free = 1
+            while first_free in penalty:
+                first_free += 1
+            second_free = first_free + 1
+            while second_free in penalty:
+                second_free += 1
+
+            best_for_tree = ideal + first_free
+            second_best = ideal + second_free
+            preferred_gift = first_free
+            for k, v in penalty.items():
+                tr = ideal + k + v
+                if tr <= best_for_tree:
+                    second_best = best_for_tree
+                    best_for_tree = tr
+                    preferred_gift = k
+            best[i] = (best_for_tree, preferred_gift, second_best)
+
+            if not reports[i]:
+                assert best[i] == (1, 1, 2)
+
+            # print i, reports[i], best[i]
+        print "Case #%d: %d" % (_T + 1, best[0][0])

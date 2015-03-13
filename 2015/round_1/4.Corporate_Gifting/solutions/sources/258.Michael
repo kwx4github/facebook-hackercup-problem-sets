@@ -1,0 +1,120 @@
+import java.io.*;
+import java.util.*;
+
+public class CorporateGifting {
+    static HashMap<Integer, Node> nodes = new HashMap<Integer, Node>();
+    static Stack<Node> stack = new Stack<Node>();
+    static int n;
+
+    public static void main(String[] args) throws IOException {
+        Scanner sc = new Scanner(new File("c:\\dev\\corporate_gifting.txt"));
+        int t = sc.nextInt();
+        for (int i = 1; i <= t; i++) {
+            nodes.clear();
+            n = sc.nextInt();
+
+            for (int j = 1; j <= n; j++) {
+                nodes.put(j, new Node());
+            }
+
+            // skip parent for CEO
+            sc.nextInt();
+            for (int j = 2; j <= n; j++) {
+                int parentId = sc.nextInt();
+                Node parent = nodes.get(parentId);
+                parent.children.add(nodes.get(j));
+            }
+            System.out.println("Case #" + i + ": " + solve());
+        }
+    }
+
+    private static void solveLeaf(Node node) {
+        node.bestColor = 1;
+        node.bestSum = 1;
+        node.secondBestSum = 2;
+    }
+
+    private static Long solve() {
+        stack.clear();
+        Node root = nodes.get(1);
+        process(root);
+        while (!stack.isEmpty()) {
+            Node node = stack.pop();
+            solveNonLeaf(node);
+        }
+        return root.bestSum;
+    }
+
+    private static void solveNonLeaf(Node node) {
+        int childCount = node.children.size();
+        long sum = 0;
+        HashMap<Integer, Long> bestSumForColor = new HashMap<Integer, Long>();
+        for (Node child : node.children) {
+            sum += child.bestSum;
+        }
+        for (Node child : node.children) {
+            bestSumForColor.put(child.bestColor, sum);
+        }
+        for (Node child : node.children) {
+            long newSum = bestSumForColor.get(child.bestColor);
+            newSum += child.secondBestSum - child.bestSum;
+            bestSumForColor.put(child.bestColor, newSum);
+        }
+        int bestColor = -1;
+        long bestSum = Long.MAX_VALUE;
+        long secondBestSum = Long.MAX_VALUE;
+        for (int color = 1; color <= childCount + 1; color++) {
+            if (bestSumForColor.keySet().contains(color)) {
+                continue;
+            }
+            long trialSum = sum + color;
+            if (trialSum < bestSum) {
+                secondBestSum = bestSum;
+                bestSum = trialSum;
+                bestColor = color;
+                continue;
+            }
+            if (trialSum < secondBestSum) {
+                secondBestSum = trialSum;
+            }
+        }
+        for (int color : bestSumForColor.keySet()) {
+            long trialSum = bestSumForColor.get(color) + color;
+            if (trialSum < bestSum) {
+                secondBestSum = bestSum;
+                bestSum = trialSum;
+                bestColor = color;
+                continue;
+            }
+            if (trialSum < secondBestSum) {
+                secondBestSum = trialSum;
+            }
+        }
+        node.bestColor = bestColor;
+        node.bestSum = bestSum;
+        node.secondBestSum = secondBestSum;
+    }
+
+    private static void process(Node node) {
+        if (node.children.isEmpty()) {
+            solveLeaf(node);
+        } else {
+            stack.push(node);
+            for (Node child : node.children) {
+                process(child);
+            }
+        }
+    }
+
+    private static class Node {
+        int bestColor;
+        long bestSum;
+        long secondBestSum;
+        ArrayList<Node> children;
+
+        public Node() {
+            children = new ArrayList<Node>();
+        }
+    }
+
+}

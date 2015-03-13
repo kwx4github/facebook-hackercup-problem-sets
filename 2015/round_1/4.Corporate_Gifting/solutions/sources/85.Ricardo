@@ -1,0 +1,127 @@
+#include <cstdio>
+#include <cstring>
+#include <vector>
+#include <algorithm>
+
+#define ll long long int
+#define SIZE 200020
+#define DELTA 4
+
+using namespace std;
+
+typedef pair<ll,ll> ii;
+typedef pair<ii,ii> i4;
+ll T, C=1, n;
+vector<ll> filhos[SIZE];
+ll rotulo[SIZE], rotuladocom[SIZE];
+i4 cpbarra[SIZE];
+vector<ll> cp[SIZE];
+ll BIT[SIZE];
+
+void update(ll u, ll x) {
+    for (ll i = u; i <= n; i += i & -i)
+        BIT[i] += x;
+}
+
+ll query(ll u) {
+    ll res = 0;
+    for (ll i = u; i; i -= i & -i)
+        res += BIT[i];
+    return res;
+}
+
+ll somabarra(ll a, ll b) {
+    return query(b) - query(a-1);
+}
+
+// funcao cpbarra para vertice rotulado com r
+// retorna ii(best, secondbest)
+i4 CPbarra(ll r) {
+
+    ii best, secondbest;
+    best = secondbest = ii(0x3f3f3f3f,0x3f3f3f3f);
+    for (ll x = 1; x <= (ll)filhos[rotuladocom[r]].size()+DELTA;x++) {
+        ll soma = x;
+        for (ll j=0;j<(ll)filhos[rotuladocom[r]].size();j++) {
+            ll f = filhos[rotuladocom[r]][j];
+            if (x <= (ll)filhos[f].size()+DELTA) {
+                soma = soma + cp[rotulo[f]][x];
+            } else {
+                soma = soma + somabarra(rotulo[f],
+                        rotulo[filhos[rotuladocom[r]][(ll)filhos[rotuladocom[r]].size()-1]]);
+                break;
+            }
+        }
+        if (soma < best.first) {
+            secondbest = best;
+            best = ii(soma,x);
+        } else if (soma < secondbest.first)
+            secondbest = ii(soma,x);
+    }
+    return i4(best, secondbest);
+}
+
+// funcao CP com vertice rotulado com r
+ll CP(ll r, ll x) {
+    i4 c = cpbarra[r];
+    if (c.first.second != x)
+        return c.first.first;
+    return c.second.first;
+}
+
+bool cmp(ll a, ll b) {
+    return (ll)filhos[a].size() > (ll)filhos[b].size();
+}
+
+// retorna prox rotulo disponivel
+ll rotulafilhos(ll u, ll rot) {
+    for (ll i=0;i<(ll)filhos[u].size();i++) {
+        rotulo[filhos[u][i]] = rot;
+        rotuladocom[rot] = filhos[u][i];
+        rot++;
+    }
+    for (ll i=0;i<(ll)filhos[u].size();i++)
+        rot = rotulafilhos(filhos[u][i],rot);
+
+    return rot;
+}
+
+int main() {
+
+    for(scanf("%lld",&T);T--;) {
+        printf("Case #%lld: ",C++);
+        memset(BIT,0,sizeof(BIT));
+        scanf("%lld",&n);
+        for (ll i=0;i<n;i++)
+            filhos[i].clear();
+        for (ll i=0;i<n;i++) {
+            ll t;
+            scanf("%lld",&t);
+            if (i==0) continue;
+            t--;
+            filhos[t].push_back(i);
+        }
+        // ordena filhos por grau descrente
+        for (ll i=0;i<n;i++)
+            sort(filhos[i].begin(),filhos[i].end(),cmp);
+
+        // rotula em ordem bunitinh
+        rotulo[0] = 1;
+        rotuladocom[1] = 0;
+        rotulafilhos(0,2);
+
+        // calcula as duas funcoes de tras pra frente
+        for (ll i=n;i>=1;i--) {
+            cpbarra[i] = CPbarra(i);
+            update(i, cpbarra[i].first.first);
+            cp[i].clear();
+            cp[i].push_back(cpbarra[i].first.first); // cp[i][0] = barra
+            for (ll x=1;x<=(ll)filhos[rotuladocom[i]].size()+DELTA;x++)
+                cp[i].push_back(CP(i,x));
+        }
+        // imprime
+        printf("%lld\n",cpbarra[1].first.first);
+    }
+
+    return 0;
+}

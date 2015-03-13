@@ -1,0 +1,176 @@
+#define _CRT_SECURE_NO_WARNINGS
+#pragma comment(linker, "/STACK:206777216")
+
+#include <algorithm>
+#include <bitset>
+#include <cassert>
+#include <cctype>
+#include <climits>
+#include <cmath>
+#include <complex>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <deque>
+#include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
+#include "stdio.h"
+using namespace std;
+
+const int MAX = 200010;
+int rgparent[MAX];
+static pair<long long, int> rgans[MAX][2];
+static vector<pair<long long, int>> answers;
+static vector<int> children[MAX];
+static vector<int> sorter;
+static vector< pair<int /*price*/, int /*ID*/ > > sorted_children;
+
+void dfs(int v)
+{
+	int n_children = children[v].size();
+	if (n_children == 0)
+	{
+		rgans[v][0] = make_pair(1, 1);
+		rgans[v][1] = make_pair(2, 2);
+		return;
+	}
+
+	for (int i = 0; i < n_children; ++i)
+	{
+		int child = children[v][i];
+		dfs(child);
+	}
+
+	sorter.clear();
+	sorted_children.clear();
+	long long best_sum = 0;
+	for (int i = 0; i < n_children; ++i)
+	{
+		int child = children[v][i];
+		//dfs(child);
+		best_sum += rgans[child][0].first;
+		sorter.push_back(rgans[child][0].second);
+		sorted_children.push_back(make_pair(rgans[child][0].second, child));
+	}
+
+	sorter.push_back(0);
+	sort(sorter.begin(), sorter.end());
+
+	int vacant_price = sorter[sorter.size()-1]+1;
+	for (int i = 1; i < sorter.size(); ++i)
+		if (sorter[i] - sorter[i - 1] > 1)
+		{
+			vacant_price = sorter[i - 1] + 1;
+			break;
+		}
+
+	answers.clear();
+	answers.push_back(make_pair(best_sum + vacant_price, vacant_price));
+
+	sort(sorted_children.begin(), sorted_children.end());
+
+	long long prev_price = -2;
+	long long another_best_sum = best_sum;
+	for (int i = 0; i <= sorted_children.size(); ++i)
+	{
+		int child = -1; 
+		int price = -1;
+		if (i < sorted_children.size())
+		{
+			price = sorted_children[i].first;
+			child = sorted_children[i].second;
+		}
+
+		if (price != prev_price && prev_price != -2)
+		{
+			another_best_sum += prev_price; // add this node price
+			answers.push_back(make_pair(another_best_sum, prev_price));
+			another_best_sum = best_sum;
+		}
+		if (child >= 0)
+			another_best_sum = another_best_sum - rgans[child][0].first + rgans[child][1].first;
+		
+		prev_price = price;
+	}
+
+	sort(answers.begin(), answers.end());
+
+	rgans[v][0] = answers[0];
+	rgans[v][1] = answers[1];
+}
+
+void solve_case(int tc)
+{
+	int n;
+	long long ans;
+	cin >> n;
+	memset(rgans, 0, sizeof(rgans));
+	for (int i = 1; i <= n; ++i)
+		children[i].clear();
+	for (int i = 1; i <= n; ++i)
+	{
+		cin >> rgparent[i];
+		children[rgparent[i]].push_back(i);
+	}
+	dfs(1);
+	ans = rgans[1][0].first;
+	cout << "Case #" << tc << ": ";
+	cout << ans;
+	cout<< endl;
+}
+
+void prepare()
+{
+	cout << 5 << endl;
+	for (int i = 0; i < 5; ++i)
+	{
+		cout << 200000 << endl;
+		for (int j = 0; j < 200000; ++j)
+		{
+			if (j < 8)
+				cout << 0;
+			else
+				if (j < 100)
+					cout << j % 10;
+				else
+					if (j < 10000)
+						cout << j % 100;
+					else
+						cout << j % 1000;
+			cout << " ";
+		}
+		cout << endl;
+	}
+	exit(0);
+}
+
+
+int main()
+{
+
+#ifndef __OLIMP__
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+#endif
+	int T;
+	scanf("%d", &T);
+	//prepare();
+	for (int tc = 1; tc <= T; tc++)
+		solve_case(tc);
+
+	return 0;
+}

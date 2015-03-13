@@ -1,0 +1,40 @@
+{-# LANGUAGE BangPatterns #-}
+import Control.Monad
+import Text.Printf
+import Data.Array.ST
+import Control.Applicative
+import Data.Array.Unboxed
+
+import Test.QuickCheck
+
+main :: IO ()
+main = do
+    t <- readLn :: IO Int
+    let tbl = primacity (10^(7::Int))
+    forM_ [1..t] $ \caseNum -> do
+        [a,b,k] <- map read . words <$> getLine
+        let l = [ () | x <- [a..b], tbl ! x == k ]
+        printf "Case #%d: %d\n" caseNum (length l)
+
+stepM_ :: Monad m => a -> (a -> Bool) -> (a -> a) -> (a -> m ()) -> m ()
+stepM_ i0 judge incr step = sub i0 where 
+    sub i | judge i = step i >> sub (incr i) | otherwise = return ()
+
+primacity :: Int -> UArray Int Int
+primacity n = runSTUArray $ do
+    arr <- newArray (2,n) 0
+    forM_ (2:[3,5..n]) $ \i -> do
+        s <- readArray arr i
+        when (s==0) $ stepM_ i (<=n) (+i) $ \j ->
+            readArray arr j >>= writeArray arr j . (+1)
+    return arr
+
+naivePrimacity :: Int -> Int
+naivePrimacity = go 0 2 where
+    go !acc _ 1 = acc
+    go !acc p n | n `mod` p == 0 = go (acc+1) (p+1) (f p n)
+                | otherwise      = go acc (p+1) n
+    f p n | n `mod` p == 0 = f p (n `div` p)
+          | otherwise = n
+
+prop_primacity n = n >= 2 ==> primacity n ! n == naivePrimacity n

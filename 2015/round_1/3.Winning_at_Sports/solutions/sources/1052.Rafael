@@ -1,0 +1,155 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Scanner;
+
+public class Sports
+{
+
+	public static void main(String[] args)
+	{
+		long start = System.nanoTime();
+		solve();
+		long end = System.nanoTime();
+		printTime(start, end);
+	}
+	
+	private static void solve()
+	{
+		Scanner sc = openFileForReading("winning_at_sports.txt");
+		PrintWriter pw = openFileForWriting("output_winning_at_sports.txt");
+		int cases = sc.nextInt();
+		for(int casenum = 1; casenum <= cases; casenum++)
+		{
+			if(casenum != 1) pw.println();
+//			print("Case #" + casenum + ": ");
+			String scoreline = sc.next();
+			
+			// x = your winning score
+			int x = Integer.parseInt(scoreline.substring(0, scoreline.indexOf('-')));
+			// y = their losing score
+			int y = Integer.parseInt(scoreline.substring(scoreline.indexOf('-')+1));
+			
+			//For stressful, the opponent must always score first (so they have a lead until your winning streak)
+			//x because you start at zero, and always score the last point, so only one way to get there
+			//x-index on the table is your actual score, since you start at zero
+			//y because they always score the first point in a stressful win (so they start from 1 and go to their score)
+			//y-index is their score minus 1, since they actually start at 1
+			int modstressways = 1;
+			if(y > 1) //if their score was 1, then there's only one path: they scored first, then you scored all your points
+			{
+				int[][] stressmemo = new int[x][y];
+				stressmemo[0][0] = 1; //this corresponds to a score of 0-1
+				
+				//this corresponds to (x-1),(y) -- you definitely scored the last point, so we cut that out
+				modstressways = recurseStressCheck(stressmemo, x-1, y-1);
+			}
+			//For stress-free, you must score the first two points, so you have a lead the whole time
+			//x-index on the table is your score - 2 (because at x = 0, you have 2 points)
+			// but it goes all the way up to your actual score, because you don't necessarily score the last point
+			//y-index on the table is just your opponent's score directly, since they start at zero and go to their final score
+			int modfreeways = 1;
+			if(x > 1)
+			{
+				int[][] freememo = new int[x-1][y+1];
+				freememo[0][0] = 1; //this corresponds to 2-0, the necessary start state
+				
+				//this corresponds to (x),(y) -- there are multiple ways you can reach the last state
+				modfreeways = recurseFreeCheck(freememo, x-2, y);
+			}
+//			print("Case #" + casenum + ": " + modfreeways + " " + modstressways);
+			pw.print("Case #" + casenum + ": " + modfreeways + " " + modstressways);
+		}
+		sc.close();
+		pw.close();
+	}
+	
+	//In the stressful table, x is your score, and y is his score - 1
+	private static int recurseStressCheck(int[][] stressmemo, int x, int y)
+	{
+		if(	x < 0 || y < 0 || 							//we've gone off the table
+			(x > y+1 && y+1 != stressmemo[x].length))	//we've entered a non-stressful state
+			return 0;
+		else
+		{
+//			print(x + "\t" + (y+1));
+			if(stressmemo[x][y] == 0)
+			{
+				int result = recurseStressCheck(stressmemo, x-1, y);
+				result += 	 recurseStressCheck(stressmemo, x, y-1);
+				result %= 1000000007;
+				stressmemo[x][y] = result;
+				return result;
+			}
+			else return stressmemo[x][y];
+		}
+	}
+		
+	//In the stressless table, x is your score - 2, and y is his score directly
+	private static int recurseFreeCheck(int[][] freememo, int x, int y)
+	{
+		if(	x < 0 || y < 0 || 	//we've gone off the table
+			((x+2) <= y))		//we've entered a non-stress-free state
+			return 0;
+		else
+		{
+//			print(x + "\t" + (y+1));
+			if(freememo[x][y] == 0)
+			{
+				int result = recurseFreeCheck(freememo, x-1, y);
+				result += 	 recurseFreeCheck(freememo, x, y-1);
+				result %= 1000000007;
+				freememo[x][y] = result;
+				return result;
+			}
+			else return freememo[x][y];
+		}
+	}
+		
+	//Returns a scanner for the file of name fileName
+	private static Scanner openFileForReading(String filename)
+	{
+		Scanner scanner = null;
+		try {	scanner = new Scanner(new File(filename));	}
+		catch (FileNotFoundException e)
+		{
+			System.out.println("Could not open " + filename);
+			e.printStackTrace();
+		}
+		return scanner;
+	}
+
+	//Returns a writer for a file of name fileName
+	private static PrintWriter openFileForWriting(String filename)
+	{
+		PrintWriter writer = null;
+		try {	writer = new PrintWriter(new FileWriter(filename));	}
+		catch (IOException e)
+		{
+			System.out.println("Could not create " + filename);
+			e.printStackTrace();
+		}
+		return writer;
+	}
+
+	private static void printTime(long start, long end)
+	{
+		long time = end - start;
+		print("\nTime elapsed: ");
+		int seconds = (int)(time/1000000000);
+		int minutes = seconds/60;
+		seconds%=60;
+		int milliseconds = (int)((time/1000000)%1000);
+		int microseconds = (int)((time/1000)%1000);
+		int nanoseconds = (int)(time%1000);
+		if(minutes > 0)			print(minutes + " minutes");
+		if(seconds > 0) 		print(seconds + " seconds");
+		if(milliseconds > 0)	print(milliseconds + " milliseconds");
+		if(microseconds > 0)	print(microseconds + " microseconds");
+		if(nanoseconds > 0)		print(nanoseconds + " nanoseconds");
+	}
+	
+	private static void print(Object ob) { System.out.println(ob); }
+}

@@ -1,0 +1,134 @@
+#include <bits/stdc++.h>
+
+#define mb make_pair
+#define pb push_back
+#define INF 1<<30
+#define MOD 1000000007
+#define rint(x) scanf("%d", &(x))
+#define rlong(x) scanf("%lld", &(x))
+#define SIZE 200100
+
+using namespace std;
+typedef long long ll;
+typedef pair<int, int> pi;
+typedef pair<ll, ll> pll;
+
+struct state{
+    int value;
+    int curr;
+    state(){}
+    state(int value, int curr){
+        this->value = value;
+        this->curr = curr;
+    }
+};
+
+state dp1[SIZE];
+state dp2[SIZE];
+vector<vector<int> > adj (SIZE);
+stack<int> curr;
+stack<int> order;
+int ingoing[SIZE];
+
+void compute();
+int main(){
+    FILE *in  = fopen ("corporate_gifting.txt", "r");
+    FILE *out = fopen ("Corporate Gifting Out.txt", "w");
+    int cases;
+    fscanf(in, "%d", &cases);
+    for(int k = 1; k <= cases; k++){
+        int n;
+        fscanf(in, "%d", &n);
+        for(int x = 0; x < SIZE; x++)
+            adj[x].clear();
+        memset(dp1, 0, sizeof(dp1));
+        memset(dp2, 0, sizeof(dp2));
+        memset(ingoing, 0, sizeof(ingoing));
+        curr = stack<int>();
+        order = stack<int>();
+        for(int x = 0; x < n; x++){
+            int a;
+            fscanf(in, "%d", &a);
+            a--;
+            if(a  >= 0){
+                adj[a].pb(x);
+                ingoing[x]++;
+            }
+        }
+        for(int x = 0; x < n; x++){
+            if(ingoing[x] == 0){
+                curr.push(x);
+                order.push(x);
+            }
+        }
+        while(!curr.empty()){
+            int c = curr.top();
+            curr.pop();
+            for(int x = 0; x < adj[c].size(); x++){
+                int next = adj[c][x];
+                ingoing[next]--;
+                if(ingoing[next] == 0){
+                    curr.push(next);
+                    order.push(next);
+                }
+            }
+        }
+        compute();
+        fprintf(out, "Case #%d: %d\n", k, dp1[0].value);
+    }
+	return 0;
+}
+void compute(){
+    while(!order.empty()){
+        int i = order.top();
+        order.pop();
+        if(adj[i].size() == 0){
+            dp1[i] = state(1, 1);
+            dp2[i] = state(2, 2);
+            continue;
+        }
+
+        set<int> ts;
+        int total = 0;
+        for(int x = 0; x < adj[i].size(); x++){
+            int next = adj[i][x];
+            total += dp1[next].value;
+            ts.insert(dp1[next].curr);
+        }
+        int first = INF, second = INF;
+        int firstC = 0, secondC = 0;
+        int counter = 0;
+        for(int x = 1; counter < 2; x++){
+            if(ts.find(x) == ts.end()){
+                if(counter == 0){
+                    first = total+x;
+                    firstC = x;
+                }else{
+                    second = total+x;
+                    secondC = x;
+                }
+                counter++;
+            }
+        }
+        set<int>::iterator it;
+        for(it = ts.begin(); it != ts.end(); it++){
+            int t = *it;
+            for(int x = 0; x < adj[i].size(); x++){
+                int next = adj[i][x];
+                if(dp1[next].curr == *it)
+                    t += dp2[next].value;
+                else
+                    t += dp1[next].value;
+            }
+            if(t < first){
+                first = t;
+                firstC = *it;
+            }else if(t < second){
+                second = t;
+                secondC = *it;
+            }
+        }
+        dp1[i] = state(first, firstC);
+        dp2[i] = state(second, secondC);
+    }
+}

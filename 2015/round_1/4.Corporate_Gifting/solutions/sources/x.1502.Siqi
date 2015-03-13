@@ -1,0 +1,153 @@
+#include <iostream>
+#include <stdint.h>
+#include <tuple>
+#include <vector>
+
+using namespace std;
+
+bool bitset[200005];
+
+vector<int> topological_sort(int* original_graph, vector<vector<int>*>& reversed_graph) {
+    vector<vector<int>*> graph;
+    for (auto it = reversed_graph.begin(); it != reversed_graph.end(); ++it) {
+        graph.push_back(new vector<int>((*it)->begin(), (*it)->end()));
+    }
+
+    vector<int> result;
+    vector<int> nodes_with_no_children;
+
+    for (size_t i = 0; i < graph.size(); ++i) {
+        if (graph[i]->empty()) {
+            nodes_with_no_children.push_back(i);
+        }
+    }
+
+    while (!nodes_with_no_children.empty()) {
+        int cur_node = nodes_with_no_children.back();
+        nodes_with_no_children.pop_back();
+        result.push_back(cur_node);
+        int parent_node = original_graph[cur_node];
+        if (parent_node != -1) {
+            for (auto it = graph[parent_node]->begin(); it != graph[parent_node]->end(); ++it) {
+                if (*it == cur_node) {
+                    graph[parent_node]->erase(it);
+                    break;
+                }
+            }
+            if (graph[parent_node]->empty()) {
+                nodes_with_no_children.push_back(parent_node);
+            }
+        }
+    }
+
+    for (auto it = graph.begin(); it != graph.end(); ++it) {
+        delete (*it);
+    }
+    return result;
+}
+
+pair<int, int64_t> best_subtree(vector<vector<int>*>& graph, int node_index, vector<pair<int, int64_t>>& memo_cache) {
+    if (graph[node_index]->empty()) {
+        return make_pair(1, 1); // first = best of value of node, second = sum of subtree
+    } else {
+        vector<int> child_values;
+        int64_t sum = 0;
+        for (auto it = graph[node_index]->begin(); it != graph[node_index]->end(); ++it) {
+            pair<int, int64_t> best_child_pair = memo_cache[*it];
+            child_values.push_back(best_child_pair.first);
+            sum += best_child_pair.second;
+        }
+
+        for (auto it = child_values.begin(); it != child_values.end(); ++it) {
+            bitset[*it] = false;
+        }
+        int best_value = -1;
+        for (int i = 1; i <= 200000; ++i) {
+            if (bitset[i]) {
+                best_value = i;
+                break;
+            }
+        }
+        if (best_value == -1) {
+            abort();
+        }
+        for (auto it = child_values.begin(); it != child_values.end(); ++it) {
+            bitset[*it] = true;
+        }
+        return make_pair(best_value, sum + best_value);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    int T;
+    cin >> T;
+
+    for (int t = 1; t <= T; ++t) {
+        int N;
+        cin >> N;
+
+        int* input_graph = new int[N];
+        for (int n = 0; n < N; ++n) {
+            int parent_id;
+            cin >> parent_id;
+            --parent_id; // shift by 1 to adhere to zero indexing, manager of CEO = -1
+
+            input_graph[n] = parent_id;
+        }
+
+        vector<vector<int>*> reversed_graph;
+        for (int n = 0; n < N; ++n) {
+            reversed_graph.push_back(new vector<int>());
+        }
+        for (int n = 0; n < N; ++n) {
+            if (input_graph[n] != -1) {
+                reversed_graph[input_graph[n]]->push_back(n);
+            }
+        }
+
+        fill(bitset, bitset + 200005, true);
+
+        vector<int> topo_sorted = topological_sort(input_graph, reversed_graph);
+        vector<pair<int, int64_t>> memo_cache(N);
+
+        for (auto it = topo_sorted.begin(); it != topo_sorted.end(); ++it) {
+            memo_cache[*it] = best_subtree(reversed_graph, *it, memo_cache);
+        }
+
+        pair<int, int64_t> solution = memo_cache[0];
+        cout << "Case #" << t << ": " << solution.second << "\n";
+
+        delete[] input_graph;
+        for (int n = 0; n < N; ++n) {
+            delete reversed_graph[n];
+        }
+
+        /*
+        cout << "Original graph: " << "\n";
+        for (int i = 0; i < N; ++i) {
+            cout << i << ": " << input_graph[i] << "\n";
+        }
+        cout << "\n";
+
+        cout << "Reversed graph: " << "\n";
+        for (int i = 0; i < N; ++i) {
+            cout << i << ": ";
+            if (reversed_graph[i]->empty()) {
+                cout << "<leaf>";
+            } else {
+                for (auto it = reversed_graph[i]->begin(); it != reversed_graph[i]->end(); ++it) {
+                    cout << *it << " ";
+                }
+            }
+            cout << "\n";
+        }
+        cout << "\n";
+
+        cout << "Topological sort: " << "\n";
+        for (int i = 0; i < N; ++i) {
+            cout << topo_sorted[i] << " ";
+        }
+        cout << "\n\n";
+        */
+    }
+}

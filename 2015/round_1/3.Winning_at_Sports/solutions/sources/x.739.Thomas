@@ -1,0 +1,83 @@
+#include <cstddef>
+#include <iostream>
+#include <map>
+
+const unsigned long long int M = 1000000007;
+
+// Enough primes to factorise numbers up to 4000.
+unsigned int primes[] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61 };
+
+// Pre-computed prime factorizations of numbers up to 2 * n are useful.
+std::map<unsigned int, int> prime_factors[4001];
+
+
+// The count of stressful victories A-B is the Catalan number of the square of
+// side length B, i.e. binom(2 * B, B) / (B + 1).
+//
+// The count of stress-free victories A-B is binom(A - 1 + B, B) - binom(A - 1 + B, B - 1).
+
+unsigned long long int mod_prod(int const (&f)[4001])
+{
+    unsigned long long int result = 1;
+    for (unsigned long long int i = 2; i != 4001; ++i)
+        for (int k = 0; k != f[i]; ++k)
+            result = (result * i) % M;
+    return result;
+}
+
+unsigned long long int mod_catalan(unsigned long long int n)
+{
+    // Compute C(n) = binom(2 * n, n) / (n + 1) = prod((n + k) / k, k = 2..n), all modulo M.
+    // Use existing prime factorisations.
+
+    int primefacts[4001] = {};
+    for (unsigned int k = 2; k <= n; ++k)
+    {
+        for (auto const & p : prime_factors[n + k]) { primefacts[p.first] += p.second; }
+        for (auto const & p : prime_factors[  k  ]) { primefacts[p.first] -= p.second; }
+    }
+
+    return mod_prod(primefacts);
+}
+
+unsigned long long int mod_binom(unsigned long long int a, unsigned long long int b)
+{
+    // Compute binom(a, b) % M. Use existing prime factorisations.
+
+    if (b  > a) return 0;
+    if (b == a) return 1;
+
+    int primefacts[4001] = {};
+    for (unsigned long long int i = b + 1; i <= a; ++i)
+        for (auto const & p : prime_factors[i]) { primefacts[p.first] += p.second; }
+    for (unsigned long long int i = 2; i <= a - b; ++i)
+        for (auto const & p : prime_factors[i]) { primefacts[p.first] -= p.second; }
+
+    return mod_prod(primefacts);
+}
+
+int main()
+{
+    for (unsigned int n = 2; n <= 4000; ++n)
+    {
+        unsigned int m = n;
+        for (unsigned int p : primes)
+        {
+            while (m % p == 0) { ++prime_factors[n][p]; m /= p; }
+        }
+        if (m != 1) { ++prime_factors[n][m]; }
+    }
+
+    unsigned int t, a, b;
+    char h;
+
+    if (!(std::cin >> t)) { std::abort(); }
+
+    for (unsigned int c = 0; c != t; ++c)
+    {
+        if (!(std::cin >> a >> h >> b) || h != '-') { std::abort(); }
+
+        unsigned long long int stressfree = (mod_binom(a + b - 1, b) - mod_binom(a + b - 1, b - 1)) % M;
+        std::cout << "Case #" << c + 1 << ": " << stressfree << ' ' << mod_catalan(b) << '\n';
+    }
+}

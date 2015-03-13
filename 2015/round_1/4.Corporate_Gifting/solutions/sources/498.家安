@@ -1,0 +1,106 @@
+#include <cstdio>
+#include <cstdlib>
+#include <algorithm>
+#include <vector>
+#include <queue>
+
+typedef long long lnt ;
+
+const int SIZE_N = 200000 + 10 ;
+const lnt INF = (1LL << 50) ;
+
+struct dat
+{
+	int id ; lnt val ;
+	
+	dat(int i = 0 , lnt v = 0) { id = i , val = v ; }
+} ;
+
+bool operator < (dat a , dat b) { return a.id == b.id ? a.val < b.val : a.id < b.id ; }
+
+FILE *out ;
+
+int T , n ;
+
+int fat[SIZE_N] , deg[SIZE_N] ;
+std::vector < int > edg[SIZE_N] ;
+
+lnt ans[SIZE_N] ;
+int vis[SIZE_N] ;
+dat dp[SIZE_N] ;
+std::vector < dat > tmp ;
+
+void clear(void)
+{
+	for(int i = 0 ; i <= n ; ++i)
+	{
+		fat[i] = deg[i] = vis[i] = 0 ;
+		edg[i].clear() ;
+	}
+}
+
+int main(void)
+{
+	out = fopen("d.out" , "w") ;
+	
+	scanf("%d" , &T) ;
+	for(int count = 1 ; count <= T ; ++count , clear())
+	{
+		scanf("%d" , &n) ;
+		for(int i = 1 ; i <= n ; ++i)
+		{
+			scanf("%d" , &fat[i]) ;
+			edg[fat[i]].push_back(i) , ++deg[fat[i]] ;
+		}
+		
+		std::queue < int > que ;
+		for(int i = 1 ; i <= n ; ++i)
+			if(deg[i] == 0) que.push(i) ;
+		
+		while(que.empty() == false)
+		{
+			int now = que.front() ; que.pop() ;
+			if(now == 0) break ;
+			--deg[fat[now]] ;
+			if(deg[fat[now]] == 0) que.push(fat[now]) ;
+			
+			ans[now] = 0 , dp[now] = dat() , tmp.clear() ;
+			for(int i = 0 , ii = edg[now].size() ; i < ii ; ++i)
+			{
+				ans[now] += ans[edg[now][i]] ;
+				tmp.push_back(dp[edg[now][i]]) ;
+				vis[tmp.back().id] = now ;
+			}
+			std::sort(tmp.begin() , tmp.end()) ;
+			
+			int cnt = 0 ;
+			dat m1 = dat(0 , INF) , m2 = dat(0 , INF) ;
+			for(int i = 1 ; cnt < 2 && i <= n ; ++i)
+			{
+				if(vis[i] == now) continue ;
+				if(cnt == 0) m1 = dat(i , i) ;
+				if(cnt == 1) m2 = dat(i , i) ;
+				++cnt ;
+			}
+			
+			for(int i = 0 , j = 0 , ii = tmp.size() ; i < ii ; i = j + 1) 
+			{
+				lnt s = tmp[i].id + tmp[i].val ;
+				for(j = i ; j + 1 < ii && tmp[j + 1].id == tmp[j].id ; ++j)
+					s += tmp[j + 1].val ;
+				if(s < m1.val) { m2 = m1 ; m1 = dat(tmp[i].id , s) ; }
+				else if(s < m2.val) m2 = dat(tmp[i].id , s) ;
+			}
+			
+			ans[now] += m1.val ;
+			dp[now] = dat(m1.id , m2.val - m1.val) ;
+		}
+		
+		fprintf(out , "Case #%d: %I64d\n" , count , ans[1]) ;
+	}
+	
+	fclose(out) ;
+	
+	return 0 ;
+}
+

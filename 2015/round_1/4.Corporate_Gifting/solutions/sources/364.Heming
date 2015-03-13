@@ -1,0 +1,104 @@
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <unordered_set>
+#include <iostream>
+using namespace std;
+
+#define LL long long
+
+const LL MAX = 200000LL * 200000LL;
+
+int n;
+vector<int> deg;
+vector<vector<int> > g;
+vector<vector<LL> > f, h;
+LL ans;
+
+bool compare_deg(int x, int y) { return deg[x] < deg[y]; }
+
+void init() {
+	scanf("%d", &n);
+	g.resize(n + 1);
+	deg.resize(n + 1);
+	for (int i = 1; i <= n; i++) {
+		g[i].clear();
+		deg[i] = 0;
+	}
+	for (int i = 1; i <= n; i++) {
+		int fa;
+		scanf("%d", &fa);
+		if (i == 1) continue;
+		g[fa].push_back(i);
+		deg[fa] ++;
+		deg[i] ++;
+	}
+}
+
+void dp(int x) {
+	f[x].resize(deg[x] + 1 + 1);
+	h[x].resize(deg[x] + 1 + 1);
+
+	unordered_set<int> set;
+	for (const int y : g[x]) {
+		set.insert(y);
+		dp(y);
+	}
+
+	//Caclulate f
+	LL prefix_sum = 0;
+	for (int i = 1; i <= deg[x]+1; i++) {
+		f[x][i] = prefix_sum + i;
+		vector<int> remove_node;
+		for (const auto& y : set) {
+			f[x][i] += h[y][i];
+			if (i + 1 > deg[y]+1)
+				remove_node.push_back(y);
+		}
+		for (const int y : remove_node) {
+			prefix_sum += h[y][0];
+			set.erase(y);
+		}
+	}
+
+	//Calculate h
+	LL mi = MAX;
+	for (int i = 1; i <= deg[x] + 1; i++) {
+		h[x][i] = mi;
+		mi = min(mi, f[x][i]);
+	}
+	mi = MAX;
+	for (int i = deg[x] + 1; i >= 1; i --) {
+		h[x][i] = min(h[x][i], mi);
+		mi = min(mi, f[x][i]);
+	}
+	h[x][0] = mi;
+
+}
+
+void proc() {
+	f.resize(n + 1);
+	h.resize(n + 1);
+	int root = 1;
+	dp(root);
+	ans = MAX;
+	for (int i = 1; i <= deg[root]+1; i++) {
+		ans = min(ans, f[root][i]);
+	}
+}
+
+int main() {
+	freopen("Dsub.in", "r", stdin);
+	freopen("Dsub.out", "w", stdout);
+	int T;
+	scanf("%d", &T);
+	for (int ti = 1; ti <= T; ti++) {
+		init();
+		proc();
+		cout << "Case #" << ti << ": " << ans << endl;
+		fprintf(stderr, "%d\n", ti);
+	}
+	return 0;
+}

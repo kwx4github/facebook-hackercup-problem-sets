@@ -1,0 +1,179 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+
+template<typename T, T Modulus>
+class MR
+{
+private:
+    struct tag_plus {}; // indicates value is in range [0, 2 * Modulus)
+    struct tag_minus {}; // indicates value is in range (-Modulus, Modulus)
+
+    T value;
+
+    enum
+    {
+        ASSERT_FALSE = 0,
+        ASSERT_TEST = (T(1) << (std::numeric_limits<T>::digits - 1)) / Modulus / Modulus > 0 ? 1 : 0
+    };
+
+    void reduce()
+    {
+        value %= Modulus;
+        if (value < 0)
+            value += Modulus;
+    }
+
+    void reduce(tag_plus)
+    {
+        if (value >= Modulus)
+            value -= Modulus;
+    }
+
+    void reduce(tag_minus)
+    {
+        if (value < 0)
+            value += Modulus;
+    }
+
+public:
+    typedef T value_type;
+    static const T modulus = Modulus;
+
+    MR() : value(0) {}
+    MR(T value) : value(value) { reduce(); }
+    template<typename tag_t>
+    MR(T value, tag_t tag) : value(value) { reduce(tag); }
+
+    MR &operator=(T value) { this->value = value; reduce(); return *this; }
+
+    MR operator +(MR b) const { return MR(value + b.value, tag_plus()); }
+    MR operator -(MR b) const { return MR(value - b.value, tag_minus()); }
+    MR operator *(MR b) const { return MR(value * b.value); }
+    MR operator -() const { return MR(-value); }
+
+    MR &operator +=(MR b) { value += b.value; reduce(tag_plus()); return *this; }
+    MR &operator -=(MR b) { value -= b.value; reduce(tag_minus()); return *this; }
+    MR &operator *=(MR b) { value *= b.value; reduce(); return *this; }
+
+    bool operator==(MR b) const { return value == b.value; }
+    bool operator!=(MR b) const { return value != b.value; }
+
+    T get() const { return value; }
+};
+
+/*** END OF TEMPLATE CODE ***/
+
+static constexpr int MAXN = 2005;
+typedef MR<ll, 1000000007> mr;
+
+static vector<vector<mr> > make_dp1()
+{
+    vector<vector<mr> > dp(MAXN + 1, vector<mr>(MAXN + 1));
+    for (int i = 1; i <= MAXN; i++)
+        dp[i][0] = 1;
+    for (int i = 1; i <= MAXN; i++)
+        for (int j = 1; j < MAXN; j++)
+        {
+            dp[i][j] = dp[i][j - 1];
+            if (i - 1 > j)
+                dp[i][j] += dp[i - 1][j];
+        }
+    return dp;
+}
+
+static vector<vector<mr> > make_dp2()
+{
+    vector<vector<mr> > dp(MAXN + 1, vector<mr>(MAXN + 1));
+    dp[0][0] = 1;
+    for (int i = 0; i <= MAXN; i++)
+        for (int j = i; j <= MAXN; j++)
+        {
+            if (j > i)
+                dp[i][j] += dp[i][j - 1];
+            if (i > 0)
+                dp[i][j] += dp[i - 1][j];
+        }
+    return dp;
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+    vector<vector<mr> > dp1 = make_dp1();
+    vector<vector<mr> > dp2 = make_dp2();
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        string score;
+        cin >> score;
+        replace(RA(score), '-', ' ');
+        vector<int> parts = splitstr<int>(score);
+        int A = parts[0];
+        int B = parts[1];
+        mr ans1 = dp1[A][B];
+        mr ans2 = 0;
+        if (B > 0)
+        {
+            for (int i = 0; i < B; i++)
+                ans2 += dp2[i][B - 1];
+        }
+        else
+        {
+            ans2 = 1;
+        }
+        cout << "Case #" << cas + 1 << ": " << ans1.get() << ' ' << ans2.get() << "\n";
+    }
+    return 0;
+}

@@ -1,0 +1,158 @@
+#include <stdio.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <vector>
+#include <sstream>
+#include <assert.h>
+#include <queue>
+#include <set>
+
+#define OUPUT_FILE "out.txt"
+
+using namespace std;
+
+typedef struct _trie{
+    char letter;
+    struct _trie* kids[26];
+
+    struct _trie(char c)
+    {
+        letter = c;
+        for (char c = 'a'; c <= 'z'; c++)
+        {
+            kids[c - 'a'] = NULL;
+        }
+    }
+
+    struct _trie* AddLetter(char c)
+    {
+        struct _trie* kid = kids[c - 'a'];
+        if (kid == NULL)
+        {
+            kid = new struct _trie(c);
+            kids[c - 'a'] = kid;
+        }
+        return kid;
+    }
+
+    void SetEndMark()
+    {
+        //isEndOfWord = true;
+    }
+
+    void Cleanup()
+    {
+        queue<struct _trie*> q;
+        q.push(this);
+
+        int count = 0;
+        while (!q.empty())
+        {
+            struct _trie* kid = q.front(); q.pop();
+            if (kid == NULL) continue;
+            count++;
+            for (char c = 'a'; c <= 'z'; c++)
+            {
+                struct _trie* kidKid = kid->kids[c - 'a'];
+                if (kidKid != NULL)
+                    q.push(kidKid);
+            }
+
+            delete kid;
+        }
+    }
+}TrieNode;
+
+TrieNode* roots[30];
+
+TrieNode* GetRoot(char c)
+{
+    TrieNode* root = roots[c - 'a'];
+    if (root == NULL)
+    {
+        root = new TrieNode(c);
+        roots[c - 'a'] = root;
+    }
+
+    return root;
+}
+
+long AddWord(string word)
+{
+    if (word.size() <= 0)
+        return 0; 
+
+    long result = 1;
+    bool foundPrefix = false;
+    if (roots[word[0] - 'a'] == NULL)
+    {
+        foundPrefix = true;
+    }
+    TrieNode* cur = GetRoot(word[0]);
+
+    for (unsigned i = 1; i < word.size(); i++)
+    {
+        if (!foundPrefix)
+        {
+            if (cur->kids[word[i] - 'a'] == NULL)
+            {
+                foundPrefix = true;
+            }
+
+            result++;
+        }
+        cur = cur->AddLetter(word[i]);
+    }
+    cur->SetEndMark();
+
+    return result;
+}
+
+void parseInputAndSolve(const string& inFileName)
+{
+    int T, N;
+
+    ifstream in(inFileName);
+    ofstream out(OUPUT_FILE);
+
+    if (!out.is_open())
+        cout << "Error!" << endl;
+
+    in >> T;
+    for (int testCase = 1; testCase <= T; testCase++)
+    {
+        long result = 0;
+        in >> N ;
+        for (int i = 0; i < N; i++)
+        {
+            string word;
+            in >> word;
+            result += AddWord(word);
+        }
+        
+        out << "Case #" << testCase << ": " << result << endl;
+
+        // cleanup
+        for (char c = 'a'; c <= 'z'; c++)
+        {
+            TrieNode* root = roots[ c  - 'a'];
+            root->Cleanup();
+            roots[c - 'a'] = NULL;
+        }
+    }
+
+    out.close();
+}
+
+int main(int argc, char* argv[])
+{
+    if (argc < 2)
+        cout << "Please pass your input file... dude!" << endl;
+
+    parseInputAndSolve(string(argv[1]));    
+
+    return 0;
+}
+

@@ -1,0 +1,155 @@
+
+from collections import deque
+
+class Node(object):
+    def __init__(self, index):
+        self._index = index
+        self._sons = []
+        self._noFatherTag = -1
+        self._currentTag = -1
+
+    def addSon(self, sonNode):
+        self._sons.append(sonNode)
+
+    def __str__(self):
+        sons = (' '.join(map(str, sorted(map(lambda n: n._index, self._sons))))) if (len(self._sons) > 0) else ("No.")
+        return str("Index: {index}; Sons: {sons}".format(index=self._index, sons=sons))
+
+    def optimizeNoFatherNoRecu(self):
+        dicTagNoFather = dict()
+        for sonNode in self._sons:
+            #sonNode.optimizeNoFather()
+            tag = sonNode._noFatherTag
+            if dicTagNoFather.has_key(tag):
+                dicTagNoFather[tag].append(sonNode)
+            else:
+                dicTagNoFather[tag] = [sonNode]
+
+        upperBoundKey = (max(dicTagNoFather.keys())+1) if (len(dicTagNoFather.keys()) > 0) else (1)
+        solutions = dict()
+        for candidateKey in xrange(1, upperBoundKey+1):
+            treeValue = candidateKey
+            for sonNode in self._sons:
+                treeValue += sonNode.updateFather(candidateKey)
+            solutions[candidateKey] = treeValue
+        choosenKey = min(solutions, key=solutions.get)
+        self._noFatherTag = choosenKey
+        self._currentTag = choosenKey
+        self._noFatherTreeValue = solutions[choosenKey]
+
+        #print self._index, self._noFatherTag, self._noFatherTreeValue, solutions
+
+        return self._noFatherTreeValue
+
+    def run(self):
+        nodeStack = deque()
+        nodeQueue = deque()
+        nodeQueue.append(self)
+        while nodeQueue:
+            node = nodeQueue.popleft()
+            for sonNode in node._sons:
+                nodeQueue.append(sonNode)
+            nodeStack.append(node)
+
+        while nodeStack:
+            node = nodeStack.pop()
+            val = node.optimizeNoFatherNoRecu()
+        return val
+
+    def optimizeNoFather(self):
+        dicTagNoFather = dict()
+        for sonNode in self._sons:
+            sonNode.optimizeNoFather()
+            tag = sonNode._noFatherTag
+            if dicTagNoFather.has_key(tag):
+                dicTagNoFather[tag].append(sonNode)
+            else:
+                dicTagNoFather[tag] = [sonNode]
+
+        upperBoundKey = (max(dicTagNoFather.keys())+1) if (len(dicTagNoFather.keys()) > 0) else (1)
+        solutions = dict()
+        for candidateKey in xrange(1, upperBoundKey+1):
+            treeValue = candidateKey
+            for sonNode in self._sons:
+                treeValue += sonNode.updateFather(candidateKey)
+            solutions[candidateKey] = treeValue
+        choosenKey = min(solutions, key=solutions.get)
+        self._noFatherTag = choosenKey
+        self._currentTag = choosenKey
+        self._noFatherTreeValue = solutions[choosenKey]
+
+        #print self._index, self._noFatherTag, self._noFatherTreeValue, solutions
+
+        return self._noFatherTreeValue
+
+        """
+        currentTag = 1
+        while queueTagNoFather and currentTag == queueTagNoFather.popleft():
+            currentTag += 1
+        self._noFatherTag = currentTag
+        """
+
+    def updateFather(self, fatherKey):
+        if fatherKey != self._noFatherTag:
+            return self._noFatherTreeValue
+        else:
+            if len(self._sons) == 0:
+                if fatherKey == 1:
+                    self._currentTag = 2
+                else:
+                    self._currentTag = 1
+                return self._currentTag
+            else:
+                dicTag = dict()
+                for sonNode in self._sons:
+                    #sonNode.optimizeNoFather()
+                    tag = sonNode._noFatherTag
+                    if dicTag.has_key(tag):
+                        dicTag[tag].append(sonNode)
+                    else:
+                        dicTag[tag] = [sonNode]
+
+                upperBoundKey = (max(dicTag.keys())+1) if (len(dicTag.keys()) > 0) else (1)
+
+                solutions = dict()
+                #print range(1, upperBoundKey+1)
+                #print dicTag, self._index
+                for candidateKey in xrange(1, upperBoundKey+1):
+                    if candidateKey != fatherKey:
+                        treeValue = candidateKey
+                        for sonNode in self._sons:
+                            treeValue += sonNode.updateFather(candidateKey)
+                        solutions[candidateKey] = treeValue
+                choosenKey = min(solutions, key=solutions.get)
+                self._currentTag = choosenKey
+                return solutions[choosenKey]
+
+
+if __name__ == '__main__':
+    import sys
+    if len(sys.argv) > 1:
+        sys.setrecursionlimit(int(sys.argv[1]))
+
+    T = int(raw_input())
+    for i in xrange(1, T+1):
+        N = int(raw_input())
+
+        nodes = [Node(nodeIdx) for nodeIdx in xrange(N)]
+
+        hierarchy = map(int, raw_input().split())
+        assert(len(hierarchy) == N)
+        assert(0 == hierarchy[0])
+
+        for index, fatherIndex in enumerate(hierarchy[1:], 1):
+            nodes[fatherIndex-1].addSon(nodes[index])
+
+#        result = nodes[0].optimizeNoFather()
+        result = nodes[0].run()
+
+#        TAGS = [-1 for k in xrange(N)]
+
+#        tag(tree, 0, 0)
+#        assert(all(map(lambda t: t>0, TAGS)))
+#        res = sum(TAGS)
+        print("Case #{i}: {res}".format(i=i, res=result))
+

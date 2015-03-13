@@ -1,0 +1,118 @@
+// COMPILE WITH 64 MB STACK
+
+#include <iostream>
+#include <stdint.h>
+#include <string>
+#include <tuple>
+
+using namespace std;
+
+const int64_t MOD = 1000000007;
+const int64_t MAX_POINTS = 4005;
+const int64_t ALREADY_COMPUTED_SIZE = MAX_POINTS * MAX_POINTS;
+
+int64_t stress_free_win_memo(int points_remaining, int my_score, int enemy_score, int my_ending_score, int enemy_ending_score, pair<bool, int64_t>* already_computed, int depth) {
+    //cout << "Stress free depth: " << depth << endl;
+    int index = (points_remaining * MAX_POINTS) + my_score;
+    if (!already_computed[index].first) {
+        int64_t number_of_ways = -1;
+        if (points_remaining == 0) {
+            if ((my_score == my_ending_score) && (enemy_score == enemy_ending_score)) {
+                number_of_ways = 1;
+            } else {
+                number_of_ways = 0;
+            }
+        } else {
+            if ((my_score > my_ending_score) || (enemy_score > enemy_ending_score)) {
+                number_of_ways = 0;
+            } else {
+                if (my_score > enemy_score) {
+                    number_of_ways =
+                        (stress_free_win_memo(points_remaining - 1, my_score + 1, enemy_score, my_ending_score, enemy_ending_score, already_computed, depth + 1) % MOD) +
+                        (stress_free_win_memo(points_remaining - 1, my_score, enemy_score + 1, my_ending_score, enemy_ending_score, already_computed, depth + 1) % MOD);
+                } else {
+                    number_of_ways = 0;
+                }
+            }
+        }
+        if (number_of_ways == -1) {
+            abort();
+        }
+        already_computed[index] = make_pair(true, number_of_ways);
+    }
+    return already_computed[index].second;
+}
+
+int64_t solve_stress_free_wins(int my_ending_score, int enemy_ending_score) {
+    int64_t result = -1;
+    pair<bool, int64_t>* already_computed = new pair<bool, int64_t>[ALREADY_COMPUTED_SIZE];
+    fill(already_computed, already_computed + (ALREADY_COMPUTED_SIZE), make_pair(false, -1));
+
+    result = stress_free_win_memo(my_ending_score + enemy_ending_score - 1, 1, 0, my_ending_score, enemy_ending_score, already_computed, 1);
+
+    delete[] already_computed;
+    return result;
+}
+
+int64_t stressful_win_memo(int points_remaining, int my_score, int enemy_score, int my_ending_score, int enemy_ending_score, pair<bool, int64_t>* already_computed) {
+    int index = (points_remaining * MAX_POINTS) + my_score;
+    if (!already_computed[index].first) {
+        int64_t number_of_ways = -1;
+        if (points_remaining == 0) {
+            if ((my_score == my_ending_score) && (enemy_score == enemy_ending_score)) {
+                number_of_ways = 1;
+            } else {
+                number_of_ways = 0;
+            }
+        } else {
+            if (enemy_score == enemy_ending_score) {
+                number_of_ways = 1;
+            } else {
+                if (my_score <= enemy_score) {
+                    number_of_ways =
+                        (stressful_win_memo(points_remaining - 1, my_score + 1, enemy_score, my_ending_score, enemy_ending_score, already_computed) % MOD) +
+                        (stressful_win_memo(points_remaining - 1, my_score, enemy_score + 1, my_ending_score, enemy_ending_score, already_computed) % MOD);
+                } else {
+                    number_of_ways = 0;
+                }
+            }
+        }
+        if (number_of_ways == -1) {
+            abort();
+        }
+        already_computed[index] = make_pair(true, number_of_ways);
+    }
+    return already_computed[index].second;
+}
+
+int64_t solve_stressful_wins(int my_ending_score, int enemy_ending_score) {
+    int64_t result = -1;
+    pair<bool, int64_t>* already_computed = new pair<bool, int64_t>[ALREADY_COMPUTED_SIZE];
+    fill(already_computed, already_computed + (ALREADY_COMPUTED_SIZE), make_pair(false, -1));
+
+    result = stressful_win_memo(my_ending_score + enemy_ending_score, 0, 0, my_ending_score, enemy_ending_score, already_computed);
+
+    delete[] already_computed;
+    return result;
+}
+
+int main(int argc, char* argv[]) {
+    int T;
+    cin >> T;
+
+    for (int t = 1; t <= T; ++t) {
+        string s;
+        cin >> s;
+
+        size_t index_of_dash = s.find('-');
+        int my_ending_score = stoi(s.substr(0, index_of_dash));
+        int enemy_ending_score = stoi(s.substr(index_of_dash + 1, s.length() - index_of_dash));
+
+        int64_t stress_free_wins = solve_stress_free_wins(my_ending_score, enemy_ending_score);
+        int64_t stressful_wins = solve_stressful_wins(my_ending_score, enemy_ending_score);
+
+        cout << "Case #" << t << ": " << stress_free_wins << " " << stressful_wins << "\n";
+    }
+
+    return 0;
+}

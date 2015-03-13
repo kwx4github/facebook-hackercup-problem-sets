@@ -1,0 +1,91 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const int maxn = 201000;
+
+typedef pair<int, int> choice; // (chosen number, value)
+//typedef pair<int, choice> id_choice; // (id, (chosen number, value))
+typedef tuple<int, int, choice> id_choice; // (id, 0 or 1, (chosen number, value)) (0: minimum)
+typedef pair<choice, choice> result; // (minimum, second minimum)
+
+vector<int> g[maxn];
+result f[maxn];
+
+bool cmp(id_choice a, id_choice b) {
+	//if (a.second.first == b.second.first) return a.second.;
+	return (get<2>(a).first) < (get<2>(b).first);
+}
+
+result calc(int x) {
+	if (g[x].size() == 0) {
+		return f[x] = { {1,1}, {2,2}};
+	} else {
+
+		vector<id_choice> v;
+		vector<int> a;
+
+		int sum = 0;
+		for (unsigned i=0;i<g[x].size();++i) {
+			calc(g[x][i]);
+			v.emplace_back(i, 0, f[g[x][i]].first);
+			v.emplace_back(i, 1, f[g[x][i]].second);
+			a.push_back(0); //0: using the minimum; 1: using the second minimum
+			sum += f[g[x][i]].first.second;
+		}
+		sort(v.begin(), v.end(), cmp);
+
+		choice m1{g[x].size() + 1, g[x].size() + 1 + sum}, m2{-1, INT_MAX};
+
+		int lb = 0, rb;
+		for (unsigned i = 1; i <= g[x].size(); ++i) {
+			rb = lb - 1;
+			while (rb + 1 < (int)v.size() && get<2>(v[rb + 1]).first == (int)i) ++rb;
+			for (int j = lb; j <= rb; ++j) {
+				int id = get<0>(v[j]);
+				if (get<1>(v[j]) == a[id]) {
+					sum -= (a[id] == 0 ? f[g[x][id]].first.second : f[g[x][id]].second.second);
+					sum += (a[id] == 0 ? f[g[x][id]].second.second : f[g[x][id]].first.second);
+					a[id] ^= 1;
+				}
+			}
+			if ((int)(sum + i) < m1.second) {
+				m2 = m1;
+				m1.second = sum + i;
+				m1.first = i;
+			} else if ((int)(sum + i) < m2.second) {
+				m2.second = sum + i;
+				m2.first = i;
+			}
+
+			lb = rb + 1;
+		}
+
+		//printf("%d: {%d, %d}, {%d, %d}\n", x, m1.second, m1.first, m2.second, m2.first);
+		return f[x] = {m1, m2};
+	}
+}
+
+int main() {
+
+	int Tn;
+	scanf("%d", &Tn);
+	for (int Tc = 1; Tc <= Tn; ++Tc) {
+		int n;
+		for (int i = 1; i <= n; ++i) {
+			g[i].clear();
+		}
+		scanf("%d", &n);
+		for (int i = 1; i <= n; ++i) {
+			int p;
+			scanf("%d", &p);
+			if (p)
+				g[p].push_back(i);
+		}
+
+		auto ans = calc(1);
+		printf("Case #%d: %d\n", Tc, ans.first.second);
+	}
+
+	return 0;
+}

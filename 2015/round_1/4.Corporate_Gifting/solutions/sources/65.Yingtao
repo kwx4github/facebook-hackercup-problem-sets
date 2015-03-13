@@ -1,0 +1,110 @@
+#!/usr/bin/env pypy3
+
+from queue import Queue
+import math
+
+class Tree:
+    def __init__(self, p=[]):
+        n = len(p)
+        self.n = n
+
+        self.p = [ _-1 for _ in p]
+
+        self.c = [ [] for _ in range(n) ]
+        for i, v in enumerate(self.p):
+            if v >= 0:
+                self.c[v].append(i)
+
+    def top_sort(self):
+        # topological sorting
+        c = [len(_) for _ in self.c]
+        n = self.n
+
+        q = Queue()
+        for i in range(n):
+            if len(self.c[i]) == 0:
+                q.put(i)
+
+        top_list = []
+
+        while not q.empty():
+            i = q.get()
+            top_list.append(i)
+            p = self.p[i]
+            if p >= 0:
+                c[p] -= 1
+                if c[p] == 0:
+                    q.put(p)
+
+        return top_list
+
+
+    def solve(self):
+        top_list = self.top_sort()
+
+        max_color = int(math.log(self.n)+3)
+        # color in 0..max_color-1
+        # add answer by n finally
+
+        f = [ None for _ in range(self.n) ]
+        h = [ None for _ in range(self.n) ]
+
+        def get_h_from_f(f):
+            n = len(f)
+
+            l = [0]*n
+            for i in range(n):
+                if i - 1 >= 0:
+                    l[i] = min(l[i-1],f[i])
+                else:
+                    l[i] = f[i]
+
+            r = [0]*n
+            for i in reversed(range(n)):
+                if i + 1 < n:
+                    r[i] = min(r[i+1],f[i])
+                else:
+                    r[i] = f[i]
+
+            h = []
+            for i in range(n):
+                v = None
+                if i - 1 >= 0:
+                    if v is None or v > l[i-1]:
+                        v = l[i-1]
+                if i + 1 < n:
+                    if v is None or v > r[i+1]:
+                        v = r[i+1]
+                h.append(v)
+            return h
+
+        for i in top_list:
+            f[i] = [ None ] * max_color
+            h[i] = [ None ] * max_color
+            if len(self.c[i]) == 0:
+                # leaf
+                f[i] = [color for color in range(max_color)]
+                h[i] = get_h_from_f(f[i])
+            else:
+                # non-leaf
+                f[i] = [color + sum(h[j][color] for j in self.c[i])
+                        for color in range(max_color)]
+                h[i] = get_h_from_f(f[i])
+
+        answer = min(f[0][color] for color in range(max_color))
+        # add answer by n finally
+        answer += self.n
+
+        return answer
+
+
+    def __repr__(self):
+        return self.c.__repr__()
+
+T = int(input())
+for Case in range(T):
+    N = int(input())
+    p = list(map(int,input().split()))
+    tree = Tree(p)
+    answer = tree.solve()
+    print('Case #%d: %d'%(Case+1,answer))

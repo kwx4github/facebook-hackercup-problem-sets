@@ -1,0 +1,106 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"math"
+	"os"
+	"strconv"
+)
+
+type Key struct {
+	node  *Node
+	price int
+}
+
+type Node struct {
+	children map[int]*Node
+	memoize  map[int]int
+	parent   int
+}
+
+func NewNode(p int) *Node {
+	n := &Node{}
+	n.children = make(map[int]*Node)
+	n.memoize = make(map[int]int)
+	n.parent = p
+
+	return n
+}
+
+func (n *Node) AddChild(c *Node, i int) {
+	n.children[i] = c
+}
+
+func (n *Node) Traverse(mcost, max int) int {
+	if len(n.children) == 0 {
+		if mcost == 1 {
+			return 2
+		}
+		return 1
+	}
+
+	if branch_cost, ok := n.memoize[mcost]; ok {
+		return branch_cost
+	}
+
+	var min = math.MaxInt64
+	for i := 1; i <= max; i++ {
+		if i == mcost {
+			continue
+		}
+		var branch_cost = i
+		for _, child := range n.children {
+			branch_cost += child.Traverse(i, max)
+			if branch_cost >= min {
+				continue
+			}
+		}
+
+		if branch_cost < min {
+			min = branch_cost
+		}
+	}
+	n.memoize[mcost] = min
+
+	return min
+}
+
+func NextInt(r *bufio.Reader) (int, error) {
+	var c rune
+	var b []byte
+	c, _, _ = r.ReadRune()
+	for c != '\n' && c != ' ' {
+		b = append(b, byte(c))
+		c, _, _ = r.ReadRune()
+	}
+	return strconv.Atoi(string(b))
+}
+
+func main() {
+	file, err := os.Open(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	line, _, _ := reader.ReadLine()
+	T, _ := strconv.Atoi(string(line))
+	for i := 1; i <= T; i++ {
+		line, _, _ = reader.ReadLine()
+		N, _ := strconv.Atoi(string(line))
+		nodes := make(map[int]*Node)
+		for j := 0; j < N; j++ {
+			e, _ := NextInt(reader)
+			nodes[j] = NewNode(e)
+		}
+		for j := 0; j < N; j++ {
+			if j != 0 {
+				nodes[nodes[j].parent-1].AddChild(nodes[j], j-1)
+			}
+		}
+		fmt.Printf("Case #%d: %d\n", i, nodes[0].Traverse(0, 10))
+	}
+}

@@ -1,0 +1,133 @@
+#include <bits/stdc++.h>
+
+#define INF 1000000010
+#define FO(i,a,b) for (int (i) = (a); (i) < (b); ++(i))
+
+using namespace std;
+//PAIRS:
+#define mp make_pair
+#define fi first
+#define se second
+typedef pair<int,int> pii;
+
+/*~~~~TEMPLATE END~~~~*/
+
+//NTS: dp is offset by 1 so add N to the ans at the end
+//Make DP long long
+
+#define MAX_N 200020
+
+int T, N;
+int p[MAX_N], nC[MAX_N];
+vector <int> allC[MAX_N];
+vector <long long> dp[MAX_N];
+vector <long long> cumDP[MAX_N];
+long long bes[MAX_N];
+
+long long preMin[MAX_N], sufMin[MAX_N];
+
+int temNC[MAX_N];
+vector <int> nOrder;
+
+int maxV[MAX_N];
+
+int totNumChild[MAX_N];
+        
+void doDp (int c) {
+    totNumChild[c]++;
+    FO (i,0,nC[c]) {
+        totNumChild[c] += totNumChild[allC[c][i]];
+    }
+    FO (i,0,nC[c]) {
+        int cC = allC[c][i];
+        FO (p,0,min (maxV[c],maxV[cC])) {
+            dp[c][p] += dp[cC][p];
+        }
+        if (maxV[cC] < maxV[c]) {
+            cumDP[c][maxV[cC]] += bes[cC];
+        }
+    }
+    long long cCum = 0;
+    FO (i,0,maxV[c]) {
+        cCum += cumDP[c][i];
+        dp[c][i] += cCum;
+        dp[c][i] += i;
+    }
+    preMin[0] = dp[c][0];
+    FO (i,1,maxV[c]) {
+        preMin[i] = min (preMin[i-1], dp[c][i]);
+    }
+    sufMin[maxV[c]] = INF;
+    sufMin[maxV[c]-1] = dp[c][maxV[c]-1];
+    for (int i = maxV[c]-2; i >= 0; i--) {
+        sufMin[i] = min (sufMin[i+1], dp[c][i]);
+    }
+    bes[c] = preMin[maxV[c]-1];
+    //FO (i,0,maxV[c]) printf ("%d ", dp[c][i]+totNumChild[c]);
+    //printf ("\n");
+    dp[c][0] = sufMin[1];
+    dp[c][maxV[c]-1] = preMin[maxV[c]-2];
+    FO (i,1,maxV[c]-1) {
+        dp[c][i] = min (preMin[i-1], sufMin[i+1]);
+    }
+    FO (i,0,maxV[c]+1) preMin[i] = sufMin[i] = INF;
+    //printf ("c: %lld\n", bes[c]);
+    return;
+}
+
+void reset() {
+    FO (i,1,N+1) {
+        allC[i].clear();
+        p[i] = 0;
+        nC[i] = 0;
+        temNC[i] = 0;
+        dp[i].clear();
+        cumDP[i].clear();
+        bes[i] = 0;
+        maxV[i] = 0;
+        totNumChild[i] = 0;
+    }
+    nOrder.clear();
+    return;
+}
+
+int main() {
+    freopen ("q4.in", "r", stdin);
+    freopen ("q4.out", "w", stdout);
+    scanf ("%d", &T);
+    FO (_z,0,T) {
+        printf ("Case #%d: ", _z+1);
+        scanf ("%d", &N);
+        FO (i,0,N) {
+            int _a;
+            scanf ("%d", &_a);
+            p[i+1] = _a;
+            allC[_a].push_back (i+1);
+        }
+        FO (i,1,N+1) nC[i] = allC[i].size();
+        FO (i,1,N+1) maxV[i] = nC[i]+3;
+        FO (i,1,N+1) dp[i].resize (maxV[i], 0);
+        FO (i,1,N+1) cumDP[i].resize (maxV[i], 0);
+        FO (i,1,N+1) temNC[i] = nC[i];
+        
+        FO (i,1,N+1) if (temNC[i] == 0) nOrder.push_back (i);
+        FO (i,0,N) {
+            temNC[p[nOrder[i]]]--;
+            if (temNC[p[nOrder[i]]] == 0) nOrder.push_back (p[nOrder[i]]);
+        }
+        FO (i,0,N) {
+            /*
+            printf ("cN: %d\n", nOrder[i]);
+            FO (p,0,nC[nOrder[i]]) printf ("%d ", allC[nOrder[i]][p]);
+            printf ("\n");
+            */
+            //printf ("%d ", nOrder[i]);
+            doDp (nOrder[i]);
+            //printf ("%d: %d\n", nOrder[i], bes[nOrder[i]]+totNumChild[nOrder[i]]);
+        }
+        //printf ("\n");
+        printf ("%lld\n", bes[1]+N);
+        reset();
+    }
+    return 0;
+}

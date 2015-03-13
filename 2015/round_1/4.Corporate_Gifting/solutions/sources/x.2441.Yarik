@@ -1,0 +1,183 @@
+#include <iostream>
+#include <vector>
+#include <limits>
+#include <random>
+#include <chrono>
+#include <map>
+
+#include <cstdio>
+
+using namespace std;
+
+int n, p[200005];
+vector<int> h[200005];
+
+int on2() {
+  for (int j = 0; j < n; ++j) {
+    h[j] = vector<int>(n);
+  }
+  for (int j = n - 1; j > 0; --j) {
+    if (p[j] == 0) continue;
+    int m1 = -1, m2 = -1;
+    for (int k = 0; k < n; ++k)
+      if (m1 == -1 || h[j][m1] + m1 + 1 > h[j][k] + k + 1) {
+        m2 = m1;
+        m1 = k;
+      } else if (m2 == -1 || h[j][m2] + m2 + 1 > h[j][k] + k + 1) {
+        m2 = k;
+      }
+    for (int k = 0; k < n; ++k) {
+      if (k == m1)
+        h[p[j] - 1][k] += h[j][m2] + m2 + 1;
+      else
+        h[p[j] - 1][k] += h[j][m1] + m1 + 1;
+    }
+  }
+
+  int m = h[0][0] + 1;
+  for (int k = 1; k < n; ++k) m = min(m, h[0][k] + k + 1);
+  return m;
+}
+
+pair<int, long long> m1[200005], m2[200005];
+map<int, long long> z[200005];
+long long Z[200005];
+bool leaf[200005];
+
+int oNlogN() {
+  for (int i = 0; i < n; ++i) {
+    m1[i] = {-1, -1}, m2[i] = {-1, -1};
+    z[i].clear();
+    Z[i] = 0;
+    leaf[i] = true;
+  }
+
+  for (int i = n - 1; i >= 0; --i) {
+    if (leaf[i]) {
+      m1[i].first = 0;
+      m1[i].second = 1;
+      m2[i].first = 1;
+      m2[i].second = 2;
+    } else {
+      int prev = -1;
+      int mex = -1;
+      int mex2 = -1;
+      for (auto& x : z[i]) {
+        if (mex == -1 && x.first > prev + 1) {
+          mex = prev + 1;
+          if (x.first > mex + 1) mex2 = mex + 1;
+        } else if (mex2 == -1 && x.first > prev + 1) {
+          mex2 = prev + 1;
+        }
+        prev = x.first;
+        if (m1[i].first == -1 || m1[i].second > x.second + x.first + 1 + Z[i]) {
+          m2[i].first = m1[i].first;
+          m2[i].second = m1[i].second;
+          m1[i].first = x.first;
+          m1[i].second = x.second + x.first + 1 + Z[i];
+        } else if (m2[i].first == -1 ||
+                   m2[i].second > x.second + x.first + 1 + Z[i]) {
+          m2[i].first = x.first;
+          m2[i].second = x.second + x.first + 1 + Z[i];
+        }
+      }
+      if (mex == -1) {
+        mex = prev + 1;
+        if (mex2 == -1) mex2 = mex + 1;
+      } else if (mex2 == -1)
+        mex2 = prev + 1;
+      if (mex < 0 || mex > n - 1) mex = -1;
+      if (mex2 < 0 || mex2 > n - 1) mex2 = -1;
+      if (mex > -1) {
+        if (m1[i].first == -1 || m1[i].second > Z[i] + mex + 1) {
+          m2[i].first = m1[i].first;
+          m2[i].second = m1[i].second;
+          m1[i].first = mex;
+          m1[i].second = Z[i] + mex + 1;
+        } else if (m2[i].first == -1 || m2[i].second > Z[i] + mex + 1) {
+          m2[i].first = mex;
+          m2[i].second = Z[i] + mex + 1;
+        }
+      }
+      if (mex2 > -1) {
+        if (m1[i].first == -1 || m1[i].second > Z[i] + mex2 + 1) {
+          m2[i].first = m1[i].first;
+          m2[i].second = m1[i].second;
+          m1[i].first = mex2;
+          m1[i].second = Z[i] + mex2 + 1;
+        } else if (m2[i].first == -1 || m2[i].second > Z[i] + mex2 + 1) {
+          m2[i].first = mex2;
+          m2[i].second = Z[i] + mex2 + 1;
+        }
+      }
+    }
+    z[i].clear();
+    if (p[i] > 0) {
+      leaf[p[i] - 1] = false;
+      Z[p[i] - 1] += m1[i].second;
+      z[p[i] - 1][m1[i].first] += m2[i].second - m1[i].second;
+    }
+  }
+
+  return m1[0].second;
+}
+
+void stress() {
+  mt19937 rand(chrono::system_clock::now().time_since_epoch().count());
+  freopen("err.txt", "w", stdout);
+  int T = 50000;
+  for (int i = 1; i <= T; ++i) {
+    if (i % 1000 == 0) cerr << i << '\n';
+    n = 100;
+    for (int j = 1; j < n; ++j) p[j] = rand() % j + 1;
+    if (on2() != oNlogN()) {
+      cerr << "ke\n";
+      cout << "1\n" << n << '\n';
+      for (int j = 0; j < n; ++j) cout << p[j] << ' ';
+      cout << '\n';
+      return;
+    }
+  }
+}
+
+void stress2() {
+  mt19937 rand(chrono::system_clock::now().time_since_epoch().count());
+  freopen("err.txt", "w", stdout);
+  int T = 100;
+  for (int i = 1; i <= T; ++i) {
+    if (i % 10 == 0) cerr << i << '\n';
+    n = 200000;
+    for (int j = 1; j < n; ++j) p[j] = rand() % j + 1;
+    int m2 = oNlogN();
+    cout << "Case #" << i << ": " << m2 << '\n';
+  }
+}
+
+int main() {
+  //  stress();
+  //  return 0;
+//    stress2();
+//    return 0;
+  //  freopen("err.txt", "r", stdin);
+
+  freopen("corporate_gifting.txt", "r", stdin);
+  freopen("output.txt", "wb", stdout);
+  ios_base::sync_with_stdio(0);
+
+  int T;
+  cin >> T;
+  for (int i = 1; i <= T; ++i) {
+    if (i % 10 == 0) cerr << i << '\n';
+    cin >> n;
+    for (int j = 0; j < n; ++j) cin >> p[j];
+    //    int m = on2();
+    long long m2 = oNlogN();
+    cout << "Case #" << i << ": " << m2 << '\n';
+  }
+
+  cerr << "FIN\n";
+}
+
+// C:\Users\Yarik\dev\cpp\contests\fbhackercup\corporate_gifting.txt
+// C:\Users\Yarik\dev\cpp\contests\fbhackercup\corporate_gifting.cpp
+// C:\Users\Yarik\dev\cpp\contests\fbhackercup\output.txt

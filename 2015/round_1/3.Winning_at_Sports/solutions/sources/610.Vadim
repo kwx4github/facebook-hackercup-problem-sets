@@ -1,0 +1,138 @@
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.math.BigInteger;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Vadim Semenov
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "winning.*at.*sports.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("winningatsports.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		WinningAtSports solver = new WinningAtSports();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class WinningAtSports {
+    private static final int MODULO = 1_000_000_007;
+    private static final int MAX_SCORE = 2_000;
+    
+    private static final int[][] stressFree = new int[MAX_SCORE + 1][MAX_SCORE + 1];
+    private static final int[][] aux = new int[MAX_SCORE + 1][MAX_SCORE + 1];
+
+    static {
+        long time0 = System.currentTimeMillis();
+
+        stressFree[1][0] = 1;
+        for (int i = 2; i <= MAX_SCORE; ++i) {
+            for (int j = 0; j < i; ++j) {
+                if (j > 0) stressFree[i][j] += stressFree[i][j - 1];
+                if (i - 1 > j) stressFree[i][j] += stressFree[i - 1][j];
+                if (stressFree[i][j] >= MODULO) stressFree[i][j] -= MODULO;
+            }
+        }
+
+        long time1 = System.currentTimeMillis();
+        System.err.println("stress-free ready in " + (time1 - time0) + ".ms");
+
+        aux[0][0] = 1;
+        for (int j = 1; j <= MAX_SCORE; ++j) {
+            for (int i = 0; i <= j; ++i) {
+                if (i > 0) aux[i][j] += aux[i - 1][j];
+                if (i < j) aux[i][j] += aux[i][j - 1];
+                if (aux[i][j] >= MODULO) aux[i][j] -= MODULO;
+            }
+        }
+        
+        long time2 = System.currentTimeMillis();
+        System.err.println("aux ready in " + (time2 - time1) + ".ms");
+    }
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        String[] score = in.next().split("-");
+        int my = Integer.parseInt(score[0]);
+        int his = Integer.parseInt(score[1]);
+        assert my > his : my + " <= " + his;
+        int stressful = 0;
+        for (int i = 0; i < his; ++i) {
+            stressful += aux[i][his - 1];
+            if (stressful >= MODULO) stressful -= MODULO;
+        }
+        if (his == 0) stressful = 1;
+        print(out, testNumber, stressFree[my][his] + " " + stressful);
+    }
+
+    private void print(PrintWriter out, int testNumber, String answer) {
+               out.println("Case #" + testNumber + ": " + answer);
+        System.err.println("Case #" + testNumber + ": " + answer);
+    }
+}
+
+class InputReader {
+    private final BufferedReader reader;
+    private StringTokenizer tokenizer;
+
+    public InputReader(InputStream in) {
+        reader = new BufferedReader(new InputStreamReader(in));
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            tokenizer = new StringTokenizer(readLine());
+        }
+        return tokenizer.nextToken();
+    }
+
+    public String readLine() {
+        String line = null;
+        try {
+            line = reader.readLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return line;
+    }
+}
+

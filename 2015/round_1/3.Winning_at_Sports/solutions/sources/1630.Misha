@@ -1,0 +1,60 @@
+(ns fb.problem2015-2-3)
+
+(defn produce-stress-free-row [row prev]
+  (loop [i 0 prev-value 0 arr []]
+    (cond (= i (count prev)) arr
+          (<= i row) (recur (inc i) 0 (conj arr 0))
+          :else (let [prev-value-new
+                      (mod (+' (nth prev i)
+                               prev-value) 1000000007)]
+                  (recur (inc i) prev-value-new (conj arr prev-value-new))))))
+
+(defn solve-stress-free [a b]
+  (loop [row 1 prev (into [] (repeat (inc a) 1))]
+    (if (= row (inc b)) (last prev)
+        (recur (inc row)
+               (produce-stress-free-row row prev)))))
+
+(defn produce-stress-full-row [row prev last?]
+  (loop [i 0 prev-value 0 arr []]
+    (cond (= i (count prev)) arr
+          (and (not last?)
+               (> i row)) (recur (inc i) 0 (conj arr 0))
+          :else (let [prev-value-new
+                      (mod (+' (nth prev i)
+                               prev-value) 1000000007)]
+                  (recur (inc i) prev-value-new (conj arr prev-value-new))))))
+
+(defn solve-stress-full [a b]
+  (if (zero? b) 1 
+      (loop [row 1 prev (into [] (cons 1 (repeat a 0)))]
+        (if (= row (inc b)) (last prev) ;; instead of last)
+            (recur (inc row)
+                   (produce-stress-full-row row prev (= row b)))))))
+(defn solve [a b]
+  [(solve-stress-free a b)
+   (solve-stress-full a b)])
+
+(defn problem3 [in out]
+  (let [raw-data (map read-string (re-seq #"[0-9]+" (slurp in)))
+        tests (rest raw-data)]
+    (loop [data tests cnt 1 result []]
+      (let [[a b] (take 2 data)]
+        (if a
+          (let [[stressfull stressfree] (solve a b)
+                case-string (format "Case #%s: %s %s\n" cnt stressfull stressfree)]
+            (print case-string)
+            (recur (drop 2 data) (inc cnt) (conj result case-string))
+            )
+          ;; print to file
+          (spit out (apply str result)))))))
+
+(defn generate [file n]
+  (spit file (apply str
+                    (cons (format "%d\n" n)
+                          (repeatedly n (fn []
+                                          (let [a (inc (rand-int 2000))
+                                                b (inc (rand-int 2000))
+                                                left (min a b)
+                                                right (max a b)]
+                                            (format "%d-%d\n" right left))))))))

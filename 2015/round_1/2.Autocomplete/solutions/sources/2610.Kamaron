@@ -1,0 +1,164 @@
+#include <iostream>
+#include <fstream>
+#include <queue>
+#include <stack>
+#include <string>
+#include <thread>
+#include <crtdbg.h>
+using namespace std;
+
+class AwesomeTree
+{
+public:
+	AwesomeTree(char l = '\0') : _letter(l), _isExclusive(true)
+	{
+		for (int i = 0; i < 26; ++i) _children[i] = nullptr;
+	};
+
+	// Prevents stack overflow on destruction of tree
+	//  Done on separate thread, as data will be finished by this point.
+	thread* Cleanup()
+	{
+		return new thread([this]() {
+			while (_requiresCleaning.size() > 0u)
+			{
+				auto td = _requiresCleaning.top();
+				_requiresCleaning.pop();
+				delete td;
+			}
+		});
+	}
+
+	void registerWord(string s)
+	{
+		auto t = this;
+
+		for (int pos = 0; pos < s.length(); ++pos)
+		{
+			auto m = s[pos] - 'a';
+			if (t->_children[m] == nullptr)
+			{
+				t->_children[m] = new AwesomeTree(m + 'a');
+				_requiresCleaning.push(t->_children[m]);
+			}
+			else
+			{
+				t->_children[m]->_isExclusive = false;
+			}
+			t = t->_children[m];
+		}
+	}
+
+	int checkWord(string s)
+	{
+		auto t = this;
+		int tr = 0;
+
+		for (int pos = 0; pos < s.length(); ++pos)
+		{
+			if (t == nullptr)
+			{
+				return tr;
+			}
+			else
+			{
+				++tr;
+				auto m = s[pos] - 'a';
+				if (t->_children[m]->_isExclusive)
+				{
+					return tr;
+				}
+				else
+				{
+					t = t->_children[m];
+				}
+			}
+		}
+
+		return s.length();
+	}
+
+private:
+	AwesomeTree* _children[26];
+	char _letter;
+	bool _isExclusive;
+	stack<AwesomeTree*> _requiresCleaning;
+};
+
+int main()
+{
+	//ifstream fin("test-input.txt");
+	ifstream fin("input.txt");
+	//ifstream fin("largeInputTest.txt");
+	ofstream fout("autocomplete-output1.txt");
+
+	auto start = std::chrono::system_clock::now();
+
+	stack<pair<thread*, AwesomeTree*>> cleanupThreads;
+
+	int t;
+	fin >> t;
+
+	bool finished = false;
+
+	thread cleaner([&cleanupThreads, &finished]() {
+		while (!finished)
+		{
+			while (cleanupThreads.size() == 0u && !finished)
+			{
+				this_thread::sleep_for(std::chrono::milliseconds(750));
+				cout << "Waiting for new task..." << endl;
+			}
+
+			cout << "Deleting... ";
+			auto toClean = cleanupThreads.top();
+			cleanupThreads.pop();
+			toClean.first->join();
+			delete toClean.second;
+			cout << "done." << endl;
+		}
+		cout << "Exited loop..." << endl;
+	});
+
+	for (int testNum = 1; testNum <= t; ++testNum)
+	{
+		int n;
+		fin >> n;
+		fin.ignore();
+
+		std::cout << "Case " << testNum << endl;
+
+		AwesomeTree* root = new AwesomeTree;
+
+		long long reqChars = 0;
+
+		for (int wordID = 0; wordID < n; ++wordID)
+		{
+			string word;
+			getline(fin, word);
+			
+			// Add word combo to dictionary...
+			root->registerWord(word);
+
+			reqChars += root->checkWord(word);
+		}
+
+		fout << "Case #" << testNum << ": " << reqChars << endl;
+
+		cleanupThreads.push({ root->Cleanup(), root });
+	}
+
+	finished = true;
+
+	auto end = std::chrono::system_clock::now();
+
+	std::cout << "Time elapsed: " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << endl;
+
+	fin.close();
+	fout.close();
+
+	cleaner.join();
+
+	_CrtDumpMemoryLeaks();
+	return 0;
+}

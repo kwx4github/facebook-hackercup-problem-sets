@@ -1,0 +1,88 @@
+#pragma comment(linker, "/STACK:1000000000")
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <string>
+#include <map>
+
+struct Submin {
+	int col1, col2;
+	long score1, score2;
+	int height;
+};
+
+using namespace std;
+
+Submin calc(const vector<vector<int>>& reports, int id) {
+	vector<Submin> s;
+	int heigth = 0;
+	for (int r : reports[id]) {
+		Submin submin = calc(reports, r);
+		s.push_back(submin);
+		heigth = max(heigth, submin.height + 1);
+	}
+
+	int k = min(2 * (heigth + 1), int(reports[id].size()) + 2);
+	k = min(k, int(reports.size()));
+
+	long bound = 0;
+	for (auto& item : s) 
+		bound += item.score1;
+	vector<long> scores(k);
+	for (int col = 0; col < k; col++) {
+		scores[col] = bound + col + 1;
+	}
+	for (auto& item : s) {
+		scores[item.col1] += (item.score2 - item.score1);
+	}
+	Submin submin;
+	submin.height = heigth;
+	submin.col1 = 0; submin.score1 = scores[0];
+	submin.col2 = 1; submin.score2 = scores[1];
+	if (scores[0] > scores[1]) {
+		swap(submin.col1, submin.col2);
+		swap(submin.score1, submin.score2);
+	}
+	for (int col = 2; col < k; col++) {
+		if (submin.score1 > scores[col]) {
+			submin.col2 = submin.col1;
+			submin.score2 = submin.score1;
+			submin.col1 = col;
+			submin.score1 = scores[col];
+		} else if (submin.score2 > scores[col]) {
+			submin.col2 = col;
+			submin.score2 = scores[col];
+		}
+	}
+	return submin;
+}
+
+int main() {
+	ifstream fin("corporate_gifting.txt", ios::in);
+	ofstream fout("out4.txt", ios::out);
+
+	int T;
+	fin >> T;
+
+	for (int testCase = 1; testCase <= T; testCase++) {
+		int n;
+		fin >> n;
+		vector<vector<int>> reports(n);
+		for (int i = 0; i < n; i++) {
+			int boss;
+			fin >> boss;
+			if (boss != 0) {
+				reports[boss - 1].push_back(i);
+			}
+		}
+
+		long score = calc(reports, 0).score1;
+
+		fout << "Case #" << testCase << ": " << score << endl;
+		cout << "Case #" << testCase << ": " << score << endl;
+	}
+	fin.close();
+	fout.close();
+}

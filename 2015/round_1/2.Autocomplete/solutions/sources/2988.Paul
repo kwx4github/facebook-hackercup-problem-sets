@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+import sys
+
+
+class Node(object):
+    def __init__(self):
+        super(Node, self).__init__()
+        self.children = {}
+        self.word = None
+        self.words = 1
+
+    def __repr__(self):
+        return "<Node %d %s>" % (self.words, self.word)
+
+
+class Dictionary(Node):
+    def __init__(self):
+        super(Dictionary, self).__init__()
+        self.words = 0
+
+    def insert(self, word):
+        node = self
+        i, n = 0, len(word)
+
+        node.words += 1
+
+        while i < n:
+            if word[i] not in node.children:
+                break
+
+            node = node.children[word[i]]
+            node.words += 1
+            i += 1
+
+        # append new nodes, if necessary
+        while i < n:
+            new_node = Node()
+            node.children[word[i]] = new_node
+            node = new_node
+            i += 1
+
+        node.word = word
+
+    def find(self, word):
+        node = self
+
+        for char in word:
+            if char not in node.children:
+                return None
+
+            node = node.children[char]
+
+        return node
+
+    def find_prefix(self, word):
+        node = self
+        prefix = ""
+
+        for char in word:
+            if char not in node.children:
+                return None
+
+            if node.words == 1:
+                break
+
+            prefix += char
+            node = node.children[char]
+
+        # print word, prefix, node
+        return prefix
+
+
+def dump_tree(filename, node):
+    def dump_node(node, name):
+        s = ""
+        for char, child in sorted(node.children.items()):
+            child_name = "node_%s" % id(child)
+
+            label = "%s %d" % (char, child.words)
+            if child.word:
+                label += " (%s)" % child.word
+
+            s += "%s [ label = \"%s\" ];\n" % (child_name, label)
+            s += "%s -> %s;\n" % (name, child_name)
+            s += dump_node(child, child_name)
+
+        return s
+
+    s = "digraph tree {\n"
+    s += "root [ label = \"root %d\" ];\n" % node.words
+    s += dump_node(node, "root")
+    s += "}\n"
+
+    with open(filename, "w") as fp:
+        fp.write(s)
+
+
+def read_integer():
+    return int(sys.stdin.readline())
+
+
+def autocomplete(case):
+    n = read_integer()
+    d = Dictionary()
+
+    # first word always has unique prefix of length 1
+    total_keys = 1
+
+    for i in range(n):
+        word = sys.stdin.readline().strip()
+
+        d.insert(word)
+        # dump_tree("tree-%d-%d.dot" % (case, i), d)
+
+        if i > 0:
+            prefix = d.find_prefix(word)
+            total_keys += len(prefix)
+
+    return total_keys
+
+
+def main():
+    T = read_integer()
+    for case in range(1, T+1):
+        print "Case #%d: %s" % (case, autocomplete(case))
+
+
+if __name__ == "__main__":
+    main()

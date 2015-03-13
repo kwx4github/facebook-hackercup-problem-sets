@@ -1,0 +1,81 @@
+__author__ = 'fkint'
+
+import sys
+
+lines = sys.stdin.readlines()
+
+
+def read_next_line():
+    read_next_line.current_line += 1
+    return lines[read_next_line.current_line - 1].strip()
+
+
+read_next_line.current_line = 0
+
+MAXN = 200000
+
+
+class Node:
+    def __init__(self):
+        self.children = set()
+        self.best_value = 0
+        self.best_total = 0
+        self.second_total = 0
+        self.second_value = 0
+        self.processed = False
+
+    def add_child(self, child):
+        self.children.add(child)
+
+    def calculate_optimal_configuration(self, N):
+        total_children_cost = 0
+        extra_cost = dict()
+        for c in self.children:
+            total_children_cost += c.best_total
+            if c.best_value not in extra_cost:
+                extra_cost[c.best_value] = 0
+            extra_cost[c.best_value] += c.second_total - c.best_total
+        self.best_total = MAXN ** 2
+        self.best_value = 0
+        self.second_total = MAXN ** 2
+        self.second_value = 0
+        for own_price in range(min(len(self.children) + 3, N)):
+            current_price = own_price + total_children_cost
+            if own_price in extra_cost:
+                current_price += extra_cost[own_price]
+            if current_price < self.best_total:
+                self.second_value = self.best_value
+                self.second_total = self.best_total
+                self.best_total = current_price
+                self.best_value = own_price
+            elif current_price < self.second_total:
+                self.second_total = current_price
+                self.second_value = own_price
+        self.processed = True
+
+
+T = int(read_next_line())
+for curr_case in range(1, T + 1):
+    nodes = dict()
+    N = int(read_next_line())
+    managers = [int(x) for x in read_next_line().split()]
+    root = Node()
+    nodes[0] = root
+    for i in range(1, N):
+        nodes[i] = Node()
+    for i in range(1, N):
+        nodes[managers[i] - 1].add_child(nodes[i])
+    stack = [root]
+    while len(stack) > 0:
+        all_children_processed = True
+        for c in stack[-1].children:
+            if not c.processed:
+                all_children_processed = False
+                stack.append(c)
+                #break
+        if all_children_processed:
+            stack[-1].calculate_optimal_configuration(N)
+            stack.pop()
+    print("Case #" + str(curr_case) + ": " + str(root.best_total + N))
+
+    nodes.clear()

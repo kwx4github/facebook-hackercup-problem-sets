@@ -1,0 +1,44 @@
+import scala.io.Source
+import java.io.File
+
+case class Score(home: Int, visitor: Int)
+
+object FB1HC3 extends App {
+  val lines = Source.fromFile("/home/husrev/Downloads/winning_at_sports.txt").getLines.drop(1).toList
+  val values = lines.map(_.split('-')).map { case Array(a, b) => Score(a.toInt, b.toInt) }
+
+  val resultsUnordered = values.zipWithIndex.par.map { case (score, index) => (findSolution(score), index) }
+  val resultsWithIndexes = resultsUnordered.toList.sortBy(_._2)
+  val resultLines = resultsWithIndexes map { case ((happy,sad), index) => s"Case #${index + 1}: $happy $sad" }
+  val output = printToFile(new File("/home/husrev/fb1hc3.txt")) { pw =>
+    resultLines.foreach { l => println(l); pw.println(l) }
+  }
+
+  def findSolution(score: Score): (Long, Long) = {
+    val counts = Array.fill(score.home + 1)(Array.fill(score.visitor + 1)(1l))
+    val countsSad = Array.fill(score.home + 1)(Array.fill(score.visitor + 1)(1l))
+    countsSad(1) = Array.fill(score.visitor +1)(0l)
+    for (i <- 1 to score.home; j <- 1 to score.visitor) {
+      counts(i)(j) =
+        if (i <= j)
+          0
+        else
+          (counts(i - 1)(j) + counts(i)(j - 1)) % 1000000007l;
+
+      countsSad(i)(j) =
+        if (i > j && j < score.visitor)
+          0
+        else
+          (countsSad(i - 1)(j) + countsSad(i)(j - 1)) % 1000000007l;
+    }
+    val a = counts(score.home)(score.visitor)
+    val b = countsSad(score.home)(score.visitor)
+    (a, b)
+  }
+
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+}
+

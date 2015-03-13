@@ -1,0 +1,120 @@
+import java.io.*;
+import java.util.concurrent.*;
+
+/**
+ * @author vilmantas baranauskas
+ */
+public class WinningAtSports {
+
+    private final static long[][] stressFreeCache = new long[2001][2001];
+    private final static long[][] stressFullCache = new long[2001][2001];
+    static {
+        for (int i = 0; i < stressFreeCache.length; i++) {
+            stressFreeCache[i][0] = 1;
+            stressFullCache[0][i] = 1;
+        }
+    }
+
+    public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
+
+        BufferedReader in = new BufferedReader(new FileReader("in.txt"));
+        BufferedWriter out = new BufferedWriter(new FileWriter("out.txt"));
+
+        // number of test cases
+        int t = Integer.valueOf(in.readLine());
+
+        long start = System.currentTimeMillis();
+
+        for (int i = 0; i < t; i++) {
+            String solution = "Case #" + (i + 1) + ": " + solveTestCase(in);
+            System.out.println(solution);
+            out.write(solution);
+            out.newLine();
+        }
+
+        System.out.println("Took: " + (System.currentTimeMillis() - start)  +  "ms");
+
+        in.close();
+        out.close();
+
+        executor.shutdownNow();
+
+    }
+
+    static ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    private static String solveTestCase(BufferedReader in) throws IOException, ExecutionException, InterruptedException {
+
+        int[] l = readLineOfInts(in);
+
+        final int a = l[0];
+        final int b = l[1];
+
+        Future<Long> stressFreeResult = executor.submit(new Callable<Long>() {
+            @Override
+            public Long call() throws Exception {
+                return stressFree(a, b);
+            }
+        });
+        Future<Long> stressFullResult = executor.submit(new Callable<Long>() {
+            @Override
+            public Long call() throws Exception {
+                return  stressFull(b, b);
+            }
+        });
+
+        return stressFreeResult.get() + " " + stressFullResult.get();
+    }
+
+    private static long stressFree(final int a, final int b) {
+
+        long cached = stressFreeCache[a][b];
+        if (cached != 0) {
+            return cached;
+        }
+
+        long res = 0;
+        if (a - 1 > b) {
+            for (int i = b; i >= 0; i--) {
+                res = (res + stressFree(a - 1, i)) % 1000000007;
+            }
+        } else {
+            res = stressFree(a, b - 1);
+        }
+
+        stressFreeCache[a][b] = res;
+
+        return res;
+    }
+
+    private static long stressFull(final int a, final int b) {
+
+        long cached = stressFullCache[a][b];
+        if (cached != 0) {
+            return cached;
+        }
+
+        long res = 0;
+        if (b - 1 >= a) {
+            for (int i = a; i >= 0; i--) {
+                res = (res + stressFull(i, b - 1)) % 1000000007;
+            }
+        } else {
+            res = stressFull(a - 1, b);
+        }
+
+        stressFullCache[a][b] = res;
+
+        return res;
+    }
+
+    private static int[] readLineOfInts(BufferedReader in) throws IOException {
+        String[] v1Str = in.readLine().split("-");
+        int[] items = new int[v1Str.length];
+        for (int i = 0; i < v1Str.length; i++) {
+            items[i] = Integer.parseInt(v1Str[i]);
+        }
+        return items;
+    }
+
+}

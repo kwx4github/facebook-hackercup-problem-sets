@@ -1,0 +1,107 @@
+#include <bits/stdc++.h>
+#include <sys/resource.h>
+
+typedef long long ll;
+const int N = 200010;
+std::vector<int> edge[N];
+int parent[N];
+
+struct T {
+    std::set<std::pair<ll, ll>> opt;
+};
+
+void relax(T& t, std::pair<ll, ll> p) {
+    t.opt.insert(p);
+    if (t.opt.size() > 2)
+        t.opt.erase(*t.opt.rbegin());
+}
+
+T dfs(int v, int n) {
+    
+    std::map<ll, std::pair<ll, ll>> sum_opt, sum_reverse_opt;
+    auto res = T();
+
+    long long sum_first_opt = 0;
+    for (int i = 0; i < (int) edge[v].size(); i++) {
+        int to = edge[v][i];
+
+        auto tmp = dfs(to, n);
+        auto first_pair = *tmp.opt.begin();
+        auto sum_subtree = first_pair.first;
+        auto number_in_root = first_pair.second;
+        if (sum_opt.count(number_in_root) == 0) {
+            sum_opt[number_in_root] = {0, 0};
+        }
+
+        sum_opt[number_in_root].first += sum_subtree;
+        sum_first_opt += sum_subtree;
+
+        if (tmp.opt.size() > 1) {
+            sum_opt[number_in_root].second += (*tmp.opt.rbegin()).first;
+        }
+    }
+    
+    // first case
+
+    std::vector<int> set_of_values;
+    auto iter = sum_opt.begin();
+    for (int j = 1; set_of_values.size() < 2 && j <= n; j++) {
+        if (iter != sum_opt.end() && j == iter -> first) {
+            iter++;
+        } else {
+            set_of_values.push_back(j);
+        }
+    }
+
+    for (auto it : set_of_values) {
+        relax(res, std::make_pair(sum_first_opt+it, it));
+    }
+
+    // second case
+    for (auto it : sum_opt) {
+        sum_first_opt += -it.second.first + it.second.second + it.first;
+        relax(res, std::make_pair(sum_first_opt, it.first));
+        sum_first_opt -= -it.second.first + it.second.second + it.first;
+    } 
+
+    return res;
+}
+
+void solve() {
+
+
+    int n;
+    assert(scanf("%d", &n));
+
+    for (int i = 0; i < n; i++) {
+        edge[i].clear();
+    }
+
+    for (int i = 0; i < n; i++) {
+        assert(scanf("%d", &parent[i]));
+        if (parent[i] != 0)
+            edge[parent[i]-1].push_back(i);
+    }
+
+    auto answer = dfs(0, n);
+    assert(answer.opt.size() != 0);
+    printf("%lld\n", answer.opt.begin()->first); 
+}
+
+int main() {
+    assert(freopen("corporate_gifting.txt", "r", stdin));
+    assert(freopen("output.txt", "w", stdout));
+
+    /*const rlim_t stack = 1000 * 1000 * 1000;
+    struct rlimit r1;
+    r1.rlim_cur = stack;
+    setrlimit(RLIMIT_STACK, &r1);*/
+
+    int t;
+    assert(scanf("%d", &t));
+
+    for (int i = 0; i < t; i++) {
+        printf("Case #%d: ", i+1);
+        solve();
+    }
+}

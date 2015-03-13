@@ -1,0 +1,136 @@
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Scanner;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+
+
+public class CorporateGifting {
+	
+	public static class Quad {
+		
+		public int m1;
+		public long k1, k2;
+		
+		public Quad(int m1, long k1, long k2) {
+			this.m1 = m1;
+			this.k1 = k1;
+			this.k2 = k2;
+		}
+		
+	}
+	
+	public static int N;
+	public static ArrayList<ArrayList<Integer>> list;
+	public static Quad[] cache;
+	
+	public static Quad getOptimal(int index) {
+		Quad answer = cache[index];
+		if (answer != null) {
+			return answer;
+		}
+		ArrayList<Integer> children = list.get(index);
+		if (children.size() == 0) {
+			
+		}
+		ArrayList<Quad> optimals = new ArrayList<Quad>(children.size());
+		for (int child : children) {
+			optimals.add(getOptimal(child));
+		}
+		HashMap<Integer, ArrayList<Quad>> notMe = new HashMap<Integer, ArrayList<Quad>>();
+		long totalCost = 0;
+		for (Quad optimal : optimals) {
+			totalCost += optimal.k1;
+			ArrayList<Quad> notMeList = notMe.get(optimal.m1);
+			if (notMeList == null) {
+				notMeList = new ArrayList<Quad>();
+				notMe.put(optimal.m1, notMeList);
+			}
+			notMeList.add(optimal);
+		}
+		int maxPossibleI = 1;
+		while (notMe.containsKey(maxPossibleI)) {
+			maxPossibleI++;
+		}
+		maxPossibleI++;
+		long minCost = Integer.MAX_VALUE;
+		long min2Cost = Integer.MAX_VALUE;
+		int minI = 0;
+		for (int i = 1; i <= maxPossibleI; i++) {
+			long cost = totalCost+i;
+			ArrayList<Quad> notMeList = notMe.get(i);
+			if (notMeList != null) {
+				for (Quad optimal : notMeList) {
+					cost += optimal.k2-optimal.k1;
+				}
+			}
+			if (cost < minCost) {
+				min2Cost = minCost;
+				minCost = cost;
+				minI = i;
+			} else if (cost < min2Cost) {
+				min2Cost = cost;
+			}
+		}
+		answer = new Quad(minI, minCost, min2Cost);
+		cache[index] = answer;
+		return answer;
+	}
+	
+	public static void main(String[] args) {
+		Scanner scanner = null;
+		try {
+			scanner = new Scanner(new FileInputStream("D:/Desktop/input.txt"));
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		PrintStream out = null;
+		try {
+			out = new PrintStream(new FileOutputStream("D:/Desktop/output_CorporateGifting.txt"));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		int T = scanner.nextInt();
+		for (int k = 1; k <= T; k++) {
+			N = scanner.nextInt();
+			System.out.println("Doing test case " + k + " with N = " + N);
+			list = new ArrayList<ArrayList<Integer>>();
+			cache = new Quad[N];
+			for (int i = 0; i < N; i++) {
+				list.add(new ArrayList<Integer>());
+			}
+			for (int i = 0; i < N; i++) {
+				//System.out.println("Creating list i = " + i);
+				int manager = scanner.nextInt();
+				if (manager != 0) {
+					manager--;
+					list.get(manager).add(i);
+				}
+			}
+			ArrayList<Integer> order = new ArrayList<Integer>();
+			order.add(0);
+			int xx = 0;
+			while (xx < N) {
+				//System.out.println("Doing xx = " + xx);
+				int xxn = order.get(xx);
+				ArrayList<Integer> children = list.get(xxn);
+				for (int child : children) {
+					order.add(child);
+				}
+				xx++;
+			}
+			for (int i = N-1; i >= 0; i--) {
+				//System.out.println("Getting optimal at i = " + i);
+				getOptimal(order.get(i));
+			}
+			out.println("Case #" + k + ": " + getOptimal(0).k1);
+		}
+		scanner.close();
+	}
+	
+}

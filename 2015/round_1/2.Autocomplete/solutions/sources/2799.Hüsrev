@@ -1,0 +1,58 @@
+import scala.io.Source
+import java.io.File
+import scala.annotation.tailrec
+
+case class Node(nextNodes: Array[Option[Node]] = Array.fill('z' - 'a' + 1)(None))
+
+object FB1HC2 extends App {
+  val lines = Source.fromFile("/home/husrev/Downloads/autocomplete.txt").getLines.drop(1).toList.zipWithIndex
+  val headers = lines.filter { case (line, index) => line(0).isDigit }
+  val values = headers.map {
+    case (line, index) =>
+      val cases = line.toInt
+      lines.slice(index + 1, index + cases + 1).map(_._1)
+  }
+
+  
+  val results = values.par.map(words => findTotalLetters(words,Node(),0))
+  val resultsWithIndexes = results zipWithIndex;
+  val resultLines = resultsWithIndexes map { case (count, index) => s"Case #${index + 1}: $count" }
+  val output = printToFile(new File("/home/husrev/fb1hc2.txt")) { pw =>
+    resultLines.foreach(pw.println(_))
+  }
+  
+  @tailrec
+  def findTotalLetters(remainingWords: List[String], treeSoFar: Node, totalLettersUsedSoFar: Int = 0): Int = {
+    def indexForLetter(c: Char): Int = c - 'a'
+    if (remainingWords.size == 0)
+      totalLettersUsedSoFar
+    else {
+      val current :: nextRemainging = remainingWords
+      var lettersMatching = 0;
+      var currentBranch = treeSoFar
+      while (lettersMatching < current.length && currentBranch.nextNodes(indexForLetter(current(lettersMatching))) != None) {
+        val index = indexForLetter(current(lettersMatching));
+        currentBranch = currentBranch.nextNodes(index).get
+        lettersMatching += 1
+      }
+      var i = lettersMatching;
+      while (i < current.length) {
+        val index = indexForLetter(current(i))
+        currentBranch.nextNodes.update(index, Some(Node()))
+        currentBranch = currentBranch.nextNodes(index).get
+        i += 1
+      }
+      
+      val lettersToType = if(lettersMatching < current.size) lettersMatching + 1 else current.size
+
+      findTotalLetters(nextRemainging, treeSoFar, totalLettersUsedSoFar + lettersToType)
+    }
+
+  }
+
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+}
+

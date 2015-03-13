@@ -1,0 +1,85 @@
+#include <bits/stdc++.h>/*{{{*/
+using namespace std; typedef long long ll; typedef long double ld; void run(); void prep(); int main(){ios::sync_with_stdio(0); prep(); int tsts; cin>>tsts; for (int tst=1; tst<=tsts; ++tst) {cout<<"Case #"<<tst<<": "; run();}}/*}}}*/
+
+void prep(){
+  return;
+}
+
+#define MAXN 212345
+#define EXTRA 4
+
+void run(){
+  int n; cin>>n;
+
+  // reset static state
+  static pair<ll,int> best[MAXN][2];
+  static vector<int> c[MAXN];
+  static int p[MAXN];
+  for (int i=n; i--;){
+    c[i].clear();
+    best[i][0]={1ll<<54ll,1};
+    best[i][1]={1ll<<54ll,2};
+  }
+
+  // read in parent-child relationships
+  for (int i=0; i<n; i++){
+    cin>>p[i]; if (~--p[i]) c[p[i]].push_back(i);
+  }
+
+  // build queue for dependency resolution
+  int todon=0;
+  static int d[MAXN];
+  static int todo[MAXN];
+  for (int i=n; i--;) if (not (d[i]=c[i].size())) todo[todon++]=i;
+
+  // process in BFS order
+  for (int ZZZ=0; ZZZ<n; ZZZ++){
+    int x=todo[ZZZ]; assert(ZZZ<todon and (x==0 or ~p[x]));
+    if ((~p[x]) and not --d[p[x]]) todo[todon++]=p[x];
+
+    // find best two possible colourings for each vertex
+
+    // leaf vertex
+    if (c[x].empty()){
+      for (int j=2; j--;){
+        best[x][j].first=best[x][j].second;
+      }
+      continue;
+    }
+
+    // inner vertex
+    {
+      ll const card=c[x].size()+EXTRA;
+
+      // initially penalty for using X is just X
+      ll basis=0;
+      static ll penalty[MAXN];
+      for (int j=1; j<=card; j++){
+        penalty[j]=j;
+      }
+
+      // use second-best when X == colour[child]
+      for (auto y: c[x]){
+        auto a=best[y][0];
+        auto b=best[y][1];
+        basis+=a.first;
+        if (1<=a.second and a.second<=card){
+          penalty[a.second]+=b.first-a.first;
+        }
+      }
+
+      // minimise sum(best_except(j))
+      for (int j=1; j<=card; j++){
+        best[x][1]=min(best[x][1],{basis+penalty[j],j});
+        sort(&best[x][0],2+&best[x][0]);
+      }
+    }
+
+    // sanity check
+    assert(best[x][0].second!=best[x][1].second);
+    assert(best[x][1].first<(1ll<<54ll));
+    assert(best[x][0]<best[x][1]);
+  }
+
+  cout<<best[0][0].first<<endl;
+}

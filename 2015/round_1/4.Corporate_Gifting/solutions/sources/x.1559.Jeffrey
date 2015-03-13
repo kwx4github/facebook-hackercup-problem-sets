@@ -1,0 +1,123 @@
+#include <iostream>
+#include <cstdio>
+#include <algorithm>
+#include <cstring>
+#include <vector>
+#include <cstdlib>
+#include <map>
+#include <stack>
+using namespace std;
+#define mp make_pair
+#define pb push_back
+#define ff first
+#define ss second
+typedef long long ll;
+typedef pair < int, ll> pil;
+const int MAXN = 200200;
+
+ll T, N, p[MAXN], rr[MAXN];
+pil opt1[MAXN], opt2[MAXN];
+vector<int> to[MAXN], rank[MAXN];
+stack <int> st;
+void dfsq(int nd) {
+  rr[1] = 1;
+  st.push(nd);
+  while(!st.empty()) {
+    int cur = st.top();
+    st.pop();
+    for(int i = 0; i != to[cur].size(); i++) {
+      st.push(to[cur][i]);
+      rr[to[cur][i]] = rr[cur] + 1;
+    }
+  }
+}
+void upd(int nd) {
+  if(to[nd].empty()) { //leaf node
+    opt1[nd] = mp(1,1);
+    opt2[nd] = mp(2,2);
+    return;
+  }
+
+  map <int, ll> fail; //hashmap only in c++11 which is not on windows
+  // if I set my payment to what children paid, what is the total of subtree? 
+  ll sum = 0;
+  for(int i = 0; i != to[nd].size(); i++) {
+    sum += opt1[to[nd][i]].ss;
+    fail[opt1[to[nd][i]].ff] += (opt2[to[nd][i]].ss - opt1[to[nd][i]].ss);
+  }
+
+  int minidx = 1;
+  while(fail.count(minidx) > 0) minidx++;
+  
+  int best1 = opt1[to[nd][0]].ff;
+  int best2 = opt1[to[nd][0]].ff;
+  
+  for(int i = 0; i != to[nd].size(); i++) {
+    int oi1 = opt1[to[nd][i]].ff;
+    
+    if(oi1 + sum + fail[oi1] < best1 + sum + fail[best1]) {
+      best1 = oi1;
+    }
+    else {
+      best2 = oi1;
+    }
+    
+  }
+  // or we can pay something a child did not pay 
+  if(minidx + sum < best1 + sum + fail[best1])
+    best1 = minidx;
+  else
+    best2 = minidx;
+  if(best1 == best2) cout << "wtf" << endl;
+  for(int i = 0; i != to[nd].size(); i++) {
+    int &oi1 = opt1[to[nd][i]].ff;
+    if(oi1 != best1 && oi1 + sum + fail[oi1] < best2 + sum + fail[best2]) {
+      best2 = oi1;
+    }
+  }
+  
+  if(minidx != best1 && minidx + sum < best2 + sum + fail[best2])
+    best2 = minidx;
+    
+  opt1[nd] = mp(best1, best1 + sum + ((best1 != minidx)? fail[best1]: 0));
+  opt2[nd] = mp(best2, best2 + sum + ((best2 != minidx)? fail[best2]: 0));
+  
+}
+int main()
+{
+    if(fopen("corporate_gifting.txt","r")) freopen("corporate_gifting.txt","r",stdin);
+    freopen("corporate.out","w",stdout);
+    cin >> T;
+
+    for(int i = 1; i <= T; i++) {
+      printf("Case #%d: ", i);
+      /* reset stuff */
+      memset(opt1, 0, sizeof(opt1));
+      memset(opt2, 0, sizeof(opt2));
+      for(int j = 0; j < MAXN; j++) {
+        to[j].clear();
+        rank[j].clear();
+      }
+      memset(rr,0,sizeof(rr));
+      memset(p,0,sizeof(p));
+
+      cin >> N;
+      for(int j = 1; j <= N; j++) {
+        cin >> p[j];
+        to[p[j]].pb(j);
+      }
+      dfsq(1);
+      for(int i = 1; i <= N; i++) {
+        rank[rr[i]].pb(i);
+      }
+      //cout << rank[3].size() << endl;
+      for(int i = N; i >= 1; i--) {
+        if(rank[i].empty()) continue;
+        for(int j = 0; j != rank[i].size(); j++)
+          upd(rank[i][j]);
+      }
+
+      cout << opt1[1].ss << endl;
+    }
+    return 0;
+}

@@ -1,0 +1,87 @@
+#include <iostream>
+#include <cassert>
+#include <cstring>
+#include <limits>
+
+using namespace std;
+
+const int DRIE = 10;
+const int bovengrens = 200000;
+int baas[bovengrens];
+int onderdanen[bovengrens];
+
+// after the autocomplete fiasco, I have a temporary distrust for any kind of dynamically allocated memory
+int qPush, qPop;
+int queue[bovengrens];
+
+void queuePush(int i) {
+	queue[qPush++] = i;
+}
+
+bool queueEmpty() {
+	return qPop >= qPush;
+}
+
+int queuePop() {
+	assert(!queueEmpty());
+	return queue[qPop++];
+}
+
+// DP array
+int DP[bovengrens][DRIE];
+
+int solve() {
+	int N;
+	cin >> N;
+	assert(N >= 1 && N <= bovengrens);
+	memset(onderdanen, 0, sizeof onderdanen);
+	for (int i = 0; i < N; i++) {
+		cin >> baas[i];
+		baas[i]--;
+		assert(baas[i] >= -1 && baas[i] < N);
+		assert(i == 0 || baas[i] >= 0);
+		if (i)
+			onderdanen[baas[i]]++;
+	}
+	assert(baas[0] == -1);
+	qPush = qPop = 0;
+	for (int i = 0; i < N; i++)
+		if (onderdanen[i] == 0)
+			queuePush(i);
+	memset(DP, 0, sizeof DP);
+	while (!queueEmpty()) {
+		int cur = queuePop();
+		for (int i = 0; i < DRIE; i++)
+			DP[cur][i] += i + 1;
+		if (cur) {
+			for (int i = 0; i < DRIE; i++) {
+				int localBest = numeric_limits<int>::max();
+				for (int j = 0; j < DRIE; j++) {
+					if (j == i) continue;
+					localBest = min(localBest, DP[cur][j]);
+				}
+				DP[baas[cur]][i] += localBest;
+			}
+			onderdanen[baas[cur]]--;
+			if (onderdanen[baas[cur]] == 0)
+				queuePush(baas[cur]);
+		}
+	}
+	assert(qPush == N);
+	assert(qPop == N);
+	int best = numeric_limits<int>::max();
+	for (int i = 0; i < DRIE; i++) {
+		best = min(best, DP[0][i]);
+	}
+	return best;
+}
+
+int main() {
+	int T;
+	cin >> T;
+	assert(T >= 1 && T <= 100);
+	for (int i = 0; i < T; i++) {
+		cout << "Case #" << (i + 1) << ": " << solve() << endl;
+	}
+	return 0;
+}

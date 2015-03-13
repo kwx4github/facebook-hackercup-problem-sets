@@ -1,0 +1,149 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"runtime"
+	"strconv"
+	//	"strings"
+	"time"
+)
+
+var (
+	// TODO: limit number of working goroutines by number of cores (fanout pattern).
+	workersCount = runtime.NumCPU()
+
+	limit     = 10000000 + 1
+	primacity = make([]int, limit, limit)
+	maxpr     = 1
+)
+
+// NOTE: `init` is called implicitly by go runtime.
+//  There can be multiple `init` functions in one file.
+func init() {
+	for n := 2; n < limit; n++ {
+		if primacity[n] == 0 {
+			// n is prime
+			m := n
+			for m < limit {
+				primacity[m] += 1
+				m += n
+			}
+		}
+	}
+	for n := 2; n < limit; n++ {
+		pr := primacity[n]
+		if maxpr < pr {
+			maxpr = pr
+		}
+	}
+}
+
+//------------------------------------------------------------------------------
+
+type Task struct {
+	m, n      int
+	primacity int
+}
+
+func solve(pr Task) string {
+	prim := pr.primacity
+	count := 0
+	if prim <= maxpr {
+		for n := pr.m; n <= pr.n; n++ {
+			if prim == primacity[n] {
+				count++
+			}
+		}
+	}
+	return strconv.Itoa(count)
+}
+
+func nextTask() Task {
+	var m, n, p int
+	yoScanln(&m, &n, &p)
+	return Task{m, n, p}
+}
+
+func tasksCount() int {
+	var count int
+	yoScanln(&count)
+	return count
+}
+
+//------------------------------------------------------------------------------
+
+func main() {
+	start := time.Now()
+	run := cRun
+	if workersCount > 1 {
+		run = pRun
+		//fmt.Println("Switching multicores", runtime.GOMAXPROCS(-1))
+		runtime.GOMAXPROCS(workersCount)
+	}
+	run(tasksCount())
+	log.Printf("%2fs total\n", time.Since(start).Seconds())
+}
+
+func yoScanln(a ...interface{}) {
+	if _, err := fmt.Scanln(a...); err != nil {
+		log.Panicln(err)
+	}
+}
+func yo(err error) {
+	if err != nil {
+		log.Panicln(err)
+	}
+}
+
+func cRun(count int) {
+	for i := 0; i < count; i++ {
+		ans := solve(nextTask())
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}
+
+type work struct {
+	test int
+	task Task
+	ans  string
+}
+
+func pRun(count int) {
+	tasks := make(chan work, count)
+	resp := make(chan work, count)
+	for i := 0; i < workersCount; i++ {
+		go func() {
+			for {
+				select {
+				case w, ok := <-tasks:
+					if !ok {
+						// queue is closed
+						return
+					}
+					w.ans = solve(w.task)
+					resp <- w
+				}
+			}
+		}()
+	}
+	for i := 0; i < count; i++ {
+		tasks <- work{i, nextTask(), ""}
+	}
+	log.Println("tasks send")
+
+	results := make([]string, count, count)
+	for count > 0 {
+		select {
+		case res := <-resp:
+			results[res.test] = res.ans
+			count--
+		}
+	}
+	log.Println("tasks received")
+	close(tasks)
+
+	for i, ans := range results {
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}

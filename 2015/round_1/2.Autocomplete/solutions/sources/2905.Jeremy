@@ -1,0 +1,148 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.Design.Serialization;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
+using NUnit.Framework;
+
+namespace Problem2
+{
+    internal class Program
+    {
+        public static void RunTestCases(string[] rawTestCases,
+            int numTestCases,
+            Action<String> outputAction,
+            Action<String> debugAction)
+        {
+            int currentLine = 0;
+            for (int i = 0; i < numTestCases; i++)
+            {
+                int[] settings = rawTestCases.GetSettings(currentLine++);
+                int numWords = settings[0];
+
+                var root = new LetterNode();
+
+                long totalLetters = 0;
+                for (int j = 0; j < numWords; j++)
+                {
+                    string word = rawTestCases[currentLine++].Trim();
+                    var keys = root.InsertWord(word);
+                    //Debug.WriteLine(keys);
+                    totalLetters += (long)keys;
+                }
+                
+
+                outputAction("Case #" + (i + 1) + ": " + totalLetters);
+            }
+        }
+
+        public class Node
+        {
+            public List<Node> Children = new List<Node>();
+        }
+
+        public class LetterNode : Node
+        {
+            public Char letter;
+
+            public int InsertWord(string word)
+            {
+                //Debug.WriteLine(word);
+                if (String.IsNullOrEmpty(word)) return 0;
+                var nextLetter =
+                    Children.Where(x => x is LetterNode).Cast<LetterNode>().FirstOrDefault(x => word[0] == x.letter);
+                var wordNode =
+                    Children.Where(x => x is WordNode).Cast<WordNode>().FirstOrDefault(x => x.word[0] == word[0]);
+                if (wordNode != null)
+                {
+                    if (wordNode.word == word)
+                    {
+                        //Debug.WriteLine("--WordMatch--");
+                        return 1;
+                    }
+                    else
+                    {
+                        //Debug.WriteLine("--WordSplit--");
+                        Children.Remove(wordNode);
+                        var lNode = new LetterNode() {letter = word[0]};
+                        Children.Add(lNode);
+                        if (wordNode.word.Length > 1)
+                        {
+                            var owNode = new WordNode() {word = wordNode.word.Substring(1)};
+                            lNode.Children.Add(owNode);
+                        }
+                        if (word.Length > 1)
+                        {
+                            return 1 + lNode.InsertWord(word.Substring(1));
+                        }
+                        return 1;
+                    }
+                    
+                } 
+
+                if (nextLetter == null || Children.Count == 0)
+                {
+                //    Debug.WriteLine("--WordInsert--");
+                    var newNode = new WordNode() { word = word };
+                    Children.Add(newNode);
+                    return 1;
+                }
+                //Debug.WriteLine("--LetterMatch--");
+                return 1 + nextLetter.InsertWord(word.Substring(1));
+            }
+        }
+
+        public class WordNode : Node
+        {
+            public string word;
+        }
+
+      
+
+        private static void Main(string[] args)
+        {
+            string filename = args.Length == 0 ? "" : args[0];
+            if (filename == "")
+            {
+                var filenames = Directory.GetFiles(Environment.CurrentDirectory).Where(x => x.EndsWith(".in")).ToArray();
+                Console.WriteLine("Test file?");
+                int n = 0;
+                foreach (var f in filenames)
+                {
+                    Console.WriteLine(n++ + ":" + f);
+                }
+                var i = int.Parse(Console.ReadLine());
+                filename = filenames[i];
+            }
+            if (filename == "")
+            {
+                filename = Directory.GetFiles(Environment.CurrentDirectory).First(x => x.EndsWith(".in"));
+            }
+
+            string[] testFile = File.ReadAllLines(filename);
+            int NumberOfTestCases = int.Parse(testFile.First().Trim());
+
+            List<string> output = new List<string>();
+            RunTestCases(testFile.Skip(1).ToArray(),
+                NumberOfTestCases,
+                output.Add,
+                Console.WriteLine);
+            File.WriteAllLines("output.out", output);
+            Console.WriteLine("Finished " + filename);
+            //Console.WriteLine("-- press any key --");
+            //Console.ReadKey();
+        }
+    }
+
+    internal static class Helpers
+    {
+        public static int[] GetSettings(this string[] rawFile, int line)
+        {
+            return rawFile[line].Split(' ')
+                .Select(x => int.Parse(x.Trim())).ToArray();
+        }
+    }
+}

@@ -1,0 +1,151 @@
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <cassert>
+#include <string>
+#include <stack>
+#include <map>
+using namespace std;
+
+#define fname "autocomplete"
+#define REP(n) for (int i = 0; i < (int)n; ++i)
+#define FOR(i,n) for (int i = 0; i < (int)n; ++i)
+#define DB(a) #a " == " << (a) << ";	"
+typedef long long int lli;
+
+const int NMAX = (int)2e3+1, mod = (int)1e9+7;
+int sfree[NMAX][NMAX], sful[NMAX][NMAX];
+
+#define TERM '`'
+#define sTERM "`"
+
+struct tnode{
+	char letter;
+	int heirs;
+	bool weight;
+	tnode* successor[27];
+	tnode(char c = TERM){ if (c == '!') c = TERM, heirs = 1; else heirs = 0; letter = c; weight = c != TERM; REP(27) successor[i] = NULL;}
+	/*bool upload(string::iterator it){
+		bool add = successor[*it-TERM] == NULL;
+		if (add)
+			successor[*it-TERM] = new tnode(*it);
+			
+		if (*it == TERM){
+			heirs += add;
+			return add;	
+		}	
+		
+		if (successor[*it-TERM]->upload(next(it))){
+			++heirs;
+			return true;
+		}
+	
+		return false;
+	}*/
+	void show(int d = 0){
+		REP(d-1) cerr << "   ╿   "; if(d) cerr << "   ┡━━━";
+		cerr << "▒:'" << letter << "'	" DB(heirs) DB(weight) << endl;
+		REP(27) if (successor[i]) successor[i]->show(d+1);
+	}
+	void restart(){
+		REP(27)
+			if (successor[i]){
+				//successor[i]->restart();
+				delete successor[i];
+			}
+	}
+};
+
+stack <tnode*> mem;
+tnode head;
+string s;
+
+void ccleaner(){
+	while(!mem.empty()){
+		delete mem.top();
+		mem.pop();
+	}
+	head = tnode('!');
+}
+
+void uploader(/*s*/){
+	tnode * cur = &head;
+	bool inch = false;
+	for(auto & it : s){
+		if (cur->successor[it-TERM] == NULL){
+			if (it == TERM) inch = true;				
+			mem.push(new tnode(it));
+			cur->successor[it-TERM] = mem.top();
+		}
+		cur = cur->successor[it-TERM];
+	}
+	if (inch){
+		cur = &head;
+		for(auto & it : s){
+			++cur->heirs;
+			cur = cur->successor[it-TERM];
+		}
+	}
+}
+
+int pour(/*s*/){
+	uploader(/*s*/);
+	#ifdef DBG
+		//~ cerr << " ▄▄▄▄▄▄▄▄▄▄▌ poured ▐▄▄▄▄▄▄▄▄▄▄▌" DB(s) "\n";
+		//~ if (head.heirs <= 7) head.show();
+		//~ cerr << " ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀\n";
+	#endif
+
+	int sum = 0;
+	tnode * cur = &head;
+	REP(s.size()){
+		sum += cur->weight;
+		//~ cerr << DB(cur->letter) DB(s[i]) DB(sum) DB(cur->heirs) << endl;
+		if (cur->heirs <= 1)
+			return sum;
+		if (s[i] == TERM)
+			return sum;
+		cur = cur->successor[s[i]-TERM];
+	}
+	return -1;	
+}
+
+int solve(){
+	int N, ans = 0, inc = -2;
+	ccleaner();
+	
+	cin >> N;
+	cerr << DB(N) << endl;
+
+	REP(N){
+		cin >> s;
+		s = s + sTERM;
+		inc = pour(/*s*/);
+		ans += inc;
+
+		//~ cerr << "	" DB(w) DB(inc) DB(ans) << endl << endl;
+		if (inc == -1)
+			cerr << "	!!!ACHTUNG!!! failed at word " DB(s) "//" DB(i) << endl;
+	}
+	
+	return ans;
+}
+
+
+int main(){
+	freopen(fname".txt", "r", stdin);
+	#ifndef DBG
+		freopen(fname".out", "w", stdout);
+	#endif
+
+	int T;
+	cin >> T;
+	REP(T){
+		#ifndef DBG
+			cerr << "Case #" << i+1 << ".	";
+		#endif
+		printf("Case #%d: %d\n", i+1, solve());
+	}
+	
+}

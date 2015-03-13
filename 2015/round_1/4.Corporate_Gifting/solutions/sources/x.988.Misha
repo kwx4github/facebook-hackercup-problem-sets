@@ -1,0 +1,60 @@
+import sys
+
+sys.stdin = open('input.txt')
+sys.stdout = open('output.txt', 'w')
+
+def top_sort(g):
+    r = []
+    stack = [1]
+    todo = {1: 0}
+    while stack:
+        e = stack[-1]
+        if todo[e] < len(g.get(e, [])):
+            c = g[e][todo[e]]
+            todo[e] += 1
+            stack.append(c)
+            todo[c] = 0
+        else:
+            stack.pop()
+            r.append(e)
+    return r
+
+def calc(l):
+    g = {}
+    for i, m in enumerate(l, 1):
+        if m in g:
+            g[m].append(i)
+        else:
+            g[m] = [i]
+    res_table = {}
+    for i in top_sort(g):
+        if i not in g:
+            res_table[i] = (1, 1, 1)
+            continue
+        children = [res_table[e] for e in g[i]]
+        subtrees_cost = 0
+        min_root_cost = 1
+        penalty_table = {}
+        for tree_cost, root_cost, penalty in children:
+            subtrees_cost += tree_cost
+            penalty_table[root_cost] = penalty_table.get(root_cost, 0) + penalty
+            while min_root_cost in penalty_table:
+                min_root_cost += 1
+        penalty_table[min_root_cost] = 0
+        res_penalty1, res_penalty2 = float('inf'), float('inf')
+        for r, p in penalty_table.items():
+            if p < res_penalty1:
+                res_penalty2 = res_penalty1
+                res_penalty1 = p
+                res_root_cost = r
+            elif p < res_penalty2:
+                res_penalty2 = p
+        res_table[i] = (res_root_cost + subtrees_cost + res_penalty1, res_root_cost, res_penalty2 - res_penalty1)
+    return res_table[1][0]
+
+output = 'Case #{}: {}'
+t = int(input())
+for i in range(t):
+    n = int(input())
+    l = [int(x) for x in input().split()]
+    print(output.format(i + 1, calc(l)))

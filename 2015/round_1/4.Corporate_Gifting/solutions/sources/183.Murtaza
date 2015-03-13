@@ -1,0 +1,136 @@
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <memory>
+#include <ctime>
+#include <iostream>
+
+using namespace std;
+
+const char InFile[]="corporate_gifting.txt";
+const char OutFile[]="pb4.out";
+const int MaxN=200111;
+const int MaxK=500;
+const int INF=1<<30;
+
+class Reader {
+public:
+	Reader(const string& filename) :
+		m_stream(filename),
+		m_pos(kBufferSize - 1),
+		m_buffer(new char[kBufferSize]) {
+		next();
+	}
+
+	Reader& operator>>(int& value) {
+		value = 0;
+		while (current() < '0' || current() > '9')
+			next();
+		while (current() >= '0' && current() <= '9') {
+			value = value * 10 + current() - '0';
+			next();
+		}
+		return *this;
+	}
+
+private:
+	const int kBufferSize = 32768*4;
+
+	char current() {
+		return m_buffer[m_pos];
+	}
+
+	void next() {
+		if (!(++m_pos != kBufferSize)) {
+			m_stream.read(m_buffer.get(), kBufferSize);
+			m_pos = 0;
+		}
+	}
+
+	ifstream m_stream;
+	int m_pos;
+	unique_ptr<char[]> m_buffer;
+};
+
+Reader fin(InFile);
+ofstream fout(OutFile);
+
+int T,N,x;
+int best[MaxN][MaxK];
+vector<int> A[MaxN];
+
+int cbest[MaxK];
+int pbest[MaxK];
+int sbest[MaxK+1];
+
+void DFS(int nod)
+{
+    for(vector<int>::iterator it=A[nod].begin();it!=A[nod].end();++it)
+    {
+        DFS(*it);
+    }
+
+    for(int j=1;j<MaxK;++j)
+    {
+        cbest[j]=0;
+    }
+    for(vector<int>::iterator it=A[nod].begin();it!=A[nod].end();++it)
+    {
+        int vcn=*it;
+        for(int j=1;j<MaxK;++j)
+        {
+            cbest[j]+=best[vcn][j];
+        }
+    }
+    pbest[0]=INF;
+    for(int j=1;j<MaxK;++j)
+    {
+        pbest[j]=min(j+cbest[j],pbest[j-1]);
+    }
+    sbest[MaxK]=INF;
+    for(int j=MaxK-1;j>0;--j)
+    {
+        sbest[j]=min(j+cbest[j],sbest[j+1]);
+    }
+    for(int j=1;j<MaxK;++j)
+    {
+        best[nod][j]=min(pbest[j-1],sbest[j+1]);
+    }
+}
+
+int main()
+{
+	int start = clock();
+	fin >> T;
+    for(int test=1;test<=T;++test)
+    {
+		fin >> N;
+        for(int i=1;i<=N;++i)
+        {
+			fin >> x;
+            A[x].push_back(i);
+        }
+
+        DFS(1);
+
+        int sol=INF;
+        for(int j=1;j<MaxK;++j)
+        {
+            sol=min(sol,best[1][j]);
+        }
+
+        for(int i=1;i<=N;++i)
+        {
+            A[i].clear();
+        }
+
+
+		fout << "Case " << test << ": " << sol << "\n";
+    }
+	fout.close();
+	/*
+	cout << "Time elapsed: "<<double(clock()-start)/double(CLOCKS_PER_SEC);
+	int x;
+	cin >> x;*/
+    return 0;
+}

@@ -1,0 +1,105 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+struct employee {
+  int id;
+  int height;
+  int gift_value;
+  employee *manager;
+  vector<employee*> subordinates;
+
+  employee() : gift_value(-1), height(0), manager(nullptr) {}
+};
+
+string indent(int level) {
+  return string(level * 2, ' ');
+}
+
+void print(employee *e) {
+  cout << indent(e->height) << e->id << " ("
+       << "height: " << e->height << ", "
+       << "gift_value: " << e->gift_value << ")";
+  if(e->subordinates.size() == 0) {
+    cout << endl;
+  } else {
+    cout << ":" << endl;
+    for(auto s : e->subordinates) {
+      print(s);
+    }
+  }
+}
+
+int solve(vector<employee> &employees) {
+  int max_height = 0;
+  for(auto e : employees) {
+    max_height = max(e.height, max_height);
+  }
+
+  vector<vector<employee*>> by_height(max_height + 1);
+  for(auto &e : employees) {
+    by_height[e.height].push_back(&e);
+  }
+
+  for(auto it = by_height.rbegin(); it != by_height.rend(); it++) {
+    vector<employee*> &current_height = *it;
+    for(auto e : current_height) {
+      if(e->subordinates.empty()) e->gift_value = 1;
+      else {
+        vector<int> gift_values;
+        for(auto s : e->subordinates) {
+          gift_values.push_back(s->gift_value);
+        }
+        for(int value = 1; value <= employees.size(); value++) {
+          if(find(gift_values.begin(),
+                  gift_values.end(),
+                  value) == gift_values.end()) {
+            e->gift_value = value;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // print(&employees[0]);
+
+  int total_cost = 0;
+  for(auto e : employees) {
+    total_cost += e.gift_value;
+  }
+
+  return total_cost;
+}
+
+int main() {
+  int T;
+  cin >> T;
+
+  for(int t = 1; t <= T; t++) {
+    int N;
+    cin >> N;
+
+    vector<employee> employees(N);
+
+    for(int n = 1; n <= N; n++) {
+      employees[n - 1].id = n;
+
+      int manager;
+      cin >> manager;
+
+      if(n > 1) {
+        employees[n - 1].manager = &employees[manager - 1];
+        employees[n - 1].height = employees[n - 1].manager->height + 1;
+        employees[manager - 1].subordinates.push_back(&employees[n - 1]);
+      }
+    }
+
+    int sol = solve(employees);
+    cout << "Case #" << t << ": " << sol << endl;
+  }
+
+  return 0;
+}

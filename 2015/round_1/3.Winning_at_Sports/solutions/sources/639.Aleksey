@@ -1,0 +1,177 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"runtime"
+	//"strings"
+	"time"
+)
+
+var (
+	// TODO: limit number of working goroutines by number of cores (fanout pattern).
+	workersCount = 1 //runtime.NumCPU()
+)
+
+var (
+	mlosy  = make(map[Pair]int)
+	mwinny = make(map[Pair]int)
+)
+
+// NOTE: `init` is called implicitly by go runtime.
+//  There can be multiple `init` functions in one file.
+func init() {
+}
+
+type Pair struct {
+	n, m int
+}
+
+func losy(n, m int) int {
+	if n > m {
+		return 0
+	}
+	// n <= m
+	if n == 0 {
+		return 1
+	}
+	if n == 1 {
+		return m
+	}
+	key := Pair{n, m}
+	val, ok := mlosy[key]
+	if !ok {
+		val = (losy(n-1, m) + losy(n, m-1)) % 1000000007
+		mlosy[key] = val
+	}
+	return val
+}
+
+func winny(n, m int) int {
+	if n <= m {
+		return 0
+	}
+	// n > m
+	if m == 0 {
+		return 1
+	}
+	if m == 1 {
+		return n - 1
+	}
+	key := Pair{n, m}
+	val, ok := mwinny[key]
+	if !ok {
+		val = (winny(n-1, m) + winny(n, m-1)) % 1000000007
+		mwinny[key] = val
+	}
+	return val
+}
+
+//------------------------------------------------------------------------------
+
+type Task struct {
+	n, m int
+}
+
+func solve(pr Task) string {
+	n, m := pr.n, pr.m
+	a := winny(n, m)
+	b := losy(m, m)
+	return fmt.Sprint(a, b)
+}
+
+func nextTask() Task {
+	var n, m int
+	yoScanf("%d-%d\n", &n, &m)
+
+	return Task{n, m}
+}
+
+func tasksCount() int {
+	var count int
+	yoScanln(&count)
+	return count
+}
+
+//------------------------------------------------------------------------------
+
+func main() {
+	start := time.Now()
+	run := cRun
+	if workersCount > 1 {
+		run = pRun
+		//fmt.Println("Switching multicores", runtime.GOMAXPROCS(-1))
+		runtime.GOMAXPROCS(workersCount)
+	}
+	run(tasksCount())
+	log.Printf("%2fs total\n", time.Since(start).Seconds())
+}
+
+func yoScanf(format string, a ...interface{}) {
+	if _, err := fmt.Scanf(format, a...); err != nil {
+		log.Panicln(err)
+	}
+}
+
+func yoScanln(a ...interface{}) {
+	if _, err := fmt.Scanln(a...); err != nil {
+		log.Panicln(err)
+	}
+}
+func yo(err error) {
+	if err != nil {
+		log.Panicln(err)
+	}
+}
+
+func cRun(count int) {
+	for i := 0; i < count; i++ {
+		ans := solve(nextTask())
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}
+
+type work struct {
+	test int
+	task Task
+	ans  string
+}
+
+func pRun(count int) {
+	tasks := make(chan work, count)
+	resp := make(chan work, count)
+	for i := 0; i < workersCount; i++ {
+		go func() {
+			for {
+				select {
+				case w, ok := <-tasks:
+					if !ok {
+						// queue is closed
+						return
+					}
+					w.ans = solve(w.task)
+					resp <- w
+				}
+			}
+		}()
+	}
+	for i := 0; i < count; i++ {
+		tasks <- work{i, nextTask(), ""}
+	}
+	log.Println("tasks send")
+
+	results := make([]string, count, count)
+	for count > 0 {
+		select {
+		case res := <-resp:
+			results[res.test] = res.ans
+			count--
+		}
+	}
+	log.Println("tasks received")
+	close(tasks)
+
+	for i, ans := range results {
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}

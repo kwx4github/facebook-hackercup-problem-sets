@@ -1,0 +1,376 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#define MAX 100000
+#define TAM 1000000
+#define NUM 26 /*abcdefghijklmnopqrstuvwxyz*/
+#define FST 97 /*'a'==97 (Start value)*/
+
+unsigned char *add[MAX+1];
+unsigned char a[TAM+1];
+int tamanhoDeCaracteres[MAX+1];
+
+typedef struct node
+{
+	int key;
+	struct node *prox[NUM];
+}node;
+
+typedef struct trie
+{
+	int N;
+	struct node *prox[NUM];
+}trie;
+
+int N;
+
+void destroiNode(node *p)
+{
+	if(p==NULL)
+		return;
+	int i;
+	for(i=0;i<NUM;i++)
+		destroiNode(p->prox[i]);
+
+	free(p);
+	return;
+}
+
+void destroiArvore(node *p)
+{
+
+	destroiNode(p);
+}
+
+
+trie *constroiTrie(int N)
+{
+	trie *p = (trie *)malloc(sizeof(trie));
+	if(p)
+	{
+		p->N = N;
+		int i;
+		for(i=0;i<NUM;i++)
+			p->prox[i]=NULL;
+		//printf("Arvore Trie Construida \n");
+		return p;
+	}
+	else 
+	{
+		printf("Erro ao construir arvore Trie\n");
+		return NULL;
+	}
+}
+
+int lePalavra(int current)
+{
+	unsigned char c; int i=0;
+	while((c=getc(stdin))!='\n')
+	{
+		a[i]=c;
+		i++;
+	}
+	a[i]='\0';
+	
+	int tam = i;
+
+	if(add[current]!=NULL)
+		free(add[current]);
+	add[current] = (unsigned char *)malloc(sizeof(unsigned char)*(tam+1));
+
+	for(i=0;i<tam;i++)
+		add[current][i]=a[i];	
+	add[current][i]='\0';	
+	tamanhoDeCaracteres[current]=tam;
+	return tam;
+}
+
+void mostraPalavra()
+{
+	int i=0;
+	printf("	inicioPalavra{\n");
+	while(a[i]!='\0')
+	{
+		if(i==0)
+			printf("		%c",a[i]);
+		else
+			printf("%c",a[i]);
+		i++;
+	}
+	printf("\n	}fimPalavra\n");
+}
+
+node *constroiNode(int key)
+{
+	node *n = (node *)malloc(sizeof(node));
+
+	if(!n)
+	{
+		printf("Erro ao construir Nodo\n");
+		return NULL;
+	}
+
+	n->key = key;
+
+	int i;
+	for(i=0;i<NUM;i++)
+		n->prox[i]=NULL;
+
+	return n;
+}
+
+int conteudoIgual(unsigned char *s,int pos,int size)
+{
+	int i=0;
+	while(i<size)
+	{
+		if( s[i]!=a[i+pos] ) return 0;
+		i++;
+	}
+	return 1;
+}
+
+
+
+
+void insereArvore(node *t,int pos,int key)
+{
+	//if(key==4) 
+	//	printf("OI\n");
+
+	unsigned char c = add[key][pos];
+	int index = ((int)(c)-FST);
+	int tam = tamanhoDeCaracteres[key];
+	if(pos==tam)
+	{    t->key = key; return; }
+
+	if(t->prox[index]==NULL)
+	{ 
+		t->prox[index]=constroiNode(key);
+		return;
+	}
+	
+	else 
+	{	
+		int keyPrevious = t->prox[index]->key;
+		if(keyPrevious!=-1)
+		{
+			int tamPrevious = tamanhoDeCaracteres[keyPrevious];
+			if(pos>=tamPrevious-1)	
+			{	insereArvore(t->prox[index],pos+1,key); return; }
+			else
+			{  
+			    t->prox[index]->key=-1;
+			    unsigned char cPrevious = add[keyPrevious][pos];
+			    int new =  ((int)(cPrevious)-FST);			    
+			    insereArvore(t->prox[new],pos+1,keyPrevious); 
+			    insereArvore(t->prox[index],pos+1,key); 
+			    return;	
+			}
+		}
+		else
+			insereArvore(t->prox[index],pos+1,key);	
+	}
+}
+
+
+
+int soma = 0;
+unsigned char lista[TAM];
+
+
+
+
+void mostraRamo3(node *p,int pos,int pai,int a)
+{
+	if(!p)
+		return;
+
+	printf("-----------------Mostrando nodo--------------------\n");
+	printf("chave do nodo = %d ID = %c , nivel = %d\n",p->key,pai+FST,pos);
+
+	int i;
+	if(pos==1)
+		printf("Filho de Raiz\n");
+	else
+		printf("Filho de %c\n",a+FST);
+
+		
+	printf("Filhos chave do nodo: \n");
+	printf("{");
+	for(i=0;i<NUM;i++)
+	{
+		if(p->prox[i])
+			printf("%c,",(i+FST));
+	}
+	printf("}\n");
+	printf("--------------------Fim nodo------------------------\n");
+	for(i=0;i<NUM;i++)
+	{
+		//lista[pos]=(i+FST);
+		mostraRamo3(p->prox[i],pos+1,i,pai);
+	}
+}
+
+void mostraArvore3(node *t)
+{
+	int i; int pos = 0;
+
+	printf("-----------------Mostrando RAIZ--------------------\n");
+
+
+	printf("Filhos chave da raiz: \n");
+	printf("{");
+	for(i=0;i<NUM;i++)
+	{
+		if(t->prox[i])
+			printf("%c,",(i+FST));
+	}
+	printf("}\n");
+
+	printf("--------------------Fim  RAIZ----------------------\n");
+
+	for(i=0;i<NUM;i++)
+	{	
+		//lista[pos]=(i+FST);
+		mostraRamo3(t->prox[i],pos+1,i,0);
+	}
+}
+
+
+
+/*long int minimoDigito(trie *t,int current)
+{
+	long int   i = 0;
+	int   acabou = 0;
+	
+	int index=add[current][i]-FST;
+	//printf("%c %d-%d = %d\n",add[current][i],add[current][i],FST,index);
+	node *aux = t->prox[index];
+
+	while((!acabou)&&(add[current][i]!='\0'))
+	{
+		//if(current==1) printf("OI1 \n");
+		
+		if(aux->tam>0)
+		{
+			
+			int tamCurrent = tamanhoDeCaracteres[current]-i-1;
+			int stringNode = aux->tam;
+			printf("OI2 %d %d\n",tamCurrent,stringNode);
+			if(stringNode==(tamCurrent))
+			{
+				int k; int iguais=1;
+				if(stringNode>0)
+				{
+					for(k=0;k<stringNode;k++)
+						if(aux->s[k]!=add[current][i+k+1])
+						     {  iguais=0; break;  }	
+				}
+				if(iguais==1)
+					acabou=1;
+			}
+		}
+
+
+		i++;
+		if(add[current][i]!='\0')
+		{
+			index=add[current][i]-FST;
+			//printf("Em baixo %c %d-%d = %d\n",add[current][i],add[current][i],FST,index);
+			aux = aux->prox[index];
+		}
+		
+	}
+	return i;
+}*/
+
+/*long int calculaMinimoDigito(trie *t)
+{
+	long int soma = 0;
+	int i;
+	for(i=0;i<N;i++)
+	{	 soma = soma + minimoDigito(t,i);  }
+
+	return soma;
+}*/
+
+void mostraVetor(int N)
+{
+	int j;
+	int i = 0;
+	for(i;i<N;i++)
+	{	
+		int t=tamanhoDeCaracteres[i];
+		printf("tamanho = %d\n",t);
+		for(j=0;j<t;j++)
+			printf("%c",add[i][j]);
+		printf("\n");
+	}
+}
+
+long int calculaMinimoDigito(node *t,int palavra)
+{
+	long int cont = 0;
+
+	unsigned char c = add[palavra][cont];
+	int index = c-FST;
+
+	node *aux=t->prox[index];
+	while(aux->key!=palavra)
+	{
+		cont++;
+		c = add[palavra][cont];
+		index = c-FST;
+		aux=aux->prox[index];
+	}
+
+	return cont+1;
+}
+
+main()
+{
+	int T;
+	//int N;
+	scanf("%d",&T);
+
+	node *t = NULL;
+	
+	int count=1;
+	while(count<=T)
+	{
+		if(t!=NULL)
+			destroiArvore(t);
+
+		scanf("%d",&N);getchar();
+
+		t = constroiNode(-1);
+		int i,tam;	
+		//printf("\ninicioConjunto{\n");	
+		//printf("-----------------------Construindo a Arvore ----------------------------------\n");
+		long int total = 0;
+		for(i=0;i<N;i++)
+		{
+			tam=lePalavra(i);
+			//printf("tam = %d\n",tam);
+			//mostraPalavra();
+			//printf("inserindo palavra %d\n",i);
+			insereArvore(t,0,i);
+			//printf("minimo digito de %d = %ld\n",i,calculaMinimoDigito(t,i));
+			total = total + calculaMinimoDigito(t,i);
+		}
+		//printf("--------------------------Arvore Construida ----------------------------------\n");
+
+		//mostraVetor(N);
+		//printf("\n}fimConjunto\n");
+		
+		printf("Case #%d: %ld\n",count,total);
+		//for(i=0;i<N;i++)
+		//{
+		//	printf("minimos digitos de add[%d] => %ld\n",i,minimoDigito(t,i));
+		//}
+		count++;
+	}
+}
+
+

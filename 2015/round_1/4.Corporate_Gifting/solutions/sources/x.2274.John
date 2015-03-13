@@ -1,0 +1,107 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+no warnings 'recursion';
+
+sub solve($);
+sub debug($) {
+  my $msg = shift;
+#  print "$msg";
+}
+
+my $filename = shift @ARGV;
+my @inputs = split /\n/, `cat $filename`;
+my $dp_data = {};
+
+my $num_inputs = shift @inputs;
+foreach my $i (1 .. $num_inputs) {
+  my $N = shift @inputs;
+  my $row = shift @inputs;
+
+  my @hierarchy = split / /, $row;
+  unshift @hierarchy, '';
+
+  debug("solve @hierarchy for case $i\n");
+  my $answer = solve(\@hierarchy);
+  print "Case #$i: $answer\n";
+}
+
+sub solve_recursive($$$);
+sub solve_recursive($$$) {
+  my $leader = shift;
+  my $boss_spend = shift;
+  my $teams = shift;
+
+  debug("solve_recursive($leader, $boss_spend)\n");
+
+  # If I am a leaf, just spend the minimum possible.
+  if (!exists $teams->{$leader}) {
+    my $answer = ($boss_spend == 1) ? 2 : 1;
+#    print "$leader is a leaf - solution for $boss_spend is $answer\n";
+    $dp_data->{$leader}{$boss_spend} = [$answer, $answer];
+  }
+
+  if (exists $dp_data->{$leader}{$boss_spend}) {
+    my $answer = $dp_data->{$leader}{$boss_spend};
+#    print "dp return [@$answer] for $leader,$boss_spend\n";
+    debug("  return [@$answer]\n");
+    return $answer;
+  }
+
+  my $experimental_spend = 1;
+
+  my $team = $teams->{$leader};
+  my $best_experimental = $experimental_spend;
+  my $best_outcome = -1;
+
+  while (1 == 1) {
+    if ($experimental_spend == $boss_spend) {
+      ++$experimental_spend;
+    }
+#    print "What if $leader spends $experimental_spend?\n";
+
+    my $max_member_spend = 0;
+    my $total_team_spend = $experimental_spend;
+    foreach my $member (@$team) {
+      my $recursive_answer = solve_recursive($member, $experimental_spend, $teams);
+      my ($total_spend, $member_spend) = @$recursive_answer;
+      if ($member_spend > $max_member_spend) {
+        $max_member_spend = $member_spend;
+      }
+      $total_team_spend += $total_spend;
+    }
+    if ($best_outcome == -1 || $best_outcome > $total_team_spend) {
+      $best_outcome = $total_team_spend;
+      $best_experimental = $experimental_spend;
+    }
+    if ($max_member_spend < $experimental_spend) {
+      $dp_data->{$leader}{$boss_spend} = [$best_outcome, $best_experimental];
+      debug("  return [$best_outcome $best_experimental]\n");
+      return [$best_outcome, $best_experimental];
+    }
+    ++$experimental_spend;
+  }
+}
+
+sub solve($) {
+  my $listref = shift;
+
+  my $teams = {};
+  foreach my $i (1 .. scalar @$listref - 1) {
+    my $boss = $listref->[$i];
+    if (!exists($teams->{$boss})) {
+      $teams->{$boss} = [];
+    }
+    push @{$teams->{$boss}}, $i;
+    debug("$i reports to $boss\n");
+  }
+
+  my $problem_to_solve = "1,0";
+
+  $dp_data = {};
+  my $answer_data = solve_recursive(1, 0, $teams);
+  my ($total_spend, $ceo_spend) = @$answer_data;
+  debug("final answer - $total_spend - CEO spends $ceo_spend\n");
+  return $total_spend;
+}

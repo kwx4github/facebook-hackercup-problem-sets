@@ -1,0 +1,91 @@
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+#define scanf(args...) (scanf(args) ? : 0)
+typedef long long int LL;
+const int MAXN = 200005;
+const LL INF = 1e18;
+
+std::vector<int> adj[MAXN];
+std::vector<LL> prefmin[MAXN], sufmin[MAXN], res[MAXN];
+
+bool cmp(int a, int b) {
+    return res[a].size() > res[b].size();
+}
+
+void dfs(int u) {
+    for (int v: adj[u])
+        dfs(v);
+    
+    std::vector<int> nonempty;
+    for (int v: adj[u])
+        nonempty.push_back(v);
+    std::sort(nonempty.begin(), nonempty.end(), cmp);
+    
+    res[u].resize(adj[u].size()+2);
+    
+    int emptycount = 0; 
+    LL emptysum1 = 0, emptysum2 = 0;
+    for (int i=1; i<=adj[u].size()+1; i++) {
+        LL sum1 = emptysum1+(LL)emptycount*i, sum2 = i == 1 ? INF : emptysum2;
+        for (int t: nonempty) {
+            if (i+1 < sufmin[t].size())
+                sum1 += sufmin[t][i+1];
+            else
+                sum1 += res[t].back()+i+1;
+
+            sum2 += prefmin[t][i-1];
+        }
+
+        while (!nonempty.empty() && i >= res[nonempty.back()].size()) {
+            emptysum1 += res[nonempty.back()].back();
+            emptysum2 += prefmin[nonempty.back()].back();
+            emptycount++;
+            nonempty.pop_back();
+        }
+
+        res[u][i] = std::min(sum1, sum2);
+        //printf("res[%d][%d] = %Ld, sum1=%Ld, sum2=%Ld\n", u+1, i, res[u][i], sum1, sum2);
+    }
+    
+    sufmin[u].resize(res[u].size());
+    LL min = INF;
+    for (int i=(int)res[u].size()-1; i>=1; i--) {
+        min = std::min(min, res[u][i]+i);
+        sufmin[u][i] = min;
+    }
+
+    prefmin[u].resize(res[u].size());
+    min = INF;
+    for (int i=1; i<res[u].size(); i++) {
+        min = std::min(min, res[u][i]+i);
+        prefmin[u][i] = min;
+    }
+}
+
+int main() {
+    int t;
+    scanf("%d", &t);
+
+    for (int test=1; test<=t; test++) {
+        int n;
+        scanf("%d%*d", &n);
+
+        for (int i=0; i<n; i++)
+            adj[i].clear();
+
+        for (int i=1; i<n; i++) {
+            int p;
+            scanf("%d", &p);
+
+            adj[p-1].push_back(i);
+        }
+        dfs(0);
+
+        LL r = INF;
+        for (int i=1; i<res[0].size(); i++)
+            r = std::min(r, res[0][i]+i);
+
+        printf("Case #%d: %Ld\n", test, r);
+    }
+}

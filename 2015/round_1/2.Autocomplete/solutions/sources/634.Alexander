@@ -1,0 +1,105 @@
+#include <iostream>
+#include <array>
+#include <vector>
+#include <algorithm>
+#include <cassert>
+
+size_t INF = size_t(-1);
+
+struct Node {
+    std::array<size_t, 26> next;
+    bool final;
+    size_t finalsCounter; 
+
+    static Node createEmpty()
+    {
+        std::array<size_t, 26> next;
+        next.fill(INF);
+        return { std::move(next), false, 0 };
+    }
+    
+    static size_t charIndex(char c)
+    {
+        assert('a' <= c && c <= 'z');
+        return c - 'a';
+    }
+
+    bool hasNext(char c) const 
+    {
+        return next[charIndex(c)] != INF;    
+    }
+    
+    size_t possibleStepsCounter() const
+    {
+        return std::count_if(next.begin(), next.end(), [](size_t c) { return c != INF; });
+    }
+};
+
+class Trie {
+public:
+    Trie(): nodes_(1, Node::createEmpty())
+    {}
+
+    void add(const std::string& s)
+    {
+        std::vector<size_t> path { 0 };
+        size_t nodeIndex = 0;
+        for (char c : s) {
+            if (nodes_[nodeIndex].hasNext(c)) {
+                nodeIndex = nodes_[nodeIndex].next[Node::charIndex(c)];
+            } else {
+                nodes_.push_back(Node::createEmpty());
+                nodes_[nodeIndex].next[Node::charIndex(c)] = nodes_.size() - 1;
+                nodeIndex = nodes_.size() - 1;
+            }
+            path.push_back(nodeIndex);
+        }
+
+        bool finalCreated = !nodes_[nodeIndex].final;
+        nodes_[nodeIndex].final = true;
+        for (ssize_t i = path.size() - 1; i >= 0; --i) {
+            size_t nodeIndex = path[i];    
+            if (finalCreated) {
+                ++nodes_[nodeIndex].finalsCounter;
+            }
+        }
+    }
+    
+    size_t prefixSize(const std::string& s)
+    {
+        size_t nodeIndex = 0;
+        size_t i = 0;
+        for (; i < s.size() && nodes_[nodeIndex].finalsCounter >= 2; ++i) {
+            char c = s[i];
+            nodeIndex = nodes_[nodeIndex].next[Node::charIndex(c)];
+        }
+        return std::max(size_t(1), i);        
+    }
+
+private:
+    std::vector<Node> nodes_;
+};
+
+int main()
+{
+    size_t T;
+    std::cin >> T; 
+    for (size_t t = 0; t < T; ++t) {
+        size_t N;
+        std::cin >> N;
+        Trie trie;
+        size_t sum = 0;
+        for (size_t i = 0; i < N; ++i) {
+            std::string w;
+            std::cin >> w;
+            trie.add(w);
+            sum += trie.prefixSize(w);
+        }
+        std::cout << "Case #" << (t + 1) << ": " << sum << std::endl;
+    }
+    return 0;
+}
+
+
+
+

@@ -1,0 +1,99 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+ifstream fin("in");
+ofstream fout("out");
+
+struct node {
+    int children;          // number of children (0 for terminal, 1 is unique)
+    struct node *next[26];
+    bool justMade;
+};
+
+void make_default(struct node *loc) {
+    loc->children = 0;  
+    for(int i = 0; i < 26; i++) {
+        loc->next[i] = 0;
+    }
+    loc->justMade = true;
+}
+
+// given pointer to leaf, return pointer to next thing and create if necessary
+struct node *traverse(char dir, struct node *leaf) {
+    struct node **next;
+    next = &(leaf->next[dir-'a']);
+
+    // check if we need to initialize
+    if(*next == 0) {
+        *next = new struct node;
+        make_default(*next);
+        leaf->children++;
+    }
+
+    return *next;
+}
+
+void destroy(struct node *head) {
+    for(int i = 0; i < 26; i++) {
+        delete head->next[i];
+    }
+    delete head;
+}
+
+int getResult(int N) {
+    struct node *root = new struct node;
+    make_default(root);
+
+    int early, count, cumul = 0;
+    char cur = fin.get();
+    struct node *loc, *next;
+    for(int i = 0; i < N; i++) {
+        count = 0;
+        early = -1;
+        cur = fin.get();
+        loc = root;
+
+        while(cur != '\n' && !fin.eof()) {
+            loc = traverse(cur, loc);
+            count++;
+            if (loc->justMade) {  // we've reached the end, by making a new branch
+                loc->justMade = false;
+                if (early < 0) {
+                    early = count;
+                }
+            }
+            cur = fin.get();
+        }
+
+        if (early >= 0) {
+            cumul += early;
+        } else {
+            cumul += count;
+        }
+    }
+
+    // clean up memory
+    destroy(root);
+
+    return cumul;
+}
+
+int main(){
+    int T, N;
+    fin >> T;
+
+    for(int i = 1; i <= T; i++){
+        fin >> N;
+        int total = getResult(N);
+        fout << "Case #" << i << ": " << total;
+        if(i < T) {
+            fout << endl;
+        }
+    }
+
+    fin.close();
+    fout.close();
+}

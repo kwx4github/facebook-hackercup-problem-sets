@@ -1,0 +1,77 @@
+#include <cassert>
+#include <cstdio>
+#include <vector>
+
+using namespace std;
+
+struct ans {
+    int best_cost, best_root;
+    int next_cost;
+};
+
+vector<int> edges[200000];
+int extra_costs[200001];
+
+ans doit(int v, int parent) {
+    vector<ans> sons;
+    for (int i = 0; i < edges[v].size(); i++) {
+        if (edges[v][i] == parent)
+            continue;
+        sons.push_back(doit(edges[v][i], v));
+    }
+
+    int baseline = 0;
+    for (int i = 0; i < sons.size(); i++) {
+        ans& subp = sons[i];
+        extra_costs[subp.best_root] += subp.next_cost - subp.best_cost;
+        baseline += subp.best_cost;
+    }
+
+    ans ret;
+    ret.best_cost = extra_costs[0] + baseline;
+    ret.best_root = 0;
+    ret.next_cost = 0x3f3f3f3f;
+
+    for (int i = 1; i <= edges[v].size() + 1; i++)
+        if (extra_costs[i] + baseline < ret.best_cost) {
+            ret.next_cost = ret.best_cost;
+            ret.best_cost = extra_costs[i] + baseline;
+            ret.best_root = i;
+        } else if (extra_costs[i] + baseline < ret.next_cost)
+            ret.next_cost = extra_costs[i] + baseline;
+
+    for (int i = 0; i < sons.size(); i++) {
+        ans& subp = sons[i];
+        extra_costs[subp.best_root] -= subp.next_cost - subp.best_cost;
+    }
+
+    return ret;
+}
+
+int main() {
+    int t;
+    scanf("%d", &t);
+
+    for (int i = 0; i <= 200000; i++)
+        extra_costs[i] = i;
+
+    for (int z = 1; z <= t; z++) {
+        int n;
+        scanf("%d", &n);
+
+        for (int i = 0; i < n; i++)
+            edges[i].clear();
+
+        for (int i = 0; i < n; i++) {
+            int parent;
+            scanf("%d", &parent);
+
+            if (parent) {
+                edges[i].push_back(parent - 1);
+                edges[parent - 1].push_back(i);
+            }
+        }
+
+        printf("Case #%d: %d\n", z, n + doit(0, -1).best_cost);
+    }
+}

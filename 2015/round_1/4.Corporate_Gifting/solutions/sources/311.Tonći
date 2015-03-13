@@ -1,0 +1,165 @@
+﻿namespace CorporateGifting
+{
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+
+            using (var reader = new StreamReader("corporate_gifting.txt"))
+            using (var writer = new StreamWriter("corporate_gifting_OUTPUT.txt"))
+            {
+                var T = int.Parse(reader.ReadLine());
+
+                for (int caseNumber = 1; caseNumber <= T; caseNumber++)
+                {
+                    Debug.WriteLine("Case #{0}:", caseNumber);
+                    var N = int.Parse(reader.ReadLine());
+                    var inputs = reader.ReadLine().Split(' ').Select(x => int.Parse(x)).ToArray();
+                    var solver = new Solver(N, inputs);
+                    var solution = solver.Solve();
+                    Debug.WriteLine("    Solution: {0}", solution);
+                    writer.WriteLine("Case #{0}: {1}", caseNumber, solution);
+                }
+            }
+        }
+    }
+
+    public class Solver
+    {
+        private readonly int N;
+        private Node[] linearNodes;
+        
+        public Solver(int N, int[] parents)
+        {
+            this.N = N;
+            this.linearNodes = new Node[N + 1];
+
+            for (int i = 1; i <= N; i++)
+                linearNodes[i] = new Node(i);
+
+            for(int i = 2; i <= N; i++)
+                linearNodes[parents[i - 1]].AddChild(linearNodes[i]);
+        }
+
+        public int Solve()
+        {
+            var stack = new Stack<Node>();
+
+            stack.Push(linearNodes[1]);
+
+            while (stack.Count > 0)
+            {
+                var curr = stack.Peek();
+                if (curr.CanBeProcessed)
+                {
+                    curr.Process();
+                    stack.Pop();
+                }
+                else
+                    foreach (var child in curr.Children)
+                        stack.Push(child);
+            }
+
+            return linearNodes[1].OptimalTotal;
+        }
+    }
+
+    public class Node
+    {
+        private readonly int id;
+        
+        private Node parent = null;
+        private List<Node> children = new List<Node>();
+        private int idealGift = -1;
+        private int optimalTotal = -1;
+        private int priceForSubOptimal = -1;
+        private int processedChildren = 0;
+        private int sumOfChildrenOptimums = 0;
+        private Dictionary<int, int> prices = new Dictionary<int, int>();
+
+        public Node(int id)
+        {
+            this.id = id;
+            prices.Add(1, 1);
+        }
+        
+        public void AddChild(Node child)
+        {
+            children.Add(child);
+            child.SetParent(this);
+        }
+
+        private void SetParent(Node parent)
+        {
+            this.parent = parent;
+        }
+
+        public void Process()
+        {
+            if (children.Count == 0)
+            {
+                idealGift = 1;
+                optimalTotal = 1;
+                priceForSubOptimal = 1;
+            }
+            else
+            {
+                // add two more
+                int added = 0;
+                int i = 1;
+                
+                while(added < 2)
+                {
+                    if (!prices.ContainsKey(i))
+                    {
+                        prices.Add(i, i);
+                        added++;
+                    }
+
+                    i++;
+                }
+                
+                var opt = prices.OrderBy(x => x.Value).Take(2).ToArray();
+
+                optimalTotal = sumOfChildrenOptimums + opt[0].Value;
+                idealGift = opt[0].Key;
+                priceForSubOptimal = opt[1].Value - opt[0].Value;
+            }
+
+           if(parent != null)
+                parent.ChildProcessed(optimalTotal, idealGift, priceForSubOptimal);
+        }
+
+        private void ChildProcessed(int childOptimal, int childIdeal, int childPrice)
+        {
+            sumOfChildrenOptimums += childOptimal;
+            processedChildren++;
+
+            if (prices.ContainsKey(childIdeal))
+                prices[childIdeal] += childPrice;
+            else
+                prices.Add(childIdeal, childIdeal + childPrice);
+        }
+
+        public bool CanBeProcessed
+        {
+            get { return processedChildren == children.Count; }
+        }
+
+        public List<Node> Children
+        {
+            get { return children; }
+        }
+
+        public int OptimalTotal
+        {
+            get { return optimalTotal; }
+        }
+    }
+}

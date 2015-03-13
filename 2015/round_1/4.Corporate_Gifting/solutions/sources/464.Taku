@@ -1,0 +1,57 @@
+import Data.Array.Unboxed
+import qualified Data.ByteString.Char8 as B
+import Text.Printf
+import Data.List
+import Control.Monad
+import Data.Maybe
+import Control.Applicative
+import Debug.Trace
+
+data Tree = Tree [Tree]
+
+mkTree :: [Int] -> Tree
+mkTree ms = go 1 where
+    n = length ms
+    es = [ (x,i) | (i,x) <- zip [2..] (tail ms) ]
+    a :: Array Int [Int]
+    a = accumArray (flip (:)) [] (1,n) es
+    go = Tree . map go . (a !)
+
+dpSolve :: Int -> Tree -> Int
+dpSolve c = head . go where
+    go :: Tree -> [Int]
+    go (Tree []) = [ minimum [ j | j <- [1..c], j /= i] | i <- [0..c]]
+    go (Tree l) = 
+        let ss = tail $ transpose $ map go l in
+        do i <- [0..c]
+           return $ minimum [ j + sum x | (j,x) <- zip [1..] ss, j /= i ]
+
+dpSolve1 :: Int -> Tree -> Int
+dpSolve1 c = head . go 0 where
+    go :: Int -> Tree -> [Int]
+    go d (Tree []) = do
+        i <- [0..d]
+        return $ if i == 1 then 2 else 1
+    go d (Tree l) = 
+        let d' = min c (length l+1) in
+        let ss = tail $ transpose $ map (go d') l in
+        do i <- [0..d]
+           return $ minimum [ j + sum x | (j,x) <- zip [1..] ss, 
+                                          j /= i ]
+
+readInt :: B.ByteString -> Int
+readInt = fromJust . fmap fst . B.readInt
+readInts :: IO [Int]
+readInts = map readInt . B.words <$> B.getLine
+
+main :: IO ()
+main = do
+    tests <- readLn :: IO Int
+    forM_ [1..tests] $ \caseNum -> do
+        _ <- getLine
+        xs <- readInts
+        let t = mkTree xs
+        --let x1 = dpSolve (length xs) t
+        let x2 = dpSolve1 20 t
+        printf "Case #%d: %d\n" caseNum x2
+        --printf "Case #%d: %d %d\n" caseNum x1 x2

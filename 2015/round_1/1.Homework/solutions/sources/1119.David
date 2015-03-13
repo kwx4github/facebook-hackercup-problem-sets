@@ -1,0 +1,90 @@
+"""
+This script may use libraries publicly available at: https://github.com/grokit/dcore.
+
+Does this solution solve:
+   Small: ?.
+   Big:   ?.
+"""
+
+import dcore.gcj_boot as boot
+
+import fractions
+import functools
+import pickle
+import os
+
+fn_cache = 'cache'
+
+class Problem:
+    pass
+
+def verify(n, A):
+    A = [int(x) for x in A]
+    t = 1
+    for i in A:
+        t *= i
+    #print(t,n)
+    if t != n:
+        print('error',t,n)
+        assert t == n
+
+def factorize(n):
+    nOrig = n
+    # credit: http://stackoverflow.com/questions/16996217/prime-factorization-list
+    # ~O(n^.5)
+    primfac = []
+    d = 2
+    while d*d <= n:
+        while (n % d) == 0:
+            primfac.append(d)  # supposing you want multiple factors repeated
+            n /= d
+            n = int(n)
+        d += 1
+    if n > 1:
+       primfac.append(n)
+
+    verify(nOrig, primfac)
+    return primfac
+
+@functools.lru_cache(maxsize=None)
+def primarity(n):
+    return len(set(factorize(n)))
+
+def primarityPre(n, H):
+    if n in H:
+        return H[n]
+    else:
+        return primarity(n)
+
+def readProblem(fh):
+    A, B, k = [int(x) for x in fh.readline().strip().split()]
+    p = Problem()
+    p.P = (A, B, k)
+    return p
+
+H = {}
+def solve(p):
+    A, B, k = p.P
+    t = 0
+    for i in range(A, B+1):
+        if primarityPre(i, H) == k:
+            t += 1
+    return t 
+
+def precompute():
+    H = {}
+    mx = int(1e7)
+    for i in range(1, mx):
+        if i % (1e5) == 0:
+            print('%f done' % (100*i/mx))
+        prim = primarity(i)
+        H[i] = prim
+    pickle.dump(H, open(fn_cache, 'wb'))
+
+if fn_cache not in os.listdir('.'):
+    precompute()
+else:
+    fh = open(fn_cache, 'rb')
+    H = pickle.load(fh)
+
+boot.solve(solve, readProblem, '.*large')

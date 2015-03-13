@@ -1,0 +1,120 @@
+package com.facebook.hackercup2015.round1;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.StringTokenizer;
+
+public class CorporateGifting {
+    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+    PrintWriter writer = new PrintWriter(System.out);
+
+    CorporateGifting() throws IOException {
+        reader = new BufferedReader(new FileReader("input.txt"));
+        writer = new PrintWriter(new FileWriter("output.txt"));
+    }
+
+    StringTokenizer stringTokenizer;
+
+    String next() throws IOException {
+        while (stringTokenizer == null || !stringTokenizer.hasMoreTokens()) {
+            stringTokenizer = new StringTokenizer(reader.readLine());
+        }
+        return stringTokenizer.nextToken();
+    }
+
+    int nextInt() throws IOException {
+        return Integer.parseInt(next());
+    }
+
+    long nextLong() throws IOException {
+        return Long.parseLong(next());
+    }
+
+    void solve() throws IOException {
+        int t = nextInt();
+        for(int i = 1; i <= t; i++) {
+            solve(i);
+        }
+        writer.close();
+    }
+
+    private void solve(int testNumber) throws IOException {
+        writer.printf("Case #%d: ", testNumber);
+        final int n = nextInt();
+        final List<List<Integer>> g = new ArrayList<>(n + 1);
+        for(int i = 0; i <= n; i++) {
+            g.add(new ArrayList<Integer>());
+        }
+        for(int i = 1; i <= n; i++) {
+            int parent = nextInt();
+            g.get(parent).add(i);
+        }
+        final List<Integer> sorted = new ArrayList<>();
+        class Utils {
+            void dfs(int u) {
+                for (Integer v : g.get(u)) {
+                    dfs(v);
+                }
+                sorted.add(u);
+            }
+        }
+        new Utils().dfs(1);
+        int[][] foo = new int[n + 1][];
+        int[][] prefixMin = new int[n + 1][];
+        int[][] suffixMin = new int[n + 1][];
+        for (int u : sorted) {
+            final int childrenCount = g.get(u).size();
+            foo[u] = new int[childrenCount + 3];
+            Collections.sort(g.get(u), new Comparator<Integer>() {
+                @Override
+                public int compare(Integer o1, Integer o2) {
+                    return g.get(o1).size() - g.get(o2).size();
+                }
+            });
+            int recalcFrom = 0;
+            int[] prevMin = new int[childrenCount];
+            int sum = 0;
+            for(int i = 1; i <= childrenCount + 2; i++) {
+                sum++;
+                while(recalcFrom < childrenCount) {
+                    int child = g.get(u).get(recalcFrom);
+                    if(foo[child].length - 1 < i) {
+                        recalcFrom++;
+                    } else {
+                        break;
+                    }
+                }
+                for(int j = recalcFrom; j < childrenCount; j++) {
+                    int child = g.get(u).get(j);
+                    int newMin = Math.min(prefixMin[child][i - 1], suffixMin[child][i + 1]);
+                    sum += newMin - prevMin[j];
+                    prevMin[j] = newMin;
+                }
+                foo[u][i] = sum;
+            }
+            prefixMin[u] = new int[childrenCount + 3];
+            prefixMin[u][0] = Integer.MAX_VALUE;
+            for(int i = 1; i < prefixMin[u].length; i++) {
+                prefixMin[u][i] = Math.min(prefixMin[u][i - 1], foo[u][i]);
+            }
+            suffixMin[u] = new int[childrenCount + 4];
+            suffixMin[u][suffixMin[u].length - 1] = Integer.MAX_VALUE;
+            for(int i = foo[u].length - 1; i >= 1; i--) {
+                suffixMin[u][i] = Math.min(suffixMin[u][i + 1], foo[u][i]);
+            }
+        }
+        writer.println(suffixMin[1][1]);
+    }
+
+    public static void main(String[] args) throws IOException {
+        new CorporateGifting().solve();
+    }
+}

@@ -1,0 +1,167 @@
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+
+import static java.lang.Integer.parseInt;
+
+
+public class CorpGift {
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer tok;
+	static int test;
+	static final int MAX=200001;
+	//static final int MAX=10;
+	static int[] color = new int[MAX];
+	static Map<Integer, ArrayList<Integer>> edges = new HashMap<Integer, ArrayList<Integer>>();
+		
+	static void printCase() {
+		out.print("Case #" + test + ": ");
+	}	
+
+	static int nextInt() throws IOException {
+        return parseInt(next());
+    }
+
+	static String next() throws IOException {
+        while (tok == null || !tok.hasMoreTokens()) {
+                tok = new StringTokenizer(in.readLine());
+        }
+        return tok.nextToken();
+    }
+
+	public static void main(String[] args) throws FileNotFoundException {
+		//System.setIn(new FileInputStream("/Users/kazuyoshi.hayase/git/FB201501/1stRound/Java/data/CorpGift/input-100000.txt"));
+		// TODO Auto-generated method stub
+try {
+            in = new BufferedReader(new InputStreamReader(System.in));
+            out = new PrintWriter(new OutputStreamWriter(System.out));
+            int T = nextInt();
+            for (test = 1; test <= T; test++) {
+                    solve();
+            }
+            in.close();
+            out.close();
+    } catch (Throwable e) {
+            e.printStackTrace();
+    }
+
+}
+
+	private static void solve() throws IOException {
+		// TODO Auto-generated method stub
+		int nodes = nextInt();
+		boolean[] isLeaf = new boolean[MAX];
+		//Map<Integer, ArrayList<Integer>> edges = new HashMap<Integer, ArrayList<Integer>>();
+		int[] numLeaves = new int[MAX];
+		//int[] color = new int[MAX];
+		boolean[] root = new boolean[MAX];//root of DFS (changed from *colors*)
+		int[] numPos = new int[MAX];
+		int[] numNeg = new int[MAX];
+		int[] numPosRevs = new int[MAX];
+		int[] numNegRevs = new int[MAX];
+		int[] numPosLeaves = new int[MAX];
+		int[] numNegLeaves = new int[MAX];
+		
+		edges.clear();
+		
+		for(int i=0; i<nodes; i++){
+			isLeaf[i] = true; root[i]=false;
+			color[i] = 0; numPos[i]=0; numNeg[i]=0; numPosRevs[i]=0; numNegRevs[i]=0; numPosLeaves[i]=0; numNegLeaves[i]=0;
+		}
+		for(int i=0; i<nodes; i++){
+			int parent = nextInt();
+			if(parent > 0){
+				parent--;
+				isLeaf[parent] = false;
+				if(edges.containsKey(Integer.valueOf(parent))){
+					edges.get(Integer.valueOf(parent)).add(Integer.valueOf(i));
+				} else {
+					ArrayList<Integer> alist = new ArrayList<Integer>();
+					alist.add(Integer.valueOf(i));
+					edges.put(Integer.valueOf(parent), alist);
+				}
+				if(edges.containsKey(Integer.valueOf(i))){
+					edges.get(Integer.valueOf(i)).add(Integer.valueOf(parent));					
+				} else {
+					ArrayList<Integer> alist = new ArrayList<Integer>();
+					alist.add(Integer.valueOf(parent));
+					edges.put(Integer.valueOf(i), alist);
+				}
+
+			}
+		}
+		//count #leaves
+		for(int i=0; i<nodes; i++){
+			int count = 0;
+			if(edges.containsKey(Integer.valueOf(i))){
+				for(Integer edge : edges.get(Integer.valueOf(i))){
+					if(isLeaf[edge.intValue()]){
+						count++;
+					}
+				}
+				numLeaves[i] = count;
+			}
+		}
+		//coloring by dfs
+		for(int i=0; i<nodes; i++){
+			if(color[i] == 0){
+				dfs(i,i+1);
+				root[i]=true;
+			}
+		}
+		//count #A,#B,#la,#lb,#lca,#lcb
+		for(int i=0; i<nodes; i++){
+			if(color[i]>0){
+				numPos[color[i]]++;
+				if(numLeaves[i]>=3){
+					numPosRevs[color[i]]++;
+					numPosLeaves[color[i]] += numLeaves[i];
+				}
+			} else {
+				numNeg[-color[i]]++;
+				if(numLeaves[i]>=3){
+					numNegRevs[-color[i]]++;
+					numNegLeaves[-color[i]] += numLeaves[i];
+				}
+			}
+		}
+		//minimum numbers for each root of connected components
+		int ans = 0;
+		for(int i=0; i<nodes; i++){
+			if(root[i]){
+				int c=i+1;
+				int n1,n2,n3,n4;
+				n1 = 2 * numPos[c] + numNeg[c];
+				n2 = numPos[c] + 2* numNeg[c];
+				n3 = n1 + 2 * numNegRevs[c] - numNegLeaves[c];
+				n4 = n2 + 2 * numPosRevs[c] - numPosLeaves[c];
+				int n = Math.min(n1, Math.min(n2, Math.min(n3, n4)));
+				ans += n;
+			}
+		}
+		printCase();
+		out.println(ans);
+	}
+
+	private static void dfs(int n, int c) {
+		// TODO Auto-generated method stub
+		color[n] = c;
+		if(edges.containsKey(Integer.valueOf(n))){
+			for (Integer edge : edges.get(Integer.valueOf(n))){
+				if (color[edge.intValue()] == 0){
+					dfs(edge.intValue(), -c);
+				}
+			}
+		}
+	}
+}

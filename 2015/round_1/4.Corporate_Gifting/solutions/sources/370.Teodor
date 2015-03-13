@@ -1,0 +1,143 @@
+#include <stdio.h>              
+#include <string.h>
+#include <stdlib.h>
+
+#define NMAX 200010
+
+struct Cost {
+	long long totalCost;
+	int rootCost;
+};
+
+Cost leafCosts[2] = { {1, 1}, {2, 2} };
+
+int CostCmp(const void *a, const void *b) {
+	long long diff = ((const Cost *)a)->totalCost - ((const Cost *)b)->totalCost;
+	if (diff < 0) {
+		return -1;
+	} else if (diff > 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+struct Employee {	
+	static Employee all[NMAX];
+
+	int cc, rc;
+	Employee *fc, *ns;
+
+	int solc;
+	Cost *costs;
+
+	Employee() {
+		cc = rc = 0;
+		fc = ns = NULL;
+
+		solc = 0;
+		costs = NULL;
+	}
+
+	static void Init(int count) {
+		for (int i = 0; i < count; ++i) {
+			all[i].Init();
+		}
+	}
+
+	void Init() {
+		cc = rc = 0;
+		fc = ns = NULL;
+		
+		if ((costs != NULL) && (costs != leafCosts)) {
+			delete [] costs;
+		}
+		solc = 0;
+		costs = NULL;
+	}
+
+	void SetManager(int mng) {
+		if (0 == mng) {
+			return;
+		}
+
+		Employee *manager = &all[mng - 1];
+		ns = manager->fc;
+		manager->fc = this;
+
+		manager->cc++;
+	}
+
+
+	void Solve() {
+		if (0 == cc) {
+			rc = 1;
+			solc = 2;
+			costs = leafCosts;
+			return;
+		}
+
+		rc = 0;
+		for (Employee *emp = fc; NULL != emp; emp = emp->ns) {
+			emp->Solve();
+			if (emp->rc > rc) {
+				rc = emp->rc;
+			}
+		}
+		rc++;
+
+		solc = cc;
+		if (rc < solc) {
+			solc = rc;
+		}
+		solc++;
+
+		costs = new Cost[solc];
+		for (int i = 0; i < solc; ++i) {
+			costs[i].rootCost = costs[i].totalCost = i + 1;
+			for (Employee *emp = fc; NULL != emp; emp = emp->ns) {
+				if (emp->costs[0].rootCost == costs[i].rootCost) {
+					costs[i].totalCost += emp->costs[1].totalCost;
+				} else {
+					costs[i].totalCost += emp->costs[0].totalCost;
+				}
+			}
+		}
+		qsort(costs, solc, sizeof(costs[0]), CostCmp);
+	}
+};
+
+Employee Employee::all[NMAX];
+
+void solve(FILE *fin, FILE *fout) {
+	int n, m;
+	fscanf(fin, "%d", &n);
+	Employee::Init(n);
+
+	for (int i = 0; i < n; ++i) {
+		int m;
+		fscanf(fin, "%d", &m);
+		Employee::all[i].SetManager(m);
+	}
+
+	Employee::all[0].Solve();
+	
+	fprintf(fout, "%d\n", Employee::all[0].costs[0].totalCost);
+}
+
+int main() {
+	FILE *fin = fopen("input.txt", "rt");
+	FILE *fout = fopen("output.txt", "wt");
+	int n;
+
+	fscanf(fin, "%d\n", &n);
+	for (int i = 1; i <= n; ++i) {
+		fprintf(fout, "Case #%d: ", i);
+		solve(fin, fout);
+	}
+
+
+	fclose(fout);
+	fclose(fin);
+	return 0;
+}

@@ -1,0 +1,192 @@
+#include <stdio.h>
+#include <strings.h>
+#include <stdlib.h>
+
+#define MAX 300000
+
+int main(int argc, char **argv)
+{
+	int t, T, N, employee, manager, current, end, i, v, d, c, vi, nbchild;
+	int *parent, *queue, *K1, *K2, *C, *Kv;
+	int *children[MAX];
+	
+	parent = calloc(MAX, sizeof(int));
+	queue  = calloc(MAX, sizeof(int));
+	K1     = calloc(MAX, sizeof(int));
+	K2     = calloc(MAX, sizeof(int));
+	C      = calloc(MAX, sizeof(int));
+	Kv     = calloc(MAX, sizeof(int));
+	
+	scanf("%d", &T);
+	for (t = 1; t <= T; t++)
+	{
+		scanf("%d", &N);
+		for (employee = 1; employee <= N; employee++)
+		{
+			scanf("%d", &manager);
+			parent[employee] = manager;
+		}
+		current = end = 0;
+		queue[end++] = 1;
+		while (employee = queue[current])
+		{
+			nbchild = 0;
+			for (i = 1; i <= N; i++)
+			{
+				if (parent[i] == employee)
+				{
+					queue[end++] = i;
+					nbchild++;
+				}
+			}
+			children[employee] = calloc(nbchild + 1, sizeof(int));
+			nbchild = 0;
+			for (i = 1; i <= N; i++)
+			{
+				if (parent[i] == employee)
+				{
+					children[employee][nbchild] = i;
+					nbchild++;
+				}
+			}
+			current++;
+		}
+		//fprintf(stderr, "init done\n");
+		//for (i = 0; i < end; i++)
+		//	fprintf(stderr, "queue[%d] = %d\n", i, queue[i]);
+		bzero(K1, MAX * sizeof(int));
+		bzero(K2, MAX * sizeof(int));
+		bzero(C,  MAX * sizeof(int));
+		current = end - 1;
+		while (current >= 0)
+		{
+			v = queue[current];
+			//fprintf(stderr, "v=%d\n", v);
+			d = 0;
+			for (i = 0; children[v][i] != 0; i++)
+				d++;
+			//printf("nbchild %d=%d\n", v, d);
+			if (d == 0)
+			{
+				K1[v] = 1;
+				C[v] = 1;
+				K2[v] = 2;
+			}
+			else
+			{
+				bzero(Kv, MAX * sizeof(int));
+				//bzero(&Kv, sizeof(int) * (d+1));
+				for (c = 1; c <= d+1; c++)
+				{
+					// compute K(v,c)
+					Kv[c] = c;
+					for (i = 0; i < d; i++)
+					{
+						vi = children[v][i];
+						//printf("child %d = %d\n", v, vi);
+						if (C[vi] != c)
+							Kv[c] += K1[vi];
+						else
+							Kv[c] += K2[vi];
+					}
+					// K1 = min { K(v,c) }
+					// C = argmin { K(v,c) }
+					if (!K1[v] || Kv[c] < K1[v])
+					{
+						K1[v] = Kv[c];
+						C[v] = c;
+					}
+				}
+				for (c = 1; c <= d+1; c++)
+				{
+					// K2 = min { K(v,c) | c != C(v) }
+					if (c != C[v])
+						if (!K2[v] || Kv[c] < K2[v])
+							K2[v] = Kv[c];
+				}
+			}
+			current--;
+		}
+		printf("Case #%d: %d\n", t, K1[1]);
+		//return 0;
+	}
+}
+
+/*
+<?php
+	fscanf(STDIN, "%d", $T);
+	for ($t = 1; $t <= $T; $t++)
+	{
+		fprintf(STDERR, "read: ");
+		fscanf(STDIN, "%d", $N);
+		$parent = array();
+		$children = array_fill(0, $N+1, array());
+		$managers = explode(' ', chop(fgets(STDIN)));
+		fprintf(STDERR, "done\ntree: ");
+		for ($employee = 1; $employee <= $N; $employee++)
+		{
+			$manager = $managers[$employee-1];
+			$parent[$employee] = $manager;
+			$children[$manager][] = $employee;
+		}
+		fprintf(STDERR, "done\nqueue: ");
+		$queue = array(1);
+		while ($employee = current($queue))
+		{
+			foreach ($children[$employee] as $child)
+				array_push($queue, $child);
+			next($queue);
+		}
+		fprintf(STDERR, "done\nloop: ");
+		$K1 = array();
+		$K2 = array();
+		$C = array();
+		end($queue);
+		while ($v = current($queue))
+		{
+			$d = count($children[$v]);
+			if ($d == 0)
+			{
+				$K1[$v] = 1;
+				$C[$v] = 1;
+				$K2[$v] = 2;
+			}
+			else
+			{
+				$Kv = array();
+				for ($c = 1; $c <= $d+1; $c++)
+				{
+					$Kv[$c] = $c;
+					// compute K(v,c)
+					foreach ($children[$v] as $vi)
+					{
+						if ($C[$vi] != $c)
+							$Kv[$c] += $K1[$vi];
+						else
+							$Kv[$c] += $K2[$vi];
+					}
+					// K1 = min { K(v,c) }
+					// C = argmin { K(v,c) }
+					if (!isset($K1[$v]) || $Kv[$c] < $K1[$v])
+					{
+						$K1[$v] = $Kv[$c];
+						$C[$v] = $c;
+					}
+				}
+				for ($c = 1; $c <= $d+1; $c++)
+				{
+					// K2 = min { K(v,c) | c != C(v) }
+					if ($c != $C[$v])
+					{
+						if (!isset($K2[$v]) || $Kv[$c] < $K2[$v])
+							$K2[$v] = $Kv[$c];
+					}
+				}
+			}
+			prev($queue);
+		}
+		fprintf(STDERR, "done\n");
+		printf("Case #%d: %d\n", $t, $K1[1]);
+	}
+?>
+*/

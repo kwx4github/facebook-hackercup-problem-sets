@@ -1,0 +1,64 @@
+#include <fstream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+const int oo = 0x3f3f3f3f;
+const int NIL = -1;
+
+vector< vector<int> > Tree;
+int V, MaxC;
+vector<int> TopologicalOrder;
+vector< vector<int> > DP, LeftMinDP, RightMinDP;
+
+void SolveDP(const int x) {
+    for (int c = 1; c <= MaxC; ++c) {
+        int sum = c;
+        for (const auto &y: Tree[x])
+            sum += min(LeftMinDP[y][c - 1], RightMinDP[y][c + 1]);
+        DP[x][c] = min(DP[x][c], sum);
+    }
+    for (int c = 1; c <= MaxC; ++c)
+        LeftMinDP[x][c] = min(LeftMinDP[x][c - 1], DP[x][c]);
+    for (int c = MaxC; c > 0; --c)
+        RightMinDP[x][c] = min(RightMinDP[x][c + 1], DP[x][c]);
+}
+
+void BFS(const int root) {
+    TopologicalOrder = vector<int>();
+    TopologicalOrder.push_back(root);
+    for (int i = 0; i < int(TopologicalOrder.size()); ++i) {
+        int x = TopologicalOrder[i];
+        for (const auto &y: Tree[x])
+            TopologicalOrder.push_back(y);
+    }
+}
+
+int main() {
+    ifstream cin("input.txt");
+    ofstream cout("output.txt");
+    int testCount;
+    cin >> testCount;
+    for (int t = 1; t <= testCount; ++t) {
+        cin >> V;
+        Tree = vector< vector<int> >(V, vector<int>());
+        for (int x = 0; x < V; ++x) {
+            int y;
+            cin >> y;
+            --y;
+            if (y != NIL)
+                Tree[y].push_back(x);
+        }
+        MaxC = 20; //approximately log(V)
+        DP = LeftMinDP = RightMinDP = vector< vector<int> >(V, vector<int>(MaxC + 2, oo));
+        BFS(0);
+        for (int i = int(TopologicalOrder.size()) - 1; i >= 0; --i)
+            SolveDP(TopologicalOrder[i]);
+        int minSum = LeftMinDP[0][MaxC];
+        cout << "Case #" << t << ": " << minSum << "\n";
+    }
+    cin.close();
+    cout.close();
+    return 0;
+}

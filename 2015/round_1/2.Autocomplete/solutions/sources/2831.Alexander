@@ -1,0 +1,106 @@
+package facebook.round1;
+
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Scanner;
+
+public class Autocomplete {
+
+    static PrintStream out;
+
+    static PrintStream openOut(String name) {
+        try {
+            return new PrintStream(new FileOutputStream(name, false));
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    static InputStream openIn(String name) {
+        try {
+            return new BufferedInputStream(new FileInputStream(name));
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        try (PrintStream out = openOut("output.txt")) {
+            try (InputStream in = openIn("input.txt")) {
+                Locale.setDefault(Locale.US);
+                final Scanner scanner = new Scanner(in);
+                final int T = scanner.nextInt();
+                for (int i = 0; i < T; i++) {
+                    int N = scanner.nextInt();
+                    int result = 0;
+                    CompactTrie trie = new CompactTrie();
+                    for (int j = 0; j < N; j++) {
+                        result += trie.add(scanner.next());
+                    }
+                    out.format("Case #%s: %s", i + 1, result).println();
+                }
+            }
+        }
+    }
+
+
+    static class CompactTrie {
+
+        String prefix;
+        Map<Character, CompactTrie> tries = new HashMap<>(); // tries starting with char = key
+
+        public CompactTrie() {} // root node
+
+        public CompactTrie(String prefix) {
+            this.prefix = prefix;
+        }
+
+        int add(String word) { // only if word and prefix have the same 1st char, or prefix == null
+            if (word.length() == 0) {
+                return 0;
+            }
+
+            if (prefix == null) {
+                if (tries.get(word.charAt(0)) != null) {
+                    return tries.get(word.charAt(0)).add(word);
+                }
+                tries.put(word.charAt(0), new CompactTrie(word));
+                return 1;
+            }
+
+            int split = 1;
+            while (split < Math.min(prefix.length(), word.length()) && prefix.charAt(split) == word.charAt(split)) {
+                split++;
+            }
+
+            if (split >= word.length()) { // word <= prefix
+                return word.length(); // whole word need to be typed
+            }
+            if (split >= prefix.length()) { // prefix < word
+                if (tries.get(word.charAt(split)) != null) {
+                    return split + tries.get(word.charAt(split)).add(word.substring(split)); // typed split chars already + other to add
+                }
+                CompactTrie newTrie = new CompactTrie(word.substring(split));
+                tries.put(word.charAt(split), newTrie);
+                return 1 + split; // typed chars
+            }
+            // split < min(prefix.length, word.length)
+            CompactTrie inheritor = new CompactTrie(prefix.substring(split));
+            inheritor.tries.putAll(tries);
+            tries.clear();
+            tries.put(prefix.charAt(split), inheritor);
+            prefix = prefix.substring(0, split);
+
+            tries.put(word.charAt(split), new CompactTrie(word.substring(split)));
+            return 1 + split; // typed chars
+        }
+    }
+}

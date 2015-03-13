@@ -1,0 +1,245 @@
+package com.jasonandmary.fhc.fhc2015.round1.question3;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import com.google.common.base.Throwables;
+
+/**
+ * Application for Facebook Hacker Cup 2015
+ * Name: fhc-2015-round1-question3
+ * &copy;2015 Jason W. Thompson
+ * @author Jason W. Thompson
+ */
+public class App
+{
+    private static final long MAGIC_NUM = 1_000_000_007;
+
+    /**
+     * Executes the application.
+     * @param args not used.
+     * @throws IOException if there is problem reading the input file or writing the PrintStream.
+     */
+    public static void main(String[] args) throws IOException
+    {
+        final List<Problem> problems = processInput(App.class.getClassLoader().getResourceAsStream("input.txt"));
+        App.printSolutions(problems, System.out);
+    }
+
+    /**
+     * The problem.
+     */
+    public static class Problem
+    {
+        int myScore;
+        int theirScore;
+
+        @Override
+        public String toString()
+        {
+            return "Problem [myScore=" + myScore + ", theirScore=" + theirScore + "]";
+        }
+
+        @Override
+        public int hashCode()
+        {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + myScore;
+            result = prime * result + theirScore;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj)
+            {
+                return true;
+            }
+            if (obj == null)
+            {
+                return false;
+            }
+            if (getClass() != obj.getClass())
+            {
+                return false;
+            }
+            final Problem other = (Problem) obj;
+            if (myScore != other.myScore)
+            {
+                return false;
+            }
+            if (theirScore != other.theirScore)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    /**
+     * Solves the problem
+     * @param problem The problem
+     * @return The solution.
+     */
+    public static String solve(Problem problem)
+    {
+        return getStressFreeCombinations(0, 0, problem, new HashMap<>()) + " " + getStressfulCombinations(0, 0, problem, new HashMap<>());
+    }
+
+    /**
+     * @param myCurrentScore
+     * @param theirCurrentScore
+     * @param problem
+     * @param exploredCombinations
+     * @return
+     */
+    public static long getStressFreeCombinations(
+                                                 int myCurrentScore,
+                                                 int theirCurrentScore,
+                                                 Problem problem,
+                                                 Map<Problem, Long> exploredCombinations)
+    {
+        final Problem currentScore = new Problem();
+        currentScore.myScore = myCurrentScore;
+        currentScore.theirScore = theirCurrentScore;
+        final Long cachedCombinations = exploredCombinations.get(currentScore);
+        if (cachedCombinations != null)
+        {
+            return cachedCombinations;
+        }
+
+        if (problem.myScore == myCurrentScore && problem.theirScore == theirCurrentScore)
+        {
+            return 1;
+        }
+
+        long leftCombinations = 0;
+        long rightCombinations = 0;
+        if (myCurrentScore != problem.myScore)
+        {
+            leftCombinations = getStressFreeCombinations(myCurrentScore + 1, theirCurrentScore, problem, exploredCombinations);
+        }
+        if (theirCurrentScore + 1 <= problem.theirScore && theirCurrentScore + 1 < myCurrentScore)
+        {
+            rightCombinations = getStressFreeCombinations(myCurrentScore, theirCurrentScore + 1, problem, exploredCombinations);
+        }
+
+        final long combinations = (leftCombinations + rightCombinations) % MAGIC_NUM;
+        exploredCombinations.put(currentScore, combinations);
+        return combinations;
+    }
+
+    /**
+     * @param myCurrentScore
+     * @param theirCurrentScore
+     * @param problem
+     * @param exploredCombinations
+     * @return
+     */
+    public static long getStressfulCombinations(
+                                                int myCurrentScore,
+                                                int theirCurrentScore,
+                                                Problem problem,
+                                                Map<Problem, Long> exploredCombinations)
+    {
+        final Problem currentScore = new Problem();
+        currentScore.myScore = myCurrentScore;
+        currentScore.theirScore = theirCurrentScore;
+        final Long cachedCombinations = exploredCombinations.get(currentScore);
+        if (cachedCombinations != null)
+        {
+            return cachedCombinations;
+        }
+
+        if (problem.myScore == myCurrentScore && problem.theirScore == theirCurrentScore)
+        {
+            return 1;
+        }
+
+        long leftCombinations = 0;
+        long rightCombinations = 0;
+        if ((myCurrentScore + 1 <= theirCurrentScore || theirCurrentScore == problem.theirScore) && myCurrentScore + 1 <= problem.myScore)
+        {
+            leftCombinations = getStressfulCombinations(myCurrentScore + 1, theirCurrentScore, problem, exploredCombinations);
+        }
+        if (theirCurrentScore != problem.theirScore)
+        {
+            rightCombinations = getStressfulCombinations(myCurrentScore, theirCurrentScore + 1, problem, exploredCombinations);
+        }
+
+        final long combinations = (leftCombinations + rightCombinations) % MAGIC_NUM;
+        exploredCombinations.put(currentScore, combinations);
+        return combinations;
+    }
+
+    /**
+     * Parses the input into a problem
+     * @param reader The reader.
+     * @return The parsed object
+     */
+    private static Problem parseProblem(BufferedReader reader)
+    {
+        try
+        {
+            try (final Scanner scanner = new Scanner(reader.readLine()).useDelimiter("\\-"))
+            {
+                final Problem problem = new Problem();
+                problem.myScore = scanner.nextInt();
+                problem.theirScore = scanner.nextInt();
+                return problem;
+            }
+        }
+        catch (final IOException e)
+        {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    /**
+     * Prints the solution to the input file. This will output in the format of:
+     * <br />
+     * <pre>
+     * Case #n: <i>solution</i>
+     * </pre>
+     * @param problems All of the problems to solve.
+     * @param printStream The {@link PrintStream} that should print the solution.
+     * @throws IOException if there is problem reading the input file or writing the PrintStream.
+     */
+    public static void printSolutions(List<Problem> problems, PrintStream printStream) throws IOException
+    {
+        for (int i = 0; i < problems.size(); i++)
+        {
+            printStream.println("Case #" + (i + 1) + ": " + solve(problems.get(i)));
+        }
+    }
+
+    /**
+     * Processes the input stream into a collection of problems.
+     * @param input The input stream that contains the problems.
+     * @return The solution.
+     */
+    public static List<Problem> processInput(InputStream input)
+    {
+        try
+        {
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(input));
+            final int count = Integer.parseInt(reader.readLine());
+            return IntStream.range(0, count).mapToObj(i -> parseProblem(reader)).collect(Collectors.toList());
+        }
+        catch (final Exception e)
+        {
+            throw Throwables.propagate(e);
+        }
+    }
+}

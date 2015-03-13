@@ -1,0 +1,95 @@
+#include "stdafx.h"
+
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <set>
+#include <string>
+#include <limits>
+#include <algorithm>
+
+using namespace std;
+
+struct Employee;
+
+extern Employee employees[];
+
+struct Employee
+{
+    int parent_id, child_count, optimal_price;
+    int64_t cost, penalty;
+    bool is_sorted;
+    int id() { return (this - employees) + 1; }
+    bool root() { return parent_id == 0; }
+    Employee *parent() { return &employees[parent_id - 1]; }
+    Employee *first_child, *next_sibling;
+};
+
+Employee employees[200010];
+
+void gifts()
+{
+    int T, N;
+    static Employee *ancestors[200010], *sorted[200010];
+    static int64_t penalties[200010];
+    scanf("%d", &T);
+    for (int t = 1; t <= T; ++t)
+    {
+        scanf("%d", &N);
+        memset(employees, 0, N * sizeof * employees);
+        for (int n = 0; n < N; ++n)
+            scanf("%d", &employees[n].parent_id);
+        
+        sorted[0] = &employees[0];
+        employees[0].is_sorted = true;
+        int sortedN = 1;
+        for (int n = 1; n < N; ++n)
+        {
+            int ancestorN = 0;
+            for (Employee *a = &employees[n]; !a->is_sorted; a = a->parent())
+                ancestors[ancestorN++] = a;
+            for (int i = ancestorN - 1; i >= 0; --i)
+            {
+                sorted[sortedN++] = ancestors[i];
+                ancestors[i]->is_sorted = true;
+            }
+            employees[n].next_sibling = employees[n].parent()->first_child;
+            employees[n].parent()->first_child = &employees[n];
+            ++employees[n].parent()->child_count;
+        }
+
+        for (int n = N - 1; n >= 0; --n)
+        {
+            Employee *manager = sorted[n];
+            int limit = manager->child_count + 2;
+            for (int p = 1; p <= limit; ++p)
+                penalties[p] = p;
+            for (Employee *child = manager->first_child; child != nullptr; child = child->next_sibling)
+            {
+                if (child->optimal_price <= limit)
+                    penalties[child->optimal_price] += child->penalty;
+                manager->cost += child->cost;
+            }
+            manager->optimal_price = min_element(penalties + 1, penalties + limit + 1) - penalties;
+            manager->cost += penalties[manager->optimal_price];
+            manager->penalty = numeric_limits<int64_t>::max();
+            for (int p = 1; p <= limit; ++p)
+            {
+                auto penalty = penalties[p] - penalties[manager->optimal_price];
+                if (p != manager->optimal_price && penalty < manager->penalty)
+                    manager->penalty = penalty;
+            }
+            //printf("Employee %d: gift $%d, total $%lld, penalty $%lld\n", manager->id(), manager->optimal_price, manager->cost, manager->penalty);
+        }
+
+        printf("Case #%d: %lld\n", t, employees[0].cost);
+    }
+}
+
+#ifndef DEV_MODE
+int main(int argc, char* argv[])
+{
+    gifts();
+    return 0;
+}
+#endif

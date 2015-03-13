@@ -1,0 +1,165 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#define MAXN 200050
+#define INF 1000000000000000LL
+
+int T, N;
+int parent[MAXN];
+vector<int> A[MAXN];
+vector<long long> dp[MAXN];
+vector<long long> minLeft[MAXN];
+vector<long long> minRight[MAXN];
+vector<long long> extra;
+
+void f(int node) {
+	for (int x : A[node]) {
+		f(x);
+	}
+	
+	int sz = (int) A[node].size();
+	dp[node].resize(sz + 2);
+	minLeft[node].resize(dp[node].size());
+	minRight[node].resize(dp[node].size());
+	extra.assign(dp[node].size(), 0);
+	
+	for (int i = 0; i < (int) dp[node].size(); i++) {
+		dp[node][i] = i + 1;
+	}
+	
+	for (int x : A[node]) {
+		int lim = min((int) dp[x].size(), (int) dp[node].size());
+		for (int i = 0; i < lim; i++) {
+			long long crt = INF;
+			if (i > 0) {
+				crt = min(crt, minLeft[x][i - 1]);
+			}
+			if (i + 1 < (int) dp[x].size()) {
+				crt = min(crt, minRight[x][i + 1]);
+			}
+			dp[node][i] += crt;
+		}
+		if (lim < (int) dp[node].size()) {
+			extra[lim] += minLeft[x].back();
+		}
+	}
+	
+	long long crtSum = 0;
+	for (int i = 0; i < (int) dp[node].size(); i++) {
+		crtSum += extra[i];
+		dp[node][i] += crtSum;
+	}
+	
+	for (int i = 0; i < (int) dp[node].size(); i++) {
+		minLeft[node][i] = dp[node][i];
+		if (i > 0) {
+			minLeft[node][i] = min(minLeft[node][i], minLeft[node][i - 1]);
+		}
+	}
+	for (int i = (int) dp[node].size() - 1; i >= 0; i--) {
+		minRight[node][i] = dp[node][i];
+		if (i + 1 < (int) dp[node].size()) {
+			minRight[node][i] = min(minRight[node][i], minRight[node][i + 1]);
+		}
+	}
+}
+
+vector<long long> mem[MAXN];
+long long bf(int x, int d) {
+	if (mem[x][d] != -1) {
+		return mem[x][d];
+	}
+	
+	long long ret = d + 1;
+	for (int y : A[x]) {
+		long long crtMin = INF;
+		for (int d2 = 0; d2 < (int) mem[y].size(); d2++) {
+			if (d2 != d) {
+				crtMin = min(crtMin, bf(y, d2));
+			}
+		}
+		ret += crtMin;
+	}
+	
+	mem[x][d] = ret;
+	return ret;
+}
+
+long long solve() {
+	for (int i = 1; i < N; i++) {
+		A[parent[i]].push_back(i);
+	}
+	
+//	for (int i = 0; i < N; i++) {
+//		mem[i].clear();
+//		mem[i].assign((int) A[i].size() + 2, -1);
+//	}
+	long long ans = INF;
+//	for (int i = 0; i < (int) mem[0].size(); i++) {
+//		ans = min(ans, bf(0, i));
+//	}
+	f(0);
+	for (int i = 0; i < (int) dp[0].size(); i++) {
+		ans = min(ans, dp[0][i]);
+	}
+	
+//	for (int i = 0; i < N; i++) {
+//		for (int j = 0; j < (int) dp[i].size(); j++) {
+//			if (bf(i, j) != dp[i][j]) {
+//				cout << i << ' ' << j  << ' ' << bf(i, j) << ' ' << dp[i][j] << endl;
+//			}
+//		}
+//	}
+	
+	extra.clear();
+	for (int i = 0; i < N; i++) {
+		A[i].clear();
+		dp[i].clear();
+		minLeft[i].clear();
+		minRight[i].clear();
+	}
+	
+	return ans;
+}
+
+void gen() {
+	N = 200000;
+	
+	cout << N << endl;
+	cout << 0 << ' ';
+	for (int i = 2; i <= N; i++) {
+		int crt = rand() % (i - 1) + 1;
+		cout << crt << ' ';
+	}
+	cout << endl;
+}
+
+int main() {
+	freopen("date.in", "r", stdin);
+	freopen("date.out","w", stdout);
+	cin.sync_with_stdio(false);
+	
+	cin >> T;
+	for (int t = 1; t <= T; t++) {
+		cin >> N;
+//		cerr << N << endl;
+		for (int i = 0; i < N; i++) {
+			assert(cin >> parent[i]);
+			parent[i]--;
+			assert(-1 <= parent[i] && parent[i] < N);
+		}
+		
+		long long ans = solve();
+		
+		cout << "Case #" << t << ": " << ans << '\n';
+		cerr << t << '\n';
+	}
+	
+//	srand(time(0));
+//	for (int i = 0; i < 2; i++) {
+//		gen();
+//	}
+	
+	return 0;
+}

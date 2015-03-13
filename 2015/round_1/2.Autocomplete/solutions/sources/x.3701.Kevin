@@ -1,0 +1,155 @@
+#!/usr/bin/perl -w
+use strict;
+use Data::Dumper;
+use Tree::Simple;
+use List::Util qw( min );
+
+# I/O files
+#my $input_file = "autocomplete_kevin_input.txt";		# Kevin
+#my $input_file = "autocomplete_example_input.txt";		# Practice
+my $input_file = "autocomplete.txt";					# Release (Exam)
+#my $input_file = "autocomplete_-_input.txt";			# Release (All)
+open(INPUTFILE,"<$input_file") or die("Problemo in open: $!");
+open(OUTPUTFILE,">autocomplete_output.txt") or die("Problemo in open: $!");
+
+# Treatment
+for my $case(1..<INPUTFILE>) {
+	my $tree = Tree::Simple->new("", Tree::Simple->ROOT);
+	my %index = ();
+	my $result=0;
+	for my $word(1..<INPUTFILE>) {
+		$word = <INPUTFILE>;
+		#$/ = "\r\n"; # Edit current input record separator for chomp()
+		chomp($word);
+
+		# Browse tree
+		my $currentNode = $tree;
+		my $targetNode = undef;
+		my ($path, $fullPath, $nodeKey) = ("","","");
+		my ($wordPart,$wordKey) = ($word,"");
+		my ($keepGoing,$partialMatch,$fullMatch) = (1,0,0);
+		while($keepGoing) {
+			
+			if ($currentNode->getChildCount() == 0) {
+				$targetNode = $currentNode;
+				last;
+			}
+			$keepGoing = 0;
+			foreach my $child (@{$currentNode->getAllChildren()}) {
+				my $childKey = $child->getNodeValue();
+				if (substr($wordPart, 0, 1) eq substr($childKey, 0, 1)) {	# 1st letter match				
+					$wordKey = $wordPart;
+					$path = $fullPath;
+					$fullPath .= $childKey;
+					$nodeKey = $childKey;
+					if (index($wordPart, $childKey) >= 0) { # Full match
+						$wordPart = substr($wordPart, length($childKey));
+						$currentNode = $child;
+						$fullMatch = 1;
+						$keepGoing = 1;
+						last;
+					}
+					elsif(index($childKey, $wordPart) >= 0) {
+						$targetNode = $child;
+						$fullMatch = 1;
+						last;
+					}
+					else {	# Partial match
+						$targetNode = $child;
+						$partialMatch = 1;
+						last;
+					}
+				}
+			}
+		}
+		$targetNode = defined($targetNode) ? $targetNode : $currentNode;
+		
+		# Insert
+		
+		# Root
+		if(!$partialMatch && !$fullMatch) {
+			my $firstChar = substr($word, 0, 1);
+			$tree->addChild(Tree::Simple->new($firstChar));
+			$index{$firstChar} = $word;
+			$result += 1;
+			next;
+		}
+
+		# hi + hello
+		# word		hello
+		# wordKey	hello (word minus path)
+		# nodeKey	h
+		# nodeIndex h	(path + nodeKey)
+		# nodeValue	hi
+		my $isKeyword = exists($index{$fullPath});	# Keyword only if there's a value associated
+		my $nodeFullValue = $isKeyword ? $index{$fullPath} : $nodeKey;
+		my $nodeValue = $isKeyword ? substr($nodeFullValue,length($path)) : $nodeKey;
+		#$nodeKey = $isKeyword ? substr($nodeValue, length($path)); # Update to include part of node value
+		
+		#print "word=$word + wordKey=$wordKey + path=$path + full=$fullPath + nodeKey=$nodeKey + nodeIndex=$fullPath + nodeValue=$nodeValue + Keyword=$isKeyword\n\n";		
+		my ($commonChars, $nbOfCommonChars) = getCommonCharacters($wordKey, $nodeValue);
+		my $firstChar = substr($wordKey, $nbOfCommonChars, 1);
+		
+		# Partial => Breakdown
+		if($partialMatch) {
+			my $commonParent = Tree::Simple->new($commonChars);
+			$targetNode->getParent()->addChild($commonParent);
+			$targetNode->getParent()->removeChild($targetNode);
+			$commonParent->addChild($targetNode);			
+			$targetNode->setNodeValue(substr($nodeKey, $nbOfCommonChars));
+			$commonParent->addChild(Tree::Simple->new($firstChar));
+			$index{$path.$commonChars.$firstChar} = $word;
+			$result += length($path) + $nbOfCommonChars + 1;
+		}
+		
+		# Full => Merge/Fork
+		elsif ($fullMatch) {
+			if(!$isKeyword || $fullPath eq $nodeFullValue) {
+				# Node => Add 1st non common char
+				$targetNode->addChild(Tree::Simple->new($firstChar));
+				$index{$fullPath.$firstChar} = $word;
+				$result += min(length($fullPath) + 1, length($word));
+				next;
+			}
+			
+			# Else we may need to merge something
+			$targetNode->setNodeValue($commonChars);
+			
+			# Old node
+			$firstChar = substr($nodeValue, $nbOfCommonChars, 1);
+			$targetNode->addChild(Tree::Simple->new($firstChar));
+			delete($index{$fullPath});
+			$index{$path.$commonChars.$firstChar} = $nodeFullValue;
+			# New node
+			$firstChar = substr($wordKey, $nbOfCommonChars, 1);
+			$targetNode->addChild(Tree::Simple->new($firstChar));
+			$index{$path.$commonChars.$firstChar} = $word;
+			$result += min(length($path) + $nbOfCommonChars + 1, length($word));
+		}
+	}
+	
+	# Display
+	#$tree->traverse(sub {my ($_tree) = @_;print (("\t" x $_tree->getDepth()), $_tree->getNodeValue(), "\n");});
+	#print Dumper(%index);
+
+	print("Case #$case: $result\n"); # OUTPUTFILE
+	print(OUTPUTFILE "Case #$case: $result\n");
+}
+# Cleanup
+close(INPUTFILE);
+close(OUTPUTFILE);
+
+sub getCommonCharacters {
+	my ($s1, $s2) = @_;
+	my @s1  = split //, $s1;
+	my @s2 = split //, $s2;
+	my $min_length = min($#s1, $#s2);
+	$#s1 = $#s2 = $min_length;	# Equalize length
+	
+	my $number = 0;
+	for (0 .. $min_length) {
+		if($s1[$_] eq $s2[$_]) {$number++;}
+		else {last;}
+	}
+	return (substr($s1,0,$number), $number);
+}

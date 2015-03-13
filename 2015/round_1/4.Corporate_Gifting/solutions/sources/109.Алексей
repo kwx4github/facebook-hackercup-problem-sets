@@ -1,0 +1,113 @@
+import java.io.*;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+
+public class P4 implements Runnable {
+    static final String PROBLEM_NAME = "p4";
+    static final String INPUT_FILENAME = PROBLEM_NAME + ".in";
+    static final String OUTPUT_FILENAME = PROBLEM_NAME + ".out";
+    static final String DELIMITERS = " \t\n\r\f";
+    static final int MAX_COST = 20;
+    static final long INF = 1000000000000L;
+
+    BufferedReader rd;
+    PrintWriter wr;
+    StringTokenizer tok = null;
+
+    public static void main(String[] args) {
+        new Thread(new P4()).start();
+    }
+
+    String readToken() throws IOException {
+        while (tok == null || !tok.hasMoreTokens()) {
+            String line = rd.readLine();
+            tok = new StringTokenizer(line, DELIMITERS, false);
+        }
+        return tok.nextToken();
+    }
+
+    int readInt() throws IOException {
+        return Integer.parseInt(readToken());
+    }
+
+    private void solve() throws IOException {
+        rd = new BufferedReader(new FileReader(new File(INPUT_FILENAME)));
+        wr = new PrintWriter(new File(OUTPUT_FILENAME));
+        int t = readInt();
+        for (int ti = 0; ti < t; ++ti) {
+            int n = readInt();
+            int[] parents = new int[n];
+            for (int i = 0; i < n; ++i) {
+                parents[i] = readInt();
+            }
+            long result = subsolve(parents);
+            wr.println(String.format("Case #%d: %d", ti + 1, result));
+        }
+        rd.close();
+        wr.close();
+    }
+
+    ArrayList<Integer>[] children;
+    long[][] d;
+    boolean[][] cached;
+
+    private long subsolve(int[] parents) {
+        int n = parents.length;
+        d = new long[n][MAX_COST + 1];
+        cached = new boolean[n][MAX_COST + 1];
+        for (int i = 0; i < n; ++i) {
+            for (int cost = 0; cost <= MAX_COST; ++cost) {
+                d[i][cost] = INF;
+                cached[i][cost] = false;
+            }
+        }
+        children = new ArrayList[n];
+        for (int i = 0; i < n; ++i) {
+            children[i] = new ArrayList<Integer>();
+        }
+        for (int i = 0; i < n; ++i) {
+            int parent = parents[i] - 1;
+            if (parent >= 0 && parent < n) {
+                children[parent].add(i);
+            }
+        }
+
+        long bestResult = INF;
+        for (int cost = 1; cost <= MAX_COST; ++cost) {
+            long result = rec(0, cost);
+            bestResult = Math.min(result, bestResult);
+        }
+        return bestResult;
+    }
+
+    private long rec(int index, int cost) {
+        if (cached[index][cost]) {
+            return d[index][cost];
+        }
+
+        int result = cost;
+        for (int childIndex: children[index]) {
+            long childResult = INF;
+            for (int childCost = 1; childCost <= MAX_COST; ++childCost) {
+                if (childCost == cost) {
+                    continue;
+                }
+                childResult = Math.min(childResult, rec(childIndex, childCost));
+            }
+            result += childResult;
+        }
+
+        d[index][cost] = result;
+        cached[index][cost] = true;
+        return d[index][cost];
+    }
+
+    @Override
+    public void run() {
+        try {
+            solve();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}

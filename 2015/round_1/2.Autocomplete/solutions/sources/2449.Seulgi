@@ -1,0 +1,96 @@
+package autocomplete;
+
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+class WordNode {
+    private char value;
+    private Map<Character, WordNode> children;
+
+    public WordNode(char value) {
+        this.value = value;
+        children = new HashMap<Character, WordNode>();
+    }
+
+    public char getValue() {
+        return value;
+    }
+
+    public WordNode getChild(char childValue) {
+        if(!children.containsKey(childValue)) return null;
+        return children.get(childValue);
+    }
+
+    public void setChild(WordNode childNode) {
+        children.put(childNode.getValue(), childNode);
+    }
+
+
+}
+
+class WordTree {
+    WordNode headNode;
+
+    public WordTree() {
+        this.headNode = new WordNode('!'); // parent node
+    }
+
+    public void addWord(WordNode parentNode, String words) {
+
+        for(int i=0; i < words.length(); i++) {
+            WordNode childNode = new WordNode(words.charAt(i));
+            parentNode.setChild(childNode);
+            parentNode = childNode;
+
+        }
+    }
+
+    public int autoComplete(String word) {
+        int indexOfLastTypeWord = 0;
+        WordNode curNode = headNode;
+        while(curNode != null && indexOfLastTypeWord < word.length()) {
+            char childValue = word.charAt(indexOfLastTypeWord);
+            WordNode childNode = curNode.getChild(childValue);
+
+            if(childNode == null) {
+                // we auto completed. Add the rest of the word to our WordTree
+                addWord(curNode, word.substring(indexOfLastTypeWord));
+            }
+            curNode = childNode;
+
+            indexOfLastTypeWord++;
+        }
+
+
+        return indexOfLastTypeWord;
+    }
+}
+
+public class Autocomplete {
+    public static void main(String[] args) throws Exception {
+        List<String> file = Files.readAllLines(Paths.get("input.txt"), StandardCharsets.UTF_8);
+
+        PrintWriter writer = new PrintWriter("output.txt");
+
+        int lineNum = 0;
+        int T = Integer.parseInt(file.get(lineNum++));
+
+        for(int cid=1; cid <= T; cid++) {
+            int N = Integer.parseInt(file.get(lineNum++));
+            WordTree wordTree = new WordTree();
+            int autoCompleteCost = 0;
+            for(int i=0; i < N; i++) {
+                String word = file.get(lineNum++);
+                autoCompleteCost += wordTree.autoComplete(word);
+            }
+            writer.println(String.format("Case #%d: %d", cid, autoCompleteCost));
+        }
+
+        writer.close();
+    }
+}

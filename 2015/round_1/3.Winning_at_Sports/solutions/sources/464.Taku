@@ -1,0 +1,54 @@
+import Control.Monad
+import Text.Printf
+import Data.Maybe
+import Data.Array.Unboxed
+import Data.Array.ST
+import Data.List
+import Control.Applicative
+
+stepM_ :: Monad m => a -> (a -> Bool) -> (a -> a) -> (a -> m ()) -> m ()
+stepM_ i0 judge incr step = sub i0 where 
+    sub i | judge i = step i >> sub (incr i) | otherwise = return ()
+
+main :: IO ()
+main = do
+    tests <- readLn :: IO Int
+    forM_ [1..tests] $ \caseNum -> do
+        s <- getLine
+        let d = fromJust $ findIndex (=='-') s
+        let a = read $ take d s
+        let b = read $ drop (d+1) s
+        let c1 = stressFree a b
+        let c2 = stressFull a b
+        printf "Case #%d: %d %d\n" caseNum c1 c2
+
+stressFree :: Int -> Int -> Int
+stressFree a b = stressFreeTable ! (a,b)
+stressFull :: Int -> Int -> Int
+stressFull _ b = stressFullTable ! (b,b)
+
+modulo :: Int
+modulo = 1000000007
+
+stressFreeTable :: UArray (Int,Int) Int
+stressFreeTable = runSTUArray $ do
+    arr <- newArray ((0,0),(2000,2000)) 0
+    stepM_ 0 (<=2000) (+1) $ \x -> stepM_ 0 (<=2000) (+1) $ \y -> do
+        r <- if x == 0 && y == 0 then return 1
+             else if x <= y then return 0
+             else if y == 0 then readArray arr (x-1,y)
+             else (+) <$> readArray arr (x-1,y) <*> readArray arr (x,y-1)
+        writeArray arr (x,y) (r `mod` modulo)
+    return arr
+
+stressFullTable :: UArray (Int,Int) Int
+stressFullTable = runSTUArray $ do
+    arr <- newArray ((0,0),(2000,2000)) 0
+    stepM_ 0 (<=2000) (+1) $ \x -> stepM_ 0 (<=2000) (+1) $ \y -> do
+        r <- if x == 0 && y == 0 then return 1
+             else if x > y then return 0
+             else if x == 0 then readArray arr (x,y-1)
+             else (+) <$> readArray arr (x-1,y) <*> readArray arr (x,y-1)
+        writeArray arr (x,y) (r `mod` modulo)
+    return arr
+

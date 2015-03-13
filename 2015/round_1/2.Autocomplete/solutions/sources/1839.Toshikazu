@@ -1,0 +1,134 @@
+package cup2015;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+
+public class AutoComplete {
+
+	private RadixTree rt;
+	
+	public AutoComplete() {
+		rt = new RadixTree();
+	}
+	
+	public int solve(String[] words) {
+		int cnt = 0;
+		for (String word : words) {
+			rt.insert(word);
+			String key = rt.searchKey(word);
+			if (key.equals(word))
+				cnt += word.length();
+			else
+				cnt += key.length()+1;
+		}
+		return cnt;
+	}
+	
+	public class RadixTree {
+		private Node root;
+		public RadixTree() {
+			root = new Node("");
+		}
+		public void insert(String key) {
+			root.insert(key);
+		}
+		public String searchKey(String str) {
+			return root.searchKey(str);
+		}
+		private class Node implements Comparable<Node> {
+			private String key;
+			private List<Node> children = new ArrayList<Node>();
+			private Node(String key) {
+				this.key = key;
+			}
+			public int compareTo(Node node) {
+				return key.compareTo(node.key);
+			}
+			public String searchKey(String str) {
+				if (str.equals("")) {
+					if (children.size()>0)
+						return key;
+					else
+						return "";
+				}
+				int idx = lowerBound(children, str);
+				if (idx==children.size() || !str.startsWith(children.get(idx).key))
+					return null;
+				else {
+					Node child = children.get(idx);
+					return key + child.searchKey(str.substring(child.key.length()));
+				}
+			}
+			public void insert(String key) {
+				if (key.equals(""))
+					return;
+				int idx = lowerBound(children, key);
+				if (idx==children.size() || children.get(idx).key.charAt(0)!=key.charAt(0)) {
+					Node node = new Node(key);
+					children.add(idx, node);
+				} else {
+					Node child = children.get(idx);
+					if (key.startsWith(child.key))
+						child.insert(key.substring(child.key.length()));
+					else {
+						StringBuilder sb = new StringBuilder();
+						for (int i=0; i<key.length(); i++)
+							if (key.charAt(i)==child.key.charAt(i))
+								sb.append(key.charAt(i));
+							else
+								break;
+						String nkey = sb.toString();
+						Node node = new Node(nkey);
+						child.key = child.key.substring(nkey.length());
+						node.children.add(child);
+						children.set(idx, node);
+						node.insert(key.substring(nkey.length()));
+					}
+				}
+			}
+			private int lowerBound(List<Node> nodeList, String key) {
+				int left = 0, right = nodeList.size();
+				while (left<right) {
+					int mid = (left+right)/2;
+					if (nodeList.get(mid).key.charAt(0)<key.charAt(0))
+						left = mid+1;
+					else
+						right = mid;
+				}
+				return left;
+			}
+		}
+	}
+	
+	public static void main(String args[]) throws IOException {
+		String input = "file/cup2015/autocomplete.txt";
+		String output = "file/cup2015/autocomplete.out";
+		BufferedReader br = null;
+		PrintWriter pw = null;
+		try {
+			br = new BufferedReader(new FileReader(input));
+			pw = new PrintWriter(output);
+			int T = Integer.parseInt(br.readLine());
+			for (int i=0; i<T; i++) {
+				AutoComplete ac = new AutoComplete();
+				int N = Integer.parseInt(br.readLine());
+				String[] words = new String[N];
+				for (int j=0; j<N; j++)
+					words[j] = br.readLine();
+				int res = ac.solve(words);
+				String str = "Case #" + (i+1) + ": " + res;
+				System.out.println(str);
+				pw.println(str);
+			}
+		} finally {
+			if (br!=null)
+				br.close();
+			if (pw!=null)
+				pw.close();
+		}
+	}
+}

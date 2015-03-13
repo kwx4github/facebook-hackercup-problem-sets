@@ -1,0 +1,142 @@
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.List;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "corporate.*gifting.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("corporategifting.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		CorporateGifting solver = new CorporateGifting();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class CorporateGifting {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        System.err.println("Solving case " + testNumber);
+        int n = in.nextInt();
+        int[] parent = new int[n];
+        for (int i = 0; i < n; ++i) parent[i] = in.nextInt() - 1;
+        int[] nextSibling = new int[n];
+        int[] firstChild = new int[n];
+        Arrays.fill(firstChild, -1);
+        for (int i = 1; i < n; ++i) {
+            nextSibling[i] = firstChild[parent[i]];
+            firstChild[parent[i]] = i;
+        }
+        int[] res = rec(0, firstChild, nextSibling);
+        int best = res[0];
+        for (int x : res) best = Math.min(best, x);
+        out.println("Case #" + testNumber + ": " + (best + n));
+    }
+
+    private int[] rec(int root, int[] firstChild, int[] nextSibling) {
+        List<int[]> children = new ArrayList<>();
+        int cur = firstChild[root];
+        while (cur >= 0) {
+            children.add(rec(cur, firstChild, nextSibling));
+            cur = nextSibling[cur];
+        }
+        int numChildren = children.size();
+        int[] min = new int[numChildren];
+        int[] secondMin = new int[numChildren];
+        int[] minAt = new int[numChildren];
+        Arrays.fill(min, Integer.MAX_VALUE);
+        Arrays.fill(secondMin, Integer.MAX_VALUE);
+        for (int i = 0; i < numChildren; ++i) {
+            int[] child = children.get(i);
+            for (int j = 0; j <= child.length; ++j) {
+                int cv = (j < child.length) ? child[j] : child[j - 1] + 1;
+                if (cv < min[i]) {
+                    secondMin[i] = min[i];
+                    min[i] = cv;
+                    minAt[i] = j;
+                } else if (cv < secondMin[i]) {
+                    secondMin[i] = cv;
+                }
+            }
+        }
+        int maxAt = 0;
+        for (int x : minAt) maxAt = Math.max(maxAt, x);
+        int[] res = new int[maxAt + 2];
+        for (int what = 0; what < res.length; ++what) {
+            res[what] = what;
+            for (int i = 0; i < numChildren; ++i) {
+                if (minAt[i] == what) res[what] += secondMin[i]; else res[what] += min[i];
+            }
+        }
+        return res;
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+}
+

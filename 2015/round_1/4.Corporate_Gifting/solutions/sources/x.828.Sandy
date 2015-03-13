@@ -1,0 +1,209 @@
+#include <stdio.h>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <fstream>
+#include <stdlib.h>
+#include <math.h>
+#include <cmath>
+#include <string.h>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <map>
+#include <set>
+#include <limits.h>
+#include <time.h>
+#include <bitset>
+#include <list>
+#include <cassert>
+
+#define EPS 1e-11
+#define PI acos(-1)
+#define LL long long
+#define INF 1000000009
+#define MP(a,b) make_pair(a,b)
+#define PB(a) push_back(a)
+#define OPENR(a) freopen(a,"r",stdin)
+#define OPENW(a) freopen(a,"w",stdout)
+#define pii pair<int,int>
+
+int x4[4] = { 0, 0,-1, 1};
+int y4[4] = {-1, 1, 0, 0};
+int x8[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
+int y8[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
+int xhorse[8] = {1,2,1,2,-1,-2,-1,-2};
+int yhorse[8] = {2,1,-2,-1,2,1,-2,-1};
+
+using namespace std;
+
+#define MAXN 200005
+
+int t,n;
+int par[MAXN];
+vector<int> adjList[MAXN];
+int dp[MAXN][2];
+bool visited[MAXN];
+vector<int> vec;
+vector<int> urut;
+
+int getDp(int node,int use)
+{
+	if (dp[node][use]!=-1) return dp[node][use];
+	int &res = dp[node][use];
+	
+//	printf("dp %d %d\n",node,use);
+	res = use;
+	for (int i=0;i<adjList[node].size();i++)
+	{
+		int nn = adjList[node][i];
+		if (visited[nn]) res += getDp(nn, 0);
+		else
+		{
+			if (use==0)
+			{
+				res += max(getDp(nn, 0), getDp(nn,1));
+			}
+			else
+			{
+				res += getDp(nn,0);
+			}
+		}
+	}
+	
+//	printf("dp[%d][%d]:%d\n",node,use,res);
+	return res;
+}
+
+void mark(int node, int use)
+{
+	if (dp[node][use]<=0) return;
+//	printf("mark %d %d\n",node,use);
+//	system("pause"); 
+	if (use) visited[node] = true;
+	
+	for (int i=0;i<adjList[node].size();i++)
+	{
+		int nn = adjList[node][i];
+		if (use) mark(nn, 0);
+		else
+		{
+			if (dp[nn][1]>dp[nn][0]) mark(nn,1);
+			else mark(nn,0);
+		}
+	}
+}
+
+int main()
+{
+	OPENR("corporate_gifting.txt");
+	OPENW("corporate_gifting.out");
+	scanf("%d",&t);
+	
+	for (int tc=1;tc<=t;tc++)
+	{
+		fprintf(stderr, "%d\n",tc);
+		urut.clear();
+		for (int i=0;i<MAXN;i++) adjList[i].clear();
+		
+		scanf("%d",&n);
+		
+		for (int i=1;i<=n;i++)
+		{
+			scanf("%d",&par[i]);
+			if (i>1) adjList[par[i]].PB(i);
+		//	assert(par[i]<i);
+		}
+		
+		//bfs urutan
+		queue<int> q;
+		while(!q.empty()) q.pop();
+		q.push(1);
+		while(!q.empty())
+		{
+			int cur = q.front(); q.pop();
+			urut.PB(cur);
+			
+			for (int i=0;i<adjList[cur].size();i++)
+			{
+				int nn = adjList[cur][i];
+				q.push(nn);
+			}
+		}
+		
+		memset(visited,false,sizeof(visited));
+		vec.clear();
+		int total = 0;
+		
+		while(total!=n)
+		{
+		//	memset(dp,-1,sizeof(dp));
+		//	int temp = max(getDp(1,0),getDp(1,1));
+		//	total += temp;
+		//	vec.PB(temp);
+	//		printf("%d ",temp);
+		//	if (dp[1][1] > dp[1][0]) mark(1,1);
+		//	else mark(1,0);
+		
+		//bot up
+			memset(dp,0,sizeof(dp));
+			for (int i=urut.size()-1;i>=0;i--)
+			{
+				int cur = urut[i];
+				
+				dp[cur][1]++;
+				
+				//update ke parent
+				if (cur!=1)
+				{
+					dp[par[cur]][1] += dp[cur][0];
+					if (!visited[cur]) dp[par[cur]][0] += max(dp[cur][0],dp[cur][1]);
+					else dp[par[cur]][0] += dp[cur][0];
+				}
+			}
+			
+			int temp = dp[1][0];
+			if (!visited[1]) temp = max(temp, dp[1][1]);
+			total += temp;
+			vec.PB(temp);
+			
+			//mark
+			queue<pii> q; while(!q.empty()) q.pop();
+			if (dp[1][1]>dp[1][0]) q.push(MP(1,1)); else q.push(MP(1,0));
+			
+			while(!q.empty())
+			{
+				pii cur = q.front(); q.pop();
+				if (cur.second) visited[cur.first] = true;
+				
+				for(int i=0;i<adjList[cur.first].size();i++)
+				{
+					int nn = adjList[cur.first][i];
+					if (cur.second) q.push(MP(nn, 0));
+					else 
+					{
+						if (dp[nn][1]>dp[nn][0]) q.push(MP(nn,1));
+						else q.push(MP(nn,0));
+					}
+				}
+			}
+		
+		}
+		
+	//	for (int i=0;i<vec.size();i++) printf("%d ",vec[i]); printf("\n");
+		LL ans = 0;
+		for (int i=0;i<vec.size();i++)
+		{
+			ans += vec[i]*(LL)(i+1);
+		}
+		
+		printf("Case #%d: %lld\n",tc, ans);
+		
+	}
+	
+	return 0;
+}
+

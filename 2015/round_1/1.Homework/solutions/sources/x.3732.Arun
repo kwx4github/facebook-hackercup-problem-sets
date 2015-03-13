@@ -1,0 +1,83 @@
+#!/usr/bin/python
+
+import sys
+from fractions import gcd
+from math import sqrt
+import random
+import pickle
+
+def primesbelow(N):
+    correction = N % 6 > 1
+    N = {0:N, 1:N-1, 2:N+4, 3:N+3, 4:N+2, 5:N+1}[N%6]
+    sieve = [True] * (N // 3)
+    sieve[0] = False
+    for i in range(int(N ** .5) // 3 + 1):
+        if sieve[i]:
+            k = (3 * i + 1) | 1
+            sieve[k*k // 3::2*k] = [False] * ((N//6 - (k*k)//6 - 1)//k + 1)
+            sieve[(k*k + 4*k - 2*k*(i%2)) // 3::2*k] = [False] * ((N // 6 - (k*k + 4*k - 2*k*(i%2))//6 - 1) // k + 1)
+    return [2, 3] + [(3 * i + 1) | 1 for i in range(1, N//3 - correction) if sieve[i]]
+
+def primefactors(n):
+    originalNumber = n
+    factors = []
+
+    for checker in primeset:
+        if checker > n: break
+        while n % checker == 0:
+            factors.append(checker)
+            n //= checker
+
+    return factors
+
+def prepopulate(n):
+    primemap = {}
+    for i in range(2, n+1):
+        if i % 100000 == 0:
+            print "Generating ", i
+        factors = set(primefactors(i))
+        primemap[i] = len(factors)
+    return primemap
+
+
+def hasfactor(number, cases):
+    try:
+        factors = primemap[number]
+
+        #print number, factors, cases
+
+        if factors == cases:
+            return True
+        return False
+    except:
+        return False
+
+def solve(line):
+    success = 0
+    for number in range(line[0], line[1] + 1):
+        if hasfactor(number, line[2]):
+            success += 1
+        pass
+    return success
+
+def main(filename):
+    # Download the file only after it has been pre populated
+    f = open(filename, 'r')
+    T = int(f.readline().strip())
+    
+    for nCase in range(1, T+1):
+        print("Case #{}: {}".format(nCase, solve(list(map(int,f.readline().split())))))
+    f.close()
+
+maxallowed = 10**7
+_primeset = maxallowed / 2
+primeset = primesbelow(_primeset)
+primemap = {}
+try:
+    f = open('primes.p', 'r')
+    primemap = pickle.load(f)
+    #print primemap
+except:
+    primemap = prepopulate(maxallowed)
+    pickle.dump(primemap, open( "primes.p", "wb" ))
+main(sys.argv[1])

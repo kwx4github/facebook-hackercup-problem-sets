@@ -1,0 +1,146 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+#my $MAXB = 10000;
+my $MAXB = 10000000;
+
+my @min_prime_lookup = ();
+my @primes = ();
+
+foreach my $i (0 .. $MAXB) {
+  push @min_prime_lookup, -1;
+}
+
+# Let's see if we have time to run the sieve of Eratosthenes.
+my $i = 1;
+while ($i < $MAXB) {
+  $i++;
+
+  # Terminate loop at sqrt(10^7).
+  last if $i * $i > $MAXB;
+
+  # Only care about primes.
+  next if $min_prime_lookup[$i] > 0;
+
+#  print "$i is prime\n";
+  $min_prime_lookup[$i] = $i;
+
+  my $j = 1;
+  while ($j < $MAXB) {
+    $j++;
+
+    # Terminate loop at 10^7 / $i.
+    last if $i * $j > $MAXB;
+    
+    my $testval = $i * $j;
+    next if $min_prime_lookup[$testval] > 0;
+    $min_prime_lookup[$testval] = $i;
+  }
+}
+
+my @primacity_lookup = (0, 0);
+my $DEFAULT_PRIMACITY = 1;
+
+foreach my $i (2 .. $MAXB) {
+  push @primacity_lookup, $DEFAULT_PRIMACITY;
+  if ($min_prime_lookup[$i] < 0) {
+#    print "Found another prime: $i\n";
+    $min_prime_lookup[$i] = $i;
+  }
+}
+
+my $highest_primacity = 0;
+my @primacity_lists = ();
+foreach my $i (1 .. 20) {
+  $primacity_lists[$i] = ();
+}
+
+foreach my $i (2 .. $MAXB) {
+  my $minprime = $min_prime_lookup[$i];
+  if ($minprime == $i) {
+    push @{$primacity_lists[1]}, $i;
+    next;
+  }
+
+  my $lower_number = $i / $minprime;
+  my $lowerminprime = $min_prime_lookup[$lower_number];
+  my $lowerprimacity = $primacity_lookup[$lower_number];
+  if ($lowerminprime < $minprime) {
+    die("How is that possible?? i = $i\n");
+  } elsif ($lowerminprime == $minprime) {
+    $primacity_lookup[$i] = $lowerprimacity;
+#    print "$i has $minprime twice .. primacity is $lowerprimacity\n";
+  } else {
+    $primacity_lookup[$i] = 1 + $lowerprimacity;
+#    print "$i has $minprime and $lowerminprime..primacity is $primacity_lookup[$i]\n";
+  }
+
+  my $primacity = $primacity_lookup[$i];
+  push @{$primacity_lists[$primacity]}, $i;
+  if ($primacity > $highest_primacity) {
+    $highest_primacity = $primacity;
+#    print "highest primacity ever $primacity for $i\n";
+  }
+}
+
+# print "length of primacity 1 is ".scalar @{$primacity_lists[1]}."\n";
+# print "length of primacity 2 is ".scalar @{$primacity_lists[2]}."\n";
+# print "length of primacity 3 is ".scalar @{$primacity_lists[3]}."\n";
+# print "length of primacity 4 is ".scalar @{$primacity_lists[4]}."\n";
+# print "length of primacity 5 is ".scalar @{$primacity_lists[5]}."\n";
+# print "length of primacity 6 is ".scalar @{$primacity_lists[6]}."\n";
+# print "length of primacity 7 is ".scalar @{$primacity_lists[7]}."\n";
+# print "length of primacity 8 is ".scalar @{$primacity_lists[8]}."\n";
+
+sub find_in_ordered_list($$) {
+  my $needle = shift;
+  my $listref = shift;
+
+  my $lower = -1;
+  my $upper = scalar @$listref;
+
+  my $middle = $lower;
+  while ($upper > $lower + 1) {
+    $middle = int(($upper + $lower) / 2);
+    if ($listref->[$middle] > $needle) {
+      $upper = $middle;
+    } else {
+      $lower = $middle;
+    }
+  }
+  my $num_elements = 1 + $lower;
+  my $lower_element = $lower == -1 ? 'undef' : $listref->[$lower];
+  my $higher_element = $num_elements == scalar @$listref ? 'undef' : $listref->[$num_elements];
+
+  # print "$needle is greater than $num_elements elements ($lower_element, $higher_element)\n";
+  return $num_elements;
+}
+
+my $filename = shift @ARGV;
+my @input = split /\n/, `cat $filename`;
+my $num_cases = shift @input;
+
+# foreach my $casenum (1 .. scalar @input) {
+foreach my $casenum (1 .. $num_cases) {
+  if (@input == 0) {
+    die("BAD INPUT: Declared $num_cases cases but fewer than $casenum given\n");
+  }
+  my $case = shift @input;
+  my ($a, $b, $k) = split / /, $case;
+  if ($k > 8) {
+    # print "$k is too big\n";
+    print "Case #$casenum: 0\n";
+    next;
+  }
+  # print "k is $k\n";
+  my $primacity_list = $primacity_lists[$k];
+  my $x = find_in_ordered_list($a - 1, $primacity_list);
+  my $y = find_in_ordered_list($b, $primacity_list);
+  my $diff = $y - $x;
+  print "Case #$casenum: $diff\n";
+}
+
+if ($MAXB != 10000000) {
+  die("MAXB is NOT 10 MILLI, YOU WILL LOSE\n");
+}

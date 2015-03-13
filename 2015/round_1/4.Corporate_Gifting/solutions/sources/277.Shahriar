@@ -1,0 +1,80 @@
+#include <stdio.h>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+#define MAX 200025
+
+using int64 = long long;
+
+int64 inf;
+
+int n;
+int c1[MAX];
+int64 tc1[MAX], tc2[MAX];
+vector<int> chi[MAX];
+
+void dfs(int i) {
+  if (chi[i].empty()) {
+    tc1[i] = 1;
+    c1[i] = 1;
+
+    tc2[i] = 2;
+    return;
+  }
+
+  // compute subtree info first.
+  for (int j : chi[i]) {
+    dfs(j);
+  }
+
+  // generate 'per-color' conflict list
+  int64 base_tc = 0;
+  int maxcol = max(2, (int)chi[i].size() + 3);
+  vector<vector<int>> vvi(maxcol + 1);
+  for (int j : chi[i]) {
+    base_tc += tc1[j];
+    if (c1[j] > maxcol) continue;
+    vvi[c1[j]].push_back(j);
+  }
+
+  // try all colors from 1 to maxcol
+  tc1[i] = inf;
+  tc2[i] = inf;
+  for (int col = 1; col <= maxcol; ++col) {
+    int64 tc = col + base_tc;
+    for (int j_conflict : vvi[col]) {
+      tc += tc2[j_conflict] - tc1[j_conflict];
+    }
+    if (tc < tc1[i]) {
+      tc2[i] = tc1[i];
+      tc1[i] = tc;
+      c1[i] = col;
+    } else if (tc < tc2[i]) {
+      tc2[i] = tc;
+    }
+  }
+}
+
+int main() {
+  inf = MAX;
+  inf *= inf;
+  
+  int T;
+  scanf("%d", &T);
+  for (int N = 1; N <= T; ++N) {
+    scanf("%d", &n);
+    for (int i = 1; i <= n; ++i) chi[i].clear();
+
+    int p;
+    for (int i = 1; i <= n; ++i) {
+      scanf("%d", &p);
+      chi[p].push_back(i);
+    }
+    
+    dfs(1);
+    printf("Case #%d: %lld\n", N, tc1[1]);    
+  }
+  return 0;
+}
+

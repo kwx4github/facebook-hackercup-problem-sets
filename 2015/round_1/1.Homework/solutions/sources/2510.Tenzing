@@ -1,0 +1,100 @@
+/*
+AUTHOR: Tenzing Shaw
+LANGUAGE: Java
+PROBLEM: Homework
+*/
+
+import java.io.*;
+import java.util.*;
+
+class Homework {
+
+    private static final int BOUND = 10000000;
+    private static List<Integer> primes;
+    private static int[] primacities;
+    private static int[][] lookup; //lookup[i][j] = number of integers with primacity j that are <= i
+
+    private static void generatePrimes() {
+        primes = new ArrayList<Integer>();
+        int bound = BOUND;
+        int sqrtBound = (int)Math.sqrt(bound);
+        BitSet p = new BitSet(bound);
+        p.set(0, p.size() - 1, true);
+        for(int i = 2; i <= sqrtBound; i++)
+            for(int j = i*i; j <= bound; j += i)
+                p.clear(j);
+        for(int i = 2; i <= bound; i++)
+            if(p.get(i))
+                primes.add(i);
+    }
+
+    private static void generatePrimacities() {
+        primacities = new int[10000001];
+        List<Integer> k1 = new ArrayList<Integer>();
+        for(Integer p : primes) {
+            long candidate = p;
+            while(candidate <= BOUND) {
+                k1.add((int)candidate);
+                primacities[(int)candidate] = 1;
+                candidate = candidate * p;
+            }
+        }
+        Collections.sort(k1);
+        List<Integer> prev = k1;
+        for(int k = 2; k <= 8; k++) {
+            List<Integer> ki = new ArrayList<Integer>();
+            for(Integer multiplier : k1) {
+                if(multiplier * prev.get(0) > BOUND) break;
+                for(Integer target : prev) {
+                    long candidate = multiplier * target;
+                    if(candidate > BOUND) break;
+                    if(primacities[(int)candidate] != 0) continue;
+                    primacities[(int)candidate] = k;
+                    ki.add((int)candidate);
+                }
+            }
+            Collections.sort(ki);
+            prev = ki;
+        }
+    }
+
+    private static void generateLookup() {
+        lookup = new int[BOUND+1][9];
+        for(int i = 2; i <= BOUND; i++) {
+            for(int k = 1; k < 9; k++) {
+                lookup[i][k] = lookup[i - 1][k];
+                if(primacities[i] == k) lookup[i][k]++;
+            }
+        }
+    }
+
+    //There are no numbers less than or equal to 10^7 with a primacity of more than 8
+    //So if K > 8, we can return 0
+    //When K = 1, we return all primes in the given range
+    public static int solve(int A, int B, int K) {
+        if(K >= 9) return 0;
+        return lookup[B][K] - lookup[A-1][K];
+    }
+
+    public static void main(String[] args) throws IOException {
+        BufferedReader f = new BufferedReader(new FileReader("Homework.in"));
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("Homework.out")));
+        StringTokenizer st = new StringTokenizer(f.readLine());
+        int T = Integer.parseInt(st.nextToken());
+
+        generatePrimes();
+        generatePrimacities();
+        generateLookup();
+
+        for (int tt = 1; tt <= T; tt++) {
+            st = new StringTokenizer(f.readLine());
+            int A = Integer.parseInt(st.nextToken());
+            int B = Integer.parseInt(st.nextToken());
+            int K = Integer.parseInt(st.nextToken());
+            out.println("Case #" + tt + ": " + solve(A, B, K));
+        }
+
+        out.close();
+        System.exit(0);
+    }
+}

@@ -1,0 +1,164 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+
+namespace CorporateGifting
+{
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			using (var reader = new StreamReader(args[0]))
+			using (var writer = new StreamWriter(args.Length > 1 ? args[1] : args[0].Replace(".in", ".out")) { NewLine = "\n" })
+			{
+				var t = reader.Next<int>();
+				for (int i = 1; i <= t; i++)
+				{
+					var n = reader.Next<int>();
+					var input = reader.Next<int>(n);
+					var manToEmp = new Dictionary<int, List<int>>();
+					for (int j = 1; j <= n; j++)
+					{
+						var manId = input[j-1];
+						if (manId == 0) continue;
+						if (!manToEmp.ContainsKey(manId)) manToEmp[manId] = new List<int>();
+						var empList = manToEmp[manId];
+						empList.Add(j);
+					}
+
+					var res = Solve(manToEmp);
+
+					writer.WriteLine("Case #{0}: {1}", i, res);
+					Console.WriteLine("Case #{0}: {1}", i, res);
+				}
+			}
+		}
+
+		private static int Solve(Dictionary<int, List<int>> manToEmp)
+		{
+			var root = BuildTreeFromEdgeList(manToEmp);
+			Initialize(root);
+			return root.MinPrice;
+		}
+
+		private static Tree BuildTreeFromEdgeList(Dictionary<int, List<int>> manToEmp)
+		{
+			var root = new Tree() { Id = 1 };
+			var queue = new Queue<Tree>();
+			queue.Enqueue(root);
+			while (queue.Count > 0)
+			{
+				var curr = queue.Dequeue();
+				if (!manToEmp.ContainsKey(curr.Id)) continue;
+				foreach (var emp in manToEmp[curr.Id])
+				{
+					var empNode = new Tree() { Id = emp };
+					curr.Childs.Add(empNode);
+					queue.Enqueue(empNode);
+				}
+			}
+
+			return root;
+		}
+
+		private static void Initialize(Tree root)
+		{
+			var s = new Stack<Tree>();
+			s.Push(root);
+			while (s.Count > 0)
+			{
+				var curr = s.Pop();
+				if (curr.AllChildInitialized)
+				{
+					curr.Initialize();
+					continue;
+				}
+				if (curr.Childs != null && curr.Childs.Count > 0)
+				{
+					curr.AllChildInitialized = true;
+					s.Push(curr);
+					for (int i = curr.Childs.Count - 1; i >= 0; i--) s.Push(curr.Childs[i]);
+				}
+				else curr.Initialize();
+			}
+		}
+
+		class Tree
+		{
+			public Tree()
+			{
+				Childs = new List<Tree>();
+			}
+
+			public int Id { get; set; }
+			public List<Tree> Childs { get; private set; }
+
+			public bool AllChildInitialized { get; set; }
+
+			public void Initialize()
+			{
+				if (Childs == null || Childs.Count == 0)
+				{
+					MinPrice = 1;
+					SmallestRootValueWithMinPrice = 1;
+					SecondMinPrice = 2;
+				}
+				else
+				{
+					var rv = 1;
+					var unCollNum = 0;
+					MinPrice = int.MaxValue;
+					SecondMinPrice = int.MaxValue;
+					while (unCollNum < 2)
+					{
+						var coll = Childs.Any(n => n.MinPriceWithoutRootValue(rv) > n.MinPrice);
+						if (!coll) unCollNum++;
+						var price = rv + Childs.Sum(n => n.MinPriceWithoutRootValue(rv));
+						if (price < MinPrice)
+						{
+							SecondMinPrice = MinPrice;
+							MinPrice = price;
+							SmallestRootValueWithMinPrice = rv;
+						}
+						else if (price < SecondMinPrice) SecondMinPrice = price;
+						rv++;
+					}
+				}
+			}
+
+			public int MinPriceWithoutRootValue(int forbiddenRootValue)
+			{
+				if (forbiddenRootValue != SmallestRootValueWithMinPrice) return MinPrice;
+				else return SecondMinPrice;
+			}
+
+			public int MinPrice { get; private set; }
+			private int SmallestRootValueWithMinPrice { get; set; }
+			private int SecondMinPrice { get; set; }
+		}
+	}
+
+	public static class StreamReaderExtensions
+	{
+		private static List<string> currLine;
+
+		public static T Next<T>(this StreamReader reader)
+		{
+			if (currLine == null || !currLine.Any()) currLine = reader.ReadLine().Split(' ').ToList();
+			var res = (T)Convert.ChangeType(currLine[0], typeof(T), CultureInfo.InvariantCulture);
+			currLine.RemoveAt(0);
+			return res;
+		}
+
+		public static T[] Next<T>(this StreamReader reader, int count)
+		{
+			if (currLine == null || !currLine.Any()) currLine = reader.ReadLine().Split(' ').ToList();
+			if (count == 0) count = currLine.Count;
+			var res = currLine.Take(count).Select(i => (T)Convert.ChangeType(i, typeof(T), CultureInfo.InvariantCulture)).ToArray();
+			currLine.RemoveRange(0, count);
+			return res;
+		}
+	}
+}

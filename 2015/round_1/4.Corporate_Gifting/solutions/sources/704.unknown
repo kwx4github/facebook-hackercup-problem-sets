@@ -1,0 +1,142 @@
+//-----------------------------------------------------------------------------
+// >>Code Template<< (for Visual C++ 11)
+
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <functional>
+#include <complex>
+#include <queue>
+#include <stack>
+#include <cmath>
+#include <cassert>
+#include <cstring>
+#include <tuple>
+using namespace std;
+typedef long long LL;
+void END_OF_INPUT_FOR_THIS_TEST_CASE(); // stub for multi-threading
+
+//-----------------------------------------------------------------------------
+// >>Main<<
+
+void case_main( ostream& os )
+{
+	int N; cin>>N;
+	vector<int> p(N);
+	for(int& pi: p) cin>>pi, --pi;
+	END_OF_INPUT_FOR_THIS_TEST_CASE();
+
+	vector<vector<int>> tree(N);
+	for(int i=1; i<p.size(); ++i)
+		tree[p[i]].push_back(i);
+
+	// child-first ordering
+	vector<int> node; {
+		vector<int> depth(N); {
+			queue<int> q;
+			q.push(0);
+			while(!q.empty()) {
+				int v = q.front();
+				q.pop();
+				for(int c: tree[v]) {
+					depth[c] = depth[v]+1;
+					q.push(c);
+				}
+			}
+		}
+		for(int v=0; v<N; ++v)
+			node.push_back(v);
+		sort(node.begin(), node.end(), [&](int a, int b){return depth[a]>depth[b];});
+	}
+
+	const int MAX_USE = 22; //fib >= 200000
+	vector<vector<LL>> dp(N, vector<LL>(MAX_USE+1));
+	for(int v: node) {
+		for(int avoid=0; avoid<=MAX_USE; ++avoid) {
+			LL best = 1LL<<62;
+			for(int s=1; s<=MAX_USE; ++s) if(s!=avoid) {
+				LL score = s;
+				for(int c: tree[v])
+					score += dp[c][s];
+				best = min(best, score);
+			}
+			dp[v][avoid] = best;
+		}
+	}
+
+	os << dp[0][0] << endl;
+}
+
+//-----------------------------------------------------------------------------
+// >>Code Template<< (Multi-Thread Solver)
+
+#if 1
+#undef cout
+#include <windows.h>
+#include <process.h>
+
+static const int THREAD_NUM = 8;
+volatile int     g_id;
+int              g_nCase;
+CRITICAL_SECTION g_cs;
+vector<string>   g_output;
+
+unsigned __stdcall thread_main( void* t_id ) {
+	for(;;) {
+		EnterCriticalSection(&g_cs);
+		const int id = ++g_id;
+		if(id>g_nCase) { LeaveCriticalSection(&g_cs); break; }
+		cerr << setw(4) << id << " @ " << (int)t_id << " start" << endl;
+
+		ostringstream ss;
+		ss << "Case #" << id << ": ";
+		case_main( ss );
+
+		EnterCriticalSection(&g_cs);
+		if(g_output.size()<id) g_output.resize(id);
+		g_output[id-1] = ss.str();
+		cerr << setw(4) << id << " @ " << (int)t_id << " end" << endl;
+		LeaveCriticalSection(&g_cs);
+	}
+	return 0;
+}
+
+void END_OF_INPUT_FOR_THIS_TEST_CASE() { LeaveCriticalSection(&g_cs); }
+
+int main() {
+	cin >> g_nCase;
+	string dummy; getline(cin, dummy);
+
+	InitializeCriticalSection(&g_cs);
+	vector<HANDLE> thread;
+	for(int i=0; i<THREAD_NUM; ++i)
+		thread.push_back( (HANDLE)_beginthreadex(0, 0, &thread_main, (void*)i, 0, 0) );
+	WaitForMultipleObjects( thread.size(), &thread[0], TRUE, INFINITE );
+	DeleteCriticalSection(&g_cs);
+
+	copy( g_output.begin(), g_output.end(), ostream_iterator<string>(cout) );
+}
+
+//-----------------------------------------------------------------------------
+// >>Code Template<< (Single-Thread Solver)
+
+#else
+#undef cout
+void END_OF_INPUT_FOR_THIS_TEST_CASE() {}
+int main() {
+	int nCase; cin >> nCase;
+	string dummy; getline(cin, dummy);
+
+	for(int id=1; id<=nCase; ++id) {
+		cout << "Case #" << id << ": ";
+		case_main( cout );
+	}
+}
+#endif

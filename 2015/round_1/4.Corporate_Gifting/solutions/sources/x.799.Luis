@@ -1,0 +1,121 @@
+// ================================================================================================
+//  pFHC1502D.ac.cpp
+//  Written by Luis Garcia, 2015
+// ================================================================================================
+
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <vector>
+#include <string>
+#include <iterator>
+#include <numeric>
+#include <iostream>
+
+using namespace std;
+
+#if defined _OJ_PROJECT
+_BEGIN_PROBLEM(FHC1502D, "FHC1502D")
+#endif // _OJ_PROJECT
+
+#define infinite_loop for (;;)
+
+struct Node;
+
+struct Edge {
+    Node * child;
+    Edge * nextEdge;
+};
+
+struct Node {
+    Edge * firstEdge, * lastEdge;
+    int bestPrice, bestScore;
+    int bestPrice2, bestScore2;
+};
+
+Node nodeHeap[200100];
+Edge edgeHeap[200100], * edgeHeapOffset = edgeHeap;
+
+Node * nodeQueue[200100];
+
+int main() {
+    static const int max = 0x7fffffff;
+
+    int T, N;
+    scanf("%d", &T);
+
+    for (int _T = 0; _T < T; ++_T) {
+        scanf("%d", &N);
+
+        memset(nodeHeap, 0, sizeof nodeHeap);
+        memset(edgeHeap, 0, sizeof edgeHeap);
+        edgeHeapOffset = edgeHeap;
+
+        for (int i = 0, t; i < N; ++i) {
+            scanf("%d", &t);
+            if (i == 0) continue;
+            if (!nodeHeap[t - 1].firstEdge)
+                nodeHeap[t - 1].firstEdge = nodeHeap[t - 1].lastEdge = edgeHeapOffset++;
+            else
+                nodeHeap[t - 1].lastEdge = nodeHeap[t - 1].lastEdge->nextEdge = edgeHeapOffset++;
+            nodeHeap[t - 1].lastEdge->child = &nodeHeap[i];
+        }
+
+        nodeQueue[0] = &nodeHeap[0];
+        for (int i = 0, q = 1; i < q; ++i)
+            for (Edge * e = nodeQueue[i]->firstEdge; e; e = e->nextEdge)
+                nodeQueue[q++] = e->child;
+
+        for (int i = N - 1; i >= 0; --i) {
+            Node & p = * nodeQueue[i];
+            if (p.firstEdge) {
+                p.bestPrice = max, p.bestScore = max;
+                p.bestPrice2 = max, p.bestScore2 = max;
+
+                int j = 1, found = 0;
+                infinite_loop {
+                    int score = j, k = 0;
+                    for (Edge * e = p.firstEdge; e; e = e->nextEdge) {
+                        Node & q = * e->child;
+                        if (q.bestPrice == j) {
+                            score += q.bestScore2;
+                            ++k;
+                        } else {
+                            score += q.bestScore;
+                        }
+                    }
+
+                    if (k == 0) {
+                        if (score <= p.bestScore) {
+                            p.bestScore2 = p.bestScore, p.bestPrice2 = p.bestPrice;
+                            p.bestScore = score, p.bestPrice = j;
+                        } else if (score <= p.bestScore2) {
+                            p.bestScore2 = score, p.bestPrice2 = j;
+                        }
+                        ++found;
+                    }
+
+                    if (found == 2) break;
+                    ++j;
+                }
+            } else {
+                p.bestPrice = 1, p.bestScore = 1;
+                p.bestPrice2 = 2, p.bestScore2 = 2;
+            }
+        }
+
+        printf("Case #%d: %d\n", _T + 1, nodeHeap[0].bestScore);
+    }
+
+    return 0;
+}
+
+#if defined _OJ_PROJECT
+_END_PROBLEM
+#endif // _OJ_PROJECT
+
+// ================================================================================================
+//  End of file.
+// ================================================================================================

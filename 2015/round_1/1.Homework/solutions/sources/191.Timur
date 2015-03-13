@@ -1,0 +1,139 @@
+package abishev.fb2015.round1;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class Homework implements TaskFactory {
+    final static int N = 10000000;
+    final static int[] PRIMACITY = new int[N + 1];
+
+    static {
+        for (int i = 2; i <= N; i++) {
+            PRIMACITY[i] = calc(i);
+        }
+        System.out.println("finish precalc");
+    }
+
+    static int calc(int value) {
+        int res = 0;
+        int cur = 2;
+        while (cur * cur <= value) {
+            if (value % cur == 0) {
+                res++;
+                while (value % cur == 0) {
+                    value /= cur;
+                }
+            }
+            cur++;
+        }
+        if (value != 1) {
+            res++;
+        }
+        return res;
+    }
+
+    @Override
+    public Task create() {
+        return new Task() {
+            int a, b, k;
+            int ans;
+
+            @Override
+            public void input(Scanner input) {
+                a = input.nextInt();
+                b = input.nextInt();
+                k = input.nextInt();
+            }
+
+            @Override
+            public void run() {
+                ans = 0;
+                for (int i = a; i <= b; i++) {
+                    if (PRIMACITY[i] == k) ans++;
+                }
+            }
+
+            @Override
+            public void output(PrintWriter output) {
+                output.println(ans);
+            }
+        };
+    }
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+//        Runner.run(new Homework());
+        Runner.run(new Homework(), "homework.txt", "homework.out");
+    }
+}
+
+interface TaskFactory {
+    Task create();
+}
+
+interface Task {
+    void input(Scanner input);
+
+    void run();
+
+    void output(PrintWriter output);
+}
+
+class Runner {
+    public static void run(TaskFactory taskFactory, InputStream is, OutputStream os) throws InterruptedException {
+        Scanner input = new Scanner(is);
+        PrintWriter output = new PrintWriter(os);
+        int t = input.nextInt();
+        input.nextLine();
+        List<Task> tasks = Collections.synchronizedList(new ArrayList<Task>());
+        for (int tt = 1; tt <= t; tt++) {
+            Task task = taskFactory.create();
+            task.input(input);
+            tasks.add(task);
+        }
+
+        final AtomicInteger doneTasks = new AtomicInteger(0);
+        final CountDownLatch latch = new CountDownLatch(t);
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        for (final Task task : tasks) {
+            executor.execute(new Runnable() {
+                @Override
+                public void run() {
+                    task.run();
+                    int doneTasksV = doneTasks.incrementAndGet();
+                    if (doneTasksV % 5 == 0) {
+                        System.out.println("*done tasks: " + doneTasksV + "*");
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+        latch.await();
+        executor.shutdown();
+
+        int tt = 0;
+        for (Task task : tasks) {
+            output.print("Case #" + (++tt) + ": ");
+            task.output(output);
+            output.flush();
+        }
+    }
+
+    public static void run(TaskFactory taskFactory) throws InterruptedException {
+        run(taskFactory, System.in, System.out);
+    }
+
+    public static void run(TaskFactory taskFactory, String inFileName, String outFileName) throws IOException, InterruptedException {
+        FileInputStream is = new FileInputStream(new File(inFileName));
+        FileOutputStream os = new FileOutputStream(new File(outFileName));
+        run(taskFactory, is, os);
+        is.close();
+        os.close();
+    }
+}

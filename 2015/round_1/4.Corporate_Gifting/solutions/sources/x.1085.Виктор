@@ -1,0 +1,270 @@
+package facebook_hacker_cup.year_2015.round_1;
+
+import java.io.*;
+import java.util.*;
+
+/**
+ * Created by duviteck. 18 Jan 2015.
+ */
+public class Problem_D_CorporateGifting {
+
+    private static final String FILE_IN = "in.txt";
+    private static final String FILE_OUT = "out.txt";
+
+    private static long ans;
+    private static Deque<Node> traverseQueue = new LinkedList<>();
+
+    public static void main(String[] args) throws IOException {
+        MyReader reader = new MyReader(new FileInputStream(new File(FILE_IN)));
+        PrintWriter writer = new PrintWriter(new File(FILE_OUT));
+
+        int tests = reader.nextInt();
+        for (int i = 1; i <= tests; i++) {
+            int n = reader.nextInt();
+            int[] ar = new int[n];
+            for (int j = 0; j < n; j++) {
+                ar[j] = reader.nextInt();
+            }
+
+            calcAns(ar);
+            writer.format("Case #%d: %d\n", i, ans);
+        }
+        writer.flush();
+    }
+
+    private static void calcAns(int[] input) {
+        ans = 0;
+
+        initQueue(input);
+
+        while (traverseQueue.size() > 0) {
+            Node node = traverseQueue.pollFirst();
+            processNode(node);
+        }
+    }
+
+    private static void initQueue(int[] input) {
+        traverseQueue.clear();
+
+        int n = input.length;
+        Node[] nodes = new Node[n];
+        for (int i = 0; i < n; i++) {
+            nodes[i] = new Node();
+        }
+
+        for (int i = 1; i < n; i++) {
+            nodes[i].addParent(nodes[input[i] - 1]);
+        }
+
+        for (Node node : nodes) {
+            if (node.waitForProcess == 0) {
+                traverseQueue.addLast(node);
+            }
+        }
+    }
+
+    private static void processNode(Node node) {
+        if (node.children.isEmpty()) {
+            node.optimalValue = 1;
+            node.changeCost = 1;
+        } else {
+            long nonExist = findNonExist(node.children.keySet());
+            List<Pair> changeCosts = calcChangeCosts(node.children);
+
+            // define optimal
+            Triplet bestChange = findBestChange(changeCosts);   // TODO: can de slowed, but become more readable
+            long bestChangeCost = bestChange.value + bestChange.changeCost;
+            if (nonExist < bestChangeCost) {
+                node.optimalValue = nonExist;
+            } else if (nonExist > bestChangeCost) {
+                ans += bestChange.changeCost;
+                node.optimalValue = bestChange.value;
+                if (bestChange.isMultiple) {
+                    node.changeCost = 0;
+                }
+            } else {
+                node.optimalValue = nonExist;
+                node.changeCost = 0;
+            }
+
+            // define changeCost
+            defineChangeCost(node, changeCosts);
+        }
+
+        ans += node.optimalValue;
+        node.registerChildForParent();
+    }
+
+    private static long findNonExist(Set<Long> existSet) {
+        long size = existSet.size();
+        for (long i = 1; i <= size; i++) {
+            if (!existSet.contains(i)) {
+                return i;
+            }
+        }
+        return size + 1;
+    }
+
+    private static List<Pair> calcChangeCosts(Map<Long, List<Node>> children) {
+        List<Pair> res = new ArrayList<>(children.size());
+        for (Map.Entry<Long, List<Node>> entry : children.entrySet()) {
+            long changeCost = 0;
+            for (Node node : entry.getValue()) {
+                changeCost += node.changeCost;
+            }
+            res.add(new Pair(entry.getKey(), changeCost));
+        }
+        return res;
+    }
+
+    private static Triplet findBestChange(List<Pair> changeCosts) {
+        Triplet res = new Triplet(0, 0, false);
+        long bestCost = Long.MAX_VALUE;
+        for (Pair pair : changeCosts) {
+            long cost = pair.value + pair.changeCost;
+            if (res.value == 0 || bestCost > cost) {
+                res.value = pair.value;
+                res.changeCost = pair.changeCost;
+                res.isMultiple = false;
+                bestCost = cost;
+            } else if (bestCost == cost) {
+                res.isMultiple = true;
+            }
+        }
+        return res;
+    }
+
+    private static void defineChangeCost(Node node, List<Pair> changeCosts) {
+        if (node.changeCost > -1) {
+            return;
+        }
+
+        HashSet<Long> temp = new HashSet<>(node.children.keySet());
+        temp.add(node.optimalValue);
+        long bestChangeCost = findNonExist(temp) - node.optimalValue;   // TODO: should be > 0
+
+        for (Pair pair : changeCosts) {
+            long newChangeCost = pair.value - node.optimalValue + pair.changeCost;
+            if (newChangeCost < bestChangeCost) {
+                bestChangeCost = newChangeCost;
+            }
+        }
+        node.changeCost = bestChangeCost;
+    }
+
+
+    private static class Node {
+        long optimalValue;
+        long changeCost = -1;
+        Map<Long, List<Node>> children = new HashMap<>();
+        Node parent;
+        int waitForProcess;
+
+        public void registerChildForParent() {
+            if (parent != null) {
+                Map<Long, List<Node>> parentChildren = parent.children;
+                List<Node> valueChildren = parentChildren.get(optimalValue);
+                if (valueChildren == null) {
+                    valueChildren = new ArrayList<>();
+                    valueChildren.add(this);
+                    parentChildren.put(optimalValue, valueChildren);
+                } else {
+                    valueChildren.add(this);
+                }
+
+                parent.waitForProcess--;
+                if (parent.waitForProcess == 0) {
+                    traverseQueue.addLast(parent);
+                }
+            }
+        }
+
+        public void addParent(Node parent) {
+            this.parent = parent;
+            parent.waitForProcess++;
+        }
+    }
+
+
+    private static class Pair {
+        long value;
+        long changeCost;
+
+        public Pair(long value, long changeCost) {
+            this.value = value;
+            this.changeCost = changeCost;
+        }
+    }
+
+
+    private static class Triplet {
+        long value;
+        long changeCost;
+        boolean isMultiple;
+
+        public Triplet(long value, long changeCost, boolean isMultiple) {
+            this.value = value;
+            this.changeCost = changeCost;
+            this.isMultiple = isMultiple;
+        }
+    }
+
+
+    private static class MyReader {
+        BufferedInputStream in;
+
+        final int bufSize = 1 << 16;
+        final byte b[] = new byte[bufSize];
+
+        MyReader(InputStream in) {
+            this.in = new BufferedInputStream(in, bufSize);
+        }
+
+        int nextInt() throws IOException {
+            int c;
+            while ((c = nextChar()) <= 32);
+
+            int x = 0, sign = 1;
+            if (c == '-') {
+                sign = -1;
+                c = nextChar();
+            }
+            while (c >= '0') {
+                x = x * 10 + (c - '0');
+                c = nextChar();
+            }
+            return x * sign;
+        }
+
+        StringBuilder _buf = new StringBuilder();
+
+        String nextWord() throws IOException {
+            int c;
+            _buf.setLength(0);
+            while ((c = nextChar()) <= 32)
+                ;
+            while (c > 32) {
+                _buf.append((char) c);
+                c = nextChar();
+            }
+            return _buf.toString();
+        }
+
+        int bn = bufSize, k = bufSize;
+
+        int nextChar() throws IOException {
+            if (bn == k) {
+                k = in.read(b, 0, bufSize);
+                bn = 0;
+            }
+            return bn >= k ? -1 : b[bn++];
+        }
+
+        int nextNotSpace() throws IOException {
+            int ch;
+            while ((ch = nextChar()) <= 32 && ch != -1)
+                ;
+            return ch;
+        }
+    }
+}

@@ -1,0 +1,115 @@
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <climits>
+
+using namespace std;
+
+const int MAX_N = 200000;
+
+struct Node
+{
+  int minsum;
+  int rcolor;
+  int delta;
+  int ncolor;
+  int nosons;
+  int son;
+  int brother;
+  vector<int> children;
+
+  Node() {
+    nosons = 0;
+    brother = son = -1;
+  }
+
+  void add(int c, vector<Node> &tree)
+  {
+    nosons++;
+    children.push_back(c);
+    son = children[0];
+    if (nosons > 1) {
+      tree[children[nosons-2]].brother = children[nosons-1];
+    }
+  }
+};
+
+void traverse(const vector<Node> &tree, vector<int> &preorder, int root)
+{
+  preorder.push_back(root);
+  for (auto c : tree[root].children) {
+    traverse(tree, preorder, c);
+  }
+}
+
+int solve()
+{
+  int N;
+  cin >> N;
+  
+  vector<int> coloradd(N+10);
+  vector<Node> tree(N+1);
+
+  for (int i = 1; i <= N; i++) {
+    int parent;
+    cin >> parent;
+    tree[parent].add(i, tree);
+  }
+
+  vector<int> preorder;
+  traverse(tree, preorder, 1);
+
+  for (int t = N-1; t >= 0; t--) {
+    int i = preorder[t];
+    if (tree[i].nosons == 0) {
+      tree[i].minsum = 1;
+      tree[i].rcolor = 1;
+      tree[i].delta = 1;
+      tree[i].ncolor = 2;
+    } else {
+      int son = tree[i].son;
+      int mintotal = 0;
+      for (int K = 1; K <= tree[i].nosons+2; K++) {
+	coloradd[K] = K;
+      }
+      for (int K = 1; K <= tree[i].nosons; K++) {
+	mintotal += tree[son].minsum;
+	coloradd[tree[son].rcolor] += tree[son].delta;
+	son = tree[son].brother;
+      }
+      int sum1 = INT_MAX, sum2 = INT_MAX;
+      int color1, color2;
+      
+      for (int K = 1; K <= tree[i].nosons+2; K++) {
+	int value = coloradd[K];
+	if (value < sum1) {
+	  color2 = color1;
+	  sum2 = sum1;
+	  color1 = K;
+	  sum1 = value;
+	} else if (value < sum2) {
+	  color2 = K;
+	  sum2 = value;
+	}
+      }
+
+      tree[i].minsum = sum1 + mintotal;
+      tree[i].rcolor = color1;
+      tree[i].delta = sum2 - sum1;
+      tree[i].ncolor = color2;
+    }
+  }
+
+  return tree[1].minsum;
+}
+
+int main()
+{
+  int T;
+  cin >> T;
+  for (int c = 1; c <= T; c++) {
+    cout << "Case #" << c << ": " << solve() << endl;
+  }
+
+  return 0;
+}

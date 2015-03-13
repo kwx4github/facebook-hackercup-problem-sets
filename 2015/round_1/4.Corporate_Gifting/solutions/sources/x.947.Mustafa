@@ -1,0 +1,101 @@
+#include <algorithm>
+#include <iostream>
+#include <memory>
+#include <stack>
+#include <utility>
+#include <vector>
+
+struct Employee
+{
+	int managerId;
+	std::vector<int> childrenIds;
+};
+
+// Each employee can give gifts of 1$, 2$ or 3$
+// This struct represents minimum cost when this employee gifts X$
+struct GiftOptions
+{
+	int totalCost1 = 1;
+	int totalCost2 = 2;
+	int totalCost3 = 3;
+};
+
+const int CEO = 1;
+
+int SolveCase()
+{
+	int N;
+	std::cin >> N;
+
+	std::vector< Employee > employees(N + 1);
+	std::vector< GiftOptions > giftOptions(N + 1);
+	std::vector< bool > processed(N + 1, false);
+
+	for (int i = 1; i <= N; ++i)
+	{
+		int managerId;
+		std::cin >> managerId;
+
+		employees[i].managerId = managerId;
+		employees[managerId].childrenIds.push_back(i);
+	}
+
+	// Don't do recursion here, as limits might cause stackoverflow
+
+	// employee -> nextChild to visit
+	std::stack< std::pair<int, int> > giftChain;
+	giftChain.push( std::make_pair(1, 0) );
+
+	while (giftChain.size())
+	{
+		int eId = giftChain.top().first;
+		int nextChild = giftChain.top().second;
+		if (nextChild == employees[eId].childrenIds.size())
+		{
+			processed[eId] = true;
+			giftChain.pop();
+			continue;
+		}
+
+		int chId = employees[eId].childrenIds[nextChild];
+		if (!processed[chId])
+		{
+			giftChain.push( std::make_pair(chId, 0) );
+			continue;
+		}
+
+		// Can now get gifts from the next child
+		giftOptions[eId].totalCost1 += std::min(
+		  giftOptions[chId].totalCost2,
+		  giftOptions[chId].totalCost3
+		);
+		giftOptions[eId].totalCost2 += std::min(
+		  giftOptions[chId].totalCost1,
+		  giftOptions[chId].totalCost3
+		);
+		giftOptions[eId].totalCost3 += std::min(
+		  giftOptions[chId].totalCost1,
+		  giftOptions[chId].totalCost2
+		);
+
+		giftChain.top().second++;
+	}
+
+	return std::min({giftOptions[CEO].totalCost1,
+	                 giftOptions[CEO].totalCost2,
+	                 giftOptions[CEO].totalCost3});
+}
+
+int main()
+{
+	int T;
+	std::cin >> T;
+
+	for (int tc = 1; tc <= T; ++tc)
+	{
+		int res = SolveCase();
+		std::cout << "Case #" << tc << ": " << res << "\n";
+	}
+
+	return 0;
+}

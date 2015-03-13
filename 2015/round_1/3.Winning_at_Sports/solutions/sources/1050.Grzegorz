@@ -1,0 +1,141 @@
+#ifndef NUMBER_THEORY_H_
+#define NUMBER_THEORY_H_
+
+#include <cassert>
+#include <cstdlib>
+#include <algorithm>
+
+template<typename T> T gcd(T a, T b)
+{ while(b){ T c=a%b; a=b; b=c; } return a; }
+
+template<typename T>
+T euclid(T a, T b, T &x, T &y)
+{
+	if(a<0){ T d = euclid(-a,b,x,y); x=-x; return d; }
+	if(b<0){ T d = euclid(a,-b,x,y); y=-y; return d; }
+	if(!b){ x = 1; y = 0; return a; }
+	T d = euclid(b,a%b,y,x); y -= a/b*x; return d;
+}
+
+//fast power mod
+template<typename T>
+T pow_mod(T a, T b, T m)
+{
+	T res = 1%m;
+	while(b)
+	{
+		if(b&1) res = (res*a)%m;
+		a = (a*a)%m;
+		b >>= 1;
+	}
+	return res;
+}
+
+//Fermat's small theorem
+//@param p has to be prime
+template<typename T, bool debug = 0>
+T inv_mod_pri(T a, T p)
+{
+	T x = pow_mod(a,p-2,p);
+	if(debug) assert(a*x%p==1);
+	return x;
+}
+
+//@param a,b have to be coprime
+template<typename T, bool debug = 0>
+T inv_mod(T a, T b)
+{
+	T x,y; euclid(a,b,x,y);
+	if(debug) assert(a*x%b==1);
+	return x;
+}
+
+/**
+ * @brief calculates inv[], where i*inv[i] % p == 1 for i \in [1..p-1]
+ *   complexity O(p)
+ *   can be modified to only calculate a prefix of inv
+ * @param inv output array of size p
+ * @param p has to be prime
+ */
+template<typename T, bool debug = 0>
+void inv_mod_pri(T inv[], T p)
+{
+	if(debug) assert(p>1); // TODO: primality test
+	inv[0] = 0; // arbitrary decision
+	inv[1] = 1;
+	for(T i=2; i<p; ++i) inv[i] = p - inv[p%i]*(p/i)%p;
+	if(debug) for(T i=1; i<p; ++i) assert(i*inv[i]%p==1);
+}
+
+//congruential equation system
+//@arg B[] have to be coprime
+template<typename T>
+T congruential_solution(const T A[], const T B[], size_t n)
+{
+	T M = 1, res = 0;
+	for(size_t i=0; i<n; ++i) M *= B[i];
+	for(size_t i=0; i<n; ++i)
+		res = (res+M/B[i]*inv_mod(M/B[i],B[i])%M*A[i]%M)%M;
+	return res;
+}
+
+//binomial
+template<typename T> T small_binom(T n, T k)
+{
+	if((k = std::min(k,n-k))<0) return 0;
+	T res = 1;
+	for(T i=1; i<=k; ++i) res = res*(n-i+1)/i;
+	return res;
+}
+
+template<typename T, size_t n_max, bool debug = 0>
+struct Binom
+{
+	Binom()
+	{
+		for(size_t i=0; i<n_max; ++i){ A[0][i] = 0; A[i][0] = 1; }
+		for(size_t n=1; n<n_max; ++n) for(size_t k=1; k<n_max; ++k)
+			A[n][k] = A[n-1][k-1]+A[n-1][k];
+	}
+
+	template<typename Mod> Binom(Mod m)
+	{
+		for(size_t i=0; i<n_max; ++i){ A[0][i] = 0%m; A[i][0] = 1%m; }
+		for(size_t n=1; n<n_max; ++n) for(size_t k=1; k<n_max; ++k)
+			A[n][k] = (Mod(A[n-1][k-1])+Mod(A[n-1][k]))%m;
+	}
+
+	T operator()(size_t n, size_t k) const
+	{
+		if(debug) assert(n<n_max && k<n_max);
+		return A[n][k];
+	}
+
+	T A[n_max][n_max];
+};
+
+#endif  // NUMBER_THEORY_H_
+
+#include <cstdint>
+
+#define REP(i,n) for(int i=0; i<(n); ++i)
+
+typedef uint64_t ULL;
+
+enum { P = 1000000007 };
+
+Binom<ULL,4010> BN(P);
+
+int main()
+{
+  int t; scanf("%d",&t);
+  REP(_,t)
+  {
+    int n,m; scanf("%d-%d",&n,&m);
+    //printf("%d %d\n",n,m);
+    ULL a = (BN(n+m-1,m)-BN(n+m-1,m-1)+P)%P;
+    ULL b = (BN(2*m,m)-BN(2*m,m-1)+P)%P;
+    printf("Case #%d: %llu %llu\n",_+1,a,b);
+  }
+  return 0;
+}

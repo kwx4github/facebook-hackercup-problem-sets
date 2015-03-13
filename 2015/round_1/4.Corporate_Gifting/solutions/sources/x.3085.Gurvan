@@ -1,0 +1,166 @@
+import java.awt.*;
+import java.awt.geom.*;
+import java.io.*;
+import java.math.*;
+import java.text.*;
+import java.util.*;
+
+public class Gifting {
+	static InputStream inputStream;
+	static OutputStream outputStream;
+	private static BufferedReader br;
+	private static StringTokenizer st;
+	private static PrintWriter pw;
+
+	//	class Cost {
+	//		int first;
+	//		int firstCost;
+	//		int second;
+	//		int secondCost;
+	//		
+	//		Cost(int a, int b, int c, int d);
+	//	}
+	
+	private static void computeLevels(ArrayList<ArrayList<Integer> > level, ArrayList<Integer>[] subs, int i, int lev) {
+		if (subs[i] == null) return;
+		else { 
+			if (level.size() <= lev+1)
+				level.add(new ArrayList<Integer>());
+			for (Integer j : subs[i]) {
+				level.get(lev+1).add(j);
+			}
+			for (Integer j : subs[i]) {
+				computeLevels(level, subs, j, lev+1);
+			}
+		}
+	}
+	
+	private static boolean computeNextLevel(ArrayList<ArrayList<Integer> > level, ArrayList<Integer>[] subs, int lev) {
+		boolean last = true;
+		for (Integer i : level.get(lev)) {
+			if (subs[i] == null) continue;
+			if (level.size() <= lev+1) {
+				last = false;
+				level.add(new ArrayList<Integer>());
+			}
+			for (Integer j : subs[i]) {
+				level.get(lev+1).add(j);
+			}
+		}
+		return last;
+	}
+
+	public static void main(String[] args) throws IOException	{
+
+		ArrayList<Integer>[] subs;
+		ArrayList<ArrayList<Integer> > level;
+		int[][] costs;
+		
+
+		int N;
+		int sup;
+		boolean done = true;
+		int attempt, cost;
+
+		inputStream = new FileInputStream("d:\\Téléchargements\\corporate_gifting.txt");
+//		inputStream = new FileInputStream("d:\\input.txt");
+		outputStream = new FileOutputStream("d:\\output.txt");
+		br = new BufferedReader(new InputStreamReader(inputStream));
+//		pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.out)));
+		pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+		final int MAX_NUM_CASE = readInt();
+		for(int qq = 1; qq <= MAX_NUM_CASE; qq++)	{
+			pw.print("Case #" + qq + ": ");
+			
+			N = readInt();
+			subs = (ArrayList<Integer>[]) new ArrayList[N+1];
+			level = new ArrayList<ArrayList<Integer> >();
+			costs = new int[N+1][];
+			
+			// Finding out subs
+			for (int i = 1; i<=N; i++) {
+				costs[i] = new int[4];
+				sup = readInt();
+				if (subs[sup] == null)
+					subs[sup] = new ArrayList<Integer>();
+				subs[sup].add(i);
+			}
+			
+			// Computing level through BFS
+			level.add(new ArrayList<Integer>());
+			level.get(0).add(1);
+//			computeLevels(level, subs, 1, 0);
+			int l = 0;
+			while (!computeNextLevel(level, subs, l))
+				l++;
+			
+			// Computing costs bottom up
+			for (int lev = level.size()-1; lev>=0; lev--) {
+				for (Integer i : level.get(lev)) {
+//			for (int i = N; i>=1; i--) {
+					if (subs[i] == null) {
+						costs[i][0] = 1;
+						costs[i][1] = 1;
+						costs[i][2] = 2;
+						costs[i][3] = 2;
+					} else {
+						costs[i][1] = Integer.MAX_VALUE;
+						costs[i][3] = Integer.MAX_VALUE;
+						done = false;
+						attempt = 0;
+						while (!done) {
+							done = true;
+							attempt++;
+							cost = attempt;
+							for (Integer j : subs[i]) {
+								if (costs[j][0] == attempt) {
+									done = false;
+									cost += costs[j][3];
+								} else
+									cost += costs[j][1];
+							}
+							if (cost < costs[i][1]) {
+								costs[i][3] = costs[i][1];
+								costs[i][2] = costs[i][0];
+								costs[i][1] = cost;
+								costs[i][0] = attempt;
+							} else if (cost < costs[i][3]) {
+								costs[i][3] = cost;
+								costs[i][2] = attempt;
+							}
+							done &= (costs[i][3] != Integer.MAX_VALUE);
+						}
+					}
+				}
+			}
+			pw.println(costs[1][1]);
+		}
+		pw.close();
+
+	}
+
+	/* NOTEBOOK CODE */
+
+	private static long readLong() throws IOException	{
+		return Long.parseLong(nextToken());
+	}
+
+	private static double readDouble() throws IOException	{
+		return Double.parseDouble(nextToken());
+	}
+
+	private static int readInt() throws IOException	{
+		return Integer.parseInt(nextToken());
+	}
+
+	private static String nextToken() throws IOException	{
+		while(st == null || !st.hasMoreTokens())	{
+			if(!br.ready())	{
+				pw.close();
+				System.exit(0);
+			}
+			st = new StringTokenizer(br.readLine().trim());
+		}
+		return st.nextToken();
+	}
+}

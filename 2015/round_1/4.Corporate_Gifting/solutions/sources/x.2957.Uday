@@ -1,0 +1,161 @@
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.TreeSet;
+
+/**
+ *
+ * @author Uday Kandpal
+ */
+public class CorporateGifting {
+
+    static Comparator<Graph> byTopoIndex = new Comparator<Graph>() {
+
+        @Override
+        public int compare(Graph o1, Graph o2) {
+            if (o1.reverseTopoIndex < o2.reverseTopoIndex) {
+                return -1;
+            } else if (o1.reverseTopoIndex == o2.reverseTopoIndex) {
+                return 0;
+            } else {
+                return 1;
+            }
+        }
+    };
+
+    static class Graph {
+
+        int reverseTopoIndex = 0;
+        Graph parent = null;
+        ArrayList<Graph> children = new ArrayList<>();
+        int id;
+        int weight = -1;
+        //boolean assignedColor = false;
+
+        public Graph(int _id) {
+            id = _id;
+        }
+
+        @Override
+        public String toString() {
+            return "Node[revTopoIndex: " + reverseTopoIndex + ", id=" + id + ", weight :" + weight + "]";
+        }
+
+        public void setWeight(int _weight) {
+            weight = _weight;
+        }
+
+        public void addParent(Graph g) {
+            g.reverseTopoIndex = Math.max(g.reverseTopoIndex, reverseTopoIndex + 1);
+            g.children.add(this);
+            parent = g;
+        }
+
+        public Graph getParent() {
+            return parent;
+        }
+
+        public ArrayList<Graph> getChildren() {
+            return children;
+        }
+
+        public ArrayList<Graph> getAdjacentNodes() {
+            ArrayList<Graph> adj = new ArrayList<>();
+            if (parent != null) {
+                adj.add(parent);
+            }
+            adj.addAll(children);
+            return adj;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new FileReader("corporate_gifting.txt"));
+        BufferedWriter bw = new BufferedWriter(new FileWriter("corporate_gifting_out.txt"));
+        int caseNo = 1;
+        int t = Integer.parseInt(br.readLine());
+        while (t-- > 0) {
+            int n = Integer.parseInt(br.readLine());
+            int colors[] = new int[n];
+            String[] nodeInfo = br.readLine().trim().split(" ");
+            ArrayList<Graph> nodes = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                nodes.add(new Graph(i));
+            }
+            ArrayList<String> myList = new ArrayList<>();
+            for (int i = 0; i < n; i++) {
+                myList.add(Integer.parseInt(nodeInfo[i]) + "_" + i);
+            }
+            Collections.sort(myList, new Comparator<String>() {
+
+                @Override
+                public int compare(String o1, String o2) {
+                    int n1 = Integer.parseInt(o1.trim().split("_")[0]);
+                    int n2 = Integer.parseInt(o2.trim().split("_")[0]);
+                    if (n1 < n2) {
+                        return 1;
+                    } else if (n1 == n2) {
+                        return 0;
+                    } else {
+                        return -1;
+                    }
+                }
+            });
+            Iterator<String> it = myList.iterator();
+            //System.err.println(myList);
+            while (it.hasNext()) {
+                String x[] = it.next().trim().split("_");
+                int i = Integer.parseInt(x[1]);
+                int parentIndex = Integer.parseInt(x[0]);
+
+                if (parentIndex != 0) {
+                    //System.out.println("parentIndex : " + (parentIndex - 1) + ", index : " + i);
+                    nodes.get(i).addParent(nodes.get(parentIndex - 1));
+                }
+            }
+            Collections.sort(nodes, CorporateGifting.byTopoIndex);
+            int weight = 1;
+            if (n == 1) {
+                nodes.get(0).weight = 1;
+            } else {
+                for (int i = 0; i < n; i++) {
+                    Graph current = nodes.get(i);
+                    weight = calculateWeightFor(current, n, weight);
+                    current.setWeight(weight);
+                }
+            }
+            long sum = 0;
+            for (int i = 0; i < n; i++) {
+                sum += nodes.get(i).weight;
+            }
+           // System.err.println(nodes);
+            bw.write("Case #" + caseNo + ": " + sum + "\n");
+            caseNo++;
+        }
+        bw.close();
+    }
+
+    private static int calculateWeightFor(Graph current, int n, int weight) {
+        ArrayList<Graph> adjacent = current.getAdjacentNodes();
+        ArrayList<Integer> weights = new ArrayList<>();
+        for (Graph node : adjacent) {
+            if (node.weight != -1) {
+                weights.add(node.weight);
+            }
+        }
+        TreeSet<Integer> wei = new TreeSet<Integer>(weights);
+        for (int j = 1; j <= n; j++) {
+            if (!wei.contains(j)) {
+                weight = j;
+                break;
+            }
+        }
+        return weight;
+    }
+}

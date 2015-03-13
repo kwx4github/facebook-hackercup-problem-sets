@@ -1,0 +1,52 @@
+module Main where
+
+import Control.Monad
+import Data.List (foldl')    
+import Text.Printf
+import qualified Data.Map as M
+    
+data Trie = Node { charMap  :: (M.Map Char Trie)
+                 , numWords :: Int
+                 }
+          deriving (Show, Eq)
+
+emptyTrie :: Trie
+emptyTrie = Node M.empty 0
+
+trieMove :: Char -> Trie -> Trie
+trieMove c t = case M.lookup c (charMap t) of
+                 Just t' -> t'
+                 Nothing -> emptyTrie
+
+trieInsert :: String -> Trie -> Trie
+trieInsert [] t = t { numWords = 1 + nw }
+    where nw = numWords t
+trieInsert (c:cs) t = t { charMap = M.insert c (trieInsert cs $ trieMove c t) cm
+                        , numWords = 1 + nw
+                        }
+    where cm = charMap t
+          nw = numWords t
+
+trieLookup :: String -> Trie -> Int
+trieLookup word trie = rec 0 word trie
+    where rec :: Int -> String -> Trie -> Int
+          rec d [] _ = d
+          rec d (c:cs) t | numWords t == 1 && d /= 0 = d
+                         | otherwise = rec (d + 1) cs ((charMap t) M.! c)
+
+solve :: [String] -> Int
+solve ws = fst $ foldl' update (0, emptyTrie) ws
+    where update :: (Int, Trie) -> String -> (Int, Trie)
+          update (s, t) w = (s + (trieLookup w t'), t')
+              where t' = trieInsert w t
+
+readInt :: IO Int
+readInt = liftM read getLine
+
+main :: IO ()
+main = do
+  numTests <- readInt
+  forM_ [1 .. numTests] $ \testNum -> do
+         numWords <- readInt
+         result   <- liftM solve $ replicateM numWords getLine
+         printf "Case #%d: %d\n" testNum result

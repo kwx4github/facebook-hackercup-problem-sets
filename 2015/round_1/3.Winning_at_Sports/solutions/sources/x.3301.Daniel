@@ -1,0 +1,77 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+	"strings"
+)
+
+var mod = big.NewInt(1000000007)
+
+type Key struct {
+	a, b int
+}
+
+var one = big.NewInt(1)
+
+func stress_help(a, b, c int, memoize map[Key]*big.Int) *big.Int {
+	if a == 0 && b == 0 {
+		return one
+	}
+	if mem, ok := memoize[Key{a, b}]; ok {
+		return mem
+	}
+
+	var sum = big.NewInt(0)
+	if a > b+c || b == 0 {
+		sum.Add(sum, stress_help(a-1, b, c, memoize))
+	}
+	if b > 0 {
+		sum.Add(sum, stress_help(a, b-1, c, memoize))
+	}
+	memoize[Key{a, b}] = sum
+
+	return sum
+}
+
+var stress_free_memoize = make(map[Key]*big.Int)
+
+func stress_free(a, b int) *big.Int {
+	return stress_help(a, b, 1, stress_free_memoize)
+}
+
+var stressful_memoize = make(map[Key]*big.Int)
+
+func stressful(a, b int) *big.Int {
+	if a >= b {
+		return stressful(a-1, b)
+	}
+
+	return stress_help(b, a, 0, stressful_memoize)
+}
+
+func main() {
+	file, err := os.Open(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Scan()
+	T, _ := strconv.Atoi(scanner.Text())
+	for i := 1; i <= T; i++ {
+		scanner.Scan()
+		t := strings.Split(scanner.Text(), "-")
+		a, _ := strconv.Atoi(t[0])
+		b, _ := strconv.Atoi(t[1])
+
+		sf := stress_free(a, b)
+		s := stressful(a, b)
+		fmt.Printf("Case #%d: %d %d\n", i, sf.Mod(sf, mod), s.Mod(s, mod))
+	}
+}

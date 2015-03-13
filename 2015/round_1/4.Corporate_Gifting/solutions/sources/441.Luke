@@ -1,0 +1,66 @@
+'''
+Created on 18 Jan 2015
+
+@author: luke
+'''
+from _collections import defaultdict
+
+class Tree():
+    def __init__(self, N, parents):
+        self.N = N
+        self.children = [[] for i in xrange(N)]
+        for child, parent in enumerate(parents):
+            if parent == -1:
+                self.root = child
+            else:
+                self.children[parent].append(child)
+            
+    # Give the employees in an order where each person is listed before their supervisor.
+    def appraisalOrder(self):
+        q = [self.root]
+        for parent in q:
+            for child in self.children[parent]:
+                q.append(child)
+        return q[::-1]
+
+    def solve(self):
+        # We will proceed from the lowliest employee to the high worthy CEO, calculating for each person
+        # The minimum amount her and her direct or indirect reports would have to spend, depending on
+        # what choice her manager will make.
+        
+        # To do so, we actually just need to calculate the minimum amount for her and her reports in any situation
+        # and the minimum amount for her and her reports where she buys something different than in the best situation
+        
+        bests = [(1,1) for i in xrange(self.N)] # (thing to buy, total amount spent by self, direct and indirect reports) 
+        secondbests = [(2,2) for i in xrange(self.N)]
+
+        for employee in self.appraisalOrder():
+            if len(self.children[employee]) == 0:
+                continue 
+            base = 0
+            effects = defaultdict(int)
+            for report in self.children[employee]:
+                (reportChoice, reportSum) = bests[report]
+                (_, reportNextSum) = secondbests[report]
+                base += reportSum
+                effects[reportChoice] += reportNextSum - reportSum
+            otherchoices = sorted(list(set([k for k in xrange(1,3) if k not in effects] + 
+                                           [z + k for z in effects for k in xrange(1,3) if z + k not in effects])))[:2]
+            costs = sorted([(z+base+effects[z],z) for z in effects]+[(base+choice,choice) for choice in otherchoices])[:2]
+            bests[employee] = (costs[0][1], costs[0][0])
+            secondbests[employee] = (costs[1][1], costs[1][0])
+        
+        return bests[self.root][1]
+            
+input = open("corporate_gifting.txt")
+output = open("corporate_gifting_output.txt", "w")
+
+numCases = int(input.readline())
+for caseIndex in xrange(1, 1 + numCases):
+    N = int(input.readline())
+    print "Case #%d of %d: %d employees" % (caseIndex, numCases, N)
+    T = Tree(N, list(int(z) - 1 for z in input.readline().split()))
+    ans = T.solve()
+    output.write("Case #%d: %d\n" % (caseIndex, ans))
+    print "Solved: Answer = %d\n" % ans
+    

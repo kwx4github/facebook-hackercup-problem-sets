@@ -1,0 +1,59 @@
+{-# LANGUAGE BangPatterns #-}
+import qualified Data.Map as M
+import Control.Monad
+import Text.Printf
+import Test.QuickCheck
+import Data.List hiding (insert)
+
+data Tree = Leaf String | Node (M.Map Char Tree) deriving(Show)
+
+empty :: Tree
+empty = Leaf ""
+
+insert :: String -> Tree -> Tree
+insert "" t = t
+insert (c:cs) (Leaf "") = Node (M.singleton c (Leaf cs))
+insert (c:cs) (Leaf (c':cs')) 
+    | c == c' = Node (M.singleton c (insert cs (Leaf cs')))
+    | otherwise = Node (M.fromList [(c,Leaf cs),(c',Leaf cs')])
+insert (c:cs) (Node tbl) 
+    | M.member c tbl = Node $ M.insert c (insert cs (tbl M.! c)) tbl
+    | otherwise = Node $ M.insert c (Leaf cs) tbl
+
+depth :: String -> Tree -> Int
+depth "" _ = 0
+depth s  (Leaf s') | s == s' = 0
+depth (c:cs)  (Node tbl) = 1 + depth cs (tbl M.! c)
+
+main :: IO ()
+main = do
+    tests <- readLn :: IO Int
+    forM_ [1..tests] $ \caseNum -> do
+        n <- readLn
+        ss <- replicateM n getLine
+        printf "Case #%d: %d\n" caseNum (solve ss)
+
+solve :: [String] -> Int
+solve ss = snd res where
+    res = foldl (\(t,!count) s -> 
+                    let t' = insert s t in 
+                    let d  = count + depth s t' in
+                    (t',d)) (empty,0) ss
+
+
+naive :: [String] -> Int
+naive ss = snd $ foldl (\(prev,count) s -> 
+            let n = length s in
+            let check i = (i == n) 
+                    || all (\s' -> not $ isPrefixOf (take i s) s') prev in
+            let c = minimum [ i | i <- [1..length s], check i ] in
+            (s:prev,count+c)) ([],0) ss
+
+gen :: Gen [String]
+gen = sized $ \s -> do
+    n <- choose (1,s)
+    replicateM n $ do
+        c <- choose (1,s)
+        replicateM c (choose ('a','b'))
+
+prop_safe = forAll gen (\ss -> solve ss == naive ss)

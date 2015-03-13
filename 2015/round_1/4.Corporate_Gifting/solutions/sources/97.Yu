@@ -1,0 +1,140 @@
+package fhc2015a1.d;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class Main {
+
+	static final String FILENAME = "corporate_gifting.txt";
+	static final boolean LOCAL = false;
+
+	Scanner sc;
+
+	// you are given a rooted tree with N <= 200,000.
+	// you must be assign a value to each nodes in such a way that
+	// * 1 <= value <= N
+	// * a value of the node is differ from the it's parent's value.
+	// what is a minimum sum of the values?
+	void solve() {
+		int n = sc.nextInt();
+		ns = new Node[n];
+		for (int i = 0; i < n; i++) ns[i] = new Node(i);
+		for (int i = 0; i < n; i++) {
+			int p = sc.nextInt() - 1;
+			if (p >= 0) {
+				ns[i].parent = ns[p];
+				ns[p].deg++;
+			}
+		}
+		for (int i = 0; i < n; i++) ns[i].childs = new Node[ns[i].deg];
+		for (int i = 1; i < n; i++) ns[i].parent.addChild(ns[i]);
+		for (int i = 0; i < n; i++) ns[i].ready();
+
+		Queue<Node> topSort = new ArrayDeque<Node>();
+		for (int i = 0; i < n; i++) if (ns[i].deg == 0) topSort.add(ns[i]);
+		while (!topSort.isEmpty()) {
+			Node cur = topSort.poll();
+
+			for (int val = 1; val < cur.dp.length; val++)
+				dp(cur, val);
+
+			if (cur.parent != null) {
+				cur.parent.deg--;
+				if (cur.parent.deg == 0) {
+					topSort.add(cur.parent);
+				}
+			}
+		}
+
+		long res = INF;
+		for (int val = 1; val < ns[0].dp.length; val++) {
+			res = Math.min(res, dp(ns[0], val));
+		}
+		System.out.println(res);
+	}
+	long dp(Node node, final int val) {
+		if (val <= 0 || node.dp.length <= val) return INF;
+		if (node.dp[val] != INF) return node.dp[val];
+		long res = val;
+		for (Node ch : node.childs) {
+			long cur = Math.min(ch.getMin(1, val), ch.getMin(val + 1, ch.dp.length));
+			res += cur;
+		}
+		node.update(val, res);
+		return res;
+	}
+
+	static final long INF = 1L<<58;
+
+
+	class Node {
+		int id;
+		int deg;
+		Node parent;
+		int sp;
+		Node[] childs;
+		long[] dp;
+		public Node(int id) {
+			this.id = id;
+		}
+		public void addChild(Node node) {
+			childs[sp++] = node;
+		}
+		public void update(int idx, long val) {
+			if (dp[idx] > val) {
+				dp[idx] = val;
+			}
+		}
+		public void ready() {
+			dp = new long[30];
+			Arrays.fill(dp, INF);
+		}
+		// [from, to)
+		public long getMin(int from, int to) {
+			long res = INF;
+			if (from < 1) from = 1;
+			if (from >= dp.length) return res;
+			if (to >= dp.length) to = dp.length;
+			for (int i = from; i < to; i++)
+				res = Math.min(res, dp[i]);
+			return res;
+		}
+	}
+	Node[] ns;
+
+
+
+	void run() throws Exception {
+		String pkg = new Object(){}.getClass().getEnclosingClass().getPackage().getName().replace('.', '/');
+		String dir = "src/" + pkg;
+		if (LOCAL) {
+			sc = new Scanner(System.in);
+		} else {
+			sc = new Scanner(new File("/tmp/fhc/" + FILENAME));
+			System.setOut(new PrintStream(new FileOutputStream(dir + "/" + FILENAME + ".res")));
+		}
+		int T = sc.nextInt();
+
+		long start = System.currentTimeMillis();
+		for (int t = 1; t <= T; t++) {
+			System.out.printf("Case #%d: ", t);
+			solve();
+			System.out.flush();
+			System.err.flush();
+		}
+		long end = System.currentTimeMillis();
+		tr(end - start, "ms");
+	}
+
+	public static void tr(Object... o) {
+		System.err.println(Arrays.deepToString(o));
+	}
+	public static void main(String[] args) throws Exception {
+		new Main().run();
+	}
+}

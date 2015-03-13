@@ -1,0 +1,138 @@
+package main
+
+import (
+	"container/heap"
+	"fmt"
+	"os"
+)
+
+var (
+	manager [200001]int
+	level   [200001]int
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
+func getLevel(pos int) int {
+	// DFS for get level of employee.
+	if level[pos] != 0 {
+		return level[pos]
+	} else {
+		level[pos] = getLevel(manager[pos]) + 1
+		return level[pos]
+	}
+}
+
+func main() {
+	fileIn, err := os.Open("corporate_gifting.txt")
+	check(err)
+	defer fileIn.Close()
+	fileOut, err := os.Create("output.txt")
+	check(err)
+	defer fileOut.Close()
+
+	var (
+		problems int
+		N        int
+
+		bannedPrice map[int](map[int]bool)
+		totalCost   int
+	)
+	bannedPrice = make(map[int](map[int]bool))
+
+	fmt.Fscanf(fileIn, "%d\n", &problems)
+	for cases := 1; cases <= problems; cases++ {
+		bannedPrice[0] = make(map[int]bool)
+
+		fmt.Fscanf(fileIn, "%d\n", &N)
+		for i := 1; i <= N; i++ {
+			fmt.Fscanf(fileIn, "%d", &manager[i])
+			level[i] = 0
+			bannedPrice[i] = make(map[int]bool)
+		}
+
+		// Make priority queue with respect of employee's level. the higher the first.
+		pq := make(PriorityQueue, 0)
+		level[1] = 1
+		heap.Init(&pq)
+		for i := 1; i <= N; i++ {
+			heap.Push(&pq, &Item{value: i, priority: getLevel(i)})
+		}
+
+		// Start BFS with priority queue.
+		totalCost = 0
+		for pq.Len() > 0 {
+			item := heap.Pop(&pq).(*Item)
+			pos := item.value
+			if pos == 0 {
+				// pos 0 is dummy(manager of CEO which is NULL).
+				continue
+			}
+			for i := 1; i <= N+1; i++ {
+				if _, hasKey := bannedPrice[pos][i]; !hasKey {
+					// price i is smallest "not banned" price. use this price.
+					// fmt.Fprintf(fileOut, "Price for %d is %d\n", pos, i)
+					totalCost += i
+					// ban price $i for the manager of pos.
+					bannedPrice[manager[pos]][i] = true
+
+					break
+				}
+			}
+		}
+		fmt.Fprintf(fileOut, "Case #%d: %d\n", cases, totalCost)
+	}
+}
+
+/* Priority Queue from Google example code */
+
+// An Item is something we manage in a priority queue.
+type Item struct {
+	value    int // The value of the item; arbitrary.
+	priority int // The priority of the item in the queue.
+	// The index is needed by update and is maintained by the heap.Interface methods.
+	index int // The index of the item in the heap.
+}
+
+// A PriorityQueue implements heap.Interface and holds Items.
+type PriorityQueue []*Item
+
+func (pq PriorityQueue) Len() int { return len(pq) }
+
+func (pq PriorityQueue) Less(i, j int) bool {
+	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
+	return pq[i].priority > pq[j].priority
+}
+
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*Item)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	item.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return item
+}
+
+// update modifies the priority and value of an Item in the queue.
+func (pq *PriorityQueue) update(item *Item, value int, priority int) {
+	item.value = value
+	item.priority = priority
+	heap.Fix(pq, item.index)
+}

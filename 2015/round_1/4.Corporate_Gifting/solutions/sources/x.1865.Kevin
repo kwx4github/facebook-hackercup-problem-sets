@@ -1,0 +1,232 @@
+package zhang.kevin;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.Stack;
+
+import com.google.common.base.Charsets;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import com.google.common.io.Files;
+
+public class C {
+	
+	public static void main(String[] args) {
+		ArrayList<String> readLines = readLines("C.in");
+		ArrayList<String> answers = Lists.newArrayList();
+		int caseNumber = 1;
+		for (int i = 2; i < readLines.size(); i += 2) {
+			System.out.print("Case #" + caseNumber + ": ");
+			List<Integer> encoded = Lists.newArrayList();
+			String[] tokens = readLines.get(i).split(" ");
+			for (String token : tokens) {
+				encoded.add(Integer.parseInt(token));
+			}
+			String answer = solve(encoded) + "";
+			answers.add(createCase(caseNumber++, answer));
+			System.out.println(answer);
+		}
+		writeLines(answers, "C.out");
+	}
+	
+	private static long solve(List<Integer> encoded) {
+		long sum = 0;
+		long currentCost = 1;
+		
+		Set<Tree> trees = Sets.newHashSet(buildTree(encoded));
+		while (!trees.isEmpty()) {
+			Set<Tree> newTrees = Sets.newHashSet();
+			for (Tree tree : trees) {
+				Set<Integer> maxis = maxis(tree);
+				sum += currentCost * maxis.size();
+				Set<Tree> cutTrees = cutVertices(tree, maxis);
+				newTrees.addAll(cutTrees);
+			}
+			trees = newTrees;
+			currentCost++;
+		}
+		
+		return sum;
+	}
+	
+	private static Set<Tree> cutVertices(Tree tree, Set<Integer> toRemove) {
+		Set<Integer> alreadyIncluded = Sets.newHashSet();
+		Set<Tree> result = Sets.newHashSet();
+		for (int i = 0; i < tree.nodes.length; i++) {
+			Node node = tree.nodes[i];
+			if (!toRemove.contains(node.id) && !alreadyIncluded.contains(node.id)) {
+				alreadyIncluded.add(node.id);
+				List<Integer> encoded = Lists.newArrayList();
+				encoded.add(0);
+				
+				int parentIdx = 1;
+				Queue<Node> queue = new LinkedList<Node>();
+				for (Node child : node.children) {
+					if (!toRemove.contains(child.id) && !alreadyIncluded.contains(child.id)) {
+						child.meta = parentIdx;
+						queue.add(child);
+						alreadyIncluded.add(child.id);
+					}
+				}
+				
+				while (!queue.isEmpty()) {
+					Node curNode = queue.remove();
+					parentIdx++;
+					encoded.add(curNode.meta);
+					for (Node child : curNode.children) {
+						if (!toRemove.contains(child.id) && !alreadyIncluded.contains(child.id)) {
+							child.meta = parentIdx;
+							queue.add(child);
+							alreadyIncluded.add(child.id);
+						}
+					}
+				}
+				result.add(buildTree(encoded));
+			}
+		}
+		return result;
+	}
+	
+	private static Set<Integer> maxis(Tree tree) {
+		Map<Integer, Pair<Integer, Integer>> context = Maps.newHashMap();
+		maxisHelper(tree.getRoot(), context);
+		Set<Integer> mis = Sets.newHashSet();
+		Queue<Node> queue = new LinkedList<Node>();
+		queue.add(tree.getRoot());
+		
+		while (!queue.isEmpty()) {
+			Node node = queue.remove();
+			// Node is included in the MIS
+			if (context.get(node.id).x > context.get(node.id).y) {
+				mis.add(node.id);
+				for (Node child : node.children) {
+					for (Node subChild : child.children) {
+						queue.add(subChild);
+					}
+				}
+			} else {
+				for (Node child : node.children) {
+					queue.add(child);
+				}
+			}
+		}
+		
+		return mis;
+	}
+	
+	private static void maxisHelper(Node node, Map<Integer, Pair<Integer, Integer>> context) {
+		if (node.children.isEmpty()) {
+			context.put(node.id, new Pair<Integer, Integer>(1, 0));
+		} else {
+			for (Node nd : node.children) {
+				maxisHelper(nd, context);
+			}
+			int cCount = 0;
+			int bCount = 0;
+			for (Node nd : node.children) {
+				cCount += Math.max(context.get(nd.id).x, context.get(nd.id).y);
+				bCount += context.get(nd.id).y;
+			}
+			int A = 1 + bCount;
+			int B = cCount;
+			context.put(node.id, new Pair<Integer, Integer>(A, B));
+		}
+	}
+	
+	private static Tree buildTree(List<Integer> encodedTree) {
+		Tree tree = new Tree(encodedTree.size());
+		int idx = 0;
+		for (Integer integer : encodedTree) {
+			if (integer != 0) {
+				tree.link(integer - 1, idx);
+			}
+			idx++;
+		}
+		return tree;
+	}
+	
+	private static class Tree {
+		public Node[] nodes;
+		public Tree(int size) {
+			nodes = new Node[size];
+			for (int i = 0; i < size; i++) {
+				nodes[i] = new Node(i);
+			}
+		}
+		
+		public void link(int parentIdx, int childIdx) {
+			nodes[parentIdx].children.add(nodes[childIdx]);
+		}
+		
+		public Node getRoot() {
+			return nodes[0];
+		}
+		
+		public String toString() {
+			return getRoot().toString();
+		}
+	}
+	
+	private static class Node {
+		public int id;
+		public int meta;
+		public List<Node> children;
+		public Node(int id) {
+			this.id = id;
+			children = Lists.newArrayList();
+		}
+		@Override
+		public String toString() {
+			return "Node [id=" + id + ", children=" + children + "]";
+		}
+		
+	}
+	
+	private static String createCase(int caseNum, String content) {
+		return "Case #" + caseNum + ": " + content;
+	}
+
+	private static ArrayList<String> readLines(String path) {
+		try {
+			return Lists.newArrayList(Files.readLines(new File(path), Charsets.UTF_8));
+		} catch (IOException e) {
+			throw Throwables.propagate(e);
+		}
+	}
+
+	private static void writeLines(List<String> lines, String path) {
+		try {
+			StringBuilder fileContents = new StringBuilder();
+			for (String line : lines) {
+				fileContents.append(line + "\n");
+			}
+			Files.write(fileContents.toString(), new File(path), Charsets.UTF_8);
+		} catch (IOException e) {
+			throw Throwables.propagate(e);
+		}
+	}
+	
+	private static class Pair<S, T> {
+		public S x;
+		public T y;
+		public Pair(S x, T y) {
+			this.x = x;
+			this.y = y;
+		}
+		@Override
+		public String toString() {
+			return "Pair [x=" + x + ", y=" + y + "]";
+		}
+		
+	}
+
+}

@@ -1,0 +1,280 @@
+import java.io.BufferedInputStream;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Scanner;
+import java.util.Stack;
+
+
+@SuppressWarnings("unused")
+public class Main {
+
+	public static void main(String[] args) throws IOException {
+
+//		long startTime = new Date().getTime();
+		
+//		InputReader in = new InputReader(System.in);
+		InputReader in = new InputReader(new FileInputStream(new File("inputs/homework.txt")));
+		
+//		PrintWriter writer = new PrintWriter(System.out);
+		PrintWriter writer = new PrintWriter("outputs/homework.txt");
+
+		solveTheProblem(in, writer);
+		
+//		long endTime = new Date().getTime();
+//		System.err.println("Time: " + (endTime - startTime) + " millis");
+		
+	}
+
+	public static void solveTheProblem(InputReader in, PrintWriter writer) throws IOException {
+
+		int T = in.ni();
+		
+		int sievesize = 10000000;
+		boolean[] primes = createPrimeSieve(sievesize);
+		
+		for (int t = 1; t <= T; t++) {
+			
+			int ans = 0;
+			
+			long A = in.ni();
+			long B = in.ni();
+			long K = in.ni();
+			
+			Stack<long[]> factors = new Stack<long[]>();
+			factors.add(new long[] { 1, 0, 1, 1 });
+			
+			while (!factors.isEmpty()) {
+				
+				long[] factor = factors.peek();
+				
+				boolean newPrime = false;
+				if (factor[2] == 0) {
+					factor[2] = factor[0];
+				} else {
+					newPrime = true;
+					do {
+						factor[2]++;
+					} while (factor[2] <= sievesize && !primes[(int)factor[2]]);
+				}
+				
+				if (factor[2] == sievesize) {
+					factors.pop();
+				} else {
+					
+					long next = factor[3] * factor[2];
+					long primacity = factor[1] + (newPrime ? 1 : 0);
+					if (next <= B && primacity <= K) {
+						if (next >= A && primacity == K) {
+							ans++;
+						}
+						factors.add(new long[] { factor[2], primacity, 0, next });
+					} else {
+						factors.pop();
+					}
+					
+				}
+				
+			}
+			
+			writer.print("Case #" + t + ": ");
+			writer.print(ans);
+			writer.println();
+			writer.flush();
+			
+		}
+		
+		// don't forget partial flushes!
+		writer.flush();
+		
+	}
+	
+	/** Utils **/
+
+	private static final long MOD = (long) Math.pow(10, 9)+7;
+
+	private static long mod(long n) {
+		return n % MOD;
+	}
+	
+	private static int pow(int n, int p) {
+		return (int) Math.pow(n, p);
+	}
+
+	private static long pow(long n, long p) {
+		return (long) Math.pow(n, p);
+	}
+	
+	private static class BIT {
+		
+		private int n;
+		private long[] freqs;
+		private long[] cumulativeFreqs;
+		
+		public BIT(int n) {
+			this.n = n;
+			this.freqs = new long[n];
+			this.cumulativeFreqs = new long[n];
+		}
+		
+		public void add(int idx, long v) {
+			
+			this.freqs[idx] = mod(this.freqs[idx] + v);
+			
+			int i = idx;
+			while (i < n) {
+				
+				this.cumulativeFreqs[i] = mod(this.cumulativeFreqs[i] + v);
+				
+				int lastDigit = i & -i;
+				i += lastDigit;
+				
+			}
+			
+		}
+		
+		public long getCumulativeSum(int idx) {
+			
+			long ans = 0;
+			
+			int i = idx;
+			while (i > 0) {
+				
+				ans = mod(ans + this.cumulativeFreqs[i]);
+				
+				int lastDigit = i & -i;
+				i -= lastDigit;
+				
+			}
+			
+			return ans;
+		}
+		
+	}
+	
+	private static String joinWithSpaces(Object... a) {
+		StringBuilder str = new StringBuilder();
+		if (a.length > 0) {
+			str.append(a[0]);
+			for (int i = 1; i < a.length; i++) {
+				str.append(' ');
+				str.append(a[i]);
+			}
+		}
+		return str.toString();
+	}
+
+	private static String joinWithSpaces(long[] a) {
+		StringBuilder str = new StringBuilder();
+		if (a.length > 0) {
+			str.append(a[0]);
+			for (int i = 1; i < a.length; i++) {
+				str.append(' ');
+				str.append(a[i]);
+			}
+		}
+		return str.toString();
+	}
+	
+    private static int gcd(int a, int b) {
+        return b == 0 ? a : gcd(b, a % b);
+    }
+    
+    private static long gcd(long a, long b) {
+        return b == 0 ? a : gcd(b, a % b);
+    }
+    
+    private static boolean[] createPrimeSieve(int n) {
+        boolean[] sieve = new boolean[n+1];
+        Arrays.fill(sieve, true);
+        for (int i = 2; i <= n; i++) {
+            if (sieve[i]) {
+                for (int j = i+i; j <= n; j += i)
+                    sieve[j] = false;
+            }
+        }
+        return sieve;
+    }
+    
+    private static int countPrimes(boolean[] sieve) {
+        int ans = 0;
+        for (int i = 2; i < sieve.length; i++)
+            if (sieve[i]) ans++;
+        return ans;
+    }
+
+	public static class InputReader implements Closeable {
+		
+//		private InputStream in;
+		private Scanner in;
+		private StringBuilder sb = new StringBuilder();
+		
+//		public InputReader(File file) throws FileNotFoundException {
+//			this(new FileInputStream(file));
+//		}
+//		
+//		public InputReader(InputStream wrapped) {
+//			this.in = new BufferedInputStream(wrapped);
+//		}
+
+		public InputReader(InputStream wrapped) {
+			this.in = new Scanner(wrapped);
+		}
+		
+		@Override
+		public void close() throws IOException {
+			this.in.close();
+		}
+
+		public int ni() throws IOException {
+//			sb.setLength(0);
+//		mainloop:
+//			for (;;) {
+//				int b = this.in.read();
+//				while (b == -1 || !((b >= '0' && b <= '9') || b == '-')) {
+//					if (sb.length() > 0) break mainloop;
+//					else b = this.in.read();
+//				}
+//				sb.append((char) b);
+//			}
+//			return new Integer(sb.toString());
+			return in.nextInt();
+		}
+
+		public String nstr() throws IOException {
+//			sb.setLength(0);
+//			int ans = 0;
+//		mainloop:
+//			for (;;) {
+//				int b = this.in.read();
+//				while (b == -1 || !((b >= 'a' && b <= 'z') || (b >= 'A' && b < 'Z'))) {
+//					if (sb.length() > 0) break mainloop;
+//					else b = this.in.read();
+//				}
+//				sb.append((char) b);
+//			}
+//			return sb.toString();
+			return in.next();
+		}
+		
+		public long nl() throws IOException {
+			return in.nextLong();
+		}
+		
+		public char[] nca(int n) throws IOException {
+			char[] ca = new char[n];
+			String str = nstr();
+			for (int i = 0; i < n; i++)
+				ca[i] = str.charAt(i);
+			return ca;
+		}
+		
+	}
+	
+}

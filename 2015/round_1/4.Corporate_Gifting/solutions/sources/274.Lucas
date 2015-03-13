@@ -1,0 +1,103 @@
+#include <iostream>
+#include <cstdio>
+#include <set>
+#include <vector>
+#include <algorithm>
+#include <cassert>
+#include <queue>
+
+const int64_t oo = 0x3f3f3f3f3f3f3f3fLL;
+int64_t upper_bound;
+int N;
+
+std::vector<int> adj[200010];
+bool mark_dfs[200010];
+bool mark_c[200010];
+int count[2];
+int64_t min[200010][2];
+int choice[200010][2];
+int manager[200010];
+
+int deg[200010];
+std::vector<int> toposort;
+void build_toposort() {
+    toposort.clear();
+    std::queue<int> q;
+    for (int i = 0; i < N; ++i) {
+        if (deg[i] == 0) {
+            toposort.push_back(i);
+            q.push(i);
+        }
+    }
+    while (!q.empty()) {
+        int front = q.front(); q.pop();
+        if (--deg[manager[front]] == 0) {
+            q.push(manager[front]);
+            toposort.push_back(manager[front]);
+        }
+    }
+}
+
+void reset(int n) {
+    std::fill(deg, deg + n, 0);
+    for (int i = 0; i < n; ++i) {
+        adj[i].clear();
+    }
+}
+
+int64_t go(int node, int value) {
+    return min[node][value == choice[node][0]];
+}
+
+void calc_mins(int node) {
+    int64_t best = oo, second_best = oo;
+    int max_choice = 2;
+    for (int v : adj[node]) {
+        max_choice = std::max(max_choice, std::max(choice[v][0], choice[v][1]));
+    }
+    for (int i = 1; i <= max_choice + 1; ++i) {
+        int64_t cnt = i;
+        for (int v : adj[node]) {
+            cnt += go(v, i);
+        }
+        if (cnt < second_best) {
+            second_best = cnt;
+            choice[node][1] = i;
+        }
+        if (best > second_best) {
+            std::swap(best, second_best);
+            std::swap(choice[node][0], choice[node][1]);
+        }
+    }
+    min[node][0] = best;
+    min[node][1] = second_best;
+}
+
+int main() {
+    std::ios_base::sync_with_stdio(false);
+    int T;
+    std::cin >> T;
+    for (int caso = 1; caso <= T; ++caso) {
+        std::cin >> N;
+        reset(N);
+        for (int i = 0; i < N; ++i) {
+            std::cin >> manager[i];
+            --manager[i];
+            if (i != 0) {
+                ++deg[manager[i]];
+                adj[manager[i]].push_back(i);
+            }
+        }
+        if (N == 1) {
+            printf("Case #%d: 1\n", caso);
+            continue;
+        }
+        build_toposort();
+        for (int i = 0; i < N; ++i) {
+            calc_mins(toposort[i]);
+        }
+        int64_t answer = min[0][0];
+        printf("Case #%d: %ld\n", caso, answer);
+    }
+    return 0;
+}

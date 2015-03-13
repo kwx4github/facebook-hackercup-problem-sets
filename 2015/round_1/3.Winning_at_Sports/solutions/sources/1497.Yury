@@ -1,0 +1,59 @@
+module Main where
+
+import Control.Monad
+import Data.Array
+import Text.Printf
+
+limit, modulo :: Int
+limit  = 2000
+modulo = 1000000007
+
+modsum :: Int -> Int -> Int
+modsum a b = (a + b) `mod` modulo
+
+replace :: (Eq a) => a -> a -> [a] -> [a]
+replace u v vs = rec vs
+    where rec [] = []
+          rec (x:xs) = if u == x then (v:rec xs) else (x:rec xs)
+
+getStressFree :: Int -> Int -> Int
+getStressFree ourScore theirScore
+    | ourScore <= theirScore = error "Stress free game error"
+getStressFree ourScore theirScore = table ! (ourScore, theirScore)
+    where bnds  = ((0, 0), (limit, limit))
+          table = array bnds [(ix, gen ix) | ix <- range bnds]
+
+          gen :: (Int, Int) -> Int
+          gen (_, 0)   = 1
+          gen (os, ts) = a `modsum` b
+              where a = if os - 1 > ts
+                        then table ! (os - 1, ts)
+                        else 0
+                    b = table ! (os, ts - 1)
+
+getStressFull :: Int -> Int -> Int
+getStressFull ourScore theirScore | ourScore <= theirScore = error "Stress full game error"
+getStressFull _ 0 = 1
+getStressFull _ theirScore = foldl modsum 0 [ table ! (i, theirScore - 1) | i <- [0 .. theirScore - 1]]
+    where bnds = ((0, 0), (limit, limit))
+          table = array bnds [(ix, gen ix) | ix <- range bnds]
+
+          gen :: (Int, Int) -> Int
+          gen (0, _) = 1
+          gen (os, ts) = a `modsum` b
+              where a = table ! (os - 1, ts)
+                    b = if ts - 1 >= os
+                        then table ! (os, ts - 1)
+                        else 0
+
+readPair :: IO (Int, Int)
+readPair = do
+  (a:b:_) <- liftM (map read . words . replace '-' ' ') getLine
+  return (a, b)
+
+main :: IO ()
+main = do
+  numTests <- liftM read getLine :: IO Int
+  forM_ [1 .. numTests] $ \testNum -> do
+         (ourScore, theirScore) <- readPair
+         printf "Case #%d: %d %d\n" testNum (getStressFree ourScore theirScore) (getStressFull ourScore theirScore)

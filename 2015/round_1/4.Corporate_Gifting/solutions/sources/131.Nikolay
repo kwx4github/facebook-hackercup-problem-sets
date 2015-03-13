@@ -1,0 +1,109 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
+using System.IO;
+
+namespace D
+{
+    class Case
+    {
+        const int MAX = 15;
+
+        public int solution;
+        public int[] a;
+
+        public void Solve()
+        {
+            int N = a.Length;
+            List<int>[] children = new List<int>[N];
+            for (int i = 0; i < N; i++)
+                children[i] = new List<int>();
+
+            for (int i = 0; i < N; i++)
+            {
+                int parent = a[i] - 1;
+                if (parent >= 0)
+                    children[parent].Add(i);
+            }
+
+            List<int> sequence = new List<int>(N);
+
+            Queue<int> q = new Queue<int>();
+            q.Enqueue(0);
+            sequence.Add(0);
+
+            while (q.Any())
+            {
+                int parent = q.Dequeue();
+                foreach (var child in children[parent])
+                {
+                    q.Enqueue(child);
+                    sequence.Add(child);
+                }
+            }
+
+            int[,] dp = new int[N, MAX + 1];
+
+            for (int i = N - 1; i >= 0; i--)
+            {
+                var parent = sequence[i];
+
+                for (int j = 1; j <= MAX; j++)
+                {
+                    int sum = 0;
+                    foreach (var child in children[parent])
+                    {
+                        int min = int.MaxValue;
+                        for (int k = 1; k <= MAX; k++)
+                        {
+                            if (k == j)
+                                continue;
+
+                            min = Math.Min(dp[child, k], min);
+                        }
+
+                        sum += min;
+                    }
+
+                    dp[parent, j] = j + sum;
+                }
+            }
+
+            int best = int.MaxValue;
+            for (int i = 1; i <= MAX; i++)
+                best = Math.Min(best, dp[0, i]);
+
+            solution = best;
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            //Console.SetIn(new StreamReader("corporate_gifting_example_input.txt"));
+
+            List<Case> cases = new List<Case>();
+
+            int T = int.Parse(Console.ReadLine());
+            for (int t = 0; t < T; t++)
+            {
+                int N = int.Parse(Console.ReadLine());
+                int[] a = Array.ConvertAll(Console.ReadLine().Split(new char[] {' ', '\t'}, StringSplitOptions.RemoveEmptyEntries), int.Parse);
+
+                var c = new Case { a = a };
+                cases.Add(c);
+            }
+
+            Parallel.ForEach(cases, c => c.Solve());
+
+            for (int t = 0; t < T; t++)
+                Console.WriteLine("Case #{0}: {1}", t + 1, cases[t].solution);
+        }
+    }
+}

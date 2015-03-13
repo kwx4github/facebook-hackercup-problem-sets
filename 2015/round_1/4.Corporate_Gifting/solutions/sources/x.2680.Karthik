@@ -1,0 +1,160 @@
+// Corporate Gifting.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include <iostream>
+#include <stdio.h>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+struct node
+{
+	int parent;
+	vector<int> children;
+	int currentVal;
+	int subTreeSum;
+	bool isLeaf;
+	bool isSingle;
+	node():parent(-1),subTreeSum(0),currentVal(0),isLeaf(false),isSingle(false)
+	{}
+};
+
+int isSingle(node cur, vector<node> &tree)
+{
+	bool single = true;
+	int level = 0;
+	while(cur.children.size() != 0)
+	{
+		if(cur.children.size() > 1)
+		{
+			single = false;
+			break;
+		}
+		cur = tree[cur.children[0]];
+		++level;
+	}
+
+	if(single && level%2 == 1)
+		return level + 1;
+	else
+		return 0;
+}
+
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	FILE* fr = freopen("input.txt", "r", stdin);
+	FILE* fw = freopen("output.txt", "w", stdout);
+	
+	int t = 0;
+	cin >> t;
+
+	for(int x = 0; x < t; ++x)
+	{
+		if(x!=0)
+			cout << '\n';
+
+		int n = 0, temp;
+		cin >> n;
+		vector<node> tree(n);
+		cin >> temp;
+
+		for(int y = 1; y < n; ++y)
+		{
+			cin >> temp;
+			int man = temp -1;
+			tree[y].parent = man;
+			tree[man].children.push_back(y);
+		}
+
+		
+		for(int y = n-1; y >= 0; --y)
+		{
+			if(tree[y].children.size() == 0)
+				tree[y].isLeaf = true;
+			else if(int level = isSingle(tree[y],tree))
+			{
+				tree[y].isSingle = true;
+				tree[y].subTreeSum = (level*3)/2;
+			}
+			else
+			{
+				int len = tree[y].children.size();
+				int numLeaf = 0;
+				int sumSingle = 0;
+				vector<int> minFinder(len+1);
+				for(int z = 0; z <len; ++z)
+				{
+					if(tree[tree[y].children[z]].isLeaf)
+						++numLeaf;
+					else if(tree[tree[y].children[z]].isSingle)
+					{
+						tree[y].subTreeSum += tree[tree[y].children[z]].subTreeSum;
+					}
+					else
+					{
+						if(tree[tree[y].children[z]].currentVal <= len)
+							++minFinder[tree[tree[y].children[z]].currentVal];
+						tree[y].subTreeSum += tree[tree[y].children[z]].subTreeSum;
+					}
+				}
+
+				int maxVal = 0;
+				bool canBeOne = minFinder[1] == 0;
+				for(int z = 2; z<= len; ++z)
+				{
+					if(minFinder[z] == 0)
+					{
+						maxVal = z;
+						break;
+					}
+				}
+
+				if(maxVal == 0)
+					maxVal = len + 1;
+
+
+				if(len == numLeaf)
+				{
+					tree[y].currentVal = 2;
+					tree[y].subTreeSum = numLeaf + 2;
+				}
+				else if(canBeOne)
+				{
+					if(tree[y].subTreeSum + sumSingle + numLeaf + maxVal > tree[y].subTreeSum + sumSingle + numLeaf*2 + 1)
+					{
+						tree[y].currentVal = 1;
+						tree[y].subTreeSum = tree[y].subTreeSum + sumSingle + numLeaf*2 + 1;
+					}
+					else
+					{
+						tree[y].currentVal = maxVal;
+						tree[y].subTreeSum = tree[y].subTreeSum + sumSingle + numLeaf + maxVal;
+					}
+				}
+				else
+				{
+					tree[y].currentVal = maxVal;
+					tree[y].subTreeSum = tree[y].subTreeSum + sumSingle + numLeaf + maxVal;
+				}
+			}
+		}
+
+		if(tree[0].subTreeSum == 0)
+		{
+			if(tree[0].isLeaf)
+				tree[0].subTreeSum = 1;
+			else if(tree[0].isSingle)
+				tree[0].subTreeSum = 3;
+		}
+
+		cout << "Case #" << x+1 << ": " << tree[0].subTreeSum;
+		
+	}
+	
+	fclose(fr);
+	fclose(fw);
+	return 0;
+}

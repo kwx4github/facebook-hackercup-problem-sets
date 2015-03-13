@@ -1,0 +1,239 @@
+#ifdef NALP_PROJECT
+#pragma hdrstop
+#else
+#define _SECURE_SCL 0
+#endif
+
+#define _CRT_SECURE_NO_DEPRECATE
+#pragma comment(linker, "/STACK:200000000")
+
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <cctype>
+#include <cmath>
+#include <algorithm>
+#include <utility>
+#include <cassert>
+
+#include <set>
+#include <map>
+#include <vector>
+#include <string>
+#include <queue>
+#include <bitset>
+#include <memory.h>
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+#ifdef _WIN32
+    #define LLD "%I64d"
+#else
+    #define LLD "%lld"
+#endif
+
+using namespace std;
+
+typedef long long int64;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define pb push_back
+#define mp make_pair
+#define y1 YYY1
+#define all(a) (a).begin(), (a).end()
+#define rall(a) (a).rbegin(), (a).rend()
+
+template<typename T> inline T Abs(T x) { return (x >= 0) ? x : -x; }
+template<typename T> inline T sqr(T x) { return x * x; }
+template<typename T> inline string toStr(T x) { stringstream st; st << x; string s; st >> s; return s; }
+template<typename T> inline int bit(T mask, int b) { return (b >= 0 && (mask & (T(1) << b)) != 0) ? 1 : 0; }
+
+inline int nextInt() { int x; if (scanf("%d", &x) != 1) throw; return x; }
+inline int64 nextInt64() { int64 x; if (scanf(LLD, &x) != 1) throw; return x; }
+inline double nextDouble() { double x; if (scanf("%lf", &x) != 1) throw; return x; }
+
+const int INF = (int)1E9;
+const int64 INF64 = (int64)1E18;
+const long double EPS = 1E-9;
+const long double PI = 3.1415926535897932384626433832795;
+
+struct Item {
+    Item(int value, int64 cost) : value(value), cost(cost) {}
+    int value;
+    int64 cost;
+
+    bool operator < (const Item& item) const {
+        return cost < item.cost;
+    }
+};
+
+map<pair<int, int>, int64> d;
+vector<vector<int> > g;
+map<int, int> dd;
+int n;
+
+int getChildren(int v) {
+    if (dd.count(v)) {
+        return dd[v];
+    }
+
+    int ans = 1;
+    forn(i, g[v].size()) {
+        ans += getChildren(g[v][i]);
+    }
+
+    return dd[v] = ans;
+}
+
+pair<Item, Item> get(int v) {
+    int64 summaryMins = 0;
+    vector<pair<Item, Item> > children;
+    forn(i, g[v].size()) {
+        pair<Item, Item> cur = get(g[v][i]);
+        summaryMins += min(cur.first.cost, cur.second.cost);
+        children.pb(cur);
+    }
+
+    map<int, int64> costs;
+
+    for(int possibleValue = 1; possibleValue <= int(children.size()) + 3; ++possibleValue) {
+        costs[possibleValue] = summaryMins;
+    }
+
+    for(const auto& p : children) {
+        costs[p.first.value] = summaryMins;
+        costs[p.second.value] = summaryMins;
+    }
+
+    for(const auto& p : children) {
+        costs[p.first.value] += p.second.cost - p.first.cost;
+    }
+
+//    cerr << "==== for " << v << endl;
+    vector<Item> costsList;
+    for(auto i = costs.begin(); i != costs.end(); ++i) {
+//        cerr << i->first << " " << i->second << endl;
+        costsList.pb(Item(i->first, i->second + i->first));
+    }
+
+    sort(all(costsList));
+//    cerr << "==== for " << v << " ans is: (" << costsList[0].value << ", " << costsList[0].cost << "), (" << costsList[1].value << ", " << costsList[1].cost << ")" << endl << endl;
+
+    return mp(costsList[0], costsList[1]);
+}
+
+int64 get(int v, int prev) {
+    pair<int, int> item(v, prev);
+    if (d.count(item)) {
+        return d[item];
+    }
+
+    int64 ans = INF64;
+    for (int cur = 1; cur <= getChildren(v) + 4; ++cur) {
+        if (cur == prev) continue;
+
+        int64 cnt = cur;
+        forn(i, g[v].size()) {
+            cnt += get(g[v][i], cur);
+        }
+        ans = min(ans, cnt);
+    }
+
+    d[item] = ans;
+    return ans;
+}
+
+void clear() {
+    d.clear();
+    g.clear();
+    dd.clear();
+}
+
+int64 stupid() {
+    return get(0, 0);
+}
+
+void solve(bool skipThisTest) {
+    clear();
+    if (true) {
+        cerr << "\tinput mode: read test." << endl;
+        n = nextInt();
+        cerr << n << endl;
+        g.resize(n);
+        forn(v, n) {
+            int prev = nextInt() - 1;
+            if (prev >= 0) {
+                g[prev].pb(v);
+            }
+        }
+        if (skipThisTest) return;
+    } else {
+        cerr << "\tinput mode: generated test." << endl;
+        n = 200000;
+        g.resize(n);
+//        cerr << n << endl << "0 ";
+        forn(v, n - 1) {
+            int u = rand() % (v + 1);
+            g[u].pb(v + 1);
+//            cerr << u + 1 << " ";
+        }
+//        cerr << endl;
+    }
+
+    pair<Item, Item> res = get(0);
+    int64 ans = min(res.first.cost, res.second.cost);
+
+    cout << ans << endl;
+    cerr << "\tclever answer is '" << ans << "'." << endl;
+    if (n <= 1000) {
+        int64 stupidAnswer = stupid();
+        cerr << "\tstupid answer is '" << stupidAnswer << "'." << endl;
+        assert(ans == stupidAnswer);
+    }
+}
+
+int main(int argc, char * argv[]) {
+#ifdef NALP_PROJECT
+    freopen("input.txt", "rt", stdin);
+//  freopen("output.txt", "wt", stdout);
+#else
+#endif
+
+    int minTest = 1, maxTest = INF;
+    if (argc == 3) {
+        minTest = atoi(argv[1]);
+        maxTest = atoi(argv[2]);
+    }
+
+    cout.precision(10);
+    cout.setf(ios::fixed);
+    cerr.precision(10);
+    cerr.setf(ios::fixed);
+
+    srand((unsigned int)time(0));
+    int tests = nextInt();
+    clock_t totalStartTime = clock();
+    for(int test = 1; test <= tests; test++) {
+        clock_t startTime = clock();
+        cerr << "Case #" << test << endl;
+        bool skipThisTest = (test < minTest || test > maxTest);
+        if (!skipThisTest) cout << "Case #" << test << ": ";
+        solve(skipThisTest);
+
+        char formattedTime[100];
+        clock_t time = clock() - startTime;
+        sprintf(formattedTime, "%d.%03d", int(time / CLOCKS_PER_SEC), int(time % CLOCKS_PER_SEC));
+        cerr << "time for test is " << formattedTime << " s." << endl << endl;
+    }
+
+    char formattedTime[100];
+    clock_t totalTime = clock() - totalStartTime;
+    sprintf(formattedTime, "%d.%03d", int(totalTime / CLOCKS_PER_SEC), int(totalTime % CLOCKS_PER_SEC));
+    cerr << string(20, '=') << endl;
+    cerr << "TOTAL TIME IS " << formattedTime << " s." << endl;
+
+    return 0;
+}

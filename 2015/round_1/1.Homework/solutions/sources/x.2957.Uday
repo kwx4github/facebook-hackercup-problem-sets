@@ -1,0 +1,155 @@
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.TreeMap;
+
+/**
+ *
+ * @author Uday Kandpal
+ */
+public class Primacity {
+
+    boolean isPrime[] = new boolean[1000001];
+    ArrayList<Integer> primes = new ArrayList<>();
+
+    private void sieve() {
+        isPrime[0] = isPrime[1] = false;
+        for (int i = 2; i < 1000001; i++) {
+            isPrime[i] = true;
+        }
+        for (int i = 2; i * i <= 1000000; i++) {
+            if (isPrime[i]) {
+                int k = 0;
+                for (int j = i * i; j <= 1000000; j = i * i + (k = k + 1) * i) {
+                    isPrime[j] = false;
+                }
+            }
+        }
+        for (int i = 2; i < 1000001; i++) {
+            if (isPrime[i]) {
+                primes.add(i);
+            }
+        }
+        //System.out.println(primes.size());
+    }
+
+    private int getPrimacity(int n) {
+        //System.out.println("primacity calc : " + n);
+        int num = n;
+        Iterator<Integer> it = primes.iterator();
+        HashSet<Integer> set = new HashSet<>();
+        int divisor = it.next();
+        int sqrt = (int) Math.sqrt(n);
+        if (isPrime[n]) {
+            set.add(n);
+        }
+        while (n > 1 && divisor <= sqrt) {
+            if (n % divisor == 0) {
+                n = n / divisor;
+                set.add(divisor);
+                if (isPrime[n]) {
+                    set.add(n);
+                }
+            } else {
+                if (it.hasNext()) {
+                    divisor = it.next();
+                } else {
+                    break;
+                }
+            }
+        }
+        //System.out.println(num + " : " + set);
+        return set.size();
+    }
+    TreeMap<Integer, ArrayList<Integer>> map = new TreeMap<>();
+
+    public void generatePrimacities() {
+        sieve();
+        for (int i = 1; i <= 1000000; i++) { //observed through trial and error for 10^7 7 prime numbers
+            map.put(i, new ArrayList<>());
+        }
+        for (int i = 2; i <= 1000000; i++) {
+            if (isPrime[i]) {
+                map.get(1).add(i);
+            } else {
+                map.get(getPrimacity(i)).add(i);
+            }
+        }
+
+//        for (int i = 1; i <= 7; i++) {
+//            System.out.println("list : "+(map.get(i) instanceof RandomAccess));
+//        }
+    }
+
+    /**
+     * assuming the input will always provide b >= a, will return a value
+     * between 1 to 7 if k < b, else return 0.
+     *
+     * @param a
+     * @param b
+     * @param k
+     * @return
+     */
+    public int query(int a, int b, int k) {
+        if (k > b) { // do not count unnecessary evaluation, a number is always divisible by smaller numbers
+            return 0;
+        }
+
+        if (a == b) {
+            return (map.get(k).contains(a) ? 1 : 0);
+        }
+        int index1 = Collections.binarySearch(map.get(k), a);
+        int index2 = Collections.binarySearch(map.get(k), b);
+        return Math.abs(adjustIndexesForIntervals(index1, index2));
+    }
+
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new FileReader("homework.txt"));
+        BufferedWriter bw = new BufferedWriter(new FileWriter("homework_output.txt"));
+        Primacity p = new Primacity();
+        p.generatePrimacities();
+        int caseNo = 1;
+        int t = Integer.parseInt(br.readLine());
+        while (t-- > 0) {
+            String x[] = br.readLine().trim().split(" ");
+            int a = Integer.parseInt(x[0]);
+            int b = Integer.parseInt(x[1]);
+            int k = Integer.parseInt(x[2]);
+            bw.write("Case #" + caseNo + ": " + p.query(a, b, k) + "\n");
+            caseNo++;
+        }
+        bw.close();
+    }
+
+    private int adjustIndexesForIntervals(int index1, int index2) {
+        //System.out.println("[" + index1 + ", " + index2 + "]");
+        if (index1 == -1) {
+            if (index2 == -1) {
+                return 0;
+            } else if (index2 < 0) {
+                return Math.abs(index2) - 1;
+            } else if (index2 >= 0) {
+                return Math.abs(index2) + 1;
+            }
+        } else if (index1 < 0) {
+            if (index2 < 0) {
+                return Math.abs(index2) - Math.abs(index1);
+            } else if (index2 > 0) {
+                return (Math.abs(index2) + 1) - Math.abs(index1) + 1;
+            }
+        } else {
+            if (index2 < 0) {
+                return (Math.abs(index2) - 1) - Math.abs(index1);
+            } else if (index2 >= 0) {
+                return Math.abs(index2) - Math.abs(index1) + 1;
+            }
+        }
+        return -1;
+    }
+}

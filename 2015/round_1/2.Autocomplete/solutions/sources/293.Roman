@@ -1,0 +1,57 @@
+open Printf
+open Scanf
+
+module CharMap = Map.Make(Char)
+
+external id : 'a -> 'a = "%identity"
+
+type t = Unknown | Known of t CharMap.t
+
+let rec print indent = function
+  | Unknown -> printf "%*sunknown\n" indent ""
+  | Known tree ->
+    CharMap.iter begin fun k v ->
+      printf "%*s%c =>\n" indent "" k;
+      print (indent + 2) v
+    end tree
+
+let rec add i j w tree =
+  let rec rest k a =
+    if k <= i then a else rest (k - 1) (Known (CharMap.singleton w.[k] a))
+  in
+  match tree with
+  | Unknown when i >= j -> tree, 1
+  | Unknown ->
+    Known (CharMap.singleton w.[i] (rest (j - 1) Unknown)), 1 + i
+  | Known _ when i >= j -> tree, i
+  | Known tree ->
+  match CharMap.find w.[i] tree with
+  | exception Not_found ->
+    Known (CharMap.add w.[i] (rest (j - 1) Unknown) tree), 1 + i
+  | branch ->
+    let (sub, count) = add (i + 1) j w branch in
+    Known (CharMap.add w.[i] sub tree), count
+
+let solve () =
+  let n = scanf " %d" id in
+  let c = ref 0 in
+  let root = ref Unknown in
+  for i = 1 to n do
+    let word = scanf " %s" id in
+    let (sub, count) =  add 0 (String.length word) word !root in
+    root := sub;
+(*
+    print 0 !root;
+    printf "COUNT=%d\n" count;
+*)
+    c := !c + count
+  done;
+  printf "%d" !c
+
+let () =
+  let t' = scanf " %d" id in
+  for i' = 1 to t' do
+    printf "Case #%d: " i';
+    solve ();
+    printf "\n"
+  done

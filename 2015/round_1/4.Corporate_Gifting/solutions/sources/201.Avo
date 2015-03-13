@@ -1,0 +1,192 @@
+program corporate_gifting;
+
+{$APPTYPE CONSOLE}
+
+{$R *.res}
+
+uses
+  Classes,
+  Contnrs,
+  Math,
+  SysUtils;
+
+const
+  MaxN = 200 * 1000;
+
+var
+  MaxGiftCost: Int64;
+
+type
+  TIntList = class
+  private
+    FItems: array of Integer;
+    function GetItems(Index: Integer): Integer;
+    procedure SetItems(Index: Integer; const Value: Integer);
+  public
+    property Items[Index: Integer]: Integer read GetItems write SetItems; default;
+  end;
+
+{ TIntList }
+
+function TIntList.GetItems(Index: Integer): Integer;
+begin
+  Assert(Index >= 0, 'index too small');
+  Assert(Index < Length(FItems), 'index too large');
+  Result := FItems[Index];
+end;
+
+procedure TIntList.SetItems(Index: Integer; const Value: Integer);
+begin
+  Assert(Index >= 0, 'index too small');
+  if Length(FItems) <= Index then
+    SetLength(FItems, Max(Index * 2, 16));
+  FItems[Index] := Value;
+end;
+
+type
+  TTree = class
+  private
+    FIndex: Integer;
+    FParentIndex: Integer;
+    FChildren: TList;
+    FMinCostWith, FMinCostWithout: TIntList;
+    function GetChildCount: Integer;
+    function GetChildren(Index: Integer): TTree;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    procedure TopologicalSort;
+    procedure UpdateMinCostWith;
+    procedure UpdateMinCostWithout;
+
+    property Children[Index: Integer]: TTree read GetChildren; default;
+    property ChildCount: Integer read GetChildCount;
+  end;
+
+var
+  Topological: TList;
+
+{ TTree }
+
+constructor TTree.Create;
+begin
+  FChildren := TList.Create;
+  FMinCostWith := TIntList.Create;
+  FMinCostWithout := TIntList.Create;
+end;
+
+destructor TTree.Destroy;
+begin
+  FChildren.Free;
+  FMinCostWithout.Free;
+  FMinCostWith.Free;
+  inherited;
+end;
+
+function TTree.GetChildCount: Integer;
+begin
+  Result := FChildren.Count;
+end;
+
+function TTree.GetChildren(Index: Integer): TTree;
+begin
+  Result := FChildren[Index];
+end;
+
+procedure TTree.TopologicalSort;
+var
+  i: Integer;
+begin
+  Topological.Add(Self);
+  for i := 0 to FChildren.Count - 1 do
+    TTree(FChildren[i]).TopologicalSort;
+end;
+
+procedure TTree.UpdateMinCostWith;
+var
+  i, j: Integer;
+  Cost: Int64;
+begin
+  for i := 0 to MaxGiftCost do
+  begin
+    Cost := i;
+    for j := 0 to ChildCount - 1 do
+      Inc(Cost, Children[j].FMinCostWithout[i]);
+    FMinCostWith[i] := Cost;
+  end;
+end;
+
+procedure TTree.UpdateMinCostWithout;
+var
+  i, j: Integer;
+  Cost: Int64;
+begin
+  for i := 0 to MaxGiftCost do
+  begin
+    Cost := Int64(MaxN) * MaxN;
+    for j := 1 to MaxGiftCost do
+    begin
+      if i <> j then
+        Cost := Min(Cost, FMinCostWith[j]);
+    end;
+    FMinCostWithout[i] := Cost;
+  end;
+end;
+
+var
+  Trees: TObjectList;
+
+function GetMinCost(N: Int64): Int64;
+var
+  i: Integer;
+  Tree: TTree;
+begin
+  MaxGiftCost := Min(100, N);
+  for i := N downto 1 do
+  begin
+    Tree := Topological[i];
+    Tree.UpdateMinCostWith;
+    Tree.UpdateMinCostWithout;
+  end;
+  Result := TTree(Topological[1]).FMinCostWithout[0];
+end;
+
+function Solve: Int64;
+var
+  i: Integer;
+  N: Integer;
+  ParentIndex: Integer;
+begin
+  Topological := TList.Create;
+  Trees := TObjectList.Create;
+  try
+    Readln(N);
+    Trees.Capacity := N + 1;
+    Trees.Add(TTree.Create);
+    for i := 1 to N do
+      Trees.Add(TTree.Create);
+    for i := 1 to N do
+    begin
+      Read(ParentIndex);
+      TTree(Trees[i]).FIndex := i;
+      TTree(Trees[i]).FParentIndex := ParentIndex;
+      TTree(Trees[ParentIndex]).FChildren.Add(Trees[i]);
+    end;
+    TTree(Trees.First).TopologicalSort;
+    Result := GetMinCost(N);
+  finally
+    Topological.Free;
+    Trees.Free;
+  end;
+end;
+
+var
+  i, T: Integer;
+begin
+//  AssignFile(Input, 'corp.txt');
+  Readln(T);
+  for i := 1 to T do
+    Writeln('Case #', i, ': ', Solve);
+end.
+

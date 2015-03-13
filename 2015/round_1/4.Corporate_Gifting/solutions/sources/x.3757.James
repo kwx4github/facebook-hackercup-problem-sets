@@ -1,0 +1,174 @@
+//
+//  AppDelegate.m
+//  HackerCup2015ObjC
+//
+//  Created by James Webb on 1/10/15.
+//  Copyright (c) 2015 James Webb. All rights reserved.
+//
+
+#import "AppDelegate.h"
+
+#define BILLION_7 1000000007
+
+@interface NSString (jw)
+
+-(int)digitAtIndex:(NSUInteger)index;
+-(NSString *)stringBySwappingValuesAtIndices:(NSUInteger)index1 and:(NSUInteger)index2;
+
+@end
+
+@implementation NSString (jw)
+
+-(int)digitAtIndex:(NSUInteger)index
+{
+    return [self substringWithRange:NSMakeRange(index, 1)].intValue;
+}
+
+-(NSString *)stringBySwappingValuesAtIndices:(NSUInteger)index1 and:(NSUInteger)index2
+{
+    NSRange range1 = NSMakeRange(index1, 1);
+    NSRange range2 = NSMakeRange(index2, 1);
+    
+    NSString *digit1 = [self substringWithRange:range1];
+    NSString *digit2 = [self substringWithRange:range2];
+    
+    NSString *result = [self stringByReplacingCharactersInRange:range1 withString:digit2];
+    result = [result stringByReplacingCharactersInRange:range2 withString:digit1];
+    
+    return result;
+}
+
+@end
+
+@interface AppDelegate ()
+
+
+
+@end
+
+@implementation AppDelegate
+{
+    NSMutableArray *employees;
+}
+
+-(void)prep
+{
+    employees = [NSMutableArray array];
+}
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    NSArray *lines = [[NSString stringWithContentsOfFile:@"/Users/james/Downloads/corporate_gifting.txt" encoding:NSUTF8StringEncoding error:nil] componentsSeparatedByString:@"\n"];
+    
+    int count = [lines[0] intValue];
+    
+//    [self prep];
+    
+    unsigned long lineNumber = 2;
+    
+    for (NSUInteger i=1; i<=count; i++) {
+        [self prep];
+        printf("%s\n", [self handleCaseWith:lines numbered:i lineNumber:lineNumber].UTF8String);
+        lineNumber += 2;
+    }
+
+    return YES;
+}
+
+-(unsigned long)countOdds:(NSArray *)array
+{
+    unsigned long result = array.count;
+    
+    for (NSArray *ary in array) {
+        result += [self countEvens:ary];
+    }
+    
+    return result;
+}
+
+
+-(unsigned long)countEvens:(NSArray *)array
+{
+    unsigned long result = 0;
+    
+    for (NSArray *ary in array) {
+        result += [self countOdds:ary];
+    }
+    
+    return result;
+}
+
+-(unsigned long)valueForTree:(NSArray *)emp
+{
+    unsigned long result = 0;
+    
+    if (emp.count == 0) {
+        return 1;
+    }
+    
+    NSMutableSet *values = [NSMutableSet set];
+    
+    for (NSArray *report in emp) {
+        result += [self valueForTree:report];
+        [values addObject:@([self topForTree:report])];
+    }
+    
+    unsigned long myGift = 1;
+    
+    while ([values containsObject:@(myGift)]) {
+        myGift++;
+    }
+    
+    result += myGift;
+    
+    return result;
+}
+
+-(unsigned long)topForTree:(NSArray *)emp
+{
+    if (emp.count == 0) {
+        return 1;
+    }
+    
+    NSMutableSet *values = [NSMutableSet set];
+
+    for (NSArray *report in emp) {
+        [values addObject:@([self topForTree:report])];
+    }
+    
+    unsigned long myGift = 1;
+    
+    while ([values containsObject:@(myGift)]) {
+        myGift++;
+    }
+    
+    return myGift;
+}
+
+-(NSString *)handleCaseWith:(NSArray *)lines numbered:(NSUInteger)caseIndex lineNumber:(unsigned long)lineNumber
+{
+//    unsigned long result = 0;
+    
+    NSArray *directReports = [lines[lineNumber] componentsSeparatedByString:@" "];
+    unsigned long count = [lines[lineNumber - 1] integerValue];
+    
+//    printf("%s\n", [lines[lineNumber] UTF8String]);
+    
+    for (unsigned long i=0; i<count; i++) {
+        NSMutableArray *employee = @[].mutableCopy;
+        [employees addObject:employee];
+        
+        unsigned long supervisorIndex = [directReports[i] integerValue];
+        
+        if (supervisorIndex) {
+            [employees[supervisorIndex - 1] addObject:employee];  // correct for one based
+        }
+        
+    }
+
+    unsigned long result = [self valueForTree:employees[0]];
+    
+    return [NSString stringWithFormat:@"Case #%lu: %lu", caseIndex, result];
+}
+
+@end

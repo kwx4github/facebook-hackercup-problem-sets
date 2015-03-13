@@ -1,0 +1,92 @@
+#include <algorithm>
+#include <cstdio>
+#include <queue>
+#include <vector>
+using namespace std;
+
+#define rep(i,n) repi(i,0,n)
+#define repi(i,a,b) for(int i=int(a);i<int(b);++i)
+
+inline int in() { int n; scanf("%d", &n); return n; }
+
+const int N = 201500;
+int n;
+vector<vector<int>> G;
+
+void input()
+{
+    n = in();
+    static int p[N];
+    rep(i, n) p[i] = in() - 1;
+    G.assign(n, vector<int>());
+    repi(i, 1, n) {
+        int j = p[i];
+        G[i].push_back(j);
+        G[j].push_back(i);
+    }
+}
+
+inline int deg(int v) { return G[v].size(); }
+
+int depth[N];
+
+void bfs()
+{
+    fill_n(depth, n, -1);
+    queue<int> que;
+    depth[0] = 0, que.push(0);
+    while (not que.empty()) {
+        int v = que.front();
+        que.pop();
+        for (int nv : G[v]) {
+            if (depth[nv] == -1) {
+                depth[nv] = depth[v] + 1;
+                que.push(nv);
+            }
+        }
+    }
+}
+
+const long inf = 1e12;
+pair<long, int> best[N], best2[N];
+
+void calculate(int v)
+{
+    long base = 0;
+    vector<long> penalties(deg(v) + 1);
+    for (int c : G[v]) {
+        if (depth[c] > depth[v]) {
+            base += best[c].first;
+            if (best[c].second <= deg(v)) {
+                penalties[best[c].second] += best2[c].first - best[c].first;
+            }
+        }
+    }
+    vector<pair<long, int>> tmp;
+    for (int i = 0; i <= deg(v); ++i) {
+        tmp.emplace_back(base + penalties[i] + i, i);
+    }
+    nth_element(begin(tmp), begin(tmp) + 1, end(tmp));
+    best[v] = tmp[0], best2[v] = tmp[1];
+}
+
+long solve()
+{
+    bfs();
+    vector<pair<int, int>> nodes;
+    rep(i, n) nodes.emplace_back(-depth[i], i);
+    sort(begin(nodes), end(nodes));
+    for (const auto& p : nodes) {
+        calculate(p.second);
+    }
+    return best[0].first + n;
+}
+
+int main()
+{
+    int t = in();
+    for (int i = 1; i <= t; ++i) {
+        input();
+        printf("Case #%d: %ld\n", i, solve());
+    }
+}

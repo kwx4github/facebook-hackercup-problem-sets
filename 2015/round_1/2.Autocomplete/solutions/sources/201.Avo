@@ -1,0 +1,102 @@
+program autocomplete;
+
+{$APPTYPE CONSOLE}
+
+{$R *.res}
+
+uses
+  Contnrs,
+  Math,
+  SysUtils;
+
+const
+  MaxN = 1000 * 1000;
+
+type
+  TTrie = class
+  private
+    Subtrees: array ['a'..'z'] of TTrie;
+    WordCount: Integer;
+  public
+    function Put(const Word: string): Int64;
+  end;
+
+{ TTrie }
+
+function TTrie.Put(const Word: string): Int64;
+var
+  i: Integer;
+  Head: Char;
+  Trie: TTrie;
+begin
+  Trie := Self;
+  Result := 0;
+  for i  := 1 to Length(Word) do
+  begin
+    Inc(Trie.WordCount);
+    Head := Word[i];
+    if Trie.Subtrees[Head] = nil then
+    begin
+      if Result = 0 then
+        Result := i;
+      Trie.Subtrees[Head] := TTrie.Create;
+    end;
+    Trie := Trie.Subtrees[Head];
+  end;
+  Inc(Trie.WordCount);
+  if Result = 0 then
+    Result := Length(Word);
+end;
+
+procedure FreeTrie(Trie: TTrie);
+var
+  Stack: TStack;
+  Subtrie: TTrie;
+begin
+  Stack := TStack.Create;
+  try
+    Stack.Push(Trie);
+    while Stack.Count > 0 do
+    begin
+      Trie := TTrie(Stack.Pop);
+      for Subtrie in Trie.Subtrees do
+      begin
+        if Assigned(Subtrie) then
+          Stack.Push(Subtrie);
+      end;
+      Trie.Free;
+    end;
+  finally
+    Stack.Free;
+  end;
+end;
+
+function Solve: Int64;
+var
+  i: Integer;
+  N: Integer;
+  Trie: TTrie;
+  Word: string;
+begin
+  Trie := TTrie.Create;
+  try
+    Result := 0;
+    Readln(N);
+    for i := 1 to N do
+    begin
+      Readln(Word);
+      Inc(Result, Trie.Put(Word));
+    end;
+  finally
+    FreeTrie(Trie);
+  end;
+end;
+
+var
+  i, T: Integer;
+begin
+  Readln(T);
+  for i := 1 to T do
+    Writeln('Case #', i, ': ', Solve);
+end.
+

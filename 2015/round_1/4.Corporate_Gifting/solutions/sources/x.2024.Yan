@@ -1,0 +1,142 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <unordered_map>
+#include <unordered_set>
+#include <list>
+
+
+using namespace std;
+struct Emp {
+	int id;
+	unordered_set<int> neigh;
+	int x;
+	int manager;
+	bool leaf;
+	int leafCnt;
+	Emp() {
+		x=0;
+		leaf=false;
+		leafCnt=0;
+	}
+};
+class moreLeaf {
+public:
+	bool operator() (const Emp& lhs, const Emp& rhs) const {
+		if (lhs.leafCnt>1) return lhs.leafCnt>rhs.leafCnt;
+		else if (lhs.leaf && !rhs.leaf) return true;
+		return false;
+	}
+};
+void mark(int id, vector<Emp>& v, bool recursive) {
+	if (v[id].x) return;
+	unordered_set<int>& g=v[id].neigh;
+	int ma=g.size()+5;
+	vector<bool> check(ma,false); 
+	for (unordered_set<int>::iterator it=g.begin();
+			it!=g.end();++it) {
+		int p=*it;
+		if (v[p].x && v[p].x<ma) {
+			check[v[p].x]=true;
+		}
+	}
+	int j=0;
+	for (j=1;j<ma;++j) {
+		if (!check[j]) break;
+	}
+	v[id].x=j;
+	//cout<<"set v["<<id<<"]="<<j<<endl;
+	if (!recursive) return;
+	for (unordered_set<int>::iterator it=g.begin();
+			it!=g.end();++it) {
+		int p=*it;
+		mark(p,v,true);
+	}
+}
+int solve(vector<Emp>& v) {
+	for (int i=0;i<v.size();++i) {
+		if (v[i].neigh.size()==1) 
+			v[i].leaf=true;
+	} 
+	for (int i=0;i<v.size();++i) {
+		int m=v[i].manager;
+		if (m>=0) {
+			if (v[i].leaf) v[m].leafCnt++;
+			if (v[m].leaf) v[i].leafCnt++;
+		} 
+	}
+	vector<Emp> t=v;
+	sort(t.begin(), t.end(), moreLeaf());
+
+/*
+	for (int i=0;i<t.size();++i) {
+		cout<<"id:"<<t[i].id-1<<endl;
+		if (t[i].leaf) cout<<"Leaf\n";
+		else cout<<"NotLeaf"<<endl;
+		cout<<"neigh:";
+		for (unordered_set<int>::iterator it=t[i].neigh.begin();
+				it!=t[i].neigh.end();++it) 
+			cout<<*it<<" ";
+		cout<<endl;
+	}
+*/
+	for (int i=0;i<t.size()&&t[i].leafCnt>1;++i) {
+		int id=t[i].id-1;
+		if (v[id].x) continue;
+		unordered_set<int>& g=v[id].neigh;
+		//cout<<"set neigh , id="<<id<<" leafCnt="<<v[id].leafCnt<<endl;
+		for (unordered_set<int>::iterator it=g.begin();
+				it!=g.end();++it) {
+			int p=*it;
+			if (v[p].leaf) {
+				//cout<<"set id:"<<p<<endl;
+				v[p].x=1;
+			}
+		}
+		mark(id,v,false);
+	}
+	for (int i=0;i<t.size();++i) {
+		int id=t[i].id-1;
+		mark(id,v,true);
+	}
+	int ans=0;
+	for (int i=0;i<v.size();++i) {
+		ans+=v[i].x;
+	}
+/*
+	cout<<"dump v:"<<endl;
+	for (int i=0;i<v.size();++i) {
+		cout<<v[i].x<<" ";
+	}
+	cout<<endl;
+*/
+	return ans;
+}
+
+int main(void) {
+	int T;
+	cin>>T;
+	for (int t=1;t<=T;++t) {
+		int N;
+		cin>>N;
+		vector<Emp> v(N,Emp());
+		for (int i=0;i<N;++i) {
+			int m;
+			cin>>m;
+			m--;
+			v[i].id=i+1;
+			v[i].manager=m;
+			if (m>=0) {
+				v[i].neigh.insert(m);
+				v[m].neigh.insert(i);
+			}
+		}
+		int ans=solve(v);
+		cout<<"Case #"<<t<<": "<<ans<<endl;
+	}
+	return 0;
+}

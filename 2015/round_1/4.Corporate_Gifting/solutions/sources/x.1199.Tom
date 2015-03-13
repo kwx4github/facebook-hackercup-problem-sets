@@ -1,0 +1,154 @@
+#include <iostream>
+#include <memory>
+#include <vector>
+#include <set>
+#include <algorithm>
+
+struct employee
+{
+        employee *parent;
+        std::vector<employee *> children;
+
+        int self_cost[2]; // the present that the parent can't use
+        int total_cost[2]; // the value spent in the whole hirarchy
+
+        int children_todo;
+
+        employee() : parent{ NULL }, children_todo{ 0 }
+        {
+                total_cost[0] = 0;
+                total_cost[1] = 0;
+        }
+
+        int get_total_cost(int parent_cost)
+        {
+                if (self_cost[0] == parent_cost)
+                        return total_cost[1];
+                else
+                        return total_cost[0];
+        }
+
+        void propose_cost(int cost)
+        {
+                int tcost = cost;
+                for (auto it = children.begin(); it != children.end(); it++)
+                {
+                        tcost += (*it)->get_total_cost(cost);
+                }
+
+                // prefer the one with higher self cost at same total cost!! -> better condition for parent
+                if (tcost <= total_cost[0] || total_cost[0] == 0)
+                {
+                        self_cost[1] = self_cost[0];
+                        self_cost[0] = cost;
+                        total_cost[1] = total_cost[0];
+                        total_cost[0] = tcost;
+                }
+                else if (total_cost[1] == 0)
+                {
+                        self_cost[1] = cost;
+                        total_cost[1] = tcost;
+                }
+        }
+
+        void add_child(employee *child)
+        {
+            children.push_back(child);
+            children_todo++;
+        }
+        
+        int decrement_todo()
+        {
+            return --children_todo;
+        }
+};
+
+size_t testcase()
+{
+        int n;
+
+        std::cin >> n;
+
+        std::vector<employee> employees(n);
+
+        std::set<employee *> leafs;
+
+        for (int i = 0; i < n; i++)
+        {
+                int tmp;
+                std::cin >> tmp;
+                tmp--; // we use 0 based indices
+                leafs.insert(&employees[i]); // i might be a leaf..
+                if (tmp >= 0)
+                {
+                        employees[i].parent = &employees[tmp];
+                        employees[tmp].add_child(&employees[i]);
+                        leafs.erase(&employees[tmp]); // tmp is no longer a leaf
+                }
+                else
+                {
+                        employees[i].parent = NULL;
+                }
+        }
+
+        while (!leafs.empty())
+        {
+                employee *current = *leafs.begin();
+                if (!current->children.empty())
+                {
+                        // find max child cost
+                        std::set<int> max_child_costs;
+                        for (auto it = current->children.begin(); it != current->children.end(); it++)
+                        {
+                                max_child_costs.insert((*it)->self_cost[0]);
+                        }
+                        // eig. alles was von einem child verwendet wird zzgl niedrigster wert der nicht von child verwendet wird
+
+                        // check all values until max child value+1
+
+                        // find first integer not in set!
+                        int i = 1;
+                        while (max_child_costs.find(i) != max_child_costs.end())
+                        {
+                                current->propose_cost(i);
+                                max_child_costs.erase(i);
+                                i++;
+                        }
+                        // process integer not in set
+                        current->propose_cost(i);
+                        // process rest of set
+                        for (auto it = max_child_costs.begin(); it != max_child_costs.end(); it++)
+                        {
+                                current->propose_cost(*it);
+                        }
+                }
+                else
+                {
+                        current->propose_cost(1);
+                        current->propose_cost(2);
+                }
+
+                leafs.erase(leafs.begin());
+                // check parent
+                if (current->parent == NULL)
+                        continue;
+                if (current->parent->decrement_todo() == 0)
+                        leafs.insert(current->parent);
+        }
+
+        return employees[0].get_total_cost(0);
+}
+
+int main(int argc, char **argv)
+{
+        int t;
+
+        std::cin >> t;
+
+        for (int i = 0; i < t; i++)
+        {
+                size_t res = testcase();
+                std::cout << "Case #" << (i + 1) << ": " << res << std::endl;
+        }
+        return 0;
+}

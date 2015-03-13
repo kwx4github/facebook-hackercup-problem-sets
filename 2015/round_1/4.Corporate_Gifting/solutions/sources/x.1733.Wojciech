@@ -1,0 +1,117 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+public class CorporateGifting {
+
+	public static void main(String[] argv) throws IOException {
+		BufferedReader bi = new BufferedReader(new InputStreamReader(System.in));
+		String line = bi.readLine();
+		int t = Integer.parseInt(line);
+		for (int i = 1; i <= t; i++) {
+			line = bi.readLine();
+			int n = Integer.parseInt(line);
+			int[] parents = new int[n];
+			line = bi.readLine();
+			String[] split = line.split(" ");
+
+			for (int x = 0; x < split.length; x++) {
+				parents[x] = Integer.parseInt(split[x]) - 1;
+			}
+			parents[0] = 0;
+			int result = solve(parents);
+			System.out.println("Case #" + i + ": " + result);
+		}
+
+	}
+
+	private static int solve(int[] parents) {
+		int[] presentValue = new int[parents.length];
+
+		Map<Integer, List<Integer>> graph = createGraph(parents);
+
+		final int[] distance = calcDistanceFromCEO(graph);
+
+		PriorityQueue<Integer> stack = new PriorityQueue<Integer>(
+				parents.length, new Comparator<Integer>() {
+
+					@Override
+					public int compare(Integer o1, Integer o2) {
+						Integer d1 = distance[o1];
+						Integer d2 = distance[o2];
+						return -d1.compareTo(d2);
+					}
+				});
+		for (int i = 0; i < graph.size(); i++) {
+			if (graph.get(i).size() == 0) {
+				stack.add(i);
+				presentValue[i] = 1;
+			}
+		}
+
+		boolean[] visited = new boolean[parents.length];
+
+		while (!stack.isEmpty()) {
+			Integer vert = stack.poll();
+
+			if (!visited[parents[vert]]) {
+				stack.add(parents[vert]);
+				visited[parents[vert]] = true;
+			}
+			SortedSet<Integer> sortedDist = new TreeSet<Integer>();
+			for (Integer n : graph.get(vert)) {
+				sortedDist.add(presentValue[n]);
+			}
+			int val = 1;
+			Iterator<Integer> it = sortedDist.iterator();
+			while (it.hasNext() && it.next() == val) {
+				val++;
+			}
+			presentValue[vert] = val;
+		}
+
+		int sum = 0;
+		for (int d : presentValue) {
+			sum += d;
+		}
+		return sum;
+	}
+
+	private static int[] calcDistanceFromCEO(Map<Integer, List<Integer>> graph) {
+		Deque<Integer> stack = new ArrayDeque<Integer>();
+		int[] distance = new int[graph.size()];
+		distance[0] = 0;
+		stack.add(0);
+		while (!stack.isEmpty()) {
+			int vert = stack.pop();
+			for (int n : graph.get(vert)) {
+				stack.add(n);
+				distance[n] = distance[vert] + 1;
+			}
+		}
+		return distance;
+	}
+
+	private static Map<Integer, List<Integer>> createGraph(int[] parents) {
+		Map<Integer, List<Integer>> graph = new HashMap<Integer, List<Integer>>();
+		for (int i = 0; i < parents.length; i++) {
+			graph.put(i, new ArrayList<Integer>());
+		}
+		for (int i = 1; i < parents.length; i++) {
+			List<Integer> list = graph.get(parents[i]);
+			list.add(i);
+		}
+		return graph;
+	}
+}

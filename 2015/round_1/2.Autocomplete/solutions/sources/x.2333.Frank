@@ -1,0 +1,99 @@
+package round1;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.PrintWriter;
+
+public class Autocomplete {
+	public static BufferedReader input;
+	public static PrintWriter output;
+
+	public static void main(String[] args) throws Exception {
+		long startTime = System.currentTimeMillis();
+		input = new BufferedReader(new FileReader("C:\\Users\\Frank\\Downloads\\autocomplete.txt"));
+		output = new PrintWriter("autocomplete_output.txt");
+		
+		int numCases = Integer.parseInt(input.readLine());
+		for (int i = 1; i <= numCases; i++) {
+			String txt = "Case #" + i + ": ";
+			output.print(txt);
+			System.out.print(txt);
+			solve();
+		}
+
+		input.close();
+		output.close();
+		System.out.println("Time Elapsed : " + (System.currentTimeMillis() - startTime) / 1000.0 + " seconds");
+	}
+
+	public static FrequencyTrie trie;
+	
+	public static void solve () throws Exception {	
+		trie = new FrequencyTrie();
+		System.gc();
+		
+		int totalCost = 0;
+		int numWords = Integer.parseInt(input.readLine());
+		for (int i= 0; i<numWords; i++) {
+			String word = input.readLine();
+			trie.add(word);
+			totalCost += trie.uniquePrefixLengthCache == -1 ? word.length() : trie.uniquePrefixLengthCache; 
+		}
+		
+		output.println(totalCost);
+		System.out.println(totalCost);
+	}
+	
+	public static class FrequencyTrie { 
+		public static final int ALPHABET_SIZE = 26;
+		public static final char START_OF_ALPHABET = 'a';
+		
+		public static class TrieNode {
+			public int frequency = 0;
+			public TrieNode[] next = new TrieNode[ALPHABET_SIZE]; 
+		}
+		
+		public TrieNode root = new TrieNode();
+		public int uniquePrefixLengthCache = -1; // HACK HACK - Used to cache the length until the first newly created TrieNode during last call to add() 
+		
+		public void add(String word) {
+			uniquePrefixLengthCache = -1; // Reset cache
+			root = add(root, word.toCharArray(), 0);
+		}
+		
+		private TrieNode add(TrieNode n, char[] word, int index) {
+			if (n == null) {
+				if (uniquePrefixLengthCache == -1) { // Only save the first cache-miss
+					uniquePrefixLengthCache = index;
+				}
+				n = new TrieNode();
+			}
+			
+			n.frequency++;
+			if (word.length == index) {
+				return n;
+			}
+			
+			int c = word[index] - START_OF_ALPHABET;
+			n.next[c] = add(n.next[c], word, index + 1);
+			return n;
+		}
+		
+		public int getFrequency(String word) {
+			return getFrequency(root, word.toCharArray(), 0);
+		}
+		
+		private int getFrequency(TrieNode n, char[] word, int index) {
+			if (n == null) {
+				return 0;
+			}
+			
+			if (index == word.length) {
+				return n.frequency;
+			}
+			
+			int c = word[index] - START_OF_ALPHABET;
+			return getFrequency(n.next[c], word, index + 1);
+		}
+	}
+}

@@ -1,0 +1,111 @@
+#include <iostream>
+#include <chrono>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <unordered_map>
+#include <limits>
+#include <functional>
+#include <string>
+#include <sstream>
+
+#include <cstdlib>
+#include <cassert>
+#include <cstdio>
+
+using namespace std;
+
+int go(int v, vector<int>& lev,vector<int>& r) {
+    if (lev[v] == 0) {
+        lev[v] = 1 + go(r[v], lev, r);
+    }
+    return lev[v];
+}
+
+void df(int v, vector< pair<int,int> >& c, vector<int>& lev, vector< vector<int> >& g) {
+    for (int& w : g[v]) {
+        df(w, c, lev, g);
+        c[v].first += c[w].first;
+        c[v].second += c[w].second;
+    }
+}
+
+
+int solve(vector<int>& r) {
+    if (r.size() == 1) return 1;
+    vector<int> level(r.size());
+    int cnt[2] = {0, 1};
+    level[0] = 1;
+    vector< vector<int> > g(r.size());
+    vector<int> w(r.size());
+    vector<int> v(r.size());
+    for (size_t i = 1; i < r.size(); i++) {
+        if (level[i] == 0) {
+            go(i, level, r);
+        }
+        g[r[i]].push_back(i);
+        cnt[level[i]&1]++;
+        w[i] = i;
+    }
+    int val = min(2 * cnt[0] + cnt[1], 2* cnt[1] + cnt[0]);
+    vector< pair<int,int> > c;
+    sort(w.begin(), w.end(),[&] (const int& i,const int& j) -> bool {
+            return g[i].size() > g[j].size();
+    });
+    
+    for (size_t i = 0; i < w.size(); i++) {
+        if (g[w[i]].empty()) {
+            continue;
+        }
+
+        set<int> s;
+        if (i > 0) {
+            v[w[i]] = max(v[w[i]], v[r[w[i]]] + 1);
+            s.insert(v[r[w[i]]]);
+        }
+        for (int& x : g[w[i]]) {
+            if (!v[x]) {
+                v[x] = 1;
+            }
+            s.insert(v[x]);
+        }
+    
+        int j = 1;
+        while (!s.empty()) {
+            if (*s.begin() != j) break;
+            j++;
+            s.erase(s.begin());
+        }
+        v[w[i]] = j;
+    }
+    int aux = 0;
+    for (size_t i = 0; i < w.size(); i++) {
+        aux += v[i];
+    }
+    val = min(val, aux);
+    return val;
+}
+
+int main() {
+    assert (freopen("test.txt", "r", stdin) && freopen("test.out", "w",stdout));
+    ios::sync_with_stdio(0);
+    int t;
+	cin >> t;
+    cin.get();
+	auto t0 = std::chrono::system_clock::now();
+    for (int i = 1;i <= t; i++) {
+        int n;
+        cin >> n;
+        vector<int> r(n);
+        for (int i = 0; i < n; i ++) {
+            cin >> r[i];
+            r[i]--;
+        }
+        cout << "Case #" << i << ": " << solve(r) << "\n";
+    }
+    
+	auto t1 = std::chrono::system_clock::now();
+	auto d = std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0);
+	cerr << d.count() << "\n";
+}

@@ -1,0 +1,226 @@
+package Y2015.Round1.CorporateGifting;
+
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.InputMismatchException;
+import java.util.Stack;
+
+public class Main {
+	private static final String fileName = "input/Y2015/Round1/corporategifting";
+	private static final String inputFileName = fileName + ".in";
+	private static final String outputFileName = fileName + ".out";
+
+	// CorporateGifting
+	public static void main(String[] args) throws Exception {
+		final InputReader in = new InputReader(new FileInputStream(inputFileName));
+		final OutputWriter out = new OutputWriter(new FileOutputStream(outputFileName));
+		int T = in.readInt();
+		for(int t=1;t<=T;t++){
+			int N = in.readInt();
+			Emp[] emps = new Emp[N];
+			for(int i=0;i<N;i++){
+				emps[i]=new Emp();
+			}
+			in.readInt(); // like a boss
+			for(int i=1;i<N;i++){
+				emps[in.readInt()-1].add(emps[i]);
+			}
+			// dfs depth
+			Stack<Emp> todo = new Stack<Emp>();
+			Stack<Emp> allseq = new Stack<Emp>();
+			todo.add(emps[0]);
+			allseq.add(emps[0]);
+			emps[0].depth=0;
+			while(!todo.isEmpty()){
+				Emp cur = todo.pop();
+				for(Emp chld : cur.chlds){
+					chld.depth = cur.depth+1;
+					todo.add(chld);
+					allseq.add(chld);
+				}
+			}
+			// find best
+			while(!allseq.isEmpty()){
+				Emp cur = allseq.pop();
+				if(cur.chlds.isEmpty()){
+					cur.price1 = cur.tot1 = 1;
+					cur.price2 = cur.tot2 = 2;
+				}else{
+					int maxOfChilds = 2;
+					for(Emp chld : cur.chlds){
+						maxOfChilds = Math.max(maxOfChilds, Math.max(chld.price1, chld.price2));
+					}
+					maxOfChilds++;
+					for(int price = 1; price <= maxOfChilds; price++){
+						int tot = price;
+						for(Emp chld : cur.chlds){
+							tot += (price == chld.price1?chld.tot2:chld.tot1);
+						}
+						if(tot < cur.tot1){
+							cur.tot2 = cur.tot1;
+							cur.price2 = cur.price1;
+							cur.tot1 = tot;
+							cur.price1 = price;
+						}else if(tot < cur.tot2){
+							cur.tot2 = tot;
+							cur.price2 = price;							
+						}
+					}
+				}
+			}
+			out.printLine("Case #"+t+": "+Math.min(emps[0].tot1, emps[0].tot2));
+		}
+		out.close();
+	}
+	
+	static class Emp{
+		private ArrayList<Emp> chlds;
+		int depth;
+		private int price1, price2;
+		private int tot1, tot2;
+		public Emp() {
+			chlds = new ArrayList<Emp>();
+			tot1=tot2=Integer.MAX_VALUE;
+		}
+		void add(Emp emp){
+			this.chlds.add(emp);
+		}
+	}
+	
+	static class InputReader {
+		private InputStream stream;
+		private byte[] buf = new byte[1024];
+		private int curChar;
+		private int numChars;
+
+		public InputReader(InputStream stream) {
+			this.stream = stream;
+		}
+
+		public int read() {
+			if (numChars == -1)
+				throw new InputMismatchException();
+			if (curChar >= numChars) {
+				curChar = 0;
+				try {
+					numChars = stream.read(buf);
+				} catch (IOException e) {
+					throw new InputMismatchException();
+				}
+				if (numChars <= 0)
+					return -1;
+			}
+			return buf[curChar++];
+		}
+
+		public String readLine() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			StringBuilder res = new StringBuilder();
+			do {
+				res.appendCodePoint(c);
+				c = read();
+			} while (!isEndOfLine(c));
+			return res.toString();
+		}
+
+		public String readString() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			StringBuilder res = new StringBuilder();
+			do {
+				res.appendCodePoint(c);
+				c = read();
+			} while (!isSpaceChar(c));
+			return res.toString();
+		}
+
+		public long readLong() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			int sgn = 1;
+			if (c == '-') {
+				sgn = -1;
+				c = read();
+			}
+			long res = 0;
+			do {
+				if (c < '0' || c > '9')
+					throw new InputMismatchException();
+				res *= 10;
+				res += c - '0';
+				c = read();
+			} while (!isSpaceChar(c));
+			return res * sgn;
+		}
+
+		public int readInt() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			int sgn = 1;
+			if (c == '-') {
+				sgn = -1;
+				c = read();
+			}
+			int res = 0;
+			do {
+				if (c < '0' || c > '9')
+					throw new InputMismatchException();
+				res *= 10;
+				res += c - '0';
+				c = read();
+			} while (!isSpaceChar(c));
+			return res * sgn;
+		}
+
+		public boolean isSpaceChar(int c) {
+			return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+		}
+
+		public boolean isEndOfLine(int c) {
+			return c == '\n' || c == '\r' || c == -1;
+		}
+	}
+
+	static class OutputWriter {
+		private final PrintWriter writer;
+
+		public OutputWriter(OutputStream outputStream) {
+			writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					outputStream)));
+		}
+
+		public OutputWriter(Writer writer) {
+			this.writer = new PrintWriter(writer);
+		}
+
+		public void print(Object... objects) {
+			for (int i = 0; i < objects.length; i++) {
+				if (i != 0)
+					writer.print(' ');
+				writer.print(objects[i]);
+			}
+		}
+
+		public void printLine(Object... objects) {
+			print(objects);
+			writer.println();
+		}
+
+		public void close() {
+			writer.close();
+		}
+	}
+}

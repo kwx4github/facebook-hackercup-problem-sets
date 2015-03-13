@@ -1,0 +1,103 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+)
+
+const MAX=10000000
+//const MAX=1000
+
+var sols []string
+var primacyMap []uint64
+
+func isPrime(n uint64) (bool) {
+    if (n <= 3) {
+        return n > 1
+    } else if n % 2 == 0 || n % 3 == 0 {
+        return false
+    } else {
+        for i := uint64(5); i * i <= n; i += 6 {
+            if n % i == 0 || n % i + 2 == 0 {
+                return false
+            }
+        }
+        return true
+    }
+}
+
+func calcDivMap() {
+	primacyMap = make([]uint64, MAX+1)
+	for i := uint64(2); i <= MAX; i++ {
+		if isPrime(i) {
+			primacyMap[i] = 1
+			for d := uint64(2); d*i <= MAX; d++ {
+				primacyMap[d*i] += 1
+			}
+		}
+	}
+}
+
+func file_Put_Contents(filename string, content []byte) error {
+	fp, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, os.ModePerm)
+
+	if err != nil {
+		return err
+	}
+
+	defer fp.Close()
+
+	_, err = fp.Write(content)
+
+	return err
+}
+
+func addSolution(pos int, sol string, c chan bool) {
+	sols[pos] = fmt.Sprintf("Case #%d: %s", pos+1, sol)
+	c <- true
+	file_Put_Contents("/tmp/prob_sols", []byte(fmt.Sprintf("%s\n", sols[pos])))
+}
+
+func solveProblem(pos int, f, t, k uint64, c chan bool) {
+	result := 0
+	for i := f; i <= t; i++ {
+		if primacyMap[i] == k {
+			result++
+		}
+	}
+
+	addSolution(pos, fmt.Sprintf("%d", result), c)
+}
+
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	calcDivMap()
+
+	reader := bufio.NewReader(os.Stdin)
+
+	text, _ := reader.ReadString('\n')
+	problems, _ := strconv.ParseInt(text[:len(text)-1], 10, 64)
+	sols = make([]string, problems)
+	solsChan := make(chan bool)
+	for p := 0; p < int(problems); p++ {
+		info, _ := reader.ReadString('\n')
+		infoL := strings.Split(info[:len(info)-1], " ")
+		from, _ := strconv.ParseInt(infoL[0], 10, 64)
+		to, _ := strconv.ParseInt(infoL[1], 10, 64)
+		k, _ := strconv.ParseInt(infoL[2], 10, 64)
+
+		go solveProblem(p, uint64(from), uint64(to), uint64(k), solsChan)
+	}
+
+	for p := 0; p < int(problems); p++ {
+		<-solsChan
+	}
+	for p := 0; p < int(problems); p++ {
+		fmt.Println(sols[p])
+	}
+}

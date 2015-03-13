@@ -1,0 +1,94 @@
+#include <cstdio>
+#include <algorithm>
+#include <map>
+#include <vector>
+#include <string>
+#include <utility>
+
+using namespace std;
+
+#define MAX 200005
+typedef long long ll;
+
+int parent[MAX];
+vector<int> children[MAX];
+int N;
+
+struct sol {
+  sol() : bc(-1), bv(1000000000000LL), sv(1000000000000LL) {}
+  int bc;
+  ll bv;
+  ll sv;
+};
+sol sols[MAX];
+
+void Update(sol &S, int c, ll v) {
+  if (v < S.bv) {
+    S.sv = S.bv;
+    S.bv = v;
+    S.bc = c;
+    return;
+  }
+  if (v < S.sv) {
+    S.sv = v;
+  }
+}
+
+void calc(int X) {
+  sols[X] = sol();
+  ll cheapest = 0LL;
+  vector<ll> extra_cost(children[X].size() + 3, 0LL);
+  for (unsigned c = 0; c < children[X].size(); ++c) {
+    sol C = sols[children[X][c]];
+    cheapest += C.bv;
+    extra_cost[C.bc] += C.sv - C.bv;
+  }
+  for (unsigned cand = 1; cand < children[X].size() + 3; ++cand) {
+    Update(sols[X], cand, cheapest + extra_cost[cand] + cand);
+  }
+}
+
+int stack[MAX];
+bool first[MAX];
+int stop;
+void push(int x) {
+  first[++stop] = true;
+  stack[stop] = x;
+}
+void call() {
+  stop = -1;
+  push(0);
+  while (stop >= 0) {
+    int X = stack[stop];
+    if (first[stop]) {
+      first[stop] = false;
+      for (unsigned c = 0; c < children[X].size(); ++c) {
+        push(children[X][c]);
+      }
+    } else {
+      calc(X);
+      stop -= 1;
+    }
+  }
+}
+
+ll solve() {
+  scanf("%d", &N);
+  for (int i = 0; i < N; ++i) children[i].clear();
+  for (int i = 0; i < N; ++i) {
+    scanf("%d", &parent[i]);
+    parent[i] -= 1;
+    if (i) children[parent[i]].push_back(i);
+  }
+  call();
+  return sols[0].bv;
+}
+
+int main() {
+	int T;
+	scanf("%d\n", &T);
+	for (int tt = 0; tt < T; ++tt) {
+		printf("Case #%d: %lld\n", tt + 1, solve());
+	}
+	return 0;
+}

@@ -1,0 +1,102 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <ctype.h>
+#include <string.h>
+
+#define MAX_WORD_LEN 10000000
+
+struct trie_node {
+  struct trie_node *children['z'-'a' + 1];
+  struct trie_node *next_alloc;
+};
+struct trie_node *first_alloc = NULL, *free_nodes = NULL;
+
+#define MIN(x,y) (((x)<(y))?(x):(y))
+
+struct trie_node *alloc_node() {
+  struct trie_node *node;
+  if (free_nodes == NULL) {
+    node = malloc(sizeof(struct trie_node));
+  } else {
+    node = free_nodes;
+    free_nodes = free_nodes->next_alloc;
+  }
+  memset(node,0,sizeof(struct trie_node));
+  node->next_alloc = first_alloc;
+  first_alloc = node;
+  return node;
+}
+
+void cleanup_tree() {
+  struct trie_node *tmp;
+  while( first_alloc) {
+    tmp = first_alloc->next_alloc;
+    first_alloc->next_alloc = free_nodes;
+    free_nodes = first_alloc;
+    first_alloc = tmp;
+  }
+}
+
+int add_to_trie(struct trie_node *root, char *str) {
+  int count = 1;
+  int strl = strlen(str);
+  char *orig_str = str;
+  for(;*str != 0; str++) {
+    if (*str < 'a' || *str > 'z')
+      printf("Bad char %c orig str %s\n",*str, orig_str);
+    assert(*str >= 'a' && *str <= 'z');
+    if (root->children[*str-'a']) {
+      count++;
+    } else {
+      root->children[*str-'a'] = alloc_node();
+    }
+    root = root->children[*str-'a'];
+  }
+  return MIN(count,strl);
+}
+
+char line_buffer[MAX_WORD_LEN] = {0};
+char *trimwhitespace(char *str)
+{
+  char *end;
+  while(isspace(*str)) str++;
+  if(*str == 0)
+    return NULL;
+  end = str + strlen(str) - 1;
+  while(end > str && isspace(*end)) end--;
+  *(end+1) = 0;
+  return str;
+}
+
+
+int solve_case(int num_words)
+{
+  int i;
+  int count = 0;
+  struct trie_node *root = alloc_node();
+  for (i = 0; i < num_words; ++i) {
+    char *str;
+    if(fgets(line_buffer, MAX_WORD_LEN-1, stdin) == NULL)
+      assert(0);
+    str = trimwhitespace(line_buffer);
+    count += add_to_trie(root, str);
+  }
+  cleanup_tree();
+  return count;
+}
+
+int main()
+{
+  int num_cases;
+  int i;
+  if (scanf("%d",&num_cases) != 1)
+    assert(0);
+  for(i = 0; i < num_cases; ++i) {
+    int num_words;
+    if (scanf("%d\n",&num_words) != 1)
+      assert(0);
+    printf("Case #%d: %d\n",i+1,solve_case(num_words));
+  }
+  return 0;
+}

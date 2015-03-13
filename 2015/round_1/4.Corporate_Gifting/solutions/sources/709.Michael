@@ -1,0 +1,148 @@
+#include <stdio.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <math.h>
+#include <algorithm>
+#include <bitset>
+#include <set>
+#include <sstream>
+#include <stdlib.h>
+#include <map>
+#include <queue>
+#include <stack>
+#include <assert.h>
+// #include <unordered_set>
+#include <iomanip>
+
+using namespace std;
+
+#define sz(x) ((int)x.size())
+#define all(x) (x).begin(), (x).end()
+#define pb(x) push_back(x)
+#define mp(x, y) make_pair(x, y)
+
+#define forit(X,Y) for(typeof((Y).begin()) X = (Y).begin(); X != (Y).end(); ++X)
+
+#define mplus(x, y) ((x) == -1 || (y) == -1) ? -1 : ((x) + (y))
+#define mmax(x, y) ((x) == -1 || (y) == -1) ? -1 : max((x), (y))
+#define mmin(x, y) ((x) == -1) ? (y) : ((y) == -1) ? (x) : min((x), (y))
+
+#define checkbit(n, k) (((1L << (k)) & (n)) != 0)
+
+#define debug(x) cerr << '>' << #x << ':' << x << endl;
+
+typedef long long int64;
+
+typedef vector <int> vi;
+typedef vector < vi > vvi;
+
+
+const int MOD = 1000000007;
+
+int reindex(vector<int>& parents, vector<int>& indexes, int i, int index) {
+    if (indexes[i] >= 0)
+        return indexes[i];
+    int p = parents[i];
+    if (p >= 0 && indexes[p] < 0) {
+        index = reindex(parents, indexes, p, index);
+    }
+    indexes[i] = index;
+    return index + 1;
+}
+
+void reindex(vector<int>& parents) {
+    int n = parents.size();
+    vector<int> indexes(n, -1);
+    int index = 0;
+    for (int i = 0; i < n; ++i) {
+        index = max(index, reindex(parents, indexes, i, index));
+    }
+    assert(index == n);
+    vector<int> new_parents(n);
+    for (int i = 0; i < n; ++i) {
+        new_parents[n - 1 - indexes[i]] = parents[i] < 0 ? -1 : n - 1 - indexes[parents[i]];
+    }
+    parents.swap(new_parents);
+}
+
+void calc_best(vector<int>& children, vi& best1_res, vi& best1_num, vi& best2_res, vi& best2_num, int i) {
+    int max_num = 2;
+    for (int j = 0; j < children.size(); ++j) {
+        max_num = min(max(max_num, max(best1_num[children[j]], best2_num[children[j]]) + 1), (int) best1_res.size());
+    }
+
+    best1_res[i] = -1;
+    best2_res[i] = -1;
+    for (int num = 1; num <= max_num; ++num) {
+        int res = num;
+        for (int j = 0; j < children.size(); ++j) {
+            int c = children[j];
+            assert(c < i);
+            res += best1_num[c] != num ? best1_res[c] : best2_res[c];
+        }
+
+        if (best1_res[i] == -1 || res < best1_res[i]) {
+            best2_res[i] = best1_res[i];
+            best2_num[i] = best1_num[i];
+            best1_res[i] = res;
+            best1_num[i] = num;
+        } else if (best2_res[i] == -1 || res < best2_res[i]) {
+            best2_res[i] = res;
+            best2_num[i] = num;
+        }
+    }
+
+    assert(best1_num[i] != best2_num[i]);
+    assert(best1_res[i] > 0);
+    assert(best2_res[i] > 0);
+}
+
+int calc(vector<int> parents) {
+    int n = parents.size();
+    reindex(parents);
+    // cerr << "Parents: ";
+    // for (int i = 0; i < n; ++i)
+    //     cerr << " " << parents[i];
+    // cerr << endl;
+    assert(parents[n - 1] == -1);
+    vvi children(n);
+    for (int i = 0; i < n; ++i) {
+        if (parents[i] >= 0)
+            children[parents[i]].push_back(i);
+    }
+
+    // for (int i = 0; i < n; ++i) {
+    //     cerr << i;
+    //     for (int j = 0; j < children[i].size(); ++j) {
+    //         cerr << " " << children[i][j];
+    //     }
+    //     cerr << endl;
+    // }
+
+    vi best1_res(n, -1);
+    vi best1_num(n, -1);
+    vi best2_res(n, -1);
+    vi best2_num(n, -1);
+
+    for (int i = 0; i < n; ++i)
+        calc_best(children[i], best1_res, best1_num, best2_res, best2_num, i);
+
+    return best1_res[n - 1];
+}
+
+int main() {
+    int T;
+    cin >> T;
+    for (int tt = 1; tt <= T; ++tt) {
+        int n;
+        cin >> n;
+        vector<int> parents(n);
+        for (int i = 0; i < n; ++i) {
+            cin >> parents[i];
+            parents[i]--;
+        }
+        int res = calc(parents);
+        cout << "Case #" << tt << ": " << res << endl;
+    }
+}

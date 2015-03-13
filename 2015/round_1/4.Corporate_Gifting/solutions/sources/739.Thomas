@@ -1,0 +1,165 @@
+#include <algorithm>
+#include <cstddef>
+#include <queue>
+#include <iostream>
+#include <iterator>
+#include <vector>
+
+// The problem is one of "sum-colouring" the employee graph,
+// or "minimizing the chromatic sum" of the graph.
+//
+// N.B. The strength (= number of distinct colours) is at most 10,
+// since larger strengths require > 200000 vertices.
+
+// Array representation of a rooted tree with upwards and
+// downwards edges. (Static storage avoids reallocations.)
+
+std::vector<unsigned int> p;   // p[i] is the parent of i. The unique r s.t. p[r] = r is the root.
+std::vector<unsigned int> cc;  // i has cc[i] children
+std::vector<unsigned int> ci;  // indexes of children of i
+std::vector<unsigned int> cd;  // i has children cd[k] for k in [ci[i], ci[i] + cc[i])
+std::vector<unsigned int> tmp;
+std::vector<unsigned int> preorder;
+std::vector<unsigned int> coloradd;
+
+// The chromatic sum computation is taken from Kubicka and Schwenk, 1989.
+
+unsigned int chromatic_sum()
+{
+    // The algorithm needs the vertices in traversal preorder.
+
+    preorder.clear();
+    std::queue<unsigned int> todo;
+    todo.push(0);
+
+    while (!todo.empty())
+    {
+        unsigned int x = todo.front();
+        todo.pop();
+        preorder.push_back(x);
+        for (unsigned int j = 0; j != cc[x]; ++j) { todo.push(cd[ci[x] + j]); }
+    }
+
+    // Kubicka-Schwenk algorithm starts here.
+
+    struct chromdata
+    {
+        unsigned int rcolor;
+        unsigned int ncolor;
+        unsigned int minsum;
+        unsigned int delta;
+    };
+
+    std::vector<chromdata> data(preorder.size());
+
+    for (auto rit = preorder.rbegin(); rit != preorder.rend(); ++rit)
+    {
+        unsigned int const i = *rit;
+
+        if (cc[i] == 0)
+        {
+            data[i].rcolor = 1;
+            data[i].ncolor = 2;
+            data[i].minsum = 1;
+            data[i].delta  = 1;
+        }
+        else
+        {
+            unsigned int mintotal = 0;
+            unsigned int color1 = 1;
+            unsigned int color2 = 2;
+            unsigned int sum1 = -1;
+            unsigned int sum2 = -1;
+
+            coloradd.clear();
+            coloradd.resize(preorder.size() + 3);
+
+            for (unsigned int k = 1; k <= cc[i] + 2; ++k)
+            {
+                coloradd[k] = k;
+            }
+
+            for (unsigned int j = 0; j != cc[i]; ++j)
+            {
+                unsigned int const son = cd[ci[i] + j];
+                mintotal += data[son].minsum;
+                coloradd[data[son].rcolor] += data[son].delta;
+            }
+
+            for (unsigned int k = 1; k <= cc[i] + 2; ++k)
+            {
+                unsigned int const value = coloradd[k];
+                if (value < sum1)
+                {
+                    color2 = color1;
+                    color1 = k;
+
+                    sum2 = sum1;
+                    sum1 = value;
+                }
+                else if (value < sum2)
+                {
+                    color2 = k;
+                    sum2 = value;
+                }
+            }
+
+            data[i].rcolor = color1;
+            data[i].ncolor = color2;
+            data[i].minsum = sum1 + mintotal;
+            data[i].delta  = sum2 - sum1;
+        }
+    }
+
+    return data[0].minsum;
+}
+
+int main()
+{
+    for (auto * v: {&p, &cc, &ci, &cd, &tmp, &preorder, &coloradd}) { v->reserve(200000); }
+
+    unsigned int t, n, id;
+    if (!(std::cin >> t)) { std::abort(); }
+
+    for (unsigned int c = 0; c != t; ++c)
+    {
+        p.clear(); cc.clear(); ci.clear(); cd.clear();
+
+        if (!(std::cin >> n)) { std::abort(); }
+
+        p.resize(1);
+        cc.resize(n);
+        ci.resize(n);
+        cd.resize(n);
+
+        if (!(std::cin >> id) || id != 0) { std::abort(); }
+        cc[0] = 1;
+
+        for (unsigned int i = 1; i < n; ++i)
+        {
+            if (!(std::cin >> id) || id == 0) { std::abort(); }
+            --id;
+            p.push_back(id);
+            ++cc[id];
+        }
+
+        std::partial_sum(cc.begin(), std::prev(cc.end()), std::next(ci.begin()));
+
+        {
+            tmp.clear();
+            tmp.resize(n);
+
+            for (unsigned int i = 0; i != n; ++i)
+            {
+                cd[ci[p[i]] + tmp[p[i]]] = i;
+                ++tmp[p[i]];
+            }
+        }
+
+        // Remove spurious self-loop of the root node.
+        --cc[0];
+        ++ci[0];
+
+        std::cout << "Case #" << c + 1 << ": " << chromatic_sum() << '\n';
+    }
+}

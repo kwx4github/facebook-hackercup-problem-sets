@@ -1,0 +1,159 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <tuple>
+#include <memory>
+#include <unordered_map>
+#include <tuple>
+#include <algorithm>
+#include <stdio.h>
+// Using bigint library from https://mattmccutchen.net/bigint/
+// git version 66d84fa2e51e36706556be30cb38c8026db32e46
+#include "bigint/BigIntegerLibrary.hh"
+
+// To get the lib:
+// git clone git://repo.or.cz/bigint.git
+// Compile command line:
+//  g++ --std=gnu++11 -O2 -Wall -g -o solve solve.cc bigint/Big*.cc
+
+using namespace std;
+
+
+typedef tuple<int, int, int> my_key_t;
+
+typedef unordered_map<my_key_t,BigInteger> cache_t;
+
+#define MODULU 1000000007
+
+static inline uint32_t rol32(uint32_t word, unsigned int shift)
+{
+        return (word << shift) | (word >> (32 - shift));
+}
+
+#define JHASH_INITVAL           0xdeadbeef
+#define __jhash_final(a, b, c)                  \
+{                                               \
+        c ^= b; c -= rol32(b, 14);              \
+        a ^= c; a -= rol32(c, 11);              \
+        b ^= a; b -= rol32(a, 25);              \
+        c ^= b; c -= rol32(b, 16);              \
+        a ^= c; a -= rol32(c, 4);               \
+        b ^= a; b -= rol32(a, 14);              \
+        c ^= b; c -= rol32(b, 24);              \
+}
+ 
+ 
+/* jhash_3words - hash exactly 3, 2 or 1 word(s) */
+static inline uint32_t jhash_3words(uint32_t a, uint32_t b, uint32_t c, uint32_t initval)
+{
+  a += JHASH_INITVAL;
+  b += JHASH_INITVAL;
+  c += initval;
+
+  __jhash_final(a, b, c);
+
+  return c;
+}
+
+namespace std {
+
+  template <>
+  struct hash<my_key_t>
+  {
+    std::size_t operator()(const my_key_t& k) const
+    {
+      return jhash_3words(std::get<0>(k),std::get<1>(k),std::get<2>(k),0);
+    }
+  };
+}
+
+// helper function to print a tuple of any size
+template<class Tuple, std::size_t N>
+struct TuplePrinter {
+    static void print(const Tuple& t) 
+    {
+        TuplePrinter<Tuple, N-1>::print(t);
+        std::cout << " " << std::get<N-1>(t);
+    }
+};
+ 
+template<class Tuple>
+struct TuplePrinter<Tuple, 1>{
+    static void print(const Tuple& t) 
+    {
+        std::cout << std::get<0>(t);
+    }
+};
+
+BigInteger count_num_stress_free(int my_score_left, int their_score_left, int leading_delta, cache_t &val_cache) {
+  my_key_t key(my_score_left, their_score_left, leading_delta);
+  if(val_cache.count(key) != 0)
+    return val_cache[key];
+  BigInteger ways = 0;
+  if (my_score_left > 0) {
+    ways += count_num_stress_free(my_score_left - 1, their_score_left, leading_delta + 1, val_cache);
+  } else if (my_score_left == 0) {
+    return 1;
+  }
+  if (leading_delta > 1 && their_score_left > 0) {
+    ways += count_num_stress_free(my_score_left, their_score_left - 1, leading_delta - 1, val_cache);
+  } else if (their_score_left == 0) {
+    return 1;
+  }
+  val_cache[key] = ways;
+  return ways;
+}
+
+
+BigInteger count_num_stressfull(int my_score_left, int their_score_left, int leading_delta, unordered_map<my_key_t,BigInteger> &val_cache) {
+  my_key_t key(my_score_left, their_score_left, leading_delta);
+  if(val_cache.count(key) != 0)
+    return val_cache[key];
+  BigInteger ways = 0;
+  if (leading_delta >= 1 && my_score_left > 0) {
+    ways += count_num_stressfull(my_score_left - 1, their_score_left, leading_delta - 1, val_cache);
+  } else if (my_score_left == 0) {
+    return 1;
+  }
+
+  if (their_score_left > 0) {
+    ways += count_num_stressfull(my_score_left, their_score_left - 1, leading_delta + 1, val_cache);
+  } else if (their_score_left == 0) {
+    return 1;
+  }
+  val_cache[key] = ways;
+  return ways;
+}
+
+tuple<BigInteger, BigInteger> do_problem(int my_score, int their_score) {
+  cache_t cache;
+  BigInteger stress_free = count_num_stress_free(my_score,their_score,0, cache);
+  cache_t cache_2;
+  BigInteger stressfull = count_num_stressfull(my_score,their_score,0,cache_2);
+  return tuple<BigInteger, BigInteger>(stress_free % MODULU, stressfull % MODULU);
+}
+
+template<class... Args>
+void print(const std::tuple<Args...>& t) 
+{
+    TuplePrinter<decltype(t), sizeof...(Args)>::print(t);
+}
+
+int main() {
+  int num_cases;
+  if (scanf("%d",&num_cases) != 1) {
+    cerr << "Bad num_cases!\n";
+    return -1;
+  }
+  for (int i = 0; i < num_cases; ++ i) {
+    int my_score, their_score;
+    if(scanf("%d-%d",&my_score, &their_score) != 2) {
+      cerr << "Bad score set\n";
+      return -2;
+    }
+    cout << "Case #"<<i+1<<": ";
+    print(do_problem(my_score,their_score));
+    cout << "\n";
+  }
+  return 0;
+}

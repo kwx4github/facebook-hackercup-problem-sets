@@ -1,0 +1,198 @@
+import java.util.Deque;
+import java.util.LinkedList;
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.io.InputStream;
+import java.io.FilenameFilter;
+import java.util.Collection;
+import java.util.Scanner;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.io.File;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Ivan Myasoid
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			final String regex = "corporate_gifting.txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("corporategifting.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		Scanner in = new Scanner(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		CorporateGifting solver = new CorporateGifting();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class CorporateGifting {
+    public void solve(int testNumber, Scanner in, PrintWriter out) {
+        
+        int N = in.nextInt();
+
+        if (N == 1) {
+            out.println("Case #1: 1");
+            return;
+        }
+        int[] managers = new int[N];
+        for (int i = 0; i < N; i++) {
+            managers[i] = in.nextInt() - 1;
+        }
+        managers[0] = 0;
+        int res = coolSolve(managers);
+
+        out.println("Case #" + testNumber + ": " + res);
+        
+    }
+
+    private static class DpElement {
+        int len;
+        int[] values;
+
+        private DpElement(int len) {
+            this.len = len;
+            values = new int[len];
+            Arrays.fill(values, -1);
+        }
+    }
+
+    public int coolSolve(int[] managers) {
+        int N = managers.length;
+        ArrayList<Integer>[] graph = new ArrayList[managers.length];
+        for (int i = 0; i < graph.length; i++) {
+            graph[i] = new ArrayList<>();
+        }
+
+        for (int i = 1; i < managers.length; i++) {
+            graph[managers[i]].add(i);
+        }
+
+        int[] maxValues = new int[N];
+        for (int i = 0; i < N; i++) {
+            maxValues[i] = graph[i].size() + 1;
+            if (i > 0) {
+                maxValues[i]++;
+            }
+        }
+
+        DpElement[] dpElements = new DpElement[N];
+        for (int i = 0; i < N; i++) {
+            dpElements[i] = new DpElement(maxValues[i]);
+        }
+
+        int minIndexes[][] = new int[N][2];
+        for (int i = 0; i < graph.length; i++) {
+            if (graph[i].size() == 0) {
+                for (int j = 0; j < dpElements[i].len; j++) {
+                    dpElements[i].values[j] = j + 1;
+                }
+                minIndexes[i][0] = 0;
+                minIndexes[i][1] = 1;
+            }
+        }
+
+        int res = Integer.MAX_VALUE;
+
+        Deque<Integer> deque = new LinkedList<>();
+        dfs(0, graph, deque);
+
+        while (!deque.isEmpty()) {
+            int curV = deque.pop();
+            if (graph[curV].size() == 0) {
+                continue;
+            }
+
+            int counter = 0;
+            boolean fillWithBig = false;
+            for (int i = 1; i <= maxValues[curV]; i++) {
+                if(fillWithBig){
+                    dpElements[curV].values[i - 1] = Integer.MAX_VALUE;
+                    continue;
+                }
+                int curRes = i;
+                boolean isOnlyMin = true;
+                for (int nextV : graph[curV]) {
+                    if (minIndexes[nextV][0] != i - 1) {
+                        curRes += dpElements[nextV].values[minIndexes[nextV][0]];
+                    } else {
+                        isOnlyMin = false;
+                        curRes += dpElements[nextV].values[minIndexes[nextV][1]];
+                    }
+                }
+
+                dpElements[curV].values[i - 1] = curRes;
+                if(isOnlyMin){
+                    counter++;
+                }
+                if(counter >= 2){
+                    fillWithBig = true;
+                }
+            }
+            //first min
+            int minValue = Integer.MAX_VALUE;
+            for (int i = 1; i <= maxValues[curV]; i++) {
+                int candidate = dpElements[curV].values[i - 1];
+                if (candidate <= minValue) {
+                    minValue = candidate;
+                    minIndexes[curV][0] = i - 1;
+                }
+            }
+
+            minValue = Integer.MAX_VALUE;
+            int skipIndex = minIndexes[curV][0];
+            for (int i = 1; i <= maxValues[curV]; i++) {
+                if (i - 1 != skipIndex) {
+                    int candidate = dpElements[curV].values[i - 1];
+                    if (candidate <= minValue) {
+                        minValue = candidate;
+                        minIndexes[curV][1] = i - 1;
+                    }
+                }
+            }
+        }
+
+        for (int i = 1; i <= maxValues[0]; i++) {
+            res = Math.min(res, dpElements[0].values[i - 1]);
+        }
+
+        return res;
+    }
+
+    private void dfs(int vertex, ArrayList<Integer>[] graph, Deque<Integer> deque) {
+        for (int v : graph[vertex]) {
+            dfs(v, graph, deque);
+        }
+
+        deque.addLast(vertex);
+    }
+}
+

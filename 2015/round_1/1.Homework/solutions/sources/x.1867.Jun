@@ -1,0 +1,73 @@
+{-# OPTIONS_GHC -O2 -funbox-strict-fields #-}
+{-# LANGUAGE BangPatterns, ViewPatterns, TupleSections #-}
+import Control.Applicative
+import Control.Exception hiding (mask)
+import Control.Monad
+import Control.Monad.ST
+import Data.Array.Base
+import Data.Array.ST (runSTUArray, runSTArray)
+import Data.Bits
+import qualified Data.ByteString.Char8 as B
+import Data.Char
+import Data.Function
+import Data.Int
+import Data.List
+import qualified Data.Map as M
+import qualified Data.IntMap as IM
+import qualified Data.Set as S
+import qualified Data.IntSet as IS
+import Data.STRef
+import GHC.Arr (Array, STArray, Ix(..))
+import Debug.Trace
+
+import Data.Fixed
+import Data.Time.Clock
+import Data.Time.Clock.POSIX
+import System.IO
+
+modifyArray :: (MArray a e m, Ix i) => a i e -> i -> (e -> e) -> m ()
+modifyArray a i f=readArray a i>>=writeArray a i.f
+{-# INLINE modifyArray #-}
+unsafeModify :: (MArray a e m, Ix i) => a i e -> Int -> (e -> e) -> m ()
+unsafeModify a i f=unsafeRead a i>>=unsafeWrite a i.f
+{-# INLINE unsafeModify #-}
+
+runGCJ :: IO () -> IO ()
+runGCJ main_ = do
+  t <- readLn
+  forM_ [1..t] $ \i -> do
+    putStr $ "Case #" ++ shows i ": "
+    hPutStr stderr $ shows i "/" ++ shows t ": "
+    hFlush stderr
+    start <- getPOSIXTime
+    main_
+    end <- getPOSIXTime
+    hPutStrLn stderr $ (shows.msec) (end - start) "ms"
+    hFlush stderr
+
+msec :: NominalDiffTime -> Int
+msec s = let t = realToFrac s :: Milli in fromEnum t
+
+main :: IO ()
+main = runGCJ $ do
+  [a,b,k] <- map read.words <$> getLine
+  print $ solve a b k
+
+solve :: Int -> Int -> Int -> Int
+solve a b k = length $ filter ((k==).unsafeAt cache) [a..b]
+
+smallPrimes :: [Int]
+smallPrimes=2:[n|n<-[3,5..46337],and.map((0<).rem n)$takeWhile(\x->x*x<=n)smallPrimes]
+
+cacheSize :: Int
+cacheSize = 10000000
+
+cache :: UArray Int Int
+cache = runSTUArray $ do
+  arr <- newArray (0, cacheSize) 0 :: ST s (STUArray s Int Int)
+
+  forM_ smallPrimes $ \p -> do
+    forM_ [p, p+p .. cacheSize] $ \i -> do
+      unsafeModify arr i (1+)
+
+  return arr

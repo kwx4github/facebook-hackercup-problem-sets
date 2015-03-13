@@ -1,0 +1,291 @@
+package org.onja.algo.facebook.hackercup.round1;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.LineNumberReader;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
+/***/
+public class AutoComplete {
+    Prefix rootPrefix = null;
+    
+    /***/
+    public static void main(String[] args) 
+            throws Exception, IOException {
+
+        LineNumberReader reader=new LineNumberReader(
+                new FileReader(new File(args[0]))); // Input File.
+        PrintStream printer=new PrintStream(new File(args[1])); // Output File.
+        
+        // 
+        int nTestCases = Integer.valueOf(reader.readLine()).intValue();
+        for (int nTestCase = 1 ; nTestCase <= nTestCases; nTestCase++) {
+
+            int result = 0;
+            AutoComplete ac = new AutoComplete();
+            int nWords = Integer.valueOf(reader.readLine()).intValue(); 
+            for (int i = 0; i != nWords; i++)
+                result += ac.addLarge(reader.readLine().trim()); 
+                            
+            // System.err.println("Case #" + nTestCase + ": " + String.valueOf(result));            
+            printer.println("Case #" + nTestCase + ": " + String.valueOf(result)); 
+        }
+        
+        printer.close();
+        reader.close();
+    }
+
+    /***/
+    public AutoComplete() {
+        this.rootPrefix = new Prefix();
+    }
+    
+    /**
+     * Add word to Dictionnary and return the minimum number of characters you need to type in your text message
+     * @param word String to add to Dictionnary
+     * */
+    public int add(String word) throws Exception {        
+        return this.rootPrefix.add(word, 0);
+    }
+    
+    /***/
+    class Prefix {
+        String strValue = null;
+        Map<Character, Prefix> map = null; 
+        
+        /***/        
+        public Prefix() {}
+        
+        public Prefix(String s) {
+            this.strValue = s;
+        }        
+        
+        public Prefix(String s, Map<Character, Prefix> map) {
+            this.strValue = s;
+            this.map = map;
+        }
+        
+        public Character getKey() {
+            return (this.strValue != null) ? this.strValue.charAt(0) : null;
+        }
+        
+        public int length() { return (this.strValue != null) ? this.strValue.length() : 0; }
+        
+        public void print(String s) {
+            if (this.strValue != null)
+                System.err.println(s + this.strValue);
+            
+            if (this.map != null) {
+                for(Prefix p : this.map.values())
+                    p.print(s + ((this.strValue != null) ? this.strValue : ""));                
+            }
+        }
+
+        /***/
+        private void __initMap() {
+            this.map = Collections.synchronizedMap(new HashMap<Character, Prefix>());
+        }
+        
+        public boolean containsKey(Character ch) {
+            return (this.map != null) ? this.map.containsKey(ch) : false; 
+        }
+        
+        public Prefix createPrefix(Prefix p) {
+            if (this.map == null)
+                this.__initMap();
+            this.map.put(p.getKey(), p);
+            return this.map.get(p.getKey());
+        }
+        
+        public Prefix createPrefix(String newPrefix) {
+            if (this.map == null)
+                this.__initMap();
+            Prefix p = new Prefix(newPrefix);
+            this.map.put(p.getKey(), p);
+            return this.map.get(p.getKey());            
+        }
+        
+        /**
+         * Strips current Prefix, updates current strValue
+         * */
+        public void splitPrefix(String newPrefix) 
+                throws Exception {
+            
+            if (!this.strValue.startsWith(newPrefix))
+                throw new Exception("Invalid Split. Destination value does not have this prefix. ");
+            
+            String prevPrefix = this.strValue;
+            this.strValue = newPrefix; // Updates current strValue
+            Prefix p = new Prefix(
+                    prevPrefix.substring(this.strValue.length()), 
+                    this.map); // Creates new Prefix with remaining data, and current's Map.
+            this.__initMap();
+            this.map.put(p.getKey(), p);
+        }
+        
+        /***/
+        public int add(String word, int cTips) throws Exception {
+            if (this.strValue == null) { // Root Prefix
+                
+                Character ch = word.charAt(0);                
+                if (!this.containsKey(ch)) {
+                    this.createPrefix(new Prefix(word)); 
+                    return 1;                     
+                }                
+                return this.map.get(ch).add(word, 0);
+                
+            } else { // Sub Prefix
+
+                // Common Prefix
+                String common = commonPrefix(this.strValue, word);
+                int commonLen = common.length();                
+                
+                if ((this.strValue.length() == word.length()) &&
+                        (commonLen == word.length())) {                    
+                    return cTips + 1; // word and strValue are equal.
+                    
+                } else if ((word.length() < this.strValue.length()) 
+                        && (word.length() == commonLen)) { // strValue starts with word
+                    
+                    // Splits current Prefix. Creates next Prefix with current Map.
+                    this.splitPrefix(word);
+                    return cTips + this.strValue.length();
+                    
+                } else if ((word.length() > this.strValue.length()) 
+                        && (this.strValue.length() == commonLen)) { // word starts with strValue
+                    
+                    // Removes strValue prefix from WORD
+                    word = word.substring(this.strValue.length());                                        
+                    Character ch = word.charAt(0);
+                    if (!this.containsKey(ch)) {
+                        this.createPrefix(word);
+                        return cTips + this.strValue.length() + 1;
+                    }
+                    
+                    return this.map.get(ch).add(word, cTips + this.strValue.length());
+                    
+                } else { // word and strValue has some common Prefix
+                    
+                    // Creates new Prefix for current one, then re-initializes map.
+                    Prefix currentPrefix = new Prefix(
+                            this.strValue.substring(common.length()), 
+                            this.map);
+                    this.__initMap(); 
+                    this.map.put(currentPrefix.getKey(), currentPrefix);
+                    
+                    // New word Prefix
+                    Prefix newPrefix = new Prefix(
+                            word.substring(common.length()));
+                    this.map.put(newPrefix.getKey(), newPrefix);
+                    
+                    this.strValue = common; // Updates current strValue, splitted.
+                    return cTips + this.strValue.length() + 1;                    
+                }                                
+            }            
+        }
+        
+    }
+    
+    /***/
+    public static String commonPrefix(String s1, String s2) {
+        int c = 0;
+        while ((c < s1.length()) && (c < s2.length()) 
+                && (s1.charAt(c) == s2.charAt(c))) {
+            c++;
+        }         
+        return s1.substring(0, c);
+    }
+
+    /***/
+    public int addLarge(String word) throws Exception {
+        
+        int length = word.length();
+        int position= 0;
+        int cTips = 0;
+        String currentBuffer = word;  
+        Prefix currentPrefix = this.rootPrefix;
+        
+        while (position< length) {
+            
+            if (currentPrefix.length() == 0) { // Root Prefix
+                
+                /* For RootPrefix, 
+                 * If no Prefix has been created for word's key, creates one then attach word and exits loop. 
+                 * Otherwise, selects key Prefix then transfers processing
+                 * */
+                Character ch = currentBuffer.charAt(0);
+                if (!currentPrefix.containsKey(ch)) {
+                    currentPrefix.createPrefix(
+                            new Prefix(currentBuffer));                    
+                    cTips = 1;
+                    position+= currentBuffer.length();
+                    
+                } else currentPrefix = currentPrefix.map.get(ch);
+
+            } else { 
+                
+                /* For Sub Prefix, 
+                 * Finds common Prefix for currentPrefix's value and new word, 
+                 * If current's prefix's value and word are equal, registers single Tip then exits loop. 
+                 * If new word is already in that prefix, splits current buffer, registers full word's length as tips then exits loop. 
+                 * If currentPrefix's value is in word, registers current's value as tips. Processes remaining chars. 
+                 * If remaining chars does not yet have key, create Prefix then registers single Tip and exits loop. 
+                 * If key is already available, selects key as currentPrefix, then continue loop. 
+                 * If current and new word have only common prefix, splits current Prefix and creates new prefix for word. 
+                 * */
+                
+                // Finds common Prefix
+                String common = commonPrefix(currentPrefix.strValue, currentBuffer);         
+                int lenCommon = common.length();
+                
+                if ((currentPrefix.length() == currentBuffer.length()) 
+                        && (lenCommon == currentBuffer.length())){ // currentBuffer and currentPrefix's value are equal                    
+                    cTips += 1;
+                    position += currentBuffer.length(); 
+                    
+                } else if ((currentBuffer.length() < currentPrefix.length())
+                        && (lenCommon == currentBuffer.length())){ // currentBuffer is IN currentPrefix's value
+                    
+                    currentPrefix.splitPrefix(currentBuffer); // Splits current Prefix
+                    cTips += currentPrefix.length();
+                    position += currentBuffer.length(); 
+                    
+                } else if ((currentBuffer.length() > currentPrefix.length()) 
+                        && (lenCommon == currentPrefix.length())) { // currentPrefix's value is IN currentBuffer
+                    
+                    cTips += lenCommon;
+                    position += lenCommon;
+                    
+                    currentBuffer = currentBuffer.substring(lenCommon);                    
+                    Character ch = currentBuffer.charAt(0);                    
+                    if (!currentPrefix.containsKey(ch)) {
+                        currentPrefix.createPrefix(currentBuffer);                        
+                        cTips += 1;
+                        position += currentBuffer.length();
+                        
+                    } else currentPrefix = currentPrefix.map.get(ch);
+                    
+                } else { // currentBuffer and currentPrefix's value have common prefix
+                    
+                    // Splits currentPrefix at common Prefix
+                    currentPrefix.splitPrefix(common); 
+                    
+                    // Creates another Prefix for remaining of currentBuffer, then selects currentPrefix for next loop.
+                    currentBuffer = currentBuffer.substring(lenCommon); 
+                    currentPrefix = currentPrefix.createPrefix(currentBuffer);                    
+                    cTips += lenCommon;
+                    position += lenCommon;
+                }
+                
+            }
+            
+        }
+        
+        return cTips; 
+    }
+        
+}

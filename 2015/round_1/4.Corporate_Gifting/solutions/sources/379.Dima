@@ -1,0 +1,270 @@
+#pragma comment(linker, "/STACK:1024000000")
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <stdio.h>
+#include <time.h>
+
+#include <iostream>
+#include <utility>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <map>
+
+using namespace std;
+
+class Solution
+{
+    struct Node
+    {
+        long long lowestPrice, lowestPriceWithProhibitedRoot;
+        int lowestPriceRootValue;
+        size_t size;
+        vector<int> child;
+
+        Node():
+            lowestPrice(-1),
+            lowestPriceWithProhibitedRoot(-1),
+            lowestPriceRootValue(-1),
+            size(0)
+        {}
+    };
+
+    vector<Node> nodes;
+
+    map<pair<int, int>, long long> d;
+
+    long long slow_solve(int v, int prohibited_value)
+    {
+        Node &root = nodes[v];
+
+        if (root.child.size() == 0)
+            return prohibited_value == 1 ? 2 : 1;
+
+        auto p = d.find(make_pair(v, prohibited_value));
+        if (p != d.end())
+            return p->second;
+
+        long long answer = -1;
+        for (int root_value = 1; root_value <= root.size + 3; root_value++)
+        {
+            if (root_value == prohibited_value) continue;
+            long long current_value = root_value;
+            for (int child : root.child)
+                current_value += slow_solve(child, root_value);
+            if (answer < 0)
+                answer = current_value;
+            else
+                answer = min(answer, current_value);
+        }
+
+        d[make_pair(v, prohibited_value)] = answer;
+        return answer;
+    }
+
+    void calcSize(int root_index)
+    {
+        Node &root = nodes[root_index];
+        if (root.size > 0) return;
+        
+        root.size = 1;
+        for (int v : root.child)
+        {
+            calcSize(v);
+            root.size += nodes[v].size;
+        }
+    }
+
+    void solve(int root_index)
+    {
+        Node &root = nodes[root_index];
+
+        if (root.lowestPrice >= 0) return;
+
+        if (root.child.size() == 0)
+        {
+            root.lowestPrice = 1;
+            root.lowestPriceRootValue = 1;
+            root.lowestPriceWithProhibitedRoot = 2;
+            return;
+        }
+
+        for (int v : root.child)
+            solve(v);
+
+        int root_max_price = static_cast<int>(sqrt(8 * static_cast<double>(root.size))) + 7;
+
+        vector<long long> prohibitionDiff(root_max_price, 0);
+        vector<bool> presentInChildRoots(root_max_price, false);
+        long long total_price = 0;        
+        for (int v : root.child)
+        {
+            total_price += nodes[v].lowestPrice;
+            presentInChildRoots[nodes[v].lowestPriceRootValue] = true;
+            prohibitionDiff[nodes[v].lowestPriceRootValue] += nodes[v].lowestPriceWithProhibitedRoot - nodes[v].lowestPrice;
+        }
+
+        for (int root_value = 1; root_value < root_max_price; root_value++)
+        {
+            long long current_price = total_price + prohibitionDiff[root_value] + root_value;
+            if (root_value == 1)
+            {
+                root.lowestPrice = current_price;
+                root.lowestPriceRootValue = root_value;
+            }
+            else
+            {
+                if (root.lowestPrice > current_price)
+                {
+                    root.lowestPrice = current_price;
+                    root.lowestPriceRootValue = root_value;
+                }
+            }
+
+            if (!presentInChildRoots[root_value])
+                break;
+
+            if (root_value + 1 == root_max_price)
+                cerr << "Oooops!" << endl;
+        }
+
+        bool first = true;
+        for (int root_value = 1; root_value < root_max_price; root_value++)
+        {
+            if (root_value == root.lowestPriceRootValue) continue;
+
+            long long current_price = total_price + prohibitionDiff[root_value] + root_value;
+            if (first)
+            {
+                first = false;
+                root.lowestPriceWithProhibitedRoot = current_price;                
+            }
+            else
+            {
+                root.lowestPriceWithProhibitedRoot = min(root.lowestPriceWithProhibitedRoot, current_price);
+            }
+
+            if (!presentInChildRoots[root_value])
+                break;
+
+            if (root_value + 1 == root_max_price)
+                cerr << "Oooops 2!" << endl;
+        }
+    }
+public:
+    long long solve(const vector<int> &tree)
+    {
+        nodes = vector<Node>(tree.size());
+        for (int v = 0; v < tree.size(); v++)
+            if (tree[v] > 0)
+                nodes[tree[v] - 1].child.push_back(v);
+        calcSize(0);
+        solve(0);
+        return nodes[0].lowestPrice;
+    }
+
+    long long slow_solve(const vector<int> &tree)
+    {
+        nodes = vector<Node>(tree.size());
+        for (int v = 0; v < tree.size(); v++)
+            if (tree[v] > 0)
+                nodes[tree[v] - 1].child.push_back(v);
+        calcSize(0);
+        d.clear();
+        return slow_solve(0, -1);
+    }
+};
+
+void test();
+
+int main(int argc, char* argv[])
+{
+    // test();
+    // return 0;
+
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    ios_base::sync_with_stdio(false);
+
+    int T;
+    cin >> T;
+    for (int t = 1; t <= T; t++)
+    {
+        double time = clock();
+        int n;
+        cin >> n;
+        vector<int> tree(n);
+        for (int i = 0; i < n; i++)
+            cin >> tree[i];
+        Solution solution;
+        long long answer = solution.solve(tree);
+        cout << "Case #" << t << ": " << answer << "\n";
+        time = (clock() - time) / CLOCKS_PER_SEC;
+        cerr << "Case #" << t << ": " << answer << '(' << time <<"ms)"<<endl;
+    }
+
+    return 0;
+}
+
+vector<int> generateRandomInput(int max_n, int min_n = 1)
+{
+    vector<int> input(min_n + rand() % (max_n - min_n + 1));
+    input[0] = 0;
+    for (int i = 1; i < input.size(); i++)
+        input[i] = 1 + rand() % input.size();
+    return input;
+}
+
+void test()
+{
+    vector<int> big_input = generateRandomInput(200000, 200000);
+    double worst_time = clock();
+    Solution solution;
+    solution.solve(big_input);
+    worst_time = (clock() - worst_time) / CLOCKS_PER_SEC;
+    cout << "Worst time is " << worst_time << "sec" << endl;    
+
+    vector<int> big_path = vector<int>(200000, 0);
+    for (int i = 1; i < big_path.size(); i++)
+        big_path[i] = i;
+    solution.solve(big_path);
+
+    for (int n = 1; n <= 200000; n++)
+    {
+        cout << n << '\r';
+        for (int t = 0; t < 1000000; t++)
+        {
+            vector<int> input = generateRandomInput(n);
+
+            double time = clock();
+            Solution solution;
+            long long ans1 = solution.solve(input);
+            time = (clock() - time) / CLOCKS_PER_SEC;
+            if (time > worst_time)
+            {
+                worst_time = time;
+                cout << "Worst time is " << worst_time << "sec" << endl;
+            }           
+            
+            long long ans2 = solution.slow_solve(input);            
+
+            if (ans1 != ans2)
+            {
+                cout << "WA!!!" << endl;
+                cout << ans1 << endl << ans2 << endl;
+                cout << input.size() << endl;
+                for (int i = 0; i < input.size(); i++)
+                {
+                    if (i) cout << ' ';
+                    cout << input[i];
+                }
+                cout << endl;
+                return;
+            }
+            
+        }
+    }
+}
+
