@@ -1,0 +1,272 @@
+#include <vector>
+#include <complex>
+#include <cassert>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <memory.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+               
+const int MAGIC = 6;
+const int N = 100010;
+const int COLS = 3;
+
+long double a[N];
+
+long double stupid(int n) {
+  long double ans = 0.0;
+  for (int t = 0; t < (1 << n); t++) {
+    int cnt = 0;
+    long double prob = 1.0;
+    for (int i = 0; i < n; i++) {
+      if (t & (1 << i)) {
+        cnt++;
+        prob *= a[i];
+      } else {
+        prob *= (1.0 - a[i]);
+      }
+    }
+    if (2 * cnt > n) {
+      ans += prob;
+    }
+  }
+  return ans;
+}
+
+long double f[N], nf[N];
+
+long double better(int n) {
+  f[0] = 1.0;
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j <= i + 1; j++) {
+      nf[j] = 0.0;
+    }
+    for (int j = 0; j <= i; j++) {
+      nf[j] += f[j] * (1.0 - a[i]);
+      nf[j + 1] += f[j] * a[i];
+    }
+    for (int j = 0; j <= i + 1; j++) {
+      f[j] = nf[j];
+      if (f[j] < 1e-100) f[j] = 0.0;
+    }
+  }
+  long double ans = 0.0;
+  for (int i = n / 2 + 1; i <= n; i++) {
+    ans += f[i];
+  }
+  return ans;
+}
+
+vector <long double> conquer_stupid(vector <long double> x, vector <long double> y) {
+  int n = x.size();
+  int m = y.size();
+  vector <long double> res(n + m - 1, 0.0);
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < m; j++) {
+      res[i + j] += x[i] * y[j];
+    }
+  }
+  return res;
+}
+
+typedef complex<long double> base;
+
+const long double PI = 3.1415926535897932384626433832795;
+ 
+void fft (vector<base> & a, bool invert) {
+	int n = (int) a.size();
+ 
+	for (int i=1, j=0; i<n; ++i) {
+		int bit = n >> 1;
+		for (; j>=bit; bit>>=1)
+			j -= bit;
+		j += bit;
+		if (i < j)
+			swap (a[i], a[j]);
+	}
+ 
+	for (int len=2; len<=n; len<<=1) {
+		double ang = 2*PI/len * (invert ? -1 : 1);
+		base wlen (cos(ang), sin(ang));
+		for (int i=0; i<n; i+=len) {
+			base w (1);
+			for (int j=0; j<len/2; ++j) {
+				base u = a[i+j],  v = a[i+j+len/2] * w;
+				a[i+j] = u + v;
+				a[i+j+len/2] = u - v;
+				w *= wlen;
+			}
+		}
+	}
+	if (invert)
+		for (int i=0; i<n; ++i)
+			a[i] /= n;
+}
+
+vector <long double> conquer(vector <long double> x, vector <long double> y) {
+  if (x.size() < 200)
+    return conquer_stupid(x, y); 
+	vector<base> fa, fb;
+	size_t n = 1;
+	while (n < max (x.size(), y.size()))  n <<= 1;
+	n <<= 1;
+	fa.resize (n),  fb.resize (n);
+	for (int i = 0; i < (int)x.size(); i++) {
+	  fa[i] = x[i];
+	}
+	for (int i = 0; i < (int)y.size(); i++) {
+	  fb[i] = y[i];
+	}
+ 
+	fft (fa, false),  fft (fb, false);
+	for (size_t i=0; i<n; ++i)
+		fa[i] *= fb[i];
+	fft (fa, true);
+ 
+	vector <long double> res(x.size() + y.size() - 1);
+	for (int i=0; i<(int)res.size(); ++i)
+		res[i] = fa[i].real(); 
+    return res;
+}
+
+vector <long double> divide(int from, int to) {
+  if (from + 1 == to) {
+    vector <long double> res;
+    res.push_back(1.0 - a[from]);
+    res.push_back(a[from]);
+    return res;
+  }
+  int mid = (from + to) / 2;
+  vector <long double> x = divide(from, mid);
+  vector <long double> y = divide(mid, to);
+  return conquer(x, y);
+}
+
+long double solve(int n) {
+//  return stupid(n);
+//  return better(n);
+  vector <long double> res = divide(0, n);
+  long double ans = 0.0;
+  for (int i = n / 2 + 1; i <= n; i++) {
+    ans += res[i];
+  }
+  return ans;
+}
+
+long double mat[COLS][COLS], new_mat[COLS][COLS], real_mat[COLS][COLS];
+int move_prob[N][COLS][COLS];
+int init[N];
+long double prob[N][MAGIC][COLS];
+
+int main(int argc, char* argv[]) {
+  int TEST_FROM = 0;
+  int TEST_TO = 123456789;
+  if (argc == COLS) {
+    sscanf(argv[1], "%d", &TEST_FROM);
+    sscanf(argv[2], "%d", &TEST_TO);
+  }
+  freopen("in", "r", stdin);
+//    comment this
+//  freopen("out", "w", stdout);
+  int tt;
+  scanf("%d", &tt);
+  for (int qq = 1; qq <= tt; qq++) {
+//    input here
+    int n;
+    scanf("%d", &n);
+    for (int i = 0; i < n; i++) {
+      scanf("%d", init + i);
+      init[i]--;
+      for (int x = 0; x < COLS; x++) {
+        for (int y = 0; y < COLS; y++) {
+          scanf("%d", &move_prob[i][x][y]);
+        }
+      }
+    }
+    if (qq < TEST_FROM || qq > TEST_TO) {
+      continue;
+    }
+//    solution here
+    printf("Case #%d: ", qq);
+    fflush(stdout);
+    for (int i = 0; i < n; i++) {
+      for (int x = 0; x < COLS; x++) {
+        for (int y = 0; y < COLS; y++) {
+          mat[x][y] = move_prob[i][x][y];
+          mat[x][y] *= 0.01;
+          real_mat[x][y] = mat[x][y];
+        }
+      }
+      for (int it = 0; it < 50; it++) {
+        for (int x = 0; x < COLS; x++) {
+          for (int y = 0; y < COLS; y++) {
+            new_mat[x][y] = 0;
+            for (int z = 0; z < COLS; z++) {
+              new_mat[x][y] += mat[x][z] * mat[z][y];
+            }
+          }
+        }
+        for (int x = 0; x < COLS; x++) {
+          long double sum = 0.0;
+          for (int y = 0; y < COLS; y++) {
+            mat[x][y] = new_mat[x][y];
+            if (mat[x][y] < 1e-100) {
+              mat[x][y] = 0;
+            }
+            sum += mat[x][y];
+          }
+          for (int y = 0; y < COLS; y++) {
+            mat[x][y] /= sum;
+          }
+        }
+      }
+      for (int step = 0; step < MAGIC; step++) {
+        for (int y = 0; y < COLS; y++) {
+          prob[i][step][y] = mat[init[i]][y];
+        }
+        for (int x = 0; x < COLS; x++) {
+          for (int y = 0; y < COLS; y++) {
+            new_mat[x][y] = 0;
+            for (int z = 0; z < COLS; z++) {
+              new_mat[x][y] += mat[x][z] * real_mat[z][y];
+            }
+          }
+        }
+        for (int x = 0; x < COLS; x++) {
+          for (int y = 0; y < COLS; y++) {
+            mat[x][y] = new_mat[x][y];
+          }
+        }
+      }
+    }
+    long double res = 0.0;
+    for (int step = 0; step < MAGIC; step++) {
+      for (int major = 0; major < COLS; major++) {
+        for (int i = 0; i < n; i++) {
+          a[i] = prob[i][step][major];
+        }
+        res += solve(n);
+      }
+    }
+    if (res < 0.0) res = 0.0;
+    printf("%.6f\n", (double)(res / MAGIC));
+    fflush(stdout);
+    fprintf(stderr, "test %d solved, time = %d ms\n", qq, clock());
+  }
+  return 0;
+}

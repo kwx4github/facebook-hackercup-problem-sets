@@ -1,0 +1,354 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
+import java.io.OutputStream;
+import java.util.concurrent.Executors;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.concurrent.ExecutionException;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "fox.*focks.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxfocks.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxFocks solver = new FoxFocks();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class FoxFocks {
+    static class Testcase implements Callable<Testcase> {
+        int testNumber;
+        int n;
+        int[] c;
+        double[][][] pr;
+        double res;
+
+        Testcase(int testNumber) {
+            this.testNumber = testNumber;
+        }
+
+        public void readInput(InputReader in) {
+            n = in.nextInt();
+            c = new int[n];
+            pr = new double[n][3][3];
+            for (int i = 0; i < n; ++i) {
+                c[i] = in.nextInt() - 1;
+                for (int j = 0; j < 3; ++j)
+                    for (int k = 0; k < 3; ++k) {
+                        pr[i][j][k] = in.nextInt() / 100.0;
+                    }
+            }
+        }
+
+        public Testcase call() {
+            double[][][] p6 = new double[n][3][3];
+            for (int t = 0; t < n; ++t) {
+                for (int i = 0; i < 3; ++i) p6[t][i][i] = 1;
+                for (int i = 0; i < 6; ++i) p6[t] = mul(p6[t], pr[t]);
+                while (true) {
+                    double[][] np6 = mul(p6[t], p6[t]);
+                    double maxDelta = 0;
+                    for (int i = 0; i < 3; ++i)
+                        for (int j = 0; j < 3; ++j)
+                            maxDelta = Math.max(maxDelta, Math.abs(p6[t][i][j] - np6[i][j]));
+                    if (maxDelta < 1e-14) break;
+                    p6[t] = np6;
+                }
+            }
+
+            int majority = n / 2 + 1;
+            for (int rem = 0; rem < 6; ++rem) {
+                double[][] ff = new double[3][n];
+                for (int t = 0; t < n; ++t) {
+                    double[] cf = new double[3];
+                    cf[c[t]] = 1.0;
+                    for (int j = 0; j < rem; ++j) cf = mul(cf, pr[t]);
+                    cf = mul(cf, p6[t]);
+                    for (int color = 0; color < 3; ++color) {
+                        ff[color][t] = cf[color];
+                    }
+                }
+                for (int color = 0; color < 3; ++color) {
+                    double[] prod = doit(ff[color], 0, n - 1);
+                    double s = 0;
+                    for (int i = majority; i < prod.length; ++i) s += prod[i];
+                    double tot = 0;
+                    for (int i = 0; i < prod.length; ++i) tot += prod[i];
+                    if (Math.abs(tot - 1.0) > 1e-9) throw new RuntimeException();
+                    res += s / 6.0;
+                }
+            }
+            System.err.println("Done test " + testNumber);
+            return this;
+        }
+
+        private double[] doit(double[] ff, int left, int right) {
+            if (left == right) {
+                return new double[]{1.0 - ff[left], ff[left]};
+            }
+            int middle = (left + right) / 2;
+            return FastFourierTransform.mul(doit(ff, left, middle), doit(ff, middle + 1, right));
+        }
+
+        private double[][] mul(double[][] a, double[][] b) {
+            double[][] c = new double[3][3];
+            for (int i = 0; i < 3; ++i) {
+                double s = 0.0;
+                for (int j = 0; j < 3; ++j) {
+                    for (int k = 0; k < 3; ++k) {
+                        c[i][j] += a[i][k] * b[k][j];
+                    }
+                    s += c[i][j];
+                }
+                for (int j = 0; j < 3; ++j) {
+                    c[i][j] /= s;
+                }
+            }
+            return c;
+        }
+
+        private double[] mul(double[] a, double[][] b) {
+            double[] c = new double[3];
+            double s = 0.0;
+            for (int j = 0; j < 3; ++j) {
+                for (int k = 0; k < 3; ++k) {
+                    c[j] += a[k] * b[k][j];
+                }
+                s += c[j];
+            }
+            for (int j = 0; j < 3; ++j) {
+                c[j] /= s;
+            }
+            return c;
+        }
+
+        public void writeOutput(PrintWriter out) {
+            out.println("Case #" + testNumber + ": " + String.format("%.6f", res));
+        }
+    }
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int nt = in.nextInt();
+        List<Future<Testcase>> tests = new ArrayList<Future<Testcase>>();
+        ExecutorService pool = Executors.newFixedThreadPool(3);
+        for (int it = 0; it < nt; ++it) {
+            Testcase t = new Testcase(it + 1);
+            t.readInput(in);
+            tests.add(pool.submit(t));
+        }
+        for (Future<Testcase> test : tests) {
+            try {
+                Testcase t = test.get();
+                t.writeOutput(out);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        pool.shutdown();
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+}
+
+class FastFourierTransform {
+
+    public static double[] mul(double[] a, double[] b) {
+        if (a.length <= 256 || b.length <= 256) {
+            double[] res = new double[a.length + b.length - 1];
+            for (int i = 0; i < a.length; ++i)
+                for (int j = 0; j < b.length; ++j)
+                    res[i + j] += a[i] * b[j];
+            return res;
+        }
+        int len = MathUtils.nextPowerOfTwo(a.length + b.length - 1);
+        double[] da = new double[2 * len];
+        double[] db = new double[2 * len];
+        for (int i = 0; i < a.length; ++i) {
+            da[i * 2] = a[i];
+        }
+        for (int i = 0; i < b.length; ++i) {
+            db[i * 2] = b[i];
+        }
+        fft(da, false);
+        fft(db, false);
+        double[] dc = pointwiseMultiply(da, db);
+        fft(dc, true);
+        double[] res = new double[a.length + b.length - 1];
+        for (int i = 0; i < res.length; ++i)
+            res[i] = dc[i * 2];
+        return res;
+    }
+
+    public static double[] pointwiseMultiply(double[] da, double[] db) {
+        if (da.length != db.length) throw new RuntimeException();
+        if (da.length % 2 != 0) throw new RuntimeException();
+        int len = da.length / 2;
+        double[] dc = new double[2 * len];
+        for (int i = 0; i < len; ++i) {
+            dc[i * 2] = da[i * 2] * db[i * 2] - da[i * 2 + 1] * db[i * 2 + 1];
+            dc[i * 2 + 1] = da[i * 2] * db[i * 2 + 1] + da[i * 2 + 1] * db[i * 2];
+        }
+        return dc;
+    }
+
+    static class InvBitsCache {
+        private InvBitsCache() {}
+
+        synchronized int[] getInvBits(int size) {
+            int logsize = MathUtils.log2(size);
+            if (logsize >= cache.length) {
+                cache = Arrays.copyOf(cache, logsize + 1);
+            }
+            if (cache[logsize] == null) {
+                cache[logsize] = new int[size];
+                for (int i = 0; i < size; ++i) cache[logsize][i] = calcInvBits(i, size);
+            }
+            return cache[logsize];
+        }
+
+        int[][] cache = new int[0][];
+        static InvBitsCache INSTANCE = new InvBitsCache();
+    }
+
+    public static void fft(double[] arr, boolean inv) {
+        if (MathUtils.nextPowerOfTwo(arr.length) != arr.length) throw new RuntimeException();
+        int n = arr.length / 2;
+        int[] invbits = InvBitsCache.INSTANCE.getInvBits(n);
+        for (int i = 0; i < n; ++i) {
+            int j = invbits[i];
+            if (j > i) {
+                double tmp = arr[i * 2];
+                arr[i * 2] = arr[j * 2];
+                arr[j * 2] = tmp;
+                tmp = arr[i * 2 + 1];
+                arr[i * 2 + 1] = arr[j * 2 + 1];
+                arr[j * 2 + 1] = tmp;
+            }
+        }
+        for (int p2 = 1; p2 < n; p2 *= 2) {
+            double wre = Math.cos(Math.PI / p2);
+            double wim = Math.sin(Math.PI / p2);
+            if (inv) wim = -wim;
+            for (int big = 0; big < n; big += 2 * p2) {
+                double re = 1;
+                double im = 0;
+                for (int small = big; small < big + p2; ++small) {
+                    int i = small;
+                    int j = small + p2;
+                    double ure = arr[i * 2];
+                    double uim = arr[i * 2 + 1];
+                    double ore = arr[j * 2];
+                    double oim = arr[j * 2 + 1];
+                    double vre = re * ore - im * oim;
+                    double vim = re * oim + im * ore;
+                    arr[i * 2] = ure + vre;
+                    arr[i * 2 + 1] = uim + vim;
+                    arr[j * 2] = ure - vre;
+                    arr[j * 2 + 1] = uim - vim;
+                    double nre = re * wre - im * wim;
+                    im = re * wim + im * wre;
+                    re = nre;
+                }
+            }
+        }
+        if (inv) {
+            for (int i = 0; i < arr.length; ++i) {
+                arr[i] /= n;
+            }
+        }
+    }
+
+    public static int calcInvBits(int at, int total) {
+        int res = 0;
+        int rev = total >> 1;
+        for (int p2 = 1; p2 < total; p2 <<= 1, rev >>= 1)
+            if ((at & p2) != 0)
+                res |= rev;
+        return res;
+    }
+}
+
+class MathUtils {
+    public static int nextPowerOfTwo(int x) {
+        if (x < 0 || x > (1 << 30)) throw new RuntimeException();
+        if (x == 0) return 1;
+        if ((x & (x - 1)) == 0) return x;
+        return Integer.highestOneBit(x) << 1;
+    }
+
+    static int log2(int x) {
+        if (x <= 0 || (x & (x - 1)) != 0) throw new RuntimeException();
+        return Integer.numberOfTrailingZeros(x);
+    }
+}
+

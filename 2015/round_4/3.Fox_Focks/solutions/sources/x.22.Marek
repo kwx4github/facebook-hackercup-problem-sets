@@ -1,0 +1,236 @@
+#include <bits/stdc++.h>
+#define double long double
+
+using namespace std;
+
+
+
+template<int N>
+struct Matrix {
+	array<array<double,N>,N> data;
+
+	Matrix(){
+		for(int i = 0; i < N; i++)
+			for(int j = 0; j < N; j++)
+				data[i][j] = 0;
+	}
+
+	void clear(){
+		for(int i = 0; i < N; i++)
+			for(int j = 0; j < N; j++)
+				data[i][j] = 0;
+	}
+
+	double at(int r, int c) const {
+		return data[r][c];
+	}
+
+	double& at(int r, int c){
+		return data[r][c];
+	}
+
+	Matrix<N> mul(const Matrix<N> M) const {
+		Matrix<N> result;
+
+		for(int i = 0; i < N; i++)
+			for(int j = 0; j < N; j++)
+				for(int k = 0; k < N; k++)
+					result.at(i,j) += at(i,k) * M.at(k,j);
+
+		return result;
+	}
+
+	Matrix<N> pow(int pwr2) const {
+		Matrix<N> result;
+		result.data = data;
+
+		while(pwr2--)
+			result = result.mul(result);
+
+		return result;
+	}
+};
+
+template<int N>
+Matrix<N> unit_matrix(){
+	Matrix<N> data;
+	for(int i = 0; i < N; i++)
+		data.at(i,i) = 1;
+	return data;
+}
+
+
+
+
+
+
+struct Testcase {
+private:
+	int testnum;
+    int N;
+    vector<int> start;
+    vector<Matrix<3>> data;
+    vector<vector<double>> probs;
+    double total;
+
+public:
+	void input(){
+        scanf("%d", &N);
+
+        for(int i = 0; i < N; i++){
+            int v;
+            scanf("%d", &v);
+
+            start.push_back(v-1);
+            data.push_back(Matrix<3>());
+
+            for(int a = 0; a < 3; a++){
+                for(int b = 0; b < 3; b++){
+                    int prob;
+                    scanf("%d", &prob);
+
+                    data.rbegin()->at(a, b) = (double)prob / 100;
+                }
+            }
+        }
+	}
+
+	void output(){
+        printf("%.6Lf\n", total);
+	}
+
+    void make_prob(int pos){
+        Matrix<3> after = data[pos].pow(32);
+        Matrix<3> next = Matrix<3>();
+
+        for(int i = 0; i < 6; i++){
+            for(int a = 0; a < 3; a++)
+                for(int b = 0; b < 3; b++)
+                    next.at(a,b) += after.at(a,b) / 6;
+
+            after = after.mul(data[pos]);
+                        
+        }
+
+        vector<double> result(3, 0.);
+
+        for(int b = 0; b < 3; b++){
+            result[b] = next.at(start[pos],b);
+        }
+
+//        for(double v: result) printf("%lf\n", v);
+//        printf("\n");
+
+        probs.push_back(result);
+
+    }
+
+
+    double dp_prob(int color){
+        vector<double> dp[2];
+
+        dp[0].resize(N+1, 0.);
+        dp[1].resize(N+1, 0.);
+
+        dp[0][0] = 1.;
+
+//        int left = 0, right = 0;
+
+        for(int i = 1; i <= N; i++){
+            vector<double> prb = probs[i-1];
+            double ok = prb[color], notOk = 1-ok;
+
+            int cb = i%2, pb = (i+1)%2;
+//            right++;
+
+            dp[cb][0] = notOk * dp[pb][0];
+            for(int cnt = 1; cnt <= N; cnt++){
+//            for(int cnt = left; cnt <= right; cnt++){
+                dp[cb][cnt] = notOk * dp[pb][cnt] + ok * dp[pb][cnt-1];
+            }
+
+//            while(dp[cb][left] < 1e-18) left++;
+//            while(dp[cb][right] < 1e-18) right--;
+        }
+
+        double res = 0;
+
+        for(int cnt = (N+1)/2; cnt <= N; cnt++)
+            res += dp[N%2][cnt];
+
+        return res;
+    }
+
+	void make_run(){
+        total = 0;
+
+        for(int i = 0; i < N; i++){
+            make_prob(i);
+        }
+
+        total = 0;
+        for(int col = 0; col < 3; col++)
+            total += dp_prob(col);
+	}
+
+
+///////////////////////////////////////////////////////////////
+
+	void run(){
+		fprintf(stderr, "Case #%d started running\n", testnum);
+		make_run();
+		fprintf(stderr, "Case #%d FINISHED\n", testnum);
+	}
+
+	Testcase(int testno) : testnum(testno) {
+		input();
+	}
+};
+
+
+
+
+// a kind of wrapper
+int main(int argc, char** argv){
+	int numThreads = 1;
+	if(argc >= 2){
+		int newSetNum = atoi(argv[1]);
+		if(newSetNum >= 2)
+			numThreads = newSetNum;
+	}
+
+	int TT;
+	scanf("%d", &TT);
+
+
+	if(numThreads == 1){
+		for(int i = 1; i <= TT; i++){
+			Testcase tc(i);
+			tc.run();
+			printf("Case #%d: ", i);
+			tc.output();
+		}
+		return 0;
+	}
+
+
+	vector<Testcase> cases;
+
+	for(int i = 1; i <= TT; i++){
+		cases.push_back(Testcase(i));
+	}
+
+	vector<thread> threads;
+
+	for(int i = 1; i < TT+numThreads; i++){
+		if(i <= TT)
+			threads.push_back(thread(&Testcase::run, &cases[i-1]));
+		if(i >= numThreads)
+			threads[i-numThreads].join();
+	}
+
+	for(int i = 1; i <= TT; i++){
+		printf("Case #%d: ", i);
+		cases[i-1].output();
+	}
+}

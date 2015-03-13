@@ -1,0 +1,269 @@
+#include <vector> 
+#include <list> 
+#include <map> 
+#include <set> 
+#include <queue>
+#include <stack> 
+#include <bitset> 
+#include <algorithm> 
+#include <numeric> 
+#include <utility> 
+#include <sstream> 
+#include <iostream> 
+#include <iomanip> 
+#include <cstdio> 
+#include <cmath> 
+#include <cstdlib> 
+#include <ctime> 
+#include <cstring> 
+#include <cassert>
+
+using namespace std; 
+
+typedef long long ll; 
+typedef pair<int, int> pii;
+
+#define INF 1000000000
+#define pb push_back 
+#define itr iterator 
+#define sz size() 
+#define mp make_pair
+
+int t, teste;
+int n;
+
+
+struct cpx
+{
+  cpx(){a=0; b=0;}
+  cpx(double aa):a(aa){b=0;}
+  cpx(double aa, double bb):a(aa),b(bb){}
+  double a;
+  double b;
+  double modsq(void) const
+  {
+    return a * a + b * b;
+  }
+  cpx bar(void) const
+  {
+    return cpx(a, -b);
+  }
+};
+
+cpx operator +(cpx a, cpx b)
+{
+  return cpx(a.a + b.a, a.b + b.b);
+}
+
+cpx operator *(cpx a, cpx b)
+{
+  return cpx(a.a * b.a - a.b * b.b, a.a * b.b + a.b * b.a);
+}
+
+cpx operator /(cpx a, cpx b)
+{
+  cpx r = a * b.bar();
+  return cpx(r.a / b.modsq(), r.b / b.modsq());
+}
+
+cpx EXP(double theta)
+{
+  return cpx(cos(theta),sin(theta));
+}
+
+const double two_pi = 4 * acos(0);
+
+// in:     input array
+// out:    output array
+// step:   {SET TO 1} (used internally)
+// size:   length of the input/output {MUST BE A POWER OF 2}
+// dir:    either plus or minus one (direction of the FFT)
+// RESULT: out[k] = \sum_{j=0}^{size - 1} in[j] * exp(dir * 2pi * i * j * k / size)
+void FFT(cpx *in, cpx *out, int step, int size, int dir)
+{
+  if(size < 1) return;
+  if(size == 1)
+  {
+    out[0] = in[0];
+    return;
+  }
+  FFT(in, out, step * 2, size / 2, dir);
+  FFT(in + step, out + size / 2, step * 2, size / 2, dir);
+  for(int i = 0 ; i < size / 2 ; i++)
+  {
+    cpx even = out[i];
+    cpx odd = out[i + size / 2];
+    out[i] = even + EXP(dir * two_pi * i / size) * odd;
+    out[i + size / 2] = even + EXP(dir * two_pi * (i + size / 2) / size) * odd;
+  }
+}
+
+
+double a[3][3], bb[3][3], cc[3][3], dd[3][3];
+double prob[51000][3];
+
+struct data {
+	double a, b, c;
+};
+
+vector<cpx> answer[211000][3];
+cpx out1[101000];
+cpx out2[101000];
+
+// Usage:
+// f[0...N-1] and g[0..N-1] are numbers
+// Want to compute the convolution h, defined by
+// h[n] = sum of f[k]g[n-k] (k = 0, ..., N-1).
+// Here, the index is cyclic; f[-1] = f[N-1], f[-2] = f[N-2], etc.
+// Let F[0...N-1] be FFT(f), and similarly, define G and H.
+// The convolution theorem says H[n] = F[n]G[n] (element-wise product).
+// To compute h[] in O(N log N) time, do the following:
+//   1. Compute F and G (pass dir = 1 as the argument).
+//   2. Get H by element-wise multiplying F and G.
+//   3. Get h by taking the inverse FFT (use dir = -1 as the argument)
+//      and *dividing by N*. DO NOT FORGET THIS SCALING FACTOR.
+
+void get_answer(int vv, int st, int end) {
+	for (int i = 0; i < 3; i++) answer[vv][i].clear();
+
+	if (st == end) {
+		for (int i = 0; i < 3; i++) {
+			answer[vv][i].push_back(1 - prob[st][i]);
+			answer[vv][i].push_back(prob[st][i]);
+		}
+		return;
+	}
+	
+	get_answer(2*vv, st, (st+end)/2);
+	get_answer(2*vv+1, (st+end)/2 + 1, end);
+
+	int size = end-st+4;
+
+	/*printf("answer %d (%d %d)\n", 2*vv, st, (st+end)/2);
+	for (int i = 0; i < answer[2*vv][0].size(); i++) {
+		printf("(%f, %f) ", answer[2*vv][0][i].a, answer[2*vv][0][i].b);
+	}
+	printf("\n");
+*/
+	int k = 1;
+	while (k < size) k <<= 1;
+
+	for (int color = 0; color < 3; color++) {
+		answer[2*vv][color].resize(k, cpx(0));
+		answer[2*vv+1][color].resize(k, cpx(0));
+		FFT(&answer[2*vv][color][0], out2, 1, k, 1);
+		FFT(&answer[2*vv+1][color][0], out1, 1, k, 1);
+		
+		for (int i = 0; i < k; i++) out1[i] = out1[i] * out2[i];
+		answer[vv][color].resize(k, cpx(0));
+		FFT(out1, &answer[vv][color][0], 1, k, -1);
+		
+		for (int i = 0; i < k; i++) answer[vv][color][i] = answer[vv][color][i] / k;
+	}
+}
+
+
+void copia(double tempa[3][3], double b[3][3]) {
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			tempa[i][j] = b[i][j];
+		}
+	}
+}
+
+void mult(double a[3][3], double b[3][3], double c[3][3]) {
+	double tempa[3][3], tempb[3][3];
+	copia(tempa, b);
+	copia(tempb, c);
+
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			a[i][j] = 0;
+			for (int k = 0; k < 3; k++) {
+				a[i][j] += tempa[i][k] * tempb[k][j];
+			}
+		}
+	}
+
+	for (int i = 0; i < 3; i++) {
+		double s = 0;
+		for (int k = 0; k < 3; k++) {
+			s += a[i][k];
+		}
+		for (int k = 0; k < 3; k++) {
+			a[i][k] /= s;
+		}
+	}
+}
+
+void matpow(double res[3][3], double a[3][3], long long e) {
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			res[i][j] = ((i==j) ? 1 : 0);
+		}
+	}
+
+	double k[3][3];
+	copia(k, a);
+
+	while (e > 0) {
+		if (e & 1) {
+			mult(res, res, k);
+		}
+
+		mult(k, k, k);
+		e >>= 1;
+	}
+}
+
+int main() {
+	for (scanf("%d", &t); t; t--) {
+		printf("Case #%d: ", ++teste);
+		scanf("%d", &n);
+
+		for (int i = 0; i < n; i++) {
+			int c;
+			scanf("%d", &c); c--;
+			for (int j = 0; j < 3; j++) {
+				for (int k = 0; k < 3; k++) {
+					scanf("%lf", &a[j][k]);
+					a[j][k] /= 100.0;
+				}
+			}
+
+			
+			matpow(bb, a, 1000000000000000000LL);
+			mult(cc, bb, a);
+			mult(dd, cc, a);
+
+			/*for (int j = 0; j < 3; j++) {
+				printf("%f ", bb[i][j]);
+			}
+			printf("\n");*/
+
+			for (int j = 0; j < 3; j++) {
+				prob[i][j] = (bb[c][j] + cc[c][j] + dd[c][j]) / 3.0;
+				//printf("%f ", prob[i][j]);
+			}
+			//printf("\n");
+
+		}
+
+		get_answer(1, 0, n-1);
+
+		double tot = 0;
+		/*for (int i = 0; i <= n; i++) {
+			printf("%f ", answer[1][0][i].a);
+		}
+		printf("\n");*/
+
+		for (int k = n/2 + 1; k <= n; k++) {
+			for (int i = 0; i < 3; i++) {
+				//printf("chance of %d color %d: %f\n", k, i, answer[1][i][k].a);
+				tot += answer[1][i][k].a;
+			}
+		}
+
+		printf("%.6f\n", tot + 1e-12);
+	}
+}

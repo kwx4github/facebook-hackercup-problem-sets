@@ -1,0 +1,186 @@
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <cassert>
+#include <ctime>
+#include <cstring>
+#include <string>
+#include <set>
+#include <map>
+#include <vector>
+#include <list>
+#include <deque>
+#include <queue>
+#include <sstream>
+#include <iostream>
+#include <algorithm>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+
+const double pi = acos(-1.0);
+const int size = 100 * 1000 + 100;
+const int iters = 100;
+const double eps = 1e-20;
+
+double p[size][3][3];
+double h[size][3][3];
+long double hh[3][3];
+double cur[6];
+double ncur[6];
+int n, tc;
+int curc[size];
+double lp[6][size];
+double probs[size];
+
+double getpvalue() {
+	int cp = 0;
+	for (int i = 0; i <= n; i++)
+		lp[cp][i] = 0.0;
+	lp[cp][0] = 1.0;
+	
+	int lb = 0;
+	int rb = 0;
+
+	for (int i = 0; i < n; i++) {
+		rb++;
+		cp ^= 1;
+		for (int j = lb; j <= rb + 1; j++)
+			lp[cp][j] = 0.0;
+		for (int j = lb; j <= rb; j++) {
+			lp[cp][j + 1] += lp[cp ^ 1][j] * probs[i];
+			lp[cp][j] += lp[cp ^ 1][j] * (1.0 - probs[i]);
+		}
+
+		while (lb < rb && lp[cp][lb] < eps)
+			lb++;
+		while (rb > lb && lp[cp][rb] < eps)
+			rb--;
+	}	
+
+	double ans = 0.0;
+	for (int j = lb; j <= rb; j++)
+		if (j > (n / 2))
+			ans += lp[cp][j];
+
+	return ans;
+}
+
+double res[size][6][6];
+
+int main() {
+/*
+	freopen("input.txt", "w", stdout);
+	int tc = 20;
+	int n = 50 * 1000;
+	cout << tc << endl;
+	for (int i = 0; i < tc; i++) {
+		cout << n << endl;
+		for (int j = 0; j < n; j++) {
+			cout << rand() % 3 + 1 << endl;
+			for (int k = 0; k < 3; k++) {
+				vector <int> h;
+				h.pb(rand() % 101);
+				h.pb(rand() % 101);	
+				sort(h.begin(), h.end());
+				cout << h[0] << ' ' << h[1] - h[0] << ' ' << 100 - h[1] << endl;
+			}
+			
+		}	
+	}
+
+
+	return 0;
+*/	
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    scanf("%d", &tc);
+    for (int tnum = 0; tnum < tc; tnum++) {
+    	scanf("%d", &n);
+    	for (int i = 0; i < n; i++) {
+    		scanf("%d", &curc[i]);
+    		curc[i]--;
+    		for (int j = 0; j < 3; j++)
+    			for (int k = 0; k < 3; k++) {
+    				scanf("%lf", &p[i][j][k]);
+    				p[i][j][k] /= 100.0;
+    			}
+    	}
+
+    	for (int i = 0; i < n; i++) {
+    		for (int j = 0; j < 3; j++)
+    			for (int k = 0; k < 3; k++)
+    				h[i][j][k] = p[i][j][k];
+        	for (int it = 0; it < iters; it++) {
+        		for (int j = 0; j < 3; j++)
+        			for (int k = 0; k < 3; k++) {
+        				hh[j][k] = 0.0;
+        				for (int q = 0; q < 3; q++)
+        					hh[j][k] += h[i][j][q] * h[i][q][k];
+        			}
+        		for (int j = 0; j < 3; j++)
+        			for (int k = 0; k < 3; k++) {
+        				h[i][j][k] = hh[j][k];
+        			}
+        		for (int j = 0; j < 3; j++) {
+        			double sum = 0.0;
+        			for (int q = 0; q < 3; q++)
+        				sum += h[i][j][q];
+        			for (int q = 0; q < 3; q++)
+        				h[i][j][q] /= sum;
+        		}
+
+        	}
+
+        	for (int j = 0; j < 3; j++)
+        		cur[j] = 0.0;
+        	cur[curc[i]] += 1.0;
+
+        	for (int j = 0; j < 3; j++)
+        		ncur[j] = 0.0;
+        	for (int j = 0; j < 3; j++)
+        		for (int q = 0; q < 3; q++)
+        			ncur[q] += cur[j] * h[i][j][q];
+			for (int j = 0; j < 3; j++)
+				cur[j] = ncur[j];
+
+        	for (int it = 0; it < 6; it++) {
+        		for (int j = 0; j < 3; j++)
+	        		res[i][it][j] = cur[j];
+        		for (int j = 0; j < 3; j++)
+        			ncur[j] = 0.0;
+        		for (int j = 0; j < 3; j++)
+        			for (int q = 0; q < 3; q++)
+        				ncur[q] += cur[j] * p[i][j][q];
+        		for (int j = 0; j < 3; j++)
+					cur[j] = ncur[j];
+        	}
+//        	printf("\n"); 
+        	
+     	}   
+
+     	double ans = 0.0;
+
+     	for (int it = 0; it < 6; it++)
+     		for (int c = 0; c < 3; c++) {
+       			//cerr << it << ' ' << c << endl;
+     
+    			for (int q = 0; q < n; q++)
+     				probs[q] = res[q][it][c];
+
+     			ans += getpvalue() / 6.0;	
+
+
+     		}
+
+     	cerr << tnum + 1 << ' ' << (clock() + 0.0) / CLOCKS_PER_SEC << endl;
+     	printf("Case #%d: %.6lf\n", tnum + 1, ans);
+    }
+
+    return 0;
+}

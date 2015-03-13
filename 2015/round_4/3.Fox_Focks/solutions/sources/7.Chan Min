@@ -1,0 +1,135 @@
+#include <cstdio>
+#include <cstring>
+#include <set>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+
+using namespace std;
+
+int C[50003];
+double mat[50003][3][3];
+double infsum[50003][3][3];
+
+void mult(double dest[3][3], const double a[3][3], const double b[3][3])
+{
+	double tmp[3][3];
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			tmp[i][j] = 0;
+			for (int k = 0; k < 3; k++) {
+				tmp[i][j] += a[i][k] * b[k][j];
+			}
+		}
+	}
+	memcpy(dest, tmp, sizeof(tmp));
+}
+
+void calcinfsum(double orig[3][3], double result[3][3])
+{
+	double prev[3][3] = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+	double po[3][3], tmp[3][3];
+	mult(tmp, orig, orig);
+	mult(tmp, tmp, orig); // tmp = orig ^ 3
+	mult(po, tmp, tmp); // po = orig^6
+	for (int magic = 0; magic < 100; magic++)
+	{
+		mult(tmp, po, prev);
+		for (int i = 0; i < 3; i++) {
+			double psum = 0;
+			for (int j = 0; j < 3; j++) {
+				prev[i][j] = (tmp[i][j] + prev[i][j]) * 0.5;
+				psum += prev[i][j];
+			}
+			psum = 1.0 / psum;
+			for (int j = 0; j < 3; j++) {
+				prev[i][j] *= psum;
+			}
+		}
+		mult(po, po, po);
+		for (int i = 0; i < 3; i++) {
+			double psum = 0;
+			for (int j = 0; j < 3; j++) {
+				psum += po[i][j];
+			}
+			psum = 1.0 / psum;
+			for (int j = 0; j < 3; j++) {
+				po[i][j] *= psum;
+			}
+		}
+	}
+	memcpy(result, prev, sizeof(prev));
+}
+
+double pa[50003];
+double dt[2][25005];
+double ignorehold = 1e-15;
+
+int main(){
+	int T;
+	scanf("%d", &T);
+	for (int testcase = 1; testcase <= T; testcase++)
+	{
+		fprintf(stderr, "processing %d\n", testcase);
+		int n;
+		scanf("%d", &n);
+		for (int i = 0; i < n; i++) {
+			scanf("%d", &C[i]);
+			C[i]--;
+			for (int r = 0; r < 3; r++) for (int c = 0; c < 3; c++) {
+				scanf("%lf", &mat[i][r][c]);
+				mat[i][r][c] *= 0.01;
+			}
+			calcinfsum(mat[i], infsum[i]);
+		}
+
+		double answer = 0;
+		for (int kind = 0; kind < 6; kind++) {
+			for (int maj = 0; maj < 3; maj++) {
+				for (int i = 0; i < n; i++) {
+					double kindpow[3][3] = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+					for (int aa = 0; aa < kind; aa++) mult(kindpow, kindpow, mat[i]);
+					mult(kindpow, kindpow, infsum[i]);
+					pa[i] = kindpow[C[i]][maj];
+				}
+				int maxup = (n - 1) / 2;
+				memset(dt, 0, sizeof(dt));
+				dt[0][0] = 1;
+
+				int start = 0, end = 0;
+				for (int i = 0; i < n; i++) {
+					int ci = i % 2;
+					int ni = 1-ci;
+
+					int validstart = -1, validend = -1;
+					dt[ni][start] = dt[ci][start] * pa[i];
+					if (dt[ni][start] < ignorehold) {
+						dt[ni][start] = 0;
+					} else {
+						validstart = start;
+						validend = start;
+					}
+					for (int j = start + 1; j <= end+1 && j <= maxup; j++) {
+						dt[ni][j] = dt[ci][j] * pa[i] + dt[ci][j-1] * (1-pa[i]);
+						if (dt[ni][j] < ignorehold) {
+							dt[ni][j] = 0;
+						} else {
+							if (validstart == -1) validstart = j;
+							validend = j;
+						}
+					}
+					start = validstart;
+					end = validend;
+					if (end == -1) break;
+				}
+				if (end != -1) {
+					answer += accumulate(dt[n % 2] + start, dt[n % 2] + min(end + 1, maxup + 1), 0.0);
+				}
+			}
+		}
+		answer /= 6;
+
+		printf("Case #%d: %.6f\n", testcase, answer);
+	}
+	return 0;
+}

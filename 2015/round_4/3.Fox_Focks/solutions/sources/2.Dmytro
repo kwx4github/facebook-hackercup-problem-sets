@@ -1,0 +1,229 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <queue>
+#include <set>
+#include <map>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+typedef vector < vector < double > > matrix;
+
+matrix mul(const matrix& A, const matrix& B) {
+	int n = A.size();
+	matrix C(n, vector < double > (n, 0));
+	for (int i = 0; i < n; ++i) {
+		double s = 0.0;
+		for (int j = 0; j < n; ++j) {
+			double current = 0;
+			for (int k = 0; k < n; ++k) {
+				current += A[i][k] * B[k][j];
+			}
+			C[i][j] = current;
+			s += C[i][j];
+		}
+		for (int j = 0; j < n; ++j) {
+			C[i][j] /= s;
+		}
+	}
+	return C;
+}
+
+matrix pow(const matrix& A, long long n) {
+	if (n == 0) {
+		matrix B(A.size(), vector < double > (A.size(), 0));
+		for (int i = 0; i < A.size(); ++i) {
+			B[i][i] = 1;
+		}
+		return B;
+	}
+	matrix B = pow(A, n / 2);
+	B = mul(B, B);
+
+	if (n % 2 == 0) {
+		return B;
+	} else {
+		return mul(B, A);
+	}
+}
+
+bool isEqual(matrix &A, matrix &B) {
+	const double eps = 1e-12;
+	for (int i = 0; i < 3; ++i) {
+		for (int j = 0; j < 3; ++j) {
+			if (fabs(A[i][j] - B[i][j]) > eps) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+const int maxN = 51000;
+const int maxD = 100;
+int p[maxN][3][3];
+int c[maxN];
+int n;
+
+matrix P[maxN], Q[maxN];
+
+double q[maxN][3];
+double d[2][maxN / 2];
+
+double r[maxN];
+
+const double eps = 1e-16;
+
+double calculate(int id) {
+	int m = (n - 1) / 2;
+	int u = 0, v = 1;
+	memset(d[u], 0, sizeof(d[u]));
+	d[u][0] = 1.0;
+	for (int i = 1; i <= n; ++i) {
+		r[i] = q[i][0] + q[i][1] + q[i][2] - q[i][id];
+	}
+	for (int i = 1; i <= n; ++i, swap(u, v)) {
+		memset(d[v], 0, sizeof(d[v]));
+		for (int j = 0; j <= m; ++j) {
+			if (d[u][j] < eps) {
+				continue;
+			}
+			d[v][j] += d[u][j] * (1.0 - r[i]);
+			if (j + 1 <= m) {
+				d[v][j + 1] += d[u][j] * r[i];
+			}
+		}
+	}
+
+	double res = 0.0;
+	for (int i = 0; i <= m; ++i) {
+		res += d[u][i];
+	}
+	return res;
+}
+
+void readData() {
+	cin >> n;
+	for (int i = 1; i <= n; ++i) {
+		cin >> c[i];
+		--c[i];
+		for (int j = 0; j < 3; ++j) {
+			for (int k = 0; k < 3; ++k) {
+				cin >> p[i][j][k];
+			}
+		}
+	}
+}
+
+void solve(int test) {
+	cin >> n;
+	for (int i = 1; i <= n; ++i) {
+		cin >> c[i];
+		--c[i];
+		for (int j = 0; j < 3; ++j) {
+			for (int k = 0; k < 3; ++k) {
+				cin >> p[i][j][k];
+			}
+		}
+		P[i].assign(3, vector < double > (3));
+		for (int j = 0; j < 3; ++j) {
+			for (int k = 0; k < 3; ++k) {
+				P[i][j][k] = (double)(p[i][j][k]) / 100.0;
+			}
+		}
+	}
+
+	for (int i = 1; i <= n; ++i) {
+		Q[i] = P[i];
+		for (int j = 0; j < maxD; ++j) {
+			Q[i] = mul(Q[i], Q[i]);
+		}
+
+		matrix R = mul(Q[i], P[i]);
+		matrix R2 = mul(R, P[i]);
+		matrix R3 = mul(R2, P[i]);
+		/*if (!isEqual(Q[i], R) && !isEqual(Q[i], R2) && !isEqual(Q[i], R3)) {
+			cerr << "Fuck!!!" << endl;
+		}*/
+		/*if (!isEqual(mul(R, P[i]), Q[i])) {
+			cerr << "Double Fuck!!!" << endl;
+		}*/
+	}
+
+	double res = 0.0;
+	for (int steps = 0; steps < 6; ++steps) {
+		for (int i = 1; i <= n; ++i) {
+			double a[3] = {0.0, 0.0, 0.0};
+			a[c[i]] = 1.0;
+			for (int j = 0; j < 3; ++j) {
+				q[i][j] = a[0] * Q[i][0][j] + a[1] * Q[i][1][j] + a[2] * Q[i][2][j];
+			}
+		}
+		for (int i = 0; i < 3; ++i) {
+			res += calculate(i);
+		}
+
+		for (int i = 1; i <= n; ++i) {
+			Q[i] = mul(Q[i], P[i]);
+		}
+	}
+	printf("Case #%d: %.6lf\n", test, res / 6.0);
+}
+
+void gen() {
+	int n = 50000;
+	printf("%d\n", n);
+	for (int i = 1; i <= n; ++i) {
+		printf("%d\n", rand() % 1 + 1);
+		for (int j = 0; j < 3; ++j) {
+			int s = 2;
+			for (int k = 0; k < 3; ++k) {
+				int x;
+				if (k == 2) {
+					x = s;
+				} else {
+					x = rand() % (s + 1);
+					s -= x;
+				}
+				printf("%d ", x * 50);
+			}
+			printf("\n");
+		}
+	}
+}
+
+int main(int argc, char* argv[]) {
+	freopen("input.txt", "r", stdin);
+	//freopen("output.txt", "w", stdout);
+
+	//gen();
+
+	int left_bound, right_bound;
+
+	freopen(argv[3], "w", stdout);
+
+	
+	sscanf(argv[1], "%d", &left_bound);
+	sscanf(argv[2], "%d", &right_bound);
+
+	int t;
+	cin >> t;
+	//left_bound = 1, right_bound = t;
+	for (int i = 1; i <= t; ++i) {
+		if (i >= left_bound && i <= right_bound) {
+			solve(i);
+		} else {
+			readData();
+		}
+		cerr << i << ": " << clock() << endl;
+	}
+
+	return 0;
+}

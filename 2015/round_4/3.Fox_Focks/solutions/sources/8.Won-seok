@@ -1,0 +1,172 @@
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <vector>
+#include <string>
+#include <queue>
+#include <map>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <sstream>
+#include <set>
+using namespace std;
+
+long double prob[6][60000][3];
+
+long double tmp[11111111];
+
+void kara(int a_start, int b_start, int idx, int step) {
+/*  printf("%d %d %d %d : ", a_start, b_start, idx, step);
+  for (int i=0; i<step; i++) printf("%d ", tmp[a_start+i]); printf(" / ");
+  for (int i=0; i<step; i++) printf("%d ", tmp[b_start+i]); printf("\n");*/
+  tmp[idx+step*2-1] = 0;
+
+  if (step == 1) {
+    tmp[idx] = tmp[a_start] * tmp[b_start];
+    return;
+  }
+
+  int all_zero = 1;
+  for (int i=0; i<step; i++) if (tmp[a_start+i]) { all_zero = 0; break; }
+  if (all_zero) {
+    for (int i=0; i<step*2-1; i++) tmp[idx+i] = 0;
+    return;
+  }
+  all_zero = 1;
+  for (int i=0; i<step; i++) if (tmp[b_start+i]) { all_zero = 0; break; }
+  if (all_zero) {
+    for (int i=0; i<step*2-1; i++) tmp[idx+i] = 0;
+    return;
+  }
+
+  int half = step/2;
+
+  // z0 = x0*y0
+  kara(a_start, b_start, idx, half);
+
+  // z2 = x1*y1
+  kara(a_start + half, b_start + half, idx+step, half);
+
+  // z1 = (x1+x0)*(y1+y0) - z2 - z0
+  for (int i=0; i<half; i++) {
+    tmp[idx+2*step+i] = tmp[a_start+i] + tmp[a_start+half+i];
+    tmp[idx+2*step+half+i] = tmp[b_start+i] + tmp[b_start+half+i];
+  }
+  kara(idx+2*step, idx+2*step+half, idx+3*step, half);
+  for (int i=0; i<step-1; i++) {
+    long double* c = &tmp[idx+3*step+i];
+    *c -= tmp[idx+step+i] + tmp[idx+i];
+  }
+
+  // add all
+  for (int i=0; i<step-1; i++) {
+    tmp[idx+half+i] += tmp[idx+3*step+i];
+    if (tmp[idx+half+i] < 1e-25) tmp[idx+half+i] = 0;
+  }
+//  printf("%d %d %d %d : ", a_start, b_start, idx, step); for (int i=0; i<step*2; i++) printf("%d ", tmp[idx+i]); printf("\n");
+}
+
+vector<long double> mult(const vector<long double>& a, const vector<long double>& b) {
+  int len1 = a.size();
+  int len2 = b.size();
+  if (len1 == 0) { vector<long double>res = b; return res; }
+  if (len2 == 0) { vector<long double>res = a; return res; }
+
+  int eff_MM = 1;
+  while (eff_MM < max(len1, len2)) eff_MM *= 2;
+    
+  for (int i=0; i<eff_MM*2; i++) tmp[i] = 0;
+  for (int i=0; i<2*eff_MM; i++) tmp[i] = 0;
+  for (int i=0; i<len1; i++) tmp[i] = a[i];
+  for (int i=0; i<len2; i++) tmp[i+eff_MM] = b[i];
+  kara(0, eff_MM, 2*eff_MM, eff_MM);
+  vector<long double> res(len1+len2-1);
+  for (int i=0; i<len1+len2-1; i++) {
+    res[i] = tmp[2*eff_MM + i];
+    if (res[i] < 1e-25) res[i] = 0;
+  }
+
+/*  printf("mult A = "); for (int i=0; i<a.size(); i++) printf("%Lf ", a[i]); printf("\n");
+  printf("mult B = "); for (int i=0; i<b.size(); i++) printf("%Lf ", b[i]); printf("\n");
+    printf("res = "); for (int i=0; i<res.size(); i++) printf("%Lf ", res[i]); printf("\n"); printf("\n");*/
+/*  printf("%d ", res.size());
+  fflush(stdout);*/
+
+  return res;
+}
+
+long double solve(int ok) {
+  int N;
+  cin >> N;
+
+  for (int ii=0; ii<N; ii++) {
+    int C;
+    cin >> C;
+    long double P[3][3], Q[3][3];
+    for (int j=0; j<3; j++)
+      for (int k=0; k<3; k++) {
+        int tmp;
+        cin >> tmp;
+        Q[j][k] = P[j][k] = tmp / 100.0;
+      }
+
+    for (int iter=0; iter<18; iter++) {
+      // Q = Q * Q
+      long double tmp[3][3] = {0};
+      for (int i=0; i<3; i++)
+        for (int j=0; j<3; j++)
+          for (int k=0; k<3; k++)
+            tmp[i][k] += Q[i][j]*Q[j][k];
+      for (int i=0; i<3; i++) for (int j=0; j<3; j++) Q[i][j] = tmp[i][j];
+//      for (int i=0; i<3; i++) for (int j=0; j<3; j++) printf("%.12Lf ", Q[i][j]); printf("\n");
+    }
+
+    for (int iter=0; iter<6; iter++) {
+      for (int i=0; i<3; i++)
+        prob[iter][ii][i] = Q[C-1][i];
+      
+      // Q = Q * P
+      long double tmp[3][3] = {0};
+      for (int i=0; i<3; i++)
+        for (int j=0; j<3; j++)
+          for (int k=0; k<3; k++)
+            tmp[i][k] += Q[i][j]*P[j][k];
+      for (int i=0; i<3; i++) for (int j=0; j<3; j++) Q[i][j] = tmp[i][j];
+    }
+  }
+
+  long double res = 0.0;
+  if (!ok) return res;
+  for (int iter=0; iter<6; iter++) {
+//    for (int i=0; i<N; i++) printf("%Lf %Lf %Lf\n", prob[iter][i][0], prob[iter][i][1], prob[iter][i][2]);
+//    printf("\n");
+
+    for (int color=0; color<3; color++) {
+      vector<vector<long double> > V(1<<18);
+      for (int i=0; i<N; i++) {
+        long double p = prob[iter][i][color];
+        V[(1<<17)+i].push_back(1-p);
+        V[(1<<17)+i].push_back(p);
+      }
+      for (int i=(1<<17)-1; i>=1; i--) V[i] = mult(V[i*2], V[i*2+1]);
+
+      for (int i=0; i<=N; i++)
+        if (i*2 > N) res += V[1][i];
+    }
+  }
+
+  return res / 6;
+}
+
+int main(int argv, char** argc)
+{
+  int start = 1;
+  if (argv >= 2) sscanf(argc[1], "%d", &start);
+
+  int T;
+  cin >> T;
+  for (int tt=1; tt<=T; tt++) {
+    printf("Case #%d: %.9Lf\n", tt, solve(tt >= start));
+  }
+}

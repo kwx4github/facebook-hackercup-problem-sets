@@ -1,0 +1,246 @@
+#include<cmath>
+#include<complex>
+#include<vector>
+#include<cstdio>
+#include<cstring>
+#include<iostream>
+#include<algorithm>
+using namespace std;
+
+struct Matrix {
+    long double a[3][3];
+
+    Matrix() {
+        memset(a, 0, sizeof(a));
+    }
+
+    void in() {
+        int t;
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                scanf("%d", &t);
+                a[i][j] = t;
+                a[i][j] /= 100;
+            }
+        }
+    }
+
+    long double* operator[] (int i) {
+        return a[i];
+    }
+    
+    const long double* operator[] (const int &i) const {
+        return a[i];
+    }
+};
+
+struct Vector {
+    long double a[3];
+
+    Vector() {
+        memset(a, 0, sizeof(a));
+    }
+
+    long double& operator[] (int i) {
+        return a[i];
+    }
+
+    const long double& operator[] (const int &i) const {
+        return a[i];
+    }
+};
+
+Matrix operator * (const Matrix &a, const Matrix &b) {
+    Matrix c;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            for (int k = 0; k < 3; ++k) {
+                c[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+    return c;
+}
+
+Vector operator * (const Vector &a, const Matrix &b) {
+    Vector c;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            c[j] += a[i] * b[i][j];
+        }
+    }
+    return c;
+}
+
+const int N = 50005;
+
+int n;
+
+Matrix ma[N];
+
+Vector v[N];
+
+long double p[N];
+
+long double dp[N];
+
+long double solve_brute() {
+    for (int i = 0; i <= n; ++i) {
+        dp[i] = 0;
+    }
+    dp[0] = 1;
+    for (int i = 0; i < n; ++i) {
+        for (int j = i + 1; j >= 0; --j) {
+            long double nval = dp[j] * (1 - p[i]);
+            if (j > 0) {
+                nval += dp[j - 1] * p[i];
+            }
+            dp[j] = nval;
+        }
+    }
+    long double ret = 0;
+    for (int i = 0; i <= n; ++i) {
+        if (i > n / 2) {
+            ret += dp[i];
+        }
+    }
+    return ret;
+}
+
+const int LOG = 16;
+
+long double pr[LOG][N];
+
+typedef complex<long double> Complex;
+
+Complex a[N << 1], b[N << 1], c[N << 1];
+
+const long double pi = acos(-1);
+
+void FFT(Complex p[], int n, int oper) {
+    for (int i = 1, j = 0; i < n - 1; ++i) {
+        for (int s = n; j ^= s >>= 1, ~j & s;);
+        if (i < j) {
+            swap(p[i], p[j]);
+        }
+    }
+    for (int d = 0; (1 << d) < n; ++d) {
+        int m = 1 << d, m2 = m * 2;
+        long double p0 = pi / m * oper;
+        Complex unit_p0(cos(p0), sin(p0));
+        for (int i = 0; i < n; i += m2) {
+            Complex unit(1, 0);
+            for (int j = 0; j < m; ++j) {
+                Complex &p1 = p[i + j + m], &p2 = p[i + j];
+                Complex t = unit * p1;
+                p1 = p2 - t;
+                p2 = p2 + t;
+                unit = unit * unit_p0;
+            }
+        }
+    }
+}
+
+void multi(int n) {
+    FFT(a, n, 1);
+    FFT(b, n, 1);
+    for (int i = 0; i < n; ++i) {
+        c[i] = a[i] * b[i];
+    }
+    FFT(c, n, -1);
+}
+
+void merge(int dep, int l1, int l2, int id) {
+    int n = 1, s = l1 + l2;
+    while (n < s) {
+        n <<= 1;
+    }
+    memset(a, 0, sizeof(Complex) * n);
+    memset(b, 0, sizeof(Complex) * n);
+    for (int i = 0; i < l1; ++i) {
+        a[i].real() = pr[dep][i];
+    }
+    for (int i = 0; i < l2; ++i) {
+        b[i].real() = pr[dep][l1 + i];
+    }
+    memset(c, 0, sizeof(Complex) * n);
+    multi(n);
+    for (int i = 0; i < l1 + l2 - 1; ++i) {
+        pr[dep - 1][id + i] = c[i].real() / n;
+    }
+}
+
+void solve(int dep, int id, int l, int r) {
+    if (l == r) {
+        pr[dep][id] = 1 - p[l];
+        pr[dep][id + 1] = p[l];
+        return;
+    }
+    int m = l + r >> 1;
+    solve(dep + 1, 0, l, m);
+    solve(dep + 1, ((m - l + 1) + 1), m + 1, r);
+    merge(dep + 1, m - l + 2, r - (m + 1) + 2, id);
+}
+
+int main() {
+    int t;
+    scanf("%d", &t);
+    while (t--) {
+        static int id = 0;
+        printf("Case #%d: ", ++id);
+        scanf("%d", &n);
+        for (int i = 0; i < n; ++i) {
+            int t;
+            scanf("%d", &t);
+            --t;
+            v[i][0] = v[i][1] = v[i][2] = 0;
+            v[i][t] = 1;
+            ma[i].in();
+        }
+        for (int i = 0; i < n; ++i) {
+            Matrix b = ma[i];
+            for (int j = 0; j < 30; ++j) {
+                b = b * b;
+            }
+            v[i] = v[i] * b;
+        } 
+        long double ans = 0;
+        for (int i = 0; i < 6; ++i) {
+            long double tmp = 0;
+            for (int j = 0; j < 3; ++j) {
+                for (int k = 0; k < n; ++k) {
+                    p[k] = v[k][j];
+                }
+                solve(0, 0, 0, n - 1);
+                for (int k = 0; k <= n; ++k) {
+                    if (k > n / 2) {
+                        tmp += pr[0][k];
+                    }
+                }
+            }
+            ans += tmp;
+            for (int k = 0; k < n; ++k) {
+                v[k] = v[k] * ma[k];
+            }
+        }
+        ans = ans / 6;
+        /*
+        printf("%.6f ", ans);
+        ans = 0;
+        for (int i = 0; i < 6; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                for (int k = 0; k < n; ++k) {
+                    p[k] = v[k][j];
+                }
+                ans += solve_brute();
+            }
+            for (int k = 0; k < n; ++k) {
+                v[k] = v[k] * ma[k];
+            }
+        }
+        ans = ans / 6;
+        */
+        printf("%.6f\n", (double)ans);
+    }
+    return 0;
+}
