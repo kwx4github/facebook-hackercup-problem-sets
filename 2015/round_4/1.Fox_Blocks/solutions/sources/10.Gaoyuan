@@ -1,0 +1,170 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+int n, nQuery;
+long long x[1000001];
+long long s[1000001];
+long long toRightNext[1000001]; // next > 
+long long toLeftNext[1000001]; // next >
+long long mod = 1000000007;
+
+long long toRightSum[1000001][21];
+long long toRightWhere[1000001][21];
+long long toLeftSum[1000001][21];
+long long toLeftWhere[1000001][21];
+
+int findMax(int L, int R)
+{
+	for(int i = 20; i >= 0; i--)
+		if(toRightWhere[L][i] <= R)
+			L = toRightWhere[L][i];
+
+	return L;
+}
+
+long long calcL2R(int L, int R)
+{
+	long long ret = 0;
+
+	/*
+	while(toRightNext[L] <= R)
+	{
+		ret += x[L] * (toRightNext[L] - L);
+		L = toRightNext[L];
+	}
+	*/
+	for(int i = 20; i >= 0; i--)
+		if(toRightWhere[L][i] <= R)
+		{
+			ret += toRightSum[L][i];
+			L = toRightWhere[L][i];
+		}
+
+	ret += x[L] * (R-L);
+	return ret;
+}
+
+long long calcR2L(int R, int L)
+{
+	long long ret = 0;
+	/*while(L <= toLeftNext[R])
+	{
+		ret += x[R] * (R - toLeftNext[R]);
+		R = toLeftNext[R];
+	}*/
+	for(int i = 20; i >= 0; i--)
+		if(L <= toLeftWhere[R][i])
+		{
+			ret += toLeftSum[R][i];
+			R = toLeftWhere[R][i];
+		}
+
+	ret += x[R] * (R-L);
+	return ret;
+}
+
+void solve()
+{
+	cin >> n >> nQuery;
+	s[0] = 0;
+	for(int i = 1; i <= n; i++)
+	{
+		cin >> x[i];
+		s[i] = s[i-1] + x[i];
+	}
+	x[0] = x[n+1] = 1000000000;
+	toLeftNext[1] = 0;
+	for(int i = 2; i <= n; i++)
+	{
+		int t = i-1;
+		while(x[t] <= x[i])
+			t = toLeftNext[t];
+		toLeftNext[i] = t;
+	}
+	toRightNext[n] = n+1;
+	for(int i = n-1; i >= 1; i--)
+	{
+		int t = i+1;
+		while(x[t] <= x[i])
+			t = toRightNext[t];
+		toRightNext[i] = t;
+	}
+
+	for(int i = 1; i <= n; i++)
+	{
+		toLeftWhere[i][0] = toLeftNext[i];
+		toLeftSum[i][0] = abs(toLeftNext[i] - i) * x[i];
+		toRightWhere[i][0] = toRightNext[i];
+		toRightSum[i][0] = abs(toRightNext[i] - i) * x[i];
+	}
+
+	for(int c = 0; c <= 20; c++)
+	{
+		toLeftWhere[0][c] = 0;
+		toLeftSum[0][c] = 0;
+		toRightWhere[n+1][c] = n+1;
+		toRightSum[n+1][c] = 0;
+	}
+
+	for(int c = 1; c <= 20; c++)
+	{
+		for(int i = 1; i <= n; i++)
+		{
+			int m = toLeftWhere[i][c-1];
+			toLeftWhere[i][c] = toLeftWhere[m][c-1];
+			toLeftSum[i][c] = toLeftSum[i][c-1] + toLeftSum[m][c-1];
+		}
+		for(int i = n; i >= 1; i--)
+		{
+			int m = toRightWhere[i][c-1];
+			toRightWhere[i][c] = toRightWhere[m][c-1];
+			toRightSum[i][c] = toRightSum[i][c-1] + toRightSum[m][c-1];
+		}
+	}
+
+	long long ans = 0;
+
+	for(int i = 1; i <= nQuery; i++)
+	{
+		int L, R;
+		cin >> L >> R;
+		int M = findMax(L, R);
+		long long sum = 0;
+		sum += calcL2R(L, M);
+		sum += calcR2L(R, M);
+		sum += x[M];
+		sum -= s[R] - s[L-1];
+		ans += sum;
+		ans %= mod;
+		//cout << "M = " << calcL2R(L, M) << " / " << calcR2L(R, M) << " : "  << s[R] - s[L-1] << endl;
+	}
+	cout << ans << endl;
+}
+
+int MAIN()
+{
+	int TestCase;
+	cin >> TestCase;
+	for(int caseID = 1; caseID <= TestCase; caseID ++)
+	{
+		cout << "Case #" << caseID << ": ";
+		solve();
+	}
+	return 0;
+}
+
+int main()
+{
+	int start = clock();
+	#ifdef LOCAL_TEST
+		freopen("in.txt", "r", stdin);
+		freopen("out.txt", "w", stdout);
+	#endif
+	ios :: sync_with_stdio(false);
+	cout << fixed << setprecision(16);
+	int ret = MAIN();
+	#ifdef LOCAL_TEST
+		cout << "[Finished in " << clock() - start << " ms]" << endl;
+	#endif
+	return ret;
+}

@@ -1,0 +1,97 @@
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <vector>
+#include <string>
+#include <queue>
+#include <map>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <sstream>
+#include <set>
+using namespace std;
+
+const int mmod = 1000000007;
+
+int mmax[1<<21];
+vector<int> num;
+
+int get_best(int idx, int ll, int step, int A, int B) {
+  int lll = max(ll, A);
+  int rrr = min(ll+step-1, B);
+  if (lll > rrr) return -1;
+  if (step == 1) return ll;
+  if (A <= ll && ll+step-1 <= B) return mmax[idx];
+  int p = get_best(idx*2, ll, step/2, A, B);
+  int q = get_best(idx*2+1, ll+step/2, step/2, A, B);
+  if (q == -1 || (p != -1 && num[p] > num[q])) return p;
+  return q;
+}
+
+int solve() {
+  int N, Q;
+  cin >> N >> Q;
+  num.clear();
+  num.resize(N);
+  for (int i=0; i<N; i++) cin >> num[i];
+  vector<long long> sum(N+1);
+  for (int i=0; i<N; i++) sum[i+1] = sum[i] + num[i];
+
+  for (int i=0; i<(1<<21); i++) mmax[i] = -1;
+  for (int i=0; i<N; i++) mmax[(1<<20)+i] = i;
+  for (int i=(1<<20)-1; i>=1; i--)
+    if (mmax[i*2+1] == -1 || (mmax[i*2] != -1 && num[mmax[i*2]] > num[mmax[i*2+1]]))
+      mmax[i] = mmax[i*2]; else mmax[i] = mmax[i*2+1];
+
+  vector<long long> ll_sum(N+1);
+  vector<long long> rr_sum(N+1);
+  {
+    vector<pair<int, int> > V;
+    for (int i=0; i<N; i++) V.push_back(pair<int, int>(num[i], i));
+    sort(V.begin(), V.end());
+
+    set<int> S;
+    S.insert(N);
+    S.insert(-1);
+    for (int i=N-1; i>=0; i--) {
+      int idx = V[i].second;
+      set<int>::iterator nxt = S.lower_bound(V[i].second+1);
+      set<int>::iterator prv = nxt;
+      prv --;
+      ll_sum[idx] = rr_sum[idx] = 0;
+      if ((*nxt) < N) ll_sum[idx] = ll_sum[*nxt] + 1LL * ((*nxt) - idx) * num[idx];
+      if ((*prv) > -1) rr_sum[idx] = rr_sum[*prv] + 1LL * (idx - (*prv)) * num[idx];
+
+
+      S.insert(V[i].second);
+
+    }
+  }
+
+  int res = 0;
+  for (int i=0; i<Q; i++) {
+    int A, B;
+    cin >> A >> B;
+    A --;
+    B --;
+    
+    int best = get_best(1, 0, 1<<20, A, B);
+    long long now = 0;
+    if (best-1 >= A) now -= ll_sum[best] - ll_sum[A];
+    if (best+1 <= B) now -= rr_sum[best] - rr_sum[B];
+    now += num[best];
+    now -= sum[B+1] - sum[A];
+    res = (res + now) % mmod;
+  }
+  return res;
+}
+
+int main()
+{
+  int T;
+  cin >> T;
+  for (int tt=1; tt<=T; tt++) {
+    printf("Case #%d: %d\n", tt,solve());
+  }
+}

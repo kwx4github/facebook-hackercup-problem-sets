@@ -1,0 +1,247 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#define _SECURE_SCL 0
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include <iostream>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <list>
+#include <cctype>
+#include <sstream>
+#include <cassert>
+#include <bitset>
+#include <memory.h>
+#include <complex>
+#include <iomanip>
+
+using namespace std;
+
+#pragma comment(linker, "/STACK:200000000")
+
+typedef long long int64;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define fore(i, a, n) for(int i = (int)(a); i < (int)(n); i++)
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+#define last(a) (int(a.size()) - 1)
+#define all(a) a.begin(), a.end()
+
+const double EPS = 1E-9;
+const int INF = 1000000000;
+const int64 INF64 = (int64) 1E18;
+const double PI = 3.1415926535897932384626433832795;
+
+const int NMAX = 300010;
+const int LOG = 20;
+
+int n, q, a[NMAX], b[LOG][NMAX], c[LOG][NMAX], mx[NMAX * 4], pos[NMAX * 4], log2[NMAX], ll[NMAX], rr[NMAX];
+int64 sb[LOG][NMAX], sc[LOG][NMAX];
+
+void read() {
+  cin >> n >> q;
+  forn(i, n)
+    scanf("%d", &a[i]);
+}
+
+void build(int idx, int l, int r) {
+  if (l == r) {
+    mx[idx] = a[l];
+    pos[idx] = l;
+    return;
+  }
+
+  int mid = (l + r) >> 1;
+
+  build(idx << 1, l, mid);
+  build(idx << 1 | 1, mid + 1, r);
+
+  mx[idx] = mx[idx << 1];
+  pos[idx] = pos[idx << 1];
+  if (mx[idx] < mx[idx << 1 | 1]) {
+    mx[idx] = mx[idx << 1 | 1];
+    pos[idx] = pos[idx << 1 | 1];
+  }
+}
+
+int max(int idx, int l, int r, int a, int b) {
+  if (b < l || r < a)
+    return a;
+
+  if (a <= l && r <= b)
+    return pos[idx];
+
+  int mid = (l + r) >> 1;
+  int p1 = max(idx << 1, l, mid, a, b);
+  int p2 = max(idx << 1 | 1, mid + 1, r, a, b);
+
+  if (::a[p1] < ::a[p2])
+    return p2;
+  return p1;
+}
+
+pair<int64, int> solve_pref(int l, int r, int x, int y, int prev) {
+  if (y < l || r < x)
+    return mp(0, -INF);
+
+  int id = -1;
+  if (r < n)
+    id = log2[r - l + 1];
+  if (x <= l && r <= y) {
+    if (l / (1 << id) != r / (1 << id))
+      throw;
+    if (!(r <= l + (1 << id) - 1))
+      throw;
+    int pos = int(lower_bound(b[id] + l, b[id] + r + 1, prev) - b[id]);
+    int64 res = prev * int64(pos - l) + sb[id][r];
+    if (pos > 0 && (pos - 1) / (1 << id) == r / (1 << id))
+      res -= sb[id][pos - 1];
+
+    return mp(res, max(prev, b[id][r]));
+  }
+
+  int mid = (r - l + 1) >> 1;
+  pair<int64, int> res = solve_pref(l, l + mid - 1, x, y, prev);
+  pair<int64, int> res2 = solve_pref(l + mid, r, x, y, res.sc);
+
+  return mp(res.fs + res2.fs, res2.sc);
+}
+
+pair<int64, int> solve_suf(int l, int r, int x, int y, int prev) {
+  if (y < l || r < x)
+    return mp(0, -INF);
+  
+  int id = -1;
+  if (r < n)
+    id = log2[r - l + 1];
+  if (x <= l && r <= y) {
+    if (l / (1 << id) != r / (1 << id))
+      throw;
+    if (!(r <= l + (1 << id) - 1))
+      throw;
+    int pos = int(lower_bound(c[id] + l, c[id] + r + 1, prev, greater<int> ()) - c[id]);
+    int64 res = prev * int64(r + 1 - pos) + sc[id][l];
+    if (pos <= r || pos < n && pos / (1 << id) == l / (1 << id))
+      res -= sc[id][pos];
+    return mp(res, max(prev, c[id][l]));
+  }
+
+  int mid = (r - l + 1) >> 1;
+  pair<int64, int> res = solve_suf(l + mid, r, x, y, prev);
+  pair<int64, int> res2 = solve_suf(l, l + mid - 1, x, y, res.sc);
+
+  return mp(res.fs + res2.fs, res2.sc);
+}
+
+const int MOD = INF + 7;
+int64 s[NMAX];
+
+void solve() {
+  build(1, 0, n - 1);
+  int64 sum = 0;
+
+  s[0] = a[0];
+  for (int i = 1; i < n; i++)
+    s[i] = s[i - 1] + a[i];
+
+  forn(i, n) {
+    c[0][i] = b[0][i] = a[i];
+    sb[0][i] = sc[0][i] = a[i];
+  }
+  for (int i = 1; i < LOG; i++) {
+    int mx = -INF;
+    int64 s = 0;
+    forn(j, n) {
+      if (j % (1 << i) == 0) {
+        mx = -INF;
+        s = 0;
+      }
+      mx = max(mx, a[j]);
+      s += mx;
+      b[i][j] = mx;
+      sb[i][j] = s;
+    }
+    mx = -INF;
+    s = 0;
+    ford(j, n) {
+      mx = max(mx, a[j]);
+      s += mx;
+      c[i][j] = mx;
+      sc[i][j] = s;
+      if (j % (1 << i) == 0) {
+        mx = -INF;
+        s = 0;
+      }
+    }
+  }
+
+  log2[0] = 0;
+  for (int i = 1; i < NMAX; i++) {
+    log2[i] = log2[i - 1];
+    while (i > (1 << log2[i]))
+      log2[i]++;
+  }
+
+  forn(i, q) {
+    int l, r;
+    scanf("%d%d", &l, &r);
+    //l = ll[i];
+    //r = rr[i];
+    l--;
+    r--;
+
+    int p = max(1, 0, n - 1, l, r);
+    int64 res = a[p];
+    res += solve_pref(0, (1 << (LOG - 1)) - 1, l, p - 1, -INF).fs;
+    res += solve_suf(0, (1 << (LOG - 1)) - 1, p + 1, r, -INF).fs;
+
+    res -= s[r];
+    if (l > 0)
+      res += s[l - 1];
+
+    sum = (sum + res % MOD) % MOD;
+  }
+
+  cout << sum << endl;
+}
+
+void gen() {
+  n = q = 100000;
+  forn(i, n) {
+    a[i] = abs(rand() * RAND_MAX + rand()) % INF + 1;
+    ll[i] = abs(rand() * RAND_MAX + rand()) % n + 1;
+    rr[i] = abs(rand() * RAND_MAX + rand()) % n + 1;
+    if (ll[i] > rr[i])
+      swap(ll[i], rr[i]);
+  }
+}
+
+int main() {
+  freopen("fox_blocks.txt", "rt", stdin);
+  freopen("output.txt", "wt", stdout);
+  
+  int tests;
+  cin >> tests;
+  for (int test = 1; test <= tests; test++) {
+    cerr << "Solving test " << setw(2) << test << " of " << tests << ". Time = " << setw(5) << clock() << endl;
+    cout << "Case #" << test << ": ";
+    read();
+    //gen();
+    solve();
+  }
+  
+  return 0;
+}

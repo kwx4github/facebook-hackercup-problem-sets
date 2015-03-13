@@ -1,0 +1,116 @@
+#include<cassert>
+#include<vector>
+#include<cstdio>
+#include<cstring>
+#include<iostream>
+#include<algorithm>
+using namespace std;
+
+const int N = 300005, LOG = 19, MOD = 1000000007;
+
+int n, q;
+
+int h[N];
+
+int next[N][LOG], prec[N][LOG];
+long long
+    ansn[N][LOG], ansp[N][LOG];
+
+long long sum[N];
+
+long long getsum(int l, int r) {
+    return (sum[r + 1] - sum[l]);
+}
+
+int solve(int l, int r) {
+    long long ret = 0;
+    for (int i = LOG - 1; i >= 0; --i) {
+        if (next[l][i] <= r) {
+            ret += ansn[l][i];
+            l = next[l][i];
+        }
+    }
+//cout << ret << endl;
+    for (int i = LOG - 1; i >= 0; --i) {
+        if (prec[r][i] >= l) {
+            ret += ansp[r][i];
+            r = prec[r][i];
+        }
+    } 
+//cout << ret << endl;
+    assert(h[l] == h[r]);
+    ret += (long long)h[l] * (r - l + 1) - getsum(l, r);
+    return ret % MOD;
+}
+
+int main() {
+    int t;
+    scanf("%d", &t);
+    while (t--) {
+        static int id = 0;
+        printf("Case #%d: ", ++id);
+        scanf("%d%d", &n, &q);
+        for (int i = 0; i < n; ++i) {
+            scanf("%d", h + i);
+        }
+        sum[0] = 0;
+        for (int i = 0; i < n; ++i) {
+            sum[i + 1] = sum[i] + h[i];
+        }
+        vector<int> s;
+        for (int i = 0; i < n; ++i) {
+            while (s.size() && h[s.back()] <= h[i]) {
+                s.pop_back();
+            }
+            if (s.size() == 0) {
+                prec[i][0] = -1;
+                ansp[i][0] = 0;
+            } else {
+                prec[i][0] = s.back();
+                ansp[i][0] = (long long)(i - s.back()) * h[i] - getsum(s.back() + 1, i);
+            }
+            s.push_back(i);
+        }
+        s.clear();
+        for (int i = n - 1; i >= 0; --i) {
+            while (s.size() && h[s.back()] <= h[i]) {
+                s.pop_back();
+            }
+            if (s.size() == 0) {
+                next[i][0] = n;
+                ansn[i][0] = 0;
+            } else {
+                next[i][0] = s.back();
+                ansn[i][0] = (long long)(s.back() - i) * h[i] - getsum(i, s.back() - 1);
+            }
+            s.push_back(i);
+        }
+        for (int i = 1; i < LOG; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (prec[j][i - 1] == -1) {
+                    prec[j][i] = -1;
+                    ansp[j][i] = 0;
+                } else {
+                    prec[j][i] = prec[prec[j][i - 1]][i - 1];
+                    ansp[j][i] = ansp[j][i - 1] + ansp[prec[j][i - 1]][i - 1];
+                }
+                if (next[j][i - 1] == n) {
+                    next[j][i] = n;
+                    ansn[j][i] = 0;
+                } else {
+                    next[j][i] = next[next[j][i - 1]][i - 1];
+                    ansn[j][i] = ansn[j][i - 1] + ansn[next[j][i - 1]][i - 1];
+                }
+            }
+        }
+        long long ans = 0; 
+        while (q--) {
+            int l, r;
+            scanf("%d%d", &l, &r);
+            --l, --r;
+            (ans += solve(l, r)) %= MOD;
+        }
+        cout << ans << endl;
+    }
+    return 0;
+}

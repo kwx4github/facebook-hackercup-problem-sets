@@ -1,0 +1,201 @@
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.Arrays;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("foxblocks.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxblocks.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxBlocks solver = new FoxBlocks();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class FoxBlocks {
+    static final int MOD = 1000000000 + 7;
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        int q = in.nextInt();
+        int[] h = new int[n];
+        for (int i = 0; i < n; i++) {
+            h[i] = in.nextInt();
+        }
+        Thing thing = new Thing(n, h);
+
+
+        long answersSum = 0;
+        for (int i = 0; i < q; i++) {
+            int from = in.nextInt() - 1;
+            int to = in.nextInt() - 1;
+            long curAnswer = thing.solveTheProblem(from, to);
+            answersSum += curAnswer;
+            answersSum %= MOD;
+        }
+
+        System.err.println("DONE "+testNumber);
+        out.println("Case #" + testNumber + ": " + answersSum);
+    }
+
+    static class Thing {
+        int n;
+        int[] h;
+        long[] sumH;
+        int[] next0, prev0;
+        int[][] next, prev;
+        long[][] nextS, prevS;
+
+        Thing(int n, int[] h) {
+            this.n = n;
+            this.h = h;
+            next0 = new int[n];
+            prev0 = new int[n];
+            calcSumH();
+            calcNextPrev0();
+            calcNextPrev();
+        }
+
+        private void calcSumH() {
+            sumH = new long[n + 1];
+            for (int i = 0; i < n; i++) {
+                sumH[i + 1] = sumH[i] + h[i];
+            }
+        }
+
+        private void calcNextPrev() {
+            int f = 32 - Integer.numberOfTrailingZeros(n) + 5;
+            next = new int[f][n];
+            prev = new int[f][n];
+            System.arraycopy(next0, 0, next[0], 0, n);
+            System.arraycopy(prev0, 0, prev[0], 0, n);
+            nextS = new long[f][n];
+            prevS = new long[f][n];
+            for (int i = 0; i < n; i++) {
+                nextS[0][i] = (long) (next[0][i] - i) * (long) h[i] - (sumH[next[0][i]] - sumH[i]);
+                prevS[0][i] = (long) (-prev[0][i] + i) * (long) h[i] - (-sumH[prev[0][i] + 1] + sumH[i + 1]);
+            }
+            for (int it = 1; it < f; it++) {
+                for (int i = 0; i < n; i++) {
+                    int ne = next[it - 1][i];
+                    if (ne == n) {
+                        next[it][i] = ne;
+                        nextS[it][i] = nextS[it - 1][i];
+                    } else {
+                        next[it][i] = next[it - 1][ne];
+                        nextS[it][i] = nextS[it - 1][ne] + nextS[it - 1][i];
+                    }
+                    int pr = prev[it - 1][i];
+                    if (pr == -1) {
+                        prev[it][i] = pr;
+                        prevS[it][i] = prevS[it - 1][i];
+                    } else {
+                        prev[it][i] = prev[it - 1][pr];
+                        prevS[it][i] = prevS[it - 1][pr] + prevS[it - 1][i];
+                    }
+                }
+            }
+        }
+
+        private void calcNextPrev0() {
+            Arrays.fill(next0, -1);
+            Arrays.fill(prev0, -1);
+            int[] stack = new int[n];
+            int size = 0;
+            for (int i = 0; i < n; i++) {
+                while (size > 0 && h[stack[size - 1]] < h[i]) {
+                    --size;
+                }
+                prev0[i] = size == 0 ? -1 : stack[size - 1];
+                stack[size++] = i;
+            }
+            size = 0;
+            for (int i = n - 1; i >= 0; --i) {
+                while (size > 0 && h[stack[size - 1]] < h[i]) {
+                    --size;
+                }
+                next0[i] = size == 0 ? n : stack[size - 1];
+                stack[size++] = i;
+            }
+        }
+
+        long solveTheProblem(int start, int end) {
+            long answer = 0;
+            for (int it = next.length - 1; it >= 0; --it) {
+                if (next[it][start] <= end) {
+                    answer += nextS[it][start];
+                    start = next[it][start];
+                }
+                if (prev[it][end] >= start) {
+                    answer += prevS[it][end];
+                    end = prev[it][end];
+                }
+            }
+            if (start != end) {
+                throw new AssertionError();
+            }
+            return answer;
+        }
+    }
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+

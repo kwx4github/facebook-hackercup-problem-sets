@@ -1,0 +1,221 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <queue>
+#include <set>
+#include <map>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+void readData() {
+}
+
+const int maxN = 310000;
+const long long P = 1000000007LL;
+const int maxD = 20;
+long long n, q;
+long long h[maxN];
+long long a[maxN], b[maxN];
+
+long long nt[maxD][maxN];
+long long st[maxD][maxN];
+
+long long s[maxN];
+
+void precalc(bool mode = true) {
+	for (int i = 1; i <= n; ++i) {
+		s[i] = s[i - 1] + h[i];
+		s[i] %= P;
+	}
+	memset(nt, 0, sizeof(nt));
+	memset(st, 0, sizeof(st));
+	for (int i = n - 1; i >= 1; --i) {
+		int j = i + 1;
+		while (true) {
+			if (mode) {
+				if (h[j] >= h[i]) {
+					nt[0][i] = j;
+					break;
+				}
+			} else {
+				if (h[j] > h[i]) {
+					nt[0][i] = j;
+					break;
+				}
+			}
+			j = nt[0][j];
+			if (j == 0) {
+				break;
+			}
+		}
+	}
+
+	for (int i = 1; i <= n; ++i) {
+		int j = nt[0][i];
+		if (j != 0) {
+			long long A = (h[i] * (long long)(j - i)) % P;
+			long long B = s[j - 1] - s[i - 1];
+			st[0][i] = (A - B) % P;
+			if (st[0][i] < 0) {
+				st[0][i] += P;
+			}
+		}
+	}
+
+	for (int i = 1; i < maxD; ++i) {
+		for (int j = 1; j <= n; ++j) {
+			int k = nt[i - 1][nt[i - 1][j]];
+			if (k == 0) {
+				continue;
+			}
+
+			nt[i][j] = k;
+			st[i][j] = (st[i - 1][j] + st[i - 1][nt[i - 1][j]]) % P;
+		}
+	}
+}
+
+long long get(int l, int r, bool mode = true) {
+	long long res = 0;
+	int i = l;
+	while (i <= r) {
+		bool isOk = false;
+		for (int j = maxD - 1; j >= 0; --j) {
+			if (nt[j][i] == 0 || nt[j][i] > r) {
+				continue;
+			}
+			isOk = true;
+			res += st[j][i];
+			res %= P;
+			i = nt[j][i];
+		}
+		if (!isOk) {
+			break;
+		}
+	}
+	return res;
+}
+
+long long calculate(bool mode = true) {
+	precalc(mode);
+	long long res = 0;
+	for (int i = 1; i <= q; ++i) {
+		res += get(a[i], b[i], mode);
+		res %= P;
+	}
+	return res;
+}
+
+long long trivial() {
+	long long res = 0;
+	for (int i = 1; i <= q; ++i) {
+		for (int j = a[i]; j <= b[i]; ++j) {
+			long long l = 0;
+			for (int k = a[i]; k < j; ++k) {
+				l = max(l, h[k]);
+			}
+			long long r = 0;
+			for (int k = j + 1; k <= b[i]; ++k) {
+				r = max(r, h[k]);
+			}
+
+			long long t = min(l, r);
+			if (t > h[j]) {
+				res += t - h[j];
+				res %= P;
+			}
+		}
+	}
+	return res;
+}
+
+long long getAnswer() {
+	long long A = calculate();
+	reverse(h + 1, h + n + 1);
+	for (int i = 1; i <= q; ++i) {
+		a[i] = n + 1 - a[i];
+		b[i] = n + 1 - b[i];
+		if (a[i] > b[i]) {
+			swap(a[i], b[i]);
+		}
+	}
+	long long B = calculate(false);
+	long long res = (A + B) % P;
+	res = ((res % P) + P) % P;
+	return res;
+}
+
+void solve(int test) {
+	cin >> n >> q;
+	for (int i = 1; i <= n; ++i) {
+		cin >> h[i];
+	}
+	for (int i = 1; i <= q; ++i) {
+		cin >> a[i] >> b[i];
+	}
+	printf("Case #%d: %d\n", test, (int)(getAnswer()));
+}
+
+int main(int argc, char* argv[]) {
+	freopen("fox_blocks.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int left_bound, right_bound;
+
+	/*freopen(argv[3], "w", stdout);
+
+	
+	sscanf(argv[1], "%d", &left_bound);
+	sscanf(argv[2], "%d", &right_bound);*/
+
+	/*n = 300000, q = 300000;
+	for (int tests = 0; ; ++tests) {
+		if (tests % 1 == 0) {
+			cerr << tests << endl;
+		}
+		for (int i = 1; i <= n; ++i) {
+			h[i] = rand();
+		}
+		for (int i = 1; i <= q; ++i) {
+			a[i] = rand() % n + 1;
+			b[i] = rand() % n + 1;
+			if (a[i] > b[i]) {
+				swap(a[i], b[i]);
+			}
+		}
+		//long long A = trivial();
+		long long B = getAnswer();
+		if (B != B) {
+			cerr << "BAD!!!" << endl;
+			//cerr << A << endl;
+			cerr << B << endl;
+			for (int i = 1; i <= n; ++i) {
+				cout << h[i] << " ";
+			}
+			cout << endl;
+			for (int i = 1; i <= q; ++i) {
+				cout << a[i] << " " << b[i] << endl;
+			}
+			return 0;
+		}
+	}*/
+
+	int t;
+	cin >> t;
+	left_bound = 1, right_bound = t;
+	for (int i = 1; i <= t; ++i) {
+		if (i >= left_bound && i <= right_bound) {
+			solve(i);
+		}
+		cerr << i << ": " << clock() << endl;
+	}
+
+	return 0;
+}

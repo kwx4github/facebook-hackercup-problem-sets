@@ -1,0 +1,121 @@
+#include <bits/stdc++.h>
+#include <sys/time.h>
+
+using namespace std;
+
+#define FI first
+#define SE second
+#define X first
+#define Y second
+#define ST first
+#define ND second
+#define MP make_pair
+#define PB push_back
+
+typedef long long LL;
+typedef vector<int> VI;
+typedef long double LD;
+typedef pair<int,int> PII;
+
+#define REP(i,n) for(int i=0;i<(n);++i)
+#define FOR(i,a,b) for(int i=(a);i<(b);++i)
+#define FORE(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define VAR(a,b) __typeof(b) a=(b)
+#define ALL(x) (x).begin(),(x).end()
+#define CLR(x,a) memset(x,a,sizeof(x))
+
+double getTime() {
+	timeval tv;
+	gettimeofday(&tv, NULL);
+	return tv.tv_sec + tv.tv_usec * 1e-6;
+}
+
+const int MD = (int)1e9 + 7;
+
+const int N = 300005;
+const int L = 30;
+
+void comp_next_geq(vector<int> h, int next_geq[N][L], int sum_next_geq[N][L]) {
+    int n = h.size();
+    vector<int> sum(n + 1);
+    sum[0] = 0;
+    FOR (i, 1, n + 1) {
+        sum[i] = (sum[i - 1] + h[i - 1]) % MD;
+    }
+    vector<int> so_far;
+    for (int i = n - 1; i >= 0; --i) {
+        while (!so_far.empty() && h[so_far.back()] < h[i]) {
+            so_far.pop_back();
+        }
+        if (so_far.empty()) {
+            next_geq[i][0] = -1;
+        } else {
+            int c = so_far.back();
+            next_geq[i][0] = c;
+            sum_next_geq[i][0] = ((c - i - 1) * (LL)h[i]) % MD;
+            sum_next_geq[i][0] = (5 * (LL)MD + (LL)sum_next_geq[i][0] - (LL)(sum[c] - sum[i + 1])) % MD;
+        }
+        FOR (j, 1, L) {
+            int nx = next_geq[i][j - 1];
+            if (nx == -1 || next_geq[nx][j - 1] == -1) {
+                next_geq[i][j] = -1;
+            } else {
+                next_geq[i][j] = next_geq[nx][j - 1];
+                sum_next_geq[i][j] = (sum_next_geq[i][j - 1] + sum_next_geq[nx][j - 1]) % MD;
+            }
+        }
+        so_far.PB(i);
+    }
+}
+
+PII go(int l, int r, int next_geq[N][L], int sum_next_geq[N][L]) {
+    int sum = 0;
+    for (int z = L - 1; z >= 0; --z) {
+        while (next_geq[l][z] != -1 && next_geq[l][z] <= r) {
+            sum = (sum + sum_next_geq[l][z]) % MD;
+            l = next_geq[l][z];
+        }
+    }
+    return MP(l, sum);
+}
+
+
+
+static int next_geq[N][L];
+static int sum_next_geq[N][L];
+static int prev_geq[N][L];
+static int sum_prev_geq[N][L];
+
+int alg() {
+    int n, q;
+    cin >> n >> q;
+    vector<int> h(n);
+    REP (i, n) {
+        cin >> h[i];
+    }
+    comp_next_geq(h, next_geq, sum_next_geq);
+    reverse(ALL(h));
+    comp_next_geq(h, prev_geq, sum_prev_geq);
+    reverse(ALL(h));
+    int res = 0;
+    REP (q_i, q) {
+        int l, r;
+        cin >> l >> r;
+        --l;
+        --r;
+        PII go_l = go(l, r, next_geq, sum_next_geq);
+        int lmx = go_l.ST;
+        PII go_r = go(n - r - 1, n - lmx - 1, prev_geq, sum_prev_geq);
+        assert(go_r.ST == n - lmx - 1);
+        res = ((LL)res + (LL)go_l.ND + (LL)go_r.ND) % MD;
+    }
+    return res;
+}
+
+int main() {
+    int d;
+    cin >> d;
+    FOR (i, 1, d + 1) {
+        cout << "Case #" << i << ": " << alg() << endl;
+    }
+}

@@ -1,0 +1,305 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+struct FindUnion {
+    vector<int> fuParent, fuRank;
+    vector<int> left, right, curH;
+
+    FindUnion(int N){
+        fuParent.resize(N);
+        fuRank.resize(N, 0);
+        left.resize(N);
+        right.resize(N);
+        curH.resize(N);
+
+        iota(fuParent.begin(), fuParent.end(), 0);
+        iota(left.begin(), left.end(), 0);
+        iota(right.begin(), right.end(), 0);
+    }
+    FindUnion(){}
+
+    int fu_find(int v){
+        if(v == fuParent[v]) return v;
+
+        return (fuParent[v] = fu_find(fuParent[v]));
+    }
+
+    void fu_union(int a, int b){
+        a = fu_find(a);
+        b = fu_find(b);
+        if(a == b) return;
+
+        if(fuRank[a] == fuRank[b]){ fuRank[a]++; fuRank[b]++; }
+
+        if(fuRank[a] > fuRank[b]){
+            fuParent[b] = a;
+            left[a] = left[b] = min(left[a], left[b]);
+            right[a] = right[b] = max(right[a], right[b]);
+            curH[a] = curH[b] = max(curH[a], curH[b]);
+        } else {
+            fuParent[a] = b;
+            left[b] = min(left[a], left[b]);
+            right[b] = max(right[a], right[b]);
+            curH[b] = max(curH[b], curH[a]);
+        }
+    }
+};
+const int Mod = 1000000007;
+
+struct IntTree {
+    vector<int> P;
+    int Base;
+
+    IntTree(int size){
+        Base = 1;
+        while(Base < size) Base *= 2;
+        P.resize(Base*2);
+    }
+
+    IntTree(){}
+
+    void add(int v, int val){
+        v += Base;
+
+        while(v){
+            P[v] = (P[v]+val) % Mod;
+            v /= 2;
+        }
+    }
+
+    int get(int l, int r){
+        l += Base; r += Base;
+        int sum = P[l];
+        if(l != r) sum = (sum+P[r]) % Mod;
+
+        while(l/2 != r/2){
+            if(l % 2 == 0) sum = (sum+P[l+1]) % Mod;
+            if(r % 2 == 1) sum = (sum+P[r-1]) % Mod;
+            l /= 2; r /= 2;
+        }
+        return sum;
+    }
+};
+
+
+struct Testcase {
+private:
+	int testnum;
+    int N, Q;
+    vector<int> heights;
+    vector<pair<int,int>> queries;
+    vector<tuple<int,int,long long>> increases;
+    int sum;
+    FindUnion FU;
+    IntTree Tree;
+
+public:
+
+	void input(){
+        scanf("%d%d", &N, &Q);
+        for(int i = 0; i < N; i++){
+            int v;
+            scanf("%d", &v);
+            heights.push_back(v);
+        }
+
+        for(int i = 0; i < Q; i++){
+            int a, b;
+            scanf("%d%d", &a, &b);
+            queries.emplace_back(a-1,b-1);
+        }
+
+        sum = 0;
+	}
+
+	void output(){
+        printf("%d\n", sum);
+	}
+
+	void make_run(){
+        FU = FindUnion(N);
+        Tree = IntTree(N);
+        // have intervals
+        vector<pair<int,int>> positions;
+
+        for(int i = 0; i < N; i++)
+            positions.emplace_back(heights[i], i);
+
+        sort(positions.begin(), positions.end());
+
+        for(int i = 0; i < N; i++)
+            FU.curH[i] = heights[i];
+
+        for(int it = 0; it < N; it++){
+            int pos, h;
+            tie(h, pos) = positions[it];
+//            fprintf(stderr, "[[%d, %d]]\n", pos, h);
+
+            int left = FU.left[pos], right = FU.right[pos];
+            if(left == 0 || right == N-1) continue;
+
+            int vleft = FU.fu_find(left-1), vright = FU.fu_find(right+1);
+
+//            fprintf(stderr, "heights are %d and %d\n", FU.curH[vleft], FU.curH[vright]);
+
+            if(min(FU.curH[vleft], FU.curH[vright]) < h) continue;
+
+            if(FU.curH[vleft] == FU.curH[vright]){
+                // join left and right
+                int amount = ((long long)(right - left + 1) * (FU.curH[vleft]-h)) % Mod;
+                increases.emplace_back(left-1, right+1, amount);
+//                fprintf(stderr, "%d %d %d\n", left-1, right+1, amount);
+                FU.fu_union(left, left-1);
+                FU.fu_union(right, right+1);
+            } else if(FU.curH[vleft] < FU.curH[vright]){
+                // join it with left
+                int amount = ((long long)(right - left + 1) * (FU.curH[vleft]-h)) % Mod;
+                increases.emplace_back(left-1, right+1, amount);
+//                fprintf(stderr, "%d %d %d\n", left-1, right+1, amount);
+                FU.fu_union(left, left-1);
+            } else {
+                int amount = ((long long)(right - left + 1) * (FU.curH[vright]-h)) % Mod;
+                increases.emplace_back(left-1, right+1, amount);
+//                fprintf(stderr, "%d %d %d\n", left-1, right+1, amount);
+                FU.fu_union(right, right+1);
+            }
+        }
+
+        // process them
+        vector<vector<pair<int,int>>> starts(N);
+
+        for(auto& P: increases){
+            int l, r, s;
+            tie(l,r,s) = P;
+            starts[l].emplace_back(r, s);
+            Tree.add(r, s);
+        }
+
+        sort(queries.begin(), queries.end());
+
+        sum = 0;
+        int lastLeft = 0;
+
+        for(auto& P: queries){
+            for(int i = lastLeft; i < P.first; i++)
+                for(auto& F: starts[i])
+                    Tree.add(F.first, (Mod-F.second)%Mod);
+
+            lastLeft = P.first;
+            sum = (sum + Tree.get(0, P.second)) % Mod;
+//            fprintf(stderr, "after [%d,%d] got %d\n", P.first, P.second, sum);
+        }
+
+        
+
+/*        set<tuple<int,int,int>> currentIntervals;
+        for(int i = 0; i < N; i++)
+            currentIntervals.emplace(i, i, heights[i]);
+
+        
+        for(int it = 0; it < N; it++){
+            int pos, h;
+            tie(h, pos) = positions[it];
+
+            auto currentInt = currentIntervals.upper_bound(make_tuple(h,N+1,0));
+            currentInt = prev(currentInt);
+
+            if(currentInt == currentIntervals.begin()) continue;
+            if(next(currentInt) == currentIntervals.end()) continue;
+
+            int prevH = get<3>(*(prev(currentInt)));
+            int nextH = get<3>(*(next(currentInt)));
+            int curH  = get<3>(*currentInt);
+            int startInt = get<1>(*currentInt),
+                endInt   = get<2>(*currentInt);
+
+            auto prevElem = *(prev(currentInt)),
+                 nextElem = *(next(currentInt));
+
+            if(prevH < nextH){
+                // join with prevH
+                increases.emplace_back(startInt-1, endInt+1, prevH-curH);
+                currentIntervals.erase(currentInt);
+                currentIntervals.erase(prevElem);
+
+                get<2>(prevElem) = endInt;
+                currentIntervals.insert(prevElem);
+            }
+
+            if(nextH < prevH){
+                increases.emplace_back(startInt-1, endInt+1, nextH-curH);
+
+                currentIntervals.erase(currentInt);
+                currentIntervals.erase(nextElem);
+
+                get<1>(nextElem) = startInt;
+                currentIntervals.insert(nextElem);
+            }
+        }
+*/
+        
+        
+	}
+
+
+///////////////////////////////////////////////////////////////
+
+	void run(){
+		fprintf(stderr, "Case #%d started running\n", testnum);
+		make_run();
+		fprintf(stderr, "Case #%d FINISHED\n", testnum);
+	}
+
+	Testcase(int testno) : testnum(testno) {
+		input();
+	}
+};
+
+
+
+
+// a kind of wrapper
+int main(int argc, char** argv){
+	int numThreads = 1;
+	if(argc >= 2){
+		int newSetNum = atoi(argv[1]);
+		if(newSetNum >= 2)
+			numThreads = newSetNum;
+	}
+
+	int TT;
+	scanf("%d", &TT);
+
+
+	if(numThreads == 1){
+		for(int i = 1; i <= TT; i++){
+			Testcase tc(i);
+			tc.run();
+			printf("Case #%d: ", i);
+			tc.output();
+		}
+		return 0;
+	}
+
+
+	vector<Testcase> cases;
+
+	for(int i = 1; i <= TT; i++){
+		cases.push_back(Testcase(i));
+	}
+
+	vector<thread> threads;
+
+	for(int i = 1; i < TT+numThreads; i++){
+		if(i <= TT)
+			threads.push_back(thread(&Testcase::run, &cases[i-1]));
+		if(i >= numThreads)
+			threads[i-numThreads].join();
+	}
+
+	for(int i = 1; i <= TT; i++){
+		printf("Case #%d: ", i);
+		cases[i-1].output();
+	}
+}
