@@ -1,0 +1,315 @@
+import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.ArrayList;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("foxrocks.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxrocks.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxRocks solver = new FoxRocks();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class FoxRocks {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        int initial = in.nextInt();
+        int queries = in.nextInt();
+        int quads = (n + 3) / 4;
+        int[][][] insideQuad = new int[quads][4][4];
+        int[][][] toNextQuad = new int[quads][4][4];
+        for (int i = 0; i < initial; i++) {
+            int from = in.nextInt();
+            int to = in.nextInt();
+            int cnt = in.nextInt();
+            int fromQuad = from / 4;
+            int toQuad = to / 4;
+            if (fromQuad == toQuad) {
+                insideQuad[fromQuad][from & 3][to & 3] = cnt;
+            } else {
+                if (fromQuad == toQuad - 1) {
+                    toNextQuad[fromQuad][from & 3][to & 3] = cnt;
+                } else {
+                    throw new AssertionError();
+                }
+            }
+        }
+        double[][][] stay = new double[quads][4][4];
+        double[][][] go = new double[quads][4][4];
+        SegmentTree tree = new SegmentTree(quads);
+        for (int i = 0; i < quads; i++) {
+            calcThat(insideQuad[i], toNextQuad[i], stay[i], go[i]);
+            tree.set(i, go[i]);
+        }
+        List<Double> trash = new ArrayList<>();
+        for (int query = 0; query < queries; query++) {
+            int type = in.nextInt();
+            int x = in.nextInt();
+            int y = in.nextInt();
+            switch (type) {
+                case 1: {
+                    int cnt = in.nextInt();
+                    if (x / 4 == y / 4) {
+                        insideQuad[x / 4][x & 3][y & 3] = cnt;
+                        int i = x / 4;
+                        calcThat(insideQuad[i], toNextQuad[i], stay[i], go[i]);
+                        tree.set(i, go[i]);
+                    } else {
+                        toNextQuad[x / 4][x & 3][y & 3] = cnt;
+                        int i = x / 4;
+                        calcThat(insideQuad[i], toNextQuad[i], stay[i], go[i]);
+                        tree.set(i, go[i]);
+                    }
+                    break;
+                }
+                case 2: {
+                    int cnt = 0;
+                    if (x / 4 == y / 4) {
+                        insideQuad[x / 4][x & 3][y & 3] = cnt;
+                        int i = x / 4;
+                        calcThat(insideQuad[i], toNextQuad[i], stay[i], go[i]);
+                        tree.set(i, go[i]);
+                    } else {
+                        toNextQuad[x / 4][x & 3][y & 3] = cnt;
+                        int i = x / 4;
+                        calcThat(insideQuad[i], toNextQuad[i], stay[i], go[i]);
+                        tree.set(i, go[i]);
+                    }
+                    break;
+                }
+                case 3: {
+                    double answer = solveIt(insideQuad, toNextQuad, stay, go, tree, x, y);
+                    trash.add(answer);
+                    break;
+                }
+                default:
+                    throw new AssertionError();
+            }
+        }
+        out.print("Case #" + testNumber + ":");
+        for (double val : trash) {
+            out.print(String.format(Locale.US, " %.6f", val));
+        }
+        out.println();
+    }
+
+    private double solveIt(int[][][] insideQuad, int[][][] toNextQuad, double[][][] stay, double[][][] go, SegmentTree tree, int x, int y) {
+        if (x / 4 > y / 4) {
+            return 0;
+        }
+        double[][] thing = tree.getProd(x / 4, y / 4);
+        double answer = 0;
+        double[] visit = calcVisit(insideQuad[y / 4], toNextQuad[y / 4], y & 3);
+        for (int i = 0; i < 4; i++) {
+            answer += thing[x & 3][i] * visit[i];
+        }
+        return answer;
+    }
+
+    static void calcThat(int[][] inside, int[][] toNext, double[][] stayForever, double[][] go) {
+        double[][] p = new double[8][8];
+        for (int i = 0; i < 4; i++) {
+            int total = 0;
+            for (int j = 0; j < 4; j++) {
+                total += inside[i][j];
+                total += toNext[i][j];
+            }
+            for (int j = 0; j < 4; j++) {
+                if (inside[i][j] != 0) {
+                    p[i][j] = (double) inside[i][j] / total;
+                }
+                if (toNext[i][j] != 0) {
+                    p[i][j + 4] = (double) toNext[i][j] / total;
+                }
+            }
+            if (total == 0) {
+                p[i][i] = 1;
+            }
+            p[i + 4][i + 4] = 1;
+        }
+        double[][] wtf = p;
+
+        for (int i = 0; i < 10; i++) {
+            wtf = Matrix.mul(wtf, wtf);
+        }
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                stayForever[i][j] = wtf[i][j];
+                go[i][j] = wtf[i][j + 4];
+            }
+        }
+    }
+
+    static double[] calcVisit(int[][] inside, int[][] toNext, int bad) {
+        double[][] p = new double[4][4];
+        for (int i = 0; i < 4; i++) {
+            if (i == bad) {
+                continue;
+            }
+            int total = 0;
+            for (int j = 0; j < 4; j++) {
+                total += inside[i][j];
+                total += toNext[i][j];
+            }
+            for (int j = 0; j < 4; j++) {
+                if (inside[i][j] != 0) {
+                    p[i][j] = (double) inside[i][j] / total;
+                }
+            }
+        }
+        p[bad][bad] = 1;
+        double[][] wtf = p;
+        for (int i = 0; i < 10; i++) {
+            wtf = Matrix.mul(wtf, wtf);
+        }
+        double[] answer = new double[4];
+        for (int i = 0; i < 4; i++) {
+            answer[i] = wtf[i][bad];
+        }
+        return answer;
+    }
+
+    static class SegmentTree {
+        private double[][][] prod;
+        private int n;
+
+        public SegmentTree(int n) {
+            this.n = Integer.highestOneBit(n) << 1;
+            prod = new double[2 * this.n][4][4];
+            for (int i = 0; i < prod.length; i++) {
+                for (int j = 0; j < 4; j++) {
+                    prod[i][j][j] = 1;
+                }
+            }
+        }
+
+        public void set(int x, double[][] y) {
+            x += n;
+            for (int i = 0; i < 4; i++) {
+                System.arraycopy(y[i], 0, prod[x][i], 0, 4);
+            }
+            while (x > 1) {
+                x >>= 1;
+                Matrix.mul(prod[x << 1], prod[(x << 1) | 1], prod[x]);
+            }
+        }
+
+        public double[][] getProd(int l, int r) {
+            r--;
+            l += n;
+            r += n;
+            double[][] ret1 = Matrix.IDENTITY4;
+            double[][] ret2 = Matrix.IDENTITY4;
+            while (l <= r) {
+                if ((l & 1) == 1) {
+                    ret1 = Matrix.mul(ret1, prod[l++]);
+                }
+                if ((r & 1) == 0) {
+                    ret2 = Matrix.mul(prod[r--], ret2);
+                }
+                l >>= 1;
+                r >>= 1;
+            }
+            double[][] ret = Matrix.mul(ret1, ret2);
+            return ret;
+        }
+    }
+
+    static class Matrix {
+        static final double[][] IDENTITY4 = Matrix.identity(4);
+
+        static double[][] identity(int n) {
+            double[][] a = new double[n][n];
+            for (int i = 0; i < n; i++) {
+                a[i][i] = 1;
+            }
+            return a;
+        }
+
+        static double[][] mul(double[][] a, double[][] b) {
+            int n = a.length;
+            double[][] c = new double[n][n];
+            mul(a, b, c);
+            return c;
+        }
+
+        static void mul(double[][] a, double[][] b, double[][] c) {
+            int n = a.length;
+            for (int i = 0; i < n; i++) {
+                Arrays.fill(c[i], 0);
+            }
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    for (int k = 0; k < n; k++) {
+                        c[i][k] += a[i][j] * b[j][k];
+                    }
+                }
+            }
+        }
+    }
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+

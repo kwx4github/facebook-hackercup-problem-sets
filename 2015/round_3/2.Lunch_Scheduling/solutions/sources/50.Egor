@@ -1,0 +1,163 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cmath>
+#include <ctime>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <queue>
+#include <deque>
+#include <list>
+#include <set>
+#include <map>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define sz(x) ((int)(x).size())
+#define forn(i, n) for (int i = 0; i < (n); i++)
+
+typedef long long ll;
+typedef vector<ll> vll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<bool> vb;
+typedef vector<vb> vvb;
+typedef pair<int, int> pii;
+
+const int inf = int(1e9);
+class fenv_tree {
+  static int f(int x) { return x & -x; }
+  vi xs, tr;
+public:
+  fenv_tree(const vi &_xs) : xs(_xs), tr(sz(xs) + 1, inf) {
+    for (int i = 0; i + 1 < sz(xs); i++)
+      assert(xs[i] < xs[i + 1]);
+  }
+  void relax(int x, int v) {
+    x = upper_bound(xs.begin(), xs.end(), x) - xs.begin() - 1;
+    for (x++; x > 0; x -= f(x))
+      tr[x] = min(tr[x], v);
+  }
+  int get(int x) {
+    x = lower_bound(xs.begin(), xs.end(), x) - xs.begin();
+    int res = inf;
+    for (x++; x < sz(tr); x += f(x))
+      res = min(res, tr[x]);
+    return res;
+  }
+};
+
+bool cmp2(const pii &a, const pii &b) {
+  if (a.second != b.second) return a.second < b.second;
+  return a.first < b.first;
+}
+
+void relax(int &a, int b) {
+  a = min(a, b);
+}
+
+void compress(vi &a) {
+  sort(a.begin(), a.end());
+  a.erase(unique(a.begin(), a.end()), a.end());
+}
+
+const int DAYLEN = 80000000;
+
+void solve() {
+  int _n, _m, maxskip;
+  scanf("%d%d%d", &_n, &_m, &maxskip);
+  vector<pii> as(_n), bs(_m);
+  for (pii &x : as) scanf("%d%d", &x.first, &x.second);
+  for (pii &x : bs) scanf("%d%d", &x.first, &x.second);
+  sort(as.begin(), as.end(), cmp2);
+  sort(bs.begin(), bs.end(), cmp2);
+
+  vi ssa, ssb;
+  vi tims;
+  tims.pb(0);
+  for (pii x : as) tims.pb(x.second), ssa.pb(x.first);
+  for (pii x : bs) tims.pb(x.second), ssb.pb(x.first);
+  compress(tims);
+  compress(ssa);
+  compress(ssb);
+
+  vector<vector<pii>> byEndA(sz(tims)), byEndB(sz(tims));
+  for (pii x : as) byEndA[lower_bound(tims.begin(), tims.end(), x.second) - tims.begin()].pb(x);
+  for (pii x : bs) byEndB[lower_bound(tims.begin(), tims.end(), x.second) - tims.begin()].pb(x);
+
+  int k = sz(tims);
+  int ans = inf;
+  vvi dyn(k, vi(sz(as) + 1, inf));
+  dyn[0][0] = 0;
+
+  vector<fenv_tree> tra, trb;
+  forn (was1, sz(as) + 1) tra.pb(fenv_tree(ssa));
+  forn (was1, sz(as) + 1) trb.pb(fenv_tree(ssb));
+
+  forn (pid, k)
+  forn (was1, sz(as) + 1) {
+    int pos = tims[pid];
+
+    int &cdyn = dyn[pid][was1];
+    for (pii x : byEndA[pid]) {
+      cdyn = min(cdyn, tra[was1].get(x.first));
+    }
+    for (pii x : byEndB[pid]) {
+      cdyn = min(cdyn, trb[was1].get(x.first));
+    }
+    if (cdyn >= inf) continue;
+
+    if (pos + maxskip > DAYLEN) {
+      relax(ans, max(was1, cdyn));
+    }
+
+    if (was1 < sz(as)) {
+      tra[was1 + 1].relax(pos + maxskip - 1, cdyn);
+    }
+    trb[was1].relax(pos + maxskip - 1, cdyn + 1);
+  }
+  if (ans == inf) {
+    printf("Lunchtime\n");
+  } else {
+    printf("%d\n", ans);
+  }
+}
+
+int main(int argc, char* argv[]) {
+  assert(argc <= 3);
+  if (argc == 3) {
+    assert(freopen(argv[1], "r", stdin));
+    assert(freopen(argv[2], "w", stdout));
+  } else {
+    string filename = ".in";
+    if (argc >= 2) filename = argv[1];
+
+    assert(freopen(filename.c_str(), "r", stdin));
+
+    if (filename.length() >= 3 && string(filename, filename.length() - 3, 3) == ".in") {
+      filename = string(filename, 0, filename.length() - 3);
+    }
+    filename += ".out";
+    assert(freopen(filename.c_str(), "w", stdout));
+  }
+
+  int TN;
+  char buf[16];
+  assert(fgets(buf, sizeof buf, stdin));
+  assert(sscanf(buf, "%d", &TN) >= 1);
+  for (int TID = 1; TID <= TN; TID++)
+    try {
+      eprintf("===== Solving test case #%d =====\n", TID);
+      printf("Case #%d: ", TID);
+      solve();
+    } catch (...) {
+      eprintf("Exception was caught while executing on test #%d\n", TID);
+      return 1;
+    }
+  return 0;
+}

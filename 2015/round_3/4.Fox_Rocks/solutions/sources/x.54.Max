@@ -1,0 +1,236 @@
+#include <cassert>
+#include <memory.h>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+
+struct matrix
+{
+    double A[4][4];
+    matrix()
+    {
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                A[i][j] = i == j;
+    }
+    friend matrix operator *(matrix a, matrix b)
+    {
+        matrix c;
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+            {
+                c.A[i][j] = 0;
+                for (int k = 0; k < 4; k++)
+                    c.A[i][j] += a.A[i][k] * b.A[k][j];
+            }
+        return c;
+    }
+};
+
+const int N = 1 << 16;
+
+matrix T[2 * N];
+
+void update(int i, matrix x)
+{
+    i += N;
+    T[i] = x;
+    while (i /= 2)
+        T[i] = T[2 * i] * T[2 * i + 1];
+}
+
+matrix get(int l, int r)
+{
+    matrix resl, resr;
+    l += N;
+    r += N;
+    while (l <= r)
+    {
+        if (l & 1)
+            resl = resl * T[l];
+        l = (l + 1) / 2;
+        if (!(r & 1))
+            resr = T[r] * resr;
+        r = (r - 1) / 2;
+    }
+    return resl * resr;
+}
+
+const int Q = 500;
+const int MSK = 16;
+double D[Q][MSK][4];
+double sink[4][MSK];
+
+struct cluster
+{
+    vector<int> E[8];
+    int R[4][8];
+    int SR[4];
+    cluster()
+    {
+        memset(R, 0, sizeof(R));
+        memset(SR, 0, sizeof(SR));
+    }
+    void add(int x, int y, int r)
+    {
+        E[x].push_back(y);
+        R[x][y] = r;
+        SR[x] += r;
+    }
+    void del(int x, int y)
+    {
+        vector<int>::iterator it = find(E[x].begin(), E[x].end(), y);
+        assert(it != E[x].end());
+        SR[x] -= R[x][y];
+        R[x][y] = 0;
+        E[x].erase(it);
+    }
+
+    matrix trans;
+    double att[4][4];
+    void calc()
+    {
+        for (int s = 0; s < 4; s++)
+        {
+            memset(D, 0, sizeof(D));
+            memset(sink, 0, sizeof(sink));
+            D[0][1 << s][s] = 1;
+            for (int t = 0; t < Q - 1; t++)
+            {
+                for (int msk = 1; msk < MSK; msk++)
+                {
+                    for (int x = 0; x < 4; x++)
+                    {
+                        if (!((msk >> x) & 1))
+                            continue;
+                        if (SR[x] == 0)
+                            D[t + 1][msk][x] += D[t][msk][x];
+                        else
+                        {
+                            double prob = D[t][msk][x] / SR[x];
+                            for (int y : E[x])
+                            {
+                                if (y < 4)
+                                    D[t + 1][msk | (1 << y)][y] += prob * R[x][y];
+                                else
+                                    sink[y - 4][msk] += prob * R[x][y];
+                            }
+                        }
+                    }
+                }                                                                                               
+            }
+            for (int j = 0; j < 4; j++)
+            {
+                att[s][j] = 0;
+                for (int msk = 0; msk < MSK; msk++)
+                {   
+                    if (!((msk >> j) & 1))
+                        continue;
+                    for     (int r = 0; r < 4; r++)
+                        att[s][j] += sink[r][msk];
+                }
+                for (int x = 0; x < 4; x++)
+                    for (int msk = 0; msk < MSK; msk++)
+                    {
+                            if (!((msk >> j) & 1))
+                            continue;
+                        att[s][j] += D[Q - 1][msk][x];
+                    }
+                trans.A[s][j] = 0;
+                for (int msk = 0; msk < MSK; msk++)
+                    trans.A[s][j] += sink[j][msk];
+            }
+        }
+    }   
+} C[N];
+
+void solve(int cs)  
+{ 
+    eprintf("Case %d\n", cs);
+    int n;
+    scanf("%d", &n);
+    int m;
+    scanf("%d", &m);
+    int q;
+    scanf("%d", &q);
+
+    int clust = n / 4 + 1;
+    for (int i = 0; i < clust; i++)
+        C[i] = cluster();
+
+    for (int i = 2 * N - 1; i > 0; i--)
+        T[i] = matrix();
+
+    for (int i = 0; i < m; i++)
+    {
+        int a, b, r;
+        scanf("%d %d %d", &a, &b, &r);
+        int ca = a / 4;
+        int na = a - ca * 4;
+        int nb = b - ca * 4;
+        C[ca].add(na, nb, r);
+    }
+    for (int i = 0; i < n / 4 + 1; i++) {
+        C[i].calc();
+        update(i, C[i].trans);
+    }
+
+    printf("Case #%d:", cs);
+
+    for (int i = 0; i < q; i++)
+    {
+        int t;
+        scanf("%d", &t);
+        if (t == 1 || t == 2)
+        {
+            int ca;
+            if (t == 1)
+            {
+                int a, b, r;
+                scanf("%d %d %d", &a, &b, &r);
+                ca = a / 4;
+                int na = a - ca * 4;
+                int nb = b - ca * 4;
+                C[ca].add(na, nb, r);
+            }
+            else // if (t == 2)
+            {
+                int a, b;
+                scanf("%d %d", &a, &b);
+                ca = a / 4;
+                int na = a - ca * 4;
+                int nb = b - ca * 4;
+                C[ca].del(na, nb);
+            }
+            C[ca].calc();
+            update(ca, C[ca].trans);
+        }
+        else
+        {
+            int a, b;
+            scanf("%d %d", &a, &b);
+            int ca = a / 4;
+            int cb = b / 4;
+            int na = a - ca * 4;
+            int nb = b - cb * 4;
+            matrix T = get(ca, cb - 1);
+            double ans = 0;
+            for (int p = 0; p < 4; p++)
+                ans += T.A[na][p] * C[cb].att[p][nb];
+            printf(" %.6lf", ans);
+        }
+    }
+    printf("\n");
+}
+
+int main()
+{
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; i++)
+        solve(i + 1);
+}

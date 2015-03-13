@@ -1,0 +1,123 @@
+#include <cstdio>
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+int n,m,L;
+
+void remove_useless(vector<pair<int,int>> &a) {
+	vector<int> need;
+	for (int i = 0; i < a.size(); i++) {
+		bool fail = false;
+		for (int j = 0; j < a.size(); j++) {
+			if (i == j) continue;
+			if (a[j].first <= a[i].first &&
+				a[i].second <= a[j].second) {
+				fail = true;
+				break;
+			}
+		}
+		need.push_back(!fail);
+	}
+	vector<pair<int,int>> b;
+	for (int i = 0; i < need.size(); i++) {
+		if (need[i]) b.push_back(a[i]);
+	}
+	a = b;
+}
+
+short dt[12200][3001];
+
+void upd(short &a, short b) {
+	if (a == -1 || a > b) {
+		a = b;
+	}
+}
+
+int main(){
+	int TTTT;
+	scanf("%d",&TTTT);
+	for (int testcase = 1; testcase <= TTTT; testcase++) {
+		scanf("%d%d%d",&n,&m,&L);
+		vector<pair<int,int>> dat1, dat2;
+		vector<pair<int,int>> compdat1, compdat2;
+		for (int i = 0; i < n; i++) {
+			int s,e;
+			scanf("%d%d",&s,&e);
+			dat1.emplace_back(s,e);
+		}
+		for (int i = 0; i < m; i++) {
+			int s,e;
+			scanf("%d%d",&s,&e);
+			dat2.emplace_back(s,e);
+		}
+		remove_useless(dat1); n = dat1.size();
+		remove_useless(dat2); m = dat2.size();
+		sort(dat1.begin(),dat1.end());
+		sort(dat2.begin(),dat2.end());
+		vector<int> etime;
+		const int maxtime = 80000000;
+		etime.push_back(0);
+		etime.push_back(maxtime);
+		for (auto interval : dat1) {
+			etime.push_back(interval.first);
+			etime.push_back(interval.second);
+		}
+		for (auto interval : dat2) {
+			etime.push_back(interval.first);
+			etime.push_back(interval.second);
+		}
+		sort(etime.begin(),etime.end());
+		etime.resize(unique(etime.begin(),etime.end()) - etime.begin());
+		for (auto interval : dat1) {
+			compdat1.emplace_back(
+				lower_bound(etime.begin(),etime.end(),interval.first) - etime.begin(),
+				lower_bound(etime.begin(),etime.end(),interval.second) - etime.begin());
+		}
+		for (auto interval : dat2) {
+			compdat2.emplace_back(
+				lower_bound(etime.begin(),etime.end(),interval.first) - etime.begin(),
+				lower_bound(etime.begin(),etime.end(),interval.second) - etime.begin());
+		}
+		memset(dt,-1,sizeof(dt));
+		dt[0][0] = 0;
+		int ans = INT_MAX;
+		for (int tind = 0; tind < etime.size(); tind++) {
+			int timeval = etime[tind];
+			for (int j = 0; j <= n; j++) {
+				if (dt[tind][j] == -1) continue;
+				if (maxtime - timeval < L) {
+					ans = min(ans, max(j, (int)dt[tind][j]));
+				}
+				{
+					auto I = lower_bound(dat1.begin(), dat1.end(), make_pair(timeval + L - 1, INT_MAX));
+					if (I != dat1.begin()) {
+						--I;
+						int ind = I - dat1.begin();
+						if (I->second > timeval) {
+							upd(dt[compdat1[ind].second][j+1], dt[tind][j]);
+						}
+					}
+				}
+				{
+					auto I = lower_bound(dat2.begin(), dat2.end(), make_pair(timeval + L - 1, INT_MAX));
+					if (I != dat2.begin()) {
+						--I;
+						int ind = I - dat2.begin();
+						if (I->second > timeval) {
+							upd(dt[compdat2[ind].second][j], dt[tind][j]+1);
+						}
+					}
+				}
+			}
+		}
+		if (ans == INT_MAX) {
+			printf("Case #%d: Lunchtime\n", testcase);
+		} else {
+			printf("Case #%d: %d\n", testcase, ans);
+		}
+	}
+}

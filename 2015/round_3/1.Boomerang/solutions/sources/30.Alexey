@@ -1,0 +1,158 @@
+program boomerang;
+uses math;
+
+const	eps =	1.0e-8;
+
+var	n, d: longInt;
+	x, y, a: array[ 0..10000 ] of longInt;
+	
+function f( const xx, yy: extended; id: longInt ): extended;
+begin
+	if ( abs( yy - y[id] ) < eps ) then
+		exit( 1.0e+15 );
+	
+	exit( ( x[id] - xx ) / ( y[id] - yy ) );
+end;
+
+procedure qsort( l, r: longInt; const xx, yy: extended );
+var	i, j: longInt;
+	med: extended;
+begin
+	if ( l < r ) then
+	begin
+		i := l;
+		j := r;
+		med := f( xx, yy, a[ l + random(r - l + 1) ] );
+		while ( i <= j ) do
+		begin
+			while ( f( xx, yy, a[i] ) < med ) do
+				inc( i );
+			
+			while ( f( xx, yy, a[j] ) > med ) do
+				dec( j );
+			
+			if ( i <= j ) then
+			begin
+				if ( i <> j ) then
+				begin
+					a[i] := a[i] xor a[j];
+					a[j] := a[i] xor a[j];
+					a[i] := a[i] xor a[j];
+				end;
+				
+				inc( i );
+				dec( j );
+			end;
+		end;
+		
+		qsort( l, j, xx, yy );
+		qsort( i, r, xx, yy );
+	end;
+end;
+
+function isOnLine( x1, y1, x2, y2: extended; id: longInt; var t: extended ): boolean;
+var	s: extended;
+begin
+	s := abs( ( x[id] - x1 ) * ( y2 - y1 ) - ( y[id] - y1 ) * ( x2 - x1 ) );
+	if ( s / sqrt( sqr( x1 - x2 ) + sqr( y1 - y2 ) ) > eps ) then
+		exit( false );
+	
+	if ( abs( x2 - x1 ) > abs( y2 - y1 ) ) then
+		t := ( x[id] - x1 ) / ( x2 - x1 )
+	else
+		t := ( y[id] - y1 ) / ( y2 - y1 );
+	
+	exit( true );
+end;
+	
+function calc1( id: longInt ): longInt;
+var	res, i: longInt;
+	t: extended;
+begin
+	res := 0;
+	for i := 1 to n do
+		if ( isOnLine( x[0], y[0], x[id], y[id], i, t ) ) and ( t > -eps ) and ( t < 1 + eps ) then
+			inc( res );
+	
+	if ( res = 0 ) then
+		writeln( 'ololo' );
+	
+	exit( res );
+end;
+
+function calc2( id: longInt ): longInt;
+var	xx, yy, dd, t: extended;
+	i, j, k, res, cur, special_id: longInt;
+begin
+	dd := sqrt( sqr( x[id] - x[0] ) + sqr( y[id] - y[0] ) );
+	
+	xx := x[0] + ( x[id] - x[0] ) * d / dd;
+	yy := y[0] + ( y[id] - y[0] ) * d / dd;
+	
+	for i := 1 to n do
+		a[i] := i;
+	
+	qsort( 1, n, xx, yy );
+	
+	for i := 1 to n do
+		a[n + i] := a[i];
+	
+	special_id := 1000000;
+	for i := 1 to n do
+		if ( sqr( xx - x[i] ) + sqr( yy - y[i] ) < eps ) then
+			special_id := i;
+	
+	res := 0;
+	for i := 1 to n do
+		if ( a[i] <> special_id ) then
+		begin
+			cur := 1;
+		
+			j := i;
+			while ( j > 1 ) and ( isOnLine( xx, yy, x[ a[i] ], y[ a[i] ], a[j - 1], t ) ) do
+			begin
+				if ( t > -eps ) and ( a[j - 1] <> special_id ) then
+					inc( cur );
+			
+				dec( j );
+			end;
+			
+			k := i;
+			while ( k < 2 * n ) and ( k - j + 2 <= n ) and ( isOnLine( xx, yy, x[ a[i] ], y[ a[i] ], a[k + 1], t ) ) do
+			begin
+				if ( t > -eps ) and ( a[k + 1] <> special_id ) then
+					inc( cur );
+			
+				inc( k );
+			end;
+			
+			res := max( res, cur );
+		end;
+	
+	if ( special_id <= n ) then
+		inc( res );
+	
+	if ( res = 0 ) then
+		writeln( 'olololo' );
+	
+	exit( res );
+end;
+
+var	_t, _tt, i, ans: longInt;
+
+begin
+	readln( _tt );
+	for _t := 1 to  _tt do
+	begin
+		readln( x[0], y[0], d, n );
+		for i := 1 to n do
+			readln( x[i], y[i] );
+		
+		ans := 0;
+		for i := 1 to n do
+			if ( sqr( x[i] - x[0] ) + sqr( y[i] - y[0] ) <= sqr(d) ) then
+				ans := max( ans, calc1( i ) * calc2( i ) );
+		
+		writeln( 'Case #', _t, ': ', ans );
+	end;
+end.

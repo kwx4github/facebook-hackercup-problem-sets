@@ -1,0 +1,138 @@
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <iostream>
+#include <deque>
+#include <queue>
+
+using namespace std;
+
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define REP(i, n) FOR(i, 0, n)
+#define TRACE(x) cout << #x << " = " << x << endl
+#define _ << " _ " <<
+
+typedef long long llint;
+
+typedef pair<int, int> par;
+#define a first
+#define b second
+
+const int inf = 1e9;
+const int T = 8e7;
+
+const int MAXN = 3030;
+const int MAX = 1<<12;
+
+par p[MAXN], r[MAXN];
+int f[MAXN][MAXN];
+int st[MAXN];
+int id1[MAXN], id2[MAXN];
+
+struct Tournament {
+  int off;
+  int T[2*MAX];
+  int lo[2*MAX], hi[2*MAX];
+  
+  int query(int i, int a, int b) {
+    if (lo[i] > b || hi[i] < a) return inf;
+    if (lo[i] >= a && hi[i] <= b) return T[i];
+    return min(query(i*2, a, b), query(i*2+1, a, b));
+  }
+
+  void update(int x, int val) {
+    x += off;
+    T[x] = val;
+
+    for (x /= 2; x; x /= 2)
+      T[x] = min(T[x*2], T[x*2+1]);
+  }
+  
+  void clear() {
+    REP(i, 2*off) T[i] = inf;
+  }
+
+  void init(int *a, int n) {
+    off = 1;
+    while (off < n) off *= 2;
+
+    clear();
+    REP(i, n) lo[off+i] = hi[off+i] = a[i];
+    FOR(i, n, off) lo[off+i] = hi[off+i] = a[n-1];
+    for (int i = off-1; i > 0; --i) {
+      lo[i] = lo[2*i];
+      hi[i] = hi[2*i+1];
+    }
+  }
+} T1, T2;
+
+int st1[MAXN], st2[MAXN];
+    
+int main(void) {
+  int TC;
+  scanf("%d", &TC);
+  for (int tp = 1; tp <= TC; ++tp) {
+    
+    int n, m, L;
+    scanf("%d %d %d", &n, &m, &L);
+
+    vector<par> a;
+    REP(i, n) {
+      scanf("%d %d", &p[i].a, &p[i].b);
+    }
+    REP(i, m) {
+      scanf("%d %d", &r[i].a, &r[i].b);
+    }
+    
+    sort(p, p + n);
+    sort(r, r + m);
+    
+    REP(i, n) st1[i] = p[i].a;
+    REP(i, m) st2[i] = r[i].a;
+    
+    REP(i, n) a.push_back({p[i].b, i});
+    REP(i, m) a.push_back({r[i].b, n+i});
+
+    T1.init(st1, n);
+    T2.init(st2, m);
+    
+    a.push_back({0, -1});
+    sort(a.begin(), a.end());
+    
+    REP(i, (int)a.size())
+      if (a[i].b != -1) {
+        if (a[i].b < n) id1[a[i].b] = i; else
+          id2[a[i].b-n] = i;
+      }
+    
+    REP(x, n+1) {
+      T2.clear();
+      
+      for (int i = (int)a.size()-1; i >= 0; --i) {
+        int t = a[i].a;
+        int lo = t-1;
+        if (a[i].b != -1) {
+          if (a[i].b < n) lo = p[a[i].b].a; else
+            lo = r[a[i].b-n].a;
+        }
+
+        f[x][i] = min(T1.query(1, lo, t+L-1), T2.query(1, lo, t+L-1) + 1);
+        if (t + L >= T) f[x][i] = 0;
+
+        if (a[i].b >= n) T2.update(a[i].b-n, f[x][i]);
+      }
+
+      T1.clear();
+      REP(i, (int)a.size())
+        if (a[i].b != -1 && a[i].b < n)
+          T1.update(a[i].b, f[x][i]);
+    }
+
+    printf("Case #%d: ", tp);
+    int ans = inf;
+    REP(x, n+1) ans = min(ans, max(x, f[x][0]));
+    if (ans >= inf) puts("Lunchtime"); else
+      printf("%d\n", ans);
+  }
+  return 0;
+}

@@ -1,0 +1,286 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/resource.h>
+#include <Eigen/Core>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    struct rlimit stack_limit;
+    getrlimit(RLIMIT_STACK, &stack_limit);
+    stack_limit.rlim_cur = 1024 * 1024 * 1024;
+    setrlimit(RLIMIT_STACK, &stack_limit);
+
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+struct node
+{
+    Eigen::Matrix<double, 4, 4> step;
+};
+
+static int offset;
+static vector<node> nodes;
+static vector<array<int, 8> > edges;
+
+static bool is_sink(const array<int, 8> &edges)
+{
+    return accumulate(RA(edges), 0) == 0;
+}
+
+static Eigen::Matrix<double, 4, 4> step(const array<int, 8> edges[4])
+{
+    bool sink[8];
+    for (int i = 0; i < 4; i++)
+        sink[i] = is_sink(edges[i]);
+    for (int i = 4; i < 8; i++)
+        sink[i] = true;
+
+    bool reach[4][4];
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+            reach[i][j] = edges[i][j] > 0;
+        reach[i][i] = true;
+    }
+    for (int y = 0; y < 4; y++)
+        for (int x = 0; x < 4; x++)
+            if (reach[x][y])
+                for (int z = 0; z < 4; z++)
+                    reach[x][z] |= reach[y][z];
+
+    bool loop[4] = {};
+    for (int i = 0; i < 4; i++)
+    {
+        loop[i] = true;
+        for (int j = 0; j < 4; j++)
+            if (reach[i][j] && sink[j])
+                loop[i] = false;
+        for (int j = 4; j < 8; j++)
+            if (edges[i][j] > 0)
+                loop[i] = false;
+    }
+
+    Eigen::Matrix<double, 8, 8> mat;
+    mat.setZero();
+    for (int i = 0; i < 8; i++)
+    {
+        if (sink[i])
+            mat(i, i) = 1.0;
+        else if (!loop[i])
+        {
+            double scale = accumulate(RA(edges[i]), 0);
+            for (int j = 0; j < 8; j++)
+                mat(j, i) = edges[i][j] / scale;
+        }
+    }
+    // cerr << '\n' << mat << '\n';
+    for (int i = 0; i < 30; i++)
+        mat = mat * mat;
+    // cerr << '\n' << mat << '\n';
+    return mat.bottomRows(4).leftCols<4>();
+}
+
+static Eigen::Matrix<double, 4, 4> reachy(const array<int, 8> edges[4], int target)
+{
+    bool reach[4][4];
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+            reach[i][j] = edges[i][j] > 0;
+        reach[i][i] = true;
+    }
+    for (int y = 0; y < 4; y++)
+        for (int x = 0; x < 4; x++)
+            if (reach[x][y])
+                for (int z = 0; z < 4; z++)
+                    reach[x][z] |= reach[y][z];
+
+    Eigen::Matrix<double, 4, 4> mat;
+    mat.setZero();
+    for (int i = 0; i < 4; i++)
+    {
+        if (i == target)
+            mat(i, i) = 1.0;
+        else if (reach[i][target])
+        {
+            double scale = accumulate(RA(edges[i]), 0);
+            for (int j = 0; j < 4; j++)
+                mat(j, i) = edges[i][j] / scale;
+        }
+    }
+
+    //cerr << '\n' << mat << '\n';
+    for (int i = 0; i < 30; i++)
+        mat = mat * mat;
+    //cerr << '\n' << mat << '\n';
+    return mat;
+}
+
+static void fix(int idx)
+{
+    nodes[idx].step = nodes[2 * idx + 1].step * nodes[2 * idx].step;
+}
+
+static void fixup(int idx)
+{
+    nodes[idx + offset].step = step(edges.data() + 4 * idx);
+    idx += offset;
+    idx >>= 1;
+    while (idx > 0)
+    {
+        fix(idx);
+        idx >>= 1;
+    }
+}
+
+static Eigen::Matrix<double, 4, 4> product(int idx, int L, int R, int A, int B)
+{
+    if (L <= A && R >= B)
+        return nodes[idx].step;
+    else if (R <= A || L >= B)
+        return Eigen::Matrix<double, 4, 4>::Identity();
+    else
+    {
+        int M = (A + B) / 2;
+        if (R <= M)
+            return product(2 * idx, L, R, A, M);
+        else if (L >= M)
+            return product(2 * idx + 1, L, R, M, B);
+        else
+        {
+            return product(2 * idx + 1, L, R, M, B) * product(2 * idx, L, R, A, M);
+        }
+    }
+}
+
+static Eigen::Matrix<double, 4, 4> product(int L, int R)
+{
+    return product(1, L, R, 0, offset);
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    cout << fixed << setprecision(6);
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        cout << "Case #" << cas + 1 << ":";
+        int N, P, D;
+        cin >> N >> P >> D;
+        N = (N + 3) / 4 * 4;
+        edges.resize(N);
+        for (int i = 0; i < N; i++)
+            for (int j = 0; j < 8; j++)
+                edges[i][j] = 0;
+        for (int i = 0; i < P; i++)
+        {
+            int a, b, r;
+            cin >> a >> b >> r;
+            int base = a / 4 * 4;
+            edges[a][b - base] = r;
+        }
+
+        int N4 = N / 4;
+        offset = 1;
+        while (offset < N4)
+            offset <<= 1;
+        nodes.resize(2 * offset);
+        for (int i = 0; i < N4; i++)
+            nodes[offset + i].step = step(edges.data() + 4 * i);
+        for (int i = N4; i < offset; i++)
+            nodes[i].step.setIdentity();
+        for (int i = offset - 1; i > 0; i--)
+            fix(i);
+
+        for (int i = 0; i < D; i++)
+        {
+            int e, x, y, z = 0;
+            cin >> e >> x >> y;
+            if (e == 1)
+                cin >> z;
+            switch (e)
+            {
+            case 1:
+            case 2:
+                {
+                    int base = x / 4 * 4;
+                    edges[x][y - base] = z;
+                    fixup(base / 4);
+                }
+                break;
+            case 3:
+                {
+                    int bx = x / 4 * 4;
+                    int by = y / 4 * 4;
+                    double ans = 0.0;
+                    if (bx <= by)
+                    {
+                        Eigen::Matrix<double, 4, 1> prob;
+                        prob.setZero();
+                        prob(x - bx) = 1.0;
+                        if (bx < by)
+                        {
+                            auto s = product(bx / 4, by / 4);
+                            prob = s * prob;
+                        }
+                        prob = reachy(edges.data() + by, y - by) * prob;
+                        ans = prob(y - by);
+                    }
+                    cout << ' ' << ans;
+                }
+                break;
+            }
+        }
+        cout << '\n';
+    }
+    return 0;
+}

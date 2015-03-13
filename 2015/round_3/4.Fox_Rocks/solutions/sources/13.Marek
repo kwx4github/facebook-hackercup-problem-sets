@@ -1,0 +1,237 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const int MaxN = 50005;
+
+
+template<int N>
+struct Matrix {
+	array<array<double,N>,N> data;
+
+	Matrix(){
+		for(int i = 0; i < N; i++)
+			for(int j = 0; j < N; j++)
+				data[i][j] = 0;
+	}
+
+	void clear(){
+		for(int i = 0; i < N; i++)
+			for(int j = 0; j < N; j++)
+				data[i][j] = 0;
+	}
+
+	double at(int r, int c) const {
+		return data[r][c];
+	}
+
+	double& at(int r, int c){
+		return data[r][c];
+	}
+
+	Matrix<N> mul(const Matrix<N> M) const {
+		Matrix<N> result;
+
+		for(int i = 0; i < N; i++)
+			for(int j = 0; j < N; j++)
+				for(int k = 0; k < N; k++)
+					result.at(i,j) += at(i,k) * M.at(k,j);
+
+		return result;
+	}
+
+	Matrix<N> pow(int pwr2) const {
+		Matrix<N> result;
+		result.data = data;
+
+		while(pwr2--)
+			result = result.mul(result);
+
+		return result;
+	}
+};
+
+template<int N>
+Matrix<N> unit_matrix(){
+	Matrix<N> data;
+	for(int i = 0; i < N; i++)
+		data.at(i,i) = 1;
+	return data;
+}
+
+
+// segment tree containing 4x4 transition matrices
+const int Base = (1<<16),
+          MaxSize = Base*2;
+
+Matrix<4> STree[MaxSize];
+
+void tree_set(int v, Matrix<4> what){
+	v += Base;
+	STree[v] = what;
+	v /= 2;
+
+	while(v){
+		STree[v] = STree[2*v].mul(STree[2*v+1]);
+		v /= 2;
+	}
+}
+
+Matrix<4> get_mul(int L, int R){
+	if(L > R){
+		return unit_matrix<4>();
+	}
+
+	L += Base; R += Base;
+	if(L == R)
+		return STree[L];
+
+	Matrix<4> resultL = STree[L], resultR = STree[R];
+
+	while(L/2 != R/2){
+		if(L % 2 == 0) resultL = resultL.mul(STree[L+1]);
+		if(R % 2 == 1) resultR = STree[R-1].mul(resultR);
+		L /= 2; R /= 2;
+	}
+
+	return resultL.mul(resultR);
+}
+
+
+// we can afford it (I hope...)
+set<pair<int,int>> adj[MaxN];
+int N, P, D;
+
+
+void cleanup(){
+	for(int i = 0; i <= N+10; i++)
+		adj[i].clear();
+
+	for(int i = 0; i < MaxSize; i++)
+		STree[i].clear();
+}
+
+
+void input(){
+	scanf("%d%d%d", &N, &P, &D);
+
+	for(int i = 0; i < P; i++){
+		int a, b, r;
+		scanf("%d%d%d", &a, &b, &r);
+
+		adj[a].emplace(b, r);
+	}
+}
+
+Matrix<4> get_trans(int left){ // to left+7
+	Matrix<8> data;
+	for(int i = left; i < left+4; i++){
+		int sumStones = 0;
+		for(auto PP: adj[i]){
+			sumStones += PP.second;
+		}
+
+		for(auto PP: adj[i]){
+			data.at(i-left, PP.first-left) = (double)PP.second / sumStones;
+		}
+	}
+
+	for(int i = 4; i < 8; i++)
+		data.at(i, i) = 1;
+
+	data = data.pow(32);
+
+//	printf("Y\n");
+	Matrix<4> result;
+	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			result.at(i,j) = data.at(i,j+4);
+//			printf("%lf ", result.at(i,j));
+		}
+//		printf("\n");
+	}
+//	printf("\n");
+
+	return result;
+}
+
+Matrix<4> get_inside(int left, int end){  // to left+4
+	Matrix<4> data;
+	for(int i = left; i < left+4; i++){
+		if(i == end){
+			data.at(i-left, i-left) = 1;
+			continue;
+		}
+
+		int sumStones = 0;
+		for(auto PP: adj[i]){
+			sumStones += PP.second;
+		}
+
+		for(auto PP: adj[i]){
+			if(PP.first < left+4)
+				data.at(i-left, PP.first-left) = (double)PP.second / sumStones;
+		}
+	}
+
+	data = data.pow(32);
+
+/*	for(int i = 0; i < 4; i++){
+		for(int j = 0; j < 4; j++){
+			printf("%lf ", data.at(i,j));
+		}
+		printf("\n");
+	}
+	printf("\n");*/
+	return data;
+}
+
+
+void test(){
+	input();
+
+	for(int i = 0; i < N; i += 4){
+//		printf("%d\n", i);
+		tree_set(i/4, get_trans(i));
+	}
+
+	int e, x, y, z;
+	for(int op = 0; op < D; op++){
+		scanf("%d", &e);
+
+		if(e == 1){  // add path
+			scanf("%d%d%d", &x, &y, &z);
+			adj[x].emplace(y,z);
+			tree_set(x/4, get_trans((x/4)*4));
+		} else if(e == 2){  // del path
+			scanf("%d%d", &x, &y);
+			adj[x].erase(adj[x].lower_bound(make_pair(y,0)));
+			tree_set(x/4, get_trans((x/4)*4));
+		} else {  // query
+			scanf("%d%d", &x, &y);
+			if(x/4 > y/4){
+				printf(" 0.000000000");
+				continue;
+			}
+
+			Matrix<4> trans = get_mul(x/4, y/4 - 1);
+			Matrix<4> fin = get_inside((y/4)*4, y);
+			
+			Matrix<4> total = trans.mul(fin);
+			printf(" %.10lf", total.at(x%4, y%4));
+		}
+	}
+	printf("\n");
+
+	cleanup();
+}
+
+int main(){
+	int T;
+	scanf("%d", &T);
+
+	for(int i = 1; i <= T; i++){
+		printf("Case #%d:", i);
+		test();
+	}
+}

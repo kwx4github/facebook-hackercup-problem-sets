@@ -1,0 +1,198 @@
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+#include <vector>
+#include <string>
+#include <queue>
+#include <map>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <sstream>
+#include <set>
+using namespace std;
+
+int N;
+int stone[50000][8];
+const int magic = 6000;
+
+long double in_group[12500][4][4];
+long double inter[1<<15][4][4];
+
+void mult4(long double a[][4]) {
+  for (int iter=0; iter<25; iter++) {
+    long double b[4][4] = {0};
+    for (int i=0; i<4; i++)
+      for (int j=0; j<4; j++)
+        for (int k=0; k<4; k++)
+          b[i][j] = b[i][j] + a[i][k]*a[k][j];
+    for (int i=0; i<4; i++)
+      for (int j=0; j<4; j++)
+        a[i][j] = b[i][j];
+  }
+}
+
+void mult8(long double a[][8]) {
+  for (int iter=0; iter<25; iter++) {
+    long double b[8][8] = {0};
+    for (int i=0; i<8; i++)
+      for (int j=0; j<8; j++)
+        for (int k=0; k<8; k++)
+          b[i][j] = b[i][j] + a[i][k]*a[k][j];
+    for (int i=0; i<8; i++)
+      for (int j=0; j<8; j++)
+        a[i][j] = b[i][j];
+  }
+}
+
+void mult4_2(long double a[][4], long double b[][4], long double c[][4]) {
+  for (int i=0; i<4; i++) for (int j=0; j<4; j++) c[i][j] = 0.0;
+  for (int i=0; i<4; i++)
+    for (int j=0; j<4; j++)
+      for (int k=0; k<4; k++)
+        c[i][j] = c[i][j] + a[i][k]*b[k][j];
+}
+
+
+void do1(int x, int y, int z, int recalc) {
+  stone[x][y-x/4*4] = z;
+//  printf("%d %d %d : set %d %d = %d\n", x, y, z, x, y-x/4*4, z);
+  if (!recalc) return;
+
+  // recalc group x/4
+  int gr = x/4;
+
+  // in_group
+  long double arr[4][4] = {0};
+  for (int i=0; i<4; i++) {
+    for (int j=0; j<4; j++) for (int k=0; k<4; k++) arr[j][k] = 0.0;
+    for (int j=0; j<4; j++) {
+      if (i == j) { arr[i][j] = 1.0; continue; }
+      int sum = 0;
+      for (int k=0; k<8; k++) sum += stone[gr*4+j][k];
+      if (!sum) continue;
+      for (int k=0; k<4; k++) arr[j][k] = 1.0 * stone[gr*4+j][k] / sum;
+    }
+//    for (int q=0; q<4; q++) for (int s=0; s<4; s++) printf("%.4Lf ", arr[q][s]); printf("\n");
+    mult4(arr);
+    for (int j=0; j<4; j++)
+      in_group[gr][j][i] = arr[j][i];
+  }
+
+  // inter
+  long double ar2[8][8] = {0};
+  for (int i=0; i<4; i++) {
+    int sum = 0;
+    for (int j=0; j<8; j++) sum += stone[gr*4+i][j];
+    if (!sum) continue;
+    for (int j=0; j<8; j++) ar2[i][j] = 1.0 * stone[gr*4+i][j] / sum;
+  }
+  ar2[4][4] = ar2[5][5] = ar2[6][6] = ar2[7][7] = 1.0;
+  mult8(ar2);
+  for (int i=0; i<4; i++)
+    for (int j=0; j<4; j++)
+      inter[(1<<14)+gr][i][j] = ar2[i][j+4];
+
+/*  printf("%d %d %d : group %d:\n", x, y, z, gr);
+  for (int i=0; i<4; i++) {
+    for (int j=0; j<4; j++) printf("%.6Lf ", in_group[gr][i][j]); printf("\n");
+  }
+  printf("\n");
+  for (int i=0; i<4; i++) {
+    for (int j=0; j<4; j++) printf("%.6Lf ", inter[(1<<14)+gr][i][j]); printf("\n");
+  }*/
+
+  // combine
+  int now = (1<<14)+gr;
+  while (now > 1) {
+    now /= 2;
+    mult4_2(inter[now*2], inter[now*2+1], inter[now]);
+  }
+}
+
+void calc3(const int ll, const int rr, int lll, int rrr, int idx, long double ret[][4]) {
+//  printf("%d %d %d %d %d\n", ll, rr, lll, rrr, idx);
+  if (ll <= lll && rr >= rrr) {
+    for (int i=0; i<4; i++) for (int j=0; j<4; j++) ret[i][j] = inter[idx][i][j];
+    return;
+  }
+  if (rrr < ll || lll > rr) {
+    for (int i=0; i<4; i++) for (int j=0; j<4; j++) ret[i][j] = 0.0;
+    ret[0][0] = ret[1][1] = ret[2][2] = ret[3][3] = 1.0;
+    return;
+  }
+  long double r1[4][4] = {0};
+  long double r2[4][4] = {0};
+  calc3(ll, rr, lll, (lll+rrr)/2, idx*2, r1);
+  calc3(ll, rr, (lll+rrr)/2+1, rrr, idx*2+1, r2);
+  mult4_2(r1, r2, ret);
+}
+
+void do3(int x, int y) {
+  if (x/4 > y/4) {
+    printf("%.6Lf ", (long double)0.0);
+    return;
+  }
+  if (x/4 == y/4) {
+    printf("%.6Lf ", in_group[x/4][x&3][y&3]);
+    return;
+  }
+  long double mat[4][4] = {0};
+  calc3(x/4, y/4-1, 0, (1<<14)-1, 1, mat);
+
+  long double ret = 0.0;
+  for (int i=0; i<4; i++) {
+//    printf("%Lf * %Lf\n", mat[x&3][i], in_group[y/4][i][y&3]);
+    ret += mat[x&3][i] * in_group[y/4][i][y&3];
+  }
+
+  printf("%.6LF ", ret);
+}
+
+void solve() {
+  int P, D;
+  cin >> N >> P >> D;
+
+  for (int i=0; i<50000; i++) for (int j=0; j<8; j++) stone[i][j] = 0;
+  for (int i=0; i<12500; i++) for (int j=0; j<4; j++) for (int k=0; k<4; k++)
+    in_group[i][j][k] = 0.0;
+  for (int i=0; i<(1<<15); i++) for (int j=0; j<4; j++) for (int k=0; k<4; k++)
+    inter[i][j][k] = 0.0;
+  int lim = (N+3)/4;
+
+  for (int i=0; i<P; i++) {
+    int a, b, c;
+    cin >> a >> b >> c;
+    do1(a, b, c, 0);
+  }
+
+  for (int i=0; i<lim; i++)
+    do1(i*4, i*4, 0, 1);
+
+  for (int i=0; i<D; i++) {
+    int E;
+    cin >> E;
+    if (E == 1) {
+      int a, b, c;
+      cin >> a >> b >> c;
+      do1(a, b, c, 1);
+    } else {
+      int a, b;
+      cin >> a >> b;
+      if (E == 2) do1(a, b, 0, 1);
+      else do3(a, b);
+    }
+  }
+}
+
+int main()
+{
+  int T;
+  cin >> T;
+  for (int tt=1; tt<=T; tt++) {
+    printf("Case #%d: ", tt);
+    solve();
+    printf("\n");
+//    return 0;
+  }
+}

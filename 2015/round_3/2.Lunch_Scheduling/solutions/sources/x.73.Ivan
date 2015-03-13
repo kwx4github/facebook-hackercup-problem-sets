@@ -1,0 +1,171 @@
+#include<iostream>
+#include<cmath>
+#include<algorithm>
+#include<string>
+#include<string.h>
+#include<vector>
+#include<set>
+#include<map>
+#include<cstdio>
+#include<queue>
+#include<sstream>
+#include<list>
+#include<bitset>
+#include<ctime>
+using namespace std;
+
+typedef long long Int;
+#define FOR(i,a,b) for(int i=(a); i<=(b);++i)
+#define mp make_pair
+#define pb push_back
+#define sz(s) (int)((s).size())
+const int inf = 1000000000;
+const int MOD = 1000000007;
+const double pi=acos(-1.0);
+
+const int N = 3003;
+pair<int,int> a[N+1], b[N+1];
+bool ok[N+1];
+const int TT = 80000000;
+int dp[N+1][N+1];
+int nx[N+1][15];
+int need[N+1][N+1];
+
+int best[N+1][N+1];
+const int GG = 100;
+
+int solve() {
+	int k1,k2,L;
+	cin>>k1>>k2>>L;
+	FOR(i,1,k1) cin>>a[i].first>>a[i].second;
+	sort(a+1, a+k1+1);
+	memset(ok, false, sizeof(ok));
+	FOR(i,1,k1) FOR(j,1,k1) if(a[j]==a[i] && i<j 
+		|| a[i].first<=a[j].first && a[i].second>=a[j].second && a[i]!=a[j]) 
+		ok[j]=true;
+	int n1=0;
+	FOR(i,1,k1) if(!ok[i]) a[++n1]=a[i];
+	k1=n1;
+	a[0]=mp(0,0); a[++k1]=mp(TT,TT);
+
+	FOR(i,1,k2) cin>>b[i].first>>b[i].second;
+	sort(b+1, b+k2+1);
+	memset(ok, false, sizeof(ok));
+	FOR(i,1,k2) FOR(j,1,k2) if(b[j]==b[i] && i<j 
+		|| b[i].first<=b[j].first && b[i].second>=b[j].second && b[i]!=b[j]) {
+		ok[j]=true;
+	}
+	int n2=0;
+	FOR(i,1,k2) if(!ok[i]) b[++n2]=b[i];
+	k2=n2;
+	b[0]=mp(0,0); b[++k2]=mp(TT,TT);
+	n2=k2;n1=k1;
+
+	memset(nx, -1, sizeof(nx));
+	for(int i=k2; i>=0; --i) {
+		for(int j=k2; j>i; --j) if(b[j].first-b[i].second < L) {
+			nx[i][0]=j;
+			break;
+		}
+		FOR(j,1,11) if(nx[i][j-1]!=-1) 
+			nx[i][j]=nx[nx[i][j-1]][j-1];
+	}
+
+
+	memset(need, -1, sizeof(need));
+	memset(dp, 63, sizeof(dp));
+	dp[0][0]=0;
+	FOR(i,1,k1) FOR(j,1,i) {
+		FOR(k,max(0,best[i-1][j-(i==j)]-GG), min(i-1,best[i-1][j-(i==j)]+GG)) {
+			int add=0;
+			int x=a[k].second, y=a[i].first;
+			if(y-x >= L) {
+				if(need[k][i]==-1) {
+					int inx = lower_bound(b+1, b+k2+1, mp(x+L, -1)) - b - 1;
+					if(inx==0) need[k][i]=inf;else {
+						int f=1;
+						for(int deg=11; deg>=0; --deg) {
+							if(nx[inx][deg] != -1) {
+								int to = nx[inx][deg];
+								if(b[to].second+L<=y) {
+									f+=(1<<deg);
+									inx=to;
+								}
+							}
+						}
+						if(b[inx].second+L<=y) {
+							if(inx==k2) f=inf;else {
+								int t=nx[inx][0];
+								if(t==-1 || b[t].second+L<=y) f=inf;else
+									f++;
+							}
+						}
+						need[k][i]=f;
+					}
+				}
+				add = need[k][i];
+				add=min(add, inf);
+			}
+			int temp = dp[k][j-1]+add;
+			if(temp<dp[i][j]) {
+				best[i][j]=k;
+				dp[i][j]=temp;
+			}
+		}
+
+		FOR(k,max(0,best[i-1][j-1]-GG), min(i-1,best[i-1][j-1]+GG)) {
+			int add=0;
+			int x=a[k].second, y=a[i].first;
+			if(y-x >= L) {
+				if(need[k][i]==-1) {
+					int inx = lower_bound(b+1, b+k2+1, mp(x+L, -1)) - b - 1;
+					if(inx==0) need[k][i]=inf;else {
+						int f=1;
+						for(int deg=11; deg>=0; --deg) {
+							if(nx[inx][deg] != -1) {
+								int to = nx[inx][deg];
+								if(b[to].second+L<=y) {
+									f+=(1<<deg);
+									inx=to;
+								}
+							}
+						}
+						if(b[inx].second+L<=y) {
+							if(inx==k2) f=inf;else {
+								int t=nx[inx][0];
+								if(t==-1 || b[t].second+L<=y) f=inf;else
+									f++;
+							}
+						}
+						need[k][i]=f;
+					}
+				}
+				add = need[k][i];
+				add=min(add, inf);
+			}
+			int temp = dp[k][j-1]+add;
+			if(temp<dp[i][j]) {
+				best[i][j]=k;
+				dp[i][j]=temp;
+			}
+		}
+	}
+
+	int ret=inf+1;
+	FOR(i,0,k1) if(dp[k1][i]<inf)
+		ret=min(ret, max(i-1, dp[k1][i]));
+	if(ret>=500000) ret=-1;
+	return ret;
+}
+
+int main() {
+	freopen("input.txt","r",stdin);freopen("output.txt","w",stdout);
+	int tests;cin>>tests;
+	for(int testcase=1; testcase<=tests; ++testcase) {
+		int ans = solve();
+		cerr<<testcase<<endl;
+		cout<<"Case #"<<testcase<<": ";
+		if(ans<0) cout<<"Lunchtime"<<endl;else 
+			cout<<ans<<endl;
+	}
+}

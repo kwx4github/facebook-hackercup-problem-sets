@@ -1,0 +1,174 @@
+#include <cstdlib>
+#include <cassert>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <cstdio>
+#include <stack>
+using namespace std;
+
+#define V(x) vector<x >
+#define vs V(string)
+#define vi V(int)
+#define vd V(double)
+#define vll V(long long)
+
+#define fr(x,y,z) for((x)=(y);(x)<(z);(x)++)
+#define fo(x,y) fr(x,0,y)
+#define fir(n) fo(i,n)
+#define fjr(n) fo(j,n)
+#define fkr(n) fo(k,n)
+#define fi fir(n)
+#define fj fjr(n)
+
+#define pb push_back
+#define sz size()
+#define cs c_str()
+
+#define fk fkr(n)
+#include <map>
+//#include <set>
+#include <algorithm>
+#define ll long long
+//#define flr(n) fo(l,n)
+//#define fl flr(n)
+//#define ins(x) insert(x)
+#define df double
+//#define srt(f) sort(f.begin(),f.end())
+
+
+
+int f[51000][8];
+bool bad=false;
+
+int& get(int a, int b) {
+  int x=b-4*(a/4);
+  //if (x>=8) bad=true;
+  //if (x<0) bad=true;
+  //assert(x>=0);
+  //assert(x<8);
+  return f[a][x];
+}
+
+df iv[4];
+df u[8][8];
+df v[8][8];
+df iv2[8];
+df mats[13000][8][8];
+
+void updatemat(int cb, bool isend, int yy) {
+  int j,k,l;
+  fjr(8) fkr(8) u[j][k]=0.0;
+  fjr(4) {
+    int nr=0;
+    fkr(8) nr+=get(cb+j,cb+k);
+    if (nr==0) {
+      u[j][j]=1.0;
+      continue;
+    }
+    fkr(8) u[j][k]=(df)(get(cb+j,cb+k))/(df)(nr);
+  }
+  if (isend) {
+    fkr(8) u[yy-cb][k] = 0.0;
+    u[yy-cb][yy-cb] = 1.0;
+  }
+  fr(j,4,8) u[j][j]=1.0;
+
+  for(int iter=0;iter<300;iter++) {
+    fjr(8) fkr(8) v[j][k]=0;
+    fjr(8) fkr(8) fo(l,8) v[j][l]+=u[j][k]*u[k][l];
+    fjr(8) fkr(8) u[j][k]=v[j][k];
+  }
+  if (!isend) fjr(8) fkr(8) mats[cb/4][j][k]=u[j][k];
+}
+
+void chain(int cb, bool isend) {
+  int j,k;
+  fkr(8) iv2[k]=0;
+  if (isend) {
+    fjr(4) fkr(8) iv2[k]+=iv[j]*u[j][k];
+  } else {
+    fjr(4) fkr(8) iv2[k]+=iv[j]*mats[cb/4][j][k];
+  }
+  fjr(4) iv[j]=iv2[j+4];
+}
+
+#define maxd 20000
+int e[maxd],x[maxd],y[maxd],z[maxd];
+
+int main(int argc, char *argv[]) {
+  int i,j;
+  int nc;
+  assert(scanf("%d",&nc)==1);
+  int ccmod=1,ccind=0;
+  if(argc>1) ccmod=atoi(argv[1]),ccind=atoi(argv[2]);
+  for(int cas=1;cas<=nc;cas++) {
+    bad=false;
+    fir(51000) fjr(8) f[i][j]=0;
+    int n,p,d;
+    assert(scanf("%d%d%d",&n,&p,&d)==3);
+    fir(p) {
+      int a,b,r;
+      assert(scanf("%d%d%d",&a,&b,&r)==3);
+      assert(get(a,b)==0);
+      get(a,b)=r;
+      assert(r<=5);
+      assert(r>=1);
+      //printf("%d %d %d\n",a,b,r);
+    }
+    fir(d) {
+      assert(scanf("%d%d%d",&e[i],&x[i],&y[i])==3);
+      if (e[i]==1) {
+        assert(scanf("%d",&z[i])==1);
+      } else {
+        z[i]=-1;
+      }
+      //printf("%d %d %d %d\n",e[i],x[i],y[i],z[i]);
+    }
+
+    if (cas%ccmod!=ccind) continue;
+
+    printf("Case #%d:",cas);
+    for(int cb=0;cb<n;cb+=4) {
+      updatemat(cb,false,-1);
+    }
+    fir(d) {
+      //printf("%d...\n", i); fflush(0);
+      if(e[i]==1) {
+        int a=x[i];
+        int b=y[i];
+        assert(z[i]<=5);
+        assert(z[i]>=1);
+        assert(get(a,b)==0);
+        get(a,b)=z[i];
+        updatemat(a/4,false,-1);
+      }
+      if(e[i]==2) {
+        int a=x[i];
+        int b=y[i];
+        assert(get(a,b)>0);
+        get(a,b)=0;
+        updatemat(a/4,false,-1);
+      }
+      if(e[i]==3) {
+        const int sb=4*(x[i]/4);
+        const int eb=4*(y[i]/4);
+        df ans=0.0;
+        fjr(4) iv[j]=0.0;
+        iv[x[i]-sb]=1.0;
+        for(int cb=sb;cb<=eb;cb+=4) {
+          const bool isend=(cb==eb);
+
+          if (isend) updatemat(cb,isend,y[i]);
+          chain(cb,isend);
+          if (isend) ans=iv2[y[i]-cb];
+          //if (isend) updatemat(cb,false,-1);
+        }
+        printf(" %.6f", ans);
+      }
+    }
+    puts("");
+    if(bad) puts("bad");
+  }
+  return 0;
+}

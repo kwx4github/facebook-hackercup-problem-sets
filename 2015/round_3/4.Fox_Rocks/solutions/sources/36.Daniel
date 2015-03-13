@@ -1,0 +1,180 @@
+#include <stdio.h>
+#include <math.h>
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include <vector>
+#include <string>
+#include <queue>
+#include <algorithm>
+#include <iostream>
+#include <utility>
+using namespace std;
+
+#define TRACE(x...) x
+#define WATCH(x) TRACE(cout << #x << " = " << x << endl)
+#define PRINT(x...) TRACE(printf(x))
+
+#define all(v) (v).begin(), (v).end()
+#define rall(v) (v).rbegin(), (v).rend()
+
+// If using C++11, change __typeof__ to decltype
+#define _for(i, a, b) for (decltype(a) i = (a); i != (b); ++i)
+#define foreach(x...) _for(x)
+#define forall(i, v) foreach(i, all(v))
+// If using C++11, change __typeof__ to decltype
+#define FU(i, a, b) for(decltype(a) i = (a); i < (b); ++i)
+#define fu(i, n) FU(i, 0, n)
+
+#define mset(c, v) memset(c, v, sizeof(c))
+#define mod(a, b) ((((a)%(b))+(b))%(b))
+#define pb push_back
+#define sz(c) int((c).size())
+const int INF = 0x3F3F3F3F; const int NEGINF = 0xC0C0C0C0;
+
+typedef long long ll;
+typedef vector<ll> vll;
+typedef vector<vll> vvll;
+typedef vector<int> vi;
+typedef vector<double> vd;
+typedef vector<vd> vvd;
+typedef vector<vi> vvi;
+
+int cmp(double x, double y = 0, double tol = 1.e-8) {
+	return (x <= y + tol) ? (x + tol < y) ? -1 : 0 : 1;
+}
+
+
+struct matrix {
+	bool dirty;
+	int M[4][8];
+	double inv[16];
+	int num;
+	int which[4];
+	matrix() {
+		mset(M, 0);
+		dirty = true;
+	}
+};
+
+void inv(double *M, double *out, int dim) {
+	fu(i, dim) fu(j, dim) out[i*dim+j] = (i==j);
+	fu(i, dim) {
+		int j = i;
+		for (; j < dim; ++j) if (cmp(M[j*dim + i])) break;
+		if (j == dim) j = i;
+		M[i*dim + i] = max(M[i*dim + i], 1.e-6);
+		// swap
+		fu(k, dim) swap(M[i*dim + k], M[j*dim + k]);
+		fu(k, dim) swap(out[i*dim + k], out[j*dim + k]);
+		// make it 1
+		double tmp = M[i*dim + i];
+		if (cmp(tmp) == 0) exit(1);
+		fu(k, dim) M[i*dim + k] /= tmp;
+		fu(k, dim) out[i*dim + k] /= tmp;
+		// make the rest 0
+		fu(k, dim) if (k != i && cmp(M[k*dim+i])) {
+			double val = M[k*dim + i];
+			fu(l, dim) M[k*dim + l] -= val*M[i*dim + l];
+			fu(l, dim) out[k*dim + l] -= val*out[i*dim + l];
+		}
+	}
+}
+
+void comp_inv(matrix& inp) {
+	static double tmp[16];
+	if (inp.dirty == false) return;
+	inp.dirty = false;
+	inp.num = 0;
+	fu(i, 4) {
+		int s = accumulate(inp.M[i], inp.M[i] + 8, 0);
+		if (s == 0) continue;
+		inp.which[inp.num] = i;
+		inp.num++;
+	}
+	if (inp.num == 0) return;
+	fu(p, inp.num) {
+		int i = inp.which[p];
+		double s = accumulate(inp.M[i], inp.M[i] + 8, 0);
+		fu(j, inp.num) tmp[p*inp.num + j] = (p == j) - (double)inp.M[i][inp.which[j]]/s;
+	}
+	inv(tmp, inp.inv, inp.num);
+}
+
+
+const int QT = 100;
+double solve2(matrix& M, int pos, double *out) {
+	static double tmp[4];
+	fu(i, 4) tmp[i] = accumulate(M.M[i], M.M[i]+8, 0);
+	fu(i, 4) out[i] = 0.;
+	out[pos] = 1.;
+	fu(_, QT) {
+		fu(i, 4) if (i != pos && cmp(tmp[i])) {
+			out[i] = 0.;
+			fu(j, 4) out[i] += out[j] * M.M[i][j]/tmp[i];
+		}
+	}
+}
+
+double solve(vector<matrix>& V, int A, int B) {
+	int bA = A/4;
+	int bB = B/4;
+	if (bB < bA) return 0.;
+	static double tmp[3][4];
+	solve2(V[bB], B - bB*4, tmp[0]);
+	int cur = 0;
+	for (int i = bB - 1; i >= bA; --i) {
+		comp_inv(V[i]);
+		fu(_, V[i].num) {
+			int k = V[i].which[_];
+			double s = accumulate(V[i].M[k], V[i].M[k] + 8, 0);
+			tmp[2][_] = 0;
+			FU(l, 4, 8) tmp[2][_] += tmp[cur][l-4]*V[i].M[k][l]/s;
+		}
+		fu(_, 4) tmp[1-cur][_] = 0.;
+		fu(_, V[i].num) {
+			fu(l, V[i].num) tmp[1-cur][V[i].which[_]] += V[i].inv[_*V[i].num + l] * tmp[2][l];
+		}
+		cur = 1 - cur;
+	}
+	return tmp[cur][A-4*bA];
+}
+
+int main() {
+    int _42;
+    scanf("%d", &_42);
+    fu(_41, _42) {
+        printf("Case #%d:", _41+1);
+				int N, P, D;
+				scanf("%d %d %d", &N, &P, &D);
+				vector<matrix> V((N+3)/4);
+				fu(i, P) {
+					int A, B, R;
+					scanf("%d %d %d", &A, &B, &R);
+					int lA = A/4;
+					int lB = lA*4;
+					V[lA].M[A - lB][B - lB] = R;
+				}
+				fu(d, D) {
+					int E, A, B;
+					scanf("%d %d %d", &E, &A, &B);
+					int lA = A/4;
+					int lB = lA*4;
+					if (E == 1) {
+						int Z;
+						scanf("%d", &Z);
+						V[lA].dirty = true;
+						V[lA].M[A-lB][B-lB] = Z;
+					} else if (E == 2) {
+						V[lA].dirty = true;
+						V[lA].M[A-lB][B-lB] = 0;
+					} else if (E == 3) {
+						printf(" %.6lf", solve(V, A, B));
+					} else {
+						printf("WTF!!\n");
+					}
+				}
+				printf("\n");
+    }
+    return 0;
+}

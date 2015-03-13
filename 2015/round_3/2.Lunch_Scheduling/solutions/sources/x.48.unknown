@@ -1,0 +1,137 @@
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <functional>
+#include <complex>
+#include <queue>
+#include <stack>
+#include <cmath>
+#include <cassert>
+#include <tuple>
+using namespace std;
+typedef long long LL;
+typedef complex<double> CMP;
+
+const int DAY_BEG = 0;
+const int DAY_END = 80000000;
+const int NOTHING = -1;
+
+// go from <0> to <N-1> by using J_next or W_next edges.
+int solve(int N, const vector<int>& J_next, const vector<int>& W_next)
+{
+	int best = 0x7fffffff;
+
+	enum{J,W,Pos};
+	vector<tuple<int,int,int>> Q;
+	Q.emplace_back(0, 0, 0);
+
+	for(int sum=0; !Q.empty(); ++sum) {
+		vector<int> j2f(N+10, -1);
+
+		for(auto q: Q) {
+			int j,w,p; tie(j,w,p) = q;
+
+			// goal
+			if(p == N-1) {
+				best = min(best, max(j,w));
+				break;
+			}
+
+			// (j+1, w, pj)
+			int pj = J_next[p];
+			if(pj > p) j2f[j+1] = max(j2f[j+1], pj);
+			// (j, w+1, pw)
+			int pw = W_next[p];
+			if(pw > p) j2f[j] = max(j2f[j], pw);
+		}
+
+		Q.clear();
+		for(int j=0; j<j2f.size(); ++j) if(j2f[j] != -1)
+			Q.emplace_back(j, sum+1-j, j2f[j]);
+	}
+
+	return best==0x7fffffff ? -1 : best;
+}
+
+void adjust(vector<pair<int,int>>& W, int L) {
+	for(auto& e: W) {
+		if(e.first <= L-1)
+			e.first = 0;
+		e.second += L-1;
+		e.second = min(DAY_END, e.second);
+	}
+}
+
+int solve(vector<pair<int,int>> Js, vector<pair<int,int>> Ws, int L)
+{
+	// eliminate L for simplicity.
+	// can we cover [DAY_BEG, DAY_END] by Js and Ws?
+	adjust(Js, L);
+	adjust(Ws, L);
+
+	set<int> times;
+	times.insert(DAY_BEG);
+	times.insert(DAY_END);
+	for(auto& e: Js) times.insert(e.second);
+	for(auto& e: Ws) times.insert(e.second);
+	
+	map<int, int> t2v;
+	{int id = 0; for(int t: times) t2v[t] = id++;}
+
+	int N = t2v.size();
+	vector<int> J_next(N, NOTHING);
+	vector<int> W_next(N, NOTHING);
+
+	for(int t: times) {
+		{
+			int next = NOTHING;
+			for(auto& e: Js)
+				if(e.first <= t && t < e.second)
+					next = max(next, e.second);
+			if(next != NOTHING)
+				J_next[t2v[t]] = t2v[next];
+		}
+		{
+			int next = NOTHING;
+			for(auto& e: Ws)
+				if(e.first <= t && t < e.second)
+					next = max(next, e.second);
+			if(next != NOTHING) {
+				W_next[t2v[t]] = t2v[next];
+			}
+		}
+	}
+
+	return solve(N, J_next, W_next);
+}
+
+void problem_main()
+{
+	int J, W, L;
+	cin >> J >> W >> L;
+	vector<pair<int,int>> Js(J), Ws(W);
+	for(auto& e: Js) cin>>e.first>>e.second;
+	for(auto& e: Ws) cin>>e.first>>e.second;
+	int ans = solve(Js, Ws, L);
+	if(ans < 0)
+		cout << "Lunchtime" << endl;
+	else
+		cout << ans << endl;
+}
+
+int main()
+{
+	int T; cin>>T;
+	for(int C=1; C<=T; ++C)
+	{
+		cout << "Case #" << C << ": ";
+		problem_main();
+	}
+}

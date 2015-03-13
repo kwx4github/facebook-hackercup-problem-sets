@@ -1,0 +1,194 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cstdio>
+#include <map>
+#include <cmath>
+using namespace std;
+
+bool eq(double a, double b)
+{
+	return fabs(a - b) < 1e-9;
+}
+
+bool gr(double a, double b)
+{
+	return a > b && !eq(a, b);
+}
+
+bool ls_eq(double a, double b)
+{
+	return a < b || eq(a, b);
+}
+
+
+bool ls(double a, double b)
+{
+	return a < b && !eq(a, b);
+}
+
+struct Point
+{
+	double x, y;
+
+	void scan()
+	{
+		scanf("%lf%lf", &x, &y);
+	}
+
+	Point() : x(0), y(0) {}
+	Point(double _x, double _y) : x(_x), y(_y) {}
+	
+	bool operator == (Point p) const
+	{
+		return eq(x, p.x) && eq(y, p.y);
+	}
+
+	bool operator < (Point p) const
+	{
+		if (!eq(x, p.x))
+			return ls(x, p.x);
+		return ls(y, p.y);
+	}
+
+	Point operator + (Point p)
+	{
+		return Point(x + p.x, y + p.y);
+	}
+
+	Point operator - (Point p)
+	{
+		return Point(x - p.x, y - p.y);
+	}
+
+	Point operator * (double k)
+	{
+		return Point(x * k, y * k);
+	}
+
+	Point operator / (double k)
+	{
+		return Point(x / k, y / k);
+	}
+
+	double operator % (Point p)
+	{
+		return x * p.x + y * p.y;
+	}
+
+	double len()
+	{
+		return sqrt(*this % *this);
+	}
+
+	double dist_to(Point p)
+	{
+		return (*this - p).len();
+	}
+	
+	double operator * (Point p)
+	{
+		return x * p.y - y * p.x;
+	}
+
+	bool on_line(Point A, Point B)
+	{
+		Point C = *this;
+		return eq((A - C) * (B - C), 0);
+	}
+
+	bool on_segment(Point A, Point B)
+	{
+		Point C = *this;
+		return C.on_line(A, B) &&
+			ls_eq((A - C) % (B - C), 0);
+	}
+
+	Point normalize(double k)
+	{
+		Point A = *this;
+		double l = A.len();
+		if (eq(l, 0))
+		{
+			if (eq(k, 0))
+				return A;
+			throw;
+		}
+
+		A = A / l;
+		A = A * k;
+		return A;
+	}
+};
+
+void solve(int test)
+{
+	Point A0;
+	A0.scan();
+	int d;
+	scanf("%d", &d);
+	int n;
+	scanf("%d", &n);
+	vector<Point> list(n);
+	for (int i = 0; i < n; i++)
+		list[i].scan();
+	
+	int ans = 0;
+	for (int i = 0; i < n; i++)
+	{
+		if (gr(A0.dist_to(list[i]), d))
+			continue;
+
+		Point B0 = A0 + (list[i] - A0).normalize(d);
+	
+		//printf("%.10lf %.10lf %.10lf %.10lf\n", A0.x, A0.y, B0.x, B0.y);
+
+		int a = 0;
+		for (auto p : list)
+			if (p.on_segment(A0, B0))
+				a++;
+
+		//printf("a = %d\n", a);
+
+		map<Point, int> mx;
+		int c0 = 0;
+		for (auto p : list)
+		{
+			Point dp = p - B0;
+			if (dp == Point(0, 0))
+				c0++;
+			else
+			{
+				dp = dp.normalize(1);
+				//cout << dp.x << " " << dp.y << endl;
+				mx[dp.normalize(1)]++;
+			}
+		}
+		
+		//cout << c0 << endl;
+
+		int max_c = 0;
+		for (auto p : mx)
+			max_c = max(max_c, p.second);
+		//cout << "mx " << max_c << endl;
+		max_c += c0;
+
+		ans = max(ans, a * max_c);
+	}
+
+	printf("Case #%d: %d\n", test, ans);
+}
+
+int main()
+{
+	freopen("in2.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int tests;
+	scanf("%d", &tests);
+	for (int i = 0; i < tests; i++)
+		solve(i + 1);
+
+	return 0;
+}
+

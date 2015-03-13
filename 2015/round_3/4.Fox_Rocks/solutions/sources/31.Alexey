@@ -1,0 +1,307 @@
+#include <stdio.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <functional>
+#include <queue>
+#include <deque>
+#include <cmath>
+#include <ctime>
+#include <stack>
+#include <set>
+#include <map>
+#include <cassert>
+#include <memory.h>
+#include <sstream>
+
+using namespace std;
+
+#define mp make_pair
+#define pb push_back
+#define all(a) a.begin(), a.end()
+
+typedef long long li;
+typedef long double ld;
+typedef vector<int> vi;
+typedef pair <int, int> pi;
+
+void solve();
+
+
+int gcd(int a, int b);
+
+int main() {
+	freopen("/Users/riad/ClionProjects/for-jhelper/input.txt", "r", stdin);
+	#ifndef DEBUG
+	freopen("/Users/riad/ClionProjects/for-jhelper/output2.txt", "w", stdout);
+	#endif
+	clock_t start = clock();
+
+	cout.sync_with_stdio(0);
+	cout.precision(6);
+	cout << fixed;
+	cin.tie(0);
+	int t = 1;
+	cin >> t;
+	for(int i = 1; i <= t; ++i) {
+		cout << "Case #" << i << ": ";
+		solve();
+	}
+#ifdef YA
+	cerr<<"\n\n\n"<<(clock() - start) / 1.0 / CLOCKS_PER_SEC<<"\n\n\n";
+#endif
+	return 0;
+}
+
+
+typedef vector<double> vd;
+typedef vector<vector<double>> matrix;
+
+
+vector<vector<pi>> g;
+
+const int MAGIC = 20;
+const int shift = 1 << 15;
+
+
+vector<matrix> inself;
+
+vector<matrix> tree(shift << 1);
+
+
+void genSelf(int x) {
+	matrix m(4, vd(4));
+	for(int i = 0; i < 4; ++i) {
+		m[i][i] = 1;
+	}
+
+
+	matrix v(4, vd(4));
+
+
+	for(int i = 0; i < 4; ++i) {
+		if(g[4 * x + i].empty())
+			continue;
+		double s = 0;
+		int z = g.size();
+		for(pi to: g[4 * x + i]) {
+			if(to.first / 4 == x) {
+				v[i][to.first - 4 * x] = to.second;
+
+			}
+			s += to.second;
+		}
+		for(int j = 0; j < 4; ++j) {
+			v[i][j] /= s;
+		}
+	}
+
+
+	for (int it = 0; it < MAGIC; ++it) {
+		matrix nm(4, vd(4));
+		for(int from = 0; from < 4; ++from) {
+			for(int next = 0; next < 4; ++next) {
+				for(int to = 0; to < 4; ++to) {
+					if(from == to)
+						nm[from][to] = 1;
+					else {
+						nm[from][to] += v[from][next] * m[next][to];
+					}
+				}
+			}
+		}
+		m.swap(nm);
+	}
+
+	inself[x] = m;
+
+}
+
+matrix mult(matrix a, matrix b) {
+	int n = a.size();
+	matrix v(n, vd(n));
+	for(int i = 0; i < n; ++i) {
+		for(int j = 0; j < n; ++j) {
+			for(int k = 0; k < n; ++k) {
+				v[i][j] += a[i][k] * b[k][j];
+			}
+		}
+	}
+	return v;
+}
+
+
+void genNext(int x) {
+	matrix v(8, vd(8));
+
+
+	for(int i = 4; i < 8; ++i) {
+		v[i][i] = 1;
+	}
+
+	for(int i = 0; i < 4; ++i) {
+		if(g[4 * x + i].empty())
+			continue;
+		double s = 0;
+		for(pi to: g[4 * x + i]) {
+			v[i][to.first - 4 * x] = to.second;
+			s += to.second;
+		}
+		for(int j = 0; j < 8; ++j) {
+			v[i][j] /= s;
+		}
+	}
+//
+//	for(int i = 0; i < 8; ++i) {
+//		for(int j = 0; j < 8; ++j) {
+//			//tree[shift + x][i][j] = v[i][j + 4];
+//			cout << v[i][j] << ' ';
+//		}
+//		cout << endl;
+//
+//	}
+
+	for(int i = 0; i < MAGIC; ++i) {
+		v = mult(v, v);
+	}
+
+	for(int i = 0; i < 4; ++i) {
+		for(int j = 0; j < 4; ++j) {
+			tree[shift + x][i][j] = v[i][j + 4];
+//			cout << v[i][j + 4] << ' ';
+		}
+//		cout << endl;
+
+	}
+}
+
+matrix get(int x, int y) {
+	if(x >= y) {
+		matrix m(4, vd(4));
+		for(int i = 0; i < 4; ++i) {
+			m[i][i] = 1;
+		}
+		return m;
+	}
+
+	if(x % 2) {
+		return mult(tree[x], get(x + 1, y));
+	}
+	if(y % 2) {
+		return mult(get(x, y - 1), tree[y - 1]);
+	}
+	return get(x / 2, y / 2);
+}
+
+void solve() {
+
+	int n, p, d;
+
+	cin >> n >> p >> d;
+
+	if(n % 4 != 0) {
+		n = n / 4 * 4 + 4;
+	}
+	g.assign(n, vector<pi>());
+	inself.assign(n / 4, matrix());
+
+
+	for(int i = 0; i < shift * 2; ++i) {
+		tree[i] = matrix(4, vd(4));
+	}
+
+	for(int i = 0; i < p; ++i) {
+		int x, y, z;
+		cin >> x >> y >> z;
+		g[x].push_back(mp(y, z));
+	}
+
+
+	for (int i = 0; i < n / 4; ++i) {
+		genSelf(i);
+	}
+
+	for (int i = 0; i < n / 4 - 1; ++i) {
+		genNext(i);
+	}
+
+	for (int i = shift - 1; i >= 0; --i) {
+		tree[i] = mult(tree[2 * i], tree[2 * i + 1]);
+	}
+
+
+	for (int i = 0; i < d; ++i) {
+		int e, x, y;
+		cin >> e >> x >> y;
+		if (e == 1) {
+			int z;
+			cin >> z;
+			g[x].push_back(mp(y, z));
+
+		}
+		else if(e == 2) {
+			for(int c = 0; c < g[x].size(); ++c) {
+				if(g[x][c].first == y) {
+					swap(g[x][c], g[x].back());
+					g[x].pop_back();
+					break;
+				}
+			}
+		}
+		else {
+			int X = x / 4;
+			int Y = y / 4;
+
+			if(X > Y) {
+				cout << ' ' << 0.000000;
+				continue;
+			}
+
+
+			matrix m = get(X + shift, Y + shift);
+			double ans = 0;
+			for(int i = 0; i < 4; ++i) {
+				ans += m[x % 4][i] * inself[Y][i][y % 4];
+			}
+
+//			for (int i = 0; i < 4; ++i) {
+//				for(int j = 0; j < 4; ++j) {
+//					cout << m[i][j] << ' ';
+//				}
+//				cout << endl;
+//			}
+//			cout << "\n\n\n";
+//			cout << ' ' << ans;
+//			cout << "\n\n\n";
+
+			cout << ' ' << ans;
+		}
+
+		if(e == 1 || e == 2) {
+			genSelf(x / 4);
+			genNext(x / 4);
+
+			int pos = shift + x / 4;
+			for(pos /= 2; pos; pos /= 2) {
+				int i = pos;
+				tree[i] = mult(tree[2 * i], tree[2 * i + 1]);
+			}
+		}
+
+	}
+
+	cout << endl;
+
+
+
+
+}
+
+int gcd(int a, int b) {
+	while(b) {
+		a %= b;
+		swap(a, b);
+	}
+	return abs(a);
+}

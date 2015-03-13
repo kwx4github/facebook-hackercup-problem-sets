@@ -1,0 +1,107 @@
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <functional>
+#include <complex>
+#include <queue>
+#include <stack>
+#include <cmath>
+#include <cassert>
+#include <tuple>
+using namespace std;
+typedef long long LL;
+typedef complex<double> CMP;
+
+const double EPS = 1e-13;
+
+int solve(double D, const vector<CMP>& Ps)
+{
+	int best = 0;
+
+	// First throw direction must be towards some target (otherwise the score=0)
+	for(auto Dir: Ps) {
+		// how many can I get on the first segment?
+		int A = 0;
+		for(auto P: Ps)
+			if(norm(P) <= D*D) // close
+				if(P.real()*Dir.imag() == P.imag()*Dir.real()) // same vec
+					if(P.real()*Dir.real()>=0 && P.imag()*Dir.imag()>=0) // same dir
+						++A;
+		if(A == 0)
+			continue;
+
+		// the turning point.
+		CMP Q = Dir/abs(Dir)*D;
+
+		bool turn_at_target = (norm(Dir)==D*D);
+
+		int B = 0;
+
+		// throw to left (arg=pi)
+		for(auto Q2: Ps)
+			if(abs(Q2.imag()-Q.imag())<EPS && Q2.real()<Q.real()+EPS)
+				++B;
+
+		// throw to other directions.
+		// arg -> pt mapping relative to Q of all the remaining points.
+		vector<pair<double, CMP>> mm;
+		for(auto Q2: Ps) if(!turn_at_target || Q2!=Dir)
+			mm.emplace_back(arg(Q2-Q), Q2-Q);
+		sort(mm.begin(), mm.end(), [&](const pair<double, CMP>& lhs, const pair<double, CMP>& rhs){
+			return lhs.first < rhs.first;
+		});
+
+		for(int i=0; i<mm.size(); ++i) {
+			int B2 = (turn_at_target ? 1 : 0);
+			// throw to mm[i], check colinear-ness for closer arg points.
+			CMP Dir2 = mm[i].second / abs(mm[i].second);
+
+			const double EPS2 = 1e-8;
+			for(int k=i; k<mm.size(); ++k) {
+				if(mm[k].first - mm[i].first > EPS2)
+					break;
+				CMP rot = mm[k].second / Dir2;
+				if(abs(rot.imag())<EPS && rot.real()>-EPS)
+					++B2;
+			}
+			B = max(B, B2);
+		}
+
+		best = max(best, A*B);
+	}
+	return best;
+}
+
+void problem_main()
+{
+	int ox, oy;
+	cin >> ox >> oy;
+
+	int D, N;
+	cin >> D >> N;
+	vector<CMP> P(N);
+	for(auto& Pi: P) {
+		int px, py;
+		cin >> px >> py;
+		Pi = CMP(px-ox, py-oy);
+	}
+
+	cout << solve(D, P) << endl;
+}
+
+int main()
+{
+	int T; cin>>T;
+	for(int C=1; C<=T; ++C)
+	{
+		cout << "Case #" << C << ": ";
+		problem_main();
+	}
+}

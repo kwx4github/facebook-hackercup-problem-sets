@@ -1,0 +1,264 @@
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <map>
+#include <set>
+#include <vector>
+#include <queue>
+#include <bitset>
+#include <numeric>
+#include <ctime>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+
+using namespace std;
+
+typedef pair<int, int> PII;
+typedef long long ll;
+
+#define fi first
+#define se second
+#define mp make_pair
+#define pb push_back
+#define pct __builtin_popcount
+
+#define N 50010
+
+struct vec {
+	double a[4];
+	vec () {
+		clear();
+	}
+	vec(int c) {
+		clear();
+		a[c] = 1;
+	}
+	void clear() {
+		memset(a, 0, sizeof a);
+	}
+	void out() {
+		for (int i = 0; i < 4; i ++) 
+			printf ("%.6lf%c", a[i], i == 3?'\n':' ');
+	}
+};
+
+struct mat {
+	double a[4][4];
+	mat () {
+		clear();
+	}
+	void clear() {
+		memset(a, 0, sizeof a);
+	}
+	void out() {
+		for (int i = 0; i < 4; i ++) 
+			for (int j = 0; j < 4; j ++) 
+				printf ("%.6lf%c", a[i][j], j == 3?'\n':' ');
+	}
+};
+
+vec operator * (vec a, mat b) {
+	vec c;
+	for (int i = 0; i < 4; i ++) 
+		for (int j = 0; j < 4; j ++) 
+			c.a[j] += a.a[i]*b.a[i][j];
+	return c;
+}
+
+vec operator + (vec a, vec b) {
+	vec c;
+	for (int i = 0; i < 4; i ++) 
+		c.a[i] = a.a[i] + b.a[i];
+	return c;
+}
+
+mat operator * (mat a, mat b) {
+	mat c;
+	for (int i = 0; i < 4; i ++) 
+		for (int j = 0; j < 4; j ++) 
+			for (int k = 0; k < 4; k ++) 
+				c.a[i][k] += a.a[i][j]*b.a[j][k];
+	return c;
+}
+
+mat operator + (mat a, mat b) {
+	mat c;
+	for (int i = 0; i < 4; i ++) 
+		for (int j = 0; j < 4; j ++) 
+			c.a[i][j] = a.a[i][j]+b.a[i][j];
+	return c;
+}
+
+mat id; // init
+
+int n;
+mat f[N*4];
+int sa[N][4][4];
+int sb[N][4][4];
+
+pair<mat, mat> cc(int x) {
+	mat a, b;
+	// a: same
+	// b: not same
+	for (int i = 0; i < 4; i ++) {
+		int S = 0;
+		for (int j = 0; j < 4; j ++) S += sa[x][i][j]+sb[x][i][j];
+		if (S == 0) {
+			a.a[i][i] = 1;
+			continue;
+		}
+		for (int j = 0; j < 4; j ++) {
+			a.a[i][j] = (double)sa[x][i][j]/S;
+			b.a[i][j] = (double)sb[x][i][j]/S;
+		}
+	}
+	//mat wa = id, wb;
+	for (int _ = 30; _ --;) {
+		mat na, nb;
+		na = a*a;
+		nb = b+a*b;
+		a = na;
+		b = nb;
+	}
+	//a.out();
+	//b.out();
+	return mp(a, b);
+}
+
+mat calc(int x) {
+	return cc(x).se;
+}
+
+double ff(vec c, int x, int k) {
+	//return c*cc(x).fi;
+	mat a;
+	// a: same
+	// b: not same
+	for (int i = 0; i < 4; i ++) {
+		int S = 0;
+		for (int j = 0; j < 4; j ++) S += sa[x][i][j]+sb[x][i][j];
+		if (S == 0 || i == k) {
+			a.a[i][i] = 1;
+			continue;
+		}
+		for (int j = 0; j < 4; j ++) {
+			a.a[i][j] = (double)sa[x][i][j]/S;
+			//b.a[i][j] = (double)sb[x][i][j]/S;
+		}
+	}
+	//mat wa = id, wb;
+	for (int _ = 30; _ --;) {
+		a = a*a;
+	}
+	//a.out();
+	//b.out();
+	return (c*a).a[k];
+}
+
+void blt(int p, int l, int r) {
+	if (l == r-1) {
+		f[p] = calc(l);
+		return;
+	}
+	int mid = (l+r)/2;
+	blt(p*2+1, l, mid);
+	blt(p*2+2, mid, r);
+	f[p] = f[p*2+1]*f[p*2+2];
+}
+
+void upd(int p, int l, int r, int x) {
+	if (l == r-1) {
+		f[p] = calc(l);
+		return;
+	}
+	int mid = (l+r)/2;
+	if (x < mid) upd(p*2+1, l, mid, x);
+	else upd(p*2+2, mid, r, x);
+	f[p] = f[p*2+1]*f[p*2+2];
+}
+
+mat ask(int p, int l, int r, int L, int R) {
+	if (L <= l && r <= R) return f[p];
+	int mid = (l+r)/2; 
+	if (!(mid < R)) return ask(p*2+1, l, mid, L, R);
+	if (!(L < mid)) return ask(p*2+2, mid, r, L, R);
+	return ask(p*2+1, l, mid, L, R)*ask(p*2+2, mid, r, L, R);
+}
+
+mat ask(int x, int y) {
+	if (x == y) return id;
+	return ask(0, 0, n, x, y);
+}
+
+int main (){
+	id.a[0][0] = id.a[2][2] = id.a[2][2] = id.a[3][3] = 1;
+	int _; cin >> _;
+	for (int __ = 1; __ <= _; __ ++) {
+		int p, d;
+		cin >> n >> p >> d;
+		while (n%4 != 0) n ++;
+		n /= 4;
+		for (int i = 0; i < n; i ++)
+			for (int j = 0; j < 4; j ++) 
+				for (int k = 0; k < 4; k ++) 
+					sa[i][j][k] = sb[i][j][k] = 0;
+		for (int i = 0; i < p; i ++) {
+			int x, y, z;
+			cin >> x >> y >> z;
+			if (x/4 == y/4) {
+				sa[x/4][x%4][y%4] = z;
+			} else {
+				sb[x/4][x%4][y%4] = z;
+			}
+		}
+		//cc(0);
+		//return 0;
+		
+		// calc init
+		for (int i = 0; i < n*4; i ++) f[i].clear();
+		blt(0, 0, n);
+		vector<double> S;
+		for (int i = 0; i < d; i ++) {
+			int e, x, y, z;
+			cin >> e >> x >> y;
+			if (e == 1) {
+				cin >> z;
+				if (x/4 == y/4) {
+					sa[x/4][x%4][y%4] = z;
+				} else {
+					sb[x/4][x%4][y%4] = z;
+				}
+				upd(0, 0, n, x/4);
+			} else
+			if (e == 2) {
+				if (x/4 == y/4) {
+					sa[x/4][x%4][y%4] = 0;
+				} else {
+					sb[x/4][x%4][y%4] = 0;
+				}
+				upd(0, 0, n, x/4);
+			} else
+			if (e == 3) {
+				if (y/4 < x/4) {
+					S.pb(0);
+					continue;
+				}
+				mat c = ask(x/4, y/4);
+				//c.out();
+				vec d = vec(x%4)*c;
+				//d.out();
+				double dd = ff(d, y/4, y%4);
+				S.pb(dd);
+				//return 0;
+			}
+		}
+		printf ("Case #%d:", __);
+		for (int i = 0; i < (int) S.size(); i ++) 
+			printf (" %.6lf", S[i]);
+		puts("");
+	}
+	return 0;
+}

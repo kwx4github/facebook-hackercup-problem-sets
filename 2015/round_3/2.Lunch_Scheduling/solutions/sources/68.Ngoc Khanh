@@ -1,0 +1,121 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+const int INF = (int) 1e9 + 7;
+const int N = 3000;
+int f[N + 1][N + 1];
+int a[N];
+int b[N];
+int c[N];
+int d[N];
+
+struct RangeMaximumQuery {
+    vector<vector<int> > maxValue;
+    vector<int> lg;
+    int n;
+
+    RangeMaximumQuery(const vector<int> &a) {
+        n = a.size();
+        lg.resize(n + 1);
+        for (int i = 1, j = 0; i <= n; ++i) {
+            while (1 << (j + 1) <= i) ++j;
+            lg[i] = j;
+        }
+        maxValue.assign(n, vector<int>(lg[n] + 1));
+        for (int i = 0; i < n; ++i) maxValue[i][0] = a[i];
+        for (int j = 1; 1 << j <= n; ++j) {
+            for (int i = 0; i + (1 << j) <= n; ++i) {
+                maxValue[i][j] = max(maxValue[i][j - 1], maxValue[i + (1 << (j - 1))][j - 1]);
+            }
+        }
+    }
+
+    int get(int l, int r) const {
+        assert(l != r);
+        int k = lg[r - l];
+        return max(maxValue[l][k], maxValue[r - (1 << k)][k]);
+    }
+};
+
+int solve() {
+    vector<int> important;
+    int n; cin >> n;
+    int m; cin >> m;
+    int lunch; cin >> lunch;
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i] >> b[i];
+        important.push_back(a[i]);
+        important.push_back(b[i]);
+    }
+    for (int i = 0; i < m; ++i) {
+        cin >> c[i] >> d[i];
+        important.push_back(c[i]);
+        important.push_back(d[i]);
+    }
+    important.push_back(0);
+    important.push_back(80000000);
+    sort(important.begin(), important.end());
+    important.erase(unique(important.begin(), important.end()), important.end());
+    vector<int> reachA (important.size(), -1);
+    vector<int> reachB (important.size(), -1);
+    for (int i = 0; i < n; ++i) {
+        int low = lower_bound(important.begin(), important.end(), a[i]) - important.begin();
+        int high = lower_bound(important.begin(), important.end(), b[i]) - important.begin();
+        for (int i = low; i < high; ++i) reachA[i] = max(reachA[i], high);
+    }
+    for (int i = 0; i < m; ++i) {
+        int low = lower_bound(important.begin(), important.end(), c[i]) - important.begin();
+        int high = lower_bound(important.begin(), important.end(), d[i]) - important.begin();
+        for (int i = low; i < high; ++i) reachB[i] = max(reachB[i], high);
+    }
+    for (int i = 0; i + 1 < (int) important.size(); ++i) {
+        if (reachA[i] == -1 && reachB[i] == -1 && important[i + 1] - important[i] >= lunch) {
+            return -1;
+        }
+    }
+    RangeMaximumQuery rmqA (reachA);
+    RangeMaximumQuery rmqB (reachB);
+    memset(f, 0, sizeof f);
+    f[0][0] = 0;
+    int answer = INF;
+    for (int i = 0; i <= n; ++i) {
+        for (int j = 0; j <= m; ++j) {
+            int stop = f[i][j];
+            if (important.back() - important[stop] < lunch) {
+                answer = min(answer, max(i, j));
+            } else {
+                int low = stop;
+                int high = important.size() - 1;
+                while (low < high) {
+                    int mid = (low + high) / 2;
+                    if (important[mid] - important[stop] >= lunch) {
+                        high = mid;
+                    } else {
+                        low = mid + 1;
+                    }
+                }
+                assert(important[low] - important[stop] >= lunch);
+                int rA = max(stop, rmqA.get(stop, low));
+                if (i + 1 <= n) f[i + 1][j] = max(f[i + 1][j], rA);
+                int rB = max(stop, rmqB.get(stop, low));
+                if (j + 1 <= m) f[i][j + 1] = max(f[i][j + 1], rB);
+            }
+        }
+    }
+    assert(answer != INF);
+    return answer;
+}
+
+int main() {
+    assert(freopen("B.in", "r", stdin));
+    assert(freopen("B.out", "w", stdout));
+    ios::sync_with_stdio(false);
+    int numTests; cin >> numTests;
+    for (int i = 0; i < numTests; ++i) {
+        printf("Case #%d: ", i + 1);
+        int answer = solve();
+        if (answer == -1) puts("Lunchtime");
+        else printf("%d\n", answer);
+    }
+    return 0;
+}

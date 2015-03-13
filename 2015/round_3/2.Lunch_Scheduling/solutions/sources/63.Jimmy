@@ -1,0 +1,208 @@
+package fb_round3;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.StringTokenizer;
+
+public class B {
+    private static final int INF = 10000;
+
+    public static void main(String[] args) throws FileNotFoundException {
+        Kattio io;
+
+//        io = new Kattio(System.in, System.out);
+//        io = new Kattio(new FileInputStream("fb_round3/B-test.in"), System.out);
+//        io = new Kattio(new FileInputStream("fb_round3/B-sample.in"), System.out);
+        io = new Kattio(new FileInputStream("fb_round3/lunch_scheduling.txt"), new FileOutputStream("fb_round3/lunch.out"));
+//        io = new Kattio(new FileInputStream("fb_round3/B-large-0.in"), new FileOutputStream("fb_round3/B-large-0.out"));
+
+        int cases = io.getInt();
+        for (int i = 1; i <= cases; i++) {
+            io.print("Case #" + i + ": ");
+            new B().solve(io);
+            io.flush();
+        }
+        io.close();
+    }
+
+    private static class Meeting implements Comparable<Meeting> {
+        public int start, end, p, index;
+
+        public Meeting(int start, int end, int p)
+        {
+            this.start = start;
+            this.end = end;
+            this.p = p;
+        }
+
+        @Override
+        public int compareTo(Meeting o)
+        {
+            return start - o.start;
+        }
+    }
+
+    ArrayList<Meeting> meetings;
+    int memo[][][];
+
+    private void solve(Kattio io) {
+        int m1 = io.getInt(), m2 = io.getInt();
+        lunchTime = io.getInt();
+        meetings = new ArrayList<Meeting>();
+        for (int i = 0; i < m1; i++)
+        {
+            Meeting meeting = new Meeting(io.getInt(), io.getInt(), 0);
+            meetings.add(meeting);
+        }
+        for (int i = 0; i < m2; i++)
+        {
+            Meeting meeting = new Meeting(io.getInt(), io.getInt(), 1);
+            meetings.add(meeting);
+        }
+        Collections.sort(meetings);
+        candCache = new ArrayList<>();
+        memo = new int[meetings.size()][Math.max(m1,m2)+1][2];
+
+        for (int i = 0; i < meetings.size(); i++)
+        {
+            meetings.get(i).index = i;
+            candCache.add(null);
+        }
+        int ans = go(-1, lunchTime, 0, 0);
+        if (ans >= INF) {
+            io.println("Lunchtime");
+        } else {
+            io.println(ans);
+        }
+    }
+
+    private static final int EOD = 80000000;
+    private int lunchTime;
+
+    private int go(int end, int lunchTime, int delta, int most)
+    {
+        int lastEnd = end < 0 ? 0 : meetings.get(end).end;
+        if (lastEnd + lunchTime > EOD) return delta;
+
+        if (end >= 0 && memo[end][delta][most] > 0) {
+            return memo[end][delta][most] - 1;
+        }
+
+        int best = INF;
+
+        for (Meeting m : getCandidateMeetings(end))
+        {
+            int add = 0, newDelta = delta, newMost = most;
+            if (m.p == most) {
+                newDelta++;
+            } else {
+                add = 1;
+                newDelta--;
+                if (newDelta < 0) {
+                    newDelta=-newDelta;
+                    newMost = 1-newMost;
+                    add = 0;
+                }
+            }
+            int v = add + go(m.index, lunchTime, newDelta, newMost);
+            best = Math.min(best, v);
+        }
+
+        if (end >= 0)
+            memo[end][delta][most] = best + 1;
+
+        return best;
+    }
+
+    private List<List<Meeting>> candCache;
+
+    private List<Meeting> getCandidateMeetings(int end)
+    {
+        if (end >= 0 && candCache.get(end) != null) return candCache.get(end);
+
+        int lastEnd = end < 0 ? 0 : meetings.get(end).end;
+
+        int startBefore = lastEnd + lunchTime;
+
+        ArrayList<Meeting> candidates = new ArrayList<>();
+        Meeting m1 = null, m2 = null;
+        for (Meeting m : meetings)
+        {
+            if (m.start >= startBefore) break;
+            if (m.end <= lastEnd) continue;
+            if (m.p == 0 && (m1 == null || m.end > m1.end)) m1 = m;
+            if (m.p == 1 && (m2 == null || m.end > m2.end)) m2 = m;
+//            candidates.add(m);
+        }
+
+        if (m1 != null) candidates.add(m1);
+        if (m2 != null) candidates.add(m2);
+
+        if (end >= 0)
+        {
+            candCache.set(end, candidates);
+        }
+        return candidates;
+    }
+
+    public static class Kattio extends PrintWriter
+    {
+        public Kattio(InputStream i) {
+            super(new BufferedOutputStream(System.out));
+            r = new BufferedReader(new InputStreamReader(i));
+        }
+
+        public Kattio(InputStream i, OutputStream o) {
+            super(new BufferedOutputStream(o));
+            r = new BufferedReader(new InputStreamReader(i));
+        }
+
+        public boolean hasMoreTokens() {
+            return peekToken() != null;
+        }
+
+        public int getInt() {
+            return Integer.parseInt(nextToken());
+        }
+
+        public double getDouble() {
+            return Double.parseDouble(nextToken());
+        }
+
+        public long getLong() {
+            return Long.parseLong(nextToken());
+        }
+
+        public String getWord() {
+            return nextToken();
+        }
+
+
+        private BufferedReader r;
+        private String line;
+        private StringTokenizer st;
+        private String token;
+
+        private String peekToken() {
+            if (token == null)
+                try {
+                    while (st == null || !st.hasMoreTokens()) {
+                        line = r.readLine();
+                        if (line == null) return null;
+                        st = new StringTokenizer(line);
+                    }
+                    token = st.nextToken();
+                } catch (IOException e) {
+                }
+            return token;
+        }
+
+        private String nextToken() {
+            String ans = peekToken();
+            token = null;
+            return ans;
+        }
+    }
+}

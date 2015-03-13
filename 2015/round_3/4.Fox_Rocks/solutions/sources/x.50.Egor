@@ -1,0 +1,337 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cmath>
+#include <ctime>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <queue>
+#include <deque>
+#include <list>
+#include <set>
+#include <map>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define sz(x) ((int)(x).size())
+#define forn(i, n) for (int i = 0; i < (n); i++)
+
+typedef long long ll;
+typedef vector<ll> vll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<bool> vb;
+typedef vector<vb> vvb;
+typedef pair<int, int> pii;
+typedef long double ld;
+
+const ld eps = 1e-12;
+
+class Gauss {
+  const int h, w;
+  vector<vector<ld>> m;
+public:
+  Gauss(int n) : h(n), w(n), m(h, vector<ld>(w + 1)) {}
+  void add(int row, int col, ld val) {
+    m[row][col] += val;
+  }
+  void addB(int row, ld val) {
+    m[row][w] += val;
+  }
+  vector<ld> solve() {
+    vector<vector<ld>> m0 = m;
+
+    int y = 0;
+    forn (x, w) {
+      for (int y2 = y + 1; y2 < h; y2++)
+        if (fabs(m[y2][x]) > fabs(m[y][x])) {
+          m[y].swap(m[y2]);
+        }
+      if (fabs(m[y][x]) < eps) {
+        continue;
+      }
+
+      for (int y2 = y + 1; y2 < h; y2++) {
+        ld k = -m[y2][x] / m[y][x];
+        for (int cx = 0; cx <= w; cx++)
+          m[y2][cx] += k * m[y][cx];
+      }
+      y++;
+    }
+    assert(y == h);
+    vector<ld> res(h, 0);
+    for (int y = h - 1; y >= 0; y--) {
+      ld sum = m[y][w];
+      for (int x = y + 1; x < w; x++)
+        sum -= m[y][x] * res[x];
+      res[y] = sum / m[y][y];
+    }
+    for (int y = 0; y < h; y++) {
+      ld sum = 0;
+      for (int x = 0; x < w; x++)
+        sum += m0[y][x] * res[x];
+      sum -= m0[y][w];
+      assert(fabs(sum) < eps);
+    }
+    return res;
+  }
+};
+
+const int LSZ = 4;
+class Layer {
+
+  ld inp[LSZ][LSZ];
+  ld nep[LSZ][LSZ];
+  ld pexit[LSZ][LSZ];
+  ld preach[LSZ][LSZ];
+
+  bool canGo[LSZ][LSZ];
+  bool canExit[LSZ][LSZ];
+
+  void recalcProb() {
+    forn (a, LSZ) {
+      int s = 0;
+      forn (b, LSZ) {
+        s += inner[a][b];
+        s += next[a][b];
+      }
+      forn (b, LSZ) {
+        inp[a][b] = s ? (ld)inner[a][b] / s : 0;
+        nep[a][b] = s ? (ld)next[a][b] / s : 0;
+      }
+    }
+  }
+  void recalcGo() {
+    forn (a, LSZ) {
+      forn (b, LSZ)
+        canGo[a][b] = inner[a][b];
+      canGo[a][a] = true;
+    }
+    forn (i, LSZ)
+    forn (j, LSZ)
+    forn (k, LSZ)
+      canGo[j][k] |= canGo[j][i] && canGo[i][k];
+  }
+  void recalcExit() {
+    memset(canExit, 0, sizeof canExit);
+    forn (a, LSZ)
+    forn (b, LSZ)
+    forn (c, LSZ) {
+      canExit[a][c] |= canGo[a][b] && next[b][c];
+    }
+  }
+
+  void recalcPexit() {
+    Gauss s(LSZ * LSZ);
+    forn (a, LSZ)
+    forn (b, LSZ) {
+      s.add(a * LSZ + b, a * LSZ + b, 1);
+      if (canExit[a][b]) {
+        forn (mid, LSZ)
+          s.add(a * LSZ + b, mid * LSZ + b, -inp[a][mid]);
+      } else {
+        assert(fabs(nep[a][b]) < eps);
+      }
+      s.addB(a * LSZ + b, nep[a][b]);
+    }
+    vector<ld> res = s.solve();
+/*    forn (a, LSZ) {
+      forn (b, LSZ)
+        eprintf("%.2lf%c", double(res[a * LSZ + b]), "\n "[b + 1 < LSZ]);
+    }*/
+    forn (a, LSZ) {
+      ld sum = 0;
+      bool some = false;
+      forn (b, LSZ) {
+        pexit[a][b] = res[a * LSZ + b];
+        sum += pexit[a][b];
+        some |= canExit[a][b];
+      }
+//      eprintf("a=%d, sum=%.2lf, some=%d\n", a, double(sum), some);
+      assert(-eps <= sum && sum <= 1 + eps);
+      if (!some) {
+        assert(fabs(sum) < eps);
+      }
+    }
+  }
+  void recalcPreach() {
+    forn (goal, LSZ) {
+      Gauss s(LSZ);
+      forn (a, LSZ) {
+        s.add(a, a, 1);
+        if (a != goal) {
+          if (canGo[a][goal]) {
+            forn (mid, LSZ)
+              s.add(a, mid, -inp[a][mid]);
+          }
+        } else {
+          s.addB(a, 1);
+        }
+      }
+      vector<ld> res = s.solve();
+      forn (a, LSZ) {
+        preach[a][goal] = res[a];
+        assert(-eps <= res[a] && res[a] <= 1 + eps);
+      }
+    }
+  }
+
+public:
+  int inner[LSZ][LSZ];
+  int next[LSZ][LSZ];
+  Layer() {
+    memset(inner, 0, sizeof inner);
+    memset(next, 0, sizeof next);
+    recalc();
+  }
+  void recalc() {
+/*    eprintf("RECALC\n");
+    forn (a, LSZ)
+      forn (b, LSZ)
+        eprintf("%d%c", inner[a][b], "\n "[b + 1 < LSZ]);
+    eprintf("next:\n");
+    forn (a, LSZ)
+      forn (b, LSZ)
+        eprintf("%d%c", next[a][b], "\n "[b + 1 < LSZ]);*/
+    recalcProb();
+    recalcGo();
+    recalcExit();
+    recalcPexit();
+    recalcPreach();
+  }
+  void transition(ld *old) {
+    ld next[LSZ] = {};
+    forn (i, LSZ)
+    forn (j, LSZ) {
+      next[j] += pexit[i][j] * old[i];
+    }
+
+    forn (i, LSZ) {
+      old[i] = next[i];
+    }
+  }
+  ld finish(ld *old, int goal) {
+    ld res = 0;
+    forn (a, LSZ) {
+      res += old[a] * preach[a][goal];
+    }
+    return res;
+  }
+};
+
+class Solver {
+  vector<Layer> ls;
+  set<int> bad;
+
+public:
+  Solver(int lcnt) : ls(lcnt) {}
+  void add(int a, int ai, int b, int bi, int w) {
+    assert(0 <= b - a && b - a <= 1);
+    if (a == b) {
+      ls.at(a).inner[ai][bi] += w;
+    } else if (a == b - 1) {
+      ls.at(a).next[ai][bi] += w;
+    }
+    ls.at(a).recalc();
+    bad.insert(a);
+  }
+  void del(int a, int ai, int b, int bi) {
+    assert(0 <= b - a && b - a <= 1);
+    if (a == b) {
+      ls.at(a).inner[ai][bi] = 0;
+    } else if (a == b - 1) {
+      ls.at(a).next[ai][bi] = 0;
+    }
+    ls.at(a).recalc();
+    bad.insert(a);
+  }
+  ld solve(int a, int ai, int b, int bi) {
+    for (auto it = bad.lower_bound(a); it != bad.end() && *it <= b;) {
+      auto nit = it; nit++;
+      ls[*it].recalc();
+      bad.erase(it);
+      it = nit;
+    }
+    ld cur[LSZ] = {};
+    cur[ai] = 1;
+    while (a < b) {
+      ls[a].transition(cur);
+      a++;
+    }
+    return ls[a].finish(cur, bi);
+  }
+};
+
+void solve() {
+  int n, p, d;
+  scanf("%d%d%d", &n, &p, &d);
+
+  Solver s((n + LSZ - 1) / LSZ);
+  eprintf("n=%d, p=%d, d=%d\n", n, p, d);
+  forn (id, p + d) {
+    int ty;
+    if (id < p) {
+      ty = 1;
+    } else {
+      scanf("%d", &ty);
+    }
+    if (id % 40000 == 0) eprintf("%d/%d\n", id, p + d);
+//    eprintf("id=%d/%d, ty=%d\n", id, p, ty);
+    int a, b;
+    scanf("%d%d", &a, &b);
+    #define w(a) a / LSZ, a % LSZ
+    #define ww w(a), w(b)
+    if (ty == 1) {
+      int z;
+      scanf("%d", &z);
+      s.add(ww, z);
+    } else if (ty == 2) {
+      s.del(ww);
+    } else if (ty == 3) {
+      printf(" %.6lf", (double)s.solve(ww));
+    } else
+      assert(false);
+  }
+  printf("\n");
+}
+
+int main(int argc, char* argv[]) {
+  assert(argc <= 3);
+  if (argc == 3) {
+    assert(freopen(argv[1], "r", stdin));
+    assert(freopen(argv[2], "w", stdout));
+  } else {
+    string filename = ".in";
+    if (argc >= 2) filename = argv[1];
+
+    assert(freopen(filename.c_str(), "r", stdin));
+
+    if (filename.length() >= 3 && string(filename, filename.length() - 3, 3) == ".in") {
+      filename = string(filename, 0, filename.length() - 3);
+    }
+    filename += ".out";
+    assert(freopen(filename.c_str(), "w", stdout));
+  }
+
+  int TN;
+  char buf[16];
+  assert(fgets(buf, sizeof buf, stdin));
+  assert(sscanf(buf, "%d", &TN) >= 1);
+  for (int TID = 1; TID <= TN; TID++)
+    try {
+      eprintf("===== Solving test case #%d =====\n", TID);
+      printf("Case #%d:", TID);
+      solve();
+      fflush(stdout);
+    } catch (...) {
+      eprintf("Exception was caught while executing on test #%d\n", TID);
+      return 1;
+    }
+  return 0;
+}
+

@@ -1,0 +1,441 @@
+// tested by Hightail: https://github.com/dj3500/hightail
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+#include <sstream>
+#include <stack>
+#include <cstring>
+#include <iomanip>
+#include <ctime>
+#include <cassert>
+using namespace std;
+#define pb push_back
+#define INF 1001001001
+#define FOR(i,n) for(int (i)=0;(i)<(n);++(i))
+#define FORI(i,n) for(int (i)=1;(i)<=(n);++(i))
+#define mp make_pair
+#define pii pair<int,int>
+#define ll long long
+#define vi vector<int>
+#define SZ(x) ((int)((x).size()))
+#define fi first
+#define se second
+#define wez(n) int (n); scanf("%d",&(n));
+#define wez2(n,m) int (n),(m); scanf("%d %d",&(n),&(m));
+#define wez3(n,m,k) int (n),(m),(k); scanf("%d %d %d",&(n),&(m),&(k));
+inline void pisz(int n) { printf("%d\n",n); }
+template<typename T,typename TT> ostream& operator<<(ostream &s,pair<T,TT> t) {return s<<"("<<t.first<<","<<t.second<<")";}
+template<typename T> ostream& operator<<(ostream &s,vector<T> t){FOR(i,SZ(t))s<<t[i]<<" ";return s; }
+#define DBG(vari) cerr<<"["<<__LINE__<<"] "<<#vari<<" = "<<(vari)<<endl;
+#define ALL(t) t.begin(),t.end()
+#define FOREACH(i,t) for (__typeof(t.begin()) i=t.begin(); i!=t.end(); i++)
+#define TESTS wez(testow)while(testow--)
+#define REP(i,a,b) for(int (i)=(a);(i)<=(b);++i)
+#define REPD(i,a,b) for(int (i)=(a); (i)>=(b);--i)
+#define REMAX(a,b) (a)=max((a),(b));
+#define REMIN(a,b) (a)=min((a),(b));
+#define IOS ios_base::sync_with_stdio(0);
+
+// zastąpić tym maina
+// wypełnić readInput(), compute() i writeOutput(); zmienne definiować wewnątrz klasy Instance
+// PARALLEL - czy ma odpalić testy równolegle, CORES - liczba rdzeni
+// uwaga - wersja równoległa może potrzebować dużo pamięci! (T razy więcej)
+//         mozna sobie z tym poradzić tworząc duże tablice dynamicznie dopiero w compute()
+//         (bo naraz wykonywane są co najwyżej CORES=3 kopie compute())
+//         (pamiętać o delete [] na koniec compute)
+// linkować z pthreads
+
+#include <pthread.h>
+#include <semaphore.h>
+#define PARALLEL 0
+#define CORES 3
+
+#define real double //albo long double
+const real eps=1e-9;
+inline bool iszero(real x){return x<=eps && x>=-eps;}
+struct pt {
+    real x,y;
+    pt(real xx=0,real yy=0):x(xx),y(yy){}
+    bool operator==(pt &a){return iszero(a.x-x) && iszero(a.y-y);}
+}; 
+bool operator<(const pt &a, const pt &b) {
+    if (a.x!=b.x) return a.x<b.x;
+    return a.y<b.y;
+}
+ostream& operator<<(ostream &s,pt p) {return s<<"("<<p.x<<","<<p.y<<")";}
+
+pt operator+(pt a,pt b){return pt(a.x+b.x,a.y+b.y);}
+pt operator-(pt a,pt b){return pt(a.x-b.x,a.y-b.y);}
+pt operator*(pt a,real r){return pt(a.x*r,a.y*r);}
+real vec(pt a,pt b){return a.x*b.y-a.y*b.x;}
+real det(pt a,pt b,pt c){return vec(b-a,c-a);}
+
+pt operator*(pt a,pt b){return pt(a.x*b.x-a.y*b.y,b.x*a.y+b.y*a.x);}
+real sqabs(pt a){return a.x*a.x+a.y*a.y;}
+pt operator/(pt a,pt b) {return (a*pt(b.x,-b.y))/sqabs(b);}
+
+real abs(pt a){return sqrt(a.x*a.x+a.y*a.y);}
+real dist(pt a,pt b){return sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y));}
+real sqdist(pt a,pt b){return (a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y);}
+
+real arg(pt a){return atan2(a.y,a.x);}//z przedzialu [-pi,pi]
+real skal(pt a,pt b){return a.x*b.x+a.y*b.y;}
+
+// odleglosc A od prostej BC
+real dist(pt a,pt b,pt c){return abs(det(b,c,a))/dist(b,c);}
+//dlugosc (ze znakiem) rzutu A na prosta B
+real dlrzut(pt a,pt b){return skal(a,b)/abs(b);}
+
+pt rzut(pt a,pt b,pt c) { //rzut punktu A na prosta BC
+    pt d=c-b;
+    return b+d*(skal(a-b,d)/sqabs(d));
+}
+
+bool insegment(pt a,pt b,pt c) { //A nalezy do BC
+    if (iszero(det(a,b,c)))
+        if (min(b.x,c.x)-eps<=a.x && a.x-eps<=max(b.x,c.x))
+            if (min(b.y,c.y)-eps<=a.y && a.y-eps<=max(b.y,c.y)) return 1;
+    return 0;
+}
+
+bool przecinanie(pt a,pt b,pt c,pt d) { //czy przeciecie AB CD niepuste
+    real d1=vec(b-a,c-a),d2=vec(b-a,d-a);
+    if ((d1>eps && d2>eps) || (d1<-eps && d2<-eps)) return 0;
+    if (iszero(d1) && iszero(d2)) {
+        if (iszero(a.x-b.x) && iszero(c.x-d.x))
+            a=a*pt(0,1);b=b*pt(0,1);c=c*pt(0,1);d=d*pt(0,1);
+        if (a.x>b.x) swap(a,b);
+        if (c.x>d.x) swap(c,d);
+        if (a.x<c.x+eps && c.x<b.x+eps) return 1; 
+        if (a.x<d.x+eps && d.x<b.x+eps) return 1; 
+        if (c.x<a.x+eps && a.x<d.x+eps) return 1;
+        return 0; 
+    }
+    d1=vec(d-c,a-c),d2=vec(d-c,b-c);
+    if ((d1>eps && d2>eps) || (d1<-eps && d2<-eps)) return 0;
+    return 1;
+}
+
+//przeciecie w dokl 1 punkcie ktory nie jest koncem
+bool przecinanie_wl(pt a,pt b,pt c,pt d) {
+    real d1=vec(b-a,c-a),d2=vec(b-a,d-a);
+    if (!(d1>eps && d2<-eps) && !(d1<-eps && d2>eps)) return 0;
+    d1=vec(d-c,a-c),d2=vec(d-c,b-c);
+    if (!(d1>eps && d2<-eps) && !(d1<-eps && d2>eps)) return 0;
+    return 1;
+}
+
+int line_cross(pt a, pt b,pt c,pt d,pt& wyn) { // 0 brak, 1 przec, 2 pokrywaja
+    real pczw=vec(b-a,c-d);
+    if (iszero(pczw)) {
+        if (iszero(det(a,b,c))) return 2;
+        else return 0;
+    }
+    real ptr=vec(b-a,c-a);
+    wyn=c+(d-c)*(ptr/pczw);
+    return 1;
+}
+
+vector<pt> circle_cross(pt c1,real c1r,pt c2,real c2r)  {
+    vector<pt> wyn;
+    real d=sqabs(c2-c1), r1=c1r*c1r/d, r2=c2r*c2r/d;
+    pt u=c1*((r2-r1+1)*0.5)+c2*((r1-r2+1)*0.5);
+    if (r1>r2) swap(r1,r2);
+    real a=(r1-r2+1)*0.5; a*=a;
+    if (a>=r1+eps) return wyn;
+    if (a>r1-eps) {wyn.pb(u);return wyn;}
+    pt v(c2-c1);
+    v=pt(-v.y,v.x);
+    real h=sqrt(r1-a);
+    wyn.pb(u+v*h);
+    wyn.pb(u-v*h); 
+    return wyn;
+}
+
+vector<pt> circle_line_cross(pt c,real cr,pt a,pt b) {
+    vector<pt> r;
+    pt d=rzut(c,a,b);
+    real X=dist(c,d);
+    if (iszero(X-cr)){r.pb(d);return r;}//1 pkt
+    if (X>cr) return r;//prosta za daleko
+    real Y=sqrt(cr*cr-X*X);
+    pt K=b-a;
+    K=K*(Y/abs(K));
+    r.pb(d+K);r.pb(d-K);
+    return r;
+}
+
+bool circle_3points(pt a,pt b,pt c,pt &sr,real &r) {
+    pt sym1[2],sym2[2];
+    sym1[0]=(a+b)*0.5;sym1[1]=sym1[0]+(b-a)*pt(0,10.0);
+    sym2[0]=(b+c)*0.5;sym2[1]=sym2[0]+(c-b)*pt(0,10.0);
+    pt srodek;
+    if (line_cross(sym1[0],sym1[1],sym2[0],sym2[1],sr)!=1) return 0;
+    r=dist(sr,a);
+    return 1;
+}
+
+//czy nalezy do wnetrza, jesli jest na brzegu to undefined behaviour
+bool inpoly(pt a, vector<pt> &pol) {
+    pt b(3e8+500.0,4e6+77777.0);
+    int pr=0;
+    FOR(i,SZ(pol)) pr+=przecinanie_wl(a,b,pol[i],pol[(i+1)%SZ(pol)]);
+    return pr%2;
+}
+
+
+bool onborder(pt a, vector<pt> &pol) { //czy nalezy do brzegu
+    FOR(i,SZ(pol)) if (insegment(a,pol[i],pol[(i+1)%SZ(pol)])) return 1;
+    return 0;
+}
+
+//w srodku lub na brzegu, uzywac dla real=ll
+bool PointInConvexPol(vector<pt>& l, pt p) {
+    int a = 1, b = SZ(l)-1, c;
+    if (det(l[0], l[a], l[b]) > 0) swap(a,b);
+    if (det(l[0], l[a], p) > 0 || det(l[0], l[b], p) < 0) return 0;
+    while(abs(a-b) > 1) {
+        c = (a+b)/2;
+        if (det(l[0], l[c], p) > 0) b = c; else a = c;
+    }
+    return det(l[a], l[b], p) <= 0;
+}
+//we wnetrzu bez brzegu, uzywac dla real=ll
+bool PointInsideConvexPol(vector<pt>& l, pt p) {
+    int a = 1, b = SZ(l)-1, c;
+    if (det(l[0], l[a], l[b]) > 0) swap(a,b);
+    if (det(l[0], l[a], p) >= 0 || det(l[0], l[b], p) <= 0) return 0;
+    while(abs(a-b) > 1) {
+        c = (a+b)/2;
+        if (det(l[0], l[c], p) > 0) b = c; else a = c;
+    }
+    return det(l[a], l[b], p) < 0;
+}
+
+real pole(vector<pt> &po) {
+    real pole=0.0;
+    int dl=SZ(po);
+    FOR(i,dl) pole+=po[i].x*po[(i+1)%dl].y-po[(i+1)%dl].x*po[i].y;
+    return fabs(pole)/2.0;
+}
+
+//przeciecie wypuklego wielokata p i polplaszczyzny {x:det(a,b,x)<=0}
+vector<pt> poly_halfplane(vector<pt> p,pt a,pt b) { //zlozonosc O(|p|)
+    int n=SZ(p);
+    if (!n) return p;
+    p.pb(p[0]);
+    vector<pt> wyn;
+    vector<bool> side(n+1);
+    pt cross;
+    FOR(i,n+1) side[i]=(det(a,b,p[i])>=-eps);
+    FOR(i,n) {
+        if (side[i]==1) {
+            wyn.pb(p[i]);
+            if (side[i+1]==0 && line_cross(p[i],p[i+1],a,b,cross)==1
+                             && !(cross==p[i])) wyn.pb(cross);
+        }
+        if (side[i]==0 && side[i+1]==1 && line_cross(p[i],p[i+1],a,b,cross)==1
+                       && !(cross==p[i+1])) wyn.pb(cross);
+    }
+    return wyn;
+}
+
+bool praword(pt X,pt Y,pt Z){return det(X,Y,Z)<=eps;}
+// wersja oszczedna:
+// bool praword(pt X,pt Y,pt Z){return ((X.x-Z.x)*(Y.y-Z.y)-(X.y-Z.y)*(Y.x-Z.x))<=eps;}
+// dla calkowitych zmienic na det(X,Y,Z)<=0
+
+// zwraca otoczke w kierunku przeciwzegarowym, 
+// kolejne wierzcholki wyniku nie sa wspolliniowe
+// dziala tez na pii po zmianie w praword x->fi, y->se i pt->pii
+// nie trzeba wtedy definiowac pt ani == ani <
+vector<pt> otoczka(vector<pt> ab) {
+    sort(ab.begin(),ab.end());
+    ab.erase(unique(ab.begin(),ab.end()),ab.end());
+    int l=SZ(ab),i,j,k;
+    vector<pt> wyn(l+1);
+    if (l<3) return ab;
+    j=0;
+    for(i=0;i<l;i++) {
+        while (j-2>=0 && praword(wyn[j-2],wyn[j-1],ab[i])) j--;
+        wyn[j++]=ab[i];
+    }
+    k=j;
+    for(i=l-2;i>=0;i--) {
+        while (j-1>=k && praword(wyn[j-2],wyn[j-1],ab[i])) j--;
+        wyn[j++]=ab[i];
+    }
+    if (wyn[j-1]==wyn[0]) j--;
+    return vector<pt>(wyn.begin(),wyn.begin()+j);
+}
+
+/*
+#define POINT pt
+#define Det det
+#define LL ll
+#define PB pb
+POINT* RSK; 
+// Funkcja porownujaca punkty
+bool Rcmp(POINT *a, POINT *b) {
+	real w = Det((*RSK), (*a), (*b));
+	if (iszero(w)) {
+	   DBG(*RSK)DBG(*a)DBG(*b)
+	}
+	return w > eps;
+}
+// Funkcja sortuje po kacie odchylenia zbior punktow wzgledem punktu centralnego 
+// s zaczynajac od wektora s -> k
+vector<POINT*> AngleSort(vector<POINT>& p, POINT s, POINT k) {
+	RSK = &s;
+	vector<POINT*> l, r;
+// Kazdy punkt, ktory podlega sortowaniu, zostaje wstawiony do jednego 
+// z wektorow l lub r, w zaleznosci od tego, 
+// czy znajduje sie po lewej czy po prawej stronie prostej s -> k
+	FOREACH(it, p) {
+		real d = Det(s, k, (*it));
+		(d > eps) ? l.PB(&*it) : r.PB(&*it);
+	}
+// Posortuj niezaleznie punkty w obu wyznaczonych wektorach
+	sort(ALL(l), Rcmp);
+	sort(ALL(r), Rcmp);
+// Wstaw wszystkie punkty z wektora r na koniec wektora l
+	FOREACH(it, r) l.PB(*it);
+	return l;
+}
+*/
+
+
+const int N = 5555;
+struct Instance {
+   pthread_mutex_t finished;
+   Instance() : finished(PTHREAD_MUTEX_INITIALIZER) { pthread_mutex_lock(&finished); }
+   
+   // define variables here
+   int n, d, x0, y0;
+   pt p[N];
+   int best;
+   
+   void readInput() { // should read input; will run sequentially
+      cin >> x0 >> y0;
+      cin >> d >> n;
+      FORI(i,n) cin >> p[i].x >> p[i].y;
+   }
+   
+   void compute() { // should produce output and store it, not use IO; will run in parallel
+      best = 0;
+      
+      FORI(i,n) {
+         p[i].x -= x0;
+         p[i].y -= y0;
+      }
+      
+      FORI(c,n) {
+         pt A = p[c];
+         if (abs(A) > d + eps) continue;
+         pt P = A * (d / abs(A));
+         //DBG(P)
+         //continue;
+         int a = 0;
+         FORI(i,n) {
+            if (insegment(p[i], pt(0,0), P)) ++a;
+         }
+         //DBG(a)
+         assert(a >= 1);
+         
+         pt rrr(3e8+500.0,4e6+77777.0);
+         
+         bool Pis = false;
+         vector<pair<real,pt> > v;
+         FORI(i,n) {
+            if (!(p[i] == P)) {
+               real kat = atan2((p[i]-P).y, (p[i]-P).x);
+               if (kat < -3.012) kat += 4*acos(0.0L);
+               //DBG(double(2*acos(0.0L)))
+               v.pb(mp(kat,p[i]));
+            } else {
+               Pis = true;
+            }
+         }
+         sort(ALL(v));
+         //vector<POINT*> vvv = AngleSort(v, P, rrr);
+         //DBG(P)
+         //DBG(v)
+         
+         int bestb = (v.empty() ? 0 : 1), run = 1;
+         REP(u,1,SZ(v)-1) {
+            if (iszero(v[u-1].fi - v[u].fi)) {
+               ++run;
+               REMAX(bestb, run);
+            } else {
+               run = 1;
+            }
+         }
+         if (Pis) ++bestb;
+         REMAX(best, bestb * a);
+      }
+   }
+   
+   void writeOutput () { // should write stored output, without newline; will run sequentially
+      cout << best;
+   }
+};
+
+Instance *instances;
+sem_t coreSemaphore;
+pthread_mutex_t cerr_lock = PTHREAD_MUTEX_INITIALIZER;
+int tests, finishedTests = 0;
+
+void* runner (void* input) {
+   int testno = *reinterpret_cast<int*>(input);
+   sem_wait(&coreSemaphore);
+   instances[testno].compute();
+   pthread_mutex_lock(&cerr_lock);
+   cerr << "test " << testno+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+   pthread_mutex_unlock(&cerr_lock);
+   pthread_mutex_unlock(&instances[testno].finished);
+   sem_post(&coreSemaphore);
+   return 0;
+}
+
+int main () {
+   string pierwszalinia;
+   getline(cin,pierwszalinia);
+   tests = atoi(pierwszalinia.c_str());
+   if (PARALLEL) {
+      instances = new Instance[tests];
+      // reading input
+      FOR(i,tests) {
+         instances[i].readInput();
+      }
+      
+      // running computations in parallel
+      sem_init(&coreSemaphore, 0, CORES);
+      pthread_t irrelevant;
+      FOR(i,tests) pthread_create(&irrelevant, NULL, runner, new int(i));
+      FOR(i,tests) pthread_mutex_lock(&instances[i].finished); // wait until all are finished
+      
+      // writing output
+      FOR(i,tests) {
+         printf("Case #%d: ", i+1);
+         instances[i].writeOutput();
+         printf("\n");
+      }
+   } else {
+      FOR(i,tests) {
+         instances = new Instance;
+         instances->readInput();
+         instances->compute();
+         printf("Case #%d: ", i+1);
+         instances->writeOutput();
+         printf("\n");
+         cerr << "test " << i+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+         delete instances;
+      }
+   }
+}

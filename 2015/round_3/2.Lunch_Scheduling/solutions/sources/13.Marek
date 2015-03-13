@@ -1,0 +1,127 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+struct Interval {
+	int start, end;
+
+	Interval(){}
+	Interval(int s, int e) : start(s), end(e) {}
+};
+
+const int MaxNum = 3005;
+const int MaxDay = 80000000;
+
+Interval intervalF[MaxNum];
+Interval intervalS[MaxNum];
+int J, W, L;
+int dp[MaxNum][MaxNum];
+
+vector<pair<int,int>> endFirst, endSecond;
+
+
+void cleanup(){
+	endFirst.clear();
+	endSecond.clear();
+}
+
+
+void input(){
+	scanf("%d%d%d", &J, &W, &L);
+	for(int i = 0; i < J; i++){
+		int a, b;
+		scanf("%d%d", &a, &b);
+		intervalF[i] = Interval(a,b);
+	}	
+
+	for(int i = 0; i < W; i++){
+		int a, b;
+		scanf("%d%d", &a, &b);
+		intervalS[i] = Interval(a,b);
+	}
+}
+
+void make_ends(Interval *data, int size, vector<pair<int,int>>& result){
+	sort(data, data+size,
+			[](const Interval& lhs, const Interval& rhs){
+				if(lhs.end != rhs.end) return lhs.end > rhs.end;
+				return lhs.start < rhs.start;
+			});
+
+
+	int lastEnd = MaxDay;
+	for(int i = 0; i < size; i++){
+		if(data[i].start >= lastEnd) continue;
+
+		result.push_back(make_pair(data[i].start, data[i].end));
+		lastEnd = data[i].start;
+	}
+
+	sort(result.begin(), result.end());
+//	for(auto P: result)
+//		printf("%d %d\n", P.first, P.second);
+}
+
+void make_dp(){
+	for(int f = 0; f <= J; f++){
+		for(int s = 0; s <= W; s++){
+			dp[f][s] = 0;
+
+			if(f){
+				auto it = lower_bound(endFirst.begin(), endFirst.end(),
+						make_pair(dp[f-1][s]+L, 0));
+				if(it != endFirst.begin()){ 
+					it--;
+					dp[f][s] = max(dp[f][s], it->second); 
+				}
+			}
+
+			if(s){
+				auto it = lower_bound(endSecond.begin(), endSecond.end(),
+						make_pair(dp[f][s-1]+L, 0));
+
+				if(it != endSecond.begin()){
+					it--;
+					dp[f][s] = max(dp[f][s], it->second);
+				}
+			}
+//			printf("dp[%d][%d] = %d\n", f, s, dp[f][s]);
+		}
+	}
+}
+
+
+void test(){
+	input();
+	make_ends(intervalF, J, endFirst);
+	make_ends(intervalS, W, endSecond);
+
+	make_dp();
+
+	const int Infty = 1010101010;
+	int result = Infty;
+
+	for(int i = 0; i <= J; i++)
+		for(int j = 0; j <= W; j++){
+			if(dp[i][j] > MaxDay-L)
+				result = min(result, max(i,j));
+		}
+
+	if(result == Infty)
+		printf("Lunchtime\n");
+	else
+		printf("%d\n", result);
+
+
+	cleanup();
+}
+
+int main(){
+	int T;
+	scanf("%d", &T);
+
+	for(int i = 1; i <= T; i++){
+		printf("Case #%d: ", i);
+		test();
+	}
+}

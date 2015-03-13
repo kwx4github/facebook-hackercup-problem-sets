@@ -1,0 +1,238 @@
+#ifdef DEBUG
+	#define D(x...) fprintf(stderr,x);
+#else
+	#define D(x...) 0
+#endif
+#include <cstdio>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+
+#define EPS 0.00000001
+
+int nClearings, nTrailsInit, nDays;
+int sameWeight[60000][4];
+int nextWeight[60000][4];
+
+typedef vector<vector<double> > mx;
+inline mx mult(mx X, mx Y);
+mx initTrans(int row);
+mx sinkTrans(int row, int yModFour);
+const mx id4();
+mx converge(mx X);
+mx truncate(mx X);
+
+void print(mx K) {
+                for (int i = 0; i < K.size(); i++) {
+                for (int j = 0; j < K[i].size(); j++) {
+                    printf("%.3f ", K[i][j]);
+                }
+                printf("\n");
+                }
+                printf("\n");
+}
+struct tree {
+    int firstRow, lastRow; // inclusive, so [0,0] is a unit
+    mx transition;
+    tree *l, *r;
+    tree(int firstRow_, int lastRow_) {
+        this->firstRow = firstRow_;
+        this->lastRow = lastRow_;
+        if (firstRow == lastRow) {
+            l = r = NULL;
+            transition = truncate(converge(initTrans(firstRow)));
+            /*for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                printf("%2.3f ", transition[i][j]);
+            }
+            printf("\n");
+            }
+            printf("[%d %d]\n", firstRow, lastRow);*/
+        } else {
+            l = new tree(firstRow, (firstRow+lastRow)/2);
+            r = new tree((firstRow+lastRow)/2+1, lastRow);
+            transition = mult(l->transition, r->transition);
+        }
+    }
+};
+
+tree* root;
+void update(tree* t, int row);
+mx sumOf(tree* t, int lo, int hi);
+
+int main() {
+    int nTests;
+    scanf("%d ",&nTests);
+    for (int test=1;test<=nTests;test++) {
+        for (int i = 0; i < 60000; i++) {
+            for (int j = 0; j < 4; j++) {
+                sameWeight[i][j] = nextWeight[i][j] = 0;
+            }
+        }
+        if (1) fprintf(stderr,"Case %d/%d\n",test,nTests);
+        vector<double> answers;
+        scanf("%d%d%d", &nClearings, &nTrailsInit, &nDays);
+        for (int i = 0; i < nTrailsInit; i++) {
+            int a, b, r;
+            scanf("%d%d%d", &a, &b, &r);
+            assert(a/4 <= b/4);
+            assert(a/4 + 1 >= b/4);
+            // FILL DATA IN
+            if (a/4 == b/4) {
+                sameWeight[a][b - 4*(b/4)] = r;
+            } else {
+                nextWeight[a][b - 4*(b/4)] = r;
+            }
+        }
+        root = new tree(0, (nClearings+8)/4);
+        for (int i = 0; i < nDays; i++) {
+            int e, x, y, z;
+            scanf("%d%d%d", &e, &x, &y);
+            if (e == 1) {
+                scanf("%d", &z);
+                if (x/4 == y/4) {
+                    sameWeight[x][y - 4*(y/4)] = z;
+                } else {
+                    nextWeight[x][y - 4*(y/4)] = z;
+                }
+                update(root, x/4);
+            } else if (e == 2) {
+                if (x/4 == y/4) {
+                    sameWeight[x][y - 4*(y/4)] = 0;
+                } else {
+                    nextWeight[x][y - 4*(y/4)] = 0;
+                }
+                update(root, x/4);
+            } else {
+                mx theSum = id4();
+                if (x/4 < y/4) {
+                    theSum = sumOf(root, x/4, y/4-1);
+                }
+                theSum = mult(theSum, converge(sinkTrans(y/4, y%4)));
+                answers.push_back(theSum[x%4][y%4]);
+                //print((sinkTrans(y/4, y%4)));
+            }
+        }
+
+        printf("Case #%d: ", test);
+                for (int i = 0; i < answers.size(); i++) printf("%.6f ", answers[i]);
+                printf("\n");
+    }
+}
+
+const mx id4() {
+    mx ret = mx(4, vector<double>(4, 0));
+    for (int i = 0; i < 4; i++) ret[i][i] = 1;
+    return ret;
+}
+
+mx initTrans(int row) {
+    mx ret = mx(8, vector<double>(8, 0));
+    for (int i = 0; i < 4; i++) {
+        int sum = 0;
+        for (int j = 0; j < 4; j++) {
+            sum += sameWeight[row*4+i][j];
+            sum += nextWeight[row*4+i][j];
+        }
+        if (sum == 0) {
+            ret[i][i] = 1;
+            continue;
+        }
+        for (int j = 0; j < 4; j++) {
+            ret[i][j] = ((double)sameWeight[row*4+i][j])/((double)sum);
+            ret[i][4+j] = ((double)nextWeight[row*4+i][j])/((double)sum);
+        }
+    }
+    for (int i = 0; i < 4; i++) ret[4+i][4+i] = 1;
+    return ret;
+}
+
+mx sinkTrans(int row, int yModFour) {
+    mx ret = mx(4, vector<double>(4, 0));
+    for (int i = 0; i < 4; i++) {
+        if (i == yModFour) {
+            ret[i][i] = 1;
+            continue;
+        }
+        int sum = 0;
+        for (int j = 0; j < 4; j++) {
+            sum += sameWeight[row*4+i][j];
+            sum += nextWeight[row*4+i][j];
+        }
+        if (sum == 0) {
+            ret[i][i] = 1;
+            continue;
+        }
+        for (int j = 0; j < 4; j++) {
+            ret[i][j] = ((double)sameWeight[row*4+i][j])/((double)sum);
+        }
+    }
+    return ret;
+}
+
+inline mx mult(mx X, mx Y) {
+    int r = X.size();
+    int c = Y[0].size();
+    int _k = Y.size();
+    assert(X[0].size() == _k);
+    mx ret = mx(X.size(), vector<double>(Y[0].size()));
+    for (int i = 0; i < r; i++) {
+    for (int j = 0; j < c; j++) {
+        ret[i][j] = 0;
+        for (int k = 0; k < _k; k++) ret[i][j] += X[i][k] * Y[k][j];
+    }
+    }
+    return ret;
+}
+mx converge(mx X) {
+    int r = X.size();
+    int c = X[0].size();
+    while (1) {
+        mx K = mult(X, X);
+        bool progress = 0;
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                if (abs(X[i][j] - K[i][j]) > EPS) {
+                    progress = 1;
+                }
+            }
+        }
+        if (!progress) {
+            return K;
+        }
+        X = K;
+    }
+}
+mx truncate(mx K) {
+            mx newMx = id4();
+            for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                newMx[i][j] = K[i][j+4];
+            }
+            }
+            return newMx;
+}
+
+void update(tree* t, int row) {
+    if (t->firstRow > row || t->lastRow < row) return;
+    if (t->firstRow == row && t->lastRow == row) {
+        t->transition = truncate(converge(initTrans(row)));
+    } else {
+        update(t->l, row);
+        update(t->r, row);
+        t->transition = mult(t->l->transition, t->r->transition);
+    }
+}
+mx sumOf(tree* t, int lo, int hi) {
+    if (lo > t->lastRow || hi < t->firstRow) return id4();
+    if (lo <= t->firstRow && hi >= t->lastRow) {
+        return t->transition;
+    } else {
+        return mult(sumOf(t->l, lo, hi), sumOf(t->r, lo, hi));
+    }
+}

@@ -1,0 +1,236 @@
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <set>
+#include <map>
+#include <queue>
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cctype>
+#include <cassert>
+#include <limits>
+#include <functional>
+#define rep(i,n) for(int (i)=0;(i)<(int)(n);++(i))
+#define rer(i,l,u) for(int (i)=(int)(l);(i)<=(int)(u);++(i))
+#define reu(i,l,u) for(int (i)=(int)(l);(i)<(int)(u);++(i))
+#if defined(_MSC_VER) || __cplusplus > 199711L
+#define aut(r,v) auto r = (v)
+#else
+#define aut(r,v) __typeof(v) r = (v)
+#endif
+#define each(it,o) for(aut(it, (o).begin()); it != (o).end(); ++ it)
+#define all(o) (o).begin(), (o).end()
+#define pb(x) push_back(x)
+#define mp(x,y) make_pair((x),(y))
+#define mset(m,v) memset(m,v,sizeof(m))
+#define INF 0x3f3f3f3f
+#define INFL 0x3f3f3f3f3f3f3f3fLL
+using namespace std;
+typedef vector<int> vi; typedef pair<int,int> pii; typedef vector<pair<int,int> > vpii; typedef long long ll;
+template<typename T, typename U> inline void amin(T &x, U y) { if(y < x) x = y; }
+template<typename T, typename U> inline void amax(T &x, U y) { if(x < y) x = y; }
+
+struct Matrix {
+	typedef double Num;
+	static const int MaxN = 8;
+	int hei, wid;
+	Num v[MaxN][MaxN];
+	Matrix() {}
+	Matrix(int n, int m): hei(n), wid(m) { mset(v, 0); }
+	inline int height() const { return hei; }
+	inline int width() const { return wid; }
+	inline Num& at(int i, int j) { return v[i][j]; }
+	inline const Num& at(int i, int j) const { return v[i][j]; }
+	static Matrix identity(int n) {
+		Matrix A(n, n);
+		rep(i, n) A.at(i, i) = 1;
+		return A;
+	}
+	inline static Matrix identity(const Matrix& A) { return identity(A.height()); }
+	Matrix& operator*=(const Matrix& B) {
+		int n = height(), m = B.width(), p = B.height();
+		assert(p == width());
+		const Num (*b)[MaxN] = B.v;
+		Num w[MaxN][MaxN];
+		rep(i, n) {
+			const Num *ai = v[i];
+			rep(j, m) {
+				Num x = 0;
+				rep(k, p) x += ai[k] * b[k][j];
+				w[i][j] = x;
+			}
+		}
+		memcpy(v, w, sizeof(v));
+		return *this;
+	}
+};
+
+const int K = 4;
+
+Matrix solveMat(Matrix A) {
+	rep(k, 50)
+		A *= A;
+	return A;
+}
+
+Matrix calcMat(int bi, const vector<vi> &rocks) {
+	int S = bi * K;
+	Matrix A(K+K, K+K);
+	rep(i, 4) {
+		int sum = 0;
+		rep(j, 8)
+			sum += rocks[S+i][K+j-i];
+		if(sum == 0)
+			continue;
+		rep(j, 8)
+			A.at(i, j) += rocks[S+i][K+j-i] * 1. / sum;
+	}
+	rep(i, 4)
+		A.at(K+i, K+i) = 1;
+	A = solveMat(A);
+	Matrix B(K, K);
+	rep(i, 4) rep(j, 4)
+		B.at(i, j) = A.at(i, K+j);
+	return B;
+}
+Matrix calcLastMat(int bi, int yi, const vector<vi> &rocks) {
+	int S = bi * K;
+	Matrix A(K, K);
+	rep(i, 4) if(i != yi) {
+		int sum = 0;
+		rep(j, 8)
+			sum += rocks[S+i][K+j-i];
+		if(sum == 0)
+			continue;
+		rep(j, 4)
+			A.at(i, j) += rocks[S+i][K+j-i] * 1. / sum;
+	}
+	A.at(yi, yi) = 1;
+	return solveMat(A);
+}
+
+struct GetRangeSegmentTree {
+	typedef Matrix Val;
+	static void combinesVal(Val &x, const Val &y) { x *= y; }
+	static Val combineVal(const Val &x, const Val &y) { return Matrix(x) *= y; }
+	static Val identityVal() { return Matrix::identity(K); } 
+
+	vector<Val> nodes;
+	int n;
+	void init(int n_, const Val &v = Val()) { init(vector<Val>(n_, v)); }
+	void init(const vector<Val> &u) {
+		n = 1; while(n < (int)u.size()) n *= 2;
+		nodes.resize(n, identityVal());
+		nodes.insert(nodes.end(), u.begin(), u.end());
+		nodes.resize(n * 2, identityVal());
+		for(int i = n-1; i > 0; -- i)
+			nodes[i] = combineVal(nodes[i*2], nodes[i*2+1]);
+	}
+	Val get(int i) {
+		return nodes[i + n];
+	}
+	Val getWhole() const {
+		return nodes[1];
+	}
+	Val getRange(int l, int r) const {
+		Val m = identityVal();
+		int indices[64]; int k = 0;
+		for(; l && l + (l&-l) <= r; l += l&-l)
+			combinesVal(m, nodes[(n+l) / (l&-l)]);
+		for(; l < r; r -= r&-r)
+			indices[k ++] = (n+r) / (r&-r) - 1;
+		while(-- k >= 0) combinesVal(m, nodes[indices[k]]);
+		return m;
+	}
+	void set(int i, const Val &x) {
+		i += n; nodes[i] = x;
+		for(i >>= 1; i > 0; i >>= 1)
+			nodes[i] = combineVal(nodes[i*2], nodes[i*2+1]);
+	}
+};
+
+
+unsigned xor128() {
+	static unsigned x = 123456789, y = 362436069, z = 521288629, w = 88675123;
+	unsigned t = x ^ (x << 11);
+	x = y; y = z; z = w;
+	return w = w ^ (w >> 19) ^ (t ^ (t >> 8));
+}
+#include "C:\Dropbox\backup\implements\Util\CPUTime.hpp"
+
+int main() {
+	int T;
+	scanf("%d", &T);
+	rep(ii, T) {
+		int N, P, D;
+		scanf("%d%d%d", &N, &P, &D);
+		N = (N + K - 1) / K * K;
+		int W = N / K;
+		vector<vi> rocks(N, vi(K*3+1, 0));
+		rep(i, P) {
+			int A, B, R;
+			scanf("%d%d%d", &A, &B, &R);
+//			A=xor128()%N,B=A/K*K+xor128()%8,R=xor128()%6+1;
+//			A=i,B=i+1,R=1;
+			rocks[A][4+B-A] += R;
+		}
+		vector<Matrix> initMats(W);
+		rep(bi, W)
+			initMats[bi] = calcMat(bi, rocks);
+		GetRangeSegmentTree segt;
+		segt.init(initMats);
+		printf("Case #%d: ", ii+1);
+		int queries = 0;
+		double anssum = 0;
+		cerr << "case " << ii+1 << " start" << endl;
+		CPUTIMEIT("queries")
+		rep(jj, D) {
+			if(jj%10000==0) cerr<<ii<<", " << jj << "..."<<endl;
+			int E;
+			scanf("%d", &E);
+//			E=xor128()%100==0?3:1;
+			if(E == 1) {
+				int X, Y, Z;
+				scanf("%d%d%d", &X, &Y, &Z);
+//				X=xor128()%N,Y=X/K*K+xor128()%8,Z=xor128()%6+1;
+				rocks[X][4+Y-X] += Z;
+				int bi = X / K;
+				segt.set(bi, calcMat(bi, rocks));
+			}else if(E == 2) {
+				int X, Y;
+				scanf("%d%d", &X, &Y);
+				rocks[X][4+Y-X] = 0;
+				int bi = X / K;
+				segt.set(bi, calcMat(bi, rocks));
+			}else if(E == 3) {
+				int X, Y;
+				scanf("%d%d", &X, &Y);
+//				X=xor128()%N,Y=X+xor128()%(N-X);
+				double ans;
+				int bX = X / K, bY = Y / K;
+				if(bX > bY) {
+					ans = 0;
+				}else {
+					Matrix v(1, K);
+					v.at(0, X % K) = 1;
+					v *= segt.getRange(bX, bY);
+					v *= calcLastMat(bY, Y % K, rocks);
+					ans = v.at(0, Y % K);
+				}
+				if(queries ++ != 0) {
+					putchar(' ');
+				}
+				printf("%.6f", ans);
+				anssum += ans;
+			}
+		}
+		puts("");
+		if(anssum==123)cerr<<"";
+	}
+	return 0;
+}

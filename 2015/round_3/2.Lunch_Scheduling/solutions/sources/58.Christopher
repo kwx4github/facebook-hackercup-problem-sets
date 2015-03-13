@@ -1,0 +1,102 @@
+#ifdef DEBUG
+	#define D(x...) fprintf(stderr,x);
+#else
+	#define D(x...) 0
+#endif
+#include <cstdio>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+
+#define MAX_TIME 80000000
+#define MAX_X_OR_Y 4096
+#define IMPOSSIBLE -1
+
+int nJ, nW, L;
+int event_start[MAX_X_OR_Y*2];
+int event_end[MAX_X_OR_Y*2];
+int event_isJ[MAX_X_OR_Y*2];
+
+void clean(vector<priority_queue<pair<int, int> > > &pqForJ, int time) {
+    for (int i = 0; i <= nJ; i++) {
+        while (!pqForJ[i].empty()) {
+            int time2 = pqForJ[i].top().second == -1 ? 0 : event_end[pqForJ[i].top().second];
+            if (time2 <= time-L) {
+                pqForJ[i].pop();
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+int main() {
+    int nTests;
+    scanf("%d ",&nTests);
+    for (int test=1;test<=nTests;test++) {
+        if (1) fprintf(stderr,"Case %d/%d\n",test,nTests);
+        scanf("%d%d%d", &nJ, &nW, &L);
+        vector<pair<int, int> > events;
+        for (int i = 0; i < nJ; i++) {
+            scanf("%d %d", &event_start[i], &event_end[i]);
+            event_isJ[i] = 1;
+            events.push_back(make_pair(event_start[i], i));
+            events.push_back(make_pair(event_end[i], i));
+        }
+        for (int i = 0; i < nW; i++) {
+            scanf("%d %d", &event_start[nJ+i], &event_end[nJ+i]);
+            event_isJ[nJ+i] = 0;
+            events.push_back(make_pair(event_start[nJ+i], nJ+i));
+            events.push_back(make_pair(event_end[nJ+i], nJ+i));
+        }
+        sort(events.begin(), events.end());
+        vector<priority_queue<pair<int, int> > > pqForJ(nJ+1);
+        vector<vector<int> > dpForEvent(nJ+nW);
+        // (negated) cost in Ws, event index
+        pqForJ[0].push(make_pair(0, -1));
+        for (int i = 0; i < events.size(); i++) {
+            int time = events[i].first;
+            int idx = events[i].second;
+            clean(pqForJ, time);
+            if (time == event_start[idx]) {
+                // START EVENT
+                dpForEvent[idx] = vector<int>(nJ+1, IMPOSSIBLE);
+                for (int j = 0; j <= nJ; j++) {
+                    if (j < event_isJ[idx]) continue;
+                    if (pqForJ[j-event_isJ[idx]].empty()) continue;
+                    int newCost = (-pqForJ[j-event_isJ[idx]].top().first) + (1 - event_isJ[idx]);
+                    dpForEvent[idx][j] = newCost;
+                    pqForJ[j].push(make_pair(-dpForEvent[idx][j], idx));
+                }
+            } else {
+                assert(time == event_end[idx]);
+                /*
+                 * for (int j = 0; j <= nJ; j++) {
+                    if (dpForEvent[idx][j] == IMPOSSIBLE) continue;
+                }
+                */
+                // END EVENT
+            }
+        }
+        clean(pqForJ, MAX_TIME);
+        int ans = IMPOSSIBLE;
+        for (int j = 0; j <= nJ; j++) {
+            if (pqForJ[j].empty()) continue;
+            int cost = max(j, -pqForJ[j].top().first);
+            if (ans == IMPOSSIBLE || ans > cost) {
+                ans = cost;
+            }
+        }
+
+        if (ans == IMPOSSIBLE) {
+            printf("Case #%d: Lunchtime\n", test);
+        } else {
+            printf("Case #%d: %d\n", test, ans);
+        }
+    }
+}

@@ -1,0 +1,371 @@
+#include <vector> 
+#include <list> 
+#include <map> 
+#include <set> 
+#include <queue>
+#include <stack> 
+#include <bitset> 
+#include <algorithm> 
+#include <numeric> 
+#include <utility> 
+#include <sstream> 
+#include <iostream> 
+#include <iomanip> 
+#include <cstdio> 
+#include <cmath> 
+#include <cstdlib> 
+#include <ctime> 
+#include <cstring> 
+
+using namespace std; 
+
+typedef vector<int> VI;
+typedef double T;
+typedef vector<T> VT;
+typedef vector<VT> VVT;
+T GaussJordan(VVT &a, VVT &b);
+
+int n, p, d;
+int rocks[52000][10];
+double self_prob[52000][5];
+double next_prob[52000][5];
+
+void recalc_self(int group_x) {
+	VVT mat;
+	VVT b;
+
+	for (int i = 0; i < 16; i++) mat.push_back( VT(16) );
+	for (int i = 0; i < 16; i++) b.push_back( VT(1) );
+
+	for (int i = 0; i < 16; i++) mat[i][i] = 1;
+	for (int i = 0; i < 4; i++) {
+		b[i*4 + i][0] = 1;
+	}
+
+	int selfg[4][4];
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			if (i == j) selfg[i][j] = 1;
+			else selfg[i][j] = (rocks[group_x*4 + i][j] > 0);
+		}
+	}
+
+	for (int k = 0; k < 4; k++) {
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				selfg[i][j] |= (selfg[i][k] && selfg[k][j]);
+			}
+		}
+	}
+
+	for (int from = 0; from < 4; from++) {
+		int idx_from = group_x * 4 + from;
+
+		double total_rocks = 0;
+		for (int i = 0; i < 8; i++) {
+			total_rocks += rocks[idx_from][i];
+		}
+
+		for (int to = 0; to < 4; to++) if (from != to) {
+			double this_rocks = rocks[idx_from][to];
+			if (this_rocks == 0) continue;
+
+			for (int ot = 0; ot < 4; ot++) if (ot != from && selfg[from][ot] && selfg[to][ot]) {
+				mat[from*4 + ot][to*4 + ot] -= this_rocks / total_rocks;
+			}
+		}
+	}
+
+	/*printf("\n");
+	for (int i = 0; i < 16; i++) {
+		for (int j = 0; j < 16; j++) printf(" %.2f", mat[i][j]);
+		printf("\n");
+	}
+	for (int i = 0; i < 16; i++) printf("%f ", b[i][0]);
+	printf("\n");*/
+
+	GaussJordan(mat, b);
+	for (int i = 0; i < 16; i++) {
+		int from = i / 4;
+		int to = i % 4;
+		//printf("%d -> %.6f\n", i, b[i][0]);
+		self_prob[group_x * 4 + from][to] = b[i][0];
+	}
+
+}
+
+void recalc_next(int group_x) {
+	VVT mat;
+	VVT b;
+
+	for (int i = 0; i < 16; i++) mat.push_back( VT(16) );
+	for (int i = 0; i < 16; i++) b.push_back( VT(1) );
+
+	for (int i = 0; i < 16; i++) mat[i][i] = 1;
+
+	int selfg[4][4], otg[4][4];
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			if (i == j) selfg[i][j] = 1;
+			else selfg[i][j] = (rocks[group_x*4 + i][j] > 0);
+		}
+	}
+
+	for (int k = 0; k < 4; k++) {
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				selfg[i][j] |= (selfg[i][k] && selfg[k][j]);
+			}
+		}
+	}
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			otg[i][j] = (rocks[group_x*4 + i][4 + j] > 0);
+
+			for (int k = 0; k < 4; k++) {
+				otg[i][j] |= (rocks[group_x*4 + k][4 + j] && selfg[i][k]);
+			}
+		}
+	}
+
+	for (int from = 0; from < 4; from++) {
+		int idx_from = group_x * 4 + from;
+
+		double total_rocks = 0;
+		for (int i = 0; i < 8; i++) {
+			total_rocks += rocks[idx_from][i];
+		}
+
+		for (int to = 0; to < 4; to++) {
+			if (total_rocks) b[from*4+to][0] = rocks[idx_from][4 + to] / total_rocks;
+
+			double this_rocks = rocks[idx_from][to];
+			if (this_rocks == 0) continue;
+
+			for (int ot = 0; ot < 4; ot++) if (otg[from][ot] && otg[to][ot]) {
+				mat[from*4 + ot][to*4 + ot] -= this_rocks / total_rocks;
+			}
+		}
+	}
+
+	/*printf("\n");
+	for (int i = 0; i < 16; i++) {
+		for (int j = 0; j < 16; j++) printf(" %.2f", mat[i][j]);
+		printf("\n");
+	}
+	for (int i = 0; i < 16; i++) printf("%f ", b[i][0]);
+	printf("\n");*/
+
+	GaussJordan(mat, b);
+	
+	for (int i = 0; i < 16; i++) {
+		int from = i / 4;
+		int to = i % 4;
+		//printf("%d -> %f\n", i, b[i][0]);
+		next_prob[group_x * 4 + from][to] = b[i][0];
+	}
+}
+
+struct node {
+	double pr[4][4];
+};
+
+void eye(node& ret) {
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			ret.pr[i][j] = (i == j);
+		}
+	}
+}
+
+void join(node& ret, const node& a, const node& b) {
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) ret.pr[i][j] = 0;
+	}
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			for (int k = 0; k < 4; k++) {
+				ret.pr[i][k] += a.pr[i][j] * b.pr[j][k];
+			}
+		}
+	}
+}
+
+node tree[52000];
+
+// LEMBRA DE QUERY(a, b-1).
+// INICIALIZA RET com eye.
+void tree_query(int a, int b, node& ret, int i=1, int st=0, int end=n/4) {
+	if (b < st || end < a) return;
+
+	if (a <= st && end <= b) {
+		node temp;
+		join(temp,ret,tree[i]);
+		ret = temp;
+		return;
+	}
+
+	int mid = (st+end)/2;
+	tree_query(a,b,ret, 2*i, st, mid);
+	tree_query(a,b,ret, 2*i+1, mid+1, end);
+}
+
+void update(int group, int i=1, int st=0, int end=n/4) {
+
+	if (group < st || end < group) return;
+	if (st == end) {
+		for (int k = 0; k < 4; k++) {
+			for (int j = 0; j < 4; j++) {
+				tree[i].pr[k][j] = next_prob[group*4 + k][j];
+			}
+		}
+		return;
+	}
+
+	int mid = (st+end)/2;
+	update(group, 2*i, st, mid);
+	update(group, 2*i+1, mid+1, end);
+
+	join(tree[i], tree[2*i], tree[2*i+1]);
+}
+
+void add(int x, int y, int p) {
+	int group_x = x/4;
+	int group_y = y/4;
+	rocks[x][(group_y - group_x)*4 + (y%4)] = p;
+
+	recalc_self(group_x);
+	recalc_next(group_x);
+	update(group_x);
+}
+
+double query(int x, int y) {
+	int group_x = x/4;
+	int group_y = y/4;
+	int x_pos = x%4;
+	int y_pos = y%4;
+
+	if (group_y < group_x) return 0;
+
+	node temp;
+	eye(temp);
+	if (group_x < group_y) {
+		tree_query(group_x, group_y-1, temp);
+	}
+
+	double ans = 0;
+	for (int i = 0; i < 4; i++) {
+		//printf("%f %f\n", temp.pr[x_pos][i], self_prob[group_y*4 + i][y_pos]);
+		ans += temp.pr[x_pos][i] * self_prob[group_y*4 + i][y_pos];
+	}
+
+	return ans;
+}
+
+int t, teste;
+
+int main(int argc, char** argv) {
+	stringstream ss;
+	int begin_test, end_test;
+	ss << argv[1];
+	ss >> begin_test;
+
+	stringstream ss2;
+	ss2 << argv[2];
+	ss2 >> end_test;
+
+	for (scanf("%d", &t); t; t--) {
+		++teste;
+		
+		bool process = false;
+		if (teste >= begin_test && teste <= end_test) process = true;
+		
+		if (process) printf("Case #%d:", teste);
+		scanf("%d %d %d", &n, &p, &d);
+
+		memset(rocks,0,sizeof(rocks));
+		memset(next_prob, 0 ,sizeof(next_prob));
+		memset(self_prob, 0, sizeof(self_prob));
+		for (int i = 0; i <= n; i++) {
+			self_prob[i][i%4] = 1;
+
+			for (int j = 0; j < 4; j++) {
+				for (int k = 0; k < 4; k++) {
+					tree[i].pr[j][k] = 0;
+				}
+			}
+		}
+		
+		for (int i = 0; i < p; i++) {
+			int a, b, r;
+			scanf("%d %d %d", &a, &b, &r);
+			add(a, b, r);
+		}
+
+		for (int i = 0; i < d; i++) {
+			int e,x,y,z;
+			scanf("%d %d %d", &e, &x, &y);
+			
+			if (e == 1) {
+				scanf("%d", &z);
+				if (process)add(x,y,z);
+			}
+			else if (e == 2) {
+				if (process)add(x,y,0);
+			}
+			else {
+				if (process)printf(" %.6f", query(x,y));
+			}
+		}
+
+		if (process) printf("\n");
+	}
+}
+
+
+
+
+const double EPS = 1e-10;
+
+
+
+T GaussJordan(VVT &a, VVT &b) {
+  const int n = a.size();
+  const int m = b[0].size();
+  VI irow(n), icol(n), ipiv(n);
+  T det = 1;
+
+  for (int i = 0; i < n; i++) {
+    int pj = -1, pk = -1;
+    for (int j = 0; j < n; j++) if (!ipiv[j])
+      for (int k = 0; k < n; k++) if (!ipiv[k])
+	if (pj == -1 || fabs(a[j][k]) > fabs(a[pj][pk])) { pj = j; pk = k; }
+    if (fabs(a[pj][pk]) < EPS) { cerr << "Matrix is singular." << endl; exit(0); }
+    ipiv[pk]++;
+    swap(a[pj], a[pk]);
+    swap(b[pj], b[pk]);
+    if (pj != pk) det *= -1;
+    irow[i] = pj;
+    icol[i] = pk;
+
+    T c = 1.0 / a[pk][pk];
+    det *= a[pk][pk];
+    a[pk][pk] = 1.0;
+    for (int p = 0; p < n; p++) a[pk][p] *= c;
+    for (int p = 0; p < m; p++) b[pk][p] *= c;
+    for (int p = 0; p < n; p++) if (p != pk) {
+      c = a[p][pk];
+      a[p][pk] = 0;
+      for (int q = 0; q < n; q++) a[p][q] -= a[pk][q] * c;
+      for (int q = 0; q < m; q++) b[p][q] -= b[pk][q] * c;      
+    }
+  }
+
+  for (int p = n-1; p >= 0; p--) if (irow[p] != icol[p]) {
+    for (int k = 0; k < n; k++) swap(a[k][irow[p]], a[k][icol[p]]);
+  }
+
+  return det;
+}

@@ -1,0 +1,121 @@
+#include <cmath>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+typedef long double TYPE;
+const TYPE EPS = 1e-9, INF = 1e9;
+
+inline int sgn(TYPE a) { return a > EPS ? 1 : (a < -EPS ? -1 : 0); }
+inline int cmp(TYPE a, TYPE b) { return sgn(a - b); }
+
+struct pt {
+    TYPE x, y;
+    pt(TYPE x = 0, TYPE y = 0) : x(x), y(y) { }
+
+    bool operator==(pt p) { return cmp(x, p.x) == 0 && cmp(y, p.y) == 0; }
+    double arg() const { return atan2(y, x); }
+    bool operator<(pt p) const {
+        return arg() < p.arg();
+    }
+    bool operator<=(pt p) { return *this < p || *this == p; }
+    TYPE operator||(pt p) { return x*p.x + y*p.y; }
+    TYPE operator%(pt p) { return x*p.y - y*p.x; }
+    pt operator~() { return pt(x, -y); }
+    pt operator+(pt p) { return pt(x + p.x, y + p.y); }
+    pt operator-(pt p) { return pt(x - p.x, y - p.y); }
+    pt operator*(pt p) { return pt(x*p.x - y*p.y, x*p.y + y*p.x); }
+    pt operator/(TYPE t) { return pt(x/t, y/t); }
+    pt operator/(pt p) { return (*this * ~p)/(p||p); }
+};
+
+TYPE norm(pt a) { return a||a; }
+TYPE abs(pt a) { return sqrt(a||a); }
+TYPE dist(pt a, pt b) { return abs(a - b); }
+TYPE area(pt a, pt b, pt c) { return (a-c)%(b-c); }
+int ccw(pt a, pt b, pt c) { return sgn(area(a, b, c)); }
+pt unit(pt a) { return a/abs(a); }
+
+bool in_rect(pt a, pt b, pt c) {
+    return sgn(c.x - min(a.x, b.x)) >= 0 && sgn(max(a.x, b.x) - c.x) >= 0 &&
+        sgn(c.y - min(a.y, b.y)) >= 0 && sgn(max(a.y, b.y) - c.y) >= 0;
+}
+bool ps_isects(pt a, pt b, pt c) { return ccw(a,b,c) == 0 && in_rect(a,b,c); }
+
+bool ss_isects(pt a, pt b, pt c, pt d) {
+    if (ccw(a,b,c)*ccw(a,b,d) == -1 && ccw(c,d,a)*ccw(c,d,b) == -1) return true;
+    return ps_isects(a, b, c) || ps_isects(a, b, d) ||
+        ps_isects(c, d, a) || ps_isects(c, d, b);
+}
+
+pt firstend;
+
+int main() {
+    int t;
+    scanf("%d", &t);
+
+    for (int z = 1; z <= t; z++) {
+        int x0, y0, d, n;
+        scanf("%d %d %d %d", &x0, &y0, &d, &n);
+
+        pt start(x0, y0);
+        vector<pt> others;
+        for (int i = 0; i < n; i++) {
+            int a, b;
+            scanf("%d %d", &a, &b);
+            others.push_back(pt(a, b));
+        }
+
+        int ans = 0;
+        for (int i = 0; i < n; i++) {
+            pt dir = others[i] - start;
+            if (norm(dir) < EPS)
+                continue;
+            dir = unit(dir);
+
+            firstend = start + dir * d;
+            bool end_extra = false;
+
+            int ans1 = 0;
+            for (int j = 0; j < n; j++) {
+                if (ps_isects(start, firstend, others[j]))
+                    ans1++;
+                if (abs(firstend - others[j]) < EPS)
+                    end_extra = true;
+            }
+
+            if (end_extra)
+                ans = max(ans, ans1);
+
+            vector<pt> norms;
+            for (int j = 0; j < n; j++) {
+                pt dir2 = others[j] - firstend;
+                if (norm(dir2) < EPS)
+                    continue;
+                norms.push_back(unit(dir2));
+            }
+
+            if (norms.size() == 0)
+                continue;
+
+            sort(norms.begin(), norms.end());
+            int sz = norms.size();
+            for (int j = 0; j < sz; j++)
+                norms.push_back(norms[j]);
+
+            int run = 1;
+            ans = max(ans, ans1 * (run + end_extra));
+            for (int j = 1; j < norms.size(); j++) {
+                if (abs(norms[j] - norms[j-1]) < EPS) {
+                    run++;
+                    ans = max(ans, ans1 * (min(run, sz) + end_extra));
+                } else
+                    run = 1;
+            }
+        }
+
+        printf("Case #%d: %d\n", z, ans);
+    }
+}

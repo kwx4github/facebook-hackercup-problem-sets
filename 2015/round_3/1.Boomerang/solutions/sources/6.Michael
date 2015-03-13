@@ -1,0 +1,184 @@
+import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.io.PrintStream;
+import java.util.Comparator;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.util.Collections;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("boomerang.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("boomerang.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		Boomerang solver = new Boomerang();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class Boomerang {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int x0 = in.nextInt(), y0 = in.nextInt();
+        int d = in.nextInt();
+        int n = in.nextInt();
+        int[] x = new int[n];
+        int[] y = new int[n];
+        for (int i = 0; i < n; i++) {
+            x[i] = in.nextInt();
+            y[i] = in.nextInt();
+        }
+        Point[] p = new Point[n];
+        for (int i = 0; i < n; i++) {
+            p[i] = new Point(x[i], y[i]);
+        }
+        Point p0 = new Point(x0, y0);
+        List<Point> directions = new ArrayList<>();
+        Comparator<Point> cmp = new Comparator<Point>() {
+            @Override
+            public int compare(Point o1, Point o2) {
+                int cmp = Boomerang.compare(o1.x, o2.x);
+                if (cmp != 0) {
+                    return cmp;
+                }
+                return Boomerang.compare(o1.y, o2.y);
+            }
+        };
+        int maxScore = 0;
+        for (Point throwAt : p) {
+            Point diff = throwAt.sub(p0);
+            Point startDirection = diff.mul(1 / diff.abs());
+            Point turn = p0.add(startDirection.mul(d));
+            boolean turnIsPoint = false;
+            directions.clear();
+            int firstSegmentHits = 0;
+
+            for (Point other : p) {
+                Point t = other.sub(turn);
+                if (compare(t.x, 0) == 0 && compare(t.y, 0) == 0) {
+                    turnIsPoint = true;
+                    continue;
+                }
+                t = t.mul(1 / t.abs());
+                directions.add(t);
+                Point curDirection = other.sub(p0);
+                double abs = curDirection.abs();
+                curDirection = curDirection.mul(1 / abs);
+                if (cmp.compare(curDirection, startDirection) == 0 && abs < d) {
+                    ++firstSegmentHits;
+                }
+            }
+            Collections.sort(directions, cmp);
+            int max = 0;
+            for (int i = 0; i < directions.size(); ) {
+                int j = i + 1;
+                while (j < directions.size() && cmp.compare(directions.get(i), directions.get(j)) == 0) {
+                    j++;
+                }
+                max = Math.max(max, j - i);
+                i = j;
+            }
+            int curScore = !turnIsPoint ? max * firstSegmentHits : (max + 1) * (firstSegmentHits + 1);
+            maxScore = Math.max(maxScore, curScore);
+        }
+        out.println("Case #" + testNumber + ": " + maxScore);
+        System.err.println("ok "+testNumber);
+    }
+
+    static int compare(double a, double b) {
+        if (Math.abs(a - b) < EPS) {
+            return 0;
+        }
+        return a < b ? -1 : 1;
+    }
+
+    static final double EPS = 1e-11;
+
+    static class Point {
+        double x, y;
+
+        Point sub(Point p) {
+            return new Point(x - p.x, y - p.y);
+        }
+
+        Point add(Point p) {
+            return new Point(x + p.x, y + p.y);
+        }
+
+        double abs() {
+            return Math.sqrt(x * x + y * y);
+        }
+
+        Point mul(double val) {
+            return new Point(x * val, y * val);
+        }
+
+        public Point(double x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        public String toString() {
+            return "Point [x=" + x + ", y=" + y + "]";
+        }
+    }
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+

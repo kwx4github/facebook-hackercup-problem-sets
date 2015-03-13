@@ -1,0 +1,172 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/resource.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    struct rlimit stack_limit;
+    getrlimit(RLIMIT_STACK, &stack_limit);
+    stack_limit.rlim_cur = 1024 * 1024 * 1024;
+    setrlimit(RLIMIT_STACK, &stack_limit);
+
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+static inline double dot(const pnt &a, const pnt &b)
+{
+    return real(conj(a) * b);
+}
+
+static inline double cross(const pnt &a, const pnt &b)
+{
+    return imag(conj(a) * b);
+}
+
+static inline double cross(const pnt &a, const pnt &b, const pnt &c)
+{
+    return cross(b - a, c - a);
+}
+
+/* Sorts points by the angle they occupy relative to another point, starting at +X
+ * and going ccw. Ties are broken by sorting with increasing distance from the base.
+ * The base itself sorts to the front.
+ */
+class CompareAngle
+{
+private:
+    const pnt base;
+
+public:
+    explicit CompareAngle(const pnt &base) : base(base) {}
+
+    bool operator()(const pnt &a, const pnt &b) const
+    {
+        const pnt da = a - base;
+        const pnt db = b - base;
+        bool fa = da.imag() > 0 || (da.imag() == 0 && da.real() >= 0);
+        bool fb = db.imag() > 0 || (db.imag() == 0 && db.real() >= 0);
+        if (fa != fb)
+            return fa;
+        else
+        {
+            ll c = cross(da, db);
+            if (c != 0)
+                return c > 0;
+            else
+                return dot(da, da) < dot(db, db);
+        }
+    }
+};
+
+istream &operator>>(istream &in, pnt &p)
+{
+    double x, y;
+    in >> x >> y;
+    p = pnt(x, y);
+    return in;
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        int N;
+        double D;
+        pnt start;
+        cin >> start;
+        cin >> D >> N;
+        vector<pnt> p(N);
+        double D2 = D * D;
+        for (int i = 0; i < N; i++)
+            cin >> p[i];
+
+        vector<pnt> part1;
+        for (int i = 0; i < N; i++)
+            if (dot(p[i] - start, p[i] - start) <= D2)
+                part1.push_back(p[i]);
+        sort(RA(part1), CompareAngle(start));
+        int i = 0;
+        int ans = 0;
+        while (i < SZ(part1))
+        {
+            int j = i;
+            while (j < SZ(part1) && cross(part1[i], part1[j], start) == 0
+                   && dot(part1[i] - start, part1[j] - start) > 0)
+                j++;
+            int A = j - i;
+            pnt mid = start + (part1[i] - start) * D / abs(part1[i] - start);
+
+            vector<pnt> part2 = p;
+            sort(RA(part2), CompareAngle(mid));
+            int exact = 0;
+            while (exact < N && abs(mid - part2[exact]) < 1e-10)
+                exact++;
+            int x = exact;
+            ans = max(ans, exact * A);
+            while (x < N)
+            {
+                int y = x;
+                while (y < N && fabs(cross(part2[x], part2[y], mid)) < 1e-10
+                       && dot(part2[x] - mid, part2[y] - mid) > 0)
+                    y++;
+                ans = max(ans, A * (y - x + exact));
+                x = y;
+            }
+
+            i = j;
+        }
+
+        cout << "Case #" << cas + 1 << ": " << ans << "\n";
+    }
+    return 0;
+}

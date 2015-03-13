@@ -1,0 +1,373 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
+import java.io.OutputStream;
+import java.util.concurrent.Executors;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.concurrent.ExecutionException;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "fox.*rocks.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("foxrocks.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		FoxRocks solver = new FoxRocks();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class FoxRocks {
+    static class Testcase implements Callable<Testcase> {
+        int testNumber;
+        int n;
+        int p;
+        int d;
+        int[] a;
+        int[] b;
+        int[] r;
+        int[] e;
+        int[] x;
+        int[] y;
+        int[] z;
+        double[] res;
+
+        Testcase(int testNumber) {
+            this.testNumber = testNumber;
+        }
+
+        public void readInput(InputReader in) {
+            n = in.nextInt();
+            p = in.nextInt();
+            d = in.nextInt();
+            a = new int[p];
+            b = new int[p];
+            r = new int[p];
+            for (int i = 0; i < p; ++i) {
+                a[i] = in.nextInt();
+                b[i] = in.nextInt();
+                r[i] = in.nextInt();
+            }
+            e = new int[d];
+            x = new int[d];
+            y = new int[d];
+            z = new int[d];
+            for (int i = 0; i < d; ++i) {
+                e[i] = in.nextInt();
+                x[i] = in.nextInt();
+                y[i] = in.nextInt();
+                if (e[i] == 1) z[i] = in.nextInt();
+            }
+        }
+
+        int blocks;
+        double[][][] matrTree;
+        double[][][] finishMatr;
+        int[][] edge;
+
+        public Testcase call() {
+            int nres = 0;
+            for (int x : e) if (x == 3) ++nres;
+            res = new double[nres];
+            nres = 0;
+
+            blocks = (n + 3) / 4;
+            n = blocks * 4;
+            edge = new int[n][8];
+            for (int i = 0; i < p; ++i) {
+                int bs = a[i] / 4 * 4;
+                edge[a[i]][b[i] - bs] = r[i];
+            }
+
+            matrTree = new double[4 * blocks + 10][4][4];
+            finishMatr = new double[blocks][4][4];
+
+            for (int i = 0; i < blocks; ++i) {
+                if (i + 1 < blocks) {
+                    double[][] transition = buildTransitionMatrixForBlock(i);
+                    updateMatrTree(0, 0, blocks - 1, i, transition);
+                }
+                finishMatr[i] = buildFinishMatrixForBlock(i);
+            }
+
+            for (int qid = 0; qid < d; ++qid) {
+                switch (e[qid]) {
+                    case 1:
+                    case 2: {
+                        int bs = x[qid] / 4 * 4;
+                        edge[x[qid]][y[qid] - bs] = z[qid];
+                        int i = x[qid] / 4;
+                        if (i + 1 < blocks) {
+                            double[][] transition = buildTransitionMatrixForBlock(i);
+                            updateMatrTree(0, 0, blocks - 1, i, transition);
+                        }
+                        finishMatr[i] = buildFinishMatrixForBlock(i);
+                        break;
+                    }
+
+                    case 3: {
+                        int firstBlock = x[qid] / 4;
+                        int lastBlock = y[qid] / 4;
+                        if (firstBlock > lastBlock) {
+                            res[nres++] = 0.0;
+                        } else {
+                            double[][] transition = getFromMatrTree(0, 0, blocks - 1, firstBlock, lastBlock - 1);
+                            double[][] rr = mul(transition, finishMatr[lastBlock]);
+                            res[nres++] = rr[x[qid] % 4][y[qid] % 4];
+                        }
+                        break;
+                    }
+
+                    default: {
+                        throw new RuntimeException();
+                    }
+                }
+            }
+
+            if (nres != res.length) throw new RuntimeException();
+            System.err.println("Done test " + testNumber);
+            return this;
+        }
+
+        private double[][] getFromMatrTree(int root, int rl, int rr, int left, int right) {
+            if (left > right) {
+                double[][] res = new double[4][4];
+                for (int i = 0; i < 4; ++i) res[i][i] = 1;
+                return res;
+            }
+            if (rl == left && rr == right) {
+                return matrTree[root];
+            }
+            int rm = (rl + rr) / 2;
+            return mul(getFromMatrTree(root * 2 + 1, rl, rm, left, Math.min(right, rm)),
+                    getFromMatrTree(root * 2 + 2, rm + 1, rr, Math.max(rm + 1, left), right));
+        }
+
+        private double[][] mul(double[][] a, double[][] b) {
+            int n = a.length;
+            double[][] c = new double[n][n];
+            for (int i = 0; i < n; ++i)
+                for (int j = 0; j < n; ++j) {
+                    for (int k = 0; k < n; ++k) {
+                        c[i][j] += a[i][k] * b[k][j];
+                    }
+                }
+            return c;
+        }
+
+        private void updateMatrTree(int root, int rl, int rr, int at, double[][] transition) {
+            if (rl == rr) {
+                matrTree[root] = transition;
+                return;
+            }
+            int rm = (rl + rr) / 2;
+            if (at <= rm)
+                updateMatrTree(root * 2 + 1, rl, rm, at, transition);
+            else
+                updateMatrTree(root * 2 + 2, rm + 1, rr, at, transition);
+            matrTree[root] = mul(matrTree[root * 2 + 1], matrTree[root * 2 + 2]);
+        }
+
+        private double[][] buildTransitionMatrixForBlock(int blockIndex) {
+            double[][] res = new double[4][4];
+            for (int exit = 0; exit < 4; ++exit) {
+                boolean[] reach = new boolean[4];
+                for (int i = 0; i < 4; ++i) if (edge[blockIndex * 4 + i][4 + exit] > 0) reach[i] = true;
+                while (true) {
+                    boolean upd = false;
+                    for (int i = 0; i < 4; ++i) if (!reach[i]) for (int j = 0; j < 4; ++j) if (edge[blockIndex * 4 + i][j] > 0 && reach[j]) {
+                        reach[i] = true;
+                        upd = true;
+                    }
+                    if (!upd) break;
+                }
+                int nreach = 0;
+                int[] reachIndex = new int[4];
+                Arrays.fill(reachIndex, -1);
+                for (int i = 0; i < 4; ++i) if (reach[i]) reachIndex[i] = nreach++;
+                double[][] a = new double[nreach][nreach];
+                double[] b = new double[nreach];
+                for (int i = 0; i < 4; ++i) if (reach[i]) {
+                    a[reachIndex[i]][reachIndex[i]] = 1.0;
+                    int totalEdge = 0;
+                    for (int j = 0; j < 8; ++j) totalEdge += edge[blockIndex * 4 + i][j];
+                    for (int j = 0; j < 4; ++j) if (reach[j]) {
+                        a[reachIndex[i]][reachIndex[j]] -= edge[blockIndex * 4 + i][j] / (double) totalEdge;
+                    }
+                    b[reachIndex[i]] = edge[blockIndex * 4 + i][4 + exit] / (double) totalEdge;
+                }
+                double[] x = gauss(nreach, a, b);
+                for (int i = 0; i < 4; ++i) if (reach[i]) {
+                    res[i][exit] = x[reachIndex[i]];
+                }
+            }
+            return res;
+        }
+
+        private double[] gauss(int n, double[][] a, double[] b) {
+            for (int i = 0; i < n; ++i) {
+                double max = 0;
+                int mj = -1;
+                for (int j = i; j < n; ++j) if (Math.abs(a[i][j]) > max) {
+                    max = Math.abs(a[i][j]);
+                    mj = j;
+                }
+                if (max < 1e-12) throw new RuntimeException();
+                for (int k = 0; k < n; ++k) {
+                    double t = a[i][k];
+                    a[i][k] = a[mj][k];
+                    a[mj][k] = t;
+                }
+                {
+                    double t = b[i];
+                    b[i] = b[mj];
+                    b[mj] = t;
+                }
+                double by = 1.0 / a[i][i];
+                for (int k = 0; k < n; ++k) a[i][k] *= by;
+                b[i] *= by;
+                for (int j = 0; j < n; ++j) if (j != i) {
+                    by = -a[j][i];
+                    for (int k = 0; k < n; ++k) a[j][k] += a[i][k] * by;
+                    b[j] += b[i] * by;
+                }
+            }
+            return b;
+        }
+
+        private double[][] buildFinishMatrixForBlock(int blockIndex) {
+            double[][] res = new double[4][4];
+            for (int exit = 0; exit < 4; ++exit) {
+                res[exit][exit] = 1.0;
+                boolean[] reach = new boolean[4];
+                reach[exit] = true;
+                while (true) {
+                    boolean upd = false;
+                    for (int i = 0; i < 4; ++i) if (!reach[i]) for (int j = 0; j < 4; ++j) if (edge[blockIndex * 4 + i][j] > 0 && reach[j]) {
+                        reach[i] = true;
+                        upd = true;
+                    }
+                    if (!upd) break;
+                }
+                reach[exit] = false;
+                int nreach = 0;
+                int[] reachIndex = new int[4];
+                Arrays.fill(reachIndex, -1);
+                for (int i = 0; i < 4; ++i) if (reach[i]) reachIndex[i] = nreach++;
+                double[][] a = new double[nreach][nreach];
+                double[] b = new double[nreach];
+                for (int i = 0; i < 4; ++i) if (reach[i]) {
+                    a[reachIndex[i]][reachIndex[i]] = 1.0;
+                    int totalEdge = 0;
+                    for (int j = 0; j < 8; ++j) totalEdge += edge[blockIndex * 4 + i][j];
+                    for (int j = 0; j < 4; ++j) if (reach[j]) {
+                        a[reachIndex[i]][reachIndex[j]] -= edge[blockIndex * 4 + i][j] / (double) totalEdge;
+                    }
+                    b[reachIndex[i]] = edge[blockIndex * 4 + i][exit] / (double) totalEdge;
+                }
+                double[] x = gauss(nreach, a, b);
+                for (int i = 0; i < 4; ++i) if (reach[i]) {
+                    res[i][exit] = x[reachIndex[i]];
+                }
+            }
+            return res;
+        }
+
+        public void writeOutput(PrintWriter out) {
+            out.print("Case #" + testNumber + ":");
+            for (double x : res) out.print(" " + String.format("%.6f", x));
+            out.println();
+        }
+    }
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int nt = in.nextInt();
+        List<Future<Testcase>> tests = new ArrayList<Future<Testcase>>();
+        ExecutorService pool = Executors.newFixedThreadPool(1);
+        for (int it = 0; it < nt; ++it) {
+            Testcase t = new Testcase(it + 1);
+            t.readInput(in);
+            tests.add(pool.submit(t));
+        }
+        for (Future<Testcase> test : tests) {
+            try {
+                Testcase t = test.get();
+                t.writeOutput(out);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        pool.shutdown();
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+}
+

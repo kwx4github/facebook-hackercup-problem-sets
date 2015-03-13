@@ -1,0 +1,317 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <queue>
+#include <set>
+#include <map>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const double eps = 1e-16;
+typedef vector < vector < double > > matrix;
+
+matrix mul(const matrix& A, const matrix& B) {
+	int n = A.size();
+	matrix C(n, vector < double > (n, 0));
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < n; ++j) {
+			double current = 0;
+			for (int k = 0; k < n; ++k) {
+				current += A[i][k] * B[k][j];
+				if (current < eps) {
+					current = 0;
+				}
+			}
+			C[i][j] = current;
+		}
+	}
+	return C;
+}
+
+matrix getE(int n) {
+	matrix res(n, vector < double > (n, 0.0));
+	for (int i = 0; i < n; ++i) {
+		res[i][i] = 1.0;
+	}
+	return res;
+}
+
+matrix pow(const matrix& A, long long n) {
+	if (n == 0) {
+		matrix B(A.size(), vector < double > (A.size(), 0.0));
+		for (int i = 0; i < A.size(); ++i) {
+			B[i][i] = 1;
+		}
+		return B;
+	}
+	matrix B = pow(A, n / 2);
+	B = mul(B, B);
+
+	if (n % 2 == 0) {
+		return B;
+	} else {
+		return mul(B, A);
+	}
+}
+
+const int maxD = 40;
+
+matrix getInf(const matrix &A) {
+	matrix res = A;
+	for (int i = 0; i < maxD; ++i) {
+		res = mul(res, res);
+	}
+	return res;
+}
+
+void readData() {
+	int n, p, d;
+	cin >> n >> p >> d;
+	for (int i = 0; i < p; ++i) {
+		int u, v, r;
+		cin >> u >> v >> r;
+	}
+	for (int i = 0; i < d; ++i) {
+		int mode, x, y, z;
+		cin >> mode >> x >> y;
+		if (mode == 1) {
+			cin >> z;
+		}
+	}
+}
+
+const int maxN = 60000;
+matrix t[maxN * 4];
+matrix b[maxN];
+
+void update(int i, int l, int r, int k, const matrix &A) {
+	if (l == r) {
+		t[i] = getInf(A);
+		return ;
+	}
+	if (k > (l + r) / 2) {
+		update(2 * i + 1, (l + r) / 2 + 1, r, k, A);
+	} else {
+		update(2 * i, l, (l + r) / 2, k, A);
+	}
+	t[i] = mul(t[2 * i], t[2 * i + 1]);
+}
+
+matrix get(int i, int l, int r, int cl, int cr) {
+	if (l == cl && r == cr) {
+		return t[i];
+	}
+
+	if (cl > (l + r) / 2) {
+		return get(2 * i + 1, (l + r) / 2 + 1, r, cl, cr);
+	}
+	if (cr <= (l + r) / 2) {
+		return get(2 * i, l, (l + r) / 2, cl, cr);
+	}
+	matrix A = get(2 * i, l, (l + r) / 2, cl, (l + r) / 2);
+	matrix B = get(2 * i + 1, (l + r) / 2 + 1, r, (l + r) / 2 + 1, cr);
+	return mul(A, B);
+}
+
+int n, p, d;
+pair < int, int > g[maxN][4];
+pair < int, int > h[maxN][4];
+
+matrix build8(int k) {
+	int l = 4 * k;
+	int r = 4 * k + 7;
+	matrix cur(8, vector < double > (8, 0.0));
+	for (int i = l; i <= l + 3; ++i) {
+		int s = 0;
+		for (int j = 0; j < 4; ++j) {
+			s += g[i][j].second;
+			s += h[i][j].second;
+		}
+		if (s == 0) {
+			cur[i - l][i - l] = 1.0;
+			continue;
+		}
+		for (int j = 0; j < 4; ++j) {
+			if (g[i][j].first != 0) {
+				cur[i - l][j] = (double)(g[i][j].second) / (double)(s);
+			}
+			if (h[i][j].first != 0) {
+				cur[i - l][4 + j] = (double)(h[i][j].second) / (double)(s);
+			}
+		}
+	}
+	for (int i = l + 4; i <= r; ++i) {
+		cur[i - l][i - l] = 1.0;
+	}
+	return cur;
+}
+
+matrix build4(int k) {
+	int l = 4 * k;
+	int r = 4 * k + 3;
+	matrix cur(4, vector < double > (4, 0.0));
+	for (int i = l; i <= r; ++i) {
+		int s = 0;
+		for (int j = 0; j < 4; ++j) {
+			s += g[i][j].second;
+			s += h[i][j].second;
+		}
+		if (s == 0) {
+			cur[i - l][i - l] = 1.0;
+			continue;
+		}
+		for (int j = 0; j < 4; ++j) {
+			if (g[i][j].first == 0) {
+				continue;
+			}
+			cur[i - l][j] = (double)(g[i][j].second) / (double)(s);
+		}
+	}
+	return cur;
+}
+
+vector < double > mul(const vector < double > &a, const matrix &b) {
+	vector < double > res(a.size());
+	for (int i = 0; i < b.size(); ++i) {
+		double cur = 0.0;
+		for (int j = 0; j < b.size(); ++j) {
+			cur += a[j] * b[j][i];
+			if (cur < eps) {
+				cur = 0.0;
+			}
+		}
+		res[i] = cur;
+	}
+	return res;
+}
+
+void addEdge(int u, int v, int r) {
+	if (v / 4 == u / 4) {
+		g[u][v % 4] = make_pair(1, r);
+	} else {
+		h[u][v % 4] = make_pair(1, r);
+	}
+
+	{
+		int k = u / 4;
+		matrix S = build8(k);
+		if (k + 1 < n) {
+			update(1, 0, n - 1, k, S);
+		}
+	}
+
+	b[u / 4] = build4(u / 4);
+}
+
+void removeEdge(int u, int v) {
+	if (v / 4 == u / 4) {
+		g[u][v % 4] = make_pair(0, 0);
+	} else {
+		h[u][v % 4] = make_pair(0, 0);
+	}
+	{
+		int k = u / 4;
+		matrix S = build8(k);
+		if (k + 1 < n) {
+			update(1, 0, n - 1, k, S);
+		}
+	}
+	b[u / 4] = build4(u / 4);
+}
+
+double getP(int u, int v) {
+	int l = u / 4;
+	int r = (v / 4) - 1;
+	matrix cur = getE(8);
+	if (l <= r) {
+		cur = mul(cur, get(1, 0, n - 1, l, r));
+	}
+
+	vector < double > start(8, 0.0);
+	start[u % 4] = 1.0;
+	start = mul(start, cur);
+	vector < double > ending(4, 0.0);
+	if (l <= r) {
+		for (int i = 4; i < 8; ++i) {
+			ending[i - 4] = start[i];
+		}
+	} else {
+		for (int i = 0; i < 4; ++i) {
+			ending[i] = start[i];
+		}
+	}
+	ending = mul(ending, getInf(b[v / 4]));
+	return ending[v % 4];
+}
+
+void solve(int test) {
+	cin >> n >> p >> d;
+	for (int i = 0; i < 4 * maxN; ++i) {
+		t[i] = getE(8);
+	}
+	for (int i = 0; i < maxN; ++i) {
+		b[i] = getE(4);
+		for (int j = 0; j < 4; ++j) {
+			g[i][j] = make_pair(0, 0);
+			h[i][j] = make_pair(0, 0);
+		}
+	}
+
+	for (int i = 0; i < p; ++i) {
+		int a, b, r;
+		cin >> a >> b >> r;
+		addEdge(a, b, r);
+	}
+	vector < double > res;
+	for (int i = 0; i < d; ++i) {
+		int mode, x, y, z;
+		cin >> mode >> x >> y;
+		if (mode == 1) {
+			cin >> z;
+			addEdge(x, y, z);
+		} else if (mode == 2) {
+			removeEdge(x, y);
+		} else {
+			res.push_back(getP(x, y));
+		}
+	}
+	printf("Case #%d:", test);
+	for (int i = 0; i < res.size(); ++i) {
+		printf(" %.6lf", res[i]);
+	}
+	printf("\n");
+}
+
+int main(int argc, char* argv[]) {
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int left_bound, right_bound;
+
+	/*freopen(argv[3], "w", stdout);
+
+	
+	sscanf(argv[1], "%d", &left_bound);
+	sscanf(argv[2], "%d", &right_bound);*/
+
+	int t;
+	cin >> t;
+	left_bound = 1, right_bound = t;
+	for (int i = 1; i <= t; ++i) {
+		if (i >= left_bound && i <= right_bound) {
+			solve(i);
+		} else {
+			readData();
+		}
+		cerr << i << ": " << clock() << endl;
+	}
+
+	return 0;
+}

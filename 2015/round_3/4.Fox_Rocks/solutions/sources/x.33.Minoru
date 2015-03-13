@@ -1,0 +1,454 @@
+package fhc15.r3;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Scanner;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class D implements Runnable {
+	static final boolean PROD = true;
+	static final int NTHREAD = 7;
+	static String BASEPATH = "c:\\temp\\fhc\\r3\\";
+//	static String BASEPATH = "/home/ec2-user/";
+	
+	static String INPATH = BASEPATH + "fox_rocks.txt";
+	static String OUTPATH = INPATH.substring(0, INPATH.length()-4) + new SimpleDateFormat("-HHmmss").format(new Date()) + ".out";
+	
+	static String INPUT = "";
+	
+	int n, m, d;
+	int[][] qs;
+	int[][] g;
+	
+	public void read() // not parallelized
+	{
+		n = (ni()+3)/4*4; m = ni(); d = ni();
+		g = new int[n][8];
+		for(int i = 0;i < m;i++){
+			int a = ni(), b = ni(), z = ni();
+			g[a][b-a/4*4] += z;
+		}
+		qs = new int[d][];
+		for(int i = 0;i < d;i++){
+			int e = ni(), x = ni(), y = ni();
+			if(e == 1){
+				qs[i] = new int[]{e, x, y, ni()};
+			}else{
+				qs[i] = new int[]{e, x, y};
+			}
+		}
+	}
+	
+	public void process() // parallelized!
+	{
+		SegmentTreeMatrix st = new SegmentTreeMatrix(g);
+		outer:
+		for(int[] q : qs){
+			int e = q[0];
+			if(e == 1){
+				assert g[q[1]][q[2]-q[1]/4*4] == 0;
+				g[q[1]][q[2]-q[1]/4*4] = q[3];
+				st.update(q[1]/4);
+			}else if(e == 2){
+				assert g[q[1]][q[2]-q[1]/4*4] > 0;
+				g[q[1]][q[2]-q[1]/4*4] = 0;
+				st.update(q[1]/4);
+			}else if(e == 3){
+				if(q[2]/4 < q[1]/4){
+					out.printf(" %.6f", 0.);
+				}else if(q[1] == q[2]){
+					out.printf(" %.6f", 1.);
+				}else{
+					double[] v = new double[4];
+					v[q[1]&3] = 1;
+					double[] w = st.apply(q[1]/4, q[2]/4, v);
+					
+					int pos = q[2]/4;
+					int sink = q[2]&3;
+					double[][] M = new double[4][4];
+					for(int j = 0;j < 4;j++){
+						if(j == sink)continue;
+						int all = 0;
+						for(int k = 0;k < 8;k++){
+							all += g[pos*4+j][k];
+						}
+						if(all == 0)continue;
+						for(int k = 0;k < 4;k++){
+							M[k][j] = (double)g[pos*4+j][k] / all;
+						}
+					}
+					double[] s = S(M, w);
+					if(s == null){
+						tr("null");
+						for(double[] u : M){
+							tr(u);
+						}
+						out.printf(" %.6f", w[sink]);
+						continue outer;
+					}
+					out.printf(" %.6f", s[sink]);
+				}
+			}else{
+				assert false;
+			}
+		}
+		out.println();
+	}
+	
+	public static void preprocess()
+	{
+	}
+	
+	public static class SegmentTreeMatrix {
+		public int M, H, N;
+		public double[][][] node;
+		public int[][] g;
+		
+		public void make(int pos)
+		{
+			double[][] M = new double[8][8];
+			for(int j = 0;j < 4;j++){
+				int all = 0;
+				for(int k = 0;k < 8;k++){
+					all += g[pos*4+j][k];
+				}
+				if(all == 0)continue;
+				for(int k = 0;k < 8;k++){
+					M[k][j] = (double)g[pos*4+j][k] / all;
+				}
+			}
+//			for(int k = 4;k < 8;k++){
+//				M[k][k] = 1;
+//			}
+			node[H+pos] = new double[4][4];
+//			tr();
+//			for(int u = 0;u < 8;u++){
+//				tr(M[u]);
+//			}
+			for(int j = 0;j < 4;j++){
+				double[] v = new double[8];
+				v[j] = 1;
+				double[] s = S(M, v);
+				if(s == null){
+					tr("null", j);
+					// zero
+					continue;
+				}
+				for(int k = 0;k < 4;k++){
+					node[H+pos][k][j] = s[k+4];
+				}
+			}
+//			tr(node[H+pos]);
+		}
+		
+		private void tr(Object... o) { if(!PROD)System.out.println(Arrays.deepToString(o)); }
+		
+		public SegmentTreeMatrix(int[][] g)
+		{
+			this.g = g;
+			N = g.length/4;
+			M = Integer.highestOneBit(Math.max(N-1, 1))<<2;
+			H = M>>>1;
+			
+			node = new double[M][][];
+			for(int i = 0;i < N;i++){
+				node[H+i] = new double[4][4];
+				make(i);
+			}
+			
+			for(int i = H-1;i >= 1;i--)propagate(i);
+		}
+		
+		private void propagate(int cur)
+		{
+			node[cur] = prop2(node[2*cur], node[2*cur+1], node[cur]);
+		}
+		
+		private double[][] prop2(double[][] L, double[][] R, double[][] C)
+		{
+			if(L != null && R != null){
+				C = mul(R, L, C);
+				return C;
+			}else if(L != null){
+				return prop1(L, C);
+			}else if(R != null){
+				return prop1(R, C);
+			}else{
+				return null;
+			}
+		}
+		
+		private double[][] prop1(double[][] L, double[][] C)
+		{
+			if(C == null){
+//				C = L; // read only
+				C = new double[4][];
+				for(int i = 0;i < 4;i++){
+					C[i] = Arrays.copyOf(L[i], 4);
+				}
+			}else{
+				for(int i = 0;i < 4;i++){
+					C[i] = Arrays.copyOf(L[i], 4);
+				}
+			}
+			return C;
+		}
+		
+		public void update(int pos) {
+			make(pos);
+			for(int i = H+pos>>>1;i >= 1;i>>>=1)propagate(i);
+		}
+		
+		public double[] apply(int l, int r, double[] v){
+			if(l == r)return v;
+			return apply(l, r, 0, H, 1, v);
+		}
+		
+		protected double[] apply(int l, int r, int cl, int cr, int cur, double[] v)
+		{
+			if(l <= cl && cr <= r){
+				return mul(node[cur], v);
+			}else{
+				int mid = cl+cr>>>1;
+				if(cl < r && l < mid){
+					v = apply(l, r, cl, mid, 2*cur, v);
+				}
+				if(mid < r && l < cr){
+					v = apply(l, r, mid, cr, 2*cur+1, v);
+				}
+				return v;
+			}
+		}
+		
+		
+		public static double[] mul(double[][] A, double[] v)
+		{
+			int m = A.length;
+			int n = v.length;
+			double[] w = new double[m];
+			for(int i = 0;i < m;i++){
+				double sum = 0;
+				for(int k = 0;k < n;k++){
+					sum += A[i][k] * v[k];
+				}
+				w[i] = sum;
+			}
+			return w;
+		}
+		
+		public static double[][] mul(double[][] A, double[][] B)
+		{
+			int m = A.length;
+			int n = A[0].length;
+			int o = B[0].length;
+			double[][] C = new double[m][o];
+			for(int i = 0;i < m;i++){
+				for(int k = 0;k < n;k++){
+					for(int j = 0;j < o;j++){
+						C[i][j] += A[i][k] * B[k][j];
+					}
+				}
+			}
+			return C;
+		}
+		
+		public static double[][] mul(double[][] A, double[][] B, double[][] C)
+		{
+			int m = A.length;
+			int n = A[0].length;
+			int o = B[0].length;
+			if(C == null){
+				C = new double[m][o];
+			}else{
+				for(int i = 0;i < m;i++){
+					Arrays.fill(C[i], 0.);
+				}
+			}
+			for(int i = 0;i < m;i++){
+				for(int k = 0;k < n;k++){
+					for(int j = 0;j < o;j++){
+						C[i][j] += A[i][k] * B[k][j];
+					}
+				}
+			}
+			return C;
+		}
+		
+	}	
+	
+	Scanner in;
+	PrintWriter out;
+	StringWriter sw;
+	int cas;
+	static List<Status> running = new ArrayList<Status>();
+	
+	@Override
+	public void run()
+	{
+		long S = System.nanoTime();
+		// register
+		synchronized(running){
+			Status st = new Status();
+			st.id = cas;
+			st.S = S;
+			running.add(st);
+		}
+		process();
+		// deregister
+		synchronized(running){
+			for(Status st : running){
+				if(st.id == cas){
+					running.remove(st);
+					break;
+				}
+			}
+		}
+		long G = System.nanoTime();
+		
+		if(PROD){
+			System.err.println("case " + cas + " solved. [" + (G-S)/1000000 + "ms]");
+			synchronized(running){
+				StringBuilder sb = new StringBuilder("running : ");
+				for(Status st : running){
+					sb.append(st.id + ":" + (G-st.S)/1000000 + "ms, ");
+				}
+				System.err.println(sb);
+			}
+		}
+	}
+	
+	public static double[] S(double[][] T, double[] v)
+	{
+		int n = T.length;
+		double[][] U = new double[n][n];
+		for(int i = 0;i < n;i++){
+			for(int j = 0;j < n;j++){
+				U[i][j] = (i == j ? 1 : 0) - T[i][j];
+			}
+		}
+		return solve(U, v);
+	}
+	
+	public static double[] solve(double[][] a, double[] c)
+	{
+		int n = a.length;
+		int[] ps = new int[n];
+		for(int i = 0;i < n;i++)ps[i] = i;
+		
+		// Forward Elimination
+		for(int i = 0;i < n;i++){
+			int pivot = -1;
+			int from = -1;
+			double amax = 0;
+			for(int j = i;j < n;j++){
+				if(Math.abs(a[ps[j]][i]) > amax){
+					amax = Math.abs(a[ps[j]][i]);
+					pivot = ps[j];
+					from = j;
+				}
+			}
+			if(pivot == -1)return null;
+			int d = ps[i]; ps[i] = ps[from]; ps[from] = d;
+			
+			for(int j = i+1;j < n;j++){
+				a[ps[i]][j] /= a[ps[i]][i];
+			}
+			c[ps[i]] /= a[ps[i]][i];
+			a[ps[i]][i] = 1.0;
+			for(int j = i+1;j < n;j++){
+				for(int k = i+1;k < n;k++){
+					a[ps[j]][k] -= a[ps[j]][i] * a[ps[i]][k];
+				}
+				c[ps[j]] -= a[ps[j]][i] * c[ps[i]];
+				a[ps[j]][i] = 0.0;
+			}
+			
+		}
+		
+		// Back Substitution
+		for(int i = n-1;i >= 0;i--){
+			for(int j = i-1;j >= 0;j--){
+				c[ps[j]] -= a[ps[j]][i] * c[ps[i]];
+			}
+		}
+		
+		double[] ret = new double[n];
+		for(int i = 0;i < n;i++){
+			ret[i] = c[ps[i]];
+		}
+		
+		return ret;
+	}
+	
+	
+	private static class Status {
+		public int id;
+		public long S;
+	}
+	
+	public D(int cas, Scanner in)
+	{
+		this.cas = cas;
+		this.in = in;
+		this.sw = new StringWriter();
+		this.out = new PrintWriter(this.sw);
+	}
+	
+	private int ni() { return Integer.parseInt(in.next()); }
+	private long nl() { return Long.parseLong(in.next()); }
+	private int[] na(int n) { int[] a = new int[n]; for(int i = 0;i < n;i++)a[i] = ni(); return a; }
+	private double nd() { return Double.parseDouble(in.next()); }
+	private void tr(Object... o) { if(!PROD)System.out.println(Arrays.deepToString(o)); }
+	
+	public static void main(String[] args) throws Exception
+	{
+		long start = System.nanoTime();
+		
+		ExecutorService es = Executors.newFixedThreadPool(NTHREAD);
+		CompletionService<D> cs = new ExecutorCompletionService<D>(es);
+		
+		if(PROD){
+			System.out.println("INPATH : " + INPATH);
+			System.out.println("OUTPATH : " + OUTPATH);
+		}
+		Scanner in = PROD ? new Scanner(new File(INPATH)) : new Scanner(INPUT);
+		PrintWriter out = PROD ? new PrintWriter(new File(OUTPATH)) : new PrintWriter(System.out);
+		int n = in.nextInt();
+		in.nextLine();
+		
+		preprocess();
+		for(int i = 0;i < n;i++){
+			D runner = new D(i+1, in);
+			runner.read();
+			cs.submit(runner, runner);
+		}
+		es.shutdown();
+		String[] outs = new String[n];
+		for(int i = 0;i < n;i++){
+			D runner = cs.take().get(); // not ordered
+			runner.out.flush();
+			runner.out.close();
+			outs[runner.cas-1] = runner.sw.toString();
+		}
+		for(int i = 0;i < n;i++){
+			out.printf("Case #%d:", i+1);
+			out.append(outs[i]);
+			out.flush();
+		}
+		
+		long end = System.nanoTime();
+		System.out.println((end - start)/1000000 + "ms");
+		if(PROD){
+			System.out.println("INPATH : " + INPATH);
+			System.out.println("OUTPATH : " + OUTPATH);
+		}
+	}
+}

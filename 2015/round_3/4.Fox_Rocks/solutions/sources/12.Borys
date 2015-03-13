@@ -1,0 +1,339 @@
+import java.io.*;
+import java.util.*;
+
+public class D {
+	FastScanner in;
+	PrintWriter out;
+
+	final int sz = 4;
+
+	double[][] mul(double[][] a, double[][] b) {
+		if (a == null) {
+			return b;
+		}
+		if (b == null) {
+			return a;
+		}
+		double[][] r = new double[a.length][b[0].length];
+		for (int i = 0; i < a.length; i++)
+			for (int j = 0; j < a[0].length; j++)
+				for (int k = 0; k < b[0].length; k++)
+					r[i][k] += a[i][j] * b[j][k];
+		return r;
+	}
+
+	class SegmentTree {
+		int n;
+		double[][][] f;
+
+		SegmentTree(int n, double[][][] g) {
+			this.n = n;
+			f = new double[n * 4][][];
+			build(0, 0, n - 1, g);
+		}
+
+		void build(int v, int l, int r, double[][][] g) {
+			if (l == r) {
+				f[v] = g[l];
+			} else {
+				int m = (l + r) >>> 1;
+				build(v * 2 + 1, l, m, g);
+				build(v * 2 + 2, m + 1, r, g);
+				f[v] = mul(f[v * 2 + 1], f[v * 2 + 2]);
+			}
+		}
+
+		double[][] get(int v, int l, int r, int needL, int needR, double[][] ff) {
+			if (needL > r || needR < l) {
+				return ff;
+			}
+			if (l == needL && r == needR) {
+				return mul(ff, f[v]);
+			}
+			int m = (l + r) >>> 1;
+			double[][] left = get(v * 2 + 1, l, m, needL, Math.min(needR, m),
+					ff);
+			return get(v * 2 + 2, m + 1, r, Math.max(needL, m + 1), needR, left);
+		}
+
+		void update(int v, int l, int r, int pos, double[][] newVal) {
+			if (l == r) {
+				f[v] = newVal;
+			} else {
+				int m = (l + r) >>> 1;
+				if (m >= pos) {
+					update(v * 2 + 1, l, m, pos, newVal);
+				} else {
+					update(v * 2 + 2, m + 1, r, pos, newVal);
+				}
+				f[v] = mul(f[v * 2 + 1], f[v * 2 + 2]);
+			}
+		}
+	}
+
+	double[][] genNext(int[] total, int[][] cnt, int from) {
+		double[][] pr = new double[4][8];
+		for (int i = 0; i < 4; i++) {
+			if (total[i + from] == 0) {
+				continue;
+			}
+			for (int j = 0; j < 8; j++) {
+				pr[i][j] = cnt[i + from][j] / (0. + total[i + from]);
+			}
+		}
+		double[][] result = new double[sz][sz];
+		for (int end = 0; end < sz; end++) {
+			double[][] g = new double[sz][sz + 1];
+			for (int i = 0; i < sz; i++) {
+				g[i][sz] = pr[i][end + sz];
+				for (int j = 0; j < sz; j++) {
+					g[i][j] = -pr[i][j];
+				}
+				g[i][i] += 1;
+			}
+			double[] tmp = gauss(g);
+			for (int i = 0; i < sz; i++) {
+				result[i][end] = tmp[i];
+			}
+		}
+		return result;
+	}
+
+	double[][] willBe(int[] total, int[][] cnt, int from) {
+		double[][] pr = new double[4][4];
+		for (int i = 0; i < 4; i++) {
+			if (total[i + from] == 0) {
+				continue;
+			}
+			for (int j = 0; j < 4; j++) {
+				pr[i][j] = cnt[i + from][j] / (0. + total[i + from]);
+			}
+		}
+		double[][] result = new double[sz][sz];
+		for (int end = 0; end < sz; end++) {
+			double[][] g = new double[sz][sz + 1];
+			for (int i = 0; i < sz; i++) {
+				if (i == end) {
+					g[i][i] = 1;
+					g[i][sz] = 1;
+				} else {
+					g[i][sz] = pr[i][end];
+					for (int j = 0; j < sz; j++) {
+						if (j == end) {
+
+						} else {
+							g[i][j] = -pr[i][j];
+						}
+					}
+					g[i][i] += 1;
+				}
+			}
+			double[] tmp = gauss(g);
+			for (int i = 0; i < 4; i++) {
+				result[i][end] = tmp[i];
+			}
+		}
+		return result;
+	}
+
+	double[] gauss(double[][] g) {
+		double[] result = new double[sz];
+		for (int i = 0; i < sz; i++) {
+			int maxId = i;
+			for (int j = i + 1; j < sz; j++)
+				if (Math.abs(g[j][i]) > Math.abs(g[maxId][i])) {
+					maxId = j;
+				}
+			double[] tmp = g[i];
+			g[i] = g[maxId];
+			g[maxId] = tmp;
+			if (Math.abs(g[i][i]) < eps) {
+				continue;
+			}
+			for (int j = 0; j < sz; j++) {
+				if (j == i) {
+					continue;
+				}
+				double mul = g[j][i] / g[i][i];
+				for (int k = 0; k <= sz; k++) {
+					g[j][k] -= g[i][k] * mul;
+				}
+			}
+		}
+		for (int i = 0; i < sz; i++) {
+			if (Math.abs(g[i][i]) < eps) {
+				result[i] = 0;
+			} else {
+				result[i] = g[i][sz] / g[i][i];
+			}
+		}
+		return result;
+	}
+
+	final double eps = 1e-9;
+
+	void solve() {
+		Locale.setDefault(Locale.US);
+		int tc = in.nextInt();
+		for (int t = 0; t < tc; t++) {
+			out.print("Case #" + (t + 1) + ": ");
+			int n = in.nextInt();
+			int p = in.nextInt();
+			int d = in.nextInt();
+			while (n % 4 != 0) {
+				n++;
+			}
+			int blocks = n / 4;
+			int[] total = new int[n];
+			int[][] cnt = new int[n][8];
+			for (int i = 0; i < p; i++) {
+				int from = in.nextInt(), to = in.nextInt(), ri = in.nextInt();
+				cnt[from][to - (from / 4) * 4] += ri;
+				total[from] += ri;
+			}
+			double[][][] f = new double[blocks][][];
+			double[][][] willBe = new double[blocks][][];
+			for (int block = 0; block < blocks; block++) {
+				f[block] = genNext(total, cnt, block * 4);
+				willBe[block] = willBe(total, cnt, block * 4);
+			}
+			SegmentTree st = new SegmentTree(blocks, f);
+			for (int i = 0; i < d; i++) {
+				int type = in.nextInt();
+				if (type == 1) {
+					int xi = in.nextInt();
+					int yi = in.nextInt();
+					int zi = in.nextInt();
+					total[xi] += zi;
+					int block = xi / 4;
+					cnt[xi][yi - block * 4] = zi;
+					willBe[block] = willBe(total, cnt, block * 4);
+					double[][] tmp = genNext(total, cnt, block * 4);
+					st.update(0, 0, blocks - 1, block, tmp);
+				} else {
+					if (type == 2) {
+						int xi = in.nextInt();
+						int yi = in.nextInt();
+						int block = xi / 4;
+						total[xi] -= cnt[xi][yi - block * 4];
+						cnt[xi][yi - block * 4] = 0;
+						willBe[block] = willBe(total, cnt, block * 4);
+						double[][] tmp = genNext(total, cnt, block * 4);
+						st.update(0, 0, blocks - 1, block, tmp);
+					} else {
+						int xi = in.nextInt();
+						int yi = in.nextInt();
+						int bl1 = xi / 4, bl2 = yi / 4;
+						if (bl1 > bl2) {
+							out.printf("%.06f ", 0.0);
+						} else {
+							if (bl1 == bl2) {
+								out.printf("%.06f ",
+										willBe[bl1][xi % 4][yi % 4]);
+							} else {
+								double[][] left = new double[1][sz];
+								left[0][xi % 4] = 1;
+								double[][] res = st.get(0, 0, blocks - 1, bl1,
+										bl2 - 1, left);
+								double result = 0;
+								for (int j = 0; j < 4; j++) {
+									result += res[0][j]
+											* willBe[bl2][j][yi % 4];
+								}
+								out.printf("%.06f ", result);
+							}
+						}
+					}
+				}
+			}
+			out.println();
+			System.err.println((t + 1) + "/" + tc + " done");
+		}
+	}
+
+	void run() {
+		try {
+			in = new FastScanner(new File("fox_rocks.txt"));
+			out = new PrintWriter(new File("D.out"));
+
+			solve();
+
+			out.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+	}
+
+	void runIO() {
+
+		in = new FastScanner(System.in);
+		out = new PrintWriter(System.out);
+
+		solve();
+
+		out.close();
+	}
+
+	class FastScanner {
+		BufferedReader br;
+		StringTokenizer st;
+
+		public FastScanner(File f) {
+			try {
+				br = new BufferedReader(new FileReader(f));
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			}
+		}
+
+		public FastScanner(InputStream f) {
+			br = new BufferedReader(new InputStreamReader(f));
+		}
+
+		String next() {
+			while (st == null || !st.hasMoreTokens()) {
+				String s = null;
+				try {
+					s = br.readLine();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				if (s == null)
+					return null;
+				st = new StringTokenizer(s);
+			}
+			return st.nextToken();
+		}
+
+		boolean hasMoreTokens() {
+			while (st == null || !st.hasMoreTokens()) {
+				String s = null;
+				try {
+					s = br.readLine();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				if (s == null)
+					return false;
+				st = new StringTokenizer(s);
+			}
+			return true;
+		}
+
+		int nextInt() {
+			return Integer.parseInt(next());
+		}
+
+		long nextLong() {
+			return Long.parseLong(next());
+		}
+
+		double nextDouble() {
+			return Double.parseDouble(next());
+		}
+	}
+
+	public static void main(String[] args) {
+		new D().run();
+	}
+}

@@ -1,0 +1,263 @@
+#include <algorithm>
+#include <iostream>
+#include <iomanip>
+#include <complex>
+#include <cstring>
+#include <cstdlib>
+#include <string>
+#include <vector>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <map>
+using namespace std;
+
+struct mat4
+{
+	double x[4][4];
+	mat4()
+	{
+		memset(x, 0, sizeof(x));
+	}
+	mat4(double v)
+	{
+		memset(x, 0, sizeof(x));
+		for(int i = 0; i < 4; i++)
+			x[i][i] = v;
+	}
+	mat4 operator *(mat4 that)
+	{
+		mat4 ret;
+		for(int i = 0; i < 4; i++)
+			for(int j = 0; j < 4; j++)
+				for(int k = 0; k < 4; k++)
+					ret.x[i][j] += x[i][k] * that.x[k][j];
+		return ret;
+	}
+}I4(1);
+
+struct mat8
+{
+	double x[8][8];
+	mat8()
+	{
+		memset(x, 0, sizeof(x));
+	}
+	mat8(double v)
+	{
+		memset(x, 0, sizeof(x));
+		for(int i = 0; i < 8; i++)
+			x[i][i] = v;
+	}
+	mat8 operator *(mat8 that)
+	{
+		mat8 ret;
+		for(int i = 0; i < 8; i++)
+			for(int j = 0; j < 8; j++)
+				for(int k = 0; k < 8; k++)
+					ret.x[i][j] += x[i][k] * that.x[k][j];
+		return ret;
+	}
+}I8(1);
+
+mat8 power(mat8 e, long long n)
+{
+	mat8 ret = I8;
+	while(n)
+	{
+		if(n % 2 == 1)
+			ret = ret * e;
+		e = e * e;
+		n /= 2;
+	}
+	return ret;
+}
+
+mat4 power(mat4 e, long long n)
+{
+	mat4 ret = I4;
+	while(n)
+	{
+		if(n % 2 == 1)
+			ret = ret * e;
+		e = e * e;
+		n /= 2;
+	}
+	return ret;
+}
+
+double amount[60001][8];
+
+mat8 buildTransformToNext(int blockID)
+{
+	mat8 ret;
+	for(int i = 0; i < 4; i++)
+	{
+		double s = 0;
+		for(int j = 0; j < 8; j++)
+			s += amount[blockID*4 + i][j];
+		if(s == 0)
+			continue;
+		for(int j = 0; j < 8; j++)
+			ret.x[j][i] = amount[blockID*4 + i][j] / s;
+	}
+	for(int i = 4; i < 8; i++)
+		ret.x[i][i] = 1;
+	return ret;
+}
+
+long long TIMES = (1LL << 30) - 1;
+
+mat4 toNext(int blockID)
+{
+	mat8 trans = buildTransformToNext(blockID), x0;
+	for(int i = 0; i < 4; i++)
+		x0.x[i][i] = 1;
+	mat8 t = power(trans, TIMES) * x0;
+	mat4 ret;
+	for(int i = 0; i < 4; i++)
+		for(int j = 0; j < 4; j++)
+			ret.x[i][j] = t.x[i+4][j];
+	return ret;
+}
+
+double calcAns(int blockID, int inputPort, int resultPort)
+{
+	mat4 ret;
+	for(int i = 0; i < 4; i++)
+	{
+		double s = 0;
+		for(int j = 0; j < 8; j++)
+			s += amount[blockID*4 + i][j];
+		if(s == 0 || i == resultPort)
+			continue;
+		for(int j = 0; j < 4; j++)
+			ret.x[j][i] = amount[blockID*4 + i][j] / s;
+	}
+	ret.x[resultPort][resultPort] = 1;
+	mat4 x0;
+	x0.x[inputPort][0] = 1;
+	mat4 t = power(ret, TIMES) * x0;
+	return t.x[resultPort][0];
+}
+
+int n, m, ops;
+mat4 Tr[20001];
+mat4 BigTr[201];
+int GSZ = 100;
+
+void updateBigTr(int x)
+{
+	BigTr[x] = I4;
+	for(int i = 0; i < GSZ; i++)
+		BigTr[x] = BigTr[x] * Tr[x * GSZ + i];
+}
+
+mat4 mulRange(int L, int R)
+{
+	mat4 ret = I4;
+	while(L <= R && L % GSZ != 0)
+	{
+		ret = ret * Tr[L];
+		L ++;
+	}
+	while(L + GSZ <= R+1)
+	{
+		ret = ret * BigTr[L/GSZ];
+		L += GSZ;
+	}
+	while(L <= R)
+	{
+		ret = ret * Tr[L];
+		L ++;
+	}
+	return ret;
+}
+
+void solve()
+{
+	memset(amount, 0, sizeof(amount));
+	cin >> n >> m >> ops;
+
+	for(int i = 1; i <= m; i++)
+	{
+		int a, b, c;
+		cin >> a >> b >> c;
+		amount[a][b - (a/4)*4] += c;
+	}
+	int nTr = (n-1) / 4 + 1;
+	for(int i = 0; i < nTr; i++)
+		Tr[i] = toNext(i);
+	for(int i = 0; i < 200; i++)
+		updateBigTr(i);
+
+	mat8 t = buildTransformToNext(0);
+	int v = 0;
+	for(int i = 1; i <= ops; i++)
+	{
+		int type;
+		cin >> type;
+		int a, b;
+		cin >> a >> b;
+		if(type == 1)
+		{
+			int c;
+			cin >> c;
+			amount[a][b-(a/4)*4] += c;
+			Tr[a/4] = toNext(a/4);
+			updateBigTr((a/4)/GSZ);
+		}
+		if(type == 2)
+		{
+			amount[a][b-(a/4)*4] = 0;
+			Tr[a/4] = toNext(a/4);
+			updateBigTr((a/4)/GSZ);
+		}
+		if(type == 3)
+		{
+			mat4 ps;
+			ps.x[a%4][0] = 1;
+			int L = a/4, R = b/4;
+			if(a/4 != b/4)
+			{
+				mat4 t = mulRange(L, R-1);
+				ps = t * ps;
+			}
+			double ans = 0;
+			for(int j = 0; j < 4; j++)
+			{
+				ans += ps.x[j][0] * calcAns(b/4, j, b-(b/4)*4);
+			}
+			v ++;
+			cout << " " << ans;
+		}
+	}
+	cout << endl;
+	//cout << v << endl;
+}
+
+int MAIN()
+{
+	int start = clock();
+	int TestCase;
+	cin >> TestCase;
+	for(int caseID = 1; caseID <= TestCase; caseID ++)
+	{
+		cout << "Case #" << caseID << ":";
+		solve();
+	}
+	//cout << clock() - start << endl;
+	return 0;
+}
+
+int main()
+{
+	//srand((unsigned)time(NULL));
+	#ifdef LOCAL_TEST
+		freopen("in.txt", "r", stdin);
+		freopen("out.txt", "w", stdout);
+	#endif
+	ios :: sync_with_stdio(false);
+	cout << fixed << setprecision(6);
+	return MAIN();
+}

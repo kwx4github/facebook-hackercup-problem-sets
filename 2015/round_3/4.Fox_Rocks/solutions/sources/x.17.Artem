@@ -1,0 +1,185 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#define _SECURE_SCL 0
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <map>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include <iostream>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <list>
+#include <cctype>
+#include <sstream>
+#include <cassert>
+#include <bitset>
+#include <memory.h>
+#include <complex>
+#include <iomanip>
+
+using namespace std;
+
+#pragma comment(linker, "/STACK:200000000")
+
+typedef long long int64;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define fore(i, a, n) for(int i = (int)(a); i < (int)(n); i++)
+#define pb push_back
+#define mp make_pair
+#define fs first
+#define sc second
+#define last(a) (int(a.size()) - 1)
+#define all(a) a.begin(), a.end()
+
+const double EPS = 1E-9;
+const int INF = 1000000000;
+const int64 INF64 = (int64) 1E18;
+const double PI = 3.1415926535897932384626433832795;
+
+const int NMAX = 60000;
+
+vector<pair<int, int> > g[NMAX];
+int n, d;
+double a[NMAX][9], ans[NMAX], S = 0;
+
+void read() {
+  memset(a, 0, sizeof(a));
+  forn(i, NMAX)
+    g[i].clear();
+  int p;
+  cin >> n >> p >> d;
+  forn(i, p) {
+    int v1, v2, r;
+    scanf("%d%d%d", &v1, &v2, &r);
+    g[v1].pb(mp(v2, r));
+  }
+}
+
+void gen() {
+
+}
+
+void solve(int id) {
+  int l = id * 4;
+  int r = min(l + 4, n);
+
+  for (int i = l; i < r; i++)
+    for (int j = i + 1; j < r; j++)
+      if (abs(a[j][i - l]) > EPS) {
+        double cof = -a[j][i - l] / a[i][i - l];
+        for (int t = i - l; t < 9; t++)
+          a[j][t] += cof * a[i][t];
+      }
+}
+
+void build(int id, bool to_diag = true) {
+  int l = id * 4;
+  int r = min(l + 4, n);
+  for (int i = l; i < r; i++) {
+    memset(a[i], 0, sizeof(a[i]));
+    int sum = 0;
+    forn(j, g[i].size())
+      sum += g[i][j].sc;
+
+    a[i][i - l] = 1;
+    if (sum)
+      forn(j, g[i].size())
+        a[i][g[i][j].fs - l] = -g[i][j].sc / double(sum);
+  }
+
+  if (to_diag)
+    solve(id);
+}
+
+double solve(int v1, int v2) {
+  if (v1 == v2)
+    return 1.0;
+  build(v2 / 4, false);
+
+  int l = v2 / 4 * 4;
+  int r = min(l + 4, n);
+  memset(a[v2], 0, sizeof(v2));
+  a[v2][v2 - l] = 1;
+  a[v2][8] = -1;
+
+  solve(v2 / 4);
+
+  int ll = v1 / 4 * 4;
+
+  memset(ans, 0, sizeof(ans));
+
+  for (int i = r - 1; i >= ll; i--) {
+    ans[i] = -a[i][8];
+    int l = i / 4 * 4;
+    for (int j = i - l + 1; j < 8; j++)
+      ans[i] -= a[i][j] * ans[j + l];
+    if (abs(a[i][i - l]) > EPS)
+      ans[i] /= a[i][i - l];
+  }
+
+  build(v2 / 4);
+
+  if (ans[v1] != ans[v1])
+    ans[v1] = 0;
+
+  return ans[v1];
+}
+
+void solve() {
+  for (int i = 0; i < n; i += 4)
+    build(i / 4);
+
+  forn(i, d) {
+    int e, v1, v2;
+    scanf("%d%d%d", &e, &v1, &v2);
+
+    if (e == 1) {
+      int r;
+      scanf("%d", &r);
+      g[v1].pb(mp(v2, r));
+    } else if (e == 2) {
+      forn(i, g[v1].size())
+        if (g[v1][i].fs == v2) {
+          g[v1].erase(g[v1].begin() + i, g[v1].begin() + i + 1);
+          break;
+        }
+    }
+
+    if (e == 1 || e == 2)
+      build(v1 / 4);
+    else {
+      double res = solve(v1, v2);
+      S += res;
+      printf(" %.6lf", res);
+    }
+  }
+  puts("");
+}
+
+int main() {
+  freopen("input.txt", "rt", stdin);
+  freopen("output.txt", "wt", stdout);
+  
+  int tests;
+  cin >> tests;
+  for (int test = 1; test <= tests; test++) {
+    cerr << "Solving test " << setw(2) << test << " of " << tests << ". Time = " << setw(5) << clock() << endl;
+    cout << "Case #" << test << ":";
+    read();
+    //gen();
+    solve();
+  }
+
+  cerr << S << endl;
+  
+  return 0;
+}

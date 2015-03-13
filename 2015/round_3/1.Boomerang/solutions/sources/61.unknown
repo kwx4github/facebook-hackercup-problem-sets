@@ -1,0 +1,204 @@
+// Template {{{
+#include <bits/stdc++.h>
+#define REP(i,n) for(int i=0; i<(int)(n); ++i)
+using namespace std;
+typedef long long LL;
+
+template<typename T1, typename T2>
+ostream& operator << (ostream& os, const pair<T1, T2>& p) {
+    os << "(" << p.first << ", " << p.second << ")";
+    return os;
+}
+
+template<typename T>
+ostream& operator << (ostream& os, const vector<T>& v) {
+    os << "{";
+    for(int i = 0; i < v.size(); i++)
+        os << v[i] << (i+1<v.size()?", ":"");
+    os << "}";
+    return os;
+}
+
+class range {
+  struct Iterator {
+    int val, inc;
+    int operator*() {return val;}
+    bool operator!=(Iterator& rhs) {return val < rhs.val;}
+    void operator++() {val += inc;}
+  };
+  Iterator i, n;
+public:
+  range(int e) : i({0, 1}), n({e, 1}) {}
+  range(int b, int e) : i({b, 1}), n({e, 1}) {}
+  range(int b, int e, int inc) : i({b, inc}), n({e, inc}) {}
+  Iterator& begin() {return i;}
+  Iterator& end() {return n;}
+};
+
+const int dx[4] = {1, 0, -1, 0};
+const int dy[4] = {0, 1, 0, -1};
+inline bool valid(int x, int w) { return 0 <= x && x < w; }
+
+void iostream_init() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+}
+//}}}
+
+typedef complex<double> P;
+const double EPS = 1e-8;
+int sign(double x){ return (x > EPS) - (x < -EPS); }
+int comp(double x, double y) { return sign(x - y); }
+bool near(P a, P b) {
+    return comp(a.real(), b.real()) == 0 && 
+           comp(a.imag(), b.imag()) == 0;
+}
+double dot(P a, P b){return real(conj(a) * b);}
+double cross(P a, P b){return imag(conj(a) * b);}
+typedef vector<P> L;
+P vec(L l){return l[1] - l[0];}
+int ccw(P a, P b, P c) {
+    b -= a; c -= a;
+    if (cross(b, c) > +EPS)   return +1; // 反時計回り
+    if (cross(b, c) < -EPS)   return -1; // 時計回り
+    if (dot(b, c) < 0)     return +2; // c--a--b の順番で一直線上
+    if (norm(b) < norm(c)) return -2; // a--b--c の順番で一直線上
+    return 0;                         // 点が線分ab上にある
+}
+bool iSP(L s, P p) {
+    if(near(s[0], p)) return false;
+    if(near(s[1], p)) return false;
+    return ccw(s[0], s[1], p) == 0;
+}
+
+P input() {
+    double x, y;
+    cin >> x >> y;
+    return {x, y};
+}
+
+typedef pair<int, int> PII;
+
+void solve() {
+    P sp = input();
+    double D;
+    cin >> D;
+    int N;
+    cin >> N;
+    vector<P> ps(N);
+    REP(i, N) ps[i] = input();
+
+    // cout << "sp: " << sp << endl;
+    // cout << "ps: " << ps << endl;
+
+    int ans = 0;
+    // typedef pair<int, int> PII;
+    // set<PII> pset;
+    // REP(i, N) {
+    //     int x = ps[i].real() - sp.real();
+    //     int y = ps[i].imag() - sp.imag();
+    //     if(x != 0 && y != 0) {
+    //         int g = __gcd(abs(x), abs(y));
+    //         x /= g;
+    //         y /= g;
+    //     }
+    //     pset.insert(make_pair(x, y));
+    // }
+
+    REP(i, N) {
+        P vec = ps[i] - sp;
+        vec *= D / abs(vec);
+        L fl = {sp, sp + vec};
+        P to = fl[1];
+        // cout <<  "fl: " << fl << endl;
+        vector<double> args;
+
+        int A = 0;
+        REP(k, N) if(iSP(fl, ps[k])) A++;
+
+        REP(j, N) {
+            if(near(to, ps[j])) continue;
+            args.push_back(arg(ps[j] - to));
+        }
+
+        sort(args.begin(), args.end());
+        double last = -114514;
+        int cons = 0;
+        int B = 0;
+        vector<int> debug;
+        for(int i = 0; i < args.size(); i++) {
+            if(abs(args[i] - last) < 1e-9) {
+                cons++;
+                last = args[i];
+            } else {
+                debug.push_back(cons);
+                last = args[i];
+                cons = 1;
+            }
+            B = max(B, cons);
+        }
+        debug.push_back(cons);
+        assert(B == *max_element(debug.begin(), debug.end()));
+        // cout << "args: " << args << endl;
+        // cout << "debug: " << debug << endl;
+
+        REP(j, N) if(near(to, ps[j])) {
+            assert(!iSP(fl, ps[j]));
+            A++; B++;
+        }
+
+        ans = max(ans, A * B);
+    }
+    // REP(i, N) REP(j, N) if(i != j) {
+    //     if(near(sp, ps[i])) continue;
+    //     assert(!near(ps[i], ps[j]));
+    //     P lv = ps[i] - sp;
+    //     lv *= D / abs(lv);
+    //     L fl = {sp, sp + lv};
+    //     P lv2 = 2.0 * (ps[j] - fl[1]);
+    //     L sl = {fl[1], fl[1] + lv2};
+    //
+    //     int A = 0, B = 0;
+    //     // cout << "i: " << i << endl;
+    //     // cout << "j: " << j << endl;
+    //     REP(k, N) {
+    //         if(iSP(fl, ps[k])) {
+    //             // cout << fl << " hit " << k << endl;
+    //             A++;
+    //         } else {
+    //             //assert(k != i);
+    //         }
+    //     }
+    //     REP(k, N) {
+    //         if(iSP(sl, ps[k])) {
+    //             // cout << sl << " hit " << k << endl;
+    //             B++;
+    //         } else {
+    //             // assert(k != j);
+    //         }
+    //     }
+    //     if(near(fl[1], ps[i])){
+    //         // cout << "near" << endl;
+    //         A++;
+    //         B++;
+    //     }
+    //
+    //     ans = max(ans, A * B);
+    // }
+
+    cout << ans << endl;
+}
+
+int main(){
+    iostream_init();
+    int T;
+    cin >> T;
+    for(int testcase = 1; testcase <= T; testcase++) {
+        cout << "Case #" << testcase << ": ";
+        solve();
+    }
+    return 0;
+}
+
+/* vim:set foldmethod=marker: */
+

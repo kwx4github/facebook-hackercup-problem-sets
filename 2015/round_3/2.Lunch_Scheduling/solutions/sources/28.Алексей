@@ -1,0 +1,203 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <bitset>
+#include <stack>
+#include <queue>
+#include <deque>
+#include <complex>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define sz(s) int((s).size())
+#define all(s) (s).begin(), (s).end()
+#if ( _WIN32 || __WIN32__ || _WIN64 || __WIN64__ )
+#define LLD "%I64d"
+#else
+#define LLD "%lld"
+#endif
+#ifdef LOCAL42
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define eprintf(...) 42
+#endif
+#define y0 yy0
+#define y1 yy1
+#define next _next
+#define prev _prev
+#define rank _rank
+#define link _link
+#define hash _hash
+#define fs first
+#define sc second
+
+typedef long long ll;
+typedef long long llong;
+typedef long long int64;
+typedef unsigned int uint;
+typedef long double ld;
+typedef unsigned long long ull;
+typedef unsigned long long ullong;
+typedef unsigned long long lint;
+typedef pair<int, int> pii;
+typedef vector<int> vi;
+
+const int inf = int(1e9);
+const double eps = 1e-9;
+const double pi = 4 * atan(double(1));
+const int N = 6060;
+
+struct rmq {
+    
+    int maxv;
+    int val[4 * N];
+    
+    void init(int n) {
+        maxv = 1;
+        while (maxv < n) {
+            maxv *= 2;
+        }
+        for (int i = 1; i < 2 * maxv; ++i) {
+            val[i] = inf;
+        }
+    }
+    
+    void init(int n, int *a) {
+        maxv = 1;
+        while (maxv < n) {
+            maxv *= 2;
+        }
+        for (int i = 0; i < n; ++i) {
+            val[i + maxv] = a[i];
+        }
+        for (int i = n; i < maxv; ++i) {
+            val[i + maxv] = inf;
+        }
+        for (int i = maxv - 1; i > 0; --i) {
+            val[i] = min(val[i * 2], val[i * 2 + 1]);
+        }
+    }
+    
+    void update(int pos, int cval) {
+        pos += maxv;
+        val[pos] = cval;
+        while (pos > 1) {
+            pos /= 2;
+            val[pos] = min(val[pos * 2], val[pos * 2 + 1]);
+        }
+    }
+    
+    int get(int l, int r) {
+        l += maxv;
+        r += maxv;
+        int res = inf;
+        while (l <= r) {
+            res = min(res, val[l]);
+            l = (l + 1) / 2;
+            res = min(res, val[r]);
+            r = (r - 1) / 2;
+        }
+        return res;
+    }
+    
+};
+
+rmq prev, cur;
+pii a[N], b[N];
+int t[N];
+int d[N][N];
+vector<pii> lst[N];
+
+inline void solve() {
+    int n, m, l;
+    scanf("%d %d %d", &n, &m, &l);
+    int sz = 1;
+    t[0] = 0;
+    for (int i = 0; i < n; ++i) {
+        scanf("%d %d", &a[i].fs, &a[i].sc);
+        t[sz++] = a[i].sc;
+    }
+    for (int i = 0; i < m; ++i) {
+        scanf("%d %d", &b[i].fs, &b[i].sc);
+        t[sz++] = b[i].sc;
+    }
+    sort(t, t + sz);
+    sz = (int) (unique(t, t + sz) - t);
+    for (int i = 0; i < sz; ++i) {
+        lst[i].clear();
+    }
+    for (int i = 0; i < n; ++i) {
+        int pos = (int) (lower_bound(t, t + sz, a[i].sc) - t);
+        lst[pos].pb(mp(a[i].fs, 0));
+    }
+    for (int i = 0; i < m; ++i) {
+        int pos = (int) (lower_bound(t, t + sz, b[i].sc) - t);
+        lst[pos].pb(mp(b[i].fs, 1));
+    }
+    for (int i = 0; i <= n; ++i) {
+        for (int j = 0; j < sz; ++j) {
+            d[i][j] = inf;
+        }
+    }
+    d[0][0] = 0;
+    for (int i = 0; i <= n; ++i) {
+        if (i > 0) {
+            prev.init(sz, d[i - 1]);
+        } else {
+            prev.init(sz);
+        }
+        cur.init(sz);
+        for (int j = 0; j < sz; ++j) {
+            for (int z = 0; z < sz(lst[j]); ++z) {
+                int pos = (int) (upper_bound(t, t + sz, lst[j][z].fs - l) - t);
+                if (pos >= j) {
+                    continue;
+                }
+                if (lst[j][z].sc == 0) {
+                    d[i][j] = min(d[i][j], prev.get(pos, j - 1));
+                } else {
+                    d[i][j] = min(d[i][j], cur.get(pos, j - 1) + 1);
+                }
+            }
+            cur.update(j, d[i][j]);
+        }
+    }
+    int ans = inf;
+    for (int i = 0; i <= n; ++i) {
+        for (int j = 0; j < sz; ++j) {
+            if (int(8e7) - t[j] < l) {
+                ans = min(ans, max(i, d[i][j]));
+            }
+        }
+    }
+    if (ans > inf / 2) {
+        puts("Lunchtime");
+        return;
+    }
+    printf("%d\n", ans);
+}
+
+int main() {
+#ifdef LOCAL42
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+#endif
+    int t;
+    cin >> t;
+    for (int i = 0; i < t; ++i) {
+        printf("Case #%d: ", i + 1);
+        solve();
+        cerr << "Test " << i << " of " << t << endl;
+    }
+    return 0;
+}

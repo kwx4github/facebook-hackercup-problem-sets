@@ -1,0 +1,157 @@
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <set>
+#include <map>
+#include <queue>
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cctype>
+#include <cassert>
+#include <limits>
+#include <functional>
+#define rep(i,n) for(int (i)=0;(i)<(int)(n);++(i))
+#define rer(i,l,u) for(int (i)=(int)(l);(i)<=(int)(u);++(i))
+#define reu(i,l,u) for(int (i)=(int)(l);(i)<(int)(u);++(i))
+#if defined(_MSC_VER) || __cplusplus > 199711L
+#define aut(r,v) auto r = (v)
+#else
+#define aut(r,v) __typeof(v) r = (v)
+#endif
+#define each(it,o) for(aut(it, (o).begin()); it != (o).end(); ++ it)
+#define all(o) (o).begin(), (o).end()
+#define pb(x) push_back(x)
+#define mp(x,y) make_pair((x),(y))
+#define mset(m,v) memset(m,v,sizeof(m))
+#define INF 0x3f3f3f3f
+#define INFL 0x3f3f3f3f3f3f3f3fLL
+using namespace std;
+typedef vector<int> vi; typedef pair<int,int> pii; typedef vector<pair<int,int> > vpii; typedef long long ll;
+template<typename T, typename U> inline void amin(T &x, U y) { if(y < x) x = y; }
+template<typename T, typename U> inline void amax(T &x, U y) { if(x < y) x = y; }
+
+struct Point {
+	typedef double T;
+	T x, y;
+	Point(): x(0), y(0) { }
+	Point(T x_, T y_): x(x_), y(y_) { }
+};
+inline bool operator==(const Point &a, const Point &b) { return a.x == b.x && a.y == b.y; }
+inline bool operator!=(const Point &a, const Point &b) { return a.x != b.x || a.y != b.y; }
+inline bool operator<(const Point &a, const Point &b) { return a.x != b.x ? a.x < b.x : a.y < b.y; }
+inline bool operator>(const Point &a, const Point &b) { return b < a; }
+inline bool operator<=(const Point &a, const Point &b) { return !(b < a); }
+inline bool operator>=(const Point &a, const Point &b) { return !(a < b); }
+inline Point operator+(const Point &a, const Point &b) { return Point(a.x + b.x, a.y + b.y); }
+inline Point operator-(const Point &a, const Point &b) { return Point(a.x - b.x, a.y - b.y); }
+inline Point operator*(const Point &a, Point::T b) { return Point(a.x * b, a.y * b); }
+inline Point operator/(const Point &a, Point::T b) { return Point(a.x / b, a.y / b); }
+inline Point operator*(Point::T a, const Point &b) { return Point(a * b.x, a * b.y); }
+inline Point &operator+=(Point &a, const Point &b) { a.x += b.x, a.y += b.y; return a; }
+inline Point &operator-=(Point &a, const Point &b) { a.x -= b.x, a.y -= b.y; return a; }
+inline Point &operator*=(Point &a, Point::T b) { a.x *= b, a.y *= b; return a; }
+inline Point &operator/=(Point &a, Point::T b) { a.x /= b, a.y /= b; return a; }
+inline Point::T cross(const Point &a, const Point &b) { return a.x * b.y - a.y * b.x; }
+inline Point::T dot(const Point &a, const Point &b) { return a.x * b.x + a.y * b.y; }
+inline Point::T norm(const Point &a) { return dot(a, a); }
+inline Point::T abs(const Point &a) { return hypot(a.x, a.y); }
+ostream &operator<<(ostream &o, const Point &a) { return o << '(' << a.x << ", " << a.y << ')'; }
+
+ostream &geovis(ostream &o, const Point &a, const char *label = "") {
+	o << "plot(" << a.x << "," << a.y;
+	if(*label) o << ',' << '"' << label << '"';
+	return o << ");" << endl;
+}
+
+int ccw(const Point &a, const Point &bb, const Point &cc) {
+	Point b = bb - a, c = cc - a;
+	if(cross(b, c)   > 0) return +1;
+	if(cross(b, c)   < 0) return -1;
+	if(dot(b, c)     < 0) return +2;
+	if(norm(b) < norm(c)) return -2;
+	return 0;
+}
+
+inline bool abs_small(double x) { return abs(x) < 1e-9; }
+
+struct Line {
+	Point a, b;
+	Line() { }
+	Line(const Point &a_, const Point &b_): a(a_), b(b_) { }
+};
+
+Point projection(const Point &a, const Point &b, const Point &p) {
+	Point::T t = dot(p - a, a - b) / norm(a - b);
+	return a + t * (a - b);
+}
+
+bool intersectSP(const Line &s, const Point &p) {
+	return abs(s.a - p) + abs(s.b - p) - abs(s.b - s.a) < 1e-9;
+}
+
+double distanceSP(const Line &s, const Point &p) {
+	const Point r = projection(s.a, s.b, p);
+	if(intersectSP(s, r)) return abs(r - p);
+	return min(abs(s.a - p), abs(s.b - p));
+}
+
+
+int main() {
+	const double PI = acos(-1.);
+	int T;
+	scanf("%d", &T);
+	rep(ii, T) {
+		int X0, Y0;
+		scanf("%d%d", &X0, &Y0);
+		int D;
+		scanf("%d", &D);
+		int N;
+		scanf("%d", &N);
+		vector<int> X(N), Y(N);
+		rep(i, N)
+			scanf("%d%d", &X[i], &Y[i]);
+		Point origin(X0, Y0);
+		vector<Point> targets(N);
+		rep(i, N)
+			targets[i] = Point(X[i], Y[i]);
+		vector<double> args;
+		int ans = 0;
+		rep(i, N) {
+			Line seg(origin, origin + (targets[i] - origin) * (D / abs(targets[i] - origin)));
+			int A = 0;
+			rep(j, N)
+				A += intersectSP(seg, targets[j]);
+			args.clear();
+			int samepos = 0;
+			rep(j, N) {
+				Point d = targets[j] - seg.b;
+				if(abs(d) < 1e-9) {
+					++ samepos;
+				}else {
+					double a = atan2(d.y, d.x);
+					args.push_back(a);
+					args.push_back(a + 2 * PI);
+				}
+			}
+			int B = 0;
+			sort(all(args));
+			for(int k = 0; k < (int)args.size(); ) {
+				int j = k;
+				for(; j < (int)args.size() && args[k] + 1e-7 >= args[j]; ++ j) {
+
+				}
+				amax(B, samepos + (j - k));
+				k = j;
+			}
+//			cerr << i << ": " << A << ", " << B << endl;
+			amax(ans, A * B);
+		}
+		printf("Case #%d: %d\n", ii+1, ans);
+	}
+	return 0;
+}

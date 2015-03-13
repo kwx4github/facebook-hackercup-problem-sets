@@ -1,0 +1,173 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/resource.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    struct rlimit stack_limit;
+    getrlimit(RLIMIT_STACK, &stack_limit);
+    stack_limit.rlim_cur = 1024 * 1024 * 1024;
+    setrlimit(RLIMIT_STACK, &stack_limit);
+
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+struct meetings
+{
+    vector<pii> m;
+
+    // earliest meeting finishing strictly after t, or SZ if none
+    int cover(int t) const
+    {
+        int L = -1;
+        int R = SZ(m);
+        while (R - L > 1)
+        {
+            int M = (L + R) / 2;
+            if (m[M].second > t)
+                R = M;
+            else
+                L = M;
+        }
+        return R;
+    }
+};
+
+static meetings load_meetings(int N)
+{
+    vector<pii> tmp;
+    for (int i = 0; i < N; i++)
+    {
+        int A, B;
+        cin >> A >> B;
+        tmp.emplace_back(A, B);
+    }
+    sort(RA(tmp), [](pii x, pii y) { return pii(x.first, -x.second) < pii(y.first, -y.second); });
+
+    meetings out;
+    for (const pii &m : tmp)
+    {
+        if (!out.m.empty()
+            && out.m.back().first <= m.first
+            && out.m.back().second >= m.second)
+            continue;
+        out.m.push_back(m);
+    }
+    out.m.emplace_back(80000000, 80000000);
+    return out;
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        int N[2], L;
+        cin >> N[0] >> N[1] >> L;
+        meetings M[2];
+        M[0] = load_meetings(N[0]);
+        M[1] = load_meetings(N[1]);
+        N[0] = SZ(M[0].m);
+        N[1] = SZ(M[1].m);
+        vi starts;
+        starts.push_back(0);
+        for (int i = 0; i < 2; i++)
+            for (const pii &m : M[i].m)
+                starts.push_back(m.first);
+        sort(RA(starts));
+        starts.resize(unique(RA(starts)) - starts.begin());
+        int S = SZ(starts);
+        vector<vi> dp(S, vi(N[0] + 1, INT_MAX / 2));
+        unordered_map<int, int> rstarts;
+        for (int i = 0; i < S; i++)
+            rstarts[starts[i]] = i;
+        for (int i = 0; i < S; i++)
+        {
+            int t = starts[i] - L;
+            if (t < 0)
+            {
+                for (int j = 0; j <= N[0]; j++)
+                    dp[i][j] = 0;
+            }
+            else
+            {
+                int p = M[0].cover(t);
+                int n = M[0].m[p].first;
+                if (n < starts[i])
+                {
+                    int idx = rstarts[n];
+                    for (int j = 1; j <= N[0]; j++)
+                        dp[i][j] = min(dp[i][j], dp[idx][j - 1]);
+                }
+
+                p = M[1].cover(t);
+                n = M[1].m[p].first;
+                if (n < starts[i])
+                {
+                    int idx = rstarts[n];
+                    for (int j = 0; j <= N[0]; j++)
+                        dp[i][j] = min(dp[i][j], dp[idx][j] + 1);
+                }
+            }
+        }
+        int ans = INT_MAX;
+        for (int i = 0; i <= N[0]; i++)
+            ans = min(ans, max(i, dp[S - 1][i]));
+
+        cout << "Case #" << cas + 1 << ": ";
+        if (ans >= INT_MAX / 2)
+            cout << "Lunchtime\n";
+        else
+            cout << ans << "\n";
+    }
+    return 0;
+}

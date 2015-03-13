@@ -1,0 +1,112 @@
+#include <vector> 
+#include <list> 
+#include <map> 
+#include <set> 
+#include <queue>
+#include <stack> 
+#include <bitset> 
+#include <algorithm> 
+#include <numeric> 
+#include <utility> 
+#include <sstream> 
+#include <iostream> 
+#include <iomanip> 
+#include <cstdio> 
+#include <cmath> 
+#include <cstdlib> 
+#include <ctime> 
+#include <cstring> 
+
+using namespace std; 
+
+typedef long long ll; 
+typedef pair<int, int> pii;
+
+#define INF 1000000000
+#define pb push_back 
+#define itr iterator 
+#define mp make_pair
+
+pair<int, int> Jintervals[5000];
+int Jbiggest_end[5000];
+pair<int, int> Wintervals[5000];
+int Wbiggest_end[5000];
+
+int t, teste;
+int J, W, L;
+int pd[6100][3100];
+const int DAY_END = 80000000;
+
+int get_opt(pair<int, int>* intervals, int end_time, int sz, int* opts) {
+	pair<int, int>* f = lower_bound(intervals, intervals+sz, mp(end_time+1, -1));
+	int idx = f - intervals;
+	if (idx == 0) return -1;
+	return opts[idx-1];
+}
+
+int rec(int inter, int canJ) {
+
+	int &ret = pd[inter][canJ];
+	if (ret == -1) {
+		int end_time;
+		if (inter == J+W) end_time = 0;
+		else if (inter >= J) end_time = Wintervals[inter-J].second;
+		else end_time = Jintervals[inter].second;
+
+		int must_cover = end_time + L - 1; 
+		if (must_cover >= DAY_END) {
+			ret = 0;
+		}
+		else {
+			ret = 1000000;
+
+			int optimal_J_interval = get_opt(Jintervals, must_cover, J, Jbiggest_end);
+			if (optimal_J_interval != -1 && Jintervals[optimal_J_interval].second != end_time && canJ > 0) {
+				ret = min(ret, rec(optimal_J_interval, canJ-1));
+			}
+
+			int optimal_W_interval = get_opt(Wintervals, must_cover, W, Wbiggest_end);
+			if (optimal_W_interval != -1 && Wintervals[optimal_W_interval].second != end_time) {
+				ret = min(ret, 1 + rec(J + optimal_W_interval, canJ));
+			}
+		}
+	}
+
+	//printf("ret(%d, %d) = %d\n", inter, canJ, ret);
+	return ret;
+}
+
+int main() {
+	for (scanf("%d", &t); t; t--) {
+		printf("Case #%d: ", ++teste);
+		scanf("%d %d %d", &J, &W, &L);
+
+		for (int i = 0; i < J; i++) scanf("%d %d", &Jintervals[i].first, &Jintervals[i].second);
+		for (int i = 0; i < W; i++) scanf("%d %d", &Wintervals[i].first, &Wintervals[i].second);	
+
+		sort(Jintervals, Jintervals+J);
+		sort(Wintervals, Wintervals+W);
+
+		Jbiggest_end[0] = 0;
+		for (int i = 1; i < J; i++) {
+			Jbiggest_end[i] = Jbiggest_end[i-1];
+			if (Jintervals[i].second > Jintervals[Jbiggest_end[i]].second) Jbiggest_end[i] = i;
+		}
+		Wbiggest_end[0] = 0;
+		for (int i = 1; i < W; i++) {
+			Wbiggest_end[i] = Wbiggest_end[i-1];
+			if (Wintervals[i].second > Wintervals[Wbiggest_end[i]].second) Wbiggest_end[i] = i;
+		}
+
+		memset(pd,-1,sizeof(pd));
+
+		int best = 1000000;
+
+		for (int chooseJ = 0; chooseJ <= J; chooseJ++ ) {
+			best = min(best, max(chooseJ, rec(J+W, chooseJ)));
+		}
+
+		if (best < 1000000) printf("%d\n", best);
+		else printf("Lunchtime\n");
+	}		
+}

@@ -1,0 +1,384 @@
+import static java.lang.Double.parseDouble;
+import static java.lang.Integer.parseInt;
+import static java.lang.Long.parseLong;
+import static java.lang.Math.abs;
+import static java.lang.System.arraycopy;
+import static java.lang.System.exit;
+import static java.util.Arrays.fill;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.Locale;
+import java.util.StringTokenizer;
+
+public class D {
+	
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer tok;
+	static int test;
+	
+	static int n;
+	static int toSelf[][];
+	static int toNext[][];
+	
+	static double treeMatrix[][][];
+	
+	static void solve() throws Exception {
+		n = nextInt();
+		int p = nextInt();
+		int d = nextInt();
+		n = ((n - 1) | 3) + 1;
+		toSelf = new int[n >> 2][16];
+		toNext = new int[n >> 2][16];
+		for (int i = 0; i < p; i++) {
+			int a = nextInt();
+			int b = nextInt();
+			int r = nextInt();
+			int arr[][] = (a >> 2 == b >> 2) ? toSelf : toNext;
+			if (arr[a >> 2][((a & 3) << 2) | (b & 3)] != 0) {
+				throw new AssertionError();
+			}
+			arr[a >> 2][((a & 3) << 2) | (b & 3)] = r;
+		}
+		int depth = 0;
+		while (1 << depth < (n >> 2) - 1) {
+			++depth;
+		}
+		treeMatrix = new double[depth + 1][][];
+		for (int i = 0; i <= depth; i++) {
+			treeMatrix[i] = new double[1 << (depth - i)][16];
+		}
+		for (int i = 0; i < (n >> 2) - 1; i++) {
+			calculateMatrix(i);
+		}
+		for (int i = 1; i <= depth; i++) {
+			for (int j = 0; j < 1 << (depth - i); j++) {
+				treeCalc(i, j);
+			}
+		}
+		printCase();
+		boolean space = false;
+		double row[] = new double[4];
+		double queue[][] = new double[depth + 1][];
+		for (int op = 0; op < d; op++) {
+			int type = nextInt();
+			int a = nextInt();
+			int b = nextInt();
+			switch (type) {
+			case 1:
+			{
+				int r = nextInt();
+				int arr[][] = (a >> 2 == b >> 2) ? toSelf : toNext;
+				if (arr[a >> 2][((a & 3) << 2) | (b & 3)] != 0) {
+					throw new AssertionError();
+				}
+				arr[a >> 2][((a & 3) << 2) | (b & 3)] = r;
+				break;
+			}
+			case 2:
+			{
+				int arr[][] = (a >> 2 == b >> 2) ? toSelf : toNext;
+				if (arr[a >> 2][((a & 3) << 2) | (b & 3)] == 0) {
+					throw new AssertionError();
+				}
+				arr[a >> 2][((a & 3) << 2) | (b & 3)] = 0;
+				break;
+			}
+			case 3:
+			{
+				double ans;
+				if (a >> 2 > b >> 2) {
+					ans = 0;
+				} else {
+					fill(row, 0);
+					row[a & 3] = 1;
+					int l = a >> 2;
+					int r = b >> 2;
+					int level = 0;
+					int queueSize = 0;
+					while (l < r) {
+						if ((l & 1) != 0) {
+							multiply(row, treeMatrix[level][l++]);
+						}
+						if ((r & 1) != 0) {
+							queue[queueSize++] = treeMatrix[level][--r];
+						}
+						l >>= 1;
+						r >>= 1;
+						++level;
+					}
+					while (queueSize > 0) {
+						multiply(row, queue[--queueSize]);
+					}
+					int self[] = toSelf[b >> 2];
+					int next[] = toNext[b >> 2];
+					fill(haveTransition, false);
+					haveTransition[b & 3] = true;
+					for (int i = 0; i < 4; i++) {
+						fill(seen, false);
+						if (!haveTransition[i] && dfs(i, self)) {
+							haveTransition[i] = true;
+						}
+					}
+					int numTrans = 0;
+					for (int i = 0; i < 4; i++) {
+						if (haveTransition[i]) {
+							transitionIndexFwd[numTrans] = i;
+							transitionIndexBkw[i] = numTrans;
+							++numTrans;
+						} else {
+							transitionIndexBkw[i] = -1;
+						}
+					}
+					for (int ii = 0; ii < numTrans; ii++) {
+						int i = transitionIndexFwd[ii];
+						int total = 0;
+						for (int j = 0; j < 4; j++) {
+							total += self[(i << 2) | j] + next[(i << 2) | j];
+						}
+						double mul = 1.0 / total;
+						for (int jj = 0; jj < numTrans; jj++) {
+							int j = transitionIndexFwd[jj];
+							gaussMatrixLeft[ii][jj] = self[(i << 2) | j] * mul;
+						}
+						gaussMatrixRight[ii][0] = 0;
+						gaussMatrixLeft[ii][ii] -= 1;
+					}
+					{
+						int ii = transitionIndexBkw[b & 3];
+						for (int jj = 0; jj < numTrans; jj++) {
+							gaussMatrixLeft[ii][jj] = 0;
+						}
+						gaussMatrixLeft[ii][ii] = -1;
+						gaussMatrixRight[ii][0] = 1;
+					}
+					gauss(numTrans, 1);
+					ans = 0;
+					for (int ii = 0; ii < numTrans; ii++) {
+						int i = transitionIndexFwd[ii];
+						ans += row[i] * gaussMatrixRight[ii][0];
+					}
+				}
+				if (space) {
+					out.print(' ');
+				}
+				out.printf(Locale.US, "%.6f", ans);
+				space = true;
+				break;
+			}
+			default:
+				throw new AssertionError();
+			}
+			if (type <= 2 && a >> 2 < (n >> 2) - 1) {
+				calculateMatrix(a >> 2);
+				for (int j = 1; j <= depth; j++) {
+					treeCalc(j, a >> (2 + j));
+				}
+			}
+		}
+		out.println();
+	}
+	
+	static boolean seen[] = new boolean[4];
+	static boolean haveTransition[] = new boolean[4];
+	static int transitionIndexFwd[] = new int[4];
+	static int transitionIndexBkw[] = new int[4];
+	static double gaussMatrixLeft[][] = new double[4][4];
+	static double gaussMatrixRight[][] = new double[4][4];
+	
+	static void calculateMatrix(int index) {
+		int self[] = toSelf[index];
+		int next[] = toNext[index];
+		double matrix[] = treeMatrix[0][index];
+		for (int i = 0; i < 4; i++) {
+			haveTransition[i] = false;
+			for (int j = 0; j < 4; j++) {
+				if (next[(i << 2) | j] != 0) {
+					haveTransition[i] = true;
+					break;
+				}
+			}
+		}
+		for (int i = 0; i < 4; i++) {
+			fill(seen, false);
+			if (!haveTransition[i] && dfs(i, self)) {
+				haveTransition[i] = true;
+			}
+		}
+		int numTrans = 0;
+		for (int i = 0; i < 4; i++) {
+			if (haveTransition[i]) {
+				transitionIndexFwd[numTrans] = i;
+				transitionIndexBkw[i] = numTrans;
+				++numTrans;
+			} else {
+				transitionIndexBkw[i] = -1;
+			}
+		}
+		for (int ii = 0; ii < numTrans; ii++) {
+			int i = transitionIndexFwd[ii];
+			int total = 0;
+			for (int j = 0; j < 4; j++) {
+				total += self[(i << 2) | j] + next[(i << 2) | j];
+			}
+			double mul = 1.0 / total;
+			for (int jj = 0; jj < numTrans; jj++) {
+				int j = transitionIndexFwd[jj];
+				gaussMatrixLeft[ii][jj] = self[(i << 2) | j] * mul;
+			}
+			for (int j = 0; j < 4; j++) {
+				gaussMatrixRight[ii][j] = next[(i << 2) | j] * mul;
+			}
+			gaussMatrixLeft[ii][ii] -= 1;
+		}
+		gauss(numTrans, 4);
+		for (int i = 0; i < 4; i++) {
+			if (!haveTransition[i]) {
+				for (int j = 0; j < 4; j++) {
+					matrix[(i << 2) | j] = 0;
+				}
+			} else {
+				int ii = transitionIndexBkw[i];
+				for (int j = 0; j < 4; j++) {
+					matrix[(i << 2) | j] = gaussMatrixRight[ii][j];
+				}
+			}
+		}
+	}
+	
+	static boolean dfs(int cur, int self[]) {
+		if (seen[cur]) {
+			return false;
+		}
+		seen[cur] = true;
+		if (haveTransition[cur]) {
+			return true;
+		}
+		for (int next = 0; next < 4; next++) {
+			if (self[(cur << 2) | next] != 0 && dfs(next, self)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	static final double EPS = 1e-12;
+	
+	static void gauss(int vars, int vals) {
+		for (int i = 0; i < vars; i++) {
+			int maxRow = i;
+			for (int j = i + 1; j < vars; j++) {
+				if (abs(gaussMatrixLeft[j][i]) > abs(gaussMatrixLeft[maxRow][i])) {
+					maxRow = j;
+				}
+			}
+			if (abs(gaussMatrixLeft[maxRow][i]) <= EPS) {
+				throw new AssertionError();
+			}
+			double t[] = gaussMatrixLeft[i];
+			gaussMatrixLeft[i] = gaussMatrixLeft[maxRow];
+			gaussMatrixLeft[maxRow] = t;
+			t = gaussMatrixRight[i];
+			gaussMatrixRight[i] = gaussMatrixRight[maxRow];
+			gaussMatrixRight[maxRow] = t;
+			for (int j = i + 1; j < vars; j++) {
+				double mul = gaussMatrixLeft[j][i] / gaussMatrixLeft[i][i];
+				for (int k = i; k < vars; k++) {
+					gaussMatrixLeft[j][k] -= gaussMatrixLeft[i][k] * mul;
+				}
+				for (int k = 0; k < vals; k++) {
+					gaussMatrixRight[j][k] -= gaussMatrixRight[i][k] * mul;
+				}
+			}
+		}
+		for (int i = vars - 1; i >= 0; i--) {
+			double mul = -1.0 / gaussMatrixLeft[i][i];
+//			gaussMatrixLeft[i][i] *= mul;
+			for (int j = 0; j < vals; j++) {
+				gaussMatrixRight[i][j] *= mul;
+			}
+			for (int j = 0; j < i; j++) {
+				mul = -gaussMatrixLeft[j][i];
+//				gaussMatrixLeft[j][i] -= gaussMatrixLeft[i][i] * mul;
+				for (int k = 0; k < vals; k++) {
+					gaussMatrixRight[j][k] -= gaussMatrixRight[i][k] * mul;
+				}
+			}
+		}
+	}
+	
+	static void treeCalc(int depth, int index) {
+		double a[] = treeMatrix[depth - 1][2 * index];
+		double b[] = treeMatrix[depth - 1][2 * index + 1];
+		double c[] = treeMatrix[depth][index];
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < 4; j++) {
+				double res = 0;
+				for (int k = 0; k < 4; k++) {
+					res += a[(i << 2) | k] * b[(k << 2) | j];
+				}
+				c[(i << 2) | j] = res;
+			}
+		}
+	}
+	
+	static double tempRow[] = new double[4];
+	
+	static void multiply(double row[], double matrix[]) {
+		for (int i = 0; i < 4; i++) {
+			double res = 0;
+			for (int j = 0; j < 4; j++) {
+				res += row[j] * matrix[(j << 2) | i];
+			}
+			tempRow[i] = res;
+		}
+		arraycopy(tempRow, 0, row, 0, 4);
+	}
+	
+	static void printCase() {
+		out.print("Case #" + test + ": ");
+	}
+	
+	static void printlnCase() {
+		out.println("Case #" + test + ":");
+	}
+	
+	static int nextInt() throws IOException {
+		return parseInt(next());
+	}
+
+	static long nextLong() throws IOException {
+		return parseLong(next());
+	}
+
+	static double nextDouble() throws IOException {
+		return parseDouble(next());
+	}
+
+	static String next() throws IOException {
+		while (tok == null || !tok.hasMoreTokens()) {
+			tok = new StringTokenizer(in.readLine());
+		}
+		return tok.nextToken();
+	}
+
+	public static void main(String[] args) {
+		try {
+			in = new BufferedReader(new InputStreamReader(System.in));
+			out = new PrintWriter(new OutputStreamWriter(System.out));
+			int tests = nextInt();
+			for (test = 1; test <= tests; test++) {
+				solve();
+			}
+			in.close();
+			out.close();
+		} catch (Throwable e) {
+			e.printStackTrace();
+			exit(1);
+		}
+	}
+}

@@ -1,0 +1,166 @@
+#include <cstring>
+#include <cassert>
+#include <cstdio>
+#include <string>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <queue>
+#include <sstream>
+using namespace std;
+#define REP(i,n) for(int i=0;i<(int)(n);i++)
+
+struct segment
+{
+	int l,r;
+	segment(int l=0, int r=0):l(l),r(r)
+	{
+	}
+	bool operator<(const segment& b) const
+	{
+		return r<b.r;
+	}
+};
+
+const int INF=100000000;
+
+struct SegmentTree
+{
+	int ds;
+	int* a;
+	SegmentTree(int n)
+	{
+		ds=getds(n);
+		a=new int[2*ds];
+		for(int i=1;i<2*ds;i++)
+			a[i]=INF;
+	}
+	SegmentTree(const SegmentTree& b)
+	{
+		this->ds=b.ds;
+		this->a=new int[2*ds];
+		for(int i=1;i<2*ds;i++)
+			this->a[i]=b.a[i];
+	}
+	~SegmentTree()
+	{
+		delete[] a;
+	}
+	int getds(int n)
+	{
+		n--;
+		n|=n>>1;
+		n|=n>>2;
+		n|=n>>4;
+		n|=n>>8;
+		n|=n>>16;
+		return n+1;
+	}
+	void put(int i, int v)
+	{
+		i+=ds;
+		a[i]=v;
+		i>>=1;
+		while(i)
+		{
+			a[i]=min(a[2*i],a[2*i+1]);
+			i>>=1;
+		}
+	}
+	int get(int l, int r)
+	{
+		int res=INF;
+		l+=ds;
+		r+=ds;
+		while(l<=r)
+		{
+			if(l&1) res=min(res,a[l++]);
+			if(~r&1) res=min(res,a[r--]);
+			l>>=1;
+			r>>=1;
+		}
+		return res;
+	}
+};
+
+const int MaxTime=80000000;
+
+int main()
+{
+	int T;
+	scanf("%d",&T);
+	for(int test=1;test<=T;test++)
+	{
+		int J,W,L;
+		cin>>J>>W>>L;
+		vector<pair<segment,int> > jV(J), wV(W);
+		vector<pair<segment,int> > v;
+
+		REP(i,J)
+		{
+			cin>>jV[i].first.l>>jV[i].first.r;
+			jV[i].second=2*i;
+		}
+		REP(i,W)
+		{
+			cin>>wV[i].first.l>>wV[i].first.r;
+			wV[i].second=2*i+1;
+		}
+
+		sort(jV.begin(),jV.end());
+		sort(wV.begin(),wV.end());
+		v.resize(J+W);
+		merge(jV.begin(),jV.end(), wV.begin(), wV.end(), v.begin());
+		vector<SegmentTree> dp(J+1, SegmentTree(J+W+1));
+
+		for(int i=0;i<J+W;i++)
+		{
+			int lb=0;
+			int rb=i;
+			segment s=v[i].first;
+			int sb1=1-v[i].second%2;
+			int sb2=v[i].second%2;
+			while(lb<rb)
+			{
+				int c=(lb+rb)/2;
+				if(v[c].first.r+L>s.l)
+					rb=c;
+				else
+					lb=c+1;
+			}
+			for(int j=0;j<=J;j++)
+			{
+				int val=INF;
+				if(j==sb1 && L>s.l)
+					val=sb2;
+				if(j-sb1>=0)
+					val=min(val,dp[j-sb1].get(lb,i-1)+sb2);
+				dp[j].put(i,val);
+			}
+		}
+		{
+			int res=INF;
+			int lb=0;
+			int rb=J+W;
+			while(lb<rb)
+			{
+				int c=(lb+rb)/2;
+				if(v[c].first.r+L>=MaxTime)
+					rb=c;
+				else
+					lb=c+1;
+			}
+			for(int i=0;i<=J;i++)
+				res=min(res,max(i,dp[i].get(lb,J+W-1)));
+			if(L>=MaxTime)
+				res=0;
+			if(res==INF)
+				printf("Case #%d: Lunchtime\n",test);
+			else
+				printf("Case #%d: %d\n",test,res);
+		}
+	}
+}

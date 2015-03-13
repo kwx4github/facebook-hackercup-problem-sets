@@ -1,0 +1,387 @@
+import java.util.Arrays;
+import java.io.BufferedWriter;
+import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.io.InputStream;
+import java.util.List;
+import java.io.OutputStreamWriter;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.Collections;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.io.IOException;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author ilyakor
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		InputReader in = new InputReader(inputStream);
+		OutputWriter out = new OutputWriter(outputStream);
+		TaskA solver = new TaskA();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class TaskA {
+    static final double eps = 1E-8;
+    static final double SHIFT = 0.218405789723487;
+    static final double mod = 2.0 * Math.PI;
+
+    public void solve(int testNumber, InputReader in, OutputWriter out) {
+        PointInt c = new PointInt(in.nextInt(), in.nextInt());
+        PointDouble C = new PointDouble(c.x, c.y);
+        int d = in.nextInt();
+        int n = in.nextInt();
+        PointInt[] p = new PointInt[n];
+        for (int i = 0; i < n; ++i)
+            p[i] = new PointInt(in.nextInt(), in.nextInt());
+
+        int res = 0;
+
+        ArrayList<Double> inside = new ArrayList<>();
+        int insideInc = 0;
+        for (int i = 0; i < n; ++i) {
+            if (p[i].subtract(c).len2() <= d * d) {
+                if (p[i].subtract(c).len2() == 0) {
+                    ++insideInc;
+                    continue;
+                }
+                double alpha = (p[i].subtract(c).polarAngle() + SHIFT + mod) % mod;
+                inside.add(alpha);
+            }
+        }
+
+        res = Math.max(res, insideInc + calcDup(inside));
+
+
+        CircleAlgo.Circle circ = new CircleAlgo.Circle(c.x, c.y, d);
+        for (int i = 0; i < n; ++i) {
+            PointDouble p1 = new PointDouble(p[i].x, p[i].y);
+            ArrayList<Double> outsidePlus = new ArrayList<>();
+            ArrayList<Double> outsideMinus = new ArrayList<>();
+            for (int j = 0; j < n; ++j) {
+                if (i == j) continue;
+                PointDouble p2 = new PointDouble(p[j].x, p[j].y);
+                List<CircleAlgo.Point> candidates = CircleAlgo.circleLineIntersection(circ, new CircleAlgo.Line(new CircleAlgo.Point(p1.x, p1.y), new CircleAlgo.Point(p2.x, p2.y)));
+                for (CircleAlgo.Point q_ : candidates) {
+                    PointDouble q = new PointDouble(q_.x, q_.y);
+                    if ((p2.subtract(q)).sclar(p2.subtract(p1)) < eps) {
+                        if (C.subtract(q).sclar(p1.subtract(q)) < eps)
+                            outsideMinus.add((q.subtract(C).polarAngle() + SHIFT + mod) % mod);
+                        if (C.subtract(q).sclar(p1.subtract(q)) > -eps)
+                            outsidePlus.add((q.subtract(C).polarAngle() + SHIFT + mod) % mod);
+                    }
+                }
+            }
+            if (insideInc > 0) {
+                res = Math.max(res, 1 + calcDup(outsideMinus));
+                res = Math.max(res, 1 + calcDup(outsidePlus));
+            }
+            if (inside.size() + insideInc > 0) {
+                res = Math.max(res, join(inside, outsideMinus, insideInc, 1));
+                res = Math.max(res, join(inside, outsidePlus, insideInc, 1));
+            }
+        }
+
+        out.printLine("Case #" + testNumber + ": " + res);
+    }
+
+    private int join(ArrayList<Double> a1, ArrayList<Double> a2, int firstInc, int secondInc) {
+        int res = 0;
+        ArrayList<ComparablePair<Double, Integer>> a = new ArrayList<>();
+        for (double x : a1)
+            a.add(new ComparablePair<Double, Integer>(x, 0));
+        for (double x : a2)
+            a.add(new ComparablePair<Double, Integer>(x, 1));
+        Collections.sort(a);
+        int[] cnt = new int[2];
+        cnt[0] += firstInc;
+        cnt[1] += secondInc;
+        for (int i = 0; i < a.size(); ++i) {
+            if (i == 0 || Math.abs(a.get(i).first - a.get(i - 1).first) < eps) {
+                cnt[a.get(i).second] += 1;
+            } else {
+                res = Math.max(res, cnt[0] * cnt[1]);
+                cnt[0] = firstInc;
+                cnt[1] = secondInc;
+                cnt[a.get(i).second] += 1;
+            }
+        }
+        res = Math.max(res, cnt[0] * cnt[1]);
+        return res;
+    }
+
+    private int calcDup(ArrayList<Double> a) {
+        if (a.isEmpty()) return 0;
+        Collections.sort(a);
+        int res = 0;
+        int cnt = 1;
+        for (int i = 1; i < a.size(); ++i) {
+            if (Math.abs(a.get(i) - a.get(i - 1)) < eps) {
+                ++cnt;
+            } else {
+                res = Math.max(res, cnt);
+                cnt = 1;
+            }
+        }
+        res = Math.max(res, cnt);
+        return res;
+    }
+}
+
+class InputReader {
+    private InputStream stream;
+    private byte[] buffer = new byte[10000];
+    private int cur;
+    private int count;
+
+    public InputReader(InputStream stream) {
+        this.stream = stream;
+    }
+
+    public static boolean isSpace(int c) {
+        return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+    }
+
+    public int read() {
+        if (count == -1) {
+            throw new InputMismatchException();
+        }
+        try {
+            if (cur >= count) {
+                cur = 0;
+                count = stream.read(buffer);
+                if (count <= 0)
+                    return -1;
+            }
+        } catch (IOException e) {
+            throw new InputMismatchException();
+        }
+        return buffer[cur++];
+    }
+
+    public int readSkipSpace() {
+        int c;
+        do {
+            c = read();
+        } while (isSpace(c));
+        return c;
+    }
+
+    public String nextToken() {
+        int c = readSkipSpace();
+        StringBuilder sb = new StringBuilder();
+        while (!isSpace(c)) {
+            sb.append((char) c);
+            c = read();
+        }
+        return sb.toString();
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public int nextInt() {
+        int sgn = 1;
+        int c = readSkipSpace();
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        }
+        int res = 0;
+        do {
+            if (c < '0' || c > '9') {
+                throw new InputMismatchException();
+            }
+            res = res * 10 + c - '0';
+            c = read();
+        } while (!isSpace(c));
+        res *= sgn;
+        return res;
+    }
+
+}
+
+class OutputWriter {
+    private final PrintWriter writer;
+
+    public OutputWriter(OutputStream outputStream) {
+        writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+    }
+
+    public void print(Object... objects) {
+        for (int i = 0; i < objects.length; i++) {
+            if (i != 0) {
+                writer.print(' ');
+            }
+            writer.print(objects[i]);
+        }
+    }
+
+    public void printLine(Object... objects) {
+        print(objects);
+        writer.println();
+    }
+
+    public void close() {
+        writer.close();
+    }
+
+}
+
+class PointInt {
+    public int x;
+    public int y;
+
+    public PointInt(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public PointInt subtract(PointInt p) {
+        return new PointInt(x - p.x, y - p.y);
+    }
+
+    public int len2() {
+        return x * x + y * y;
+    }
+
+    public double polarAngle() {
+        return Math.atan2(y, x);
+    }
+}
+
+class PointDouble {
+    public double x;
+    public double y;
+
+    public PointDouble(double x, double y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public double sclar(PointDouble p) {
+        return x * p.x + y * p.y;
+    }
+
+    public PointDouble subtract(PointDouble p) {
+        return new PointDouble(x - p.x, y - p.y);
+    }
+
+    public double polarAngle() {
+        return Math.atan2(y, x);
+    }
+}
+
+class CircleAlgo {
+	static final double eps = 1e-9;
+
+    public static class Point {
+		public double x, y;
+
+		public Point(double x, double y) {
+			this.x = x;
+			this.y = y;
+		}
+	}
+
+	public static class Circle {
+		public double r, x, y;
+
+		public Circle(double x, double y, double r) {
+			this.x = x;
+			this.y = y;
+			this.r = r;
+		}
+
+    }
+
+    public static class Line {
+		double a, b, c;
+
+        public Line(Point p1, Point p2) {
+			a = +(p1.y - p2.y);
+			b = -(p1.x - p2.x);
+			c = p1.x * p2.y - p2.x * p1.y;
+		}
+	}
+
+	// geometric solution
+	public static List<Point> circleLineIntersection(Circle circle, Line line) {
+		double a = line.a;
+		double b = line.b;
+		double c = line.c + circle.x * a + circle.y * b;
+		double r = circle.r;
+		double aabb = a * a + b * b;
+		List<Point> res = new ArrayList<Point>();
+		double d = c * c / aabb - r * r;
+		if (d > eps)
+			return res;
+		double x0 = -a * c / aabb;
+		double y0 = -b * c / aabb;
+		if (d > -eps) {
+			res.add(new Point(x0 + circle.x, y0 + circle.y));
+			return res;
+		}
+		d /= -aabb;
+		double k = Math.sqrt(d < 0 ? 0 : d);
+		res.add(new Point(x0 + k * b + circle.x, y0 - k * a + circle.y));
+		res.add(new Point(x0 - k * b + circle.x, y0 + k * a + circle.y));
+		return res;
+	}
+
+}
+
+class ComparablePair<P extends Comparable, Q extends Comparable>
+        extends Pair<P, Q> implements Comparable<Pair<P, Q>> {
+
+    public ComparablePair(P first, Q second) {
+        super(first, second);
+    }
+
+
+    public int compareTo(Pair<P, Q> other) {
+        int valP = first.compareTo(other.first);
+        if (valP != 0) return valP;
+        return second.compareTo(other.second);
+    }
+}
+
+class Pair<P, Q> {
+    public P first;
+    public Q second;
+
+    public Pair(P first, Q second) {
+        this.first = first;
+        this.second = second;
+    }
+
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Pair pair = (Pair) o;
+
+        if (first != null ? !first.equals(pair.first) : pair.first != null) return false;
+        if (second != null ? !second.equals(pair.second) : pair.second != null) return false;
+
+        return true;
+    }
+
+    public int hashCode() {
+        int result = first != null ? first.hashCode() : 0;
+        result = 31 * result + (second != null ? second.hashCode() : 0);
+        return result;
+    }
+}
+

@@ -1,0 +1,256 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <bitset>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstdio>
+
+using namespace std;
+
+#define REP(i,n) for((i)=0;(i)<(int)(n);(i)++)
+#define snuke(c,itr) for(__typeof((c).begin()) itr=(c).begin();itr!=(c).end();itr++)
+
+#define MAXN 13000
+
+int zero[MAXN][4][4],one[MAXN][4][4];
+double p[MAXN][4][4]; // transition
+double q[MAXN][4][4]; // pass probability
+
+#define T (1<<14)
+double tree[2*T][4][4];
+
+struct state {double a[4][4];};
+
+state get_prod(int s, int t, int id = 1, int low = 0, int high = T){
+	int i,j,k;
+	
+	if(s >= high || t <= low){
+		state unit;
+		REP(i,4) REP(j,4) unit.a[i][j] = ((i == j) ? 1.0 : 0.0);
+		return unit;
+	}
+	
+	if(s <= low && t >= high){
+		state st;
+		REP(i,4) REP(j,4) st.a[i][j] = tree[id][i][j];
+		return st;
+	}
+	
+	int mid = (low + high) / 2;
+	
+	state st1 = get_prod(s, t, 2*id, low, mid);
+	state st2 = get_prod(s, t, 2*id+1, mid, high);
+	
+	state ans;
+	REP(i,4) REP(j,4) ans.a[i][j] = 0.0;
+	REP(i,4) REP(j,4) REP(k,4) ans.a[i][k] += st1.a[i][j] * st2.a[j][k];
+	return ans;
+}
+
+double edge0[4][4];
+double edge1[4][4];
+
+double x[4];
+double a[4][4];
+double b[4];
+
+#define _abs(x) ((x)>0?(x):-(x))
+
+void linear_equation(void){ // sum {a[i][j] * x[j]} = b[i]
+	int i,j,k;
+	int N = 4;
+
+	REP(i,N){
+		int r = i;
+		for(j=i+1;j<N;j++) if(_abs(a[j][i]) > _abs(a[r][i])) r = j;
+		if(r != i) {REP(j,N) swap(a[r][j],a[i][j]); swap(b[r],b[i]);}
+		REP(j,N) if(j != i){
+			double p = -a[j][i] / a[i][i];
+			for(k=i;k<N;k++) a[j][k] += a[i][k] * p;
+			b[j] += b[i] * p;
+		}
+	}
+
+	REP(i,N) x[i] = b[i] / a[i][i];
+}
+
+bool graph[8][8];
+
+void update(int g){
+	int i,j,k,r,iter;
+	
+	REP(i,4) REP(j,4) edge0[i][j] = edge1[i][j] = 0.0;
+	
+	REP(i,4){
+		int outdeg = 0;
+		REP(j,4) outdeg += zero[g][i][j] + one[g][i][j];
+		if(outdeg != 0){
+			REP(j,4) edge0[i][j] = (double)zero[g][i][j] / outdeg;
+			REP(j,4) edge1[i][j] = (double)one[g][i][j] / outdeg;
+		}
+	}
+	
+	REP(i,8) REP(j,8) graph[i][j] = false;
+	REP(i,8) graph[i][i] = true;
+	REP(i,4) REP(j,4) if(edge0[i][j] != 0) graph[i][j] = true;
+	REP(i,4) REP(j,4) if(edge1[i][j] != 0) graph[i][j+4] = true;
+	REP(k,8) REP(i,8) REP(j,8) if(graph[i][k] && graph[k][j]) graph[i][j] = true;
+	
+	// update p
+	REP(r,4){
+	/*	REP(iter,10000){
+			REP(i,4){
+				double tmp = 0.0;
+				REP(j,4) tmp += edge0[i][j] * p[g][j][r];
+				tmp += edge1[i][r];
+				p[g][i][r] = tmp;
+			}
+		} */
+		
+		// sum {a[i][j] * x[j]} = b[i]
+		REP(i,4) REP(j,4) a[i][j] = 0.0;
+		REP(i,4) b[i] = 0.0;
+		REP(i,4){
+			a[i][i] += 1.0;
+			REP(j,4) a[i][j] -= edge0[i][j];
+			b[i] = edge1[i][r];
+		}
+		
+		REP(i,4) if(!graph[i][4+r]){
+			REP(j,4) a[i][j] = 0.0;
+			a[i][i] = 1.0;
+			b[i] = 0.0;
+		}
+		
+		linear_equation();
+		REP(i,4) p[g][i][r] = x[i];
+	}
+	
+	// update q
+	REP(r,4){
+	/*	q[g][r][r] = 1.0;
+		REP(iter,10000){
+			REP(i,4) if(i != r){
+				double tmp = 0.0;
+				REP(j,4) tmp += edge0[i][j] * q[g][j][r];
+				q[g][i][r] = tmp;
+			}
+		} */
+		
+		// sum {a[i][j] * x[j]} = b[i]
+		REP(i,4) REP(j,4) a[i][j] = 0.0;
+		REP(i,4) b[i] = 0.0;
+		a[r][r] += 1.0;
+		b[r] = 1.0;
+		REP(i,4) if(i != r){
+			a[i][i] += 1.0;
+			REP(j,4) a[i][j] -= edge0[i][j];
+		}
+		
+		REP(i,4) if(!graph[i][r]){
+			REP(j,4) a[i][j] = 0.0;
+			a[i][i] = 1.0;
+			b[i] = 0.0;
+		}
+		
+		linear_equation();
+		REP(i,4) q[g][i][r] = x[i];
+	}
+	
+//	cout << endl;
+//	REP(i,4) REP(j,4) cout << edge0[i][j] << ' ' << edge1[i][j] << endl;
+//	REP(i,4) REP(j,4) cout << p[g][i][j] << ' ' << q[g][i][j] << endl;
+	REP(i,4) REP(j,4) if(isnan(p[g][i][j])) cerr << "warning!" << endl;
+	REP(i,4) REP(j,4) if(isnan(q[g][i][j])) cerr << "warning!" << endl;
+	
+	int id = T + g;
+	REP(i,4) REP(j,4) tree[id][i][j] = p[g][i][j];
+	while(1){
+		id /= 2;
+		if(id == 0) break;
+		REP(i,4) REP(j,4) tree[id][i][j] = 0.0;
+		REP(i,4) REP(j,4) REP(k,4) tree[id][i][k] += tree[2*id][i][j] * tree[2*id+1][j][k];
+	}
+}
+
+void add_edge(int a, int b, int r){
+	if(b/4 == a/4){
+		zero[a/4][a%4][b%4] = r;
+	} else {
+		one[a/4][a%4][b%4] = r;
+	}
+	update(a/4);
+}
+
+double query(int s, int t){
+	if(s/4 == t/4) return q[s/4][s%4][t%4];
+	if(s/4 > t/4) return 0.0;
+	double ans = 0.0;
+	int i;
+	state st = get_prod(s/4, t/4);
+	REP(i,4) ans += st.a[s%4][i] * q[t/4][i][t%4];
+	return ans;
+}
+
+void main2(void){
+	int N,M,Q,i,j,k;
+	
+	REP(i,MAXN) REP(j,4) REP(k,4) zero[i][j][k] = one[i][j][k] = 0;
+	REP(i,MAXN) REP(j,4) REP(k,4) p[i][j][k] = q[i][j][k] = 0.0;
+	REP(i,MAXN) REP(j,4) q[i][j][j] = 1.0;
+	REP(i,2*T) REP(j,4) REP(k,4) tree[i][j][k] = 0.0;
+	
+	cin >> N >> M >> Q;
+	// N = 50000; M = 100000; Q = 20000;
+	REP(i,M){
+		int a,b,r;
+		cin >> a >> b >> r;
+		// a = rand() % N;
+		// b = a + rand() % 20 - 10;
+		// while((b/4 - a/4 != 0 && b/4 - a/4 != 1) || b < 0 || b >= N || a == b) b = a + rand() % 20 - 10;
+		// r = 1;
+		add_edge(a, b, r);
+	}
+	
+	REP(i,Q){
+		int e,x,y,z;
+		cin >> e >> x >> y;
+		// e = 3;
+		// x = rand() % N;
+		// y = rand() % N;
+		if(e == 1) cin >> z;
+		if(e == 1){
+			add_edge(x, y, z);
+		} else if(e == 2){
+			add_edge(x, y, 0);
+		} else {
+			double ans = query(x, y);
+			printf(" %.6f", ans);
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+int main(void){
+	int TC,t;
+	cin >> TC;
+	REP(t,TC){
+		printf("Case #%d:", t+1);
+		main2();
+		printf("\n");
+	}
+	return 0;
+}

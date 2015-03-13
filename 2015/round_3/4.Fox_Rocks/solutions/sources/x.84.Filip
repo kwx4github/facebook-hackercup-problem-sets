@@ -1,0 +1,328 @@
+/* Written by Filip Hlasek 2015 */
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+
+#define FOR(i,a,b) for(int i=(a);i<=(b);i++)
+#define FORD(i,a,b) for(int i=(a);i>=(b);i--)
+#define REP(i,b) for(int i=0;i<(b);i++)
+
+using namespace std;
+
+template <class Element>
+class Matrix{
+  private:
+    void alloc() {
+      m = (Element**)malloc(sizeof(Element*) * N);
+      REP(i, N) m[i] = (Element*)malloc(sizeof(Element) * M);
+      REP(i, N) REP(j, M) m[i][j] = (i == j) && (N == M);
+    }
+    void dealloc() {
+      REP(i, N) free(m[i]);
+      free(m);
+    }
+  public:
+    int N, M;
+    Element **m;
+    Matrix(int _N, int _M): N(_N), M(_M) {
+      alloc();
+    }
+
+    void  set(int x, int y, Element val) { m[x][y] = val; }
+    Element get(int x, int y) const { return m[x][y]; }
+
+    void print() {
+      int *w;
+      w = (int*)malloc(sizeof(int) * M);
+      REP(i, M) w[i] = 0;
+      REP(i, N) REP(j, M) {
+        int _m = m[i][j], _w = 2;
+        while( _m /= 10 ) _w++;
+        w[j] = max(w[j], _w);
+      }
+      fprintf(stderr, "\nPrinting Matrix: N = %d, M = %d\n", N, M);
+      REP(i, N) {
+        REP(j, M) fprintf(stderr, "%*f", w[j], m[i][j]);
+        fprintf(stderr, "\n");
+      }
+      free(w);
+    }
+
+    void operator +(const Matrix & a) {
+      Matrix<Element> ans(N, M);
+      if(N != a.N || M != a.M) {
+        fprintf(stderr, "ERROR: Incompatible types for matrix sumation!!!\n");
+        return ans;
+      }
+      REP(i, N) REP(j, M) ans.m[i][j] = (m[i][j] + a.m[i][j]);
+      return ans;
+    }
+
+    Matrix operator *(Element x) {
+      Matrix<Element> ans(N, M);
+      REP(i, N) REP(j, M) ans.m[i][j] = (m[i][j] * x);
+      return ans;
+    }
+
+    Matrix operator *(const Matrix & a) {
+      Matrix<Element> ans(N, a.M);
+      if(M != a.N) {
+        fprintf(stderr, "ERROR: Incompatible types for matrix mutliplication!!!\n");
+        return ans;
+      }
+      REP(i, N) REP(j, a.M) {
+        ans.m[i][j] = 0;
+        // the most important part of mutliplication follows
+        REP(k, M) ans.m[i][j] = (ans.m[i][j] + m[i][k] * a.m[k][j]);
+      }
+      return ans;
+    }
+
+    Matrix operator ^(long long exponent) {
+      Matrix<Element> ans(N, N), tmp(N, N);
+      if(N != M) {
+        fprintf(stderr, "ERROR: Only square matrix can be powered!!!\n");
+        return ans;
+      }
+      REP(i, N) REP(j, N) tmp.m[i][j] = m[i][j];
+      while(exponent) {
+        if(exponent & 1) ans = ans * tmp;
+        tmp = tmp * tmp;
+        exponent >>= 1;
+      }
+      return ans;
+    }
+
+    bool is_one() {
+      REP(i, N) REP(j, M) if (m[i][j] != (i == j)) return false;
+      return true;
+    }
+
+    Matrix power(long long exponent) { return this ^ exponent; }
+};
+
+template <class ValueType>
+class SegmentTree{
+  private:
+    int SIZE; // the smallest power of two, which is at least number of elements
+    int *Left, *Right;
+    ValueType *value, *minimum, *maximum;
+    ValueType *lazy_add, *lazy_set_val;
+    bool *lazy_set;
+
+    void clearVertex(int v) {
+      if (lazy_set[v]) {
+        value[v] = lazy_set_val[v] ^ (Right[v] - Left[v]);
+        lazy_set[v] = false;
+        if (Left[v] + 1 != Right[v]) {
+          lazy_set[2*v] = lazy_set[2*v + 1] = true;
+          lazy_set_val[2*v] = lazy_set_val[2*v + 1] = lazy_set_val[v];
+          lazy_add[2*v] = lazy_add[2*v + 1] = ValueType(4, 4);
+        }
+      }
+      if (!lazy_add[v].is_one()) {
+        value[v] = value[v] * (lazy_add[v] ^ (Right[v] - Left[v]));
+        if (Left[v] + 1 != Right[v]) {
+          if (lazy_set[2*v]) clearVertex(2*v);
+          lazy_add[2*v] = lazy_add[2 * v] * lazy_add[v];
+          if (lazy_set[2*v + 1]) clearVertex(2*v + 1);
+          lazy_add[2*v + 1] = lazy_add[2 * v + 1] * lazy_add[v];
+        }
+        lazy_add[v] = ValueType(4, 4);
+      }
+    }
+    ValueType getSum(int v, int l, int r) {
+      clearVertex(v);
+      if (l == Left[v] && r == Right[v]) return value[v];
+      int middle = (Left[v] + Right[v]) / 2;
+      if (middle >= r) return getSum(2*v, l, r);
+      if (middle <= l) return getSum(2*v+1, l, r);
+      return getSum(2*v, l, middle) * getSum(2*v+1, middle, r);
+    }
+    void add(int v, int l, int r, ValueType val) {
+      clearVertex(v);
+      if (l == Left[v] && r == Right[v]) { lazy_add[v] = val; return; }
+      int middle = (Left[v] + Right[v]) / 2;
+      if (middle >= r) add(2*v, l, r, val);
+      else if (middle <= l) add(2*v+1, l, r, val);
+      else {
+        add(2*v, l, middle, val);
+        add(2*v+1, middle, r, val);
+      }
+      value[v] = value[v] * (val ^ (r-l));
+    }
+    void setValue(int v, int l, int r, ValueType val) {
+      clearVertex(v);
+      if (l == Left[v] && r == Right[v]) { lazy_set_val[v] = val; lazy_set[v] = true; return; }
+      int middle = (Left[v] + Right[v]) / 2;
+      if (middle >= r) setValue(2*v, l, r, val);
+      else if (middle <= l) setValue(2*v+1, l, r, val);
+      else {
+        setValue(2*v, l, middle, val);
+        setValue(2*v+1, middle, r, val);
+      }
+      value[v] = ( lazy_set[2*v] ? lazy_set_val[2*v] ^ (middle - Left[v]) : value[2*v] ) *
+             ( lazy_set[2*v+1] ? lazy_set_val[2*v+1] ^ (Right[v] - middle) : value[2*v+1] );
+    }
+
+  public:
+    // Elements are indexed from 0 to len - 1
+    // All queries work with elements l, l + 1, ... r - 1
+    void init(int len) {
+      for (SIZE = 1; SIZE < len; SIZE *= 2) ;
+
+      Left = (int*)malloc(sizeof(int) * 2 * SIZE);
+      Right = (int*)malloc(sizeof(int) * 2 * SIZE);
+      value = (ValueType*)malloc(sizeof(ValueType) * 2 * SIZE);
+      minimum = (ValueType*)malloc(sizeof(ValueType) * 2 * SIZE);
+      maximum = (ValueType*)malloc(sizeof(ValueType) * 2 * SIZE);
+      lazy_add = (ValueType*)malloc(sizeof(ValueType) * 2 * SIZE);
+      lazy_set_val = (ValueType*)malloc(sizeof(ValueType) * 2 * SIZE);
+      lazy_set = (bool*)malloc(sizeof(bool) * 2 * SIZE);
+
+      Left[1] = 0;
+      Right[1] = SIZE;
+      FOR(i, 1, SIZE - 1) {
+        Left[2*i] = Left[i];
+        Right[2*i] = (Left[i] + Right[i]) / 2;
+        Left[2*i + 1] = (Left[i] + Right[i]) / 2;
+        Right[2*i + 1] = Right[i];
+      }
+      REP(i, 2 * SIZE) {
+        value[i] = lazy_add[i] = ValueType(4, 4);
+        lazy_set[i] = false;
+      }
+    }
+    ValueType getSum(int l, int r) { return getSum(1, l, r); }
+    void add(int l, int r, ValueType val) { add(1, l, r, val); }
+    void setValue(int l, int r, ValueType val) { setValue(1, l, r, val); }
+};
+
+#define MAXN 1111111
+int rocks[MAXN][8];
+int N;
+
+SegmentTree<Matrix<double> > s;
+
+#define MAXM 111
+double A[MAXM][MAXM], gans[MAXM];
+// Tries to solve N equations from A with N variables
+// Returns true if solution found (it is than stored in gans array)
+// It destroys the matrix A
+bool gauss(int N) {
+  REP(i, N) { // Fix i-th row
+    if (A[i][i] == 0) {
+      FOR(j, i + 1, N - 1) if (A[j][i] != 0) {
+        FOR(k, i, N) swap(A[i][k], A[j][k]);
+        break;
+      }
+      if (A[i][i] == 0) return false;
+    }
+    double I = 1 / A[i][i];
+    FOR(j, i, N) A[i][j] = A[i][j] * I;
+    FOR(j, i + 1, N - 1) FORD(k, N, i) {
+      A[j][k] = A[j][k] - A[i][k] * A[j][i];
+    }
+  }
+  FORD(i, N - 1, 0) REP(j, i) {
+    A[j][N] = A[j][N] - A[i][N] * A[j][i];
+    FOR(k, 0, i) {
+      A[j][k] = A[j][k] - A[i][k] * A[j][i];
+    }
+  }
+  REP(i, N) gans[i] = A[i][N];
+  return true;
+}
+
+void recalc(int n) {
+  Matrix<double> ans(4, 4);
+  REP(i, 17) REP(j, 17) A[i][j] = 0;
+  REP(i, 4) REP(j, 4) {
+    int x = 4 * n + i;
+    int c = 4 * i + j;
+    A[c][c] = 1;
+    int total_rocks = 0;
+    REP(k, 8) total_rocks += rocks[x][k];
+    // printf("i: %d j: %d x: %d total: %d\n", i, j, x, total_rocks);
+    if (total_rocks) {
+      A[c][16] = (double)rocks[x][4 + j] / total_rocks;
+      REP(ii, 4) A[c][4 * ii + j] -= (double)rocks[x][ii] / total_rocks;
+    }
+  }
+  gauss(16);
+  REP(i, 4) REP(j, 4) ans.m[i][j] = gans[4 * i + j];
+  // printf("\nn: %d\n", n);
+  // REP(i, 16) { REP(j, 17) printf(" %lf", A[i][j]); printf("\n"); } printf("\n");
+  // ans.print();
+  s.setValue(n, n + 1, ans);
+}
+
+double get_prob(int n, int a, int b) {
+  REP(i, 5) REP(j, 5) A[i][j] = 0;
+  REP(i, 4) {
+    A[i][i] = 1;
+    if (i == b) A[i][4] = 1;
+    else {
+      int total_rocks = 0;
+      int x = 4 * n + i;
+      REP(j, 8) total_rocks += rocks[x][j];
+      if (total_rocks) {
+        REP(j, 4) A[i][j] -= (double)rocks[x][j] / total_rocks;
+      }
+    }
+  }
+  gauss(4);
+  return gans[a];
+}
+
+int main(int argc, char *argv[]) {
+  int T;
+  scanf("%d", &T);
+  FOR(t, 1, T) {
+    scanf("%d", &N);
+    REP(i, N + 20) REP(j, 8) rocks[i][j] = 0;
+    s.init(N + 20);
+    int P, Q;
+    scanf("%d%d", &P, &Q);
+    while (P--) {
+      int a, b, r;
+      scanf("%d%d%d", &a, &b, &r);
+      rocks[a][b - (a / 4) * 4] = r;
+    }
+    REP(i, N / 4 + 2) recalc(i);
+    printf("Case #%d:", t);
+    while (Q--) {
+      int E, X, Y, Z;
+      scanf("%d%d%d", &E, &X, &Y);
+      // printf("E: %d X: %d Y: %d\n", E, X, Y);
+      if (E == 1) {
+        scanf("%d", &Z);
+        rocks[X][Y - (X / 4) * 4] = Z;
+        recalc(X / 4);
+      }
+      if (E == 2) {
+        rocks[X][Y - (Y / 4) * 4] = 0;
+        recalc(X / 4);
+      }
+      if (E == 3) {
+        double ans = 0;
+        if (X / 4 <= Y / 4) {
+          Matrix<double> m(4, 4);
+          if (X / 4 != Y / 4) m = s.getSum(X / 4, Y / 4);
+          REP(i, 4) ans += m.m[X % 4][i] * get_prob(Y / 4, i, Y % 4);
+        }
+        printf(" %.6lf", ans);
+      }
+    }
+    printf("\n");
+  }
+  return 0;
+}

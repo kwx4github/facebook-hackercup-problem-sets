@@ -1,0 +1,333 @@
+#include <vector>
+#include <cassert>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <memory.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+const int BLOCK = 4;
+const int N = 400010;
+
+long double temp[BLOCK][BLOCK];
+
+struct Matrix {
+  long double a[BLOCK][BLOCK];
+
+  Matrix() {
+    for (int i = 0; i < BLOCK; i++) {
+      for (int j = 0; j < BLOCK; j++) {
+        a[i][j] = (i == j ? 1.0 : 0.0);
+      }
+    }
+  }
+
+  Matrix(long double b[BLOCK][BLOCK]) {
+    for (int i = 0; i < BLOCK; i++) {
+      for (int j = 0; j < BLOCK; j++) {
+        a[i][j] = b[i][j];
+      }
+    }
+  }
+
+  Matrix multiply(const Matrix &other) {
+    for (int i = 0; i < BLOCK; i++) {
+      for (int j = 0; j < BLOCK; j++) {
+        temp[i][j] = 0.0;
+        for (int k = 0; k < BLOCK; k++) {
+          temp[i][j] += a[i][k] * other.a[k][j];
+        }
+      }
+    }
+    return Matrix(temp);
+  }
+
+  Matrix square() {
+    for (int i = 0; i < BLOCK; i++) {
+      for (int j = 0; j < BLOCK; j++) {
+        temp[i][j] = 0.0;
+        for (int k = 0; k < BLOCK; k++) {
+          temp[i][j] += a[i][k] * a[k][j];
+        }
+      }
+    }
+    for (int i = 0; i < BLOCK; i++) {
+      for (int j = 0; j < BLOCK; j++) {
+        a[i][j] = temp[i][j];
+      }
+    }
+  }
+};
+
+long double big_temp[2 * BLOCK][2 * BLOCK];
+
+struct BigMatrix {
+  long double a[2 * BLOCK][2 * BLOCK];
+
+  BigMatrix() {
+    for (int i = 0; i < 2 * BLOCK; i++) {
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        a[i][j] = (i == j ? 1.0 : 0.0);
+      }
+    }
+  }
+
+  BigMatrix(long double b[2 * BLOCK][2 * BLOCK]) {
+    for (int i = 0; i < 2 * BLOCK; i++) {
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        a[i][j] = b[i][j];
+      }
+    }
+  }
+
+  BigMatrix multiply(const BigMatrix &other) {
+    for (int i = 0; i < 2 * BLOCK; i++) {
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        big_temp[i][j] = 0.0;
+        for (int k = 0; k < 2 * BLOCK; k++) {
+          big_temp[i][j] += a[i][k] * other.a[k][j];
+        }
+      }
+    }
+    return BigMatrix(big_temp);
+  }
+
+  void square_and_norm() {
+    for (int i = 0; i < 2 * BLOCK; i++) {
+      long double sum = 0.0;
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        big_temp[i][j] = 0.0;
+        for (int k = 0; k < 2 * BLOCK; k++) {
+          big_temp[i][j] += a[i][k] * a[k][j];
+        }
+        sum += big_temp[i][j];
+      }
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        big_temp[i][j] /= sum;
+      }
+    }
+    for (int i = 0; i < 2 * BLOCK; i++) {
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        a[i][j] = big_temp[i][j];
+      }
+    }
+  }
+};
+
+int rocks[N][2 * BLOCK];
+Matrix trans[N];
+Matrix inside[N];
+
+const int ITERS = 30;
+
+long double help[2 * BLOCK][2 * BLOCK];
+
+void calc(int vertex, int id) {
+  {
+    for (int i = 0; i < 2 * BLOCK; i++) {
+      if (i < BLOCK) {
+        int sum = 0;
+        for (int j = 0; j < 2 * BLOCK; j++) {
+          sum += rocks[id * BLOCK + i][j];
+        }
+        if (rocks[id * BLOCK + i][i] != 1) {
+          cerr << id << " " << i << endl;
+        }
+        assert(rocks[id * BLOCK + i][i] == 1);
+        assert(sum != 0);
+        for (int j = 0; j < 2 * BLOCK; j++) {
+          help[i][j] = 1.0 * rocks[id * BLOCK + i][j] / sum;
+        }
+      } else {
+        for (int j = 0; j < 2 * BLOCK; j++) {
+          help[i][j] = 0.0;
+        }
+        help[i][i] = 1.0;
+      }
+    }
+    BigMatrix big(help);
+    for (int it = 0; it < ITERS; it++) {
+      big.square_and_norm();
+    }
+    for (int i = 0; i < BLOCK; i++) {
+      for (int j = 0; j < BLOCK; j++) {
+        trans[vertex].a[i][j] = big.a[i][BLOCK + j];
+      }
+    }
+  }
+  {
+    for (int p = 0; p < BLOCK; p++) {
+      for (int i = 0; i < BLOCK; i++) {
+        for (int j = 0; j < BLOCK; j++) {
+          temp[i][j] = 0.0;
+        }
+        if (i == p) {
+          temp[i][i] = 1.0;
+          continue;
+        }
+        int sum = 0;
+        for (int j = 0; j < 2 * BLOCK; j++) {
+          sum += rocks[id * BLOCK + i][j];
+        }
+        for (int j = 0; j < 2 * BLOCK; j++) {
+          if (j == p) {
+            continue;
+          }
+          if (j < BLOCK) {
+            temp[i][j] += 1.0 * rocks[id * BLOCK + i][j] / sum;
+          } else {
+            temp[i][p] += 1.0 * rocks[id * BLOCK + i][j] / sum;
+          }
+        }
+      }
+      Matrix mat(temp);
+      for (int it = 0; it < ITERS; it++) {
+        mat.square();
+      }
+      for (int i = 0; i < BLOCK; i++) {
+        if (i == p) {
+          inside[id].a[i][p] = 1.0;
+          continue;
+        }
+        long double sum = 0.0;
+        for (int j = 0; j < BLOCK; j++) {
+          sum += mat.a[i][j];
+        }
+        inside[id].a[i][p] = 1.0 - sum;
+      }
+    }
+  }
+}
+
+void build(int x, int l, int r) {
+  if (l == r) {
+    calc(x, l);
+    return;
+  }
+  int y = (l + r) >> 1;
+  build(x + x, l, y);
+  build(x + x + 1, y + 1, r);
+  trans[x] = trans[x + x].multiply(trans[x + x + 1]);
+}
+
+void modify(int x, int l, int r, int p) {
+  if (l == r) {
+    calc(x, l);
+    return;
+  }
+  int y = (l + r) >> 1;
+  if (p <= y) {
+    modify(x + x, l, y, p);
+  } else {
+    modify(x + x + 1, y + 1, r, p);
+  }
+  trans[x] = trans[x + x].multiply(trans[x + x + 1]);
+}
+
+Matrix find_matrix(int x, int l, int r, int ll, int rr) {
+  if (rr < l || r < ll) {
+    return Matrix();
+  }
+  if (ll <= l && r <= rr) {
+    return trans[x];
+  }
+  int y = (l + r) >> 1;
+  Matrix res;
+  if (ll <= y) {
+    res = find_matrix(x + x, l, y, ll, rr);
+  }
+  if (rr > y) {
+    res = res.multiply(find_matrix(x + x + 1, y + 1, r, ll, rr));
+  }
+  return res;
+}
+
+int main(int argc, char* argv[]) {
+  int TEST_FROM = 0;
+  int TEST_TO = 123456789;
+  if (argc == 3) {
+    sscanf(argv[1], "%d", &TEST_FROM);
+    sscanf(argv[2], "%d", &TEST_TO);
+  }
+  freopen("in", "r", stdin);
+  freopen("out", "w", stdout);
+  int tt;
+  scanf("%d", &tt);
+  for (int qq = 1; qq <= tt; qq++) {
+    printf("Case #%d:", qq);
+    fflush(stdout);
+    int n, P, D;
+    scanf("%d %d %d", &n, &P, &D);
+    while (n % BLOCK != 0 || n < 2 * BLOCK) {
+      n++;
+    }
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < 2 * BLOCK; j++) {
+        rocks[i][j] = 0;
+      }
+      rocks[i][i % BLOCK] = 1;
+    }
+    while (P--) {
+      int x, y, z;
+      scanf("%d %d %d", &x, &y, &z);
+      rocks[x][y - (x / BLOCK * BLOCK)] = z;
+    }
+    for (int i = 0; i < n; i++) {
+      assert(rocks[i][i % BLOCK] == 1);
+    }
+    int blocks = n / BLOCK;
+    build(1, 0, blocks - 1);
+    for (int z = 0; z < D; z++) {
+      int op, v1, v2;
+      scanf("%d %d %d", &op, &v1, &v2);
+      if (op == 1) {
+        int v3;
+        scanf("%d", &v3);
+        assert(v1 != v2);
+        rocks[v1][v2 - v1 / BLOCK * BLOCK] = v3;
+        modify(1, 0, blocks - 1, v1 / BLOCK);
+      }
+      if (op == 2) {
+        assert(v1 != v2);
+        rocks[v1][v2 - v1 / BLOCK * BLOCK] = 0;
+        modify(1, 0, blocks - 1, v1 / BLOCK);
+      }
+      if (op == 3) {
+        double ans = 0.0;
+        if (v1 / BLOCK > v2 / BLOCK) {
+          printf(" %.6f", (ans < 0 ? -ans : ans));
+          continue;
+        }
+        if (v1 / BLOCK == v2 / BLOCK) {
+          ans = inside[v1 / BLOCK].a[v1 % BLOCK][v2 % BLOCK];
+          printf(" %.6f", (ans < 0 ? -ans : ans));
+          continue;
+        }
+        Matrix mat = find_matrix(1, 0, blocks - 1, v1 / BLOCK, v2 / BLOCK - 1);
+        for (int i = 0; i < BLOCK; i++) {
+          ans += mat.a[v1 % BLOCK][i] * inside[v2 / BLOCK].a[i][v2 % BLOCK];
+        }
+        printf(" %.6f", (ans < 0 ? -ans : ans));
+      }
+    }
+    printf("\n");
+    fflush(stdout);
+    fprintf(stderr, "test %d solved, time = %d ms\n", qq, clock());
+  }
+  return 0;
+}

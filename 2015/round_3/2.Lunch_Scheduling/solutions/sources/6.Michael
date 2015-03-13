@@ -1,0 +1,185 @@
+import java.io.PrintStream;
+import java.util.Comparator;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.SortedMap;
+import java.util.Map;
+import java.util.List;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Iterator;
+import java.io.FileOutputStream;
+import java.util.NavigableMap;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.util.Collections;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("lunchscheduling.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("lunchscheduling.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		LunchScheduling solver = new LunchScheduling();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class LunchScheduling {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int jCount = in.nextInt();
+        int wCount = in.nextInt();
+        int lunch = in.nextInt();
+        List<Segment> segments = new ArrayList<>(jCount + wCount);
+        for (int i = 0; i < jCount; i++) {
+            segments.add(new Segment(in.nextInt(), in.nextInt(), 0));
+        }
+        for (int i = 0; i < wCount; i++) {
+            segments.add(new Segment(in.nextInt(), in.nextInt(), 1));
+        }
+        Comparator<Segment> cmp = new Comparator<Segment>() {
+            @Override
+            public int compare(Segment o1, Segment o2) {
+                int cmp = o1.a - o2.a;
+                if (cmp != 0) {
+                    return cmp;
+                }
+                return o1.b - o2.b;
+            }
+        };
+        Collections.sort(segments, cmp);
+        NavigableMap<Integer, Integer>[] dp = new NavigableMap[jCount + 1];
+        for (int i = 0; i < dp.length; i++) {
+            dp[i] = new TreeMap<>();
+        }
+        dp[0].put(0, 0);
+        for (Segment segment : segments) {
+            int needToHave = segment.a - lunch + 1;
+            for (int eat1 = jCount; eat1 >= 0; --eat1) {
+                NavigableMap<Integer, Integer> d = dp[eat1];
+                Map.Entry<Integer, Integer> entry = d.ceilingEntry(needToHave);
+                if (entry == null) {
+                    continue;
+                }
+                int eat2 = entry.getValue();
+                if (segment.owner == 1) {
+                    Map.Entry<Integer, Integer> replacing = d.ceilingEntry(segment.b);
+                    if (replacing != null && replacing.getValue() <= eat2 + 1) {
+                        continue;
+                    }
+                    Map<Integer, Integer> ok = d.headMap(segment.b, true).descendingMap();
+                    Iterator<Map.Entry<Integer, Integer>> it = ok.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry<Integer, Integer> cur = it.next();
+                        if (cur.getValue() < eat2 + 1) {
+                            break;
+                        } else {
+                            it.remove();
+                        }
+                    }
+                    d.put(segment.b, eat2 + 1);
+                } else {
+                    NavigableMap<Integer, Integer> d1 = dp[eat1 + 1];
+                    Map.Entry<Integer, Integer> replacing = d1.ceilingEntry(segment.b);
+                    if (replacing != null && replacing.getValue() <= eat2) {
+                        continue;
+                    }
+                    Map<Integer, Integer> ok = d1.headMap(segment.b, true).descendingMap();
+                    Iterator<Map.Entry<Integer, Integer>> it = ok.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry<Integer, Integer> cur = it.next();
+                        if (cur.getValue() < eat2) {
+                            break;
+                        } else {
+                            it.remove();
+                        }
+                    }
+                    d1.put(segment.b, eat2);
+                }
+            }
+        }
+
+        int best = Integer.MAX_VALUE;
+        for (int eat1 = 0; eat1 <= jCount; eat1++) {
+            for (Map.Entry<Integer, Integer> ent : dp[eat1].entrySet()) {
+                if (ent.getKey() >= DAY - lunch + 1) {
+                    int cur = Math.max(eat1, ent.getValue());
+                    best = Math.min(best, cur);
+                }
+            }
+        }
+        out.println("Case #" + testNumber + ": " + (best == Integer.MAX_VALUE ? "Lunchtime" : best));
+        System.err.println("ok " + testNumber);
+
+    }
+
+    static class Segment {
+        int a, b;
+        int owner;
+
+        Segment(int a, int b, int owner) {
+            this.a = a;
+            this.b = b;
+            this.owner = owner;
+        }
+    }
+
+    static final int DAY = 80_000_000;
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+

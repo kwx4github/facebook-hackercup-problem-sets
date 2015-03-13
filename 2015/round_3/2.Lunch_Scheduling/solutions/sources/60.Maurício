@@ -1,0 +1,76 @@
+#include <cstring>
+#include <cstdio>
+#include <algorithm>
+
+using namespace std;
+
+int n[2], L;
+
+int start[2][3001], end[2][3001];
+int further[2][3001][2];
+int memo[3001][2][3001];
+
+int doit(int exactly1, int person, int v) {
+    if (exactly1 < 0)
+        return 0x3f3f3f3f;
+    if (end[person][v] > 80000000)
+        return exactly1 == 0 ? 0 : 0x3f3f3f3f;
+
+    int& ret = memo[exactly1][person][v];
+    if (ret != -1) return ret;
+    ret = 0x3f3f3f3f;
+
+    for (int nperson = 0; nperson < 2; nperson++)
+        if (further[person][v][nperson] != -1)
+            ret = min(ret, !nperson + doit(exactly1 - nperson,
+                                           nperson, further[person][v][nperson]));
+
+    return ret;
+};
+
+int main() {
+    int t;
+    scanf("%d", &t);
+
+    for (int z = 1; z <= t; z++) {
+        scanf("%d %d %d", &n[0], &n[1], &L);
+
+        for (int w = 0; w < 2; w++)
+            for (int i = 0; i < n[w]; i++) {
+                scanf("%d %d", &start[w][i], &end[w][i]);
+                end[w][i] += L;
+            }
+
+        memset(further, -1, sizeof further);
+        for (int w1 = 0; w1 < 2; w1++)
+            for (int i1 = 0; i1 < n[w1]; i1++)
+                for (int w2 = 0; w2 < 2; w2++) {
+                    int& cand = further[w1][i1][w2];
+
+                    for (int i2 = 0; i2 < n[w2]; i2++) {
+                        bool compat = start[w2][i2] < end[w1][i1] && end[w2][i2] > end[w1][i1];
+                        bool better = cand == -1 || end[w2][i2] > end[w2][cand];
+
+                        if (compat && better)
+                            cand = i2;
+                    }
+                }
+
+        memset(memo, -1, sizeof memo);
+        int ans = 0x3f3f3f3f;
+
+        if (L > 80000000)
+            ans = 0;
+
+        for (int i = 0; i <= n[1]; i++)
+            for (int w = 0; w < 2; w++)
+                for (int v = 0; v < n[w]; v++)
+                    if (start[w][v] < L)
+                        ans = min(ans, max(i, !w + doit(i - w, w, v)));
+
+        if (ans < 0x3f3f3f3f)
+            printf("Case #%d: %d\n", z, ans);
+        else
+            printf("Case #%d: Lunchtime\n", z, ans);
+    }
+}

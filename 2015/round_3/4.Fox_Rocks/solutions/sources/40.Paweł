@@ -1,0 +1,198 @@
+#include <cassert>
+#include <string>
+#include <vector>
+#include <set>
+#include <iostream>
+#include <algorithm>
+#include <utility>
+#include <map>
+#include <cstdio>
+#include <sstream>
+#include <cmath>
+
+using namespace std;
+
+#define REP(a, b) for (int a = 0; a<(b); ++a)
+#define FOR(a, b, c) for (int a = (b); a<=(c); ++a)
+#define FORD(a, b, c) for (int a = (b); a>=(c); --a)
+#define INIT(a, b) __typeof(b) a = (b)
+#define FOREACH(a, v) for (INIT(a, (v).begin()); a!=(v).end(); ++a)
+ 
+template<class T>
+inline int size(const T&t){return t.size();}
+ 
+typedef vector<string> vs;
+typedef vector<int> vi;
+typedef pair<int, int> pii;
+typedef long long LL;
+
+#define INF 1000000000
+#define PB push_back
+#define MP make_pair
+
+////////////////////////////////
+
+int N, P, D;
+
+#define SIZE (1<<14)
+
+double dalej[2*SIZE][4][4];
+
+double lok[SIZE][4][4];
+
+int kam[SIZE][4][8];
+
+double uklad[4][5];
+
+int bylem[4];
+
+bool czy_n0(int nr) {
+    if (bylem[nr])
+        return 0;
+    bylem[nr] = 1;
+    if (uklad[nr][4]!=0)
+        return 1;
+    REP(b, 4)
+        if (b!=nr && uklad[nr][b]!=0 && czy_n0(b))
+            return 1;
+    return 0;
+}
+
+void solve() {
+    REP(a, 4) {
+        REP(b, 4) bylem[b] = 0;
+        if (!czy_n0(a)) {
+            REP(b, 5) uklad[a][b] = 0;
+            uklad[a][a] = 1;
+        }
+    }
+    REP(w, 4) {
+        double mn = 1/uklad[w][w];
+        REP(x, 5)
+            uklad[w][x] *= mn;
+        REP(w2, 4)
+            if (w!=w2) {
+                mn = uklad[w2][w];
+                REP(x, 5)
+                    uklad[w2][x] -= mn*uklad[w][x];
+            }
+    }
+                
+}
+
+void przelicz(int nr) {
+    REP(cel, 8) {
+        REP(x, 4) {
+            uklad[x][x] = 1;
+            if (x==cel) {
+                REP(y, 4)
+                    if (x!=y)
+                        uklad[x][y] = 0;
+                uklad[x][4] = 1;
+            }
+            else {
+                int sum = 0;
+                REP(y, 8)
+                    sum += kam[nr][x][y];
+                uklad[x][4] = (cel>=4 && sum) ? kam[nr][x][cel]/(double)sum : 0;
+                REP(y, 4)
+                    if (y!=x)
+                        uklad[x][y] = sum ? -kam[nr][x][y]/(double)sum : 0;
+            }
+        }
+        solve();
+        REP(x, 4)
+            (cel<4 ? lok[nr][x][cel] : dalej[SIZE+nr][x][cel-4]) = uklad[x][4];
+    }
+}
+
+void update(int nr) {
+    REP(x, 4) REP(z, 4) {
+        dalej[nr][x][z] = 0;
+        REP(y, 4) 
+            dalej[nr][x][z] += dalej[2*nr][x][y]*dalej[2*nr+1][y][z];
+    }
+}
+
+void przelupd(int x) {
+    przelicz(x);
+    x += SIZE;
+    x /= 2;
+    while (x) {
+        update(x);
+        x /= 2;
+    }
+}
+
+void rekur(int pocz, int kon, int p, int s, double *res) {
+    if (kon-pocz==s) {
+        double rrr[4] = {0,0,0,0};
+        REP(x, 4) REP(y, 4)
+            rrr[y] += res[x]*dalej[p][x][y];
+        REP(x, 4)
+            res[x] = rrr[x];
+        return;
+    }
+    if (pocz<s/2)
+        rekur(pocz, min(kon, s/2), 2*p, s/2, res);
+    if (kon>s/2)
+        rekur(max(0, pocz-s/2), kon-s/2, 2*p+1, s/2, res);
+}
+
+double szukaj(int x, int y) {
+    if (y/4<x/4)
+        return 0;
+    if (y/4==x/4)
+        return lok[x/4][x%4][y%4];
+    double tab[4] = {0,0,0,0};
+    tab[x%4] = 1;
+    rekur(x/4, y/4, 1, SIZE, tab);
+    double res = 0;
+    REP(z, 4)
+        res += tab[z]*lok[y/4][z][y%4];
+    return res;
+}
+
+void licz() {
+    scanf("%d%d%d", &N, &P, &D);
+    REP(a, SIZE) REP(b, 4) REP(c, 8) kam[a][b][c] = 0;
+    REP(a, P) {
+        int x, y, k;
+        scanf("%d%d%d", &x, &y, &k);
+        y = (y/4>x/4 ? 4 : 0)+y%4;
+        kam[x/4][x%4][y] = k;
+    }
+    REP(a, (N+8)/4)
+        przelicz(a);
+    FORD(a, SIZE-1, 1)
+        update(a);
+    REP(a, D) {
+        int r, x, y, k;
+        scanf("%d%d%d", &r, &x, &y);
+        if (r==1) {
+            scanf("%d", &k);
+            y = (y/4>x/4 ? 4 : 0)+y%4;
+            kam[x/4][x%4][y] = k;
+            przelupd(x/4);
+        }
+        if (r==2) {
+            y = (y/4>x/4 ? 4 : 0)+y%4;
+            kam[x/4][x%4][y] = 0;
+            przelupd(x/4);
+        }
+        if (r==3) {
+            double res = szukaj(x, y);
+            printf(" %.6f", res);
+        }
+    }
+    printf("\n");
+}
+
+int main() {
+    int TT;
+    scanf("%d", &TT);
+    REP(tt, TT) {
+        printf("Case #%d:", (tt+1));
+        licz();
+    }
+}
