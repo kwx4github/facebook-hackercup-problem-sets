@@ -1,0 +1,183 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <bitset>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstdio>
+
+using namespace std;
+
+#define REP(i,n) for((i)=0;(i)<(int)(n);(i)++)
+#define snuke(c,itr) for(__typeof((c).begin()) itr=(c).begin();itr!=(c).end();itr++)
+
+typedef long long ll;
+
+int K;
+vector <int> v[20];
+
+int sz[20];
+pair <double, double> p[20][100010];
+
+void pre(int t){
+	int i;
+	
+	sz[t] = 0;
+	int cnt = 0;
+	double sum = 0.0;
+	
+	REP(i,v[t].size()){
+		cnt++;
+		sum += v[t][i];
+		double x = 1.0 / cnt;
+		double y = sum / cnt;
+		
+		while(1){
+			if(sz[t] < 2) break;
+			double dx1 = p[t][sz[t]-1].first - x;
+			double dy1 = p[t][sz[t]-1].second - y;
+			double dx2 = p[t][sz[t]-2].first - x;
+			double dy2 = p[t][sz[t]-2].second - y;
+			if(dx2 * dy1 > dx1 * dy2) break;
+			sz[t]--;
+		}
+		
+		p[t][sz[t]] = make_pair(x, y);
+		sz[t]++;
+	}
+}
+
+double get(double x, int t, int id){
+	return (p[t][id].second + x * p[t][id].first) / (p[t][id].first + 1.0);
+}
+
+double check(double x, int t){
+	int i;
+	double ans = x;
+
+//	REP(i,sz[t]){
+//		double tmp = (p[t][i].second + x * p[t][i].first) / (p[t][i].first + 1.0);
+//		ans = max(ans, tmp);
+//	}
+
+
+	if(sz[t] == 0) return ans;
+	
+	int low = 0, high = sz[t] - 1;
+	while(high - low >= 3){
+		int d = (high - low) / 3;
+		int l = low + d, r = high - d;
+		double ansl = get(x, t, l);
+		double ansr = get(x, t, r);
+		ans = max(ans, max(ansl, ansr));
+		if(ansl > ansr) high = r; else low = l;
+	}
+	
+	for(i=low;i<=high;i++) ans = max(ans, get(x, t, i));
+	
+	return ans;
+}
+/*
+double check(double x, int t){
+	int i;
+	
+	int cnt = 1;
+	double sum = x;
+	double ans = x;
+	
+	REP(i,v[t].size()){
+		sum += v[t][i];
+		cnt++;
+		ans = max(ans, sum / cnt);
+	}
+	
+	return ans;
+}
+*/
+int N;
+vector <int> single;
+
+double dp[60][(1<<16)];
+
+void main2(void){
+	int i,j,k;
+	double init;
+	
+	int M;
+	cin >> M >> init;
+	REP(i,20) v[i].clear();
+	N = K = 0;
+	single.clear();
+	
+	REP(i,M){
+		int sz;
+		cin >> sz;
+		if(sz == 1){
+			int x;
+			scanf("%d", &x);
+			single.push_back(x);
+			N++;
+		} else {
+			REP(j,sz){
+				int x;
+				scanf("%d", &x);
+				v[K].push_back(x);
+			}
+			K++;
+		}
+	}
+	
+/*	N = 34;
+	K = 16;
+	REP(i,20) v[i].clear();
+	single.clear();
+	init = 0;
+	REP(i,N) single.push_back(rand() % 100000000);
+	REP(i,K) REP(j,100000/(1<<i)) v[i].push_back(rand() % 100000000);
+*/	
+	REP(i,K) pre(i);
+	
+	sort(single.begin(),single.end());
+	REP(i,N+1) REP(j,(1<<K)) dp[i][j] = -1.0;
+	dp[0][0] = init;
+	
+	REP(i,N+1) REP(j,(1<<K)){
+		double x = dp[i][j];
+		if(i != N){
+			double y = max(x, (x + single[i]) / 2.0);
+			dp[i+1][j] = max(dp[i+1][j], y);
+		}
+		REP(k,K) if(!(j&(1<<k))){
+			double y = check(x, k);
+			int j2 = (j | (1<<k));
+			dp[i][j2] = max(dp[i][j2], y);
+		}
+	}
+	
+	double ans = 0.0;
+	REP(i,N+1) REP(j,(1<<K)) ans = max(ans, dp[i][j]);
+	printf("%.6f\n", ans);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+int main(void){
+	int T,t;
+	cin >> T;
+	REP(t,T){
+		printf("Case #%d: ", t+1);
+		main2();
+	}
+	return 0;
+}

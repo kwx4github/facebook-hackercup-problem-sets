@@ -1,0 +1,127 @@
+#include <vector> 
+#include <list> 
+#include <map> 
+#include <set> 
+#include <queue>
+#include <stack> 
+#include <bitset> 
+#include <algorithm> 
+#include <numeric> 
+#include <utility> 
+#include <sstream> 
+#include <iostream> 
+#include <iomanip> 
+#include <cstdio> 
+#include <cmath> 
+#include <cstdlib> 
+#include <ctime> 
+#include <cstring> 
+
+using namespace std; 
+
+typedef long long ll; 
+typedef pair<int, int> pii;
+
+#define INF 1000000000
+#define pb push_back 
+#define itr iterator 
+#define sz size() 
+#define mp make_pair
+
+int t, teste, n, k;
+double h;
+
+typedef pair<double, double> pt;
+long long whole[51];
+vector< pair<double, double> > st[51];
+vector< double > inters[51];
+
+set< int > s;
+
+struct compara {
+	bool operator() (int a, int b) {
+		if (st[a][st[a].size()-1].first != st[b][st[a].size()-1].first)
+			return st[a][st[a].size()-1].first < st[b][st[b].size()-1].first;
+		return a < b;
+	}
+};
+
+double get_intersection(pt a, pt b) {
+	double num = (a.second+1) * b.first * b.second - (b.second + 1) * a.first * a.second;
+	return num / (b.second - a.second);
+}
+
+void add(int idx, int val, int t) {
+	double all_water = whole[idx] + val;
+	pt th = make_pair(all_water / t, t);
+	
+	if (st[idx].empty()) {
+		st[idx].push_back( th );
+		return;
+	}
+	
+	while (!inters[idx].empty()) {
+		if (st[idx][st[idx].size()-1].first < th.first) {
+			st[idx].pop_back();
+			inters[idx].pop_back();
+		}
+		else { 
+			double in = get_intersection(st[idx][st[idx].size()-2], th);
+			if (in <= inters[idx][inters[idx].size()-1]) {
+				st[idx].pop_back();
+				inters[idx].pop_back();
+			}
+			else break;
+		}
+	}
+
+	st[idx].push_back(th);
+	inters[idx].push_back( get_intersection(st[idx][st[idx].size()-2], th) );
+}
+
+void do_join(int idx) {
+	h = (h + st[idx][st[idx].size()-1].first * st[idx][st[idx].size()-1].second) / (st[idx][st[idx].size()-1].second+1);
+
+	for (int i = 0; i < n; i++) {
+		if (s.count(i)) {
+			s.erase(i);
+			while (!inters[i].empty() && inters[i][0] <= h) {
+				st[i].pop_back();
+				inters[i].pop_back();
+			}
+			s.insert(i);
+		}
+	}
+}
+
+int main() {
+	for (scanf("%d", &t); t; t--) {
+		printf("Case #%d: ", ++teste);
+		scanf("%d %lf", &n, &h);
+		for (int i = 0; i < n; i++) {
+			whole[i] = 0;
+			scanf("%d", &k);
+			for (int j = 0; j < k; j++) {
+				int th;
+				scanf("%d", &th);
+				
+				add(i, th, j+1);
+			}
+		}
+
+		for (int i = 0; i < n; i++) {
+			s.insert(i);
+		}	
+
+		for (int i = 0; i < n; i++) {
+			int cur = *s.begin();
+			s.erase(s.begin());
+
+			if (st[cur][st[cur].size()-1].first < h) continue;
+			//printf("joining %d\n", cur);
+			do_join(cur);
+		}
+
+		printf("%.6f\n", h);
+	}
+}

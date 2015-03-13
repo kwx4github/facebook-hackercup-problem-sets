@@ -1,0 +1,159 @@
+#include <vector>
+#include <cassert>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <memory.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+typedef long long ull;
+
+long double intersect(ull w1, ull s1, ull w2, ull s2) {
+  long double res = w1 - w2;
+  res /= s1 - s2;
+  return res;
+}
+
+const int N = 77;
+
+vector <long long> w[N];
+vector <long long> s[N];
+vector <long double> x[N];
+vector <long double> y[N];
+vector <long long> a[N];
+
+long double f[(1 << 18)][N];
+
+int main(int argc, char* argv[]) {
+  int TEST_FROM = 0;
+  int TEST_TO = 123456789;
+  if (argc == 3) {
+    sscanf(argv[1], "%d", &TEST_FROM);
+    sscanf(argv[2], "%d", &TEST_TO);
+  }
+  freopen("in", "r", stdin);
+//    comment this
+//  freopen("out", "w", stdout);
+  int tt;
+  scanf("%d", &tt);
+  for (int qq = 1; qq <= tt; qq++) {
+//    input here
+    int n, w0;
+    scanf("%d %d", &n, &w0);
+    int nn = 0;
+    vector <int> ones;
+    while (n--) {
+      int foo;
+      scanf("%d", &foo);
+      if (foo == 1) {
+        int bar;
+        scanf("%d", &bar);
+        ones.push_back(bar);
+      } else {
+        a[nn].resize(foo);
+        for (int i = 0; i < foo; i++) {
+          int bar;
+          scanf("%d", &bar);
+          a[nn][i] = bar;
+        }
+        nn++;
+      }
+    }
+    n = nn;
+    if (qq < TEST_FROM || qq > TEST_TO) {
+      continue;
+    }
+//    solution here
+    printf("Case #%d: ", qq);
+    fflush(stdout);
+    sort(ones.begin(), ones.end());
+    for (int i = 0; i < n; i++) {
+      w[i].clear();
+      s[i].clear();
+      x[i].clear();
+      y[i].clear();
+      w[i].push_back(0);
+      s[i].push_back(1);
+      long long ww = 0, ss = 1;
+      int sz = a[i].size();
+      for (int j = 0; j < sz; j++) {
+        ww += a[i][j];
+        ss += 1;
+        while (!x[i].empty()) {
+          long double xx = intersect(ww, ss, w[i].back(), s[i].back());
+          if (xx < x[i].back()) {
+            break;
+          }
+          w[i].pop_back();
+          s[i].pop_back();
+          x[i].pop_back();
+          y[i].pop_back();
+        }
+        long double xx = intersect(ww, ss, w[i].back(), s[i].back());
+        x[i].push_back(xx);
+        y[i].push_back(ww - xx * ss);
+        w[i].push_back(ww);
+        s[i].push_back(ss);
+      }
+    }
+    int m = ones.size();
+    for (int t = 0; t < (1 << n); t++) {
+      for (int cnt = 0; cnt <= m; cnt++) {
+        f[t][cnt] = w0;
+      }
+    }
+    for (int t = 0; t < (1 << n); t++) {
+      for (int cnt = 0; cnt <= m; cnt++) {
+        if (cnt < m) {
+          long double ft = f[t][cnt];
+          if (ones[cnt] > ft) {
+            ft = (ft + ones[cnt]) * 0.5;
+          }
+          if (ft > f[t][cnt + 1]) {
+            f[t][cnt + 1] = ft;
+          }
+        }
+        for (int i = 0; i < n; i++) {
+          if (t & (1 << i)) {
+            continue;
+          }
+          long double ft = f[t][cnt];
+          int sz = x[i].size();
+          int low = 0, high = sz;
+          while (low < high) {
+            int mid = (low + high) >> 1;
+            if (y[i][mid] > -ft) {
+              high = mid;
+            } else {
+              low = mid + 1;
+            }
+          }
+          long double q = (w[i][low] + ft) / s[i][low];
+          int nt = (t + (1 << i));
+          if (q > f[nt][cnt]) {
+            f[nt][cnt] = q;
+          }
+        }
+      }
+    }
+    printf("%.6f\n", (double)f[(1 << n) - 1][m]);
+    fflush(stdout);
+    fprintf(stderr, "test %d solved, time = %d ms\n", qq, clock());
+  }
+  return 0;
+}
