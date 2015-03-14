@@ -1,0 +1,290 @@
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Niyaz Nigmatullin
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		FastScanner in = new FastScanner(inputStream);
+		FastPrinter out = new FastPrinter(outputStream);
+		RestaurantChains solver = new RestaurantChains();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class RestaurantChains {
+
+    static int[] from, to, he, next;
+    static int[][] dist;
+    static int n, m;
+
+    static boolean bipartite() {
+        int[] q = new int[n];
+        int head = 0;
+        int tail = 0;
+        int[] color = new int[n];
+        Arrays.fill(color, -1);
+        for (int start = 0; start < n; start++) {
+            if (color[start] >= 0) continue;
+            q[tail++] = start;
+            color[start] = 0;
+            while (head < tail) {
+                int v = q[head++];
+                for (int e = he[v]; e >= 0; e = next[e]) {
+                    int u = to[e];
+                    if (color[u] >= 0 && color[u] == color[v]) {
+                        return false;
+                    }
+                    if (color[u] < 0) {
+                        color[u] = color[v] ^ 1;
+                        q[tail++] = u;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public void solve(int testNumber, FastScanner in, FastPrinter out) {
+        System.err.println(testNumber);
+        out.print("Case #" + testNumber + ": ");
+        n = in.nextInt();
+        m = in.nextInt();
+        from = new int[2 * m];
+        to = new int[2 * m];
+        he = new int[n];
+        Arrays.fill(he, -1);
+        next = new int[2 * m];
+        for (int i = 0; i < m; i++) {
+            from[i] = in.nextInt();
+            to[i] = in.nextInt();
+            from[i + m] = to[i];
+            to[i + m] = from[i];
+        }
+        for (int i = 0; i < 2 * m; i++) {
+            next[i] = he[from[i]];
+            he[from[i]] = i;
+        }
+        if (!bipartite()) {
+            out.println(-1);
+            return;
+        }
+        int[] q = new int[n];
+        dist = new int[n][];
+        for (int i = 0; i < n; i++) {
+            int head = 0;
+            int tail = 0;
+            int[] d = new int[n];
+            Arrays.fill(d, Integer.MAX_VALUE);
+            q[tail++] = i;
+            d[i] = 0;
+            while (head < tail) {
+                int v = q[head++];
+                for (int e = he[v]; e >= 0; e = next[e]) {
+                    int u = to[e];
+                    if (d[u] == Integer.MAX_VALUE) {
+                        d[u] = d[v] + 1;
+                        q[tail++] = u;
+                    }
+                }
+            }
+            dist[i] = d;
+        }
+        boolean[] inTree = new boolean[m];
+        DisjointSetUnion dsu = new DisjointSetUnion(n);
+        for (int i = 0; i < m; i++) {
+            if (dsu.get(from[i]) != dsu.get(to[i])) {
+                dsu.union(from[i], to[i]);
+                inTree[i] = true;
+            }
+        }
+        DisjointSetUnion dsuEdges = new DisjointSetUnion(m);
+        for (int i = 0; i < m; i++) {
+            if (!inTree[i]) continue;
+            int u1 = from[i];
+            int v1 = to[i];
+            for (int j = 0; j < m; j++) {
+                int u2 = from[j];
+                int v2 = to[j];
+                int dd = dist[u1][v1] + dist[u2][v2];
+                if (dd != dist[u1][v2] + dist[u2][v1] || dd != dist[u1][u2] + dist[v2][v1]) {
+                    dsuEdges.union(i, j);
+                }
+            }
+        }
+        int ans = 0;
+        boolean[] was = new boolean[n];
+        for (int i = 0; i < m; i++) {
+            if (dsuEdges.get(i) != i) {
+                continue;
+            }
+            ++ans;
+            int head = 0;
+            int tail = 0;
+            int countComponents = 0;
+            Arrays.fill(was, false);
+            for (int start = 0; start < n; start++) {
+                if (was[start]) continue;
+                ++countComponents;
+                if (countComponents > 2) {
+                    out.println(-1);
+                    return;
+                }
+                q[tail++] = start;
+                was[start] = true;
+                while (head < tail) {
+                    int v = q[head++];
+                    for (int e = he[v]; e >= 0; e = next[e]) {
+                        int ne = e >= m ? e - m : e;
+                        if (dsuEdges.get(ne) == i) {
+                            continue;
+                        }
+                        int u = to[e];
+                        if (!was[u]) {
+                            q[tail++] = u;
+                            was[u] = true;
+                        }
+                    }
+                }
+            }
+        }
+        out.println(ans);
+    }
+}
+
+class FastScanner extends BufferedReader {
+
+    public FastScanner(InputStream is) {
+        super(new InputStreamReader(is));
+    }
+
+    public int read() {
+        try {
+            int ret = super.read();
+//            if (isEOF && ret < 0) {
+//                throw new InputMismatchException();
+//            }
+//            isEOF = ret == -1;
+            return ret;
+        } catch (IOException e) {
+            throw new InputMismatchException();
+        }
+    }
+
+    public String next() {
+        StringBuilder sb = new StringBuilder();
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        if (c < 0) {
+            return null;
+        }
+        while (c >= 0 && !isWhiteSpace(c)) {
+            sb.appendCodePoint(c);
+            c = read();
+        }
+        return sb.toString();
+    }
+
+    static boolean isWhiteSpace(int c) {
+        return c >= 0 && c <= 32;
+    }
+
+    public int nextInt() {
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        int sgn = 1;
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        }
+        int ret = 0;
+        while (c >= 0 && !isWhiteSpace(c)) {
+            if (c < '0' || c > '9') {
+                throw new NumberFormatException("digit expected " + (char) c
+                        + " found");
+            }
+            ret = ret * 10 + c - '0';
+            c = read();
+        }
+        return ret * sgn;
+    }
+
+    public String readLine() {
+        try {
+            return super.readLine();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    }
+
+class FastPrinter extends PrintWriter {
+
+    public FastPrinter(OutputStream out) {
+        super(out);
+    }
+
+    public FastPrinter(Writer out) {
+        super(out);
+    }
+
+
+}
+
+class DisjointSetUnion {
+    int[] p;
+
+    public DisjointSetUnion(int n) {
+        p = new int[n];
+        clear();
+    }
+
+    public void clear() {
+        for (int i = 0; i < p.length; i++) {
+            p[i] = i;
+        }
+    }
+
+    public int get(int x) {
+        int y = x;
+        while (y != p[y]) {
+            y = p[y];
+        }
+        while (x != p[x]) {
+            int t = p[x];
+            p[x] = y;
+            x = t;
+        }
+        return y;
+    }
+
+    public boolean union(int a, int b) {
+        a = get(a);
+        b = get(b);
+        p[a] = b;
+        return a != b;
+    }
+}
+

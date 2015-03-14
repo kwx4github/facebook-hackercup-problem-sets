@@ -1,0 +1,190 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <ctime>
+#include <cstdio>
+#include <queue>
+#include <set>
+#include <map>
+#include <fstream>
+#include <cstdlib>
+#include <string>
+#include <cstring>
+#include <algorithm>
+#include <numeric>
+
+#define mp make_pair
+#define pb push_back
+#define all(x) (x).begin(), (x).end()
+#define forn(i, n) for (int i = 0; i < (int)(n); ++i)
+#define fore(i, a, b) for (int i = (int)(a); i <= (int)(b); ++i)
+
+using namespace std;
+
+typedef pair<int, int> pii;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef long long i64;
+typedef vector<i64> vi64;
+typedef vector<vi64> vvi64;
+
+//i64 dp[101][51][34][26][5][5][2];
+
+struct TState {
+    int q1, q2, q3, q4;
+    int cur, sz, b;
+
+    TState(int q1 = 0, int q2 = 0, int q3 = 0, int q4 = 0, int cur = -1, int sz = 0, int b = 0)
+        : q1(q1)
+        , q2(q2)
+        , q3(q3)
+        , q4(q4)
+        , cur(cur)
+        , sz(sz)
+        , b(b)
+    {
+    }
+
+    bool operator<(const TState &st) const {
+        if (q1 != st.q1) {
+            return q1 < st.q1;
+        }
+        if (q2 != st.q2) {
+            return q2 < st.q2;
+        }
+        if (q3 != st.q3) {
+            return q3 < st.q3;
+        }
+        if (q4 != st.q4) {
+            return q4 < st.q4;
+        }
+        if (cur != st.cur) {
+            return cur < st.cur;
+        }
+        if (sz != st.sz) {
+            return sz < st.sz;
+        }
+        if (b != st.b) {
+            return b < st.b;
+        }
+        return false;
+    }
+};
+
+map<TState, i64> dp;
+
+const i64 P = 1000000000 + 7;
+
+void move(int q1, int q2, int q3, int q4, int m, int &qq1, int &qq2, int &qq3, int &qq4) {
+    qq1 = q1; qq2 = q2; qq3 = q3; qq4 = q4;
+    if (m == 1) {
+        --qq1;
+    }
+    if (m == 2) {
+        --qq2; ++qq1;
+    }
+    if (m == 3) {
+        --qq3; ++qq2;
+    }
+    if (m == 4) {
+        --qq4; ++qq3;
+    }
+}
+
+i64 getDP(int q1, int q2, int q3, int q4, int cur, int sz, int b) {
+    TState st(q1, q2, q3, q4, cur, sz, b);
+//    i64 &res = dp[q1][q2][q3][q4][cur][sz][b];
+    if (dp.count(st)) {
+        return dp[st];
+    }
+//    int q1 = st.q1, q2 = st.q2, q3 = st.q3, q4 = st.q4, cur = st.cur, sz = st.sz, b = st.b;
+    i64 &res = dp[st];
+    res = 0;
+    int qq1, qq2, qq3, qq4;
+    if (cur == -1) {
+        if (q1) {
+            move(q1, q2, q3, q4, 1, qq1, qq2, qq3, qq4);
+            res = getDP(qq1, qq2, qq3, qq4, 0, 0, 1);
+        } else if (q2) {
+            move(q1, q2, q3, q4, 2, qq1, qq2, qq3, qq4);
+            res = getDP(qq1, qq2, qq3, qq4, 0, 1, 1);
+        } else if (q3) {
+            move(q1, q2, q3, q4, 3, qq1, qq2, qq3, qq4);
+            res = getDP(qq1, qq2, qq3, qq4, 0, 2, 1);
+        } else {
+            move(q1, q2, q3, q4, 4, qq1, qq2, qq3, qq4);
+            res = getDP(qq1, qq2, qq3, qq4, 0, 3, 1);
+        }         
+//        cout << q1 << ' ' << q2 << ' ' << q3 << ' ' << q4 << ' ' << cur << ' ' << sz << ' ' << b << ' ' << res << '\n';
+        return res;
+    }
+
+    if (b == 0) {
+        res += getDP(q1, q2, q3, q4, -1, 0, 0);
+        res %= P;
+
+        if (sz) {
+//            int qq1 = q1, qq2 = q2, qq3 = q3, qq4 = q4;
+            move(q1, q2, q3, q4, sz, qq1, qq2, qq3, qq4);            
+            res += sz * getDP(qq1, qq2, qq3, qq4, 0, sz - 1, 1);
+            res %= P;
+        }
+    }
+
+//    int c = b == 0;
+    if (q1 - (cur == 1) - (sz == 1)) {
+        move(q1, q2, q3, q4, 1, qq1, qq2, qq3, qq4);            
+        res += (q1 - (cur == 1) - (sz == 1)) * getDP(qq1, qq2, qq3, qq4, 0, sz, 0);
+        res %= P;
+    }
+    if (q2 - (cur == 2) - (sz == 2)) {
+        move(q1, q2, q3, q4, 2, qq1, qq2, qq3, qq4);            
+        res += 2 * (q2 - (cur == 2) - (sz == 2)) * getDP(qq1, qq2, qq3, qq4, 1, sz, 0);
+        res %= P;
+    }
+    if (q3 - (cur == 3) - (sz == 3)) {
+        move(q1, q2, q3, q4, 3, qq1, qq2, qq3, qq4);            
+        res += 3 * (q3 - (cur == 3) - (sz == 3)) * getDP(qq1, qq2, qq3, qq4, 2, sz, 0);
+        res %= P;
+    }
+    if (q4 - (cur == 4) - (sz == 4)) {
+        move(q1, q2, q3, q4, 4, qq1, qq2, qq3, qq4);            
+        res += 4 * (q4 - (cur == 4) - (sz == 4)) * getDP(qq1, qq2, qq3, qq4, 3, sz, 0);
+        res %= P;
+    }
+//    cout << q1 << ' ' << q2 << ' ' << q3 << ' ' << q4 << ' ' << cur << ' ' << sz << ' ' << b << ' ' << res << '\n';
+    return res;
+}
+
+int main() {
+#ifdef LOCAL_DEFINE
+    freopen("input.txt", "rt", stdin);
+    freopen("output.txt", "wt", stdout);
+#endif
+
+//    forn(i, 101) forn(j, 51) forn(k, 34) forn(l, 26) forn(q, 5) forn(m, 5) forn(n, 2) dp[i][j][k][l][q][m][n] = -1;
+    dp[TState()] = 1;
+
+    int T;
+    cin >> T;
+    for (int t = 1; t <= T; ++t) {
+        cerr << "Case #" << t << "...\n";
+        int N;
+        cin >> N;
+        int q1 = 0, q2 = 0, q3 = 0, q4 = 0;
+        forn(i, N) {
+            int x;
+            cin >> x;
+            if (x == 1) ++q1;
+            if (x == 2) ++q2;
+            if (x == 3) ++q3;
+            if (x == 4) ++q4;
+        }
+        cout << "Case #" << t << ": " << getDP(q1, q2, q3, q4, -1, 0, 0) << '\n';
+    }
+
+#ifdef LOCAL_DEFINE
+    cerr << "Time elapsed: " << 1.0 * clock() / CLOCKS_PER_SEC << " s.\n";
+#endif
+    return 0;
+}

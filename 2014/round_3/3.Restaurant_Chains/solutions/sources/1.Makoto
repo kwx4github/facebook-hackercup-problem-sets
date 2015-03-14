@@ -1,0 +1,168 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <bitset>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstdio>
+
+using namespace std;
+
+#define REP(i,n) for((i)=0;(i)<(int)(n);(i)++)
+#define snuke(c,itr) for(__typeof((c).begin()) itr=(c).begin();itr!=(c).end();itr++)
+
+#define INF (1<<29)
+
+int V,E;
+int a[50010],b[50010];
+vector <int> graph[10010];
+
+int color[10010];
+int dist[10010][10010];
+
+int C;
+int edge_color[50010];
+
+void dfs(int x, int c){
+	if(color[x] != -1) return;
+	color[x] = c;
+	int i;
+	REP(i,graph[x].size()) dfs(graph[x][i], 1-c);
+}
+
+queue <int> q;
+
+void bfs(int s){
+	int i;
+	
+	REP(i,V) dist[s][i] = INF;
+	dist[s][s] = 0;
+	q.push(s);
+	
+	while(!q.empty()){
+		int x = q.front(); q.pop();
+		REP(i,graph[x].size()){
+			int y = graph[x][i];
+			if(dist[s][y] == INF){
+				dist[s][y] = dist[s][x] + 1;
+				q.push(y);
+			}
+		}
+	}
+}
+
+vector <pair <int, int> > graph2[10010]; // to, flip
+bitset <10010> vertex_color[10010];
+bool used[10010];
+
+void dfs_bitset(int p, int x, int f){
+	if(used[x]) return;
+	used[x] = true;
+	
+	if(p == -1){
+		vertex_color[x].reset();
+	} else {
+		vertex_color[x] = vertex_color[p];
+		vertex_color[x].flip(f);
+	}
+	
+	int i;
+	REP(i,graph2[x].size()) dfs_bitset(x, graph2[x][i].first, graph2[x][i].second);
+}
+
+bool check_bitset(void){
+	int i;
+	REP(i,E){
+		vertex_color[a[i]].flip(edge_color[i]);
+		if(vertex_color[a[i]] != vertex_color[b[i]]) return false;
+		vertex_color[a[i]].flip(edge_color[i]);
+	}
+	return true;
+}
+
+set <pair <int, int> > edges;
+
+int main2(void){
+	int i,j;
+	
+	cin >> V >> E;
+	REP(i,V) graph[i].clear();
+	
+	edges.clear();
+	int s,t;
+	REP(i,E){
+		scanf("%d%d", &s, &t);
+		if(s == t) continue;
+		if(s > t) swap(s, t);
+		edges.insert(make_pair(s, t));
+	}
+	
+	E = edges.size();
+	i = 0;
+	snuke(edges,itr){
+		a[i] = (itr->first);
+		b[i] = (itr->second);
+		graph[a[i]].push_back(b[i]);
+		graph[b[i]].push_back(a[i]);
+		i++;
+	}
+	
+	// bipartite?
+	REP(i,V) color[i] = -1;
+	dfs(0, 0);
+	REP(i,E) if(color[a[i]] == color[b[i]]) return -1;
+	
+	REP(i,V) bfs(i);
+	
+	REP(i,E) edge_color[i] = -1;
+	C = 0;
+	
+	REP(i,E){
+		if(edge_color[i] == -1){
+			edge_color[i] = C;
+			for(j=i+1;j<E;j++) if(dist[a[i]][a[j]] == dist[b[i]][b[j]] && dist[a[i]][b[j]] == dist[b[i]][a[j]]){
+				edge_color[j] = C;
+			}
+			C++;
+		} else {
+			for(j=i+1;j<E;j++) if(edge_color[j] == edge_color[i]) if(!(dist[a[i]][a[j]] == dist[b[i]][b[j]] && dist[a[i]][b[j]] == dist[b[i]][a[j]])) return -1;
+		}
+	}
+	
+	if(C > 10005) return -1;
+	
+	REP(i,V) graph2[i].clear();
+	REP(i,E){
+		graph2[a[i]].push_back(make_pair(b[i], edge_color[i]));
+		graph2[b[i]].push_back(make_pair(a[i], edge_color[i]));
+	}
+	
+	REP(i,V) used[i] = false;
+	dfs_bitset(-1, 0, -1);
+	if(!check_bitset()) return -1;
+	
+	return C;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int main(void){
+	int T,t;
+	cin >> T;
+	REP(t,T){
+		int ans = main2();
+		printf("Case #%d: %d\n", t+1, ans);
+	}
+	return 0;
+}

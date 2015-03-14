@@ -1,0 +1,150 @@
+#include <iostream>
+#include <queue>
+#include <vector>
+using namespace std;
+
+vector<vector<int> > dist;
+struct Node {
+	int visited, index, dist;
+	Node* prev;
+	vector<bool> mask;
+	Node() : visited(0) {}
+	vector<Node*> e;
+	int distTo(Node* other) const { return ::dist[index][other->index]; }
+	bool bit(int ind) const { return (ind < (int)mask.size() ? mask[ind] : false); }
+	void flip(int bit) {
+		if (bit >= (int)mask.size())
+			mask.resize(bit+1);
+		mask[bit] = !mask[bit];
+	}
+};
+
+vector<Node*> All;
+void allnodes(Node* n, Node* prev) {
+	if (n->visited) return;
+	n->prev = prev;
+	n->visited = 1;
+	All.push_back(n);
+	for (Node* o : n->e)
+		allnodes(o, n);
+}
+
+int solve(Node* base) {
+	All.clear();
+	allnodes(base, 0);
+	for (Node* start : All) {
+		for (Node* n : All)
+			n->dist = -1;
+		queue<Node*> q;
+		q.push(start);
+		start->dist = 0;
+		while (!q.empty()) {
+			Node* n = q.front();
+			int d = n->dist;
+			q.pop();
+			for (Node* o : n->e) {
+				if (o->dist != -1) {
+					if ((o->dist + d + 1) & 1) {
+// cout << "PARITY" << endl;
+						return -1;
+					}
+					continue;
+				}
+				o->dist = d + 1;
+				q.push(o);
+			}
+		}
+		for (Node* n : All)
+			dist[start->index][n->index] = n->dist;
+	}
+
+	/*
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j)
+			cout << dist[i][j] << ' ';
+		cout << endl;
+	}
+	*/
+
+	int nbits = 0;
+	vector<Node*> knownWithBit;
+	for (Node* cur : All) {
+		Node* prev = cur->prev;
+		if (!prev)
+			continue;
+// cout << "visit " << cur->index << endl;
+		cur->mask = prev->mask;
+		int changedbit = -1;
+		bool reused = false;
+		for (int i = 0; i < nbits; ++i) {
+			bool b = !prev->bit(i);
+			Node* comp = b ? knownWithBit[i] : All.front();
+			int thenDist = comp->distTo(prev) - 1;
+			if (thenDist == comp->distTo(cur)) {
+				changedbit = i;
+				reused = true;
+				break;
+			}
+		}
+
+		if (!reused) {
+// cout << "new bit" << endl;
+			// allocate a new bit
+			knownWithBit.push_back(cur);
+			changedbit = nbits;
+			nbits++;
+		}
+
+		cur->flip(changedbit);
+// cout << cur->bit(0) << cur->bit(1) << endl;
+
+		// verify that this actually works
+		for (Node* other : All) {
+			if (other == cur)
+				break;
+			int d = other->distTo(prev);
+			if (other->bit(changedbit) == cur->bit(changedbit))
+				--d;
+			else
+				++d;
+			if (d != other->distTo(cur))
+				return -1;
+		}
+	}
+
+	return nbits;
+}
+
+int solve() {
+	int N, M;
+	cin >> N >> M;
+	dist.assign(N, vector<int>(N, 0));
+	vector<Node> nodes(N);
+	for (int i = 0; i < N; ++i)
+		nodes[i].index = i;
+	for (int i = 0; i < M; ++i) {
+		int a, b;
+		cin >> a >> b;
+		nodes[a].e.push_back(&nodes[b]);
+		nodes[b].e.push_back(&nodes[a]);
+	}
+
+	int res = 0;
+	for (int i = 0; i < N; ++i) {
+		if (nodes[i].visited)
+			continue;
+		int r = solve(&nodes[i]);
+		if (r == -1)
+			return -1;
+		res = max(res, r);
+	}
+	return res;
+}
+
+int main() {
+	int T;
+	cin >> T;
+	for (int i = 0; i < T; ++i)
+		cout << "Case #" << (i+1) << ": " << solve() << endl;
+	return 0;
+}

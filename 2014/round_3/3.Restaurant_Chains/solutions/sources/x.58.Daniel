@@ -1,0 +1,148 @@
+#include <stdio.h>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <string.h>
+#include <math.h>
+#include <set>
+#include <map>
+#include <string>
+#include <ext/numeric>
+#include <iostream>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/boyer_myrvold_planar_test.hpp>
+using namespace std;
+using namespace __gnu_cxx;
+using namespace boost;
+
+#define all(V) (V).begin(), (V).end()
+#define rall(V) (V).rbegin(), (V).rend()
+#define FORB(i, a, b) for (int i = b-1; i >= a; --i)
+#define FOR(i, a, b) for (int i = a; i < b; ++i)
+#define fu(i, b) FOR(i, 0, b)
+#define fub(i, b) FORB(i, 0, b)
+#define SZ(V) (int)(V).size()
+#define pb push_back
+#define TRACE(x...) x
+#define PRINT(x...) TRACE(printf(x))
+#define DEBUG(x) TRACE(cout << #x" = " << x << endl)
+#define MSET(v, x) memset(v, x, sizeof(v))
+
+typedef long long ll;
+const int INF = 0x3f3f3f3f;
+const int NINF = 0xc0c0c0c0;
+const double EPS = 1e-7;
+
+int cmp(double x, double y = 0, double tol = EPS) {
+	return (x <= y + tol)?(x + tol < y)? -1 : 0 : 1;
+}
+
+vector<int> GGQW[10010];
+vector<int> cycle;
+vector<int> mark;
+int MARK;
+int rep[10010];
+int H[10010];
+int s;
+int N, M;
+
+int getrep(int x) {
+	if (rep[x] != x) rep[x] = getrep(rep[x]);
+	return rep[x];
+}
+
+void inituf() {
+	fu(i, 10010) rep[i] = i;
+	fu(i, 10010) H[i] = 0;
+}
+
+void unio(int a, int b) {
+	a = getrep(a);
+	b = getrep(b);
+	if (a == b) return;
+	if (H[a] < H[b]) rep[a] = b;
+	else rep[b] = a;
+	if (H[a] == H[b]) H[a]++;
+}
+
+void fcycle(int node, int p) {
+	node = getrep(node);
+	if (mark[node] == MARK) {
+		s = node;
+		cycle.pb(node);
+		return;
+	}
+	mark[node] = MARK;
+	for (int x : GGQW[node]) {
+		x = getrep(x);
+		if (x == p || x == node) continue;
+		fcycle(x, node);
+		if (s == -2) return;
+		if (s == node) {s = -2; return;}
+		if (s != -1) {cycle.pb(node); return;}
+	}
+}
+
+bool findcycle() {
+	MARK++;
+	cycle.clear();
+	s = -1;
+	fcycle(0, -1);
+	return !cycle.empty();
+}
+
+bool bipartite(int node, int m) {
+	if (mark[node] >= 0) return mark[node] == m;
+	mark[node] = m;
+	for (int x:GGQW[node])
+		if (!bipartite(x, 1-m))
+			return false;
+	return true;
+}
+
+typedef adjacency_list<vecS, vecS, bidirectionalS> GGGG;
+int main() {
+	int T;
+	scanf("%d", &T);
+	fu(_, T) {
+		printf("Case #%d:", _+1);
+		scanf("%d %d", &N, &M);
+		fu(i, 1010) GGQW[i].clear();
+		mark = vector<int>(N, -2);
+		MARK = -1;
+		inituf();
+		GGGG BG(N);
+		fu(i, M) {
+			int a,b;
+			scanf("%d %d", &a, &b);
+			GGQW[a].pb(b);
+			GGQW[b].pb(a);
+			add_edge(a, b, BG);
+			add_edge(b,a,BG);
+		}
+		fu(i, N) {
+			sort(all(GGQW[i]));
+			GGQW[i].erase(unique(all(GGQW[i])), GGQW[i].end());
+		}
+		if (!bipartite(0, 0)) {
+			printf(" -1\n"); continue;
+		}
+
+/*		if (!boyer_myrvold_planarity_test(BG)) {
+			printf(" -1\n"); continue;
+		}*/
+		
+		mark = vector<int>(N, -2);
+		ll ans = 0;
+		while (findcycle()) {
+			ans += SZ(cycle)/2;
+			fu(i, SZ(cycle)) unio(cycle[0], cycle[i]);
+		}
+		ans--;
+		fu(i, N) ans += (rep[i] == i);
+		printf(" %lld\n", ans);
+	}
+	return 0;
+}
+

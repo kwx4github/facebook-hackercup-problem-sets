@@ -1,0 +1,158 @@
+#include <cstdio>
+#include <cstring>
+#include <mutex>
+#include <thread>
+#include <vector>
+
+using namespace std;
+
+#define MOD 1000000007
+
+struct TestCase {
+  int case_num;
+
+  struct Input {
+    vector<int> a;
+  } in;
+
+  struct Output {
+    int result;
+  } out;
+
+  void Read() {
+    int k;
+    scanf("%d", &k);
+    in.a.resize(k);
+    for (int i = 0; i < k; ++i) scanf("%d", &in.a[i]);
+  }
+  
+  void Write() {
+    printf("Case #%d: %d\n", case_num, out.result);
+  }
+};
+
+int Mult(int a, int b) {
+  return (long long) a * b % MOD;
+}
+
+int Add(int a, int b) {
+  return (a + b) % MOD;
+}
+
+class Solver {
+ public:
+  static void Preprocess() {}
+  int Rec(int i, int left, int right) {
+    if (i == n) {
+      return (left == 0) && (right == 0);
+    }
+    int& ret = memo_[i][left][right];
+    if (ret >= 0) return ret;
+    ret = 0;
+    for (int send = 0; send < (1 << a[i]); ++send) {
+      for (int receive = 0; receive < (1 << a[i]); ++receive) {
+        int new_left = left;
+        int new_right = right;
+        int ways = 1;
+        for (int j = 0; j < a[i]; ++j) {
+          if ((send >> j) & 1) {
+            ways = Mult(ways, new_left);
+            new_left -= 1;
+          } 
+          if ((receive >> j) & 1) {
+            ways = Mult(ways, new_right);
+            new_right -= 1;
+          }
+        }
+        if ((new_left < 0) || (new_right < 0)) continue;
+        for (int j = 0; j < a[i]; ++j) {
+          if (!((send >> j) & 1)) {
+            new_right += 1;
+          } 
+          if (!((receive >> j) & 1)) {
+            new_left += 1;
+          }
+        }
+        ret = Add(ret, Mult(ways, Rec(i + 1, new_left, new_right)));
+      }
+    }
+    return ret;
+  }
+
+  void Run(TestCase* test_case) {
+    n = test_case->in.a.size();
+    a = test_case->in.a;
+
+    memset(memo_, -1, sizeof memo_);
+    test_case->out.result = Rec(0, 0, 0);
+  }
+
+ private:
+  int n;
+  vector<int> a;
+  int memo_[101][101][101];
+};
+
+class Program {
+ public:
+  Program(int num_threads) : num_threads_(num_threads) {}
+
+  void Read() {
+    int n;
+    scanf("%d", &n);
+    test_cases_.resize(n);
+    for (int i = 0; i < n; ++i) {
+      test_cases_[i].case_num = i + 1;
+      test_cases_[i].Read();
+    }
+  }
+
+  int NextCase() {
+    mutex_.lock();
+    int case_id = next_case_ == test_cases_.size() ? -1 : next_case_++;
+    mutex_.unlock();
+    return case_id;
+  }
+
+  void WorkerLoop(int thread_id) {
+    for (;;) {
+      int case_id = NextCase();
+      if (case_id == -1) break;
+      fprintf(stderr, "Thread %d solving case #%d\n", thread_id, case_id);
+      Solver solver;
+      solver.Run(&test_cases_[case_id]);
+    }
+  }
+
+  void Solve() {
+    Solver::Preprocess();
+
+    next_case_ = 0;
+    vector<std::thread> thread_pool;
+    for (int i = 0; i < num_threads_; ++i) {
+      thread_pool.emplace_back(std::thread(&Program::WorkerLoop, this, i));
+    }
+    for (std::thread& thread : thread_pool) {
+      thread.join();
+    }
+  }
+
+  void Write() {
+    for (TestCase& test_case : test_cases_) {
+      test_case.Write();
+    }
+  }
+ private:
+  int num_threads_;
+  int next_case_;
+  std::mutex mutex_;
+  vector<TestCase> test_cases_;
+};
+
+int main() {
+  Program program(/*num_threads=*/10);
+  program.Read();
+  program.Solve();
+  program.Write();
+  return 0;
+}

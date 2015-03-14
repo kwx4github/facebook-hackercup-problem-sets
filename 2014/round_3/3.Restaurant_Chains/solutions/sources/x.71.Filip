@@ -1,0 +1,132 @@
+/* Written by Filip Hlasek 2013 */
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <string>
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+
+#define FOR(i,a,b) for(int i=(a);i<=(b);i++)
+#define FORD(i,a,b) for(int i=(a);i>=(b);i--)
+#define REP(i,b) for(int i=0;i<(b);i++)
+
+using namespace std;
+
+#define MAXN 11111
+int N, M;
+vector<int> graph[MAXN];
+bool visited[MAXN];
+int num[MAXN], NUM = 1;
+
+int dist[MAXN];
+
+void dfs(int v) {
+  visited[v] = true;
+  REP(i, graph[v].size()) if (!visited[graph[v][i]] && num[graph[v][i]] == NUM) dfs(graph[v][i]);
+}
+
+long long comb(int n, int k) {
+  long long nom = 1, den = 1;
+  REP(i, k) {
+    nom *= n - i;
+    den *= k - i;
+  }
+  return nom / den;
+}
+
+int solve(vector<int> v, int last = 0) {
+  if (v.size() == 2) return 1;
+  NUM++;
+  REP(i, v.size()) num[v[i]] = NUM;
+
+  REP(i, v.size()) {
+    int x = v[i];
+
+    if (x < last) continue;
+
+    vector<int> nb;
+    REP(j, graph[x].size()) if (num[graph[x][j]] == NUM) nb.push_back(graph[x][j]);
+
+    if (nb.size() < 2) continue;
+
+    REP(j, v.size()) visited[v[j]] = false;
+    visited[x] = true;
+    dfs(nb[0]);
+
+    vector<int> nv, notv;
+    notv.push_back(x);
+    REP(j, v.size())
+      if (visited[v[j]]) nv.push_back(v[j]);
+      else notv.push_back(v[j]);
+
+    if (nv.size() != v.size()) { // artikulace
+      int ans1 = solve(nv, x);
+      int ans2 = solve(notv, x);
+      if (ans1 == -1 || ans2 == -1) return -1;
+      return ans1 + ans2;
+    }
+  }
+
+  // neobsahuje artikulaci
+  int n = 0;
+  while ((1 << n) < v.size()) n++;
+  if ((1 << n) != v.size()) return -1;
+
+  REP(i, v.size()) {
+    int x = v[i], nb = 0;
+    REP(j, graph[x].size()) if (num[graph[x][j]] == NUM) nb++;
+    if (nb != n) return -1;
+  }
+
+  REP(i, v.size()) visited[v[i]] = false;
+  queue<int> q;
+  dist[v[0]] = 0;
+  visited[v[0]] = true;
+  q.push(v[0]);
+  while(!q.empty()) {
+    int x = q.front();
+    q.pop();
+    REP(j, graph[x].size()) if (num[graph[x][j]] == NUM && !visited[graph[x][j]]) {
+      dist[graph[x][j]] = dist[x] + 1;
+      q.push(graph[x][j]);
+      visited[graph[x][j]] = true;
+    }
+  }
+
+  FOR(d, 0, n) {
+    int cnt = 0;
+    REP(i, v.size()) if(dist[v[i]] == d) cnt++;
+    if (cnt != comb(n, d)) return -1;
+  }
+
+  return n;
+}
+
+int main(int argc, char *argv[]) {
+  int T;
+  scanf("%d", &T);
+  REP(t, T) {
+    scanf("%d%d", &N, &M);
+    fprintf(stderr, "t: %d N: %d M: %d\n", t + 1, N, M);
+    REP(i, N) graph[i].clear();
+    REP(i, M) {
+      int a, b;
+      scanf("%d%d", &a, &b);
+      graph[a].push_back(b);
+      graph[b].push_back(a);
+    }
+
+    if (N == 1) { printf("Case #%d: 1\n", t + 1); continue; }
+
+    vector<int> v;
+    REP(i, N) v.push_back(i);
+
+    printf("Case #%d: %d\n", t + 1, solve(v));
+  }
+  return 0;
+}

@@ -1,0 +1,268 @@
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+public class Santa {
+
+	static class Input {
+		int[] n;
+
+		Input(InputReader in) throws IOException {
+			int men = in.nextInt();
+			n = new int[5];
+			for (int i = 0; i < men; i++) {
+				n[in.nextInt()]++;
+			}
+		}
+
+		Output solve() {
+			int a = n[1], b = n[2], c = n[3], d = n[4];
+			int men = a + 2 * b + 3 * c + 4 * d;
+
+			int[][][] dp = new int[men + 1][men + 1][men + 1];
+			int[][][] next = new int[men + 1][men + 1][men + 1];
+			
+			int[][] choose = new int[men+1][men+1];
+			
+			for (int i = 0; i <= men; i++) {
+				choose[i][0] = choose[i][i] =1;
+				for (int j = 1; j < i; j++) {
+					choose[i][j] = add(choose[i-1][j-1], choose[i-1][j]);
+				}
+			}
+			int[][] chooseA = new int[men+1][men+1];
+			for (int i = 0; i <= men; i++) {
+				int factorial = 1;
+				for (int j = 0; j <= i; j++) {
+					chooseA[i][j] = mul(choose[i][j], factorial);
+					factorial = mul(factorial, j+1);
+				}
+			}
+			int[] factorial = new int[men+1];
+			factorial[0] = 1;
+			for (int i = 1; i <= men; i++) {
+				factorial[i] = mul(factorial[i-1], i);
+			}
+
+			dp[0][0][0] = 1;
+			
+			int hadMen = 0;
+			
+			System.out.println("test "+a+" "+b+" "+c +" "+d);
+
+			for (int family = 0; family < a + b + c + d; family++) {
+				for (int[][] arr : next) {
+					for (int[] arr1 : arr) {
+						Arrays.fill(arr1, 0);
+					}
+				}
+				int familySize = 1;
+				if (family >= a) {
+					++familySize;
+				}
+				if (family >=a+b) {
+					++familySize;
+				}
+				if (family >= a+b+c) {
+					++familySize;
+				}
+				for (int had1 = 0; had1 <= men; had1++) {
+					for (int had2 = 0; had2 + had1 <= men; had2++) {
+						for (int had3 = 0; had3 + had1 <= men; had3++) {
+							int was = dp[had1][had2][had3];
+							if (was == 0) {
+								continue;
+							}
+							int had0 = men - had1 - had2 - had3 - hadMen;
+//							System.out.println("dp "+had0+","+had1+","+had2+","+had3+": "+was);
+							
+							for (int take0 = 0; take0 <= familySize; take0++) {
+								for (int take1 = 0; take1 + take0 <= familySize; take1++) {
+									for (int take2 = 0; take2 + take1 + take0 <= familySize; take2++) {
+										int take3 = familySize - take1 - take2 - take0;
+
+										int left0 = had0 - take0;
+										int left1 = had1 - take1;
+										int left2 = had2 - take2;
+										int left3 = had3 - take3;
+										
+										if (left0 < 0 || left1 < 0 || left2 < 0 || left3 < 0) {
+											continue;
+										}
+										
+										int waysFamily = chooseA[had1][take1];
+										waysFamily = mul(waysFamily, chooseA[had2][take2]);
+										waysFamily = mul(waysFamily, chooseA[had3][take3]);
+
+										waysFamily = mul(waysFamily, choose[familySize][take1]);
+										waysFamily = mul(waysFamily, choose[familySize-take1][take2]);
+										waysFamily = mul(waysFamily, choose[familySize-take1-take2][take3]);
+										
+//										waysFamily = 1;
+//										waysFamily = mul(waysFamily, chooseA[familySize][take0]);
+										
+//										System.out.println(" good so far "+left0+", "+left1+", "+left2+", "+left3);
+
+										int out = take0 + take1;
+										int in = take0 + take2;
+										
+//										System.out.println(" in and out "+in+","+out);
+										
+										for (int freeForBoth = 0; freeForBoth <= in && freeForBoth <= out; freeForBoth++) {
+										for (int freeForOut = 0; freeForOut + freeForBoth <= out; freeForOut++) {
+											for (int freeForIn = 0; freeForIn + freeForBoth <= in; freeForIn++) {
+												int to0 = left0 - freeForBoth - freeForOut - freeForIn;
+												int to1 = left1 - (in - freeForIn - freeForBoth);
+												int to2 = left2 - (out - freeForOut - freeForBoth);
+												int to3 = left3;
+												if (to0 < 0 || to1 < 0 || to2 < 0) {
+													continue;
+												}
+												
+//												int ways = choose[left0][freeForBoth];
+//												ways = mul(ways, choose[left0 - freeForBoth][freeForIn]);
+//												ways = mul(ways, choose[left0 - freeForBoth - freeForIn][freeForOut]);
+												
+												int ways = waysFamily;
+												ways = mul(ways, chooseA[left1][left1 - to1]);
+												ways = mul(ways, chooseA[left2][left2 - to2]);
+												
+												ways = mul(ways, choose[out][freeForBoth]);
+												ways = mul(ways, choose[in][freeForBoth]);
+												
+												ways = mul(ways, choose[out-freeForBoth][freeForOut]);
+												ways = mul(ways, choose[in-freeForBoth][freeForIn]);
+												
+												ways = mul(ways, factorial[freeForBoth]);
+//												ways = mul(ways, factorial[freeForBoth]);
+//												ways = mul(ways, factorial[left1 - to1]);
+//												ways = mul(ways, factorial[left2 - to2]);
+												
+												to1 += freeForOut;
+												to2 += freeForIn;
+												to3 += in - freeForIn + out - freeForOut - freeForBoth;
+//												if (to3 < 0) {
+//													throw new AssertionError();
+//												}
+//												System.out.println("  add "+to1+","+to2+","+to3+": "+was+"*"+ways);
+												
+												next[to1][to2][to3] = add(next[to1][to2][to3], mul(was, ways));
+											}
+										}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				hadMen += familySize;
+				for (int i = 0; i < dp.length; i++) {
+					for (int j = 0; j < dp[i].length; j++) {
+						System.arraycopy(next[i][j], 0, dp[i][j], 0, next[i][j].length);
+						Arrays.fill(next[i][j], 0);
+					}
+				}
+			}
+			System.out.println("END OF TESTCASE");
+
+			int answer = dp[0][0][0];
+			return new Output(answer);
+		}
+	}
+
+	static final int MOD = 1000000007;
+
+	static int add(int a, int b) {
+		a += b;
+		if (a >= MOD) {
+			a -= MOD;
+		}
+		return a;
+	}
+	
+	static int mul(int a, int b) {
+		if (b == 1) {
+			return a;
+		}
+		return (int)((long)a * (long)b % MOD);
+	}
+
+	static class Output {
+		int answer;
+
+		public Output(int answer) {
+			this.answer = answer;
+		}
+
+		void writeOutput(PrintWriter out) {
+			out.println(answer);
+		}
+	}
+
+	public static void main(String[] args) throws IOException,
+			InterruptedException, ExecutionException {
+		InputReader in = new InputReader(new FileInputStream("santa.in"));
+		PrintWriter out = new PrintWriter("santa.out");
+		ExecutorService executor = Executors.newFixedThreadPool(1);
+		int testCases = in.nextInt();
+		final Input[] inputs = new Input[testCases];
+		for (int i = 0; i < testCases; i++) {
+			inputs[i] = new Input(in);
+		}
+
+		@SuppressWarnings("unchecked")
+		Future<Output> outputs[] = new Future[testCases];
+
+		for (int i = 0; i < testCases; i++) {
+			final int testCase = i;
+			outputs[i] = executor.submit(new Callable<Output>() {
+				@Override
+				public Output call() throws Exception {
+					return inputs[testCase].solve();
+				}
+			});
+		}
+
+		for (int i = 0; i < testCases; i++) {
+			out.print("Case #" + (i + 1) + ": ");
+			outputs[i].get().writeOutput(out);
+		}
+
+		out.close();
+		executor.shutdown();
+	}
+
+	static class InputReader {
+
+		InputReader(InputStream input) {
+			br = new BufferedReader(new InputStreamReader(input));
+		}
+
+		BufferedReader br;
+		StringTokenizer st;
+
+		String nextToken() throws IOException {
+			while (st == null || !st.hasMoreTokens()) {
+				String line = br.readLine();
+				if (line == null) {
+					return null;
+				}
+				st = new StringTokenizer(line);
+			}
+			return st.nextToken();
+		}
+
+		int nextInt() throws IOException {
+			return Integer.parseInt(nextToken());
+		}
+
+		long nextLong() throws IOException {
+			return Long.parseLong(nextToken());
+		}
+
+		double nextDouble() throws IOException {
+			return Double.parseDouble(nextToken());
+		}
+	}
+}

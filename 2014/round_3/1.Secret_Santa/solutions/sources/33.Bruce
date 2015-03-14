@@ -1,0 +1,167 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    ios::sync_with_stdio(false);
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+static const int MOD = 1000000007;
+
+struct state
+{
+    int freq[5];
+    int start, end;
+
+    state() : freq{0, 0, 0, 0, 0}, start(-1), end(-1) {}
+
+    bool operator<(const state &b) const
+    {
+        for (int i = 1; i <= 4; i++)
+            if (freq[i] != b.freq[i])
+                return freq[i] < b.freq[i];
+        return tie(start, end) < tie(b.start, b.end);
+    }
+};
+
+static map<state, int> cache;
+
+static int recurse(state &s)
+{
+    auto cptr = cache.find(s);
+    if (cptr != cache.end())
+        return cptr->second;
+    int &ansr = cache[s];
+
+    int start = s.start;
+    int end = s.end;
+    ll ans = 0;
+    if (end != -1)
+    {
+        for (int m = 1; m <= 4; m++)
+        {
+            int p = s.freq[m];
+            if (m == end)
+                p--;
+            if (m == start)
+                p--;
+            if (p > 0)
+            {
+                ll scale = p * m;
+                s.freq[end]--;
+                s.freq[end - 1]++;
+                s.end = m;
+                ans = (ans + scale * recurse(s)) % MOD;
+                s.end = end;
+                s.freq[end - 1]--;
+                s.freq[end]++;
+            }
+        }
+        s.freq[end]--;
+        s.freq[end - 1]++;
+        s.start = -1;
+        s.end = -1;
+        ll scale = start + 1;
+        ans = (ans + scale * recurse(s)) % MOD;
+        s.start = start;
+        s.end = end;
+        s.freq[end - 1]--;
+        s.freq[end]++;
+    }
+    else
+    {
+        start = 4;
+        while (start > 0 && !s.freq[start])
+            start--;
+        if (start == 0)
+            return 1;
+        for (int m = 1; m <= 4; m++)
+        {
+            int p = s.freq[m];
+            if (m == start)
+                p--;
+            if (p > 0)
+            {
+                s.freq[start]--;
+                s.freq[start - 1]++;
+                s.start = start - 1;
+                s.end = m;
+                ll scale = p * m;
+                ans = (ans + scale * recurse(s)) % MOD;
+                s.freq[start]++;
+                s.freq[start - 1]--;
+                s.start = -1;
+                s.end = -1;
+            }
+        }
+    }
+    return ansr = ans;
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        state s;
+        int K;
+        cin >> K;
+        int v;
+        for (int i = 0; i < K; i++)
+        {
+            cin >> v;
+            s.freq[v]++;
+        }
+        int ans = recurse(s);
+        cout << "Case #" << cas + 1 << ": " << ans << "\n";
+    }
+    return 0;
+}

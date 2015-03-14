@@ -1,0 +1,238 @@
+import static java.lang.Double.parseDouble;
+import static java.lang.Integer.parseInt;
+import static java.lang.Long.parseLong;
+import static java.lang.System.exit;
+import static java.util.Arrays.fill;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.StringTokenizer;
+
+public class C {
+	
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer tok;
+	static int test;
+	
+	static int edges[][];
+	static boolean seen[];
+	static boolean parity[];
+	static int color[][];
+	static int dist[];
+	
+	static void solve() throws Exception {
+		int n = nextInt();
+		int m = nextInt();
+		List<Integer> edgesL[] = new List[n];
+		for (int i = 0; i < n; i++) {
+			edgesL[i] = new ArrayList<>();
+		}
+		for (int i = 0; i < m; i++) {
+			int a = nextInt();
+			int b = nextInt();
+			edgesL[a].add(b);
+			edgesL[b].add(a);
+		}
+		edges = new int[n][];
+		color = new int[n][];
+		for (int i = 0; i < n; i++) {
+			edges[i] = new int[edgesL[i].size()];
+			for (int j = 0; j < edgesL[i].size(); j++) {
+				edges[i][j] = edgesL[i].get(j);
+			}
+			color[i] = new int[edgesL[i].size()];
+			fill(color[i], -1);
+		}
+		seen = new boolean[n];
+		parity = new boolean[n];
+		if (!dfs1(0, false)) {
+			printCase();
+			out.println(-1);
+			return;
+		}
+		int ans = 0;
+		int queue1[] = new int[n];
+		int queue2[] = new int[n];
+		int queueTmp[] = new int[n];
+		dist = new int[n];
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < edges[i].length; j++) {
+				if (color[i][j] >= 0) {
+					continue;
+				}
+				fill(dist, -1);
+				int qp1 = 1;
+				int qp2 = 1;
+				queue1[0] = i;
+				queue2[0] = edges[i][j];
+				dist[i] = 0;
+				dist[edges[i][j]] = 0;
+				int iter = 0;
+				do {
+					int qpTmp = 0;
+					for (int ii = 0; ii < qp1; ii++) {
+						int cur = queue1[ii];
+						int curEdges[] = edges[cur];
+						int curColor[] = color[cur];
+						for (int jj = 0; jj < curEdges.length; jj++) {
+							int next = curEdges[jj];
+							if (dist[next] < 0) {
+								dist[next] = iter + 1;
+								queueTmp[qpTmp++] = next;
+							} else if (dist[next] == iter) {
+								if (curColor[jj] != -1) {
+									printCase();
+									out.println(-1);
+									return;
+								}
+								curColor[jj] = ans;
+							}
+						}
+					}
+					{
+						int t[] = queue1;
+						queue1 = queueTmp;
+						queueTmp = t;
+						qp1 = qpTmp;
+					}
+					qpTmp = 0;
+					for (int ii = 0; ii < qp2; ii++) {
+						int cur = queue2[ii];
+						int curEdges[] = edges[cur];
+						int curColor[] = color[cur];
+						for (int jj = 0; jj < curEdges.length; jj++) {
+							int next = curEdges[jj];
+							if (dist[next] < 0) {
+								dist[next] = iter + 1;
+								queueTmp[qpTmp++] = next;
+							} else if (dist[next] == iter) {
+								if (curColor[jj] != -1) {
+									printCase();
+									out.println(-1);
+									return;
+								}
+								curColor[jj] = ans;
+							}
+						}
+					}
+					{
+						int t[] = queue2;
+						queue2 = queueTmp;
+						queueTmp = t;
+						qp2 = qpTmp;
+					}
+					++iter;
+				} while (qp1 > 0 && qp2 > 0);
+				++ans;
+			}
+		}
+		for (int i = 0; i < n; i++) {
+			fill(dist, -1);
+			int qp = 1;
+			queue1[0] = i;
+			dist[i] = 0;
+			int qpp = 0;
+			do {
+				int cur = queue1[qpp++];
+				for (int next: edges[cur]) {
+					if (dist[next] < 0) {
+						dist[next] = dist[cur] + 1;
+						queue1[qp++] = next;
+					}
+				}
+			} while (qpp < qp);
+			fill(seen, false);
+			fill(parity, false);
+			if (!dfs2(i, 0)) {
+				printCase();
+				out.println(-1);
+				return;
+			}
+		}
+		printCase();
+		out.println(ans);
+	}
+	
+	static boolean dfs2(int cur, int curDist) {
+		if (dist[cur] != curDist) {
+			return false;
+		}
+		if (seen[cur]) {
+			return true;
+		}
+		seen[cur] = true;
+		for (int i = 0; i < edges[cur].length; i++) {
+			int next = edges[cur][i];
+			int c = color[cur][i];
+			parity[c] = !parity[c];
+			if (!dfs2(next, parity[c] ? curDist + 1 : curDist - 1)) {
+				return false;
+			}
+			parity[c] = !parity[c];
+		}
+		return true;
+	}
+	
+	static boolean dfs1(int cur, boolean p) {
+		if (seen[cur]) {
+			return parity[cur] == p;
+		}
+		seen[cur] = true;
+		parity[cur] = p;
+		for (int next: edges[cur]) {
+			if (!dfs1(next, !p)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	static void printCase() {
+		out.print("Case #" + test + ": ");
+	}
+	
+	static void printlnCase() {
+		out.println("Case #" + test + ":");
+	}
+	
+	static int nextInt() throws IOException {
+		return parseInt(next());
+	}
+
+	static long nextLong() throws IOException {
+		return parseLong(next());
+	}
+
+	static double nextDouble() throws IOException {
+		return parseDouble(next());
+	}
+
+	static String next() throws IOException {
+		while (tok == null || !tok.hasMoreTokens()) {
+			tok = new StringTokenizer(in.readLine());
+		}
+		return tok.nextToken();
+	}
+
+	public static void main(String[] args) {
+		try {
+			in = new BufferedReader(new InputStreamReader(System.in));
+			out = new PrintWriter(new OutputStreamWriter(System.out));
+			int tests = nextInt();
+			for (test = 1; test <= tests; test++) {
+				solve();
+			}
+			in.close();
+			out.close();
+		} catch (Throwable e) {
+			e.printStackTrace();
+			exit(1);
+		}
+	}
+}

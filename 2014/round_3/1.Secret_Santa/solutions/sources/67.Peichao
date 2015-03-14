@@ -1,0 +1,142 @@
+import java.util.Scanner;
+
+public class Solution
+{
+
+  static int MOD = 1000000007;
+
+  static int MAX_N = 100;
+  static int MAX_K = 100;
+
+  static int[] frac;
+  static int[][] C;
+  static int[][] S;
+
+  int K;
+  int N;
+  int[] F;
+
+  int[][] dp1;
+  int[][][][] dp2;
+
+  public Solution (Scanner sc)
+  {
+    K = sc.nextInt();
+    N = 0;
+    F = new int[4];
+    for (int i = 0; i < K; ++i)
+    {
+      int n = sc.nextInt();
+      N += n;
+      ++F[n - 1];
+    }
+  }
+
+  static void calcFrac ()
+  {
+    frac = new int[MAX_N + 1];
+    frac[0] = 1;
+    for (int i = 1; i <= MAX_N; ++i)
+      frac[i] = (int)((long)frac[i - 1] * i % MOD);
+  }
+
+  static void calcC ()
+  {
+    C = new int[MAX_K + 1][MAX_K + 1];
+    C[0][0] = 1;
+    for (int i = 1; i <= MAX_K; ++i)
+    {
+      C[i][0] = C[i][i] = 1;
+      for (int j = 1; j < i; ++j)
+        C[i][j] = (C[i - 1][j - 1] + C[i - 1][j]) % MOD;
+    }
+  }
+
+  static void calcS ()
+  {
+    S = new int[4][4];
+    for (int a = 1; a <= 4; ++a)
+    {
+      int p = 1;
+      for (int b = 1; b <= a; ++b)
+      {
+        p = (int)((long)p * (a + 1 - b) % MOD);
+        S[a - 1][b - 1] = (int)((long)p * C[a][b] % MOD);
+      }
+    }
+  }
+
+  int count2 (int i, int m, int n, int l)
+  {
+    if (i == m)
+      return n == 0 ? 1 : 0;
+    if (dp2[i][m - 1][n][l] != -1)
+      return dp2[i][m - 1][n][l];
+    int ret = 0;
+    int ps = 1;
+    for (int k = 0; (i + 1) * k <= n && k <= l; ++k)
+    {
+      ret = (int)((ret + (long)ps * C[l][k] % MOD * count2(i + 1, m, n - (i + 1) * k, l - k)) % MOD);
+      ps = (int)((long)ps * S[m - 1][i] % MOD);
+    }
+    return dp2[i][m - 1][n][l] = ret;
+  }
+
+  int count1 (int i, int n)
+  {
+    if (i == 4)
+      return n == 0 ? 1 : 0;
+    if (dp1[i][n] != -1)
+      return dp1[i][n];
+    int ret = 0;
+    for (int k = 0; k <= n; ++k)
+      ret = (int)((ret + (long)count2(0, i + 1, k, F[i]) * count1(i + 1, n - k)) % MOD);
+    return dp1[i][n] = ret;
+  }
+
+  int count (int n)
+  {
+    return (int)((long)count1(0, n) * frac[N - n] % MOD);
+  }
+
+  int solve ()
+  {
+    dp1 = new int[4][N + 1];
+    for (int i = 0; i < 4; ++i)
+      for (int n = 0; n <= N; ++n)
+        dp1[i][n] = -1;
+    dp2 = new int[4][4][N + 1][K + 1];
+    for (int i = 0; i < 4; ++i)
+      for (int m = 0; m < 4; ++m)
+        for (int n = 0; n <= N; ++n)
+          for (int l = 0; l <= K; ++l)
+            dp2[i][m][n][l] = -1;
+    int ret = frac[N];
+    for (int i = 1; i <= N; ++i)
+    {
+      // System.out.format("count(%d) = %d\n", i, count(i));
+      if (i % 2 == 1)
+        ret = (ret - count(i) + MOD) % MOD;
+      else
+        ret = (ret + count(i)) % MOD;
+    }
+    return ret;
+  }
+
+  public static void main (String[] args)
+  {
+    calcFrac();
+    calcC();
+    calcS();
+    Scanner sc = new Scanner(System.in);
+    int T = sc.nextInt();
+    for (int t = 1; t <= T; ++t)
+    {
+      Solution sol = new Solution(sc);
+      // if (t != 4)
+      //   continue;
+      System.out.format("Case #%d: %d\n", t, sol.solve());
+    }
+  }
+
+}

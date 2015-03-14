@@ -1,0 +1,112 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <bitset>
+#include <algorithm>
+#include <string>
+using namespace std;
+int n,m;
+vector<int> ngb[10000];
+int edge[50000][2];
+int dist[10000][10000];
+const int sz=10000/32;
+struct bs{
+  int x[sz];
+  void set(int i){
+    x[i/32]|=(1<<(i%32));
+  }
+  void clear(){
+    for (int i=0;i<sz;++i)
+      x[i]=0;
+  }
+  bool get(int i){
+    return (x[i/32]&(1<<(i%32)))!=0;
+  }
+};
+bool operator<(const bs& b1, const bs& b2){
+  for (int i=0;i<sz;++i)
+    if (b1.x[i]!=b2.x[i])
+      return b1.x[i]<b2.x[i];
+  return false;
+}
+bool operator==(const bs& b1, const bs& b2){
+  for (int i=0;i<sz;++i)
+    if (b1.x[i]!=b2.x[i])
+      return false;
+  return true;
+}
+bs mask[50000];
+void bfs(int v){
+  queue<int> q;
+  q.push(v);
+  for (int i=0;i<n;++i)
+    dist[v][i]=-1;
+  dist[v][v]=0;
+  while (!q.empty()){
+    int w=q.front();
+    q.pop();
+    for (int i=0;i<ngb[w].size();++i){
+      if (dist[v][ngb[w][i]]!=-1)
+        continue;
+      dist[v][ngb[w][i]]=dist[v][w]+1;
+      q.push(ngb[w][i]);
+    }
+  }
+}
+bitset<10000> X[10000];
+int main(){
+  int tnum;cin>>tnum;int tcou=0;
+  while (tnum--){
+    cin>>n>>m;
+    cout<<"Case #"<<++tcou<<": ";
+    for (int i=0;i<n;++i)
+      ngb[i].clear();
+    for (int i=0;i<m;++i){
+      int a,b;
+      cin>>a>>b;
+      ngb[a].push_back(b);
+      ngb[b].push_back(a);
+      edge[i][0]=a;
+      edge[i][1]=b;
+    }
+    bool bad=false;
+    for (int i=0;i<n;++i){
+      bfs(i);
+      for (int j=0;j<n;++j)
+        if (dist[i][j]==-1)
+          bad=true;
+    }
+    for (int i=0;i<m;++i){
+      int a=edge[i][0], b=edge[i][1];
+      if (dist[a][0]>dist[b][0])
+        swap(a,b);
+      mask[i].clear();
+      for (int j=0;j<n;++j){
+        if (dist[a][j]==dist[b][j])
+          bad=true;
+        if (dist[a][j]>dist[b][j])
+          mask[i].set(j);
+      }
+    }
+    sort(mask,mask+m);
+    int k=unique(mask,mask+m)-mask;
+    if (k>10000)
+      bad=true;
+    if (!bad){
+      for (int i=0;i<n;++i)
+        X[i]=0;
+      for (int i=0;i<k;++i)
+        for (int j=0;j<n;++j)
+          X[j][i]=(mask[i].get(j)?1:0);
+      for (int i=0;i<m;++i){
+        if ((X[edge[i][0]]^X[edge[i][1]]).count()!=1)
+          bad=true;
+      }
+    }
+    if (bad)
+      cout<<-1<<endl;
+    else
+      cout<<k<<endl;
+  }
+  return 0;
+}

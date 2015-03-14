@@ -1,0 +1,295 @@
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+public class Chains {
+
+	static class Edge {
+		int u, v, id;
+
+		public Edge(int u, int v, int id) {
+			this.u = u;
+			this.v = v;
+			this.id = id;
+		}
+	}
+	static Random rng = new Random();
+	
+
+	static class Input {
+		int n;
+		List<Edge>[] edges;
+		Edge[] allEdges;
+
+		Input(InputReader in) throws IOException {
+			n = in.nextInt();
+			int cnt = in.nextInt();
+			edges = new List[n];
+			allEdges = new Edge[cnt];
+			for (int i = 0; i < n; i++) {
+				edges[i] = new ArrayList<>();
+			}
+			for (int i = 0; i < cnt; i++) {
+				int u = in.nextInt();
+				int v = in.nextInt();
+				Edge uv = new Edge(u, v, i);
+				allEdges[i] = uv;
+				edges[u].add(uv);
+				edges[v].add(uv);
+			}
+		}
+
+		Output solve() {
+			int[] queue = new int[n];
+			short[][] distPairs = new short[n][n];
+			for (int root = 0; root < n; root++) {
+				short[] dist = distPairs[root];
+				Arrays.fill(dist, (short) -1);
+				int qh = 0, qt = 0;
+				dist[root] = 0;
+				queue[qt++] = root;
+				while (qh < qt) {
+					int u = queue[qh++];
+					for (int i = 0; i < edges[u].size(); i++) {
+						Edge edge = edges[u].get(i);
+						int v = edge.u ^ edge.v ^ u;
+						if (dist[v] < 0) {
+							dist[v] = (short) (dist[u] + 1);
+							queue[qt++] = v;
+						}
+					}
+				}
+			}
+
+			int edgesCount = allEdges.length;
+			DisjointSets dsu = new DisjointSets(edgesCount);
+			for (int e1 = 0; e1 < edgesCount; e1++) {
+				Edge edge1 = allEdges[e1];
+				int u0 = edge1.u;
+				short[] du0 = distPairs[u0];
+				int v0 = edge1.v;
+				short[] dv0 = distPairs[v0];
+				for (int e2 = e1 + 1; e2 < edgesCount; e2++) {
+					Edge edge2 = allEdges[e2];
+					int v1 = edge2.v;
+					int u1 = edge2.u;
+					int u0u1 = du0[u1];
+					int v0v1 = dv0[v1];
+					int v0u1 = dv0[u1];
+					int u0v1 = du0[v1];
+					if (u0u1 == v0v1 && u0u1 == v0u1 + 1 && u0u1 == u0v1 + 1) {
+						dsu.union(e1, e2);
+					}
+					if (u0v1 == v0u1 && u0v1 == v0v1 + 1 && u0v1 == u0u1 + 1) {
+						dsu.union(e1, e2);
+					}
+				}
+			}
+			int sets = dsu.numberOfSets();
+			int[] setId = new int[dsu.p.length];
+			int ids = 0;
+			Arrays.fill(setId, -1);
+			for (int i = 0; i < dsu.p.length; i++) {
+				int ok = dsu.get(i);
+				if (setId[ok] < 0) {
+					setId[ok] = ids++;
+				}
+				setId[i] = setId[ok];
+			}
+
+			BitSet[] ans = new BitSet[n];
+			for (int i = 0; i < n; i++) {
+				ans[i] = new BitSet(sets);
+			}
+			boolean everythingOk = true;
+			int[] color = new int[n];
+			BitSet temp = new BitSet(n);
+			
+			List<Integer> randoms = new ArrayList<>();
+			randoms.add(0);
+			for (int i = 0; i < 50; i++) {
+				randoms.add(rng.nextInt(n));
+			}
+			
+			all: for (int root : randoms) {
+				short[] dist = distPairs[root];
+				Arrays.fill(dist, (short) -1);
+				Arrays.fill(color, 0);
+				int qh = 0, qt = 0;
+				dist[root] = 0;
+				queue[qt++] = root;
+				color[root] = 1;
+				for (int i = 0; i < n; i++) {
+					ans[i].clear();
+				}
+				while (qh < qt) {
+					int u = queue[qh++];
+					for (int i = 0; i < edges[u].size(); i++) {
+						Edge edge = edges[u].get(i);
+						int v = edge.u ^ edge.v ^ u;
+						if (dist[v] < 0) {
+							ans[v].xor(ans[u]);
+							if (ans[v].get(setId[edge.id])) {
+								everythingOk = false;
+								break all;
+							}
+							ans[v].flip(setId[edge.id]);
+							dist[v] = (short) (dist[u] + 1);
+							queue[qt++] = v;
+							color[v] = -color[u];
+						}
+						if (color[v] != -color[u]) {
+							everythingOk = false;
+							break all;
+						}
+						temp.clear();
+						temp.xor(ans[u]);
+						temp.xor(ans[v]);
+						if (temp.cardinality() != 1) {
+							everythingOk = false;
+							break all;
+						}
+					}
+				}
+			}
+
+			System.out.println("ANSWER: "+sets);
+
+			if (everythingOk) {
+				return new Output(sets);
+			} else {
+				return new Output(-1);
+			}
+		}
+	}
+
+	static class Output {
+		int answer;
+
+		public Output(int answer) {
+			this.answer = answer;
+		}
+
+		void writeOutput(PrintWriter out) {
+			out.println(answer);
+		}
+	}
+
+	static class DisjointSets {
+		private int[] p;
+
+		public DisjointSets(int n) {
+			p = new int[n];
+			Arrays.fill(p, ~0);
+		}
+
+		public int get(int i) {
+			int root = i;
+			while (p[root] >= 0) {
+				root = p[root];
+			}
+			while (i != root) {
+				int ni = p[i];
+				p[i] = root;
+				i = ni;
+			}
+			return root;
+		}
+
+		public int numberOfSets() {
+			int cnt = 0;
+			for (int i : p) {
+				if (i < 0) {
+					++cnt;
+				}
+			}
+			return cnt;
+		}
+
+		public void union(int i, int j) {
+			i = get(i);
+			j = get(j);
+			if (i == j) {
+				return;
+			}
+			if (~p[i] < ~p[j]) {
+				p[i] = j;
+			} else {
+				if (~p[i] == ~p[j]) {
+					--p[i];
+				}
+				p[j] = i;
+			}
+		}
+
+		public void clear() {
+			Arrays.fill(p, ~0);
+		}
+	}
+
+	public static void main(String[] args) throws IOException,
+			InterruptedException, ExecutionException {
+		InputReader in = new InputReader(new FileInputStream("chains.in"));
+		PrintWriter out = new PrintWriter("chains.out");
+		ExecutorService executor = Executors.newFixedThreadPool(1);
+		int testCases = in.nextInt();
+		final Input[] inputs = new Input[testCases];
+		for (int i = 0; i < testCases; i++) {
+			inputs[i] = new Input(in);
+		}
+
+		@SuppressWarnings("unchecked")
+		Future<Output> outputs[] = new Future[testCases];
+
+		for (int i = 0; i < testCases; i++) {
+			final int testCase = i;
+			outputs[i] = executor.submit(new Callable<Output>() {
+				@Override
+				public Output call() throws Exception {
+					return inputs[testCase].solve();
+				}
+			});
+		}
+
+		for (int i = 0; i < testCases; i++) {
+			out.print("Case #" + (i + 1) + ": ");
+			outputs[i].get().writeOutput(out);
+		}
+
+		out.close();
+		executor.shutdown();
+	}
+
+	static class InputReader {
+
+		InputReader(InputStream input) {
+			br = new BufferedReader(new InputStreamReader(input));
+		}
+
+		BufferedReader br;
+		StringTokenizer st;
+
+		String nextToken() throws IOException {
+			while (st == null || !st.hasMoreTokens()) {
+				String line = br.readLine();
+				if (line == null) {
+					return null;
+				}
+				st = new StringTokenizer(line);
+			}
+			return st.nextToken();
+		}
+
+		int nextInt() throws IOException {
+			return Integer.parseInt(nextToken());
+		}
+
+		long nextLong() throws IOException {
+			return Long.parseLong(nextToken());
+		}
+
+		double nextDouble() throws IOException {
+			return Double.parseDouble(nextToken());
+		}
+	}
+}

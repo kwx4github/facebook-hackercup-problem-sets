@@ -1,0 +1,175 @@
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cassert>
+#include <cmath>
+#include <cctype>
+#include <iostream>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <queue>
+#include <vector>
+#include <string>
+#include <sstream>
+using namespace std;
+
+#define FOR(i,a) for (__typeof((a).begin()) i = (a).begin(); i != (a).end(); ++ i)
+
+const double PI = acos(-1.0);
+const double EPS = 1e-8;
+
+const int maxn = 10000;
+
+vector<int> adj[maxn], pre[maxn];
+int n, m;
+int depth[maxn], son[maxn];
+
+bool hasCommon(const vector<int> &a, const vector<int> &b)
+{
+    for (int i = 0; i < a.size(); ++ i) {
+        for (int j = 0; j < b.size(); ++ j) {
+            if (a[i] == b[j]) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int solve(int root)
+{
+    queue<int> q;
+    q.push(root);
+    for (int i = 0; i < n; ++ i) {
+        pre[i].clear();
+        depth[i] = -2;
+        son[i] = 0;
+    }
+    
+    depth[root] = 0;
+    while (q.size()) {
+        int u = q.front();
+        q.pop();
+        FOR (v, adj[u]) {
+            if (depth[*v] == depth[u] - 1) {
+                continue;
+            }
+            ++ son[u];
+            if (depth[*v] == -2) {
+                depth[*v] = depth[u] + 1;
+                pre[*v].push_back(u);
+                q.push(*v);
+            } else {
+                if (depth[*v] != depth[u] + 1) {
+//fprintf(stderr, "error type 1\n");
+                    return -1;
+                }
+                pre[*v].push_back(u);
+            }
+        }
+    }
+    
+    set< vector<int> > hash;
+    for (int i = 0; i < n; ++ i) {
+        if (pre[i].size() > 2) {
+//fprintf(stderr, "error type 2\n");
+            return -1;
+        }
+        if (pre[i].size() == 2) {
+            sort(pre[i].begin(), pre[i].end());
+            if (hash.count(pre[i])) {
+                return -1;
+            }
+            hash.insert(pre[i]);
+        }
+        /*if (pre[i].size() == 2) {
+            if (!hasCommon(pre[pre[i][0]], pre[pre[i][1]])) {
+//fprintf(stderr, "error type 3\n");
+                return -1;
+            }
+        }*/
+    }
+    
+    int ret = 0;
+    for (int i = 0; i < n; ++ i) {
+        ret = max(ret, depth[i] + son[i]);
+    }
+    return ret;
+}
+
+int main()
+{
+    freopen("C.in", "r", stdin);
+    freopen("C.out", "w", stdout);
+    
+    int T, test = 1;
+    for (scanf("%d", &T); test <= T; ++ test) {
+        printf("Case #%d: ", test);
+        scanf("%d%d", &n, &m);
+fprintf(stderr, "n = %d, m = %d\n", n, m);
+        for (int i = 0; i < n; ++ i) {
+            adj[i].clear();
+        }
+        for (int i = 0; i < m; ++ i) {
+            int a, b;
+            scanf("%d%d", &a, &b);
+//fprintf(stderr, "%d %d\n", a, b);
+            adj[a].push_back(b);
+            adj[b].push_back(a);
+        }
+        
+        int base = 0;
+        bool change = true;
+        while (change) {
+            change = false;
+            for (int i = 0; i < n; ++ i) {
+                if (adj[i].size() == 1) {
+                    int u = adj[i][0];
+                    adj[i].clear();
+                    for (int j = 0; j < adj[u].size(); ++ j) {
+                        if (adj[u][j] == i) {
+                            swap(adj[u][j], adj[u].back());
+                            break;
+                        }
+                    }
+                    adj[u].resize(adj[u].size() - 1);
+                    ++ base;
+                    change = true;
+                }
+            }
+        }
+        
+        int answer = -1;
+        bool flag = false;
+        for (int i = 0; i < n; ++ i) {
+            if (adj[i].size() == 0) {
+                continue;
+            }
+            int current = solve(i);
+//fprintf(stderr, "%d %d\n", i, current);
+            if (current != -1) {
+                if (answer == -1 || answer < current) {
+                    answer = current;
+                }
+            } else {
+                flag = true;
+            }
+        }
+        
+        if (flag) {
+            answer = -1;
+         //   assert(answer == -1);
+        }
+        
+        if (!flag && answer == -1) {
+            answer = base;
+        } else if (answer != -1) {
+            answer += base;
+        }
+        
+        printf("%d\n", answer);
+    }
+    
+    return 0;
+}

@@ -1,0 +1,181 @@
+import std.stdio, std.string, std.conv;
+import std.algorithm, std.array, std.bigint, std.math, std.range;
+import core.thread;
+
+//	Input
+string[] tokens;
+int tokenId = 0;
+string readToken() { for (; tokenId == tokens.length; ) tokens = readln.split, tokenId = 0; return tokens[tokenId++]; }
+int readInt() { return to!int(readToken); }
+long readLong() { return to!long(readToken); }
+real readReal() { return to!real(readToken); }
+
+//	chmin/chmax
+void chmin(T)(ref T t, T f) { if (t > f) t = f; }
+void chmax(T)(ref T t, T f) { if (t < f) t = f; }
+
+//	Pair
+struct Pair(S, T) {
+	S x; T y;
+	int opCmp(    const Pair p) const { return (x < p.x) ? -1 : (x > p.x) ? +1 : (y < p.y) ? -1 : (y > p.y) ? +1 : 0; }
+	int opCmp(ref const Pair p) const { return (x < p.x) ? -1 : (x > p.x) ? +1 : (y < p.y) ? -1 : (y > p.y) ? +1 : 0; }
+	string toString() const { return "(" ~ to!string(x) ~ ", " ~ to!string(y) ~ ")"; }
+}
+auto pair(S, T)(S x, T y) { return Pair!(S, T)(x, y); }
+
+//	Array
+int binarySearch(T)(T[] as, bool delegate(T) test) {
+	int low = -1, upp = as.length; for (; low + 1 < upp; ) { int mid = (low + upp) >> 1; (test(as[mid]) ? low : upp) = mid; } return upp;
+}
+int lowerBound(T)(T[] as, T val) { return as.binarySearch((T a){ return (a <  val); }); }
+int upperBound(T)(T[] as, T val) { return as.binarySearch((T a){ return (a <= val); }); }
+T[] unique(T)(T[] as) { T[] bs; foreach (a; as) if (bs == null || bs[$ - 1] != a) bs ~= a; return bs; }
+
+
+immutable long MO = 1_000_000_007;	
+immutable LIM = 105;
+shared long[] fac;
+shared long[][] bn;
+shared long[][] pw;
+
+void prepare() {
+	fac = new long[LIM];
+	fac[0] = 1;
+	foreach (i; 1 .. LIM) {
+		fac[i] = (fac[i - 1] * i) % MO;
+	}
+	bn = new shared(long[][])(LIM, LIM);
+	foreach (i; 0 .. LIM) {
+		bn[i][0] = bn[i][i] = 1;
+		foreach (j; 1 .. i) {
+			bn[i][j] = (bn[i - 1][j - 1] + bn[i - 1][j]) % MO;
+		}
+	}
+	pw = new shared(long[][])(LIM, LIM);
+	foreach (i; 0 .. LIM) {
+		pw[i][0] = 1;
+		foreach (j; 1 .. LIM) {
+			pw[i][j] = (pw[i][j - 1] * i) % MO;
+		}
+	}
+}
+
+class Solver : Thread {
+	int caseId;
+	this(int caseId) {
+		this.caseId = caseId;
+		super(&main);
+	}
+	void main() {
+		try {
+			run;
+			stderr.writeln("DONE  Case #", caseId);
+		} catch (Throwable e) {
+			stderr.writeln("ERROR Case #", caseId, ": ", e.msg);
+		} finally {
+			stderr.flush;
+		}
+	}
+	
+	int K;
+	int[] N;
+	long ans;
+	
+	void run() {
+		int A, B, C, D;
+		foreach (n; N) {
+			switch (n) {
+				case 1: ++A; break;
+				case 2: ++B; break;
+				case 3: ++C; break;
+				case 4: ++D; break;
+				default: assert(false);
+			}
+		}
+// writeln(A," ",B," ",C," ",D);
+		int M = A * 1 + B * 2 + C * 3 + D * 4;
+		long[][][][] td = new long[][][][](D + 1, D + 1, D + 1, D + 1);
+		for (int d0 = 0; d0 <= D; ++d0) for (int d1 = 0; d0 + d1 <= D; ++d1) for (int d2 = 0; d0 + d1 + d2 <= D; ++d2) for (int d3 = 0; d0 + d1 + d2 + d3 <= D; ++d3) {
+			int d4 = D - d0 - d1 - d2 - d3;
+			long tmp = 1;
+			(tmp *= bn[D][d0]) %= MO;
+			(tmp *= bn[D - d0][d1]) %= MO;
+			(tmp *= bn[D - d0 - d1][d2]) %= MO;
+			(tmp *= bn[D - d0 - d1 - d2][d3]) %= MO;
+			(tmp *= pw[4 * 4][d1]) %= MO;
+			(tmp *= pw[6 * 12][d2]) %= MO;
+			(tmp *= pw[4 * 24][d3]) %= MO;
+			(tmp *= pw[1 * 24][d4]) %= MO;
+			td[d0][d1][d2][d3] = tmp;
+		}
+		for (int a0 = 0; a0 <= A; ++a0) 
+		for (int b0 = 0; b0 <= B; ++b0) for (int b1 = 0; b0 + b1 <= B; ++b1) 
+		for (int c0 = 0; c0 <= C; ++c0) for (int c1 = 0; c0 + c1 <= C; ++c1) for (int c2 = 0; c0 + c1 + c2 <= C; ++c2) {
+			int a1 = A - a0;
+			int b2 = B - b0 - b1;
+			int c3 = C - c0 - c1 - c2;
+			long tabc = 1;
+			(tabc *= bn[A][a0]) %= MO;
+			(tabc *= bn[B][b0]) %= MO;
+			(tabc *= bn[B - b0][b1]) %= MO;
+			(tabc *= bn[C][c0]) %= MO;
+			(tabc *= bn[C - c0][c1]) %= MO;
+			(tabc *= bn[C - c0 - c1][c2]) %= MO;
+			(tabc *= pw[1 * 1][a1]) %= MO;
+			(tabc *= pw[2 * 2][b1]) %= MO;
+			(tabc *= pw[1 * 2][b2]) %= MO;
+			(tabc *= pw[3 * 3][c1]) %= MO;
+			(tabc *= pw[3 * 6][c2]) %= MO;
+			(tabc *= pw[1 * 6][c3]) %= MO;
+			for (int d0 = 0; d0 <= D; ++d0) for (int d1 = 0; d0 + d1 <= D; ++d1) for (int d2 = 0; d0 + d1 + d2 <= D; ++d2) for (int d3 = 0; d0 + d1 + d2 + d3 <= D; ++d3) {
+				int d4 = D - d0 - d1 - d2 - d3;
+				long tmp = fac[M 
+					- a1 * 1 
+					- b1 * 1 - b2 * 2 
+					- c1 * 1 - c2 * 2 - c3 * 3 
+					- d1 * 1 - d2 * 2 - d3 * 3 - d4 * 4];
+				(tmp *= tabc) %= MO;
+				(tmp *= td[d0][d1][d2][d3]) %= MO;
+				if ((a1 ^ b1 ^ c1 ^ c3 ^ d1 ^ d3) & 1) {
+					tmp *= -1;
+				}
+				(ans += tmp) %= MO;
+			}
+		}
+		ans = (ans % MO + MO) % MO;
+	}
+	
+	void input() {
+		K = readInt;
+		N = new int[K];
+		foreach (i; 0 .. K) {
+			N[i] = readInt;
+		}
+	}
+	
+	void output() {
+		writeln("Case #", caseId, ": ", ans);
+		stdout.flush;
+	}
+}
+
+void main(string[] args) {
+	bool parallel = false;
+	foreach (arg; args) if (arg == "-p") parallel = true;
+	prepare;
+	auto solvers = new Solver[readInt];
+	foreach (caseId, ref solver; solvers) solver = new Solver(caseId + 1);
+	if (parallel) {
+		foreach (solver; solvers) solver.input, solver.start;
+		foreach (solver; solvers) solver.join, solver.output;
+	} else {
+		foreach (caseId, solver; solvers) {
+			solver.input;
+			solver.run;
+			solver.output;
+			stderr.writeln("DONE  Case #", caseId + 1);
+			stderr.flush;
+		}
+	}
+}
+

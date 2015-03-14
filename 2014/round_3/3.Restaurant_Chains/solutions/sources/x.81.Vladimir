@@ -1,0 +1,291 @@
+/* --- Author: Vladimir Smykalov, enot.1.10@gmail.com --- */
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <cstring>
+#include <cmath>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <ctime>
+#include <cassert>
+
+#define fs first
+#define sc second
+#define pb push_back
+#define mp make_pair
+#define forn(i, n) for(int i = 0 ; (i) < (n) ; ++i)
+#define forit(it,v) for(typeof((v).begin()) it = v.begin() ; it != (v).end() ; ++it)
+#define eprintf(...) fprintf(stderr, __VA_ARGS__),fflush(stderr)
+#define sz(a) ((int)(a).size())
+#define all(a) (a).begin(),a.end()
+
+using namespace std;
+
+typedef long long ll;
+typedef double ld;
+typedef vector<int> vi;
+typedef pair<int, int> pi;
+
+const int inf = (int)1e9;
+const ld eps = 1e-9;
+
+/* --- main part --- */
+
+#define TASK "a"
+
+
+const int maxnn = (int)1e4 + 10;
+const int maxn = (int)1e5 + 10;
+const int maxe = (int)1e5 + 10;
+
+int E[maxnn][maxnn];
+vector<int> e[maxn];
+
+vector<int> e2[maxe];
+int color[maxe];
+
+
+bool imp = false;
+
+int q[maxn];
+int d[maxn];
+int st, en;
+
+inline void add2(int x, int y)
+{
+    //eprintf("ADD %d %d\n", x, y);
+    e2[x].pb(y);
+    e2[y].pb(x);
+}
+
+
+int n, m;
+
+int q2[maxn];
+int c2[maxn];
+int d2[maxn];
+int prev[maxn];
+int cycle[maxn], cc;
+
+inline void make(int xx, int x1, int x2)
+{
+    forn(i, n) d2[i] = inf; 
+    int st2 = 0, en2 = 0;
+
+    q2[en2++] = x1;
+    d2[x1] = 0;
+    c2[x1] = 1;
+    prev[x1] = xx;
+
+    q2[en2++] = x2;
+    d2[x2] = 0;
+    c2[x2] = 2;
+    prev[x2] = xx;
+    
+    cc = 0;
+
+    while (st2 < en2 && cc == 0)
+    {
+        int x = q2[st2++];
+        forn(i, sz(e[x]))
+        {
+            int y = e[x][i];
+            if (d[y] > d[x]) continue;
+            if (d2[y] < d2[x]) continue;
+            if (d2[y] < inf)
+            {
+                if (c2[y] != c2[x])
+                {
+                    int y1 = y;
+                    while (y1 != xx)
+                    {
+                        cycle[cc++] = y1;
+                        y1 = prev[y1];
+                    }
+                    cycle[cc++] = xx;
+                    reverse(cycle, cycle + cc);
+                    y1 = x;
+                    while (y1 != xx)
+                    {
+                        cycle[cc++] = y1;
+                        y1 = prev[y1];
+                    }
+                    break;
+                }
+            }
+            else
+            {
+                d2[y] = d2[x] + 1;
+                c2[y] = c2[x];
+                prev[y] = x;
+                q2[en2++] = y;
+            }
+        }
+    }
+
+    //eprintf("cycle: ");
+    //forn(i, cc) eprintf("%d%c", cycle[i], " \n"[i + 1 == cc]);
+    //if (cc == 0) eprintf("\n");
+
+    cycle[cc] = cycle[0];
+    forn(i, cc >> 1)
+    {
+        int ee1 = E[cycle[i]][cycle[i + 1]]; 
+        int ee2 = E[cycle[i + (cc >> 1)]][cycle[i + 1 + (cc >> 1)]];
+        add2(ee1, ee2);
+    }     
+}         
+
+void Do(int start)
+{
+    if (imp) return;
+    //eprintf("------------------\n");
+    //eprintf("start %d\n", start);
+    forn(i, n) d[i] = inf;
+
+    st = 0, en = 0;
+    d[start] = 0;
+    q[en++] = start;
+
+    while (st < en && !imp)
+    {
+        int x = q[st++];
+        vi v;
+        forn(i, sz(e[x]))
+        {
+            int y = e[x][i];
+            if (d[y] == d[x])
+            {
+                imp = true;
+                break;
+            }
+            if (d[y] < d[x])
+            {
+                v.pb(y);
+            }
+            else
+            {
+                if (d[y] == inf)
+                {
+                    d[y] = d[x] + 1;
+                    q[en++] = y;
+                }
+            }
+        }
+        if (sz(v) <= 1) continue;
+        int x1 = v[0];
+        for (int i = 1; i < sz(v); ++i)
+        {
+            int x2 = v[i];
+            make(x, x1, x2);
+        }
+    }
+}        
+
+        
+
+
+
+void dfs(int x, int c)
+{
+    color[x] = c;
+    forn(i, sz(e2[x]))
+    {
+        int y = e2[x][i];
+        if (color[y] != c) dfs(y, c);
+    }
+}
+
+int mark[maxe];
+
+void solve()
+{
+    scanf("%d%d", &n, &m);
+
+    imp = false;
+    forn(i, n) forn(j, n) E[i][j] = -1;
+    forn(i, n) e[i].clear();
+    forn(i, m) e2[i].clear();
+
+    forn(i, m)
+    {
+        int x, y;
+        scanf("%d%d", &x, &y);
+        E[x][y] = E[y][x] = i;
+        e[x].pb(y);
+        e[y].pb(x);
+    }
+
+    //forn(i, n) Do(i);
+    Do(0);
+    forn(i, 5) Do(rand() % n);
+    
+    
+    if (imp)
+    {
+        printf("-1\n");
+        return;
+    }
+
+
+    int RES = 0;
+    
+    forn(i, m) color[i] = i;
+    forn(i, m) if (color[i] == i)
+    {
+        RES += 1;
+        dfs(i, i);
+    }        
+
+    //forn(i, m) eprintf("%d -> %d\n", i, color[i]);
+
+    forn(i, m) mark[i] = -1;
+    forn(x, n)
+    {
+        if (imp) break;
+        forn(j, sz(e[x]))
+        {
+            int y = e[x][j];
+            int c = color[E[x][y]];
+            //if (x == 1 && c == 0) eprintf("y = %d\n", y);
+            if (mark[c] == x)
+            {
+                //eprintf("%d %d\n", x, c);
+                imp = true;
+                break;
+            }
+            mark[c] = x;
+        }
+    }
+        
+    if (imp)
+    {
+        printf("-1\n");
+        return;
+    }
+
+    printf("%d\n", RES);
+}
+
+int main()
+{
+    #ifdef home
+        assert(freopen(TASK".in", "r", stdin));
+        assert(freopen(TASK".out", "w", stdout));
+    #endif
+    int tn;
+    scanf("%d", &tn);
+    forn(_, tn)
+    {
+        printf("Case #%d: ", _ + 1);
+        solve();
+    #ifdef home
+        eprintf("Time: %d ms\n", (int)(clock() * 1000. / CLOCKS_PER_SEC));
+    #endif
+    }
+    return 0;
+}
+ 

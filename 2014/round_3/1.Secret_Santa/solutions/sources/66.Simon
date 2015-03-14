@@ -1,0 +1,99 @@
+#include <iostream>
+#include <map>
+#include <vector>
+#include <cassert>
+using namespace std;
+
+int MOD = 1000000007;
+
+struct Res {
+	int v;
+	Res() : v(0) {}
+	Res(int v) : v(v) {}
+	Res operator*(const Res& other) {
+		long long w = (long long)v * other.v;
+		w %= MOD;
+		return (int)w;
+	}
+	Res operator+(const Res& other) {
+		int w = v + other.v;
+		w %= MOD;
+		return w;
+	}
+	void operator+=(const Res& other) { *this = *this + other; }
+};
+
+Res chain(int leftInFamily, int prevNewSize, int a[4]);
+Res any(int a[4]) {
+	for (int i = 0; i < 4; ++i) {
+		if (a[i]) {
+			--a[i];
+			Res r = chain(i+1, -2, a);
+			++a[i];
+			return r;
+		}
+	}
+	return 1;
+}
+
+struct S {
+	int a, b, c[4];
+};
+bool operator<(const S& a, const S& b) {
+	if (a.a != b.a) return a.a < b.a;
+	if (a.b != b.b) return a.b < b.b;
+	for (int i = 0; i < 4; ++i)
+		if (a.c[i] != b.c[i]) return a.c[i] < b.c[i];
+	return false;
+}
+map<S, Res> mem;
+Res chain(int leftInFamily, int prevNewSize, int a[4]) {
+	S s = {leftInFamily, prevNewSize, {a[0], a[1], a[2], a[3]}};
+	if (mem.find(s) != mem.end())
+		return mem[s];
+	Res& out = mem[s];
+
+	Res r = 0;
+	for (int i = 0; i < 4; ++i) {
+		int count = a[i] - (i == prevNewSize ? 1 : 0);
+		assert(count >= 0);
+		if (!count) continue;
+		a[i]--;
+		if (i > 0) a[i-1]++;
+		r += chain(leftInFamily, i-1, a) * count * (i+1);
+		if (i > 0) a[i-1]--;
+		a[i]++;
+	}
+	if (prevNewSize != -2) { // "my family"
+		if (leftInFamily > 1) {
+			r += chain(leftInFamily - 1, -2, a) * (leftInFamily - 1);
+			a[leftInFamily-2]++;
+			r += any(a);
+			a[leftInFamily-2]--;
+		}
+		else {
+			r += any(a);
+		}
+	}
+	return out = r;
+}
+
+int solve() {
+	int K;
+	cin >> K;
+	int fam[4] = {0};
+	for (int i = 0; i < K; ++i) {
+		int f;
+		cin >> f;
+		++fam[f-1];
+	}
+	return any(fam).v;
+}
+
+int main() {
+	int T;
+	cin >> T;
+	for (int i = 0; i < T; ++i)
+		cout << "Case #" << (i+1) << ": " << solve() << endl;
+	return 0;
+}

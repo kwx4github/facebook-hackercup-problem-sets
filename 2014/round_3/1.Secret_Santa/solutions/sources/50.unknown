@@ -1,0 +1,231 @@
+import java.util.Locale;
+import java.util.HashMap;
+import java.util.concurrent.ExecutionException;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.util.concurrent.Executors;
+import java.io.PrintWriter;
+import java.util.List;
+import java.util.Map;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.concurrent.Callable;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Iterator;
+import java.io.FileOutputStream;
+import java.util.concurrent.Future;
+import java.util.concurrent.ExecutorService;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream = System.in;
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("secretsanta.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		SecretSanta solver = new SecretSanta();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class SecretSanta {
+    static final long MODULO = (long) (1e9 + 7);
+
+    static class Testcase implements Callable<Testcase> {
+        int testNumber;
+        int k;
+        int[] n;
+        long res;
+
+        Testcase(int testNumber) {
+            this.testNumber = testNumber;
+        }
+
+        public void readInput(InputReader in) {
+            k = in.nextInt();
+            n = new int[k];
+            for (int i = 0; i < k; ++i) n[i] = in.nextInt();
+        }
+
+        public Testcase call() {
+            /*solveSlow();
+            long savedRes = res;
+            res=  -1;*/
+            solveFast();
+            //if (savedRes != res) throw new RuntimeException();
+
+            System.err.println("Done test " + testNumber);
+            return this;
+        }
+
+        private void solveFast() {
+            int[] am = new int[5];
+            for (int f : n) ++am[f];
+            int[][][][][][] ways = new int[5][5][am[4] + 1][][][];
+            for (int start = 0; start <= 4; ++start)
+                for (int end = 0; end <= 4; ++end) {
+                    for (int n4 = 0; n4 <= am[4]; ++n4) {
+                        ways[start][end][n4] = new int[am[4] + am[3] - n4 + 1][][];
+                        for (int n3 = 0; n3 + n4 <= am[3] + am[4]; ++n3) {
+                            ways[start][end][n4][n3] = new int[am[4] + am[3] + am[2] - n4 - n3 + 1][];
+                            for (int n2 = 0; n2 + n3 + n4 <= am[2] + am[3] + am[4]; ++n2)
+                                ways[start][end][n4][n3][n2] = new int[am[4] + am[3] + am[2] + am[1] - n4 - n3 - n2 + 1];
+                        }
+                    }
+                }
+            ways[0][0][am[4]][am[3]][am[2]][am[1]] = 1;
+            int[] cn = new int[5];
+            int[] en = new int[5];
+            for (int n4 = am[4]; n4 >= 0; --n4)
+                for (int n3 = ways[0][0][n4].length - 1; n3 >= 0; --n3)
+                    for (int n2 = ways[0][0][n4][n3].length - 1; n2 >= 0; --n2)
+                        for (int n1 = ways[0][0][n4][n3][n2].length - 1; n1 >= 0; --n1) {
+                            cn[4] = n4;
+                            cn[3] = n3;
+                            cn[2] = n2;
+                            cn[1] = n1;
+                            for (int start = 0; start <= 4; ++start)
+                                for (int end = 0; end <= 4; ++end) {
+                                    long cur = ways[start][end][n4][n3][n2][n1];
+                                    if (cur == 0) continue;
+                                    if (start == 0) {
+                                        for (int nstart = 1; nstart <= 4; ++nstart) if (cn[nstart] > 0) {
+                                            for (int nend = 1; nend <= 4; ++nend) if (cn[nend] > 0) {
+                                                long by = nend * (nstart == nend ? cn[nend] - 1 : cn[nend]);
+                                                if (by == 0) continue;
+                                                ways[nstart][nend][cn[4]][cn[3]][cn[2]][cn[1]] = (int) ((ways[nstart][nend][cn[4]][cn[3]][cn[2]][cn[1]] + cur * by) % MODULO);
+                                            }
+                                            break;
+                                        }
+                                    } else {
+                                        for (int next = 1; next <= 4; ++next) if (cn[next] > 0) {
+                                            long times = cn[next];
+                                            if (next == end) --times;
+                                            if (times == 0) continue;
+                                            if (next == start) {
+                                                if (end != 0) {
+                                                    System.arraycopy(cn, 0, en, 0, 5);
+                                                    --en[start];
+                                                    --en[end];
+                                                    if (start > 1)
+                                                        ++en[start - 1];
+                                                    if (end > 1)
+                                                        ++en[end - 1];
+                                                    ways[0][0][en[4]][en[3]][en[2]][en[1]] = (int) ((ways[0][0][en[4]][en[3]][en[2]][en[1]] + cur) % MODULO);
+                                                    if (start > 1) {
+                                                        System.arraycopy(cn, 0, en, 0, 5);
+                                                        --en[end];
+                                                        if (end > 1)
+                                                            ++en[end - 1];
+                                                        ways[start][0][en[4]][en[3]][en[2]][en[1]] = (int) ((ways[start][0][en[4]][en[3]][en[2]][en[1]] + cur * (start - 1)) % MODULO);
+                                                    }
+                                                    {
+                                                        System.arraycopy(cn, 0, en, 0, 5);
+                                                        --en[end];
+                                                        if (end > 1)
+                                                            ++en[end - 1];
+                                                        ways[start][next][en[4]][en[3]][en[2]][en[1]] = (int) ((ways[start][next][en[4]][en[3]][en[2]][en[1]] + cur * (times - 1) * next) % MODULO);
+                                                    }
+                                                } else {
+                                                    {
+                                                        System.arraycopy(cn, 0, en, 0, 5);
+                                                        --en[start];
+                                                        if (start > 1)
+                                                            ++en[start - 1];
+                                                        else
+                                                            throw new RuntimeException();
+                                                        ways[start - 1][next][en[4]][en[3]][en[2]][en[1]] = (int) ((ways[start - 1][next][en[4]][en[3]][en[2]][en[1]] + cur * (times - 1) * next) % MODULO);
+                                                    }
+                                                }
+                                            } else {
+                                                System.arraycopy(cn, 0, en, 0, 5);
+                                                int nstart = start;
+                                                if (end == 0) {
+                                                    --nstart;
+                                                    --en[start];
+                                                    if (start > 1)
+                                                        ++en[start - 1];
+                                                    else
+                                                        throw new RuntimeException();
+                                                } else {
+                                                    --en[end];
+                                                    if (end > 1)
+                                                        ++en[end - 1];
+                                                }
+                                                ways[nstart][next][en[4]][en[3]][en[2]][en[1]] = (int) ((ways[nstart][next][en[4]][en[3]][en[2]][en[1]] + cur * times * next) % MODULO);
+                                            }
+                                        }
+                                    }
+                                }
+                        }
+            res = ways[0][0][0][0][0][0];
+        }
+
+        public void writeOutput(PrintWriter out) {
+            out.println("Case #" + testNumber + ": " + res);
+        }
+    }
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int nt = in.nextInt();
+        List<Future<Testcase>> tests = new ArrayList<Future<Testcase>>();
+        ExecutorService pool = Executors.newFixedThreadPool(1);
+        for (int it = 0; it < nt; ++it) {
+            Testcase t = new Testcase(it + 1);
+            t.readInput(in);
+            tests.add(pool.submit(t));
+        }
+        for (Future<Testcase> test : tests) {
+            try {
+                Testcase t = test.get();
+                t.writeOutput(out);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        pool.shutdown();
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream));
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+    }
+

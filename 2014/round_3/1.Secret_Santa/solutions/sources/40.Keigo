@@ -1,0 +1,231 @@
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.File;
+import java.io.Writer;
+import java.io.FilenameFilter;
+import java.util.Collection;
+import java.util.List;
+import java.util.BitSet;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.NoSuchElementException;
+import java.util.TreeSet;
+import java.math.BigInteger;
+import java.util.Collections;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author ogiekako
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "secret.*santa.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("secretsanta.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		MyScanner in = new MyScanner(inputStream);
+		MyPrintWriter out = new MyPrintWriter(outputStream);
+		SecretSanta solver = new SecretSanta();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class SecretSanta {
+    static int MOD = (int) (1e9 + 7);
+    public void solve(int testNumber, MyScanner in, MyPrintWriter out) {
+        System.err.println("test " + testNumber);
+        int K = in.nextInt();
+        int[] ns = new int[K];
+        for (int i = 0; i < K; i++) {
+            ns[i] = in.nextInt();
+        }
+        long res = solve(K, ns);
+
+//        int[] count = new int[5];
+//        for (int i = 0; i < K; i++) {
+//            int n = in.nextInt();
+//            count[n]++;
+//        }
+//        long[][][][] dp = new long[26][35][51][101];
+//        dp[count[4]][count[3]][count[2]][count[1]] = 1;
+//
+//        for(int a4=25;a4>=0;a4--)for(int a3=34;a3>=0;a3--)for(int a2=50;a2>=0;a2--)for(int a1=100;a1>=0;a1--){
+//            if(dp[a4][a3][a2][a1] == 0) continue;
+//            int[] as = {0,a1,a2,a3,a4};
+//            for(int i=0;i<4;i++){
+//                if(as[i] > 0) {
+//
+//                }
+//            }
+//        }
+        out.printFormat("Case #%d: %d\n", testNumber, res);
+    }
+    private long solve(int K, int[] ns) {
+        long[] dp = new long[110];
+        long[][] C = MathUtils.combinationMod(110, MOD);
+        long[] F = MathUtils.factorialMod(110, MOD);
+        dp[0] = 1;
+        for (int i = 0; i < K; i++) {
+            long[] nDp = new long[110];
+            int n = ns[i];
+            for (int j = 0; j < dp.length; j++)
+                if (dp[j] > 0) {
+                    for (int rec = 0; rec <= n; rec++)
+                        for (int sen = 0; sen <= n; sen++) {
+                            if (sen <= j && rec <= j) {
+                                int nj = j - rec + n - sen;
+                                nDp[nj] = (nDp[nj] + dp[j] * C[j][sen] % MOD * F[sen] % MOD * C[j][rec] % MOD * F[rec] % MOD
+                                * C[n][rec] % MOD * C[n][sen]) % MOD;
+                            }
+                        }
+                }
+            dp = nDp;
+        }
+        return dp[0];
+    }
+
+}
+
+class MyScanner {
+    private final InputStream in;
+
+    public MyScanner(InputStream in) {
+        this.in = in;
+    }
+
+    int bufLen;
+    int bufPtr;
+    byte[] buf = new byte[1024];
+
+    public int read() {
+        if (bufLen == -1)
+            throw new InputMismatchException();
+        if (bufPtr >= bufLen) {
+            bufPtr = 0;
+            try {
+                bufLen = in.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (bufLen <= 0)
+                return -1;
+        }
+        return buf[bufPtr++];
+    }
+
+    private char[] strBuf = new char[65536];
+
+    public String next() {
+        int strLen = 0;
+        int c;
+        do {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        } while (Character.isWhitespace(c));
+        do {
+            if (strLen + 1 >= strBuf.length) {
+                char[] tmp = new char[strBuf.length * 2];
+                System.arraycopy(strBuf, 0, tmp, 0, strBuf.length);
+                strBuf = tmp;
+            }
+            strBuf[strLen++] = (char) c;
+            c = read();
+        } while (c != -1 && !Character.isWhitespace(c));
+        return new String(strBuf, 0, strLen);
+    }
+
+    public int nextInt() {
+        int c = read();
+        if (c == -1) throw new NoSuchElementException();
+        while (c != '-' && (c < '0' || '9' < c)) {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        }
+        if (c == '-') return -nextInt();
+        int res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while ('0' <= c && c <= '9');
+        return res;
+    }
+
+    }
+
+class MyPrintWriter {
+    PrintWriter out;
+
+    public MyPrintWriter(OutputStream outputStream) {
+        out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+    }
+
+    public MyPrintWriter(Writer writer) {
+        out = new PrintWriter(writer);
+    }
+
+    public void close() {
+        out.close();
+    }
+
+    public void printFormat(String format, Object... args) {
+        out.printf(format, args);
+    }
+
+}
+
+class MathUtils {
+
+    public static long[][] combinationMod(int n, int modulus) {
+        long[][] C = new long[n][n];
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < i + 1; j++) {
+                C[i][j] = j == 0 ? 1 : C[i - 1][j - 1] + C[i - 1][j];
+                if (C[i][j] >= modulus) C[i][j] -= modulus;
+            }
+        return C;
+    }
+
+    public static long[] factorialMod(int n, int modulus) {
+        long[] res = new long[n];
+        for (int i = 0; i < n; i++) res[i] = (i == 0 ? 1 : res[i - 1] * i) % modulus;
+        return res;
+    }
+
+    }
+

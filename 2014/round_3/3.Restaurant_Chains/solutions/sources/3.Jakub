@@ -1,0 +1,221 @@
+
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+
+using namespace std;
+
+typedef long long LL;
+typedef pair<int, int> PII;
+#define MP make_pair
+#define FOR(v,p,k) for(int v=p;v<=k;++v)
+#define FORD(v,p,k) for(int v=p;v>=k;--v)
+#define REP(i,n) for(int i=0;i<(n);++i)
+#define VAR(v,i) __typeof(i) v=(i)
+#define FORE(i,c) for(__typeof(c.begin()) i=(c.begin());i!=(c).end();++i)
+#define PB push_back
+#define ST first
+#define ND second
+#define SZ(x) (int)(x).size()
+#define ALL(c) c.begin(),c.end()
+#define ZERO(x) memset(x,0,sizeof(x))
+
+const int N = 10000;
+const int M = 50000;
+const int INF = (int) 1e9;
+
+int p[M];
+
+int gp(int x) {
+    if (p[x] != x) {
+        p[x] = gp(p[x]);
+    }
+    return p[x];
+}
+
+int d[N][N];
+
+vector<int> e[N];
+
+vector<PII> edges;
+
+int n, m;
+
+int q[N];
+
+inline bool related(int a1, int b1, int a2, int b2) {
+    return d[a1][a2] + d[b1][b2] != d[a1][b2] + d[a2][b1];
+}
+
+int color[N];
+
+void dfs(int x, vector<PII>& tree) {
+    FORE (it, e[x]) {
+        if (color[*it] == -1) {
+            color[*it] = 1 - color[x];
+            tree.PB(MP(x, *it));
+            dfs(*it, tree);
+        }
+    }
+}
+
+bool is_bipartite() {
+    FORE (it, edges) {
+        if (color[it->ST] == color[it->ND]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void bfs(int x) {
+    int ql = 0;
+    int qr = 0;
+    REP (i, n) {
+        d[x][i] = INF;
+    }
+    q[qr++] = x;
+    d[x][x] = 0;
+    while (ql < qr) {
+        int c = q[ql++];
+        FORE (it, e[c]) {
+            if (d[x][*it] == INF) {
+                d[x][*it] = d[x][c] + 1;
+                q[qr++] = *it;
+            }
+        }
+    }
+}
+
+bool visited[N];
+
+void bfs2(int x, int forb) {
+    int ql = 0;
+    int qr = 0;
+    q[qr++] = x;
+    visited[x] = true;
+    while (ql < qr) {
+        int c = q[ql++];
+        FORE (it, e[c]) {
+            if (!visited[*it] && d[c][*it] != forb) {
+                visited[*it] = true;
+                q[qr++] = *it;
+            }
+        }
+    }
+}
+
+vector<PII> classes[M];
+
+int alg() {
+    cin >> n >> m;
+    REP (i, m) {
+        int a, b;
+        cin >> a >> b;
+        if (a > b) {
+            swap(a, b);
+        }
+        edges.PB(MP(a, b));
+        e[a].PB(b);
+        e[b].PB(a);
+    }
+    sort(ALL(edges));
+    REP (i, n) {
+        color[i] = -1;
+    }
+    vector<PII> tree;
+    color[0] = 0;
+    dfs(0, tree);
+    if (!is_bipartite()) {
+        return -1;
+    }
+    vector<int> tree_ind(n - 1);
+    REP (i, n - 1) {
+        if (tree[i].ST > tree[i].ND) {
+            swap(tree[i].ST, tree[i].ND);
+        }
+        tree_ind[i] = lower_bound(ALL(edges), tree[i]) - edges.begin();
+    }
+    REP (i, n) {
+        bfs(i);
+    }
+    REP (i, m) {
+        p[i] = i;
+    }
+    REP (i, m) {
+        REP (j, n - 1) {
+            if (related(edges[i].ST, edges[i].ND, tree[j].ST, tree[j].ND)) {
+                p[gp(i)] = gp(tree_ind[j]);
+            }
+        }
+    }
+    REP (i, m) {
+        classes[gp(i)].PB(edges[i]);
+    }
+    REP (i, n) {
+        REP (j, n) {
+            d[i][j] = -1;
+        }
+    }
+    int result = 0;
+    REP (i, m) {
+        if (classes[i].empty()) {
+            continue;
+        }
+        FORE (it, classes[i]) {
+            d[it->ST][it->ND] = d[it->ND][it->ST] = i;
+        }
+        ++result;
+        REP (j, n) {
+            visited[j] = false;
+        }
+        int cur = 0;
+        REP (j, n) {
+            if (visited[j]) {
+                continue;
+            }
+            if (++cur > 2) {
+                return -1;
+            }
+            bfs2(j, i);
+        }
+    }
+    return result;
+}
+
+int main(int argc, char **argv) {
+    int starting = 0;
+    if (argc > 1) {
+        starting = atoi(argv[1]);
+    }
+    int num_cases;
+    cin >> num_cases;
+    for (int i = 1; i <= num_cases; ++i) {
+        cout << "Case #" << starting + i << ": " << alg() << endl;
+        for (int j = 0; j < n; ++j) {
+            e[j].clear();
+        }
+        edges.clear();
+        REP (j, m) {
+            classes[j].clear();
+        }
+    }
+}

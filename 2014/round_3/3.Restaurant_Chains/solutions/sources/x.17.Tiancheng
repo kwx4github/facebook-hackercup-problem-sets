@@ -1,0 +1,288 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <cctype>
+#include <string>
+#include <cstring>
+#include <ctime>
+#include <string.h>
+
+using namespace std;
+
+typedef long long int64;
+typedef unsigned long long uint64;
+#define two(X) (1<<(X))
+#define twoL(X) (((int64)(1))<<(X))
+#define contain(S,X) (((S)&two(X))!=0)
+#define containL(S,X) (((S)&twoL(X))!=0)
+const double pi=acos(-1.0);
+const double eps=1e-11;
+template<class T> inline void checkmin(T &a,T b){if(b<a) a=b;}
+template<class T> inline void checkmax(T &a,T b){if(b>a) a=b;}
+template<class T> inline T sqr(T x){return x*x;}
+typedef pair<int,int> ipair;
+#define SIZE(A) ((int)A.size())
+#define LENGTH(A) ((int)A.length())
+#define MP(A,B) make_pair(A,B)
+#define PB(X) push_back(X)
+
+const int maxn=60000+5;
+
+int n,m;
+int p1[maxn],p2[maxn];
+int d[maxn];
+int q[maxn];
+vector<int> g[maxn];
+bool valid[maxn];
+int dfn[maxn],low[maxn];
+set<ipair> bridges;
+bool visited[maxn];
+int prev[maxn];
+int color[maxn];
+
+void prepareg()
+{
+	for (int i=0;i<n;i++) g[i].clear();
+	for (int i=0;i<m;i++)
+	{
+		g[p1[i]].push_back(p2[i]);
+		g[p2[i]].push_back(p1[i]);
+	}
+}
+
+void init()
+{
+	scanf("%d%d",&n,&m);
+	for (int i=0;i<m;i++) scanf("%d%d",&p1[i],&p2[i]);
+}
+
+ipair edge_pair(int a,int b)
+{
+	return MP(min(a,b),max(a,b));
+}
+
+int counter;
+void DFS(int key,int prev)
+{
+	int idx=counter++;
+	dfn[key]=low[key]=idx;
+	for (int i=0;i<SIZE(g[key]);i++)
+	{
+		int w=g[key][i];
+		if (w==prev) continue;
+		if (dfn[w]<0)
+		{
+			DFS(w,key);
+			if (low[w]<low[key]) low[key]=low[w];
+		}
+		else if (dfn[w]<low[key])
+			low[key]=dfn[w];
+	}
+	if (prev>=0 && low[key]==dfn[key])
+		bridges.insert(edge_pair(key,prev));
+}
+
+bool TwoSat(int key,int c)
+{
+	if (color[key]>0) return color[key]==c;
+	color[key]=c;
+	for (int i=0;i<SIZE(g[key]);i++) if (!TwoSat(g[key][i],3-c)) return false;
+	return true;
+}
+
+bool find_circle(int p1,int p2,vector<int>& nodes,vector<ipair>& edges)
+{
+	if (p1==p2) return false;
+	for (int i=0;i<n;i++) prev[i]=-1;
+	int sizeq=0;
+	q[sizeq++]=p1;
+	prev[p1]=-2;
+	for (int cl=0;cl<sizeq;cl++) for (int key=q[cl],i=0;i<SIZE(g[key]);i++)
+	{
+		int w=g[key][i];
+		if (w==prev[key]) continue;
+		if (key!=p1 && w==p2)
+		{
+			nodes.clear();
+			edges.clear();
+			nodes.push_back(p2);
+			for (int k=key;k>=0;k=prev[k]) nodes.push_back(k);
+			for (int i=0;i+1<SIZE(nodes);i++) edges.push_back(edge_pair(nodes[i],nodes[i+1]));
+			edges.push_back(edge_pair(p1,p2));
+			return true;
+		}
+		if (visited[w]) continue;
+		if (w==p2) continue;
+		if (prev[w]!=-1) continue;
+		q[sizeq++]=w;
+		prev[w]=key;
+	}
+	return false;
+}
+
+int solve()
+{
+	// Self edge.
+	for (int i=0;i<m;i++) if (p1[i]==p2[i]) return -1;
+	// Check two sets.
+	prepareg();
+	for (int i=0;i<n;i++) color[i]=0;
+	for (int i=0;i<n;i++) if (color[i]==0 && !TwoSat(i,1)) return -1;
+
+	// Remove dup edges;
+	set<ipair> s_edges;
+	int new_m=0;
+	for (int i=0;i<m;i++) 
+	{
+		if (s_edges.find(edge_pair(p1[i],p2[i]))!=s_edges.end()) continue;
+		p1[new_m]=p1[i];
+		p2[new_m++]=p2[i];
+		s_edges.insert(edge_pair(p1[i],p2[i]));
+	}
+	m=new_m;
+
+	int ret=0;
+	for (int i=0;i<n;i++) valid[i]=true;
+	// Remove deg <= 1 node.
+	prepareg();
+	for (int i=0;i<n;i++) d[i]=0;
+	for (int i=0;i<m;i++) d[p1[i]]++;
+	for (int i=0;i<m;i++) d[p2[i]]++;
+	int sizeq=0;
+	for (int i=0;i<n;i++) if (d[i]<=1) { q[sizeq++]=i; valid[i]=false; }
+	set<ipair> cut_edges;
+	for (int cl=0;cl<sizeq;cl++) for (int k=q[cl],i=0;i<SIZE(g[k]);i++)
+	{
+		int w=g[k][i];
+		cut_edges.insert(edge_pair(k,w));
+		if (!valid[w]) continue;
+		--d[w];
+		if (d[w]<=1) { q[sizeq++]=w; valid[w]=false; }
+	}
+	ret+=SIZE(cut_edges);
+	int new_m2=0;
+	for (int i=0;i<m;i++) if (valid[p1[i]] && valid[p2[i]])
+	{
+		p1[new_m2]=p1[i];
+		p2[new_m2++]=p2[i];
+	}
+	m=new_m2;
+
+	// Remove bridge.
+	prepareg();
+	counter=0;
+	for (int i=0;i<n;i++) dfn[i]=-1;
+	bridges.clear();
+	for (int i=0;i<n;i++) if (valid[i] && dfn[i]<0) DFS(0,-1);
+	ret+=SIZE(bridges);
+	int new_m3=0;
+	for (int i=0;i<m;i++)
+	{
+		if (bridges.find(edge_pair(p1[i],p2[i]))!=bridges.end()) continue;
+		p1[new_m3]=p1[i];
+		p2[new_m3++]=p2[i];
+	}
+	m=new_m3;
+
+	// Check attach circles.
+	prepareg();
+	for (int i=0;i<n;i++) visited[i]=false;
+	set<ipair> edges;
+	for (int src=0;src<n;src++) if (!visited[src] && SIZE(g[src])>0)
+	{
+		vector<ipair> exp_edges;
+		int other=g[src][0];
+		if (visited[other])
+		{
+			if (SIZE(g[src])!=2) return -1;
+			int p1=g[src][0];
+			int p2=g[src][1];
+			if (!visited[p1] || !visited[p2]) return -1;
+			set<int> s1,s2;
+			for (int i=0;i<SIZE(g[p1]);i++) s1.insert(g[p1][i]);
+			int c=0;
+			for (int i=0;i<SIZE(g[p2]);i++) if (s1.find(g[p2][i])!=s1.end()) c++;
+			if (c==2)
+			{
+				edges.insert(edge_pair(src,p1));
+				edges.insert(edge_pair(src,p2));
+				visited[src]=true; continue; 
+			}
+			return -1;
+		}
+		exp_edges.push_back(MP(src,other));
+		for (int cl=0;cl<SIZE(exp_edges);cl++)
+		{
+			int p1=exp_edges[cl].first;
+			int p2=exp_edges[cl].second;
+			vector<int> output;
+			vector<ipair> output_edges;
+			//Optional
+			if (cl>0)
+			{
+				bool has_outer=false;
+				for (int i=0;i<SIZE(g[p1]);i++) if (!visited[g[p1][i]]) { has_outer=true; break; }
+				if (!has_outer) for (int i=0;i<SIZE(g[p2]);i++) if (!visited[g[p2][i]]) { has_outer=true; break; }
+				if (!has_outer) continue;
+			}
+
+			if (!find_circle(p1,p2,output,output_edges))
+			{
+				if (cl==0) return -1;
+				continue;
+			}
+			for (int k=0;k<SIZE(output_edges);k++) edges.insert(output_edges[k]);
+			if (cl==0)
+				ret+=SIZE(output)/2;
+			else
+				ret+=(SIZE(output)-2)/2;
+			for (int k=0;k<SIZE(output);k++)
+			{
+				int w=output[k];
+				if (visited[w]) continue;
+				visited[w]=true;
+				for (int i=0;i<SIZE(g[w]);i++)
+				{
+					int z=g[w][i];
+					if (!visited[z]) continue;
+					if (edges.find(edge_pair(w,z))==edges.end()) return -1;
+					exp_edges.push_back(MP(w,z));
+				}
+			}
+		}
+	}
+	if (SIZE(edges)!=m) return -1;
+	return ret;
+}
+
+int main()
+{
+	//freopen("input.txt","r",stdin);
+	freopen("c.in","r",stdin); freopen("c.out","w",stdout);
+	int testcase;
+	scanf("%d",&testcase);
+	for (int case_id=1;case_id<=testcase;case_id++)
+	{
+		init();
+		int ret=solve();
+		printf("Case #%d: %d\n",case_id,ret);
+		fflush(stdout);
+	}
+	return 0;
+}
+

@@ -1,0 +1,245 @@
+import java.io.*;
+import java.util.*;
+
+/**
+ * @author Pavel Mavrin
+ */
+public class C {
+
+    BufferedReader br;
+    StringTokenizer st;
+    PrintWriter out;
+
+    public C() throws FileNotFoundException {
+        br = new BufferedReader(new FileReader("input.txt"));
+        out = new PrintWriter("output.txt");
+    }
+
+    String next() throws IOException {
+        while (st == null || !st.hasMoreTokens()) {
+            st = new StringTokenizer(br.readLine());
+        }
+        return st.nextToken();
+    }
+
+    int nextInt() throws IOException {
+        return Integer.parseInt(next());
+    }
+
+    long nextLong() throws IOException {
+        return Long.parseLong(next());
+    }
+
+    public static void main(String[] args) throws IOException {
+        new C().solve();
+    }
+
+    private void solve() throws IOException {
+        int n = nextInt();
+        for (int i = 0; i < n; i++) {
+            String s = solveCase();
+            out.println("Case #" + (i + 1) + ": " + s);
+            System.out.println("Case #" + (i + 1) + ": " + s);
+        }
+        out.close();
+    }
+
+    private String solveCase() throws IOException {
+        int n = nextInt();
+        int m = nextInt();
+        Node[] v = new Node[n];
+        pp = new int[m];
+        cycles = new ArrayList<List<Edge>>();
+        for (int i = 0; i < m; i++) pp[i] = i;
+        for (int i = 0; i < n; i++) {
+            v[i] = new Node();
+            v[i].d = -1;
+        }
+        for (int i = 0; i < m; i++) {
+            int x = nextInt();
+            int y = nextInt();
+            Edge e1 = new Edge();
+            Edge e2 = new Edge();
+            e1.src = v[x];
+            e2.src = v[y];
+            e1.dst = v[y];
+            e2.dst = v[x];
+            e1.p = i;
+            e2.p = i;
+            e1.r = e2;
+            e2.r = e1;
+            v[x].e.add(e1);
+            v[y].e.add(e2);
+        }
+        for (Node node : v) {
+            Collections.shuffle(node.e);
+        }
+        p = new Edge[n + 1];
+        Node[] q = new Node[n];
+        int st = random.nextInt(n);
+        q[0] = v[st];
+        v[st].d = 0;
+        int h = 0;
+        int t = 1;
+        while (t > h) {
+            Node x = q[h++];
+            for (Edge edge : x.e) {
+                if (edge.dst.d == -1) {
+                    edge.dst.d = x.d + 1;
+                    edge.r.g = true;
+                    q[t++] = edge.dst;
+                } else if (edge.dst.d == x.d + 1) {
+                    edge.r.g = true;
+                } else if (edge.dst.d == x.d) {
+                    return "-1";
+                }
+            }
+        }
+        for (Node node : v) {
+            List<Edge> edges = new ArrayList<Edge>();
+            for (Edge edge : node.e) {
+                if (edge.g) edges.add(edge);
+            }
+            for (int i = 1; i < edges.size(); i++) {
+                Edge e1 = edges.get(0);
+                Edge e2 = edges.get(i);
+                for (Node node1 : v) {
+                    node1.c = 0;
+                }
+                dfs(e1.dst, 1);
+                dfs(e2.dst, 2);
+                Node min = null;
+                for (Node node1 : v) {
+                    if (node1.c == 3) {
+                        if (min == null || min.d < node1.d) {
+                            min = node1;
+                        }
+                    }
+                }
+                e1.dst.p[0] = e1;
+                e2.dst.p[1] = e2;
+                if (min != null) {
+                    List<Edge> p1 = new ArrayList<Edge>();
+                    Node r = min;
+                    while (r != node) {
+                        p1.add(r.p[0]);
+                        r = r.p[0].src;
+                    }
+                    List<Edge> p2 = new ArrayList<Edge>();
+                    r = min;
+                    while (r != node) {
+                        p2.add(r.p[1]);
+                        r = r.p[1].src;
+                    }
+                    Collections.reverse(p2);
+                    p1.addAll(p2);
+                    cycles.add(p1);
+                }
+            }
+        }
+//        System.out.println(cycles);
+        for (List<Edge> cycle : cycles) {
+            int len = cycle.size();
+            for (int i = 0; i < len / 2; i++) {
+                join(cycle.get(i).p, cycle.get(len / 2 + i).p);
+            }
+        }
+        for (List<Edge> cycle : cycles) {
+            int len = cycle.size();
+            Set<Integer> un = new HashSet<Integer>();
+            for (int i = 0; i < len / 2; i++) {
+                un.add(get(cycle.get(i).p));
+            }
+            if (un.size() != len / 2) {
+                System.out.println("!!!");
+                return "-1";
+            }
+        }
+        int res = 0;
+        for (int i = 0; i < m; i++) {
+            if (pp[i] == i) res++;
+        }
+        return "" + res;
+    }
+
+    private void dfs(Node node, int i) {
+        if ((node.c & i) == 0) {
+            node.c |= i;
+            for (Edge edge : node.e) {
+                if (edge.g) {
+                    dfs(edge.dst, i);
+                    edge.dst.p[i - 1] = edge;
+                }
+            }
+        }
+    }
+
+    Random random = new Random(12424645657897L);
+
+    int[] pp;
+
+    private void join(int x, int y) {
+        x = get(x);
+        y = get(y);
+        if (x == y) return;
+        if (random.nextBoolean()) {
+            pp[x] = y;
+        } else {
+            pp[y] = x;
+        }
+    }
+
+    private int get(int x) {
+        if (pp[x] != x) {
+            pp[x] = get(pp[x]);
+        }
+        return pp[x];
+    }
+
+    Edge[] p;
+    List<List<Edge>> cycles;
+
+//    private void dfs(Node node, Node parent, int pc) throws Botva {
+//        if (node.z == 1) {
+//            int c = pc - 1;
+//            while (p[c].src != node) c--;
+//            int len = pc - c;
+//            if (len % 2 == 1) throw new Botva();
+//            List<Edge> cycle = new ArrayList<Edge>();
+//            for (int i = c; i < pc; i++) {
+//                cycle.add(p[i]);
+//            }
+//            cycles.add(cycle);
+//        } else if (node.z == 0) {
+//            node.z = 1;
+//            for (Edge edge : node.e) {
+//                if (edge.d != parent) {
+//                    p[pc] = edge;
+//                    dfs(edge.d, node, pc + 1);
+//                }
+//            }
+//            node.z = 2;
+//        }
+//    }
+
+    class Node {
+        ArrayList<Edge> e = new ArrayList<Edge>();
+        int d;
+        Edge[] p = new Edge[2];
+        int c;
+    }
+
+    class Edge {
+        Node dst, src;
+        Edge r;
+        boolean g;
+        int p;
+    }
+
+    private String nextLine() throws IOException {
+        return br.readLine();
+    }
+
+    private class Botva extends Throwable {
+    }
+}
