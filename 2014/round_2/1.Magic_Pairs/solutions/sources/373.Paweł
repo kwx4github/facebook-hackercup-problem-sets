@@ -1,0 +1,133 @@
+#include <cstdio>
+#include <algorithm>
+typedef long long int LL;
+const int MAXN = 2e6+5;
+
+int board1[MAXN], board2[MAXN], merged[MAXN];
+bool count1[MAXN], count2[MAXN];
+int* buffer[MAXN];
+
+bool cmp(int* a, int* b) {
+    return *a < *b;
+}
+
+void scaleArray(int* array, int n) {
+    for (int i=0; i<n; i++)
+        buffer[i] = array+i;
+    std::sort(buffer, buffer+n, cmp);
+    int it = 0, diff = 0;
+    while (it < n) {
+        int val = *buffer[it];
+        while (it < n && val == *buffer[it])
+            *buffer[it] = diff, it++;
+
+        diff++;
+    }
+}
+
+int main() {
+    int t;
+    scanf("%d", &t);
+
+    for (int test=1; test<=t; test++) {
+        int n, m;
+        scanf("%d%d", &n, &m);
+        int x1, a1, b1, c1, r1;
+        scanf("%d%d%d%d%d", &x1, &a1, &b1, &c1, &r1);
+        int x2, a2, b2, c2, r2;
+        scanf("%d%d%d%d%d", &x2, &a2, &b2, &c2, &r2);
+
+        for (int i=0; i<n; i++)
+            count1[i] = 0;
+        for (int i=0; i<m; i++)
+            count2[i] = 0;
+
+        board1[0] = x1;
+        board2[0] = x2;
+        for (int i=1; i<n; i++) {
+            board1[i] = ((LL)a1*board1[(i-1)%n]+(LL)b1*board2[(i-1)%m]+c1)%r1;
+            board2[i] = ((LL)a2*board1[(i-1)%n]+(LL)b2*board2[(i-1)%m]+c2)%r2;
+        }
+
+        for (int i=0; i<n; i++)
+            merged[i] = board1[i];
+        for (int i=0; i<m; i++)
+            merged[i+n] = board2[i];
+        scaleArray(merged, n+m);
+        for (int i=0; i<n; i++)
+            board1[i] = merged[i];
+        for (int i=0; i<m; i++)
+            board2[i] = merged[i+n];
+
+        /*for (int i=0; i<n; i++)
+            printf("%d ", board1[i]);
+        printf("\n");
+        for (int i=0; i<m; i++)
+            printf("%d ", board2[i]);
+        printf("\n");*/
+        
+        LL res = 0;
+        int it1 = 0, it2 = 0, g1 = 0, g2 = 0;
+        while (it1 < n && it2 < m) {
+            count1[board1[it1]] = true;
+            g1++, it1++;
+            
+            //printf("zaczynam od nowa, g1=%d, g2=%d\n", g1, g2);
+            while ((it1 < n || it2 < m) && g1+g2 > 0) {
+                while (it1 < n && g2 > 0) {
+                    if (count1[board1[it1]]) {
+                        it1++;
+                        continue;
+                    }
+                    if (count2[board1[it1]] == true)
+                        g2--;
+                    else
+                        g1++;
+                    
+                    count1[board1[it1]] = true;
+                    it1++;
+                }
+
+                //printf("it1=%d, it2=%d, g1=%d\n", it1, it2, g1);
+                while (it2 < m && g1 > 0) {
+                    //printf("przy %d\n", it2);
+                    if (count2[board2[it2]]) {
+                        it2++;
+                        continue;
+                    }
+
+                    if (count1[board2[it2]] == true)
+                        g1--;// printf("zmniejszam, %d\n", board2[it2]);
+                    else
+                        g2++;
+
+                    count2[board2[it2]] = true;
+                    it2++;
+                }
+
+                //printf("after: it1=%d, it2=%d\n", it1, it2);
+            }
+
+            //printf("it1=%d, it2=%d, %d, %d\n", it1, it2, g1, g2);
+
+            int begin1 = it1, end1 = it1;
+            while (end1 < n && count1[board1[end1]] == true)
+                end1++;
+
+            int begin2 = it2, end2 = it2;
+            while (end2 < m && count2[board2[end2]] == true) 
+                end2++;
+
+            //printf("b1=%d, e1=%d\n", begin1, end1);
+            //printf("b2=%d, e2=%d\n", begin2, end2);
+            
+            it1 = end1;
+            it2 = end2;
+            
+            if (g1+g2 == 0)      
+                res += (LL)(end1-begin1+1)*(end2-begin2+1);
+        }
+
+        printf("Case #%d: %Ld\n", test, res);
+    }
+}

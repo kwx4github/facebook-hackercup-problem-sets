@@ -1,0 +1,216 @@
+import sun.launcher.resources.launcher_es;
+import sun.swing.plaf.synth.Paint9Painter;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.math.BigInteger;
+import java.util.*;
+
+public class HoldemNumbers {
+
+    public void solve() {
+//        for (int N = 4; N < 40; ++N) {
+//            System.out.println(N);
+//            long[][] D = smart(N);
+//            long[][] G = silly(N);
+
+//            System.out.println(N);
+//            print(D);
+//            System.out.println("---");
+//            print(G);
+//            if (true) break;
+//            for (int i = 0; i < N; ++i) {
+//                for (int j = 0; j < N; ++j) {
+//                    if (D[i][j] != G[i][j]) {
+//                        throw new Error(i + " " + j);
+//                    }
+//                }
+//            }
+//        }
+//
+//        long[][] D1 = smart(100);
+//        if (true) return;
+
+        long start = System.currentTimeMillis();
+        int testCount = nextInt();
+        for (int test = 1; test <= testCount; ++test) {
+            long time = System.currentTimeMillis();
+
+            int N = nextInt();
+            int H = nextInt();
+
+            long[][] D = smart(N);
+
+            System.out.println("#" + test + " time: " + (System.currentTimeMillis() - time) / 1000.0 + ", " + (System.currentTimeMillis() - start) / 1000.0);
+
+
+            long R = (N - 2L) * (N - 3L) * (N - 4L) * (N - 5L) * (N - 6L) * (N - 7L) / 8;
+            out.print("Case #" + test + ": ");
+            for (int i = 0; i < H; ++i) {
+                int a = nextInt();
+                int b = nextInt();
+                long n = D[Math.min(a, b) - 1][Math.max(a, b) - 1];
+                if (4 * n > R) {
+                    out.print("B");
+                } else {
+                    out.print("F");
+                }
+            }
+            out.println();
+
+            out.flush();
+        }
+    }
+
+    void print(long[][] D) {
+        int N = D.length;
+        for (int i = 0; i < N; ++i) {
+            for (int j = 0; j < N; ++j) {
+                System.out.print(String.format("%4d ", D[i][j]));
+            }
+            System.out.println();
+        }
+    }
+
+    List<Pair> pairs(int N) {
+        List<Pair> pairs = new ArrayList<Pair>();
+        for (int i = 0; i < N; ++i) {
+            for (int j = i + 1; j < N; ++j) {
+                pairs.add(new Pair(i, j));
+            }
+        }
+        Collections.sort(pairs);
+        return pairs;
+    }
+
+    long[][] smart(int N) {
+        List<Pair> pairs = pairs(N);
+
+        long[][] D = new long[N][N];
+        long[] nc = new long[pairs.size()];
+        long tnc = 0;
+        long tans = 0;
+        for (int i = 0; i < pairs.size(); ++i) {
+            Pair pi = pairs.get(i);
+            tans += tnc;
+            for (int j = 0; j < i; ++j) {
+                Pair pj = pairs.get(j);
+                if (pi.a != pj.a && pi.a != pj.b && pi.b != pj.a && pi.b != pj.b) {
+                    ++nc[i];
+                    ++nc[j];
+                } else {
+                    tans -= nc[j];
+                }
+            }
+            tnc += nc[i];
+
+            for (int tb = 0; tb < N; ++tb) {
+                for (int ta = 0; ta < N; ++ta) {
+                    if (good(ta, pi.b, pi.a, tb, pi.a, pi.b)) tans++;
+                }
+            }
+
+            D[pi.a][pi.b] = tans;
+        }
+
+        return D;
+    }
+
+    boolean good(int a1, int b1, int a2, int b2, int a0, int b0) {
+        if (a1 == b1 || a2 == b2) return false;
+        if (a1 > b1) return good(b1, a1, a2, b2, a0, b0);
+        if (a2 > b2) return good(a1, b1, b2, a2, a0, b0);
+        return (a1 + b1 < a0 + b0 || a1 + b1 == a0 + b0 && b1 < b0) &&
+                (a2 + b2 < a0 + b0 || a2 + b2 == a0 + b0 && b2 < b0) &&
+                a1 != a2 && a1 != b2 && b1 != a2 && b1 != b2;
+    }
+
+    long[][] silly(int n) {
+        List<Pair> pairs = pairs(n);
+        long[][] ans = new long[n][n];
+        boolean[] u = new boolean[n];
+        long tans = 0;
+        for (int i = 0; i < pairs.size(); ++i) {
+            Pair pi = pairs.get(i);
+            u[pi.a] = u[pi.b] = true;
+            for (int j = 0; j < i; ++j) {
+                Pair pj = pairs.get(j);
+                if (u[pj.a] || u[pj.b]) continue;
+                u[pj.a] = u[pj.b] = true;
+                for (int k = 0; k < j; ++k) {
+                    Pair pk = pairs.get(k);
+                    if (u[pk.a] || u[pk.b]) continue;
+                    tans++;
+                }
+                u[pj.a] = u[pj.b] = false;
+            }
+            u[pi.a] = u[pi.b] = false;
+            ans[pi.a][pi.b] = tans;
+        }
+
+        return ans;
+    }
+
+    class Pair implements Comparable<Pair> {
+        int a, b;
+
+        Pair(int a, int b) {
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        public int compareTo(Pair o) {
+            return a + b < o.a + o.b ? -1 : a + b > o.a + o.b ? 1 : Integer.compare(Math.max(a, b), Math.max(o.a, o.b));
+        }
+    }
+
+    final int INF = Integer.MAX_VALUE / 2;
+
+    int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+    double nextDouble() {
+        return Double.parseDouble(nextToken());
+    }
+
+    long nextLong() {
+        return Long.parseLong(nextToken());
+    }
+
+    boolean eof;
+
+    String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            try {
+                st = new StringTokenizer(br.readLine());
+            } catch (Exception e) {
+                eof = true;
+                return "0";
+            }
+        }
+        return st.nextToken();
+    }
+
+    static BufferedReader br;
+    static StringTokenizer st;
+    static PrintWriter out;
+
+    public static void main(String[] args) {
+        try {
+            br = new BufferedReader(new FileReader("holdem_numbers.txt"));
+            out = new PrintWriter("holdem_numbers.out");
+//            br = new BufferedReader(new InputStreamReader(System.in));
+//            out = new PrintWriter(System.out);
+            new HoldemNumbers().solve();
+        } catch (Throwable t) {
+            t.printStackTrace();
+            System.exit(-1);
+        } finally {
+            out.close();
+        }
+    }
+}

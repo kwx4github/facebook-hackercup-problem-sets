@@ -1,0 +1,200 @@
+package test;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * User: Tifuera
+ * Date: 14.12.13
+ */
+public class MagicPairs {
+
+    private static int[] firstBoard;
+    private static int[] secondBoard;
+
+    private static boolean[] isFirstStart;
+    private static boolean[] isSecondStart;
+    private static int[] fistNum;
+    private static int[] secondNum;
+
+    public static void main(String[] args) throws IOException {
+        try (Scanner in = new Scanner(new File("facebook/in/_magic_pairs.txt"))) {
+            int testCases = in.nextInt();
+            String[] results = new String[testCases];
+
+            for (int t = 0; t < testCases; t++) {
+                int N = in.nextInt();
+                int M = in.nextInt();
+                int x1 = in.nextInt();
+                int a1 = in.nextInt();
+                int b1 = in.nextInt();
+                int c1 = in.nextInt();
+                int r1 = in.nextInt();
+
+                int x2 = in.nextInt();
+                int a2 = in.nextInt();
+                int b2 = in.nextInt();
+                int c2 = in.nextInt();
+                int r2 = in.nextInt();
+                firstBoard = new int[N];
+                secondBoard = new int[M];
+                firstBoard[0] = x1;
+                secondBoard[0] = x2;
+                initBoards(a1, b1, c1, r1, a2, b2, c2, r2);
+                results[t] = String.valueOf(calculatePairs());
+            }
+
+            printResults(results);
+        }
+    }
+
+
+    private static void initStart(int[] board, boolean[] starts, int[] num) {
+        Set<Integer> elSet = new TreeSet<>();
+        int uniquePos = -1;
+        int len = 0;
+        for (int i = 0; i < board.length; i++) {
+            int curEl = board[i];
+            if (elSet.contains(curEl)) {
+                len++;
+            } else {
+                elSet.add(curEl);
+                if (len > 0) {
+                    starts[uniquePos] = true;
+                    num[uniquePos] = len;
+                }
+
+                uniquePos = i;
+                len = 1;
+            }
+        }
+
+        starts[uniquePos] = true;
+        num[uniquePos] = len;
+    }
+
+    private static long calculatePairs() {
+        long result = 0;
+        Set<Integer> matchedSet = new TreeSet<>();
+        Set<Integer> firstUniqueSet = new TreeSet<>();
+        Set<Integer> secondUniqueSet = new TreeSet<>();
+
+        isFirstStart = new boolean[firstBoard.length];
+        isSecondStart = new boolean[secondBoard.length];
+        fistNum = new int[firstBoard.length];
+        secondNum = new int[secondBoard.length];
+
+        initStart(firstBoard, isFirstStart, fistNum);
+        initStart(secondBoard, isSecondStart, secondNum);
+
+        int firstPtr = 0;
+        int secondPtr = 0;
+        while (!isFirstStart[firstPtr]) {
+            firstPtr++;
+        }
+        while (!isSecondStart[secondPtr]) {
+            secondPtr++;
+        }
+
+        while (firstPtr < firstBoard.length && secondPtr < secondBoard.length) {
+
+            int firstEl = firstBoard[firstPtr];
+            int secondEl = secondBoard[secondPtr];
+
+            if (firstEl != secondEl) {
+                boolean isFirstInSecond = secondUniqueSet.contains(firstEl);
+                boolean isSecondInFirst = firstUniqueSet.contains(secondEl);
+
+                if (isFirstInSecond) {
+                    secondUniqueSet.remove(firstEl);
+                    matchedSet.add(firstEl);
+                }else{
+                    firstUniqueSet.add(firstEl);
+                }
+
+                if (isSecondInFirst) {
+                    firstUniqueSet.remove(secondEl);
+                    matchedSet.add(secondEl);
+                }else{
+                    secondUniqueSet.add(secondEl);
+                }
+            } else {
+                matchedSet.add(firstEl);
+            }
+
+            if (firstUniqueSet.isEmpty() && secondUniqueSet.isEmpty()) {
+                result += (fistNum[firstPtr] + 0l) * (secondNum[secondPtr] + 0l);
+                firstPtr++;
+                secondPtr++;
+                while (firstPtr < firstBoard.length && (!isFirstStart[firstPtr])) {
+                    firstPtr++;
+                }
+                while (secondPtr < secondBoard.length && (!isSecondStart[secondPtr])) {
+                    secondPtr++;
+                }
+                continue;
+            }
+
+            int firstSize = firstUniqueSet.size();
+            int secondSize = secondUniqueSet.size();
+
+            if (firstSize < secondSize) {
+                firstPtr++;
+                while (firstPtr < firstBoard.length && (!isFirstStart[firstPtr])) {
+                    firstPtr++;
+                }
+            } else if (firstSize > secondSize) {
+                secondPtr++;
+                while (secondPtr < secondBoard.length && (!isSecondStart[secondPtr])) {
+                    secondPtr++;
+                }
+            } else {
+                firstPtr++;
+                secondPtr++;
+                while (firstPtr < firstBoard.length && (!isFirstStart[firstPtr])) {
+                    firstPtr++;
+                }
+                while (secondPtr < secondBoard.length && (!isSecondStart[secondPtr])) {
+                    secondPtr++;
+                }
+            }
+
+        }
+
+        return result;
+
+    }
+
+    private static void initBoards(long a1, long b1, long c1, long r1,
+                                   long a2, long b2, long c2, long r2) {
+        int N = firstBoard.length;
+        int M = secondBoard.length;
+
+        for (int i = 1; i < Math.max(N, M); i++) {
+            if (i < N) {
+                firstBoard[i] = (int) ((a1 * firstBoard[(i - 1) % N] + b1 * secondBoard[(i - 1) % M] + c1) % r1);
+            }
+            if (i < M) {
+                secondBoard[i] = (int) ((a2 * firstBoard[(i - 1) % N] + b2 * secondBoard[(i - 1) % M] + c2) % r2);
+            }
+        }
+    }
+
+
+    private static void printResults(String[] results) throws IOException {
+        String outString = "Case #%1$d: %2$s";
+
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("facebook/out/_magic_pairs_out.txt"))) {
+
+            for (int i = 0; i < results.length; ++i) {
+                bw.write(String.format(outString, i + 1, results[i]));
+                bw.newLine();
+            }
+        }
+    }
+}

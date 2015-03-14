@@ -1,0 +1,225 @@
+#ifdef NALP_PROJECT
+#pragma hdrstop
+#else
+#define _SECURE_SCL 0
+#endif
+
+#define _CRT_SECURE_NO_DEPRECATE
+#pragma comment(linker, "/STACK:200000000")
+
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
+#include <cctype>
+#include <cmath>
+#include <algorithm>
+#include <utility>
+#include <cassert>
+
+#include <set>
+#include <map>
+#include <vector>
+#include <string>
+#include <queue>
+#include <bitset>
+#include <memory.h>
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
+using namespace std;
+
+typedef long long int64;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define ford(i, n) for(int i = (int)(n) - 1; i >= 0; i--)
+#define pb push_back
+#define mp make_pair
+#define y1 YYY1
+#define all(a) (a).begin(), (a).end()
+#define rall(a) (a).rbegin(), (a).rend()
+
+template<typename T> inline T Abs(T x) { return (x >= 0) ? x : -x; }
+template<typename T> inline T sqr(T x) { return x * x; }
+template<typename T> inline string toStr(T x) { stringstream st; st << x; string s; st >> s; return s; }
+template<typename T> inline int bit(T mask, int b) { return (b >= 0 && (mask & (T(1) << b)) != 0) ? 1 : 0; }
+
+inline int nextInt() { int x; if (scanf("%d", &x) != 1) throw; return x; }
+inline int64 nextInt64() { int64 x; if (scanf("%I64d", &x) != 1) throw; return x; }
+inline double nextDouble() { double x; if (scanf("%lf", &x) != 1) throw; return x; }
+
+const int INF = (int)1E9;
+const int64 INF64 = (int64)1E18;
+const long double EPS = 1E-9;
+const long double PI = 3.1415926535897932384626433832795;
+
+const int64 MOD = 1000000007;
+const int MAXN = 5100;
+
+int n, a[MAXN], cnt[MAXN];
+vector<int> G[MAXN];
+bool g[MAXN][MAXN];
+int64 p2[MAXN];
+
+int getCnt(int v) {
+	int ans = 0;
+	forn(i, n)
+		if (g[i][v])
+			ans++;
+
+	return ans;
+}
+
+int64 process(int v) {
+	int64 ans = p2[cnt[v] - 1] - 1;
+	forn(i, G[v].size()) {
+		int u = G[v][i];
+		int64 cur = p2[cnt[u]] - 1;
+		ans = (ans - cur + MOD) % MOD;
+	}
+
+	return ans;
+}
+
+int64 get(int v, int u, int64 d[10][10], int64 g[10][10]) {
+	if (v == u) return 1;
+	int64 &ans = d[v][u];
+	if (ans != -1) return ans;
+
+	ans = 0;
+	forn(i, n)
+		if (g[v][i])
+			ans += get(i, u, d, g);
+
+	return ans;
+}
+
+int64 stupid() {
+	int64 g[10][10];
+	int64 d[10][10];
+
+	int64 ans = 0;
+	vector<pair<int, int> > e;
+	forn(i, n)
+		forn(j, i)
+			e.pb(mp(i, j));
+
+	int m = int(e.size());
+	forn(mask, 1 << m) {
+		memset(d, 255, sizeof d);
+		memset(g, 0, sizeof g);
+		forn(i, m)
+			if (bit(mask, i) != 0) {
+				int v = e[i].first;
+				int u = e[i].second;
+				g[u][v] = 1;
+			}
+
+		bool ok = true;
+		forn(i, n) {
+			if (get(0, i, d, g) == 0)
+				ok = false;
+
+			int mm = 0;
+			forn(j, i)
+				if (get(0, i, d, g) == get(0, j, d, g)*get(j, i, d, g))
+					mm = j;
+
+			if (mm != a[i])
+				ok = false;
+		}
+
+		if (ok)
+			ans++;
+	}
+
+	return ans;	
+}
+
+void solve() {
+	if (true) {
+		cerr << "\tinput mode: read test." << endl;
+		n = nextInt();
+		for(int i = 1; i < n; i++)
+			a[i] = nextInt();
+	} else {
+		cerr << "\tinput mode: generated test." << endl;
+		n = 7;
+		for(int i = 1; i < n; i++)
+			a[i] = rand() % min(i, 2);
+	}
+
+	memset(g, 0, sizeof g);
+	memset(cnt, 0, sizeof cnt);
+	forn(i, n)
+		G[i].clear();
+
+	int64 ans = 1;
+	forn(v, n) {
+		g[v][v] = true;
+		if (v != 0) {
+			forn(i, n)
+				g[v][i] = g[v][i] || g[a[v]][i];
+
+			int64 cur = p2[cnt[a[v]] - 1];
+			cur = (cur + process(a[v])) % MOD;
+			ans = (ans * cur) % MOD;
+			G[a[v]].pb(v);
+		}
+
+		forn(i, n)
+			if (g[v][i])
+				cnt[i]++;
+	}
+
+	cout << ans << endl;
+
+	cerr << "\tclever answer is '" << ans << "'." << endl;
+	if (n <= 7) {
+		int64 stupidAnswer = stupid();
+		cerr << "\tstupid answer is '" << stupidAnswer << "'." << endl;
+		assert(ans == stupidAnswer);
+	}
+}
+
+int main() {
+#ifdef NALP_PROJECT
+	freopen("input.txt", "rt", stdin);
+	freopen("output.txt", "wt", stdout);
+#else
+#endif
+
+	p2[0] = 1;
+	for(int i = 1; i < MAXN; i++)
+		p2[i] = (2 * p2[i - 1]) % MOD;
+
+	cout.precision(10);
+	cout.setf(ios::fixed);
+
+	cerr.precision(10);
+	cerr.setf(ios::fixed);
+
+	srand((unsigned int)time(0));
+	int tests = nextInt();
+	clock_t totalStartTime = clock();
+	forn(test, tests) {
+		clock_t startTime = clock();
+		cerr << "Case #" << test + 1 << endl;
+		cout << "Case #" << test + 1 << ": ";
+		solve();
+
+		char formattedTime[100];
+		clock_t time = clock() - startTime;
+		sprintf(formattedTime, "%d.%03d", int(time / CLOCKS_PER_SEC), int(time % CLOCKS_PER_SEC));
+		cerr << "time for test is " << formattedTime << " s." << endl << endl;
+	}
+
+	char formattedTime[100];
+	clock_t totalTime = clock() - totalStartTime;
+	sprintf(formattedTime, "%d.%03d", int(totalTime / CLOCKS_PER_SEC), int(totalTime % CLOCKS_PER_SEC));
+	cerr << string(20, '=') << endl;
+	cerr << "TOTAL TIME IS " << formattedTime << " s." << endl;
+
+	return 0;
+}

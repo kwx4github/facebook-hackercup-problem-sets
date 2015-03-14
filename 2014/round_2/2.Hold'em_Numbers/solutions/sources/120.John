@@ -1,0 +1,157 @@
+// hc holdem jcd
+
+#include <cassert>
+#include <vector>
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+//#include <ext/hash_map>
+//#include <ext/hash_set>
+#include <map>
+#include <set>
+#include <deque>
+#include <queue>
+using namespace std;
+//using namespace __gnu_cxx;
+#define V(x) vector<x >
+#define vs V(string)
+#define vi V(int)
+#define vd V(double)
+#define vll V(long long)
+
+#define fr(x,y,z) for((x)=(y);(x)<(z);(x)++)
+#define fo(x,y) fr(x,0,y)
+#define fir(n) fo(i,n)
+#define fjr(n) fo(j,n)
+#define fkr(n) fo(k,n)
+#define fi fir(n)
+#define fj fjr(n)
+
+#define pb push_back
+#define sz size()
+#define cs c_str()
+#define ll long long
+
+#define pb push_back
+#define cs c_str()
+#define mp(x,y) make_pair((x),(y))
+
+bool debug = false;
+
+
+ll fact(ll n) {
+  if (n<0) return 0;
+  if (n==0) return 1;
+  return n * fact(n-1);
+}
+ll ncr(ll n, ll r) {
+  if (n<0 || r<0 || r>n) return 0;
+  ll ret=1;
+  for (ll i=1;i<=r;i++) ret*=(n+1-i),ret/=i;
+  return ret;
+}
+ll pow2(ll n) {
+  if (n==0) return 1;
+  return 2*pow2(n-1);
+}
+
+
+map<vector<int>, ll> ca;
+
+ll rec_ac(int xmax, int ymax, int lastx, bool ties, int n, int done) {
+  if (!n) return 1;
+
+  vi key(6);
+  key[0]=xmax;
+  key[1]=ymax;
+  key[2]=lastx;
+  key[3]=ties;
+  key[4]=n;
+  key[5]=done;
+  if (ca.count(key)) return ca[key];
+  ll &ret=ca[key];
+
+  int i;
+  fr(i,lastx+1,xmax+1) {
+    const ll maxj = min((i+(ties?1:0)),ymax+1);
+    const ll numj = maxj-1-done;
+
+    ret += numj * rec_ac(xmax,ymax,i,ties,n-1,done+1);
+  }
+  return ret;
+}
+
+ll count_ac(ll x, ll y, ll n) {
+  // choose x1,...xn <=x ;  y1,...yn <= y | y1<x1, y2<x2, ... yn<xn
+
+  return rec_ac(x,y,0,false,n,0);
+}
+ll count_lohi(ll x, ll y, ll n) {  // hi, lo
+  // choose x1,...xn <=x ;  y1,...yn <= y | y1<=x1, y2<=x2, ... yn<=xn
+  return rec_ac(x,y,0,true,n,0);
+}
+ll count_ahi(ll x, ll y, ll n) {
+  // choose x1,...xn <=x ;  y1,...yn <= y
+  return ncr(x,n) * ncr(y,n) * fact(n);
+}
+ll count_hands(ll x, ll n) {
+  // choose any n pairs from 1..x.
+  return ncr(x,n) * ncr(x-n,n) * fact(n) / pow2(n);
+}
+
+
+
+int main(void) {
+  int nc;
+  assert(scanf("%d",&nc)==1);
+  for (int cas=1;cas<=nc;cas++) {
+    int n,h;
+    assert(scanf("%d%d",&n,&h)==2);
+
+    printf("Case #%d: ", cas);
+    int hnum=0;
+    fo(hnum,h) {
+      int c1,c2;
+      assert(scanf("%d%d",&c1,&c2)==2);
+      if(c1>c2) swap(c1,c2);
+      assert(1<=c1); assert(c1<c2); assert(c2<=n);
+
+      const ll numa = c1-1;
+      const ll numc = n-c2;
+      const ll numhi = (c2-c1)/2;
+      const ll numlo = (c2-c1-1)/2;
+
+      ll wins=0;
+      //puts("");
+
+      for (int ac=0;ac<=3;ac++) {
+        const ll ways1=count_ac(numa,numc,ac);
+        for (int lohi=0;ac+lohi<=3;lohi++) {
+          const ll ways2 = ways1 * count_lohi(numhi, numlo, lohi);
+          for (int ahi=0;ac+lohi+ahi<=3;ahi++) {
+            const ll ways3 = ways2 * count_ahi(numa-ac, numhi-lohi, ahi);
+            const ll ways4 = ways3 * count_hands(numa-ac-ahi + numlo-lohi, 3-ac-lohi-ahi);
+            //printf("ac %d  lohi %d  ahi %d  rem %d  w %lld\n",ac,lohi,ahi,3-ac-lohi-ahi,ways4);
+            wins += ways4;
+          }
+        }
+      }
+
+      ll losses = count_hands(n-2,3) - wins;
+
+      //printf("\nc1 %d   c2 %d  numa %lld  numlo %lld  numhi %lld  numc %lld  wins %lld  losses %lld\n",c1,c2,numa,numlo,numhi,numc,wins,losses);
+
+      if (3*wins > losses) {
+        printf("B");
+      } else {
+        printf("F");
+      }
+    }
+    puts("");
+
+  }
+
+
+  return 0;
+}

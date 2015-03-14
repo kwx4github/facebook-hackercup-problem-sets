@@ -1,0 +1,224 @@
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <set>
+#include <map>
+#include <queue>
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cctype>
+#include <list>
+#include <cassert>
+#define rep(i,n) for(int (i)=0;(i)<(int)(n);++(i))
+#define rer(i,l,u) for(int (i)=(int)(l);(i)<=(int)(u);++(i))
+#define reu(i,l,u) for(int (i)=(int)(l);(i)<(int)(u);++(i))
+#if defined(_MSC_VER) || __cplusplus > 199711L
+#define aut(r,v) auto r = (v)
+#else
+#define aut(r,v) typeof(v) r = (v)
+#endif
+#define each(it,o) for(aut(it, (o).begin()); it != (o).end(); ++ it)
+#define all(o) (o).begin(), (o).end()
+#define pb(x) push_back(x)
+#define mp(x,y) make_pair((x),(y))
+#define mset(m,v) memset(m,v,sizeof(m))
+#define INF 0x3f3f3f3f
+#define INFL 0x3f3f3f3f3f3f3f3fLL
+#define EPS 1e-9
+using namespace std;
+typedef vector<int> vi; typedef pair<int,int> pii; typedef vector<pair<int,int> > vpii;
+typedef long long ll; typedef vector<long long> vl; typedef pair<long long,long long> pll; typedef vector<pair<long long,long long> > vpll;
+typedef vector<string> vs; typedef long double ld;
+
+
+typedef int Vertex;
+struct Graph {
+	typedef std::pair<Vertex, Vertex> Edge;
+	struct To {
+		Vertex to;
+	};
+
+	int n, m;
+
+	Graph(int n_, const std::vector<Edge> &edges):
+		n(n_), m(edges.size()), tos(m+1), offsets(n+1, 0) {
+		for(int e = 0; e < m; e ++) offsets[edges[e].first] ++;
+		for(int v = 1; v <= n; v ++) offsets[v] += offsets[v-1];
+		for(int e = 0; e < m; e ++)
+			tos[-- offsets[edges[e].first]].to = edges[e].second;
+	}
+
+	inline const To *edgesBegin(int v) const { return &tos[offsets[v]]; }
+	inline const To *edgesEnd(int v) const { return &tos[offsets[v+1]]; }
+
+	inline const int outDegree(int v) const { return offsets[v+1] - offsets[v]; }
+
+private:
+	std::vector<To> tos;
+	std::vector<int> offsets;
+};
+	
+class SchieberVishkinLCA {
+public:
+	typedef unsigned Word;
+private:
+
+	static inline Word lowestOneBit(Word v) {
+		return v & (~v+1);
+	}
+	static inline Word highestOneBitMask(Word v) {
+		v |= v >> 1;
+		v |= v >> 2;
+		v |= v >> 4;
+		v |= v >> 8;
+		v |= v >> 16;
+		return v >> 1;
+	}
+
+	std::vector<Word> indices;			//Vertex -> index
+	std::vector<Word> maxHIndices;		//Vertex -> index
+	std::vector<Word> ancestorHeights;	//Vertex -> Word
+	std::vector<Vertex> pathParents;	//index-1 -> Vertex
+public:
+	//gは親→子の枝のある根付き木
+	void build(const Graph &g, Vertex root) {
+		assert(g.m == g.n - 1);
+
+		ancestorHeights.resize(g.n);
+		std::vector<Vertex> parents(g.n);
+		maxHIndices.resize(g.n);
+		std::vector<Vertex> vertices; vertices.reserve(g.n);
+		indices.resize(g.n);
+
+		//euler tour
+		Word currentIndex = 1;
+		parents[root] = root;	//利便さのために
+		vertices.push_back(root);
+		while(!vertices.empty()) {
+			Vertex v = vertices.back(); vertices.pop_back();
+			indices[v] = currentIndex ++;
+			for(const Graph::To *it = g.edgesBegin(v); it != g.edgesEnd(v); ++ it) {
+				parents[it->to] = v;
+				vertices.push_back(it->to);
+			}
+		}
+
+		//BFS (トポロジカル順序を求めるために)
+		int head = 0, tail = 1;
+		vertices.resize(g.n); vertices[0] = root;
+		while(head != tail) {
+			Vertex v = vertices[head ++];
+			for(const Graph::To *it = g.edgesBegin(v); it != g.edgesEnd(v); ++ it)
+				vertices[tail ++] = it->to;
+		}
+
+		//深い方から
+		for(std::vector<Vertex>::const_iterator it = vertices.begin(); it != vertices.end(); ++ it)
+			maxHIndices[*it] = indices[*it];
+		for(std::vector<Vertex>::const_reverse_iterator it = vertices.rbegin(); it != vertices.rend(); ++ it) {
+			Vertex v = *it, parent = parents[v];
+			if(lowestOneBit(maxHIndices[parent]) < lowestOneBit(maxHIndices[v]))
+				maxHIndices[parent] = maxHIndices[v];
+		}
+
+		//Aを求める
+		ancestorHeights[root] = 0;
+		for(std::vector<Vertex>::const_iterator it = vertices.begin(); it != vertices.end(); ++ it) {
+			Vertex v = *it;
+			ancestorHeights[v] = ancestorHeights[parents[v]] | lowestOneBit(maxHIndices[v]);
+		}
+
+		pathParents.swap(parents);	//メモリをけちる
+		pathParents[indices[root]-1] = root;
+		for(std::vector<Vertex>::const_iterator it = vertices.begin(); it != vertices.end(); ++ it) {
+			Vertex v = *it;
+			for(const Graph::To *jt = g.edgesBegin(v); jt != g.edgesEnd(v); ++ jt) {
+				if(maxHIndices[v] != maxHIndices[jt->to])
+					pathParents[indices[jt->to]-1] = v;
+				else
+					pathParents[indices[jt->to]-1] = pathParents[indices[v]-1];
+			}
+		}
+	}
+
+	Vertex query(Vertex v, Vertex u) const {
+		//binary tree上でのLCAの高さを求める
+		Word Iv = maxHIndices[v], Iu = maxHIndices[u];
+		Word hIv = lowestOneBit(Iv), hIu = lowestOneBit(Iu);
+		Word hbMask = highestOneBitMask((Iv ^ Iu) | hIv | hIu);
+		Word j = lowestOneBit(ancestorHeights[v] & ancestorHeights[u] & ~hbMask);
+		//j = hI(lca(v,u)) となる (ここで、hI(x) = 2^(complete binary tree上でのI(x)の高さ), I(x) = maxHIndices[x])
+		//(hI(lca(v,u)) = j)はhI(v)かhI(u)かその他の最大値。そして一意であることを考えると…
+		Vertex x, y;
+		if(j == hIv) x = v;
+		else {			//lcaはvのパス上には無い
+			Word kMask = highestOneBitMask(ancestorHeights[v] & (j-1));	//vの祖先で、jよりは低いけどその中で一番上にあるパス
+			x = pathParents[(indices[v] & ~kMask | (kMask+1))-1];	//indices[v]のkの高さの祖先のパスの親
+		}
+		if(j == hIu) y = u;
+		else {			//lcaはuのパス上には無い
+			Word kMask = highestOneBitMask(ancestorHeights[u] & (j-1));	//uの祖先で、jよりは低いけどその中で一番上にあるパス
+			y = pathParents[(indices[u] & ~kMask | (kMask+1))-1];	//indices[u]のkの高さの祖先のパスの親
+		}
+		return indices[x] < indices[y] ? x : y;	//in-orderなので、インデックスが低い方が祖先なはず
+	}
+};
+SchieberVishkinLCA lcat;
+
+int lca(int x, int y) {
+	if(x == -1 || y == -1) return x == -1 ? y : x;
+	return lcat.query(x, y);
+}
+
+template<int MOD>
+struct ModInt {
+	static const int Mod = MOD;
+	unsigned x;
+	ModInt(): x(0) { }
+	ModInt(signed sig) { if((x = sig % MOD + MOD) >= MOD) x -= MOD; }
+	unsigned get() const { return x; }
+	
+	ModInt &operator+=(ModInt that) { if((x += that.x) >= MOD) x -= MOD; return *this; }
+	ModInt &operator-=(ModInt that) { if((x += MOD - that.x) >= MOD) x -= MOD; return *this; }
+	ModInt &operator*=(ModInt that) { x = (unsigned long long)x * that.x % MOD; return *this; }
+	
+	ModInt operator+(ModInt that) const { return ModInt(*this) += that; }
+	ModInt operator-(ModInt that) const { return ModInt(*this) -= that; }
+	ModInt operator*(ModInt that) const { return ModInt(*this) *= that; }
+};
+typedef ModInt<1000000007> mint;
+
+mint dp[5001][5001];
+int A[5000];
+int main() {
+	int T;
+	cin >> T;
+	rep(ii, T) {
+		int N;
+		cin >> N;
+		rep(i, N-1) cin >> A[i+1];
+		vector<pii> edges;
+		reu(i, 1, N) edges.pb(mp(A[i], i));
+		lcat.build(Graph(N, edges), 0);
+
+		mset(dp, 0);
+		dp[0][-1+1] = 1;
+		rep(i, N) reu(j, -1, i) {
+			mint x = dp[i][j+1];
+			if(x.get() == 0) continue;
+			dp[i+1][j+1] += x;
+			dp[i+1][lca(j, i)+1] += x;
+		}
+		mint r = 1;
+		for(int i = 1; i < N; i ++)
+			r *= dp[i][A[i]+1];
+		printf("Case #%d: %d\n", ii+1, r.get());
+	}
+	return 0;
+}

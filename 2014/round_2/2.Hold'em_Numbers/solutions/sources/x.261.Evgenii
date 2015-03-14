@@ -1,0 +1,236 @@
+import java.io.IOException;
+import java.util.Locale;
+import java.util.InputMismatchException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FilenameFilter;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "hold.*em.*numbers.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("hold'emnumbers.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		HoldemNumbers solver = new HoldemNumbers();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class HoldemNumbers {
+
+
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int N = in.nextInt();
+        int H = in.nextInt();
+        StringBuilder ans = new StringBuilder();
+        for(int i=0;i<H;i++) {
+            double prob[] = new double[N+1];
+            for(int j=1;j<=N;j++) {
+                prob[j] = 1.0;
+            }
+            int C1,C2;
+            C1 = in.nextInt();
+            C2 = in.nextInt();
+            prob[C1] = 0.0;
+            prob[C2] = 0.0;
+            int total = 0;
+            int totalLess = 0;
+            int oc[] = new int[N+1];
+            for(int x = 1; x<= N ;x++) {
+                if( x== C1 || x == C2)
+                    continue;;
+                for(int y = x+1 ;y<= N ;y++) {
+                   if(y== C1 || y == C2)
+                       continue;
+                    ++total;
+                   if(x+y<C1+C2) {
+                       ++totalLess;
+                       oc[x]++;
+                       oc[y]++;
+                   }
+                }
+            }
+
+            double p1 = 1.0*totalLess/total;
+            // adjust probabilities
+            for(int x =1;x<=N;x++) {
+                prob[x] -= 1.0*oc[x]/totalLess;
+            }
+
+            double totalProbLess = 0.0;
+            double totalProb = 0.0;
+            double probLessOrEq = 0.0;
+            double localProb[] = new double[N+1];
+
+            for(int x = 1; x<= N ;x++) {
+                if( x== C1 || x == C2)
+                    continue;
+                for(int y = x+1 ;y<= N ;y++) {
+                    if(y== C1 || y == C2)
+                        continue;
+                    double inc =      prob[x]*prob[y];
+                    totalProb+=inc;
+                    if(x+y<C1+C2) {
+                        totalProbLess+=  inc;
+                        localProb[x] += inc;
+                        localProb[y] += inc;
+                    }
+                }
+            }
+
+            double p2 = 1.0*totalProbLess/totalProb;
+            for(int x =1;x<=N;x++) {
+                prob[x] -= 1.0*localProb[x]/totalProbLess;
+            }
+
+
+            totalProbLess = 0.0;
+            totalProb = 0.0;
+
+
+
+            for(int x = 1; x<= N ;x++) {
+                if( x== C1 || x == C2)
+                    continue;
+                for(int y = x+1 ;y<= N ;y++) {
+                    if(y== C1 || y == C2 )
+                        continue;
+                    double inc =      prob[x]*prob[y];
+                    totalProb+=inc;
+                    if(x+y<C1+C2) {
+                        totalProbLess+=  inc;
+                    }
+                }
+            }
+
+            double p3 = totalProbLess/totalProb;
+            double win = p1*p2*p3;
+            if(win*4-(1-win)>=1e-10) {
+                ans.append('B');
+            } else {
+                ans.append('F');
+            }
+        }
+
+        out.println("Case #"+testNumber+": "+ans.toString());
+
+    }
+}
+
+class InputReader {
+
+    private InputStream stream;
+    int curCharIndex = 0;
+    int charsInBuf = 0;
+     byte buf[] = new byte[16*1024];
+
+    public InputReader(InputStream stream) {
+        this.stream = stream;
+    }
+
+
+    public int readChar() {
+
+        if (curCharIndex >= charsInBuf) {
+            curCharIndex = 0;
+            try {
+                charsInBuf = stream.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (charsInBuf <= 0)
+                return -1;
+        }
+        return buf[curCharIndex++];
+    }
+
+
+    public int nextInt() {
+
+        int c;
+        do {
+            c = readChar();
+        }while(isWhitespace(c));
+
+        int sign = 1;
+        if (c == '-') {
+            c = readChar();
+            sign = -1;
+
+        }
+        int res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = readChar();
+        } while (!isWhitespace(c) && c!=-1);
+        return sign * res;
+    }
+
+
+
+
+    public String nextToken() {
+        int c;
+        do {
+            c = readChar();
+        }while(isWhitespace(c));
+
+        StringBuilder res = new StringBuilder();
+        do {
+            res.appendCodePoint(c);
+            c = readChar();
+        } while (!isWhitespace(c) && c!=-1);
+        return res.toString();
+    }
+
+    /*
+    * For the purpose of compatibilty with Chelper Chrome extension
+     */
+
+    public String next() {
+        return nextToken();
+    }
+
+
+
+    private boolean isWhitespace(int c) {
+        return  c==' ' || c=='\n'|| c=='\r' || c=='\t';
+    }
+}
+

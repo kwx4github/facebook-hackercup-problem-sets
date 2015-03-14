@@ -1,0 +1,217 @@
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.File;
+import java.io.Writer;
+import java.io.FilenameFilter;
+import java.util.List;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.NoSuchElementException;
+import java.math.BigInteger;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author ogiekako
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "ski.*resort.*planning.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("skiresortplanning.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		MyScanner in = new MyScanner(inputStream);
+		MyPrintWriter out = new MyPrintWriter(outputStream);
+		SkiResortPlanning solver = new SkiResortPlanning();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class SkiResortPlanning {
+    static int MOD = 1000000007;
+    public void solve(int testNumber, MyScanner in, MyPrintWriter out) {
+        System.err.println("test " + testNumber);
+        int N = in.nextInt();
+        int[] A = new int[N - 1];
+        for (int i = 0; i < N - 1; i++) {
+            A[i] = in.nextInt();
+        }
+        debug(A);
+        long res = solve(A);
+        out.printFormat("Case #%d: %d\n", testNumber, res);
+    }
+    static void debug(Object... os) {
+//        System.out.println(Arrays.deepToString(os));
+    }
+    List<Integer>[] G;
+    long[] dp;
+    long[] size;
+    long[] pow2;
+    private long solve(int[] A) {
+        int N = A.length + 1;
+        //noinspection unchecked
+        G = new List[N];
+        for (int i = 0; i < N; i++) {
+            G[i] = new ArrayList<>();
+        }
+        pow2 = new long[N + 1];
+        for (int i = 0; i < N + 1; i++) {
+            pow2[i] = i == 0 ? 1 : (pow2[i - 1] * 2) % MOD;
+        }
+        long res = 1;
+        for (int i = 1; i < N; i++) {
+            int p = A[i - 1];
+            dp = new long[N];
+            size = new long[N];
+            Arrays.fill(dp, -1);
+            Arrays.fill(size, -1);
+//            debug(G);
+            res = res * f(p) % MOD;
+            G[p].add(i);
+        }
+        return res;
+    }
+    private long f(int v) {
+        if (dp[v] != -1) return dp[v];
+        dp[v] = pow2[(int) sz(v) - 1];
+        if (G[v].size() == 0) return dp[v];
+        long all = pow2[(int) (sz(v) - 1)];
+        all = (all - 1 + MOD) % MOD;
+        for (int u : G[v]) {
+            all = (all - pow2[((int) sz(u))] + 1 + MOD) % MOD;
+        }
+        debug("v", v, all);
+        dp[v] = (dp[v] + all) % MOD;
+        return dp[v];
+    }
+    private long sz(int v) {
+        if (size[v] != -1) return size[v];
+        size[v] = 1;
+        for (int u : G[v]) size[v] += sz(u);
+        return size[v];
+    }
+
+    }
+
+class MyScanner {
+    private final InputStream in;
+
+    public MyScanner(InputStream in) {
+        this.in = in;
+    }
+
+    int bufLen;
+    int bufPtr;
+    byte[] buf = new byte[1024];
+
+    public int read() {
+        if (bufLen == -1)
+            throw new InputMismatchException();
+        if (bufPtr >= bufLen) {
+            bufPtr = 0;
+            try {
+                bufLen = in.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (bufLen <= 0)
+                return -1;
+        }
+        return buf[bufPtr++];
+    }
+
+    private char[] strBuf = new char[65536];
+
+    public String next() {
+        int strLen = 0;
+        int c;
+        do {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        } while (Character.isWhitespace(c));
+        do {
+            if (strLen + 1 >= strBuf.length) {
+                char[] tmp = new char[strBuf.length * 2];
+                System.arraycopy(strBuf, 0, tmp, 0, strBuf.length);
+                strBuf = tmp;
+            }
+            strBuf[strLen++] = (char) c;
+            c = read();
+        } while (c != -1 && !Character.isWhitespace(c));
+        return new String(strBuf, 0, strLen);
+    }
+
+    public int nextInt() {
+        int c = read();
+        if (c == -1) throw new NoSuchElementException();
+        while (c != '-' && (c < '0' || '9' < c)) {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        }
+        if (c == '-') return -nextInt();
+        int res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while ('0' <= c && c <= '9');
+        return res;
+    }
+
+    }
+
+class MyPrintWriter {
+    PrintWriter out;
+
+    public MyPrintWriter(OutputStream outputStream) {
+        out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+    }
+
+    public MyPrintWriter(Writer writer) {
+        out = new PrintWriter(writer);
+    }
+
+    public void close() {
+        out.close();
+    }
+
+    public void printFormat(String format, Object... args) {
+        out.printf(format, args);
+    }
+
+}
+

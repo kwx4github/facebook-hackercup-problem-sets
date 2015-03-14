@@ -1,0 +1,129 @@
+#include <algorithm>
+#include <cassert>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <queue>
+#include <set>
+#include <utility>
+#include <vector>
+
+#ifdef DEBUG
+#define DBGLOG	std::cerr
+#else
+#define DBGLOG	if (0) std::cerr
+#endif
+
+using namespace std;
+
+template <typename ReturnType, typename... Args>
+std::function<ReturnType (Args...)> memoize(std::function<ReturnType (Args...)> func)
+{
+	std::map<std::tuple<Args...>, ReturnType> cache;
+	return ([=](Args... args) mutable  {
+		std::tuple<Args...> t(args...);
+		if (cache.find(t) == cache.end())
+			cache[t] = func(args...);
+		return cache[t];
+	});
+}
+
+
+
+
+bool should_bet(short C1, short C2, short N)
+{
+	if (C2 > C1) {
+		short tmp = C1;
+		C1 = C2;
+		C2 = tmp;
+	}
+
+	int hand = C2 + C1;
+
+	std::vector<short> cards_in_game;
+	for (int i = N; i > 0; --i) {
+		if (i != C1 && i != C2)
+			cards_in_game.push_back(i);
+	}
+
+	int loosecount = 0;
+	int winscount = 0;
+
+	for (int i = 0; i < cards_in_game.size() - 1; ++i) {
+		if (cards_in_game[i] * 2 < hand) {
+			winscount += (cards_in_game.size() - (i + 1));
+			continue;
+		}
+		for (int j = i + 1; j < cards_in_game.size(); ++j) {
+			int st = cards_in_game[i] + cards_in_game[j];
+			if (st > hand) {
+				loosecount++;
+			}
+			else if (cards_in_game[i] > C1) {
+				loosecount++;
+			}
+			else {
+				winscount += (cards_in_game.size() - j);
+				break;
+			}
+		}
+	}
+
+	DBGLOG << "Wins: " << winscount << ", Loose: " << loosecount << std::endl;
+
+	return (winscount > loosecount);
+}
+
+
+
+std::string calculate_bets(const std::vector<std::pair<short, short> >& hands, short N)
+{
+	std::string result;
+
+	for (auto hand : hands) {
+		if (should_bet(hand.first, hand.second, N)) {
+			result = result + "B";
+		}
+		else
+			result = result + "F";
+	}
+
+	assert(result.size() == hands.size());
+	return result;
+}
+
+int main(int argc, char **argv)
+{
+	if (argc < 2) {
+		std::cerr << "Need an input file" << std::endl;
+	}
+	else {
+		std::fstream input;
+		input.open(argv[1], std::fstream::in);
+
+		if (!input.is_open())
+			return -1;
+
+		unsigned num_testcases;
+		input >> num_testcases;
+		for (unsigned i = 1; i <= num_testcases; ++i) {
+			short N, H;
+			input >> N >> H;
+			std::vector<std::pair<short, short> > hands;
+			for (unsigned j = 0; j < H; ++j) {
+				short C1, C2;
+
+				input >> C1 >> C2;
+				hands.push_back(std::make_pair(C1, C2));
+			}
+
+			std::string result = calculate_bets(hands, N);
+
+			std::cout << "Case #" << i << ": " << result << std::endl;
+		}
+	}
+	return 0;
+}

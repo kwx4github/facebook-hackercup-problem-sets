@@ -1,0 +1,240 @@
+import java.io.*;
+
+import java.awt.geom.Point2D;
+import java.text.*;
+import java.math.*;
+import java.util.*;
+
+public class Main implements Runnable {
+
+	final String filename = "holdem_numbers";
+
+	public void solve() throws Exception {
+		int N = iread();
+		int H = iread();
+		StringBuilder ans = new StringBuilder();
+		for (int i = 0; i < H; i++) {
+			int C1 = iread(), C2 = iread();
+			if (C1 > C2) {
+				int C = C1;
+				C1 = C2;
+				C2 = C;
+			}
+			long d1 = res[C1][C2][N];
+			long NN = N;
+			long d2 = (NN - 2) * (NN - 3) * (NN - 4) * (NN - 5) * (NN - 6)
+					* (NN - 7) / 48;
+			if (d1 * 4 > d2) {
+				ans.append('B');
+			} else
+				ans.append('F');
+		}
+		out.write(ans + "\n");
+	}
+
+	int MAXN = 101;
+	long[][][] res;
+
+	void precalc() throws IOException {
+		long t = System.currentTimeMillis();
+		res = new long[MAXN][MAXN][MAXN];
+		long[][] dyn = new long[2][8];
+		for (int a1 = 1; a1 < MAXN; a1++) {
+			for (int a2 = a1 + 1; a2 < MAXN; a2++) {
+				int sum = a1 + a2;
+				for (int b1 = 1; b1 < MAXN && 2 * b1 < sum; b1++)
+					for (int c1 = b1 + 1; c1 < MAXN && 2 * c1 < sum; c1++)
+						for (int d1 = c1 + 1; d1 < MAXN && 2 * d1 < sum; d1++) {
+							if (a1 == b1 || a1 == c1 || a1 == d1 || a2 == b1
+									|| a2 == c1 || a2 == d1)
+								continue;
+							Arrays.fill(dyn[0], 0);
+							dyn[0][0] = 1;
+							int step = 0;
+							for (int i = b1 + 1; i < MAXN; i++) {
+								if (i == a1 || i == a2 || i == b1 || i == c1
+										|| i == d1) {
+									continue;
+								}
+								if (b1 + i > sum || b1 + i == sum && i > a2) {
+									break;
+								}
+								for (int j = 0; j < 8; j++)
+									dyn[step ^ 1][j] = dyn[step][j];
+								for (int j = 0; j < 8; j += 2)
+									dyn[step ^ 1][j | 1] += dyn[step][j];
+								if (c1 + i > sum || c1 + i == sum && i > a2) {
+									res[a1][a2][i] += dyn[step ^ 1][7]
+											- dyn[step][7];
+									step ^= 1;
+									continue;
+								}
+								if (i > c1) {
+									for (int j = 0; j < 8; j++)
+										if ((j & 2) == 0)
+											dyn[step ^ 1][j | 2] += dyn[step][j];
+								}
+								if (d1 + i > sum || d1 + i == sum && i > a2) {
+									res[a1][a2][i] += dyn[step ^ 1][7]
+											- dyn[step][7];
+									step ^= 1;
+									continue;
+								}
+								if (i > d1) {
+									for (int j = 0; j < 4; j++)
+										dyn[step ^ 1][j | 4] += dyn[step][j];
+								}
+								res[a1][a2][i] += dyn[step ^ 1][7]
+										- dyn[step][7];
+								step ^= 1;
+							}
+						}
+				System.out.println(a1 + " " + a2 + " done");
+			}
+		}
+		// BufferedReader test = new BufferedReader(new
+		// FileReader("table2.txt"));
+		FileWriter fw = new FileWriter("table.txt");
+		for (int a1 = 1; a1 < MAXN; a1++)
+			for (int a2 = a1 + 1; a2 < MAXN; a2++) {
+				for (int N = 1; N < MAXN; N++) {
+					res[a1][a2][N] += res[a1][a2][N - 1];
+				}
+				for (int N = 1; N < a2; N++)
+					res[a1][a2][N] = 0;
+				for (int N = a2; N < MAXN; N++)
+					fw.write(res[a1][a2][N] + "\n");
+			}
+		fw.close();
+		t = System.currentTimeMillis() - t;
+		System.out.println("Precalc taken " + t + " ms");
+	}
+
+	int[][][] res2;
+
+	void precalc2() {
+		res2 = new int[MAXN][MAXN][MAXN];
+		int[] test = new int[MAXN];
+		for (int a1 = 1; a1 < MAXN; a1++)
+			for (int a2 = a1 + 1; a2 < MAXN; a2++)
+				for (int b1 = 1; b1 < MAXN; b1++)
+					for (int b2 = b1 + 1; b2 < MAXN
+							&& (b1 + b2 < a1 + a2 || b1 + b2 == a1 + a2
+									&& b2 < a2); b2++)
+						for (int c1 = 1; c1 < MAXN; c1++)
+							for (int c2 = c1 + 1; c2 < MAXN
+									&& (c1 + c2 < a1 + a2 || c1 + c2 == a1 + a2
+											&& c2 < a2); c2++)
+								for (int d1 = 1; d1 < MAXN; d1++)
+									cycle: for (int d2 = d1 + 1; d2 < MAXN
+											&& (d1 + d2 < a1 + a2 || d1 + d2 == a1
+													+ a2
+													&& d2 < a2); d2++) {
+										Arrays.fill(test, 0);
+										test[a1]++;
+										test[a2]++;
+										test[b1]++;
+										test[b2]++;
+										test[c1]++;
+										test[c2]++;
+										test[d1]++;
+										test[d2]++;
+										for (int i = 1; i < MAXN; i++)
+											if (test[i] > 1)
+												continue cycle;
+										int mx = Math.max(a2,
+												Math.max(b2, Math.max(c2, d2)));
+										res2[a1][a2][mx]++;
+									}
+		for (int a1 = 1; a1 < MAXN; a1++)
+			for (int a2 = a1 + 1; a2 < MAXN; a2++)
+				for (int N = a2 + 1; N < MAXN; N++)
+					res2[a1][a2][N] += res2[a1][a2][N - 1];
+	}
+
+	void precalc3() throws IOException {
+		res = new long[MAXN][MAXN][MAXN];
+		BufferedReader test = new BufferedReader(new FileReader("table.txt"));
+		for (int a1 = 1; a1 < MAXN; a1++)
+			for (int a2 = a1 + 1; a2 < MAXN; a2++) {
+				for (int N = a2; N < MAXN; N++)
+					res[a1][a2][N] = Long.parseLong(test.readLine());
+			}
+		test.close();
+	}
+
+	public void stress() throws IOException {
+		precalc();
+		precalc2();
+		cycle: for (int a2 = 1; a2 < MAXN; a2++)
+			for (int a1 = 1; a1 < a2; a1++)
+				for (int N = a2; N < MAXN; N++) {
+					if (res[a1][a2][N] * 6 != res2[a1][a2][N]) {
+						System.out.println("FAIL " + a1 + " " + a2 + " " + N);
+						break cycle;
+					}
+				}
+		System.exit(0);
+	}
+
+	public void run() {
+		// stress();
+		try {
+			precalc3();
+			// in = new BufferedReader(new InputStreamReader(System.in));
+			// out = new BufferedWriter(new OutputStreamWriter(System.out));
+			in = new BufferedReader(new FileReader(filename + ".txt"));
+			out = new BufferedWriter(new FileWriter(filename + ".out"));
+			int tests = iread();
+			for (int test = 1; test <= tests; test++) {
+				out.write("Case #" + test + ": ");
+				solve();
+			}
+			out.flush();
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
+
+	public int iread() throws Exception {
+		return Integer.parseInt(readword());
+	}
+
+	public double dread() throws Exception {
+		return Double.parseDouble(readword());
+	}
+
+	public long lread() throws Exception {
+		return Long.parseLong(readword());
+	}
+
+	BufferedReader in;
+
+	BufferedWriter out;
+
+	public String readword() throws IOException {
+		StringBuilder b = new StringBuilder();
+		int c;
+		c = in.read();
+		while (c >= 0 && c <= ' ')
+			c = in.read();
+		if (c < 0)
+			return "";
+		while (c > ' ') {
+			b.append((char) c);
+			c = in.read();
+		}
+		return b.toString();
+	}
+
+	public static void main(String[] args) {
+		try {
+			Locale.setDefault(Locale.US);
+		} catch (Exception e) {
+
+		}
+		// new Thread(new Main()).start();
+		new Thread(null, new Main(), "1", 1 << 25).start();
+	}
+}

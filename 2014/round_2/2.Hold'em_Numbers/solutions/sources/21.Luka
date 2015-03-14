@@ -1,0 +1,118 @@
+#include <algorithm>
+#include <cstdio>
+#include <vector>
+
+using namespace std;
+
+int a, b;  // a > b
+int c[3];
+int s[3];
+
+bool seen[6][100][101][101];
+double memo[6][100][101][101];
+
+double win(int i, int cards) {
+  if (i == a) return win(i - 1, cards);
+  if (i == b) return win(i - 1, cards);
+
+  int slots = 6 - c[0] - c[1] - c[2];
+  if (slots == 0) return 1.0;
+  
+  bool memoize = (c[0] != 1) || (c[1] != 1) || (c[2] != 1);
+  int ii[4] = {0, 0, 0, 0};
+  if (memoize) {
+    int m = 0;
+    ii[m++] = slots - 1;
+    ii[m++] = i - 1;
+    for (int player = 0; player < 3; ++player) {
+      if (c[player] == 1) ii[m++] = s[player];
+    }
+    if (m > 4) fprintf(stderr, "Bug!\n");
+
+    if (seen[ii[0]][ii[1]][ii[2]][ii[3]]) {
+      return memo[ii[0]][ii[1]][ii[2]][ii[3]];
+    }
+  }
+
+  double ret = 0.0;
+  double prob_pick = (double)slots / cards;
+  for (int player = 0; player < 3; ++player) {
+    if (c[player] == 2) continue;
+    double prob_slot = (double)(2 - c[player]) / slots;
+    c[player] += 1;
+    s[player] += i;
+    bool already_lost = false;
+    if (c[player] == 2) {
+      if (s[player] > a + b) already_lost = true;
+      if (s[player] == a + b && b > i) already_lost = true;
+    }
+    if (!already_lost) {
+      ret += prob_pick * prob_slot * win(i - 1, cards - 1);
+    }
+    c[player] -= 1;
+    s[player] -= i;
+  }
+  if (cards != slots) {
+    ret += (1 - prob_pick) * win(i - 1, cards - 1);
+  }
+
+  if (memoize) {
+    seen[ii[0]][ii[1]][ii[2]][ii[3]] = true;
+    memo[ii[0]][ii[1]][ii[2]][ii[3]] = ret;
+  }
+  return ret;
+}
+
+bool Cmp(pair<int, int> const& a, pair<int, int> const& b) {
+  int a_sum = a.first + a.second;
+  int b_sum = b.first + b.second;
+  if (a_sum != b_sum) return a_sum > b_sum;
+  return a.first > b.first;
+}
+
+int main() {
+  int T;
+  scanf("%d", &T);
+  for (int tt = 1; tt <= T; ++tt) {
+    int N, H;
+    scanf("%d%d", &N, &H);
+    
+    vector<pair<int, int> > candidates;
+    for (int i = 1; i <= N; ++i) 
+      for (int j = i + 1; j <= N; ++j) 
+        candidates.push_back(make_pair(j, i));
+
+    sort(candidates.begin(), candidates.end(), Cmp);
+
+    int lo = 0, hi = candidates.size() - 1;
+    while (lo < hi) {
+      fprintf(stderr, "binary searching: %d %d\n", lo, hi);
+      int mid = (lo + hi + 1) / 2;
+      a = candidates[mid].first;
+      b = candidates[mid].second;
+      memset(seen, 0, sizeof seen);
+      if (win(N, N - 2) > 0.25) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+
+    printf("Case #%d: ", tt);
+    fprintf(stderr, "Case #%d: ", tt);
+    for (int i = 0; i < H; ++i) {
+      scanf("%d%d", &a, &b);
+      if (a < b) swap(a, b);
+      if (Cmp(candidates[lo], make_pair(a, b))) {
+        printf("F");
+        fprintf(stderr, "F");
+      } else {
+        printf("B");
+        fprintf(stderr, "B");
+      }
+    }
+    printf("\n");
+    fprintf(stderr, "\n");
+  }
+  return 0;
+}

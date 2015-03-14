@@ -1,0 +1,372 @@
+// #define PREPROCESS
+
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <ctype.h>
+#include <math.h>
+#include <stdio.h>
+//#include <iostream>
+#include <set>
+//#include <map>
+//#include <sstream>
+
+using namespace std;
+
+typedef long long ll;
+typedef long double ld;
+typedef vector<int> vi;
+typedef vector<int> vll;
+typedef vector<string> vs;
+
+int err;
+char *errs;
+
+#define scanf err=scanf
+#define fgets errs=fgets
+
+//@? 0workset & LS
+#define LS !=
+//@? 0ignoreme
+#undef LS
+//@? 0workset ! LS
+#define LS <
+//@? Size
+#define Size(x) (int(x.size()))
+//@? LET
+#define LET(k,val) __typeof(val) k = (val)
+//@? CLC
+// execute "act", and return "val" as an expression result
+#define CLC(act,val) ([&] () {act; return (val); } ())
+// (*({act; static __typeof(val) CLCR; CLCR = (val); &CLCR;}))
+//@@
+
+//@? 0rangecomm
+// All macros with parameters "k,a,b" run the "k" variable in range [a,b)
+//@? FOR
+#define FOR(k,a,b) for(auto k=(a); k LS (b); ++k)
+//@? FORREV
+// the range is traversed from b-1 to a in FORREV
+#define FORREV(k,a,b) for(auto k=(b); (a) <= (--k);)
+//@@
+
+#define FIRST(k,a,b,cond) CLC(LET(k, a); for(; k LS (b); ++k) if(cond) break, k)
+#define LAST(k,a,b,cond) CLC(LET(k, b); while((a) <= (--k)) if(cond) break, k)
+#define EXISTS(k,a,b,cond) (FIRST(k,a,b,cond) LS (b))
+#define FORALL(k,a,b,cond) (!EXISTS(k,a,b,!(cond)))
+#define FOLD0(k,a,b,init,act) CLC(LET(k, a); LET(R##k, init); for(; k LS (b); ++k) {act;}, R##k)
+#define SUMTO(k,a,b,init,x)  FOLD0(k,a,b,init,R##k += (x))
+#define SUM(k,a,b,x) SUMTO(k,a,b,(__typeof(x)) (0), x)
+#define PRODTO(k,a,b,init,x) FOLD0(k,a,b,init,R##k *= (x))
+#define PROD(k,a,b,x) PRODTO(k,a,b,(__typeof(x)) (1), x)
+#define MAXTO(k,a,b,init,x)  FOLD0(k,a,b,init,R##k >?= (x))
+#define MINTO(k,a,b,init,x)  FOLD0(k,a,b,init,R##k <?= (x))
+#define QXOR(k,a,b,x) FOLD0(k,a,b,(__typeof(x)) (0), R##k ^= x)
+#define QAND(k,a,b,x) FOLD0(k,a,b,(__typeof(x)) (-1), R##k &= x)
+#define QOR(k,a,b,x) FOLD0(k,a,b,(__typeof(x)) (-1), R##k |= x)
+#define FOLD1(k,a,b,init,act) CLC(LET(k, a); LET(R##k, init); for(++k; k LS (b); ++k) act, R##k)
+#define MAX(k,a,b,x) FOLD1(k,a,b,x, R##k >?= (x))
+#define MIN(k,a,b,x) FOLD1(k,a,b,x, R##k <?= (x))
+#define FIRSTMIN(k,a,b,x) (MIN(k,a,b,make_pair(x,k)).second)
+
+int bitc(ll r) {return r == 0 ? 0 : (bitc(r>>1) + (r&1));}
+ll gcd(ll x, ll y) {return x ? gcd(y%x,x) : y;}
+
+// template<class T> T& operator >?= (T& x, T y) {if(y>x) x=y; return x;}
+// template<class T> T& operator <?= (T& x, T y) {if(y<x) x=y; return x;}
+// template<class T> T operator >? (T x, T y) {return x>y?x:y;}
+// template<class T> T operator <? (T x, T y) {return x<y?x:y;}
+
+#define Pa(xy) ((xy).first)
+#define Ir(xy) ((xy).second)
+
+string cts(char c) {string s=""; s+=c; return s;}
+
+/// ----
+
+#define BUFSIZE 1000000
+char buf[BUFSIZE];
+
+#ifdef DEBUG
+#define DEB(x) x
+#else
+#define DEB(x)
+#endif
+
+string getLine() {
+  string s;
+  while(!feof(stdin)) {
+    char c = fgetc(stdin);
+    if(c == 13) continue;
+    if(c == 10) return s;
+    s += c;
+    }
+  return s;
+  }
+
+int getNum() {
+  string s = getLine();
+  return atoi(s.c_str());
+  }
+
+vi parsevi(string s) {
+  s = s + " ";
+  int q = 0;
+  bool minus = false;
+  vi res;
+  FOR(l,0, Size(s)) {
+    if(s[l] == ' ') { res.push_back(minus?-q:q); q = 0; minus = false;}
+    else if(s[l] == '-') { minus = true; }
+    else { q = q * 10 + s[l] - '0'; }
+    }
+  return res;
+  }
+
+int Tests, cnum;
+
+//Eryx
+
+// !FDI
+
+bool had[200];
+
+bool worse(int a, int b, int ma, int mb) {
+  if(a+b < ma+mb) return true;
+  if(a+b > ma+mb) return false;
+  return a < ma;
+  }
+
+bool worse2(int a, int b, int ma, int mb) {
+  if(a<b) swap(a,b);
+  if(a+b < ma+mb) return true;
+  if(a+b > ma+mb) return false;
+  return a < ma;
+  }
+
+int qbetter[100][100], qbetteru[100][100][100];
+
+vector<pair<int,int>> pairs;
+
+bool pworse(pair<int,int> p1, pair<int, int> p2) {
+  return worse(p1.first, p1.second, p2.first, p2.second);
+  }
+
+void generateTable(int MAXV) {
+  FOR(a,0,MAXV) FOR(b,0,MAXV) FOR(c,0,MAXV) 
+    qbetter[a][b] = qbetteru[a][b][c] = 0;
+  FOR(c5,0,MAXV) FOR(c6,0,c5) {
+    had[c5] = true; had[c6] = true;
+    FOR(c7,0,MAXV) if(!had[c7]) FOR(c8,0,c7) if(!had[c8]) if(worse(c7,c8,c5,c6))
+      qbetter[c5][c6]++,
+      qbetteru[c5][c6][c7]++,
+      qbetteru[c5][c6][c8]++;
+    had[c5] = false; had[c6] = false;
+    }
+    
+  FOR(c1,0,MAXV) FOR(c2,0,c1) pairs.push_back(make_pair(c1, c2));
+  sort(pairs.begin(), pairs.end(), pworse);
+  
+  // FOR(u,0,Size(pairs)) printf("%d %d\n", pairs[u].first, pairs[u].second);
+  
+  int u1 = 0, u2 = Size(pairs);
+  // u1 = fail, u2 = bet
+  
+  while(u1+1 != u2) {
+    int u = (u1+u2) / 2;
+  
+    int c1 = pairs[u].first; int c2 = pairs[u].second;
+    ll sc = 0, scchk = 0;
+    had[c1] = had[c2] = true;
+    FOR(c3,0,MAXV) if(!had[c3]) FOR(c4,0,c3) if(!had[c4]) if(worse(c3,c4, c1,c2)) {
+      had[c3] = true; had[c4] = true;
+      FOR(c5,0,MAXV) if(!had[c5]) FOR(c6,0,c5) if(!had[c6]) if(worse(c5,c6, c3, c4)) {
+/*      had[c5] = true; had[c6] = true;
+        FOR(c7,0,MAXV) if(!had[c7]) FOR(c8,0,c7) if(!had[c8]) if(worse(c7,c8, c5, c6)) {
+          printf("%d,%d %d,%d %d,%d %d,%d\n", c1,c2, c3,c4, c5,c6, c7,c8);
+          scchk++;
+          }
+        had[c5] = false; had[c6] = false;
+*/      sc += qbetter[c5][c6];
+        sc -= qbetteru[c5][c6][c1];
+        sc -= qbetteru[c5][c6][c2];
+        sc -= qbetteru[c5][c6][c3];
+        sc -= qbetteru[c5][c6][c4];
+        if(worse2(c1,c2,c5,c6)) sc++;
+        if(worse2(c1,c3,c5,c6)) sc++;
+        if(worse2(c1,c4,c5,c6)) sc++;
+        if(worse2(c2,c3,c5,c6)) sc++;
+        if(worse2(c2,c4,c5,c6)) sc++;
+        if(worse2(c3,c4,c5,c6)) sc++;
+        }
+      had[c3] = false; had[c4] = false;
+      }
+    had[c1] = had[c2] = false;
+//  if(sc != scchk) printf("CHECK ERROR\n");
+
+    ll N = MAXV;
+    ll all = ((N-2) * ll(N-3) * ll(N-4) * ll(N-5) * ll(N-6) * ll(N-7)) / 48;
+    if(sc*4 > all) u2 = u; else u1 = u;
+    // { printf("%6d: %d {%4d,%4d,%4d}\n", u, sc*4>all, MAXV, c1, c2); }
+    // printf("b"); else printf("f");
+
+    // printf("{%4d,%4d,%4d,%12Ld},\n", MAXV, c1, c2, sc);
+    }
+
+  int u = u2;
+  int c1 = pairs[u].first; int c2 = pairs[u].second;
+  printf("{%4d,%4d,%4d},\n", MAXV, c1, c2); 
+  }
+
+void generateTable() {
+  for(int MAXV=8; MAXV<=100; MAXV++) generateTable(MAXV);
+  // generateTable(12);
+  exit(0);
+  }
+
+#ifndef PREPROCESS
+ll chart[][3] = {
+//#include "poker-table"
+{   8,   7,   1},
+{   9,   8,   1},
+{  10,   7,   4},
+{  11,   8,   4},
+{  12,   9,   4},
+{  13,  11,   3},
+{  14,  12,   3},
+{  15,  14,   2},
+{  16,  15,   2},
+{  17,  11,   8},
+{  18,  13,   7},
+{  19,  14,   7},
+{  20,  16,   6},
+{  21,  18,   5},
+{  22,  20,   4},
+{  23,  22,   3},
+{  24,  15,  12},
+{  25,  17,  11},
+{  26,  19,  10},
+{  27,  21,   9},
+{  28,  23,   8},
+{  29,  26,   6},
+{  30,  28,   5},
+{  31,  19,  16},
+{  32,  22,  14},
+{  33,  24,  13},
+{  34,  27,  11},
+{  35,  29,  10},
+{  36,  32,   8},
+{  37,  35,   6},
+{  38,  23,  20},
+{  39,  26,  18},
+{  40,  28,  17},
+{  41,  32,  14},
+{  42,  34,  13},
+{  43,  38,  10},
+{  44,  41,   8},
+{  45,  27,  24},
+{  46,  30,  22},
+{  47,  33,  20},
+{  48,  37,  17},
+{  49,  40,  15},
+{  50,  44,  12},
+{  51,  47,  10},
+{  52,  51,   7},
+{  53,  34,  26},
+{  54,  37,  24},
+{  55,  41,  21},
+{  56,  45,  18},
+{  57,  49,  15},
+{  58,  53,  12},
+{  59,  58,   8},
+{  60,  38,  30},
+{  61,  41,  28},
+{  62,  46,  24},
+{  63,  50,  21},
+{  64,  55,  17},
+{  65,  59,  14},
+{  66,  64,  10},
+{  67,  41,  35},
+{  68,  46,  31},
+{  69,  50,  28},
+{  70,  55,  24},
+{  71,  60,  20},
+{  72,  65,  16},
+{  73,  70,  12},
+{  74,  45,  39},
+{  75,  50,  35},
+{  76,  55,  31},
+{  77,  60,  27},
+{  78,  65,  23},
+{  79,  70,  19},
+{  80,  76,  14},
+{  81,  48,  44},
+{  82,  53,  40},
+{  83,  59,  35},
+{  84,  64,  31},
+{  85,  70,  26},
+{  86,  76,  21},
+{  87,  82,  16},
+{  88,  52,  48},
+{  89,  57,  44},
+{  90,  63,  39},
+{  91,  69,  34},
+{  92,  75,  29},
+{  93,  81,  24},
+{  94,  88,  18},
+{  95,  94,  13},
+{  96,  61,  48},
+{  97,  67,  43},
+{  98,  73,  38},
+{  99,  80,  32},
+{ 100,  86,  27},
+  {200,4,4}
+  };
+
+int N, H;
+
+void solveCase() {
+  scanf("%d%d", &N, &H);
+  string res;
+  FOR(h,0,H) {
+    int C1, C2;
+    scanf("%d%d", &C1, &C2);
+    C1--; C2--;
+    if(C1 < C2) swap(C1, C2);
+    int pos = 0;
+    while(chart[pos][0] != N) pos++;
+    int good1 = chart[pos][1], good2 = chart[pos][2];
+    if(C1 == good1 && C2 == good2) res += "B";
+    else if(worse(good1,good2,C1,C2)) res += "B";
+    else res += "F";
+    }
+  printf("Case #%d: %s\n", cnum, res.c_str());
+  }
+#endif
+
+int main() {
+
+#ifdef PREPROCESS
+  generateTable();
+#endif
+
+#ifndef PREPROCESS
+  if(0)
+    Tests = 1;
+  else if(1)
+    scanf("%d\n", &Tests);
+  else {
+    string Nstr = getLine();
+    Tests = atoi(Nstr.c_str());
+    }
+  
+  for(cnum=1; cnum<=Tests; cnum++)
+    solveCase();
+#endif
+
+  // finish
+  return 0;
+  }
+
+// This solution includes hidden routines to solve test cases in separate
+// processes in order to make it faster. I will update them to run on a
+// cluster if I get one ;)

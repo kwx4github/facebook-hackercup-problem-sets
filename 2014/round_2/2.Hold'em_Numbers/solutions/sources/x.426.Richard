@@ -1,0 +1,138 @@
+#!/usr/bin/env python
+
+import pdb
+import re
+import sys
+
+from collections import Counter
+
+sys.setrecursionlimit(10000)
+
+INPUT = "tiny"
+if 1:
+    INPUT = "holdem_numbers.txt"
+
+def log(*args):
+    pass
+
+def log(*args):
+    sys.stderr.write(str(args) + "\n")
+
+def hands_won(N, hand):
+    deck = [d for d in range(1,N) if d not in hand]
+    my_total = sum(hand)
+
+def win_count_exceeds_K(N, dealt_array, my_hand, K, remaining_hands=3):
+    if remaining_hands == 0:
+        return 1
+    # figure out how many ways there are to win with this hand and this remaining deck
+    SUM = sum(hand)
+    MAX = max(my_hand)
+    count = 0
+    for c1 in xrange(1, N+1):
+        if dealt_array[c1]: continue
+        for c2 in xrange(c1+1, N+1):
+            if dealt_array[c2]: continue
+            t = c1 + c2
+            if t > SUM or (t==SUM and c2 > MAX):
+                count += 1
+    return count
+
+    for i1, c1 in enumerate(deck):
+        for i2, c2 in enumerate(deck[i1+1:]):
+            if c1 + c2 == SUM:
+                if c2 < max(hand):
+                    losers += 1
+                    log("%s lose to %d, %d" % (hand, c1, c2))
+            if c1 + c2 > SUM:
+                losers += len(deck) - i2 - i1 - 1
+                log("%s lose to %d starting at %d (%d hands)" % (hand, c1, c2, len(deck) - i2 - i1 - 1))
+                break
+    return losers
+
+def lose_count(deck, hand):
+    # figure out how many ways there are to lose with this hand and this deck
+    SUM = sum(hand)
+    losers = 0
+    for i1, c1 in enumerate(deck):
+        for i2, c2 in enumerate(deck[i1+1:]):
+            if c1 + c2 == SUM:
+                if c2 > max(hand):
+                    losers += 1
+                    log("%s lose to %d, %d" % (hand, c1, c2))
+            if c1 + c2 > SUM:
+                losers += len(deck) - i2 - i1 - 1
+                log("%s lose to %d starting at %d (%d hands)" % (hand, c1, c2, len(deck) - i2 - i1 - 1))
+                break
+    return losers
+
+def all_hands(N):
+    def rank(h):
+        return sum(h), max(h)
+    v = [(x,y) for x in range(1,N+1) for y in range(x+1,N+1)]
+    v.sort(key=rank)
+    return v
+
+def beats(h1, h2):
+    def rank(h):
+        return sum(h), max(h)
+    return rank(h1) > rank(h2)
+
+def remaining(hands, *args):
+    for h in hands:
+        #pdb.set_trace()
+        for a in args:
+            if h[0] in a or h[1] in a:
+                break
+        else:
+            yield h
+
+def test(N):
+    ALL = all_hands(N)
+    first_idx = None
+    for idx, my_hand in enumerate(ALL):
+        win_count = 0
+        all_count = 0
+        for o1 in remaining(ALL, my_hand):
+            for o2 in remaining(ALL, my_hand, o1):
+                for o3 in remaining(ALL, my_hand, o1, o2):
+                    all_count += 1
+                    if all(beats(my_hand, o) for o in (o1,o2,o3)):
+                        win_count += 1
+        prob = win_count/float(all_count)
+        if prob >= 0.25 and first_idx is None:
+            first_idx = idx
+        #print my_hand, win_count, all_count, win_count/float(all_count)
+    print "first_idx = %s out of %d (%f)" % (first_idx, len(ALL), float(first_idx)/len(ALL))
+    m1 = float(first_idx-1)/len(ALL)
+    m2 = float(first_idx+1)/len(ALL)
+    print "between %s and %s" % (m1, m2)
+
+def print_N():
+    for N in range(8,20):
+        print "N=", N
+        test(N)
+
+MAGIC_NUMBER = 0.647619 # probably wrong. But I bet such a number exists.
+
+def should_bet(ALL, hand):
+    hand = tuple(sorted(hand))
+    idx = ALL.index(hand)
+    if float(idx)/len(ALL) > MAGIC_NUMBER:
+        return "B"
+    return "F"
+
+def do_trial(N, hands):
+    ALL = all_hands(N)
+    return ''.join(should_bet(ALL, hand) for hand in hands)
+
+f = file(INPUT)
+T = int(f.readline()[:-1])
+for i in range(T):
+    N, H = (int(x) for x in f.readline().split())
+    hands = []
+    for j in range(H):
+        hands.append([int(x) for x in f.readline().split()])
+    v = do_trial(N, hands)
+    #sys.stderr.write("%d\n" % i)
+    print "Case #%d: %s" % (i+1, v)

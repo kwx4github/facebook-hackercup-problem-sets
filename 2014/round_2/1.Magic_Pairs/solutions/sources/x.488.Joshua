@@ -1,0 +1,114 @@
+#include <algorithm>
+#include <iostream>
+#include <stack>
+#include <unordered_map>
+#include <unordered_set>
+
+using namespace std;
+
+typedef unsigned long long ULL;
+
+ULL board1[1500000];
+ULL board2[1500000];
+unordered_map<ULL, int> first_occurrence1;
+unordered_map<ULL, int> first_occurrence2;
+unordered_set<ULL> used;
+
+int main() {
+  int t; cin >> t;
+  for (int test = 1; test <= t; ++test) {
+    int n, m; cin >> n >> m;
+    ULL x1, a1, b1, c1, r1;
+    ULL x2, a2, b2, c2, r2;
+    cin >> x1 >> a1 >> b1 >> c1 >> r1;
+    cin >> x2 >> a2 >> b2 >> c2 >> r2;
+
+    board1[0] = x1;
+    board2[0] = x2;
+    for (int i = 1; i < max(n, m); ++i) {
+      if (i < n) {
+        board1[i] = (a1 * board1[(i-1) % n] + b1 * board2[(i-1) % m] + c1) % r1;
+      }
+      if (i < m) {
+        board2[i] = (a2 * board1[(i-1) % n] + b2 * board2[(i-1) % m] + c2) % r2;
+      }
+    }
+
+    ULL magic_pairs = 0;
+
+    used.clear();
+    first_occurrence1.clear();
+    first_occurrence2.clear();
+    for (int i = n; i >= 0; --i) {
+      first_occurrence1[board1[i]] = i;
+    }
+    for (int i = m; i >= 0; --i) {
+      first_occurrence2[board2[i]] = i;
+    }
+
+    stack<ULL> pending1;
+    stack<ULL> pending2;
+    int i1 = -1, i2 = -1;
+    bool done = false;
+    while (!done && i1 + 1 < n && i2 < m) {
+      i1++;
+      pending2.push(board1[i1]);
+      while (!pending1.empty() || !pending2.empty()) {
+        if (!pending1.empty()) {
+          int curr = pending1.top(); pending1.pop();
+          if (!first_occurrence1.count(curr)) {
+            done = true;
+            break;
+          }
+          int index1 = first_occurrence1[curr];
+          while (i1 < index1) {
+            i1++;
+            if (!used.count(board1[i1])) {
+              pending2.push(board1[i1]);
+              used.insert(board1[i1]);
+            }
+          }
+          if (i1 >= n) {
+            done = true;
+            break;
+          }
+        }
+        if (!pending2.empty()) {
+          int curr = pending2.top(); pending2.pop();
+          if (!first_occurrence2.count(curr)) {
+            done = true;
+            break;
+          }
+          int index2 = first_occurrence2[curr];
+          while (i2 < index2) {
+            i2++;
+            if (!used.count(board2[i2])) {
+              pending1.push(board2[i2]);
+              used.insert(board2[i2]);
+            }
+          }
+          if (i2 >= m) {
+            done = true;
+            break;
+          }
+        }
+      }
+      if (!done) {
+        int length1 = 1;
+        while (i1 + 1 < n && used.count(board1[i1+1])) {
+          i1++;
+          length1++;
+        }
+        int length2 = 1;
+        while (i2 + 1 < m && used.count(board2[i2+1])) {
+          i2++;
+          length2++;
+        }
+        magic_pairs += length1 * length2;
+      }
+    }
+
+    cout << "Case #" << test << ": " << magic_pairs << endl;
+  }
+  return 0;
+}

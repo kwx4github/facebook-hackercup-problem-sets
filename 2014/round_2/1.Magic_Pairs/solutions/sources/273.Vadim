@@ -1,0 +1,156 @@
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.io.File;
+import java.util.TreeSet;
+import java.util.StringTokenizer;
+import java.io.FilenameFilter;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Vadim Semenov
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = ".*magic.*pairs.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("magicpairs.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		MagicPairs solver = new MagicPairs();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class MagicPairs {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        int m = in.nextInt();
+        int x1 = in.nextInt();
+        int a1 = in.nextInt();
+        int b1 = in.nextInt();
+        int c1 = in.nextInt();
+        int r1 = in.nextInt();
+        int x2 = in.nextInt();
+        int a2 = in.nextInt();
+        int b2 = in.nextInt();
+        int c2 = in.nextInt();
+        int r2 = in.nextInt();
+        long[] board1 = new long[n];
+        long[] board2 = new long[m];
+        board1[0] = x1;
+        board2[0] = x2;
+        for (int i = 1; i < Math.max(n, m); i++) {
+            if (i < n)
+                board1[i] = (a1 * board1[(i - 1) % n] + b1 * board2[(i - 1) % m] + c1) % r1;
+            if (i < m)
+                board2[i] = (a2 * board1[(i - 1) % n] + b2 * board2[(i - 1) % m] + c2) % r2;
+        }
+        long[] all = new long[n + m];
+        System.arraycopy(board1, 0, all, 0, board1.length);
+        System.arraycopy(board2, 0, all, board1.length, board2.length);
+        Arrays.sort(all);
+        int cnt = 1;
+        for (int i = 0; i + 1 < all.length; i++)
+            if (all[i] != all[i + 1])
+                cnt++;
+        long[] code = new long[cnt];
+        cnt = 0;
+        code[cnt++] = all[0];
+        for (int i = 0; i + 1 < all.length; i++) {
+            if (all[i] != all[i + 1])
+                code[cnt++] = all[i + 1];
+        }
+        for (int i = 0; i < n; i++) board1[i] = Arrays.binarySearch(code, board1[i]);
+        for (int i = 0; i < m; i++) board2[i] = Arrays.binarySearch(code, board2[i]);
+        Arrays.fill(code, -1);
+        cnt = 0;
+        for (int i = 0; i < n; i++) if (code[(int) board1[i]] == -1) code[(int) board1[i]] = cnt++;
+        for (int i = 0; i < m; i++) if (code[(int) board2[i]] == -1) code[(int) board2[i]] = cnt++;
+        for (int i = 0; i < n; i++) board1[i] = code[(int) board1[i]];
+        for (int i = 0; i < m; i++) board2[i] = code[(int) board2[i]];
+        int[] length1 = new int[cnt];
+        int[] length2 = new int[cnt];
+        int[] max = new int[n];
+        max[0] = (int) board1[0];
+        length1[max[0]]++;
+        for (int i = 1; i < n; i++) {
+            max[i] = (int) Math.max(max[i - 1], board1[i]);
+            length1[max[i]]++;
+        }
+        Set<Integer> set = new TreeSet<>();
+        int maximum = -1;
+        for (int i = 0; i < m; i++) {
+            set.add((int) board2[i]);
+            maximum = Math.max(maximum, (int) board2[i]);
+            if (set.size() == maximum + 1) length2[maximum]++;
+        }
+        long answer = 0;
+        for (int i = 0; i < cnt; i++) {
+            answer += 1L * length1[i] * length2[i];
+        }
+        System.err.println(testNumber + " ok");
+        out.println("Case #" + testNumber + ": " + answer);
+    }
+}
+
+class InputReader {
+    private static BufferedReader bufferedReader;
+    private static StringTokenizer stringTokenizer;
+
+    public InputReader(InputStream inputStream) {
+        bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+    }
+
+    public String next() {
+        while (stringTokenizer == null || !stringTokenizer.hasMoreTokens()) {
+            try {
+                stringTokenizer = new StringTokenizer(bufferedReader.readLine());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return stringTokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+    }
+

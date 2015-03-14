@@ -1,0 +1,172 @@
+#include<fstream>
+#include<set>
+#include<map>
+#include<iostream>
+using namespace std;
+
+int T, N, H, t, h;
+int TC1, TC2;
+pair<int, int> hands[100005];
+
+double denom;
+
+ifstream fin("holdem.in");
+ofstream fout("holdem.out");
+
+bool cmp(pair<int, int> a, pair<int, int> b){
+    int asum = a.first + a.second;
+    int bsum = b.first + b.second;
+    
+    if(a < b) return true;
+    if(a > b) return false;
+    
+    int amax = max(a.first, a.second);
+    int bmax = max(b.first, b.second);
+
+    if(amax < bmax) return true;
+    return false;
+}
+
+bool good_enough(int X, int Y){
+    int C1 = max(X, Y);
+    int C2 = min(X, Y);
+    
+    if(C1 + C2 > TC1 + TC2) return true;
+    if(C1 + C2 < TC1 + TC2) return false;
+    
+    if(C1 >= TC1) return true;
+    return false;
+}
+
+int upper_bound(int X, int Y, int C1){
+    int upp = X+Y - C1;
+    if(max(C1, upp) > max(X, Y)) upp--;
+    upp = min(max(upp, 0), N);
+    return upp;
+}
+
+bool beats25(pair<int, int> hand){
+    int X = max(hand.first, hand.second);
+    int Y = min(hand.first, hand.second);
+
+    double ldistro = 0;
+    
+    for(int C1 = 1; C1 <= N; C1++){
+        if(C1 == X || C1 == Y) continue;
+        int UU1 = upper_bound(X, Y, C1);
+        for(int C2 = 1; C2 <= N; C2++){
+            if(C2 == X || C2 == Y || C2 == C1) continue;
+            int UU2 = upper_bound(X, Y, C2);
+            for(int C3 = 1; C3 <= N; C3++){
+                if(C3 == X || C3 == Y || C3 == C2 || C3 == C1) continue;
+                
+                int UU3 = upper_bound(X, Y, C3);
+                int ups[3] = {UU1, UU2, UU3};
+                sort(ups, ups+3);
+                
+                int U1 = ups[0];
+                int U2 = ups[1];
+                int U3 = ups[2];
+                
+                //fout << "Counting ways for " << C1 << " " << C2 << " " << C3 << endl;
+                //fout << "Upper bounds are " << U1 << " " << U2 << " " << U3 << endl;
+                
+                int tdistro = 1;
+                int blocked = 0;
+                
+                if(X <= U1) blocked ++;
+                if(Y <= U1) blocked ++;
+                if(C1 <= U1) blocked ++;
+                if(C2 <= U1) blocked ++;
+                if(C3 <= U1) blocked ++;
+                
+                //fout << "b1: " << blocked << endl;
+                
+                if(U1 <= blocked) tdistro *= 0;
+                else tdistro *= U1 - blocked;
+                blocked ++;
+                
+                if(X > U1 && X <= U2) blocked ++;
+                if(Y > U1 && Y <= U2) blocked ++;
+                if(C1 > U1 && C1 <= U2) blocked ++;
+                if(C2 > U1 && C2 <= U2) blocked ++;
+                if(C3 > U1 && C3 <= U2) blocked ++;
+                
+                //fout << "b2 : " << blocked << endl;
+                
+                if(U2 <= blocked) tdistro *= 0;
+                else tdistro *= U2 - blocked;
+                blocked ++;
+                
+                if(X > U2 && X <= U3) blocked ++;
+                if(Y > U2 && Y <= U3) blocked ++;
+                if(C1 > U2 && C1 <= U3) blocked ++;
+                if(C2 > U2 && C2 <= U3) blocked ++;
+                if(C3 > U2 && C3 <= U3) blocked ++;
+                
+                //fout << U3 << " " << "b3 : " << blocked << endl;
+                
+                if(U3 <= blocked) tdistro *= 0;
+                else tdistro *= U3 - blocked;
+                blocked ++;
+                
+                //fout << tdistro << endl;
+                
+                ldistro += tdistro;
+            }
+        }
+    }
+    
+    //fout << "With " << N << " cards " << X << " " << Y << " gives a " << ldistro/denom << " chance of winning" << endl;
+    
+    return ldistro/denom > 0.25;
+}
+
+void find25(){
+    int best = h-1;
+    int low = 0;
+    int high = h-2;
+    int mid;
+    
+    while(low <= high){
+        mid = (low+high)/2;
+        if(beats25(hands[mid])){
+            best = min(best, mid);
+            high = mid-1;
+        }
+        else{
+            low = mid+1;
+        }
+    }
+    
+    TC1 = max(hands[best].first, hands[best].second);
+    TC2 = min(hands[best].first, hands[best].second);
+}
+
+int main(){
+    for(fin >> T; T; T--){
+        fout << "Case #" << ++t << ": ";
+        fin >> N >> H;
+        h = 0;
+        
+        denom = (N-2.0)*(N-3)*(N-4)*(N-5)*(N-6)*(N-7);
+        
+        for(int c1=1; c1<=N; c1++)
+            for(int c2=1; c2<=N; c2++){
+                if(c1 == c2) continue;
+                hands[h++] = make_pair(c1, c2);
+            }
+            
+        sort(hands, hands+h, cmp);
+        find25();
+        
+        for(int q=0; q<H; q++){
+            int c1, c2;
+            fin >> c1 >> c2;
+            if(good_enough(c1, c2)) fout << "B";
+            else fout << "F";
+        }
+        
+        fout << endl;
+    }
+}

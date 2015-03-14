@@ -1,0 +1,220 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#include <algorithm>
+#include <string>
+#include <set>
+#include <map>
+#include <vector>
+#include <queue>
+#include <iostream>
+#include <iterator>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <sstream>
+#include <fstream>
+#include <process.h>
+#include <windows.h>
+#include <ctime>
+#include <cstring>
+#include <functional>
+#pragma comment(linker, "/STACK:67108864")
+using namespace std;
+#define pb push_back
+#define ppb pop_back
+#define pi 3.1415926535897932384626433832795028841971
+#define mp make_pair
+#define x first
+#define y second
+#define pii pair<int,int>
+#define pdd pair<double,double>
+#define INF 1000000000
+#define FOR(i,a,b) for (int _n(b), i(a); i <= _n; i++)
+#define FORD(i,a,b) for(int i=(a),_b=(b);i>=_b;i--)
+#define all(c) (c).begin(), (c).end()
+#define SORT(c) sort(all(c))
+#define rep(i,n) FOR(i,1,(n))
+#define rept(i,n) FOR(i,0,(n)-1)
+#define L(s) (int)((s).size())
+#define C(a) memset((a),0,sizeof(a))
+#define VI vector <int>
+#define ll long long
+
+
+int numThreads = 0;
+int HOD;
+const int _maxNumberOfThreads = 4;
+const int _maxNumberOfTests = 101;
+bool threadsUsed[_maxNumberOfThreads];
+HANDLE nowRunning[_maxNumberOfThreads];
+struct Answer {
+	int numberOfTest;
+	ll ans;
+	inline void output() {
+		//printf("Case #%d: %d\n", numberOfTest + 1, ans);
+		cout << "Case #" << numberOfTest + 1 << ": " << ans << endl;
+	}
+};
+
+int fpow(int a, int st, int mod) {
+	int ans = 1;
+	while (st) {
+		if (st % 2) ans = (ll)ans * a % mod;
+		a = (ll)a * a % mod;
+		st /= 2;
+	}
+	return ans;
+}
+const int ms = (1 << 30) - 1;
+struct Solver {
+	int _numberOfThread;
+	Answer *pAns;
+	int n, m;
+	int x1, a1, b1, c1, r1;
+	int x2, a2, b2, c2, r2;
+	int board1[1000002], board2[1000002];
+	ll ph1[1000002], ph2[1000002];
+	int mod1, mod2;
+	inline void readInput() {
+		scanf("%d%d", &n, &m);
+		scanf("%d%d%d%d%d", &x1, &a1, &b1, &c1, &r1);
+		scanf("%d%d%d%d%d", &x2, &a2, &b2, &c2, &r2);
+	}
+	inline bool prime(int a) {
+		if (a == 1) return 0;
+		for (int i = 2; i * i <= a; ++i) {
+			if (a % i == 0) return 0;
+		}
+		return 1;
+	}
+
+	void gen_ph(int *board, int n, ll *res) {
+		set<int> was;
+		rept(i, n) {
+			int s1 = 0, s2 = 0;
+			if (i) {
+				s1 = res[i - 1] >> 30;
+				s2 = res[i - 1] & ms;
+			}
+			if (!was.count(board[i])) {
+				was.insert(board[i]);
+				s1 = (s1 + fpow(10000019, (board[i] ^ 2654111) + 100000191, mod1)) % mod1;
+				s2 = (s2 + fpow(133177, ((board[i] + 333) ^ 2154111) + 1111, mod2)) % mod2;
+			}
+			res[i] = ((ll)s1 << 30) + s2;
+		}
+	}
+	void run() {
+		// put an answer into pAns
+		board1[0] = x1;
+		board2[0] = x2;
+		rep(i, max(n, m) - 1) {
+			board1[i] = ((ll)a1 * board1[(i + n - 1) % n] + (ll)b1 * board2[(i + m - 1) % m] + c1) % r1;
+			board2[i] = ((ll)a2 * board1[(i + n - 1) % n] + (ll)b2 * board2[(i + m - 1) % m] + c2) % r2;
+		}
+		
+		srand(25091992 ^ 1234567891);
+		mod1 = INF - ((rand() << 15) + rand()) % 100000000 - 1000;
+		while (!prime(mod1)) ++mod1;
+		mod2 = INF - ((rand() << 15) + rand()) % 100000000 - 1000;
+		while (mod2 == mod1 || !prime(mod2)) ++mod2;
+
+		gen_ph(board1, n, ph1);
+		gen_ph(board2, m, ph2);
+
+		sort(ph2, ph2 + m);
+		ll ans = 0;
+		rept(i, n) {
+			ans += upper_bound(ph2, ph2 + m, ph1[i]) - lower_bound(ph2, ph2 + m, ph1[i]);
+		}
+		pAns->ans = ans;
+	}
+};
+
+
+
+void run(void* _p) {
+	Solver* s = (Solver*)(_p);
+	s->run();
+	--numThreads;
+	threadsUsed[s->_numberOfThread] = false;
+	_endthread();
+}
+inline void execute(Solver* s) {
+	threadsUsed[s->_numberOfThread] = true;
+	++numThreads;
+	nowRunning[s->_numberOfThread] = (HANDLE)_beginthread(run, 0, s);
+}
+
+Solver solvers[_maxNumberOfThreads];
+Answer answers[_maxNumberOfTests];
+
+inline void solveParallel(int kolt, int maxThreads = 4) {
+	memset(threadsUsed, 0, sizeof(threadsUsed));
+	int p = 0;
+
+	while (p < kolt) {
+		if (numThreads < maxThreads) {
+			int num = 0;
+			for (; num < maxThreads && threadsUsed[num]; ++num);
+			if (num == maxThreads) continue;
+
+			cerr << "Test #" << p + 1 << " was taken by thread #" << num << " at " << 1.0 * clock() / CLOCKS_PER_SEC << endl;
+
+			solvers[num]._numberOfThread = num;
+			solvers[num].readInput();
+			answers[p].numberOfTest = p;
+			solvers[num].pAns = &answers[p++];
+			execute(&solvers[num]);
+		}
+
+		if (numThreads == maxThreads) WaitForMultipleObjects(numThreads, nowRunning, false, INFINITE);
+	}
+	while (numThreads) {
+		for (int i = 0; i < maxThreads; ++i) if (threadsUsed[i]) WaitForSingleObject(nowRunning[i], INFINITE);
+	}
+
+	for (int i = 0; i < kolt; ++i) answers[i].output();
+
+	cerr << 1.0 * clock() / CLOCKS_PER_SEC << endl;
+}
+
+inline void solveSequential(int kolt) {
+	for (int hod = 0; hod < kolt; ++hod) {
+		cerr << hod << " " << 1.0 * clock() / CLOCKS_PER_SEC << endl;
+		solvers[0]._numberOfThread = 1;
+		solvers[0].readInput();
+		answers[hod].numberOfTest = hod;
+		solvers[0].pAns = &answers[hod];
+		solvers[0].run();
+	}
+
+	for (int i = 0; i < kolt; ++i) answers[i].output();
+}
+
+inline void stressTest() {
+	for (int hod = 0; hod < INF; ++hod) {
+		cerr << hod << " " << 1.0 * clock() / CLOCKS_PER_SEC << endl;
+		HOD = hod;
+		answers[0].numberOfTest = 0;
+		solvers[0]._numberOfThread = 1;
+		solvers[0].pAns = &answers[0];
+		solvers[0].run();
+	}
+}
+int main() {
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	char tmp[333];
+	int kolt = 0;
+	gets(tmp);
+	sscanf(tmp, "%d", &kolt);
+	if (kolt > _maxNumberOfTests) {
+		cerr << "_maxNumberOfTests = " << _maxNumberOfTests << ", but kolt = " << kolt << endl;
+		int t = 0;
+		while (1) ++t;
+	}
+	solveParallel(kolt);
+	//solveSequential(kolt);
+	//stressTest();
+}

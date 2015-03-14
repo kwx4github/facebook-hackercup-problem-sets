@@ -1,0 +1,150 @@
+#include <stdio.h>
+#include <set>
+
+#define MAXN 1000100
+
+typedef std::set< int > IntSet;
+
+int N, M, x[2], a[2], b[2], c[2], r[2];
+int board[2][MAXN];
+
+void build()
+{
+    board[0][0] = x[0];
+    board[1][0] = x[1];
+    for( int i = 1; i < std::max( N, M ); ++ i )
+    {
+        long long v0 = (long long)a[0] * board[0][(i - 1) % N] + (long long)b[0] * board[1][(i - 1) % M] + c[0];
+        long long v1 = (long long)a[1] * board[0][(i - 1) % N] + (long long)b[1] * board[1][(i - 1) % M] + c[1];
+        if( i < N )
+            board[0][i] = v0 % r[0];
+        if( i < M )
+            board[1][i] = v1 % r[0];
+    }
+}
+
+long long solve()
+{
+    build();
+
+    long long ans = 0;
+    IntSet common, need;
+    int i = 0, j = 0, goal = -1;
+    while( i < N || j < M )
+    {
+        if( i < N && goal == -1 )
+        {
+            int v = board[0][i];
+            if( common.find( v ) == common.end() )
+            {
+                goal = v;
+                IntSet::iterator it = need.find( goal );
+                if( it != need.end() )
+                {
+                    common.insert( goal );
+                    need.erase( it );
+                    goal = -1;
+                }
+            }
+            ++i;
+        }
+
+        if( goal != -1 )
+        {
+            if( j == M )
+                break;
+
+            int v = board[1][j];
+            if( common.find( v ) == common.end() )
+            {
+                if( v == goal )
+                {
+                    common.insert( v );
+                    goal = -1;
+                }
+                else
+                    need.insert( v );
+            }
+            ++j;
+        }
+        else
+        {
+            if( i == N )
+            {
+                if( need.empty() && j < M && common.find( board[1][j] ) != common.end() )
+                {
+                    ++ ans;
+                    while( j < M && common.find( board[1][j] ) != common.end() )
+                    {
+                        ++ ans;
+                        ++ j;
+                    }
+                }
+                break;
+            }
+        }
+
+        if( need.empty() )
+        {
+            int l1 = 1, l2 = 1;
+            while( i < N && common.find( board[0][i] ) != common.end() )
+            {
+                ++ l1;
+                ++ i;
+            }
+            while( j < M && common.find( board[1][j] ) != common.end() )
+            {
+                ++ l2;
+                ++ j;
+            }
+            ans += (long long)l1 * l2;
+        }
+    }
+    return ans;
+}
+
+long long stupid()
+{
+    long long ans = 0;
+    IntSet g1;
+    for( int i = 0; i < N; ++ i )
+    {
+        g1.insert( board[0][i] );
+        IntSet need = g1;
+        for( int j = 0; j < M; ++ j )
+        {
+            if( g1.find( board[1][j] ) == g1.end() )
+                break;
+
+            IntSet::iterator it = need.find( board[1][j] );
+            if( it != need.end() )
+                need.erase( it );
+            if( need.empty() )
+                ++ans;
+        }
+    }
+    return ans;
+}
+
+int main()
+{
+    //freopen( "in.txt", "rt", stdin );
+    int tests;
+    scanf( "%d", &tests );
+    for( int test = 1; test <= tests; ++ test )
+    {
+        scanf( "%d %d", &N, &M);
+        for( int i = 0; i < 2; ++ i )
+            scanf( "%d %d %d %d %d", &x[i], &a[i], &b[i], &c[i], &r[i] );
+
+        long long ans = solve();
+        //long long ans2 = stupid();
+        //if( ans != ans2 )
+        //{
+        //    printf( "Case #%d: FAIL %lld instead %lld\n", test, ans, ans2 );
+        //}
+        //else
+            printf( "Case #%d: %lld\n", test, ans );
+    }
+    return 0;
+}

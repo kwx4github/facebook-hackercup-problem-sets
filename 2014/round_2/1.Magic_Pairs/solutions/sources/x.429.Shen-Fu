@@ -1,0 +1,201 @@
+#include<sys/types.h>
+#include<dirent.h>
+
+#include<algorithm>
+#include<iostream>
+#include<string>
+#include<vector>
+#include<cstdio>
+#include<cstdlib>
+#include<cassert>
+#include<sstream>
+#include<cmath>
+#include<fstream>
+#include<map>
+#include<set>
+
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#define ABS(x) ((x) > 0 ? (x) : -(x))
+#define lt(x, y)	((x) >= 0 && ((x) < (y) || (y) < 0))
+
+#define SWAP(x, y) {(x) += (y); (y) = (x) - (y); (x) -= (y);}
+
+#define EPS 1e-6
+#define PI 3.14159265358979323846
+
+using namespace std;
+
+int T;
+
+long long N, M;
+long long x1, a1, b1, c1, r1;
+long long x2, a2, b2, c2, r2;
+
+long long board1[1000000];
+long long board2[1000000];
+
+//long long first1[1000000000];
+//long long first2[1000000000];
+
+map<long, long> first1;
+map<long, long> first2;
+
+int main()
+{
+	cin >> T;
+
+	for(int caseidx = 1; caseidx <= T; caseidx++){
+
+		cin >> N >> M;
+
+		cin >> x1 >> a1 >> b1 >> c1 >> r1;
+		cin >> x2 >> a2 >> b2 >> c2 >> r2;
+
+		//make M >= N
+
+		if(M < N){
+			SWAP(M, N);
+			SWAP(x1, x2);
+			SWAP(a1, a2);
+			SWAP(b1, b2);
+			SWAP(c1, c2);
+			SWAP(r1, r2);
+		}
+
+		board1[0] = x1;
+		board2[0] = x2;
+
+		first1.clear();
+		first2.clear();
+
+		first1[board1[0]] = 0;
+		first2[board2[0]] = 0;
+
+		/*
+		for(long long i = 0; i < 1000000000; i++)
+			first1[i] = first2[i] = -1;
+			*/
+
+		//cout << board1[0] << " " << board2[0] << endl;
+
+		for(long long i = 1; i < MIN(M, N); i++){
+			board1[i] = (a1 * board1[(i - 1) % N] + b1 * board2[(i - 1) % M] + c1) % r1;
+			board2[i] = (a2 * board1[(i - 1) % N] + b2 * board2[(i - 1) % M] + c2) % r2;
+
+			/*
+			if(lt(i, first1[board1[i]]))
+				first1[board1[i]] = i;
+			if(lt(i, first2[board2[i]]))
+				first2[board2[i]] = i;
+				*/
+
+			if(first1.find(board1[i]) == first1.end())
+				first1[board1[i]] = i;
+			if(first2.find(board2[i]) == first2.end())
+				first2[board2[i]] = i;
+
+		}
+
+		for(long long i = N; i < M; i++){
+			board2[i] = (a2 * board1[(i - 1) % N] + b2 * board2[(i - 1) % M] + c2) % r2;
+			/*
+			if(lt(i, first2[board2[i]]))
+				first2[board2[i]] = i;
+			*/
+
+			if(first2.find(board2[i]) == first2.end())
+				first2[board2[i]] = i;
+		}
+
+		/*
+		for(long i = 0; i < N; i++)
+			cout << board1[i] << " ";
+		cout << endl;
+
+		for(long i = 0; i < M; i++)
+			cout << board2[i] << " ";
+		cout << endl;
+		*/
+
+		long long ans = 0;
+
+		long long m, n;
+
+		m = n = 0;
+
+		set<long long>buf1;
+		set<long long>buf2;
+
+		buf1.insert(board1[n]);
+		buf2.insert(board2[m]);
+
+		while(m < M && n < N){
+
+			if(buf1.size()){
+				set<long long>::iterator it = buf1.begin();
+				//if(first2[*it] >= 0){
+				if(first2.find(*it) != first2.end()){
+
+					for(; m < first2[*it]; m++){
+						if(first1.find(board2[m]) == first1.end())
+							goto done;
+
+						if(first1[board2[m]] > n)
+							buf2.insert(board2[m]);
+					}
+				}
+				else	break;
+				buf1.erase(*it);
+			}
+
+			if(buf2.size()){
+				set<long long>::iterator it = buf2.begin();
+				//if(first1[*it] >= 0){
+				if(first1.find(*it) != first1.end()){
+
+					for(; n < first1[*it]; n++){
+
+						if(first2.find(board1[n]) == first2.end())
+							goto done;
+
+						if(first2[board1[n]] > m)
+							buf1.insert(board1[n]);
+					}
+				}
+				else	break;
+				buf2.erase(*it);
+			}
+	
+			if(buf1.size() == 0 && buf2.size() == 0){
+
+				//printf("m = %lld, n = %lld\n", m, n);
+				long long x = 0;
+				long long y = 0;
+				for(; m < M && first1.find(board2[m]) != first1.end() && first1[board2[m]] <= n; m++){
+
+					x++;
+				}
+				m--;
+
+				for(; n < N && first2.find(board1[n]) != first2.end() && first2[board1[n]] <= m; n++){
+
+					y++;
+				}
+				m++;
+
+				//printf("x = %lld, y = %lld, m = %lld, n = %lld\n", x, y, m ,n);
+				ans += (x * y);
+
+				if(n < N) buf1.insert(board1[n]);
+				if(m < M) buf2.insert(board2[m]);
+			}
+		}
+
+done:
+		printf("Case #%d: %lld\n", caseidx, ans);
+	}
+	return 0;
+}
+
+// vi: ts=2 sw=2

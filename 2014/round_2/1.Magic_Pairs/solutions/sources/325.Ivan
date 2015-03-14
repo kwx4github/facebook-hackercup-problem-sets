@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+import sys
+import itertools
+from collections import deque
+
+def generate_boards(n, m, x1, a1, b1, c1, r1, x2, a2, b2, c2, r2):
+    board1 = [0 for i in range(n)]
+    board2 = [0 for i in range(m)]
+    board1[0] = x1
+    board2[0] = x2
+    for i in range(1, max(n, m)):
+        if i < n:
+            board1[i] = (a1 * board1[(i - 1) % n] + b1 * board2[(i - 1) % m] + c1) % r1
+        if i < m:
+            board2[i] = (a2 * board1[(i - 1) % n] + b2 * board2[(i - 1) % m] + c2) % r2
+    return board1, board2
+
+def count_magic_pairs(board1, board2):
+    n, m = len(board1), len(board2)
+    board1_elements = set()
+    board2_elements = set()
+    unmatched1 = deque()
+    unmatched2 = deque()
+    answer = 0
+    x = 0
+    y = 0
+    while x < n and y < m:
+        #print 'new iteration:', x, y
+        # trying to a next magic pair
+        board1_elements.add(board1[x])
+        unmatched1.append(board1[x])
+        board2_elements.add(board2[y])
+        unmatched2.append(board2[y])
+        #print 'before', board1_elements, unmatched1, board2_elements, unmatched2
+        retry = False
+        while len(unmatched1) > 0:
+            element = unmatched1[0]
+            if element in board2_elements:
+                unmatched1.popleft()
+                continue
+            else:
+                y += 1
+                retry = True
+                break
+        while len(unmatched2) > 0:
+            element = unmatched2[0]
+            if element in board1_elements:
+                unmatched2.popleft()
+                continue
+            else:
+                x += 1
+                retry = True
+                break
+        #print 'after ', board1_elements, unmatched1, board2_elements, unmatched2
+        #print '-' * 10
+        if retry:
+            continue
+        # counting all the pairs with the same set of colors
+        x_last = x
+        y_last = y
+        while x_last + 1 < n and board1[x_last + 1] in board1_elements:
+            x_last += 1
+        while y_last + 1 < m and board2[y_last + 1] in board2_elements:
+            y_last += 1
+        answer += (x_last - x + 1) * (y_last - y + 1)
+        #print x, x_last, y, y_last
+        x = x_last + 1
+        y = y_last + 1
+    return answer
+
+if __name__ == '__main__':
+    output = open('output.txt', 'w')
+    lines = open('input.txt', 'r').read().split('\n')
+    num_cases = int(lines[0])
+    cur_line = 1
+    for case_num in range(1, num_cases + 1):
+        tokens = (" ".join(lines[cur_line:cur_line + 3])).split()
+        tokens = [int(token) for token in tokens]
+        n, m, x1, a1, b1, c1, r1, x2, a2, b2, c2, r2 = tokens
+        board1, board2 = generate_boards(n, m, x1, a1, b1, c1, r1, x2, a2, b2, c2, r2)
+        #print board1, board2
+        answer = count_magic_pairs(board1, board2)
+        output.write("Case #{0}: {1}\n".format(case_num, answer))
+        cur_line += 3
+    output.close()
+

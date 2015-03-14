@@ -1,0 +1,90 @@
+object Holdem extends App {
+  val N = 100
+
+  object Binomial {
+    val C = Array.fill(N + 1, N + 1)(0L)
+    val M = 1000000000000000000L
+    for (i <- 1 to N) {
+      C(i)(0) = 1L
+      C(i)(i) = 1L
+      for (j <- 1 until i) {
+        C(i)(j) = (C(i - 1)(j) + C(i - 1)(j - 1)) % M
+      }
+    }
+
+    def apply(n: Int, k: Int) = C(n)(k)
+  }
+
+  def beat(p1: (Int, Int), p2: (Int, Int)) = {
+    val sum = p1._1 + p1._2 - (p2._1 + p2._2)
+    sum > 0 || sum == 0 && math.max(p1._1, p1._2) > math.max(p2._1, p2._2)
+  }
+
+  val f = Array.fill(N + 1, N + 1, N + 1)(0L)
+  for (comb <- (1 to 8).toList.permutations; if (comb(0) > comb(1))) {
+    val beat1 = beat((comb(0), comb(1)), (comb(2), comb(3)))
+    val beat2 = beat((comb(0), comb(1)), (comb(4), comb(5)))
+    val beat3 = beat((comb(0), comb(1)), (comb(6), comb(7)))
+    if (beat1 && beat2 && beat3)
+      f(8)(comb(0))(comb(1)) += 1
+  }
+
+  //println(f(8)(7)(4))
+  //println(Binomial(6, 2) * Binomial(4, 2) * Binomial(2, 2) * 6)
+
+  //exit
+
+  def loseWays(n: Int, a: Int, b: Int, x: Int) = {
+    var result = 0
+    for (y <- 1 to n; if (y != a && y != b && y != x))
+      if (beat((x, y), (a, b))) result += 1
+    result
+  }
+
+  val g = Array.fill(N + 1, N + 1, N + 1)(0L)
+  for (n <- 9 to N) {
+    //println(n)
+    System.err.println(n)
+    for (a <- 1 to n; b <- 1 until a) {
+      for (x <- 1 to n; if (x != a && x != b))
+        g(n)(a)(b) += loseWays(n, a, b, x)
+
+      if (a < n) {
+        f(n)(a)(b) = f(n - 1)(a)(b)
+        for (x <- 1 until a + b - n; if (x != a && x != b)) {
+          val h = g(n - 1)(a)(b) - loseWays(n - 1, a, b, x)
+          f(n)(a)(b) +=
+            6 * Binomial(n - 4, 4) * Binomial(4, 2) -
+            6 * (Binomial(n - 6, 2) * h)
+        }
+      }
+      else {
+        for (x <- 1 to n; if (x != a && x != b)) {
+          val numY = n - math.max(1, a + b - x) + 1
+          f(n)(a)(b) +=
+            6 * Binomial(n - 3, 5) * Binomial(5, 1) * Binomial(4, 2) - 
+            6 * numY * Binomial(n - 4, 4) * Binomial(4, 2)
+        }
+      }
+      //println(s"f($n, $a, $b) = ${f(n)(a)(b)})")
+    }
+
+  }
+
+  val numTest = readInt
+  for (c <- 1 to numTest) {
+    val n :: h :: _ = readLine.split(" ").map(_.toInt).toList
+    print(s"Case #$c: ")
+    for (i <- 1 to h) {
+      val b :: a :: _ = readLine.split(" ").map(_.toInt).toList.sorted
+      val all = 1L * (n - 2) * (n - 3) * (n - 4) * (n - 5) * (n - 6) * (n - 7)
+      val win = f(n)(a)(b)
+      if (win * 5 > all)
+        print("B")
+      else 
+        print("F")
+    }
+    println
+  }
+}
+

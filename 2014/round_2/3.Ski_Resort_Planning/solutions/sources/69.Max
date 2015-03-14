@@ -1,0 +1,123 @@
+#include <memory.h>
+#include <cstdio>
+#include <algorithm>
+#include <ctime>
+#include <vector>
+#include <cassert>
+using namespace std;
+
+typedef long long llong;
+
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+
+const int N = 5050;
+const int mod = 1000 * 1000 * 1000 + 7;
+
+vector<int> E[N];
+
+int lca[N][N];
+
+int Dp[N];
+int P[N];
+int tin[N], tout[N];
+int pt = 0;
+void DFS(int x, int p = -1)
+{
+    tin[x] = pt++;
+    Dp[x] = (p == -1) ? 0 : Dp[p] + 1;
+    for (int i = 0; i < E[x].size(); i++)
+        DFS(E[x][i], x);
+    tout[x] = pt;
+}
+
+bool is_par(int a, int b)
+{
+    return (tin[a] <= tin[b] && tout[b] <= tout[a]);
+}
+
+int get_lca(int a, int b)
+{
+    if (lca[a][b] != -1)
+        return lca[a][b];
+    if (a == b)
+        return lca[a][b] = lca[b][a] = a;
+    if (is_par(a, b))
+        return lca[a][b] = lca[b][a] = a;
+    if (is_par(b, a))
+        return lca[a][b] = lca[b][a] = b;
+    return lca[b][a] = lca[a][b] = get_lca(P[a], b);
+}
+
+llong pw2[N];
+
+llong sumpw2(int a, int b)
+{
+    if (a == -1)
+        return (1 + sumpw2(a + 1, b)) % mod;
+    if (a > b)
+        return 0;
+    return (pw2[a] * (pw2[b + 1 - a] - 1)) % mod; 
+}
+
+bool bytin(int a, int b)
+{
+    return tin[a] < tin[b];
+}
+
+
+void solve(int tc)
+{
+    memset(lca, -1, sizeof(lca));
+    int n;
+    pt = 0;
+    scanf("%d", &n);
+    for (int i = 0; i < n; i++)
+        E[i].clear();
+    for (int i = 1; i < n; i++)
+    {
+        scanf("%d", &P[i]);
+        E[P[i]].push_back(i);
+    }
+    double beg = clock();
+    DFS(0);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            get_lca(i, j);
+    eprintf("calced lca %.3lf\n", (clock() - beg) / (double)CLOCKS_PER_SEC);
+    llong ans = 1;
+
+    for (int i = 1; i < n; i++)
+    {
+        vector<int> T;
+        for (int j = 0; j < i; j++)
+            if (tin[j] >= tin[P[i]] && tout[j] <= tout[P[i]])
+                T.push_back(j);
+        sort(T.begin(), T.end(), bytin);
+        int r = 0;
+        llong val = 0;
+        for (int l = 0; l < T.size(); l++)
+        {
+            r = max(l, r);
+            while (r != T.size() && lca[T[l]][T[r]] != P[i])
+                r++;
+            val = (val + sumpw2(r - l - 1, (int)T.size() - l - 2)) % mod;
+            if (r == T.size())
+                break;
+        }
+
+        eprintf("%d -> %lld\n", i, val);
+        ans = (ans * val) % mod;
+    }
+    printf("Case #%d: %lld\n", tc, ans);
+}
+
+int main()
+{
+    pw2[0] = 1;
+    for (int i = 1; i < N; i++)
+        pw2[i] = (2LL * pw2[i - 1]) % mod;
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; i++)
+        solve(i + 1);
+}

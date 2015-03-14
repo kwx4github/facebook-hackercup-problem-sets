@@ -1,0 +1,155 @@
+import std.stdio, std.string, std.conv;
+import std.algorithm, std.array, std.bigint, std.math, std.range;
+import core.thread;
+
+//	Input
+string[] tokens;
+int tokenId = 0;
+string readToken() { for (; tokenId == tokens.length; ) tokens = readln.split, tokenId = 0; return tokens[tokenId++]; }
+int readInt() { return to!int(readToken); }
+long readLong() { return to!long(readToken); }
+real readReal() { return to!real(readToken); }
+
+//	chmin/chmax
+void chmin(T)(ref T t, T f) { if (t > f) t = f; }
+void chmax(T)(ref T t, T f) { if (t < f) t = f; }
+
+//	Pair
+struct Pair(S, T) {
+	S x; T y;
+	int opCmp(    const Pair p) const { return (x < p.x) ? -1 : (x > p.x) ? +1 : (y < p.y) ? -1 : (y > p.y) ? +1 : 0; }
+	int opCmp(ref const Pair p) const { return (x < p.x) ? -1 : (x > p.x) ? +1 : (y < p.y) ? -1 : (y > p.y) ? +1 : 0; }
+	string toString() const { return "(" ~ to!string(x) ~ ", " ~ to!string(y) ~ ")"; }
+}
+auto pair(S, T)(S x, T y) { return Pair!(S, T)(x, y); }
+
+//	Array
+int binarySearch(T)(T[] as, bool delegate(T) test) {
+	int low = -1, upp = as.length; for (; low + 1 < upp; ) { int mid = (low + upp) >> 1; (test(as[mid]) ? low : upp) = mid; } return upp;
+}
+int lowerBound(T)(T[] as, T val) { return as.binarySearch((T a){ return (a <  val); }); }
+int upperBound(T)(T[] as, T val) { return as.binarySearch((T a){ return (a <= val); }); }
+T[] unique(T)(T[] as) { T[] bs; foreach (a; as) if (bs == null || bs[$ - 1] != a) bs ~= a; return bs; }
+
+
+
+void prepare() {
+	
+}
+
+class Solver : Thread {
+	int caseId;
+	this(int caseId) {
+		this.caseId = caseId;
+		super(&main);
+	}
+	void main() {
+		try {
+			run;
+			stderr.writeln("DONE  Case #", caseId);
+		} catch (Throwable e) {
+			stderr.writeln("ERROR Case #", caseId, ": ", e.msg);
+		} finally {
+			stderr.flush;
+		}
+	}
+	
+	int N, M;
+	long x1, a1, b1, c1, r1;
+	long x2, a2, b2, c2, r2;
+	long[] Board1, Board2;
+	long ans;
+	
+	void generate() {
+		Board1 = new long[N];
+		Board2 = new long[M];
+		Board1[0] = x1;
+		Board2[0] = x2;
+		for (int i = 1; i < N || i < M; ++i) {
+			if (i < N) {
+				Board1[i] = (a1 * Board1[(i-1) % N] + b1 * Board2[(i-1) % M] + c1) % r1;
+			}
+			if (i < M) {
+				Board2[i] = (a2 * Board1[(i-1) % N] + b2 * Board2[(i-1) % M] + c2) % r2;
+			}
+		}
+		// writeln(Board1);
+		// writeln(Board2);
+	}
+	
+	void run() {
+		generate;
+		bool[long] s1, s2, d1, d2;
+		int d1sz, d2sz;
+		for (int i1 = 0, i2 = 0; i1 < N && i2 < M; ) {
+			int h1 = i1;
+			int h2 = i2;
+			long a1 = Board1[i1];
+			long a2 = Board2[i2];
+			s1[a1] = true;
+			s2[a2] = true;
+			for (; i1 < N && Board1[i1] in s1; ++i1) {}
+			for (; i2 < M && Board2[i2] in s2; ++i2) {}
+			// writeln(h1, "-", i1, " ", h2, "-", i2);
+			if (a1 in d2 && d2[a1]) {
+				d2[a1] = false;
+				--d2sz;
+			} else {
+				d1[a1] = true;
+				++d1sz;
+			}
+			if (a2 in d1 && d1[a2]) {
+				d1[a2] = false;
+				--d1sz;
+			} else {
+				d2[a2] = true;
+				++d2sz;
+			}
+			if (d1sz == 0 && d2sz == 0) {
+				// writeln("OK");
+				ans += cast(long)(i1 - h1) * cast(long)(i2 - h2);
+			}
+		}
+	}
+	
+	void input() {
+		N = readInt;
+		M = readInt;
+		x1 = readLong;
+		a1 = readLong;
+		b1 = readLong;
+		c1 = readLong;
+		r1 = readLong;
+		x2 = readLong;
+		a2 = readLong;
+		b2 = readLong;
+		c2 = readLong;
+		r2 = readLong;
+	}
+	
+	void output() {
+		writeln("Case #", caseId, ": ", ans);
+		stdout.flush;
+	}
+}
+
+void main(string[] args) {
+	bool parallel = false;
+	foreach (arg; args) if (arg == "-p") parallel = true;
+	prepare;
+	auto solvers = new Solver[readInt];
+	foreach (caseId, ref solver; solvers) solver = new Solver(caseId + 1);
+	if (parallel) {
+		foreach (solver; solvers) solver.input, solver.start;
+		foreach (solver; solvers) solver.join, solver.output;
+	} else {
+		foreach (caseId, solver; solvers) {
+			solver.input;
+			solver.run;
+			solver.output;
+			stderr.writeln("DONE  Case #", caseId + 1);
+			stderr.flush;
+		}
+	}
+}
+

@@ -1,0 +1,203 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <cmath>
+#include <ctime>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <queue>
+#include <deque>
+#include <list>
+#include <set>
+#include <map>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define sz(x) ((int)(x).size())
+
+typedef long long ll;
+typedef vector<ll> vll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<bool> vb;
+typedef vector<vb> vvb;
+typedef pair<int, int> pii;
+
+bool cross(const pii &a, const pii &b) {
+  if (a.first == b.first) return true;
+  if (a.first == b.second) return true;
+  if (a.second == b.first) return true;
+  if (a.second == b.second) return true;
+  return false;
+}
+
+inline ll getA(ll n, ll k) {
+  if (k > n) return 0;
+  ll res = 1;
+  for (int i = 0; i < k; i++)
+    res *= n - i;
+  return res;
+}
+
+inline ll calc(ll a, ll b) {
+  assert(a >= 0 && b >= 0);
+  ll ans = 0;
+/*  for (int t1 = 0; t1 < 2; t1++)
+  for (int t2 = 0; t2 < 2; t2++) {
+    int cnts[3] = {
+      (t1 == 0) + (t2 == 0) + 1,
+      (t1 == 1) + (t2 == 1),
+    };
+    ans += getA(a, cnts[0]) * getA(b, cnts[1]);
+  }*/
+  ans += getA(a, 1) * getA(b, 2);
+  ans += getA(a, 2) * getA(b, 1) * 2;
+  ans += getA(a, 3) * getA(b, 0);
+  return ans;
+}
+
+vll calcPc(const vll &as) {
+  vll res(sz(as) + 1);
+  for (int i = 0; i < sz(as); i++)
+    res[i + 1] = res[i] + as[i];
+  return res;
+}
+
+void solve() {
+  int n, h;
+  scanf("%d%d", &n, &h);
+
+  vector<vll> pc1(n + 1, vll(n, 0));
+  vector<vll> pc2(n + 1, vll(n, 0));
+  while (h --> 0) {
+    int a4, b4;
+    scanf("%d%d", &a4, &b4), a4--, b4--;
+    if (a4 > b4) swap(a4, b4);
+
+    for (int rl2 = 0; rl2 <= n; rl2++) {
+      for (int a3 = 0; a3 < n; a3++) {
+        pc1[rl2][a3] = 0;
+        pc2[rl2][a3] = 0;
+      }
+      for (int a3 = 0; a3 < n; a3++) {
+        if (a3 != a4 && a3 != b4) {
+          int maxb3 = min(a4 + b4 - a3, n - 1);
+          if (a3 + maxb3 == a4 + b4 && maxb3 >= b4) maxb3--;
+          int len3 = maxb3 - a3;
+          if (a3 < a4 && a4 <= maxb3) len3--;
+          if (a3 < b4 && b4 <= maxb3) len3--;
+          if (len3 <= 0) break;
+
+          if (rl2 < len3) continue;
+
+          pc1[rl2][a3] = calc(len3, rl2 - len3);
+          pc2[rl2][a3]  = (ll)len3 * ll(rl2 - len3);
+          pc2[rl2][a3] += (ll)len3 * ll(len3 - 1);
+        }
+      }
+    }
+    vector<vll> spc1(n + 1), spc2(n + 1);
+    for (int i = 0; i <= n; i++) {
+      spc1[i] = calcPc(pc1[i]);
+      spc2[i] = calcPc(pc2[i]);
+    }
+
+//    eprintf("========== %d %d ==========\n", a4, b4);
+    ll goodCnt = 0;
+    for (int a1 = 0; a1 < n; a1++) if (a1 != a4 && a1 != b4) {
+      int maxb1 = min(a4 + b4 - a1, n - 1);
+      if (a1 + maxb1 == a4 + b4 && maxb1 >= b4) maxb1--;
+      int len1 = maxb1 - a1;
+      if (a1 < a4 && a4 <= maxb1) len1--;
+      if (a1 < b4 && b4 <= maxb1) len1--;
+      if (len1 <= 0) break;
+
+      for (int a2 = a1 + 1; a2 < n; a2++) if (a2 != a4 && a2 != b4) {
+        int maxb2 = min(a4 + b4 - a2, n - 1);
+        if (a2 + maxb2 == a4 + b4 && maxb2 >= b4) maxb2--;
+        int len2 = maxb2 - a2;
+        if (a2 < a4 && a4 <= maxb2) len2--;
+        if (a2 < b4 && b4 <= maxb2) len2--;
+        if (len2 <= 0) break;
+
+        assert(a1 < a2 && a2 < maxb2 && maxb2 <= maxb1);
+
+        int rl1 = len1 - 2;
+        int rl2 = len2 - 1;
+        if (rl1 < 0 || rl2 < 0) continue;
+
+        ll mpc1 = 0;
+        if (a2 + 1 < n) {
+          mpc1 += spc1[rl2][n];
+          mpc1 -= spc1[rl2][a2 + 1];
+          if (a2 < a4 && a4 < n) mpc1 -= pc1[rl2][a4];
+          if (a2 < b4 && b4 < n) mpc1 -= pc1[rl2][b4];
+        }
+        ll mpc2 = 0;
+        if (a2 + 1 < n) {
+          mpc2 += spc2[rl2][n];
+          mpc2 -= spc2[rl2][a2 + 1];
+          if (a2 < a4 && a4 < n) mpc2 -= pc2[rl2][a4];
+          if (a2 < b4 && b4 < n) mpc2 -= pc2[rl2][b4];
+        }
+        goodCnt += mpc1;
+        goodCnt += mpc2 * ll(rl1 - rl2);
+      }
+    }
+
+    ll allCnt = 15;
+    for (int i = 0; i < 6; i++) allCnt *= n - 2 - i;
+    assert(allCnt > 0);
+    for (int i = 1; i <= 6; i++) {
+      assert(allCnt % i == 0);
+      allCnt /= i;
+    }
+//    eprintf("%I64d/%I64d\n", goodCnt, allCnt);
+    assert(goodCnt <= allCnt);
+//    eprintf("prob=%.2lf\n", double(goodCnt) / allCnt);
+    if (goodCnt * 4 - allCnt > 0)
+      printf("B");
+    else
+      printf("F");
+  }
+  printf("\n");
+}
+
+int main(int argc, char* argv[]) {
+  assert(argc <= 3);
+  if (argc == 3) {
+    assert(freopen(argv[1], "r", stdin));
+    assert(freopen(argv[2], "w", stdout));
+  } else {
+    string filename = ".in";
+    if (argc >= 2) filename = argv[1];
+
+    assert(freopen(filename.c_str(), "r", stdin));
+
+    if (filename.length() >= 3 && string(filename, filename.length() - 3, 3) == ".in") {
+      filename = string(filename, 0, filename.length() - 3);
+    }
+    filename += ".out";
+    assert(freopen(filename.c_str(), "w", stdout));
+  }
+
+  int TN;
+  char buf[16];
+  assert(fgets(buf, sizeof buf, stdin));
+  assert(sscanf(buf, "%d", &TN) >= 1);
+  for (int TID = 1; TID <= TN; TID++)
+    try {
+      eprintf("===== Solving test case #%d =====\n", TID);
+      printf("Case #%d: ", TID);
+      solve();
+    } catch (...) {
+      eprintf("Exception was caught while executing on test #%d\n", TID);
+      return 1;
+    }
+  return 0;
+}

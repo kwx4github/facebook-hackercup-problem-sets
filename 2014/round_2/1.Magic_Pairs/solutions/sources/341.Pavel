@@ -1,0 +1,294 @@
+
+using System;
+using System.Collections.Generic;
+using System.Data.SqlTypes;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Threading;
+using kp.Algo;
+
+namespace HackerCup
+{
+	class Solution
+	{
+		private const bool UseMultiThreading = false;
+		private const bool UseStandardIO = false;
+		private const string InputFile = @"C:\Users\Pavel Kuznetsov\Downloads\_magic_pairs.txt";
+		private const string OutputFile = @"D:\docs\Dropbox\Olymp\Sources\_submit\Hacker Cup 2013 Round 2\A-output.txt";
+
+		private int n, m;
+		private int[] x, a, b, c, r, B1, B2;
+		private long ans;
+
+		void ReadData()
+		{
+			n = NextInt();
+			m = NextInt();
+			x = new int[2];
+			a = new int[2];
+			b = new int[2];
+			c = new int[2];
+			r = new int[2];
+			x[0] = NextInt();
+			a[0] = NextInt();
+			b[0] = NextInt();
+			c[0] = NextInt();
+			r[0] = NextInt();
+			x[1] = NextInt();
+			a[1] = NextInt();
+			b[1] = NextInt();
+			c[1] = NextInt();
+			r[1] = NextInt();
+			B1 = new int[n];
+			B2 = new int[m];
+			B1[0] = x[0];
+			B2[0] = x[1];
+			for ( int i = 1; i < Math.Max( n, m ); ++i )
+			{
+				if ( i < n )
+				{
+					B1[i] = ( ( NumTheoryUtils.Mul( a[0], B1[( i - 1 ) % n], r[0] ) + NumTheoryUtils.Mul( b[0], B2[( i - 1 ) % m], r[0] ) ) % r[0] + c[0] ) % r[0];
+				}
+				if ( i < m )
+				{
+					B2[i] = ( ( NumTheoryUtils.Mul( a[1], B1[( i - 1 ) % n], r[1] ) + NumTheoryUtils.Mul( b[1], B2[( i - 1 ) % m], r[1] ) ) % r[1] + c[1] ) % r[1];
+				}
+			}
+		}
+
+		void PreSolve()
+		{
+
+		}
+
+		void Solve()
+		{
+			var have1 = new HashSet<int>();
+			var have2 = new HashSet<int>();
+			int i = 0, j = 0;
+			while ( i < n && j < m )
+			{
+				long c1 = 0, c2 = 0;
+				while ( i < n && have1.Contains( B1[i] ) )
+				{
+					++i;
+					++c1;
+				}
+				while ( j < m && have2.Contains( B2[j] ) )
+				{
+					++j;
+					++c2;
+				}
+				ans += c1 * c2;
+				if ( i == n || j == m ) break;
+				if ( B1[i] == B2[j] )
+				{
+					have1.Add( B1[i] );
+					have2.Add( B1[i] );
+					continue;
+				}
+				else
+				{
+					have1.Add( B1[i] );
+					var need1 = new HashSet<int>();
+					need1.Add( B2[j] );
+
+					have2.Add( B2[j] );
+					var need2 = new HashSet<int>();
+					need2.Add( B1[i] );
+
+					while ( i < n || j < m )
+					{
+						if ( !need1.Any() && !need2.Any() ) break;
+						bool ch = false;
+						while ( i < n && need1.Any() )
+						{
+							int t = B1[i];
+							have1.Add( t );
+							if ( need1.Contains( t ) )
+							{
+								need1.Remove( t );
+							}
+							if ( !have2.Contains( t ) )
+								need2.Add( t );
+							++i;
+							ch = true;
+						}
+						while ( j < m && need2.Any() )
+						{
+							int t = B2[j];
+							have2.Add( t );
+							if ( need2.Contains( t ) )
+							{
+								need2.Remove( t );
+							}
+							if ( !have1.Contains( t ) )
+								need1.Add( t );
+							++j;
+							ch = true;
+						}
+						if ( !ch ) break;
+					}
+					if ( !need1.Any() && !need2.Any() )
+					{
+						foreach ( var ff in have1 )
+						{
+							have1.Add( ff );
+							have2.Add( ff );
+						}
+						--i;
+						--j;
+						c1 = 0;
+						c2 = 0;
+						while ( i < n && have1.Contains( B1[i] ) )
+						{
+							++i;
+							++c1;
+						}
+						while ( j < m && have2.Contains( B2[j] ) )
+						{
+							++j;
+							++c2;
+						}
+						ans += c1 * c2;
+					}
+				}
+			}
+		}
+
+		void WriteAnswer()
+		{
+			Out.WriteLine( ans );
+		}
+
+		#region ...
+
+		void run()
+		{
+			if ( UseStandardIO )
+			{
+				_inputStream = Console.In;
+				_outputStream = Console.Out;
+			}
+			else
+			{
+				_inputStream = File.OpenText( InputFile );
+				_outputStream = File.CreateText( Path.Combine( new FileInfo( GetType().Assembly.Location ).Directory.Parent.Parent.Parent.FullName, OutputFile ) );
+			}
+
+			PreSolve();
+
+			int testsCount = int.Parse( _inputStream.ReadLine() );
+			var solvers = new Solution[testsCount];
+			for ( int i = 0; i < testsCount; ++i )
+			{
+				solvers[i] = new Solution();
+				solvers[i].ReadData();
+			}
+
+			int done = 0;
+			if ( UseMultiThreading )
+			{
+				solvers.AsParallel().WithDegreeOfParallelism( Math.Min( Environment.ProcessorCount, 2 ) - 1 ).ForAll(
+					solver => { solver.Solve(); Console.Title = ( ++done ).ToString() + " of " + testsCount; } );
+			}
+			else
+			{
+				for ( int i = 0; i < testsCount; ++i )
+				{
+					solvers[i].Solve();
+					Console.Title = ( ++done ).ToString() + " of " + testsCount;
+				}
+			}
+			for ( int i = 0; i < testsCount; ++i )
+			{
+				Out.Write( string.Format( "Case #{0}: ", i + 1 ) );
+				solvers[i].WriteAnswer();
+			}
+			Out.Flush();
+			if ( UseStandardIO )
+			{
+				Console.ReadLine();
+			}
+			else
+			{
+				Out.Close();
+			}
+		}
+
+		static TextWriter Out { get { return _outputStream; } }
+
+		private static TextReader _inputStream;
+		private static TextWriter _outputStream;
+
+		public BigInteger NextBigInteger()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return BigInteger.Parse( token );
+		}
+
+		public double NextDouble()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return double.Parse( token, CultureInfo.InvariantCulture );
+		}
+
+		public long NextLong()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return long.Parse( token );
+		}
+
+		public int NextInt()
+		{
+			var token = NextToken();
+			if ( string.IsNullOrEmpty( token ) ) throw new ApplicationException( "Input data missing" );
+			return int.Parse( token );
+		}
+
+		private static readonly Queue<string> Tokens = new Queue<string>();
+		public string NextToken()
+		{
+			if ( Tokens.Count > 0 )
+			{
+				return Tokens.Dequeue();
+			}
+			while ( Tokens.Count == 0 )
+			{
+				var line = _inputStream.ReadLine();
+				if ( line == null ) return null;
+				foreach ( var token in line.Split( _whiteSpaces, StringSplitOptions.RemoveEmptyEntries ) )
+				{
+					Tokens.Enqueue( token );
+				}
+			}
+			return Tokens.Count == 0 ? null : Tokens.Dequeue();
+		}
+
+		private readonly char[] _whiteSpaces = { ' ', '\r', '\n', '\t' };
+
+		static void Main()
+		{
+			new Thread( new Solution().run, 64 * 1024 * 1024 ).Start();
+		}
+
+		#endregion
+	}
+}
+namespace kp.Algo
+{
+	static class NumTheoryUtils
+	{
+		public static int Mul( int a, int b, int mod )
+		{
+			int res = (int)( ( (long)a * b ) % mod );
+			if ( res < 0 ) res += mod;
+			return res;
+		}
+	}
+}

@@ -1,0 +1,128 @@
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.Scanner;
+
+
+public class A {
+	public static void main(String[] args) throws Exception{
+		Scanner sc = new Scanner(new File("A.txt"));
+		PrintWriter out = new PrintWriter(new File("AOUT.txt"));
+		int T = sc.nextInt();
+		for(int t=1;t<=T;t++){
+			int N = sc.nextInt();
+			int M = sc.nextInt();
+			long[] boardA = new long[N];
+			long[] boardB = new long[M];
+			
+			long x1 = sc.nextLong();
+			long a1 = sc.nextLong();
+			long b1 = sc.nextLong();
+			long c1 = sc.nextLong();
+			long r1 = sc.nextLong();
+			
+			long x2 = sc.nextLong();
+			long a2 = sc.nextLong();
+			long b2 = sc.nextLong();
+			long c2 = sc.nextLong();
+			long r2 = sc.nextLong();
+			
+			boardA[0]=x1;
+			boardB[0]=x2;
+			
+			for(int i=1;i<Math.max(N, M);i++){
+				if(i<N)boardA[i] = (a1 * boardA[(i-1) % N] + b1 * boardB[(i-1) % M] + c1) % r1;
+				if(i<M)boardB[i] = (a2 * boardA[(i-1) % N] + b2 * boardB[(i-1) % M] + c2) % r2;
+			}
+//			System.out.println(Arrays.toString(boardA));
+//			System.out.println(Arrays.toString(boardB));
+			
+			HashMap<Long,Integer> HM = new HashMap<Long,Integer>();
+			int seen = 0;
+			int[] count = new int[2000000];
+			for(int a=0;a<N;a++){
+				if(HM.containsKey(boardA[a])){
+					boardA[a]=HM.get(boardA[a]);
+				}
+				else{
+					HM.put(boardA[a], seen);
+					seen++;
+				}
+				count[seen]++;
+			}
+			
+			IntervalTree IT = new IntervalTree(0,seen);
+			long ans = 0;
+
+			int highest = 0;
+			for(int a=0;a<M;a++){
+				if(!HM.containsKey(boardB[a]))break;
+				int temp = HM.get(boardB[a]);
+				highest = Math.max(highest,temp);
+				IT.add(temp, temp, 1);
+				if(IT.f(0, highest, IT.MIN)!=0){
+					//fix
+					ans+=count[highest+1];
+			//		System.out.println(a+" "+temp+" "+count[highest+1]);
+				}
+			}
+			
+			
+			
+			out.printf("Case #%d: %d%n",t,ans);
+			System.out.printf("Case #%d: %d%n",t,ans);
+		}
+		out.close();
+	}
+	static class IntervalTree {
+		final static int MIN=1,MAX=2,SUM=3;
+		final static long inf = (long)1e18;
+		final static long[] bad = new long[]{0,inf,-inf,0};
+		int low, high;
+		long[] vals; 
+		IntervalTree left,right;
+		IntervalTree(int l, int h){
+			this.low=l; this.high=h;
+			int mid = (l+h)/2;
+			vals = new long[4];
+			if(l!=h){
+				left = new IntervalTree(l, mid);
+				right = new IntervalTree(mid+1, h);
+			}
+		}
+		public void push(){
+			if(vals[0]!=0){
+				right.add(right.low,right.high,vals[0]);
+				left.add(left.low,left.high,vals[0]);
+				vals[0]=0;
+			}
+		}
+		public void add(int l, int h, long x){
+			if(h<l||l>high||h<low)return;
+			l = Math.max(l,low); h = Math.min(h,high);
+			if(l==low && h== high){
+				for(int i=0;i<vals.length;i++) if(i!=SUM) vals[i] +=x;
+				vals[SUM] +=(high-low+1)*x;
+				return;
+			}
+			push();
+			left.add(l, h, x); right.add(l, h, x);
+			vals[MIN]= Math.min(left.vals[MIN],right.vals[MIN]);
+			vals[MAX]= Math.max(left.vals[MAX],right.vals[MAX]);
+			vals[SUM]= left.vals[SUM]+right.vals[SUM];			
+		}
+		public long f(int l, int h, int i){
+			if(h<1||l>high||h<low)return bad[i];
+			l = Math.max(l,low); h = Math.min(h, high);
+			if(l==low&&h==high)return vals[i];
+			push();
+			if(i==MIN)return Math.min(left.f(l, h, i),right.f(l, h, i));
+			if(i==MAX)return Math.max(left.f(l, h, i),right.f(l, h, i));
+			return left.f(l, h, i)+right.f(l, h, i);
+		}
+		
+	}
+
+}
+	
+

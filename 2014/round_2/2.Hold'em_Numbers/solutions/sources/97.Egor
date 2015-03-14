@@ -1,0 +1,303 @@
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.util.Locale;
+import java.util.Comparator;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.File;
+import java.io.Writer;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.NoSuchElementException;
+import java.math.BigInteger;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Egor Kulikov (egor@egork.net)
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "hold.*em.*numbers.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("hold'emnumbers.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		OutputWriter out = new OutputWriter(outputStream);
+		HoldemNumbers solver = new HoldemNumbers();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class HoldemNumbers {
+//	int[][][][] ways;
+//
+//	{
+//		for (int i = 11; i <= 11; i++) {
+//			ways = new int[4][i][i][1 << i];
+//			for (int j = 0; j < i; j++) {
+//				for (int k = j + 1; k < i; k++)
+//					ways[0][j][k][(1 << j) + (1 << k)] = 1;
+//			}
+//			for (int j = 0; j < 3; j++) {
+//				for (int k = 0; k < i; k++) {
+//					for (int l = k + 1; l < i; l++) {
+//						for (int m = 0; m < (1 << i); m++) {
+//							if (ways[j][k][l][m] == 0)
+//								continue;
+//							for (int n = 0; n < i; n++) {
+//								if ((m >> n & 1) == 1)
+//									continue;
+//								for (int o = n + 1; o < i; o++) {
+//									if ((m >> o & 1) == 1 || n + o > k + l || n + o == k + l && o > l)
+//										continue;
+//									ways[j + 1][k][l][m + (1 << n) + (1 << o)] += ways[j][k][l][m];
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+//			System.err.println("----------------");
+//			System.err.println(i);
+//			for (int l = 0; l < i; l++) {
+//				for (int m = l + 1; m < i; m++) {
+//					int total = (int) ArrayUtils.sumArray(ways[3][l][m]);
+//					if (total != 0)
+//						System.err.println(l + " " + m + " " + total / 6);
+//				}
+//			}
+//		}
+//
+//	}
+
+	long[][][] result;
+	int small;
+	int big;
+	int count;
+
+    public void solve(int testNumber, InputReader in, OutputWriter out) {
+		count = in.readInt();
+		result = new long[3][3][count];
+		boolean[][] answer = new boolean[count][count];
+		long threshold = (calculateLess(3, count - 2) + 3) / 4;
+		for (int i = 0; i < count; i++) {
+			for (int j = i + 1; j < count; j++) {
+				ArrayUtils.fill(result, -1);
+				big = j;
+				small = i;
+				long total = calculateLess(3, i) + calculate(2, 0, (i + j) / 2);
+//				if (total != 0 && testNumber == 4)
+//					System.err.println(i + " " + j + " " + total);
+				answer[i][j] = total >= threshold;
+			}
+		}
+		int handCount = in.readInt();
+		StringBuilder result = new StringBuilder();
+		for (int i = 0; i < handCount; i++) {
+			int first = in.readInt() - 1;
+			int second = in.readInt() - 1;
+			if (first > second) {
+				int temp = first;
+				first = second;
+				second = temp;
+			}
+			if (answer[first][second])
+				result.append('B');
+			else
+				result.append('F');
+		}
+		out.printLine("Case #" + testNumber + ":", result);
+	}
+
+	long calculate(int remaining, int delta, int candidate) {
+		if (candidate < 0 || remaining < 0)
+			return 0;
+		if (result[remaining][delta][candidate] != -1)
+			return result[remaining][delta][candidate];
+		result[remaining][delta][candidate] = calculate(remaining, delta, candidate - 1);
+		if (candidate > small) {
+			int max = Math.min(small + big - candidate, count - 1);
+			int variants = Math.max(0, max - candidate - (2 - remaining) - delta);
+			if (variants != 0)
+				result[remaining][delta][candidate] += variants * (calculateLess(remaining, small) +
+					calculate(remaining - 1, delta + 1, candidate - 1));
+		}
+		if (candidate < small) {
+			int max = Math.min(small + big - candidate - 1, count - 1);
+			int variants = Math.max(0, max - small - (2 - remaining) - 1 - delta);
+			if (variants != 0)
+				result[remaining][delta][candidate] += variants * (calculateLess(remaining, small - (2 - remaining - delta) - 1) +
+					calculate(remaining - 1, delta, candidate - 1));
+		}
+		return result[remaining][delta][candidate];
+	}
+
+	private long calculateLess(int remaining, long variants) {
+		if (variants < 0)
+			return 0;
+		if (remaining == 3)
+			return variants * (variants - 1) * (variants - 2) * (variants - 3) * (variants - 4) * (variants - 5) / 48;
+		if (remaining == 2)
+			return variants * (variants - 1) * (variants - 2) * (variants - 3) / 8;
+		if (remaining == 1)
+			return variants * (variants - 1) / 2;
+		if (remaining == 0)
+			return 1;
+		throw new RuntimeException();
+	}
+}
+
+class InputReader {
+
+	private InputStream stream;
+	private byte[] buf = new byte[1024];
+	private int curChar;
+	private int numChars;
+	private SpaceCharFilter filter;
+
+	public InputReader(InputStream stream) {
+		this.stream = stream;
+	}
+
+	public int read() {
+		if (numChars == -1)
+			throw new InputMismatchException();
+		if (curChar >= numChars) {
+			curChar = 0;
+			try {
+				numChars = stream.read(buf);
+			} catch (IOException e) {
+				throw new InputMismatchException();
+			}
+			if (numChars <= 0)
+				return -1;
+		}
+		return buf[curChar++];
+	}
+
+	public int readInt() {
+		int c = read();
+		while (isSpaceChar(c))
+			c = read();
+		int sgn = 1;
+		if (c == '-') {
+			sgn = -1;
+			c = read();
+		}
+		int res = 0;
+		do {
+			if (c < '0' || c > '9')
+				throw new InputMismatchException();
+			res *= 10;
+			res += c - '0';
+			c = read();
+		} while (!isSpaceChar(c));
+		return res * sgn;
+	}
+
+	public String readString() {
+		int c = read();
+		while (isSpaceChar(c))
+			c = read();
+		StringBuilder res = new StringBuilder();
+		do {
+			if (Character.isValidCodePoint(c))
+				res.appendCodePoint(c);
+			c = read();
+		} while (!isSpaceChar(c));
+		return res.toString();
+	}
+
+	public boolean isSpaceChar(int c) {
+		if (filter != null)
+			return filter.isSpaceChar(c);
+		return isWhitespace(c);
+	}
+
+	public static boolean isWhitespace(int c) {
+		return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+	}
+
+	public String next() {
+		return readString();
+	}
+
+	public interface SpaceCharFilter {
+		public boolean isSpaceChar(int ch);
+	}
+}
+
+class OutputWriter {
+	private final PrintWriter writer;
+
+	public OutputWriter(OutputStream outputStream) {
+		writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+	}
+
+	public OutputWriter(Writer writer) {
+		this.writer = new PrintWriter(writer);
+	}
+
+	public void print(Object...objects) {
+		for (int i = 0; i < objects.length; i++) {
+			if (i != 0)
+				writer.print(' ');
+			writer.print(objects[i]);
+		}
+	}
+
+    public void printLine(Object...objects) {
+		print(objects);
+		writer.println();
+	}
+
+	public void close() {
+		writer.close();
+	}
+
+	}
+
+class ArrayUtils {
+
+	public static void fill(long[][] array, long value) {
+		for (long[] row : array)
+			Arrays.fill(row, value);
+	}
+
+	public static void fill(long[][][] array, long value) {
+		for (long[][] row : array)
+			fill(row, value);
+	}
+
+	}
+

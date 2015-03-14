@@ -1,0 +1,219 @@
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.File;
+import java.io.Writer;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.util.Set;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.NoSuchElementException;
+import java.util.TreeSet;
+import java.math.BigInteger;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author ogiekako
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = ".*magic.*pairs.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("magicpairs.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		MyScanner in = new MyScanner(inputStream);
+		MyPrintWriter out = new MyPrintWriter(outputStream);
+		MagicPairs solver = new MagicPairs();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class MagicPairs {
+    long[] A, B;
+    public void solve(int testNumber, MyScanner in, MyPrintWriter out) {
+        int N = in.nextInt(), M = in.nextInt();
+        make(N, M, in);
+        long res = solve(A, B);
+        out.printFormat("Case #%d: %d\n", testNumber, res);
+    }
+    private long solve(long[] A, long[] B) {
+        int N = A.length, M = B.length;
+        TreeSet<Long> setA = new TreeSet<>(), setB = new TreeSet<>(), onlyA = new TreeSet<>(), onlyB = new TreeSet<>();
+        long res = 0;
+        for (int i = 0, j = 0; i < N || j < M; ) {
+            if (onlyA.isEmpty() && onlyB.isEmpty()) {
+                int prevI = i;
+                int prevJ = j;
+                while (i < N && setA.contains(A[i])) i++;
+                while (j < M && setB.contains(B[j])) j++;
+                res += (long) (i - prevI) * (j - prevJ);
+            }
+            if (setA.size() < setB.size()) {
+                while (i < N && setA.contains(A[i])) i++;
+                if (i == N) break;
+                setA.add(A[i]);
+                if (onlyB.contains(A[i])) onlyB.remove(A[i]);
+                else onlyA.add(A[i]);
+            } else {
+                while (j < M && setB.contains(B[j])) j++;
+                if (j == M) break;
+                setB.add(B[j]);
+                if (onlyA.contains(B[j])) onlyA.remove(B[j]);
+                else onlyB.add(B[j]);
+            }
+        }
+        return res;
+    }
+    private void make(int N, int M, MyScanner in) {
+        A = new long[N]; B = new long[M];
+        long x1 = in.nextInt(), a1 = in.nextLong(), b1 = in.nextLong(), c1 = in.nextLong(), r1 = in.nextLong();
+        long x2 = in.nextInt(), a2 = in.nextLong(), b2 = in.nextLong(), c2 = in.nextLong(), r2 = in.nextLong();
+        A[0] = x1;
+        B[0] = x2;
+        for (int i = 1; i < N || i < M; i++) {
+            if (i < N)
+                A[i] = (a1 * A[(i - 1) % N] + b1 * B[(i - 1) % M] + c1) % r1;
+            if (i < M)
+                B[i] = (a2 * A[(i - 1) % N] + b2 * B[(i - 1) % M] + c2) % r2;
+        }
+    }
+    }
+
+class MyScanner {
+    private final InputStream in;
+
+    public MyScanner(InputStream in) {
+        this.in = in;
+    }
+
+    int bufLen;
+    int bufPtr;
+    byte[] buf = new byte[1024];
+
+    public int read() {
+        if (bufLen == -1)
+            throw new InputMismatchException();
+        if (bufPtr >= bufLen) {
+            bufPtr = 0;
+            try {
+                bufLen = in.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (bufLen <= 0)
+                return -1;
+        }
+        return buf[bufPtr++];
+    }
+
+    private char[] strBuf = new char[65536];
+
+    public String next() {
+        int strLen = 0;
+        int c;
+        do {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        } while (Character.isWhitespace(c));
+        do {
+            if (strLen + 1 >= strBuf.length) {
+                char[] tmp = new char[strBuf.length * 2];
+                System.arraycopy(strBuf, 0, tmp, 0, strBuf.length);
+                strBuf = tmp;
+            }
+            strBuf[strLen++] = (char) c;
+            c = read();
+        } while (c != -1 && !Character.isWhitespace(c));
+        return new String(strBuf, 0, strLen);
+    }
+
+    public int nextInt() {
+        int c = read();
+        if (c == -1) throw new NoSuchElementException();
+        while (c != '-' && (c < '0' || '9' < c)) {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        }
+        if (c == '-') return -nextInt();
+        int res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while ('0' <= c && c <= '9');
+        return res;
+    }
+
+    public long nextLong() {
+        int c = read();
+        if (c == -1) throw new NoSuchElementException();
+        while (c != '-' && (c < '0' || '9' < c)) {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        }
+        if (c == '-') return -nextLong();
+        long res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while ('0' <= c && c <= '9');
+        return res;
+    }
+
+    }
+
+class MyPrintWriter {
+    PrintWriter out;
+
+    public MyPrintWriter(OutputStream outputStream) {
+        out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+    }
+
+    public MyPrintWriter(Writer writer) {
+        out = new PrintWriter(writer);
+    }
+
+    public void close() {
+        out.close();
+    }
+
+    public void printFormat(String format, Object... args) {
+        out.printf(format, args);
+    }
+
+}
+

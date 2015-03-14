@@ -1,0 +1,136 @@
+#include <algorithm>
+#include <bitset>
+#include <cassert>
+#include <cctype>
+#include <complex>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cstring>
+#include <ctime>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <stack>
+#include <sstream>
+#include <tuple>
+#include <typeinfo>
+#include <unordered_set>
+#include <unordered_map>
+#include <vector>
+using namespace std;
+
+#define REP2(i, m, n) for(int i = (int)(m); i < (int)(n); i++)
+#define REP(i, n) REP2(i, 0, n)
+#define ALL(c) (c).begin(), (c).end()
+#define PB(e) push_back(e)
+#define FOREACH(i, c) for(auto i = (c).begin(); i != (c).end(); ++i)
+#define MP(a, b) make_pair(a, b)
+#define BIT(n, m) (((n) >> (m)) & 1)
+
+typedef long long ll;
+
+const ll inf = 1e15;
+const ll mod = 1000 * 1000 * 1000 + 7;
+
+ll pow2[10000];
+
+vector<int> merge(const vector<int> &A, const vector<int> &B){
+    vector<int> res;
+    size_t pos0 = 0;
+    size_t pos1 = 0;
+    
+    while(pos0 < A.size() && pos1 < B.size()){
+        if (A[pos0] < B[pos1]){
+            res.push_back(A[pos0]);
+            pos0++;
+        } else if (A[pos0] > B[pos1]){
+            res.push_back(B[pos1]);
+            pos1++;
+        } else {
+            res.push_back(A[pos1]);
+            pos0++;pos1++;
+        }
+    }
+    while(pos0 < A.size()) res.push_back(A[pos0++]);
+    while(pos1 < B.size()) res.push_back(B[pos1++]);
+    return res;
+}
+
+pair<ll, vector<int> > calc(int v, const vector<vector<int> > &G){
+    ll sum = 1;
+    
+    vector<int> ps;
+    vector<int> vec(1, v);
+    vector<vector<int> > vecs;
+    
+    vector<ll> DP[3];
+    REP(i, 3) DP[i].resize(G[v].size() + 4, 0);
+    
+    REP(i, G[v].size()){
+        int to = G[v][i];
+        
+        auto pp = calc(to, G);
+        
+        REP(j, vecs.size()){
+            if(ps[j] < (int)vecs[j].size() && vecs[j][ps[j]] < to) ps[j]++;
+        }
+        
+        REP(j, 3) fill(ALL(DP[j]), 0);
+        DP[0][0] = 1;
+        
+        int N = vecs.size();
+        vector<int> facs;
+        REP(j, N){
+            facs.push_back((pow2[ps[j]] - 1 + mod) % mod);
+        }
+        
+        REP(j, N) REP(k, 3){
+            int m = min(2, k + 1);
+            DP[k][j + 1] += DP[k][j];
+            DP[k][j + 1] %= mod;
+            DP[m][j + 1] += DP[k][j] * facs[j];
+            DP[m][j + 1] %= mod;
+        }
+
+        (sum *= (DP[0][N ] + DP[1][N ]+ DP[2][N] * 2)) %= mod;
+        (sum *= pp.first) %= mod;
+        vecs.push_back(pp.second);
+        ps.push_back(0);
+    }
+    
+    REP(i, vecs.size()) vec = merge(vec, vecs[i]);
+    return make_pair(sum, vec);
+}
+
+void solve(){
+    int N;
+    cin >> N;
+    vector<vector<int> > G(N);
+    REP(i, N - 1){
+        int par;
+        cin >> par;
+        G[par].push_back(i + 1);
+    }
+    REP(i, N) sort(ALL(G[i]));
+    cout << calc(0, G).first << endl;
+};
+
+int main(){
+    int T;
+    cin >> T;
+    pow2[0] = 1;
+    REP(i, 9999) pow2[i + 1] = (pow2[i] * 2) % mod;
+    
+    REP(t, T){
+        cout << "Case #" << t + 1 << ": ";
+        solve();
+    }
+    return 0;
+}
+

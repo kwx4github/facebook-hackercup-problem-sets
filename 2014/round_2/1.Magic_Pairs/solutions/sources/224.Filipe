@@ -1,0 +1,125 @@
+#include <bits/stdc++.h>
+#include <gmpxx.h>
+#define rep(x,n) for(int x=0;x<int(n);++x)
+#define print(x) cout<<x<<endl
+#define dbg(x) cerr<<#x<<" = "<<x<<endl
+#define pv(x,y) {for(auto z=(x);z!=(y);z++)cerr<<*z<<" ";cerr<<endl;}
+#define _ <<" , "<<
+#define mp make_pair
+#define x first
+#define y second
+using namespace std;
+typedef pair<int,int> pt;
+
+const int thread_pool_size = 20;
+
+struct testcase {
+  int id;
+  int N,M;
+  vector<int> board1, board2;
+  long long x1,a1,b1,c1,r1;
+  long long x2,a2,b2,c2,r2;
+  long long ans;
+  testcase() {}
+  testcase(int id=-1) {
+    this->id = id;
+    cin>>N>>M;
+    cin>>x1>>a1>>b1>>c1>>r1;
+    cin>>x2>>a2>>b2>>c2>>r2;
+  }
+  friend ostream& operator<<(ostream &out, const testcase &t) {
+    out << "Case #" << t.id << ":";
+    out << " " << t.ans;
+    return out;
+  }
+  void push(int value, unordered_set<int> &S, unordered_set<int> &T) {
+    if(S.insert(value).second)
+      T.insert(value);
+  }
+  void main() {
+    board1.resize(N);
+    board2.resize(M);
+
+    board1[0] = x1;
+    board2[0] = x2;
+
+    for(int i=1;i<max(N,M);i++) {
+      if(i<N) {
+        board1[i] = (a1 * board1[(i-1) % N] + b1 * board2[(i-1) % M] + c1) % r1;
+      }
+      if(i<M) {
+        board2[i] = (a2 * board1[(i-1) % N] + b2 * board2[(i-1) % M] + c2) % r2;
+      }
+    }
+
+    //pv(board1.begin(),board1.end());
+    //pv(board2.begin(),board2.end());
+
+    //set<int> A, B;
+    unordered_set<int> A,B;
+    for(int i=0,j=0;i<N and j<M;) {
+      int ii = i, jj = j;
+      //set<int> getA, getB;
+      unordered_set<int> getA, getB;
+      push(board1[ii++],A,getA);
+      push(board2[jj++],B,getB);
+      while(ii<N and jj<M) {
+        int op = 0;
+        for(auto x : getB) {
+          while(ii < N and A.count(x) == 0) {
+            push(board1[ii++],A,getA);
+            ++op;
+          }
+          if(A.count(x) == 0) goto end;
+        }
+        getB.clear();
+        for(auto x : getA) {
+          while(jj < M and B.count(x) == 0) {
+            push(board2[jj++],B,getB);
+            ++op;
+          }
+          if(B.count(x) == 0) goto end;
+        }
+        getA.clear();
+        if(op == 0) break;
+      }
+      i=ii;
+      j=jj;
+      while(ii < N and A.count(board1[ii]))
+        push(board1[ii++],A,getA);
+      while(jj < M and B.count(board2[jj]))
+        push(board2[jj++],B,getB);
+      //dbg(i _ ii);
+      //dbg(j _ jj);
+      ans += (ii - i + 1) * 1LL * (jj - j + 1);
+      i=ii,j=jj;
+    } end:;
+  }
+};
+
+int main() {
+  int T; cin>>T;
+  vector<testcase> vt;
+  for(int i=0;i<T;i++)
+    vt.push_back(testcase(i+1));
+  for(int i=0;i<T;) {
+    vector<thread> workers;
+    mutex mi;
+    const int count = min(thread_pool_size, T-i);
+    for(int j=0;j<count;j++)
+      workers.push_back(
+        thread([&](){
+          mi.lock();
+          int idx = i++;
+          mi.unlock();
+          vt[idx].main();
+        })
+      );
+    for(auto &task : workers)
+      task.join();
+  }
+  for(auto &test : vt)
+    cout << test << endl;
+  return 0;
+}
+

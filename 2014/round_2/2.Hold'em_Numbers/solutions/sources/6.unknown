@@ -1,0 +1,135 @@
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream = System.in;
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("holdemnumbers.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		HoldemNumbers solver = new HoldemNumbers();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class HoldemNumbers {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        System.err.println("Processing " + testNumber + "...");
+        int n = in.nextInt();
+        int h = in.nextInt();
+        StringBuilder res = new StringBuilder();
+        for (int i = 0; i < h; ++i) {
+            int c1 = in.nextInt();
+            int c2 = in.nextInt();
+            if (c1 > c2) {
+                int t = c1;
+                c1 = c2;
+                c2 = t;
+            }
+            if (positive(c1, c2, n))
+                res.append("B");
+            else
+                res.append("F");
+        }
+        out.println("Case #" + testNumber + ": " + res.toString());
+    }
+
+    private boolean positive(int c1, int c2, int n) {
+        long total = 1;
+        for (int i = 0; i < 6; ++i) {
+            total *= (n - 2 - i);
+        }
+        if (total % 48 != 0) throw new RuntimeException();
+        total /= 8;
+        total /= 6;
+        long nice = getnice(c1, c2, n);
+        return nice * 4 > total;
+    }
+
+    private long getnice(int c1, int c2, int n) {
+        long goodpairs = 0;
+        boolean[][] isgood = new boolean[n + 1][n + 1];
+        for (int a1 = 1; a1 <= n; ++a1)
+            for (int a2 = a1 + 1; a2 <= n; ++a2)
+                if (a1 != c1 && a1 != c2 && a2 != c1 && a2 != c2 && (a1 + a2 < c1 + c2 || (a1 + a2 == c1 + c2 && a2 < c2))) {
+                    ++goodpairs;
+                    isgood[a1][a2] = true;
+                    isgood[a2][a1] = true;
+                }
+        long res = goodpairs * (goodpairs - 1) * (goodpairs - 2) / 6;
+        long[] goodcnt = new long[n + 1];
+        for (int a = 1; a <= n; ++a) {
+            long cnt = 0;
+            for (int b = 1; b <= n; ++b) if (isgood[a][b]) ++cnt;
+            goodcnt[a] = cnt;
+            res -= cnt * (cnt - 1) / 2 * (goodpairs - 2);
+            res += 2 * cnt * (cnt - 1) * (cnt - 2) / 6;
+        }
+        for (int a = 1; a <= n; ++a)
+            for (int b = a + 1; b <= n; ++b) if (isgood[a][b]) {
+                res += (goodcnt[a] - 1) * (goodcnt[b] - 1);
+            }
+        long[] m1 = new long[n + 1];
+        long[] m2 = new long[n + 1];
+        for (int b = 1; b <= n; ++b) {
+            for (int a = 1; a < b; ++a) if (isgood[a][b]) {
+                if (a < 64) m1[b] |= 1L << a; else m2[b] |= (1L << (a - 64));
+            }
+        }
+        for (int b = 1; b <= n; ++b)
+            for (int c = b + 1; c <= n; ++c) if (isgood[b][c]) {
+                res -= Long.bitCount(m1[b] & m1[c]);
+                res -= Long.bitCount(m2[b] & m2[c]);
+            }
+        return res;
+    }
+
+    }
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream));
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+    }
+

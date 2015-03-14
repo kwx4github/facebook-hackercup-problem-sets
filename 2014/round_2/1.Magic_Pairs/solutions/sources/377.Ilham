@@ -1,0 +1,211 @@
+#include <cstdlib>
+#include <cstring>
+#include <cstdio>
+#include <cassert>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <map>
+#include <set>
+#include <queue>
+#include <stack>
+#include <bitset>
+#include <string>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+
+using namespace std;
+
+typedef vector<string> vs;
+typedef vector<int> vi;
+typedef pair<int, int> pii;
+typedef long long LL;
+typedef vector<LL> vl;
+typedef vector<double> vd;
+
+#define FOR(i,n) for (i = 0; i < (n); i++)
+#define FORI(i,a,b) for (i = (a); i <= (b); i++)
+#define FORD(i,a,b) for (i = (a); i >= (b); i--)
+#define FOREACH(i, x) for (typeof((x).begin()) i = (x).begin(); i != (x).end(); i++)
+#define ZERO(a) memset(a, 0, sizeof(a))
+#define MINUS(a) memset(a, -1, sizeof(a))
+#define SZ(a) (a.size())
+#define MP(a, b) make_pair(a, b)
+#define SHL(a,b) ((a) << (b))
+#define SHR(a,b) ((a) >> (b))
+#define FI first
+#define SE second
+#define PB push_back
+#define DEB(x) if (DEBUG) { x; }
+
+template<class T> int bitcount(T a) { int x = 0; while (a) { x += (a & 1); a >>= 1; } return x; }
+template<class T> inline T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+template<class T> inline T lcm(T a, T b) { return a / gcd(a, b) * b; }
+template<class T> inline T sqr(T a) { return a * a; } // NOTE: T must be enough to save sqr!
+inline int parity(LL a) { return __builtin_parityl(a); }
+inline int parity(int a) { return __builtin_parity(a); }
+template<class T> T s2type(string s) { T res; istringstream in(s); in >> res; return res; }
+template<class T> string toString(T n) { ostringstream out; out << n; return out.str(); }
+
+const double PI = acos(-1.0);
+const double EPS = 1e-11;
+const int MAXN = 1000005;
+const int DEBUG = 0;
+
+int N, M;
+int x1, x2, a1, a2, b1, b2, c1, c2, r1, r2;
+LL o1[MAXN], o2[MAXN];
+int next1[MAXN], next2[MAXN];
+map<LL, int> m1, m2;
+
+LL count() {
+  queue<LL> q1, q2;
+  int i, j, k, l;
+  int idx1, idx2;
+  LL num1, num2;
+  int turn;
+  LL ans = 0;
+  int aa = 0;
+
+  q1.push(o1[0]);
+  idx1 = -1;
+  idx2 = -1;
+  while (!q1.empty()) {
+    // contract: in the beginning, only q1 is filled, and it's filled with exactly one number
+    num1 = q1.front(); q1.pop();
+    idx1 = m1[num1];
+    q2.push(num1);
+    turn = 2; // should've thought a bit better :( now use copy and paste
+
+    // to do: find the next common pairs
+    while (idx2 == -1 || !q1.empty() || !q2.empty()) {
+      if (turn == 2) {
+        DEB(fprintf(stderr, "inspecting q2 of size %d\n", q2.size()));
+        while (!q2.empty()) {
+          num2 = q2.front(); q2.pop();
+          DEB(fprintf(stderr, "num2 = %lld\n", num2));
+          if (m2.find(num2) == m2.end() || m2[num2] == M) return ans; // out of bounds
+          i = m2[num2];
+          DEB(fprintf(stderr, "found the target index2: %d\n", i));
+          if (i > idx2) // oh, we have to do something here
+          {
+            if (idx2 == -1) { // we're still in the beginning
+              idx2 = 0;
+              q1.push(o2[idx2]);
+            }
+            while (i != idx2) {
+              idx2 = next2[idx2];
+              q1.push(o2[idx2]);
+            }
+            // so now i == idx2, on to the next number
+          }
+        }
+        turn = 1;
+        DEB(fprintf(stderr, "\nArriving at idx2 = %d\n", idx2));
+      } else { // (turn == 1)
+        DEB(fprintf(stderr, "inspecting q1 of size %d\n", q1.size()));
+        while (!q1.empty()) {
+          num1 = q1.front(); q1.pop();
+          DEB(fprintf(stderr, "num1 = %lld\n", num1));
+          if (m1.find(num1) == m1.end() || m1[num1] == N) return ans; // out of bounds
+          i = m1[num1];
+          DEB(fprintf(stderr, "found the target index1: %d\n", i));
+          if (i > idx1) { // oh we have something here
+            // no need for the initial case
+            while (i != idx1) {
+              idx1 = next1[idx1];
+              q2.push(o1[idx1]);
+            }
+          }
+        }
+        turn = 2;
+        DEB(fprintf(stderr, "\nArriving at idx1 = %d\n", idx1));
+      }
+
+    }
+
+    ans += (next1[idx1] - idx1) * (LL) (next2[idx2] - idx2);
+    DEB(fprintf(stderr, "adding (%d - %d) * (%d - %d)\n", next1[idx1], idx1, next2[idx2], idx2));
+    // try the next number
+    if (next1[idx1] != N) q1.push(o1[next1[idx1]]);
+  }
+  return ans;
+}
+
+LL doit()
+{
+  int i;
+  int prev1, prev2;
+
+  scanf("%d %d", &N, &M);
+  scanf("%d %d %d %d %d", &x1, &a1, &b1, &c1, &r1);
+  scanf("%d %d %d %d %d", &x2, &a2, &b2, &c2, &r2);
+  o1[0] = x1;
+  o2[0] = x2;
+  MINUS(next1);
+  MINUS(next2);
+  m1.clear(); m1[o1[0]] = (LL) 0; prev1 = 0;
+  m2.clear(); m2[o2[0]] = (LL) 0; prev2 = 0;
+
+  FOR(i, max(N, M) - 1) {
+    if (i < N)
+    {
+      o1[i + 1] = ((LL) a1 * o1[i % N] + (LL) b1 * o2[i % M] + c1) % r1;
+      if (m1.find(o1[i + 1]) == m1.end()) {
+        next1[prev1] = i + 1;
+        prev1 = i + 1;
+        m1[o1[i + 1]] = i + 1;
+      }
+    }
+    if (i < M)
+    {
+      o2[i + 1] = ((LL) a2 * o1[i % N] + (LL) b2 * o2[i % M] + c2) % r2;
+      if (m2.find(o2[i + 1]) == m2.end()) {
+        next2[prev2] = i + 1;
+        prev2 = i + 1;
+        m2[o2[i + 1]] = i + 1;
+      }
+    }
+  }
+  next1[prev1] = N;
+  next2[prev2] = M;
+
+/*  printf("O1 = { ");
+  FOR(i, N) printf(" %lld, ", o1[i]);
+  printf("}\n");
+  printf("next1 = { ");
+  FOR(i, N) printf(" %d, ", next1[i]);
+  printf("}\n");
+  printf("m1 = { ");
+  FOR(i, 6) { if (m1.find(i) != m1.end()) printf("(%d, %d), ", i, m1[i]); }
+  printf("}\n");
+
+  printf("O2 = { ");
+  FOR(i, M) printf(" %lld, ", o2[i]);
+  printf("}\n");
+  printf("next2 = { ");
+  FOR(i, M) printf(" %d, ", next2[i]);
+  printf("}\n");
+  printf("m1 = { ");
+  FOR(i, 6) { if (m2.find(i) != m2.end()) printf("(%d, %d), ", i, m2[i]); }
+  printf("}\n");*/
+
+  return count();
+}
+
+int main()
+{
+  int tt, t;
+
+  scanf("%d", &t);
+  FOR(tt, t)
+  {
+    printf("Case #%d: %lld\n", tt + 1, doit());
+  }
+  return 0;
+}
+

@@ -1,0 +1,122 @@
+#include <cstdio>
+#include <set>
+
+long long board1[1000000], board2[1000000];
+
+std::set<long long> s1, s2, s1m2, s2m1;
+
+void print_sets() {
+	printf("s1:"); for (std::set<long long>::iterator i=s1.begin();i!=s1.end();i++) printf(" %lld",*i); printf("\n");
+	printf("s2:"); for (std::set<long long>::iterator i=s2.begin();i!=s2.end();i++) printf(" %lld",*i); printf("\n");
+	printf("s2m1:"); for (std::set<long long>::iterator i=s2m1.begin();i!=s2m1.end();i++) printf(" %lld",*i); printf("\n");
+	printf("s1m2:"); for (std::set<long long>::iterator i=s1m2.begin();i!=s1m2.end();i++) printf(" %lld",*i); printf("\n");
+}
+
+void ins1(int index) {
+	long long n = board1[index];
+	//printf("ins1: %d (%lld)\n",index,n);
+	s1.insert(n);
+	s2m1.erase(n);
+	if (s2.find(n)==s2.end()) s1m2.insert(n);
+	//print_sets();
+}
+
+void ins2(int index) {
+	long long n = board2[index];
+	//printf("ins2: %d (%lld)\n",index,n);
+	s2.insert(n);
+	s1m2.erase(n);
+	if (s1.find(n)==s1.end()) s2m1.insert(n);
+	//print_sets();
+}
+
+int main() {
+	int num_cases;
+	scanf("%d",&num_cases);
+	for (int case_num=1;case_num<=num_cases;case_num++) {
+
+		// Read input
+
+		int l1, l2;
+		scanf("%d %d",&l1,&l2);
+		long long x1, a1, b1, c1, r1;
+		long long x2, a2, b2, c2, r2;
+		scanf("%lld %lld %lld %lld %lld",&x1,&a1,&b1,&c1,&r1);
+		scanf("%lld %lld %lld %lld %lld",&x2,&a2,&b2,&c2,&r2);
+
+		// Generate boards
+
+		board1[0] = x1;
+		board2[0] = x2;
+		for (int i=1;i<l1||i<l2;i++) {
+			if (i<l1) {
+				board1[i] = (a1 * board1[(i-1)%l1] + b1 * board2[(i-1)%l2] + c1) % r1;
+			}
+			if (i<l2) {
+				board2[i] = (a2 * board1[(i-1)%l1] + b2 * board2[(i-1)%l2] + c2) % r2;
+			}
+		}
+
+		// Print boards, for testing
+		/*
+		printf("Board 1:");
+		for (int i=0;i<l1;i++) {
+			printf(" %lld",board1[i]);
+		}
+		printf("\n");
+		printf("Board 2:");
+		for (int i=0;i<l2;i++) {
+			printf(" %lld",board2[i]);
+		}
+		printf("\n");
+		*/
+
+		// Compute result
+		s1.clear(); s2.clear();
+		s1m2.clear(); s2m1.clear();
+
+		int i1 = 0, i2 = 0;
+		ins1(0);
+		ins2(0);
+
+		long long result = 0;
+
+		while (true) {
+			//printf("Top of loop: %d,%d\n",i1,i2);
+			if (s1m2.empty()&&s2m1.empty()) {
+				// The sets are the same; we have a magic pair
+				// Count number of magic pairs with this set
+				long long count1=1, count2=1;
+				i1++;
+				while (i1<l1&&s1.find(board1[i1])!=s1.end()) {
+					i1++;
+					count1++;
+				}
+				i2++;
+				while (i2<l2&&s2.find(board2[i2])!=s2.end()) {
+					i2++;
+					count2++;
+				}
+				result += count1*count2;
+				//printf("Adding: %lldx%lld\n",count1,count2);
+				// update sets
+				if (i1==l1||i2==l2) break;
+				ins1(i1);
+				ins2(i2);
+			} else {
+				if (!s1m2.empty()) {
+					i2++;
+					if (i2==l2) break;
+					ins2(i2);
+				}
+				if (!s2m1.empty()) {
+					i1++;
+					if (i1==l1) break;
+					ins1(i1);
+				}
+			}
+		}
+
+		printf("Case #%d: %lld\n",case_num,result);
+	}
+}

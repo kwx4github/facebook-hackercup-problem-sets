@@ -1,0 +1,225 @@
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cctype>
+#include <cstring>
+#include <vector>
+#include <list>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <map>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+typedef long long Int;
+typedef pair<int,int> PII;
+typedef vector<int> VInt;
+
+#define FOR(i, a, b) for(i = (a); i < (b); ++i)
+#define RFOR(i, a, b) for(i = (a) - 1; i >= (b); --i)
+#define CLEAR(a, b) memset(a, b, sizeof(a))
+#define SIZE(a) int((a).size())
+#define ALL(a) (a).begin(),(a).end()
+#define PB push_back
+#define MP make_pair
+
+char Out[1 << 20];
+int From[256];
+int To[256];
+int Res[256][256];
+Int R[102][102][102];
+
+int f(int n, int a, int b)
+{
+	if (a < b)
+		swap(a, b);
+
+	CLEAR(R, 0);
+	R[0][0][0] = 1;
+
+	int i, j, k, l;
+	FOR(i, 1, n + 1)
+	if (i != a && i != b)
+	{
+		RFOR(j, n + 2, 0)
+			RFOR(k, j + 1, 0)
+				RFOR(l, k + 1, 0)
+				if (R[j][k][l] != 0)
+				{
+					if (l == n + 1 || PII(l + i, i) > PII(a + b, a))
+						continue;
+
+					int jj = j;
+					int kk = k;
+					int ll = l + i;
+					if (l != 0)
+						ll = n + 1;
+
+					if (ll > kk)
+					{
+						swap(ll, kk);
+						if (kk > jj)
+							swap(kk, jj);
+					}
+
+					R[jj][kk][ll] += R[j][k][l];
+
+					if (k == n + 1 || PII(k + i, i) > PII(a + b, a))
+						continue;
+
+					jj = j;
+					kk = k + i;
+					ll = l;
+					if (k != 0)
+						kk = n + 1;
+
+					if (kk > jj)
+						swap(kk, jj);
+
+					R[jj][kk][ll] += R[j][k][l];
+
+					if (j == n + 1 || PII(j + i, i) > PII(a + b, a))
+						continue;
+
+					jj = j + i;
+					kk = k;
+					ll = l;
+					if (j != 0)
+						jj = n + 1;
+
+					R[jj][kk][ll] += R[j][k][l];
+				}
+	}
+
+	Int res = 8*R[n + 1][n + 1][n + 1];
+	Int total = 1;
+	FOR(i, 0, 6)
+		total *= n - 2 - i;
+
+	return (4 * res > total ? 1 : 0);
+}
+
+int SolveTest(int test)
+{
+	int n, h;
+	scanf("%d%d", &n, &h);
+
+	CLEAR(Res, -1);
+
+	int i, j;
+	int from = 3;
+	int to = 2 * n - 1;
+	FOR(i, from, to + 1)
+	{
+		int big = min(i - 1, n);
+		int small = i - big;
+
+		To[i] = big;
+
+		while (big - small > 2)
+		{
+			--big;
+			++small;
+		}
+
+		From[i] = big;
+	}
+
+	int Min = from - 1, Max = to + 1;
+	while (Max - Min > 1)
+	{
+		int Mid = (Min + Max) / 2;
+		
+		int big = From[Mid];
+		int small = Mid - big;
+
+		if (f(n, big, small) == 0)
+			Min = Mid;
+		else
+			Max = Mid;
+	}
+
+	FOR(i, from, to + 1)
+		Res[i][From[i]] = (i < Max ? 0 : 1);
+
+	Min = from - 1, Max = to + 1;
+	while (Max - Min > 1)
+	{
+		int Mid = (Min + Max) / 2;
+
+		int big = To[Mid];
+		int small = Mid - big;
+
+		if (f(n, big, small) == 0)
+			Min = Mid;
+		else
+			Max = Mid;
+	}
+
+	FOR(i, from, to + 1)
+		Res[i][To[i]] = (i < Max ? 0 : 1);
+
+	FOR(i, from, to + 1)
+	{
+		if (Res[i][From[i]] == Res[i][To[i]])
+		{
+			FOR(j, From[i], To[i])
+				Res[i][j] = Res[i][To[i]];
+		}
+		else
+		{
+			Min = From[i], Max = To[i];
+			while (Max - Min > 1)
+			{
+				int Mid = (Min + Max) / 2;
+
+				int big = Mid;
+				int small = i - Mid;
+
+				if (f(n, big, small) == 0)
+					Min = Mid;
+				else
+					Max = Mid;
+			}
+
+			FOR(j, From[i], To[i])
+				Res[i][j] = (j < Max ? 0 : 1);
+		}
+	}
+
+	Out[h] = 0;
+	FOR(i, 0, h)
+	{
+		int a, b;
+		scanf("%d%d", &a, &b);
+		if (a < b)
+			swap(a, b);
+
+		Out[i] = (Res[a + b][a] == 0 ? 'F' : 'B');
+	}
+
+	printf("Case #%d: %s\n", test + 1, Out);
+	return 0;
+}
+
+int main()
+{
+	freopen("b.in", "r", stdin);
+	freopen("b.out", "w", stdout);
+
+	int T, t;
+	char buf[1 << 7];
+	gets(buf);
+	sscanf(buf, "%d", &T);
+	FOR(t, 0, T)
+	{
+		fprintf(stderr, "Solving %d/%d\n", t + 1, T);
+		SolveTest(t);
+	}
+
+	return 0;
+};

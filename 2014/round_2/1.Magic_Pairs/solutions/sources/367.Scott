@@ -1,0 +1,106 @@
+#include <iostream>
+#include <map>
+#include <assert.h>
+
+using namespace std;
+
+typedef long long ll;
+
+const int N = 1000000;
+ll x[2][N];
+map<ll, ll> ct[2];
+
+ll get(map<ll, ll> &m, ll k) {
+  if (m.find(k) == m.end()) {
+    return 0;
+  } else {
+    return m[k];
+  }
+}
+
+void incr(map<ll, ll> &m, int k) {
+  if (m.find(k) == m.end()) {
+    m[k] = 1;
+  } else {
+    m[k] += 1;
+  }
+}
+
+int main() {
+  ll n[2], x1, a1, b1, c1, r1, x2, a2, b2, c2, r2;
+  int T; scanf("%d", &T);
+  for (int test = 1; test <= T; test++) {
+    ct[0].clear();
+    ct[1].clear();
+    scanf("%lld %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld %lld", &n[0], &n[1], &x1, &a1, &b1, &c1, &r1, &x2, &a2, &b2, &c2, &r2);
+    x[0][0] = x1;
+    x[1][0] = x2;
+    for (int i = 1; i < max(n[0], n[1]); i++) {
+      if (i < n[0]) {
+        x[0][i] = (a1 * x[0][(i - 1 + n[0]) % n[0]] + b1 * x[1][(i - 1 + n[1]) % n[1]] + c1) % r1;
+      }
+      if (i < n[1]) {
+        x[1][i] = (a2 * x[0][(i - 1 + n[0]) % n[0]] + b2 * x[1][(i - 1 + n[1]) % n[1]] + c2) % r2;
+      }
+    }
+
+    ll it[2];
+    it[0] = it[1] = 0;
+
+    ll ret = 0;
+    ll overlap = 0;
+    int k = 0;
+    while (it[0] < n[0] && it[1] < n[1]) {
+
+      // catch up !k to k
+      while (it[!k] < n[!k]) {
+        ll v = x[!k][it[!k]];
+        if (get(ct[k], v) > 0 && get(ct[!k], v) == 0) {
+          overlap++;
+        }
+        incr(ct[!k], v);
+        if (overlap == ct[k].size()) {
+          break;
+        }
+        it[!k]++;
+      }
+      // !k now has everything in k, possibly some more
+
+      if (overlap == ct[!k].size()) {
+        assert(ct[k].size() == ct[!k].size());
+        // see how long !k can go for while being equal
+        ll start1 = it[!k];
+        while (it[!k] < n[!k]) {
+          ll v = x[!k][it[!k]];
+          // we're a strict superset
+          if (get(ct[k], v) == 0) {
+            break;
+          }
+          it[!k]++;
+          incr(ct[!k], v);
+        }
+
+        // see how long k can go for while being equal
+        ll start2 = it[k];
+        while (it[k] < n[k]) {
+          ll v = x[k][it[k]];
+          // we're a strict superset
+          if (get(ct[!k], v) == 0) {
+            break;
+          }
+          it[k]++;
+          incr(ct[k], v);
+        }
+
+        // they're both equal at this point
+        ret += (it[!k] - start1) * (it[k] - start2);
+      } else {
+        // !k is superset of k
+        k = !k;
+      }
+
+
+    }
+    printf("Case #%d: %lld\n", test, ret);
+  }
+}

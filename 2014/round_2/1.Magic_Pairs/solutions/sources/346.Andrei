@@ -1,0 +1,132 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Scanner;
+import java.util.Set;
+
+public class MagicPairs {
+
+	private Scanner sc;
+	private BufferedWriter out;
+	
+	public static void main(String[] args) throws IOException {
+		new MagicPairs().solve();
+	}
+	
+	private String solveCase() {
+		int n = sc.nextInt(), m = sc.nextInt();
+		long[] board1 = new long[n];
+		long[] board2 = new long[m];
+		board1[0] = sc.nextLong();
+		long a1 = sc.nextLong(), b1 = sc.nextLong(), c1 = sc.nextLong(), r1 = sc.nextLong();
+		board2[0] = sc.nextLong();
+		long a2 = sc.nextLong(), b2 = sc.nextLong(), c2 = sc.nextLong(), r2 = sc.nextLong();
+		int maxN = Math.max(n, m);
+		for (int i = 1; i < maxN; i++) {
+			if (i < n) {
+				board1[i] = (a1 * board1[i-1] + b1 * board2[(i-1) % m] + c1) % r1;
+			}
+			if (i < m) {
+				board2[i] = (a2 * board1[(i-1) % n] + b2 * board2[i-1] + c2) % r2;
+			}
+		}
+		return String.valueOf(solveFast(n, m, board1, board2)/* + " " + solveBrute(n, m, board1, board2)*/);
+	}
+	
+	private long solveFast(int n, int m, long[] board1, long[] board2) {
+		Set<Long> onlyInFirst = new HashSet<Long>();
+		Set<Long> onlyInSecond = new HashSet<Long>();
+		Set<Long> inBoth = new HashSet<Long>();
+		int i = -1, j = -1;
+		long count = -1; // Ignore the empty set.
+		while (i < n || j < m) {
+			if (onlyInFirst.isEmpty() && onlyInSecond.isEmpty()) {
+				long count1 = 1, count2 = 1;
+				while (i + 1 < n && inBoth.contains(board1[i + 1])) {
+					i++;
+					count1++;
+				}
+				while (j + 1 < m && inBoth.contains(board2[j + 1])) {
+					j++;
+					count2++;
+				}
+				count += count1 * count2;
+				if (i + 1 < n) {
+					i++;
+					onlyInFirst.add(board1[i]);
+					continue;
+				} else if (j + 1 < m) {
+					j++;
+					onlyInSecond.add(board2[j]);
+					continue;
+				} else {
+					i++; j++;
+					// Should actually be break here.
+					continue;
+				}
+			}
+			if (!onlyInFirst.isEmpty()) {
+				j++;
+				if (j >= m) {
+					// Impossible to match what we have in board1.
+					break;
+				}
+				long nextIn2 = board2[j];
+				if (onlyInFirst.contains(nextIn2)) {
+					inBoth.add(nextIn2);
+					onlyInFirst.remove(nextIn2);
+				} else if (!inBoth.contains(nextIn2)) {
+					// Not in both, not only in first => only in second.
+					onlyInSecond.add(nextIn2);
+				}
+				continue;
+			} else if (!onlyInSecond.isEmpty()) {
+				i++;
+				if (i >= n) {
+					// Impossible to match board2.
+					break;
+				}
+				long nextIn1 = board1[i];
+				if (onlyInSecond.contains(nextIn1)) {
+					inBoth.add(nextIn1);
+					onlyInSecond.remove(nextIn1);
+				} else if (!inBoth.contains(nextIn1)) {
+					onlyInFirst.add(nextIn1);
+				}
+			} else {
+				// They are already equal again.
+			}
+		}
+		return count;
+	}
+	
+	private long solveBrute(int n, int m, long[] board1, long[] board2) {
+		long count = 0;
+		Set<Long> unique1 = new HashSet<Long>();
+		for (int i = 0; i < n; i++) {
+			unique1.add(board1[i]);
+			Set<Long> unique2 = new HashSet<Long>();
+			for (int j = 0; j < m; j++) {
+				unique2.add(board2[j]);
+				if (unique1.equals(unique2)) {
+					count++;
+				}
+			}
+		}
+		return count;
+	}
+	
+	private void solve() throws IOException {
+		sc = new Scanner(new File("magic_pairs.in"));
+		out = new BufferedWriter(new FileWriter("magic_pairs.out"));
+		int nrt = sc.nextInt();
+		for (int i = 0; i < nrt; i++) {
+			System.out.println("test " + i);
+			out.write("Case #" + (i + 1) + ": " + solveCase());
+			out.newLine();
+		}
+		out.close();
+	}
+}

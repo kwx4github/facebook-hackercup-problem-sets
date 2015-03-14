@@ -1,0 +1,214 @@
+import java.io.IOException;
+import java.util.InputMismatchException;
+import java.util.Set;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.util.TreeSet;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("magic_pair.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("magicpairs.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		MagicPairs solver = new MagicPairs();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class MagicPairs {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int N = in.readInt();
+        int M = in.readInt();
+        long[] B1 = new long[N];
+        long[] B2 = new long[M];
+
+        long x1 = in.readInt();
+        long a1 = in.readInt();
+        long b1 = in.readInt();
+        long c1 = in.readInt();
+        long r1 = in.readInt();
+
+        long x2 = in.readInt();
+        long a2 = in.readInt();
+        long b2 = in.readInt();
+        long c2 = in.readInt();
+        long r2 = in.readInt();
+
+        B1[0] = x1;
+        B2[0] = x2;
+
+        for (int i = 1; i < N || i < M; ++i) {
+            if (i < N) {
+                B1[i] = (a1 * B1[(i - 1) % N] + b1 * B2[(i - 1) % M] + c1) % r1;
+            }
+            if (i < M) {
+                B2[i] = (a2 * B1[(i - 1) % N] + b2 * B2[(i - 1) % M] + c2) % r2;
+            }
+        }
+
+        int[] u1 = findUnique(B1);
+        int[] u2 = findUnique(B2);
+
+        Set<Long> s1 = new TreeSet<Long>();
+        Set<Long> s2 = new TreeSet<Long>();
+
+        s1.add(B1[0]);
+        s2.add(B2[0]);
+
+        int i1 = 0;
+        int i2 = 0;
+        int u = 0;
+        int v = 0;
+
+        long res = 0;
+        while (i1 < N && i2 < M) {
+            boolean val_1_in_1 = s1.contains(B1[i1]);
+            boolean val_1_in_2 = s2.contains(B1[i1]);
+            boolean val_2_in_1 = s1.contains(B2[i2]);
+            boolean val_2_in_2 = s2.contains(B2[i2]);
+
+            if (!val_1_in_1 && !val_1_in_2 && B1[i1] != B2[i2]) u++;
+            if (!val_2_in_2 && !val_2_in_1 && B2[i2] != B1[i1]) v++;
+
+            if (!val_1_in_1 && val_1_in_2) v--;
+            if (!val_2_in_2 && val_2_in_1) u--;
+
+            s1.add(B1[i1]);
+            s2.add(B2[i2]);
+
+            int nxt1 = u1[i1];
+            int nxt2 = u2[i2];
+
+            if (u == 0 && v == 0) {
+                res += (long) (nxt1 - i1) * (nxt2 - i2);
+            }
+
+            if (u > v) {
+                i1 = nxt1;
+            } else if (v > u) {
+                i2 = nxt2;
+            } else {
+                i1 = nxt1;
+                i2 = nxt2;
+            }
+        }
+
+        out.printf("Case #%d: %d\n", testNumber, res);
+    }
+
+    private int[] findUnique(long[] b) {
+        Set<Long> set = new TreeSet<Long>();
+        boolean[] res = new boolean[b.length];
+
+        for (int i = 0; i < b.length; ++i) {
+            if (!set.contains(b[i])) {
+                res[i] = true;
+            } else {
+                res[i] = false;
+            }
+            set.add(b[i]);
+        }
+
+        int[] res1 = new int[b.length];
+        int nxt = b.length;
+        for (int i = b.length - 1; i >= 0; --i) {
+            res1[i] = nxt;
+            if (res[i]) nxt = i;
+        }
+        return res1;
+    }
+}
+
+class InputReader {
+
+    private InputStream stream;
+    private byte[] buf = new byte[1024];
+    private int curChar;
+    private int numChars;
+
+    public InputReader(InputStream stream) {
+        this.stream = stream;
+    }
+
+    public int read() {
+        // InputMismatchException -> UnknownError
+        if (numChars == -1)
+            throw new UnknownError();
+        if (curChar >= numChars) {
+            curChar = 0;
+            try {
+                numChars = stream.read(buf);
+            } catch (IOException e) {
+                throw new UnknownError();
+            }
+            if (numChars <= 0)
+                return -1;
+        }
+        return buf[curChar++];
+    }
+
+    public int readInt() {
+        int c = read();
+        while (isSpaceChar(c))
+            c = read();
+        int sgn = 1;
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        } else if (c == '+') {
+            c = read();
+        }
+        int res = 0;
+        do {
+            if (c < '0' || c > '9')
+                throw new InputMismatchException();
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while (!isSpaceChar(c));
+        return res * sgn;
+    }
+
+    public String readString() {
+        int c = read();
+        while (isSpaceChar(c))
+            c = read();
+        StringBuffer res = new StringBuffer();
+        do {
+            res.appendCodePoint(c);
+            c = read();
+        } while (!isSpaceChar(c));
+        return res.toString();
+    }
+
+    public static boolean isSpaceChar(int c) {
+        return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+    }
+
+    public String next() {
+        return readString();
+    }
+
+}
+

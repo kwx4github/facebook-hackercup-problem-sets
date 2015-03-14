@@ -1,0 +1,176 @@
+import java.io.*;
+import java.util.*;
+
+public class HoldemNumbers {
+
+	BufferedReader br;
+	PrintWriter out;
+	StringTokenizer st;
+	boolean eof;
+
+	char[][] memo;
+
+	int c1, c2, c3, c4;
+
+	boolean shouldBet(int n, int c1, int c2) {
+		this.c1 = c1;
+		this.c2 = c2;
+		long total = (long) (n - 2) * (n - 3) * (n - 4) * (n - 5) * (n - 6)
+				* (n - 7) / 8;
+		int sum = c1 + c2;
+
+		int[] maxHigh = new int[n]; // index = low card
+		for (int i = 0; i < n; i++) {
+			maxHigh[i] = Math.min(sum - i, n - 1);
+			if (i + maxHigh[i] == sum && maxHigh[i] >= c1)
+				maxHigh[i]--;
+		}
+
+		int[] maxLow = new int[n]; // index = high card
+		for (int i = 0; i < n; i++) {
+			maxLow[i] = Math.min(i - 1, sum - i);
+			if (i + maxLow[i] == sum && i >= c1) {
+				maxLow[i]--;
+			}
+		}
+
+		// System.err.println(Arrays.toString(maxHigh));
+		// System.err.println(Arrays.toString(maxLow));
+
+		long good = 0;
+		for (c3 = 0; c3 < n; c3++) {
+			if (c3 == c1 || c3 == c2)
+				continue;
+			for (c4 = 0; c4 < c3; c4++) {
+				if (c4 == c1 || c4 == c2)
+					continue;
+
+				if (c3 + c4 > sum || (c3 + c4 == sum && c3 > c1))
+					continue;
+
+				int curTotal = 0;
+				for (int i = 0; i < n; i++) {
+					if (i == c1 || i == c2 || i == c3 || i == c4)
+						continue;
+					curTotal += len(i + 1, maxHigh[i]);
+				}
+
+				// System.err.println(c3 + " " + c4 + " " + curTotal);
+
+				// all
+				good += curTotal * curTotal;
+
+				for (int i = 0; i < n; i++) {
+					if (i == c1 || i == c2 || i == c3 || i == c4)
+						continue;
+					// low1 = low2 = i
+					int tmp1 = len(i + 1, maxHigh[i]);
+					good -= tmp1 * tmp1;
+
+					// high1 = high2 = i
+					int tmp2 = len(0, maxLow[i]);
+					good -= tmp2 * tmp2;
+
+					// low1 = high2 = i or low2 = high1 = i
+					good -= 2 * tmp1 * tmp2;
+				}
+
+				// low1 = low2, high1 = high2
+				good += curTotal;
+
+			}
+		}
+
+		// System.err.println(good + " " + total);
+
+		return good * 4 > total;
+	}
+
+	int len(int from, int to) {
+		if (from > to)
+			return 0;
+		int len = to - from + 1;
+		if (from <= c1 && c1 <= to)
+			len--;
+		if (from <= c2 && c2 <= to)
+			len--;
+		if (from <= c3 && c3 <= to)
+			len--;
+		if (from <= c4 && c4 <= to)
+			len--;
+		return len;
+	}
+
+	void solve() throws IOException {
+		int n = nextInt();
+		memo = new char[n][n];
+		for (int i = 0; i < n; i++) {
+			Arrays.fill(memo[i], '?');
+		}
+		int h = nextInt();
+		char[] res = new char[h];
+		for (int i = 0; i < h; i++) {
+			int c1 = nextInt() - 1;
+			int c2 = nextInt() - 1;
+			if (c1 < c2) {
+				int tmp = c1;
+				c1 = c2;
+				c2 = tmp;
+			}
+			if (memo[c1][c2] == '?') {
+				memo[c1][c2] = shouldBet(n, c1, c2) ? 'B' : 'F';
+			}
+			res[i] = memo[c1][c2];
+		}
+		out.println(new String(res));
+	}
+
+	HoldemNumbers() throws IOException {
+		br = new BufferedReader(new FileReader("holdem_numbers.txt"));
+		out = new PrintWriter("holdem_numbers.out");
+		int t = nextInt();
+		for (int i = 1; i <= t; i++) {
+			System.err.println("test " + i);
+			out.print("Case #" + i + ": ");
+			solve();
+		}
+		out.close();
+	}
+
+	public static void main(String[] args) throws IOException {
+		new HoldemNumbers();
+	}
+
+	String nextToken() {
+		while (st == null || !st.hasMoreTokens()) {
+			try {
+				st = new StringTokenizer(br.readLine());
+			} catch (Exception e) {
+				eof = true;
+				return null;
+			}
+		}
+		return st.nextToken();
+	}
+
+	String nextString() {
+		try {
+			return br.readLine();
+		} catch (IOException e) {
+			eof = true;
+			return null;
+		}
+	}
+
+	int nextInt() throws IOException {
+		return Integer.parseInt(nextToken());
+	}
+
+	long nextLong() throws IOException {
+		return Long.parseLong(nextToken());
+	}
+
+	double nextDouble() throws IOException {
+		return Double.parseDouble(nextToken());
+	}
+}

@@ -1,0 +1,174 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <bitset>
+#include <queue>
+#include <stack>
+#include <cstring>
+#include <string>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const int maxN = 3000000;
+long long a[maxN], b[maxN];
+int n, m, k;
+
+map < long long, int > M;
+
+const int maxP = 10;
+long long primes[maxP];
+long long q[maxP];
+int usedA[maxN], usedB[maxN];
+long long hashesA[maxP][maxN], hashesB[maxP][maxN];
+long long powers[maxP][maxN];
+
+bool isPrime(long long n) {
+	for (long long i = 2; i * i <= n; ++i) {
+		if (n % i == 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void generatePrimes() {
+	int cnt = 0;
+	for (long long i = 1004004000LL; ; ++i) {
+		if (isPrime(i)) {
+			primes[cnt ++] = i;
+			if (cnt == maxP) {
+				break;
+			}
+		}
+	}
+
+	cnt = 0;
+	for (int i = 100000; ; ++i) {
+		if (isPrime(i)) {
+			q[cnt ++] = i;
+			if (cnt == maxP) {
+				break;
+			}
+		}
+	}
+
+	for (int i = 0; i < maxP; ++i) {
+		powers[i][0] = 1LL;
+		for (int j = 1; j < maxN; ++j) {
+			powers[i][j] = powers[i][j - 1] * q[i];
+			powers[i][j] %= primes[i];
+		}
+	}
+}
+
+void compress() {
+	M.clear();
+	vector < long long > current;
+	for (int i = 0; i < n; ++i) {
+		current.push_back(a[i]);
+	}
+	for (int i = 0; i < m; ++i) {
+		current.push_back(b[i]);
+	}
+	sort(current.begin(), current.end());
+	k = unique(current.begin(), current.end()) - current.begin();
+	for (int i = 0; i < k; ++i) {
+		M[current[i]] = i;
+	}
+
+	for (int i = 0; i < n; ++i) {
+		a[i] = M[a[i]];
+	}
+	for (int i = 0; i < m; ++i) {
+		b[i] = M[b[i]];
+	}
+}
+
+map < vector < long long >, long long > X, Y;
+
+void calculate(long long a[maxN], long long hashes[maxP][maxN], int used[maxN], int n, map < vector < long long >, long long >& S) {
+	S.clear();
+	long long current[maxP];
+	for (int i = 0; i < maxP; ++i) {
+		current[i] = 0;
+	}
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < maxP; ++j) {
+			hashes[j][i] = current[j];
+		}
+
+		if (used[a[i]] == 1) {
+			continue;
+		}
+
+		++used[a[i]];
+		for (int j = 0; j < maxP; ++j) {
+			hashes[j][i] += powers[j][a[i]];
+			hashes[j][i] %= primes[j];
+
+			current[j] = hashes[j][i];
+		}
+	}
+
+	for (int i = 0; i < n; ++i) {
+		vector < long long > current(maxP);
+		for (int j = 0; j < maxP; ++j) {
+			current[j] = hashes[j][i];
+		}
+		++S[current];
+	}
+}
+
+void solve(int test) {
+	scanf("%d%d", &n, &m);
+	long long x1, a1, b1, c1, r1;
+	long long x2, a2, b2, c2, r2;
+	cin >> x1 >> a1 >> b1 >> c1 >> r1;
+	cin >> x2 >> a2 >> b2 >> c2 >> r2;
+	a[0] = x1;
+	b[0] = x2;
+	for (int i = 1; i < max(n, m); ++i) {
+		a[i] = (a1 * a[(i - 1) % n] + b1 * b[(i - 1) % m] + c1) % r1;
+		b[i] = (a2 * a[(i - 1) % n] + b2 * b[(i - 1) % m] + c2) % r2;
+	}
+	compress();
+
+	memset(hashesA, 0, sizeof(hashesA));
+	memset(hashesB, 0, sizeof(hashesB));
+
+	memset(usedA, 0, sizeof(usedA));
+	memset(usedB, 0, sizeof(usedB));
+
+	calculate(a, hashesA, usedA, n, X);
+	calculate(b, hashesB, usedB, m, Y);
+
+	long long res = 0;
+	for (map < vector < long long >, long long > :: iterator it = X.begin(); it != X.end(); ++it) {
+		long long u = it->second;
+		long long v = Y[it->first];
+		res += u * v;
+	}
+	cout << "Case #" << test << ": " << res << endl;
+}
+
+int main() {
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	generatePrimes();
+
+	int tests;
+	scanf("%d", &tests);
+	for (int i = 0; i < tests; ++i) {
+		solve(i + 1);
+		cerr << (i + 1) << endl;
+		cerr << "Time: " << clock() << endl;
+	}
+	return 0;
+}

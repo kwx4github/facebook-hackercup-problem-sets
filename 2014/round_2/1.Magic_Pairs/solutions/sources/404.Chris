@@ -1,0 +1,216 @@
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# Copyright (c) 2013 Chris Jerdonek. All rights reserved.
+"""
+magic
+
+Sample usage:
+
+magic < input.txt > output.txt
+
+This script reads from stdin, writes to stdout, and logs to stderr.
+
+Copyright (c) 2013 Chris Jerdonek. All rights reserved.
+
+"""
+
+from __future__ import with_statement
+
+import logging
+from optparse import OptionParser
+import os
+from pprint import pprint
+import sys
+from time import time
+
+
+log = logging.getLogger("magic")
+
+
+def parse_test_case(values):
+    """Parse one test case from the input file, and return it."""
+    # Each test case starts with a line containing the integers N, M
+    # The second line of each test case contains five integers x1, a1, b1, c1, r1
+    # The third line of each test case contains five integers x2, a2, b2, c2, r2
+    vals = []
+    for i in range(12):
+        vals.append(int(values.pop()))
+
+    N, M, x1, a1, b1, c1, r1, x2, a2, b2, c2, r2 = vals
+
+    board1 = N * [0]
+    board2 = M * [0]
+    board1[0] = x1
+    board2[0] = x2
+    for i in xrange(1, min(N, M)):
+        board1[i] = (a1 * board1[(i - 1) % N] + b1 * board2[(i - 1) % M] + c1) % r1
+        board2[i] = (a2 * board1[(i - 1) % N] + b2 * board2[(i - 1) % M] + c2) % r2
+    if N > M:
+        for i in xrange(min(N, M), max(N, M)):
+            board1[i] = (a1 * board1[(i - 1) % N] + b1 * board2[(i - 1) % M] + c1) % r1
+    if M > N:
+        for i in xrange(min(N, M), max(N, M)):
+            board2[i] = (a2 * board1[(i - 1) % N] + b2 * board2[(i - 1) % M] + c2) % r2
+
+    return board1, board2
+
+def compute_test_case(test_case):
+    """Compute a test case, and return the result."""
+    board1, board2 = test_case
+
+    common_colors = set()
+    colors1 = set()
+    colors2 = set()
+    pair_count = 0
+    new_color1 = board1[0]
+    new_color2 = board2[0]
+    N = len(board1)
+    M = len(board2)
+    i, j = (0, 0)
+    while i < N and j < M:
+        # Stage 0
+        if new_color1 == new_color2:
+            common_colors.add(new_color1)
+        else:
+            if new_color1 in colors2:
+                colors2.remove(new_color1)
+                common_colors.add(new_color1)
+            else:
+                colors1.add(new_color1)
+            if new_color2 in colors1:
+                colors1.remove(new_color2)
+                common_colors.add(new_color2)
+            else:
+                colors2.add(new_color2)
+        # Stage 1: advance board 1.
+        i1 = i
+        while True:
+            i += 1
+            if i == N:
+                break
+            new_color1 = board1[i]
+            if new_color1 in common_colors or new_color1 in colors1:
+                continue
+            break
+        # Stage 2: advance board 2
+        j1 = j
+        while True:
+            j += 1
+            if j == M:
+                break
+            new_color2 = board2[j]
+            if new_color2 in common_colors or new_color2 in colors2:
+                continue
+            break
+        if not colors1:
+            pair_count += (i - i1) * (j - j1)
+
+    return pair_count
+
+def write_result(result, index):
+    """Write the result to stdout."""
+    out = "Case #%s: %s" % (index, result)
+    # Print includes a terminating newline.
+    print out
+
+
+##
+# BOILERPLATE CODE: BEGIN
+#
+def parse_input_file(f):
+    """Parse the input file, and return a list of test cases."""
+    text = f.read()
+    values = text.split()
+    # Reverse so we dispense with indices and use pop().
+    values.reverse()
+
+    count = int(values.pop())
+
+    log.info("File contains: %s test cases" % count)
+
+    cases = []
+
+    for i in range(count):
+        test_case = parse_test_case(values)
+        cases.append(test_case)
+
+    return cases
+
+
+def main(sys_argv):
+    args = sys_argv[1:]
+    (options, args) = parse_args(args)
+
+    if options.log_silently:
+        log_level = logging.ERROR
+    elif options.log_verbosely:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO  # the default
+
+    configure_logging(log_level)
+
+    start = time()
+
+    # input_path = args[0]
+    # with open(input_path) as f:
+    #     log.info("Parsing input file: %s" % input_path)
+    #     test_cases = parse_input_file(f)
+
+    test_cases = parse_input_file(sys.stdin)
+
+    log.info("Parsed %s test cases.\n" % len(test_cases))
+
+    log.info("Computing test cases...")
+
+    for i, test_case in enumerate(test_cases, start=1):
+        log.info("Starting test case: %s" % i)
+        test_case_start = time()
+
+        result = compute_test_case(test_case)
+
+        write_result(result, i)
+
+        log.info("Finished in: %s" % str(time() - test_case_start))
+
+    log.info("Finished writing output.\n")
+
+    log.info("Elapsed time: %s" % str(time() - start))
+
+
+def configure_logging(logging_level=None):
+    if logging_level is None:
+        logging_level = logging.INFO
+
+    logger = logging.getLogger()  # the root logger.
+
+    stream = sys.stderr
+    handler = logging.StreamHandler(stream)
+    formatter = logging.Formatter("[%(levelname)s] %(message)s")
+    handler.setFormatter(formatter)
+
+    logger.setLevel(logging_level)
+    logger.addHandler(handler)
+
+    log.info("Logging to stderr...")
+    log.debug("Debug logging enabled.")
+
+
+def parse_args(args):
+    """Parse the command arguments and return a 2-tuple (options, args)."""
+    parser = OptionParser()
+
+    parser.add_option("--silent", dest="log_silently", action="store_true", default=False,
+                      help="log silently")
+    parser.add_option("-v", dest="log_verbosely", action="store_true", default=False,
+                      help="log verbosely")
+
+    (options, args) = parser.parse_args(args)
+
+    return (options, args)
+
+
+if __name__ == '__main__':
+    main(sys.argv)
+

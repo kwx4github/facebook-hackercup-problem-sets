@@ -1,0 +1,224 @@
+import java.io.FileNotFoundException;
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.File;
+import java.io.Writer;
+import java.io.FilenameFilter;
+import java.util.Collection;
+import java.util.List;
+import java.util.BitSet;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.util.Set;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.NoSuchElementException;
+import java.util.TreeSet;
+import java.math.BigInteger;
+import java.util.Collections;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author ogiekako
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "hold.*em.*numbers.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("hold'emnumbers.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		MyScanner in = new MyScanner(inputStream);
+		MyPrintWriter out = new MyPrintWriter(outputStream);
+		HoldemNumbers solver = new HoldemNumbers();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class HoldemNumbers {
+    long[][] C = MathUtils.combination(110);
+    public void solve(int testNumber, MyScanner in, MyPrintWriter out) {
+        System.err.println("#test " + testNumber);
+        int N = in.nextInt(), H = in.nextInt();
+        int[] xs = new int[H], ys = new int[H];
+        for (int i = 0; i < H; i++) {
+            xs[i] = in.nextInt();
+            ys[i] = in.nextInt();
+        }
+        String res = solve(N, xs, ys);
+        out.printFormat("Case #%d: %s\n", testNumber, res);
+    }
+    private String solve(int N, int[] xs, int[] ys) {
+        long all = C[N - 2][6] * 15;
+        long[] win = new long[xs.length];
+        for (int i = 0; i < xs.length; i++) {
+            win[i] = solve(N, xs[i], ys[i]);
+            debug(all, win[i]);
+        }
+        StringBuilder res = new StringBuilder();
+        for (int i = 0; i < xs.length; i++) {
+            if (win[i] * 4 > all) res.append("B");
+            else res.append("F");
+        }
+        return res.toString();
+    }
+    static void debug(Object... os) {
+        System.err.println(Arrays.deepToString(os));
+    }
+    private long solve(int N, int x, int y) {
+        if (x > y) return solve(N, y, x);
+        // x < y
+        long[] dp = new long[4];
+        dp[0] = 1;
+        for (int i = N; i >= 1; i--) {
+            if (i == x || i == y) continue;
+            int way = x + y - i;
+            if (i > y) way--;
+            way = Math.min(i - 1, way);
+            if (way >= y) way--;
+            if (way >= x) way--;
+            for (int j = 2; j >= 0; j--)
+                if (dp[j] > 0) {
+                    int nWay = way - j;
+                    if (nWay > 0)
+                        dp[j + 1] += dp[j] * nWay;
+                }
+        }
+        return dp[3];
+    }
+    }
+
+class MathUtils {
+
+    public static long[][] combination(int upTo) {
+        int N = upTo;
+        long[][] C = new long[N][N];
+        for (int i = 0; i < N; i++)
+            for (int j = 0; j <= i; j++) {
+                C[i][j] = j == 0 ? 1 : C[i - 1][j - 1] + C[i - 1][j];
+            }
+        return C;
+    }
+
+    }
+
+class MyScanner {
+    private final InputStream in;
+
+    public MyScanner(InputStream in) {
+        this.in = in;
+    }
+
+    int bufLen;
+    int bufPtr;
+    byte[] buf = new byte[1024];
+
+    public int read() {
+        if (bufLen == -1)
+            throw new InputMismatchException();
+        if (bufPtr >= bufLen) {
+            bufPtr = 0;
+            try {
+                bufLen = in.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (bufLen <= 0)
+                return -1;
+        }
+        return buf[bufPtr++];
+    }
+
+    private char[] strBuf = new char[65536];
+
+    public String next() {
+        int strLen = 0;
+        int c;
+        do {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        } while (Character.isWhitespace(c));
+        do {
+            if (strLen + 1 >= strBuf.length) {
+                char[] tmp = new char[strBuf.length * 2];
+                System.arraycopy(strBuf, 0, tmp, 0, strBuf.length);
+                strBuf = tmp;
+            }
+            strBuf[strLen++] = (char) c;
+            c = read();
+        } while (c != -1 && !Character.isWhitespace(c));
+        return new String(strBuf, 0, strLen);
+    }
+
+    public int nextInt() {
+        int c = read();
+        if (c == -1) throw new NoSuchElementException();
+        while (c != '-' && (c < '0' || '9' < c)) {
+            c = read();
+            if (c == -1) throw new NoSuchElementException();
+        }
+        if (c == '-') return -nextInt();
+        int res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while ('0' <= c && c <= '9');
+        return res;
+    }
+
+    }
+
+class MyPrintWriter {
+    PrintWriter out;
+
+    public MyPrintWriter(OutputStream outputStream) {
+        out = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+    }
+
+    public MyPrintWriter(Writer writer) {
+        out = new PrintWriter(writer);
+    }
+
+    public void close() {
+        out.close();
+    }
+
+    public void printFormat(String format, Object... args) {
+        out.printf(format, args);
+    }
+
+}
+

@@ -1,0 +1,156 @@
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cmath>
+#include <cctype>
+#include <iostream>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <queue>
+#include <vector>
+#include <string>
+#include <sstream>
+using namespace std;
+
+typedef unsigned long long ULL;
+typedef long long LL;
+typedef pair<ULL, LL> HashCode;
+
+#define FOR(i,a) for (__typeof((a).begin()) i = (a).begin(); i != (a).end(); ++ i)
+
+const double PI = acos(-1.0);
+const double EPS = 1e-8;
+
+const int maxn = 1000000;
+
+int board1[maxn], board2[maxn];
+vector<int> bak;
+
+HashCode hash1[maxn], hash2[maxn], tree[maxn * 2 * 4];
+
+const ULL magic1 = 3;
+const LL magic2 = 7;
+LL MOD = 1000000007;
+ULL pow1[maxn + maxn + 1];
+LL pow2[maxn + maxn + 1];
+
+inline void prepare()
+{
+    pow1[0] = pow2[0] = 1;
+    for (int i = 1; i <= maxn + maxn; ++ i) {
+        pow1[i] = pow1[i - 1] * magic1;
+        pow2[i] = pow2[i - 1] * magic2 % MOD;
+    }
+}
+
+inline void build(int num, int l, int r)
+{
+    tree[num] = HashCode(0, 0);
+    if (l == r) {
+        return;
+    }
+    int mid = (l + r) / 2;
+    build(num * 2, l, mid);
+    build(num * 2 + 1, mid + 1, r);
+}
+
+inline HashCode merge(HashCode left, HashCode right, int len)
+{
+    ULL h1 = left.first * pow1[len] + right.first;
+    LL h2 = (left.second * pow2[len] + right.second) % MOD;
+    return HashCode(h1, h2);
+}
+
+inline void insert(int num, int l, int r, int x)
+{
+    if (l == r) {
+        tree[num] = HashCode(1, 1);
+        return;
+    }
+    int mid = (l + r) / 2;
+    if (x <= bak[mid]) {
+        insert(num * 2, l, mid, x);
+    } else {
+        insert(num * 2 + 1, mid + 1, r, x);
+    }
+    tree[num] = merge(tree[num * 2], tree[num * 2 + 1], r - mid);
+}
+
+inline void generate(int a[], HashCode hash[], int n)
+{
+    build(1, 0, (int)bak.size() - 1);
+    
+    for (int i = 0; i < n; ++ i) {
+        insert(1, 0, (int)bak.size() - 1, a[i]);
+        hash[i] = tree[1];
+    }
+}
+
+int main()
+{
+    freopen("A.in", "r", stdin);
+    freopen("A.out", "w", stdout);
+    
+    prepare();
+    
+    int T, test = 1;
+    for (scanf("%d", &T); test <= T; ++ test) {
+        printf("Case #%d: ", test);
+        
+        int n, m;
+        int x1, a1, b1, c1, r1;
+        int x2, a2, b2, c2, r2;
+        
+        scanf("%d%d", &n, &m);
+        scanf("%d%d%d%d%d", &x1, &a1, &b1, &c1, &r1);
+        scanf("%d%d%d%d%d", &x2, &a2, &b2, &c2, &r2);
+        board1[0] = x1;
+        board2[0] = x2;
+        for (int i = 1; i < max(n, m); ++ i) {
+            if (i < n) {
+                board1[i] = ((long long)a1 * board1[i - 1] + (long long)b1 * board2[(i - 1) % m] + c1) % r1;
+            }
+            if (i < m) {
+                board2[i] = ((long long)a2 * board1[(i - 1) % n] + (long long)b2 * board2[i - 1] + c2) % r2;
+            }
+        }
+        
+        bak.clear();
+        for (int i = 0; i < n; ++ i) {
+//fprintf(stderr, "%d ", board1[i]);
+            bak.push_back(board1[i]);
+        }
+//fprintf(stderr, "\n");
+        for (int i = 0; i < m; ++ i) {
+//fprintf(stderr, "%d ", board2[i]);
+            bak.push_back(board2[i]);
+        }
+//fprintf(stderr, "\n");
+        sort(bak.begin(), bak.end());
+        bak.erase(unique(bak.begin(), bak.end()), bak.end());
+        
+        generate(board1, hash1, n);
+//cerr << endl;
+        generate(board2, hash2, m);
+        
+        map<HashCode, int> h;
+        for (int i = 0; i < n; ++ i) {
+//cerr << hash1[i].first << " " << hash1[i].second << endl;
+            ++ h[hash1[i]];
+        }
+//cerr << endl;
+        long long answer = 0;
+        for (int i = 0; i < m; ++ i) {
+//cerr << hash2[i].first << " " << hash2[i].second << endl;
+            if (h.count(hash2[i])) {
+                answer += h[hash2[i]];
+            }
+        }
+        
+        printf("%I64d\n", answer);
+    }
+    
+    return 0;
+}
+

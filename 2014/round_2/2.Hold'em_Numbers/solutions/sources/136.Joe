@@ -1,0 +1,160 @@
+#include<fstream>
+#include<iostream>
+#include<sstream>
+#include<iomanip>
+#include<string>
+#include<vector>
+#include<list>
+#include<set>
+#include<map>
+#include<queue>
+#include<algorithm>
+#include<functional>
+#include<numeric>
+using namespace std;
+typedef pair<int, int> pii;
+typedef long long ll;
+
+namespace
+{
+	bool seen[100];
+	int N,H;
+	int v[8], numLess[101], minToWin[101];
+
+	ll games,winners;
+
+	void computePayout()
+	{
+		numLess[0] = 0;
+		for (int i=1; i<=N; ++i)
+		{
+			numLess[i] = numLess[i-1] + (seen[i-1] ? 0 : 1);
+		}
+
+		int myBest = v[0] + v[1];
+
+		ll good = 1;
+		ll hands = 1;
+		for (int i=0; i<3; ++i)
+		{
+			int val = v[4-i];
+
+			ll extraGames = numLess[N] - numLess[val] - i;
+			hands *= extraGames;
+
+			int target = myBest - val;
+			if (target < max(v[0], v[1]))
+				++target;
+			
+			target = max(val, min(N, target));
+			ll mult = numLess[target] - numLess[val] - i;
+			good *= mult;
+		}
+
+		games += hands;
+		winners += good;
+	}
+
+	void go(int loc, int val)
+	{
+
+		if (val < N && !seen[val])
+		{
+			seen[val] = true;
+			v[loc] = val;
+
+			if (loc == 4)
+			{
+				computePayout();
+			}
+			else
+			{
+				for (int i=val+1; i<N; ++i)
+					go(loc+1, i);
+			}
+
+			seen[val] = false;
+		}
+	}
+
+	bool calc(int x, int y)
+	{
+		v[0] = x;
+		v[1] = y;
+
+		if (v[0] > v[1])
+			swap(v[0], v[1]);
+
+		memset(seen, 0, sizeof(seen));
+		seen[v[0]] = seen[v[1]] = true;
+
+		games = winners = 0;
+		for (int i=0; i<N; ++i)
+		{
+			go(2, i);
+		}
+
+		return winners * 4 > games;
+	}
+}
+
+//int mainFHC14_R2_Holdem()
+int main()
+{
+	ifstream fin("FHC\\holdem_numbers.txt");
+	ofstream fout("FHC\\holdem_numbers_out.txt");
+
+	unsigned int numberOfCases;
+	fin >> numberOfCases;
+
+	for (unsigned int zz=1; zz<=numberOfCases; ++zz)
+	{
+		fin >> N >> H;
+		string ret(H, 'F');
+
+		for (int i=0; i+1<N; ++i)
+		{
+			if (calc(i, i+1))
+			{
+				minToWin[i] = i+1;
+			}
+			else if (!calc(i, N-1))
+			{
+				minToWin[i] = N;
+			}
+			else
+			{
+				int lo = i+1, hi = N;
+				while (hi-lo > 1)
+				{
+					int mid = (hi+lo)/2;
+					bool wins = calc(i, mid);
+					if (wins)
+						hi = mid;
+					else
+						lo = mid;
+				}
+
+				minToWin[i] = hi;
+			}
+		}
+
+		for (int yy=0; yy<H; ++yy)
+		{
+			int x,y;
+			fin >> x >> y;
+			--x;
+			--y;
+
+			if (x>y)
+				swap(x,y);
+
+			if (y >= minToWin[x])
+				ret[yy] = 'B';
+		}
+
+		fout << "Case #" << zz << ": " << ret << endl;
+	}
+
+	return 0;
+}

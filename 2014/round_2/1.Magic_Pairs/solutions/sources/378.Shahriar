@@ -1,0 +1,153 @@
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <assert.h>
+
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <numeric>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+using namespace std;
+
+typedef long long int64;
+
+void rle(const vector<int>& v, vector<int>* a, vector<int64>* c) {
+  set<int> s;
+  assert(v.size() > 0);
+  s.insert(v[0]);
+  int last = v[0];
+  int run = 1;
+  for (int i = 1; i < v.size(); ++i) {
+    if (s.find(v[i]) != s.end()) {
+      ++run;
+    } else {
+      a->push_back(last);
+      c->push_back(run);
+      s.insert(v[i]);
+      last = v[i];
+      run = 1;
+    }
+  }
+  a->push_back(last);
+  c->push_back(run);
+  assert(a->size() == c->size());
+  assert(accumulate(c->begin(), c->end(), 0) == v.size());
+
+/*  printf(">>>> ");
+  for (int i = 0; i < a->size(); ++i) {
+    printf("%2d(%lldx)", (*a)[i], (*c)[i]);
+  }
+  printf("\n"); */
+}
+
+int64 solve(const vector<int>& v1, const vector<int>& v2) {
+  vector<int> u1, u2;
+  vector<int64> t1, t2;
+
+  rle(v1, &u1, &t1);
+  rle(v2, &u2, &t2);
+
+  set<int> s1,s2,s12,s21;
+
+  int64 res = 0;
+  int i = 0, j = 0;
+  int val;
+  while (i < u1.size() || j < u2.size()) {
+    if (j == u2.size() || (s1.size() <= s2.size() && i < u1.size())) {
+      assert(i < u1.size());
+      
+      val = u1[i];
+      assert(s1.insert(val).second);
+      if (s2.find(val) == s2.end()) assert(s21.insert(val).second);
+      s12.erase(val);
+      
+      if (s21.empty() && s12.empty() && !s2.empty()) {
+        assert(j > 0);
+        res += t1[i]*t2[j-1];
+      }
+      ++i;
+    } else {
+      assert(j < u2.size());
+      
+      val = u2[j];
+      assert(s2.insert(val).second);
+      if (s1.find(val) == s1.end()) assert(s12.insert(val).second);
+      s21.erase(val);
+
+      if (s21.empty() && s12.empty() && !s1.empty()) {
+        assert(i > 0);
+        res += t2[j]*t1[i-1];
+      }
+      ++j;
+    }
+  }
+
+  return res;
+}
+
+void pre() {
+  vector<int> v1, v2;
+  v1.push_back(1);
+  v1.push_back(2);
+  v1.push_back(3);
+  v1.push_back(1);
+  v1.push_back(1);
+  v1.push_back(2);
+  v1.push_back(2);
+  v1.push_back(3);
+  v1.push_back(3);
+  v1.push_back(5);
+  v1.push_back(4);
+  v1.push_back(5);
+  v1.push_back(4);
+  
+  v2.push_back(3);
+  v2.push_back(1);
+  v2.push_back(2);
+  v2.push_back(1);
+  v2.push_back(1);
+  v2.push_back(2);
+  v2.push_back(2);
+  v2.push_back(3);
+  v2.push_back(3);
+  v2.push_back(4);
+  v2.push_back(5);
+  v2.push_back(4);
+  v2.push_back(5);
+  printf(">> %lld\n", solve(v1, v2)); // 7^2 + 3^2 = 58
+}
+
+int main() {
+//  pre();
+//  return 0;
+  
+  int T;
+  scanf("%d", &T);
+  for (int N = 1; N <= T; ++N) {
+    int64 a1,a2,b1,b2;
+    int x1,x2,c1,c2,r1,r2;
+    int n,m;
+    scanf("%d%d", &n, &m);
+    scanf("%d%lld%lld%d%d", &x1, &a1, &b1, &c1, &r1);
+    scanf("%d%lld%lld%d%d", &x2, &a2, &b2, &c2, &r2);
+
+    vector<int> v1, v2;
+    
+    v1.push_back(x1);
+    v2.push_back(x2);
+    int nm_max = max(n, m);
+    for (int i = 1; i < nm_max; ++i) {
+      if (i < n)
+        v1.push_back((int)((a1 * v1[(i-1)%n] + b1 * v2[(i-1)%m] + c1)%r1));
+      if (i < m)
+        v2.push_back((int)((a2 * v1[(i-1)%n] + b2 * v2[(i-1)%m] + c2)%r2));
+    }
+
+    printf("Case #%d: %lld\n", N, solve(v1, v2));
+  }
+  return 0;
+}

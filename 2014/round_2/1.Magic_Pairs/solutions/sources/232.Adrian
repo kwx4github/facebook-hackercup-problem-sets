@@ -1,0 +1,113 @@
+#include <iostream>
+
+#include <set>
+
+#define max(a, b) ((a) > (b) ? (a) : (b))
+
+int board1[1000001];
+int board2[1000001];
+
+void manage_new_element(int element,
+                        std::set<int>& both,
+                        std::set<int>& our,
+                        std::set<int>& other) {
+  // Should belong to our.
+  if (both.count(element) == 0) {
+    if (other.count(element) == 1) {
+      other.erase(element);
+      both.insert(element);
+    } else {
+      our.insert(element);
+    }
+  }
+}
+
+int main()
+{
+  int tests;
+  std::cin >> tests;
+  for (int test = 1; test <= tests; ++test) {
+    unsigned long long sol = 0;
+
+    // Read in input data.
+    int n, m;
+    std::cin >> n >> m;
+    unsigned long long a1, b1, c1, r1, a2, b2, c2, r2, x1, x2;
+    std::cin >> x1 >> a1 >> b1 >> c1 >> r1 >> x2 >> a2 >> b2 >> c2 >> r2;
+
+    // Compute the boards.
+    board1[0] = x1;
+    board2[0] = x2;
+    for (int i = 1; i < max(n, m); ++i) {
+      if (i < n) {
+        board1[i] =
+            (int)((a1 * (unsigned long long)board1[(i - 1) % n] +
+                   b1 * (unsigned long long)board2[(i - 1) % m] + c1) % r1);
+      }
+      if (i < m) {
+        board2[i] =
+            (int)((a2 * (unsigned long long)board1[(i - 1) % n] +
+                   b2 * (unsigned long long)board2[(i - 1) % m] + c2) % r2);
+      }
+    }
+
+    std::set<int> only1;
+    std::set<int> only2;
+    std::set<int> both;
+
+    int index1 = 0;
+    int index2 = 0;
+
+    if (board1[index1] == board2[index2]) {
+      both.insert(board1[index1]);
+    } else {
+      only1.insert(board1[index1]);
+      only2.insert(board2[index2]);
+    }
+
+    while (index1 < n && index2 < m) {
+      if (only1.empty() && only2.empty()) {
+        // Same colours in both sets, so keep advancing on both plateaus.
+        unsigned long long plateau1 = 0;
+        while (index1 < n && both.count(board1[index1]) == 1) {
+          index1++;
+          plateau1++;
+        }
+
+        unsigned long long plateau2 = 0;
+        while (index2 < m && both.count(board2[index2]) == 1) {
+          index2++;
+          plateau2++;
+        }
+
+        sol += plateau1 * plateau2;
+
+        // Advance both indices.
+        if (index1 < n) {
+          manage_new_element(board1[index1], both, only1, only2);
+        }
+        if (index2 < m) {
+          manage_new_element(board2[index2], both, only2, only1);
+        }
+      } else if (only1.empty() == false) {
+        // Advance the second index to the right until you get rid of all of
+        // them.
+        while (index2 < m && only1.size() > 0) {
+          index2++;
+          manage_new_element(board2[index2], both, only2, only1);
+        }
+      } else if (only2.empty() == false) {
+        // Advance the first index to the right until you get rid of all of
+        // them.
+        while (index1 < n && only2.size() > 0) {
+          index1++;
+          manage_new_element(board1[index1], both, only1, only2);
+        }
+      }
+    }
+
+    std::cout << "Case #" << test << ": " << sol << std::endl;
+  }
+
+  return 0;
+}

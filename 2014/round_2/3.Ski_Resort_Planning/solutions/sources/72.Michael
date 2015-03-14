@@ -1,0 +1,287 @@
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+public class Ski {
+
+	static Random rng = new Random(4);
+
+	static void test() {
+		int n = rng.nextInt(7) + 1;
+		int[] a = new int[n];
+		for (int i = 1; i < n; i++) {
+			a[i] = rng.nextInt(i);
+		}
+		int smart = Input.get(a);
+		int stupid = Input.stupid(a);
+		if (smart != stupid) {
+			System.err.println(Arrays.toString(a));
+			System.err.println(smart + " - smart");
+			System.err.println(stupid + " - stupid");
+			throw new AssertionError();
+		}
+	}
+
+	static void stress() {
+		while (true) {
+			test();
+			System.err.println("ok");
+		}
+	}
+
+	static class Input {
+		int n;
+		int[] a;
+
+		Input(InputReader in) throws IOException {
+			n = in.nextInt();
+			a = new int[n];
+			for (int i = 1; i < n; i++) {
+				a[i] = in.nextInt();
+			}
+		}
+
+		Output solve() {
+			int answer = get(a);
+
+			return new Output(answer);
+		}
+
+		static int get(int[] a) {
+			int n = a.length;
+			List<Integer>[] to = new List[n];
+			for (int i = 0; i < n; i++) {
+				to[i] = new ArrayList<>();
+			}
+			for (int i = 1; i < n; i++) {
+				to[a[i]].add(i);
+			}
+
+			int[][] cnt = new int[n][n];
+			for (int i = 0; i < n; i++) {
+				for (int j = i;; j = a[j]) {
+					cnt[j][i] = 1;
+					if (j == 0) {
+						break;
+					}
+				}
+				cnt[i][i] = 0;
+			}
+			// System.err.println(Arrays.toString(a) + " - isf");
+			for (int i = 0; i < n; i++) {
+				for (int j = 1; j < n; j++) {
+					cnt[i][j] += cnt[i][j - 1];
+				}
+				// System.err.println(Arrays.toString(cnt[i]));
+			}
+
+			int answer = 1;
+
+			for (int u = n - 1; u >= 0; --u) {
+				for (int v : to[u]) {
+					int less = cnt[u][v - 1];
+					int ok1 = modPow(2, less);
+					int ok2 = ok1;
+					for (int i = 0; i < to[u].size(); i++) {
+						int w = to[u].get(i);
+						if (w >= v) {
+							continue;
+						}
+						int less1 = cnt[w][v - 1] + 1;
+						ok2 = sub(ok2, modPow(2, less1));
+						ok2 = add(ok2, 1);
+					}
+					ok2 = sub(ok2, 1);
+					answer = mul(answer, add(ok1, ok2));
+				}
+			}
+
+			System.err.println("PASSED");
+
+			return answer;
+		}
+
+		static int stupid(int[] a) {
+			int n = a.length;
+
+			int answer = 0;
+			int[] queue = new int[n];
+			boolean[][] g = new boolean[n][n];
+			boolean[] can = new boolean[n];
+			mask: for (int mask = 0; mask < 1 << (n * (n - 1) / 2); mask++) {
+				for (boolean[] gg : g) {
+					Arrays.fill(gg, false);
+				}
+				int cnt = 0;
+				for (int i = 0; i < n; i++) {
+					for (int j = i + 1; j < n; j++) {
+						if ((mask & (1 << cnt)) != 0) {
+							g[i][j] = true;
+						}
+						cnt++;
+					}
+				}
+				for (int skip = 0; skip < n; skip++) {
+					Arrays.fill(can, false);
+					can[0] = true;
+					int qh = 0, qt = 0;
+					queue[qt++] = 0;
+					while (qh < qt) {
+						int u = queue[qh++];
+						for (int i = u + 1; i < n; i++) {
+							if (i == skip) {
+								continue;
+							}
+							if (g[u][i]) {
+								if (!can[i]) {
+									can[i] = true;
+									queue[qt++] = i;
+								}
+							}
+						}
+					}
+					if (skip == 0) {
+						for (int i = 0; i < n; i++) {
+							if (!can[i]) {
+								continue mask;
+							}
+						}
+					} else {
+						for (int i = skip + 1; i < n; i++) {
+							if (skip == a[i] && can[i]) {
+								continue mask;
+							}
+							if (skip > a[i] && !can[i]) {
+								continue mask;
+							}
+						}
+					}
+
+				}
+				// for (int i = 0; i < n; i++) {
+				// for (int j = 0; j < n; j++) {
+				// System.err.print(g[i][j] ? '1' : "0");
+				// }
+				// System.err.println();
+				// }
+				// System.err.println();
+				++answer;
+			}
+			return answer;
+		}
+	}
+
+	static int add(int a, int b) {
+		a += b;
+		if (a >= MOD || a < 0) {
+			a -= MOD;
+		}
+		return a;
+	}
+
+	static int sub(int a, int b) {
+		a -= b;
+		if (a < 0) {
+			a += MOD;
+		}
+		return a;
+	}
+
+	static int mul(int a, int b) {
+		return (int) ((long) a * b % MOD);
+	}
+
+	static int modPow(int a, long pow) {
+		int res = 1 % MOD;
+		while (pow > 0) {
+			if ((pow & 1) != 0) {
+				res = mul(res, a);
+			}
+			a = mul(a, a);
+			pow >>= 1;
+		}
+		return res;
+	}
+
+	static final int MOD = 1000000007;
+
+	static class Output {
+		public Output(long answer) {
+			this.answer = answer;
+		}
+
+		long answer;
+
+		void writeOutput(PrintWriter out) {
+			out.println(answer);
+		}
+	}
+
+	public static void main(String[] args) throws IOException,
+			InterruptedException, ExecutionException {
+//		 stress();
+		InputReader in = new InputReader(new FileInputStream("ski.in"));
+		PrintWriter out = new PrintWriter("ski.out");
+		ExecutorService executor = Executors.newFixedThreadPool(1);
+		int testCases = in.nextInt();
+		final Input[] inputs = new Input[testCases];
+		for (int i = 0; i < testCases; i++) {
+			inputs[i] = new Input(in);
+		}
+
+		@SuppressWarnings("unchecked")
+		Future<Output> outputs[] = new Future[testCases];
+
+		for (int i = 0; i < testCases; i++) {
+			final int testCase = i;
+			outputs[i] = executor.submit(new Callable<Output>() {
+				@Override
+				public Output call() throws Exception {
+					return inputs[testCase].solve();
+				}
+			});
+		}
+
+		for (int i = 0; i < testCases; i++) {
+			out.print("Case #" + (i + 1) + ": ");
+			outputs[i].get().writeOutput(out);
+		}
+
+		out.close();
+		executor.shutdown();
+	}
+
+	static class InputReader {
+
+		InputReader(InputStream input) {
+			br = new BufferedReader(new InputStreamReader(input));
+		}
+
+		BufferedReader br;
+		StringTokenizer st;
+		PrintWriter out;
+
+		String nextToken() throws IOException {
+			while (st == null || !st.hasMoreTokens()) {
+				String line = br.readLine();
+				if (line == null) {
+					return null;
+				}
+				st = new StringTokenizer(line);
+			}
+			return st.nextToken();
+		}
+
+		int nextInt() throws IOException {
+			return Integer.parseInt(nextToken());
+		}
+
+		long nextLong() throws IOException {
+			return Long.parseLong(nextToken());
+		}
+
+		double nextDouble() throws IOException {
+			return Double.parseDouble(nextToken());
+		}
+	}
+}

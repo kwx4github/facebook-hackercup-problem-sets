@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+
+from sys import stdin as cin
+from itertools import count
+
+def gen_boards(cin):
+    N, M = map(int, next(cin).split())
+    if M <= N:
+        x1, a1, b1, c1, r1 = map(int, next(cin).split())
+        x2, a2, b2, c2, r2 = map(int, next(cin).split())
+    else:
+        M, N = N, M
+        x2, a2, b2, c2, r2 = map(int, next(cin).split())
+        x1, a1, b1, c1, r1 = map(int, next(cin).split())
+
+    B1 = [0] * N
+    B2 = [0] * M
+    B1[0] = x1
+    B2[0] = x2
+
+    for i in range(1, M):
+        B1[i] = (a1 * B1[i-1] + b1 * B2[i-1] + c1) % r1
+        B2[i] = (a2 * B1[i-1] + b2 * B2[i-1] + c2) % r2
+
+    for i in range(M, N):
+        B1[i] = (a1 * B1[i-1] + b1 * B2[(i-1) % M] + c1) % r1
+
+    return B1, B2
+
+def consume_common(common, b1iter, b1only):
+    #print 'Consuming...'
+    i1 = 1
+    for g in b1iter:
+        #print ' Got: ', g
+        if g in common:
+            i1 += 1
+        else:
+            #print ' Stop on difference!'
+            b1only.add(g)
+            break
+    return i1
+
+def count_magic_pairs(cin):
+    B1, B2 = gen_boards(cin)
+    b1iter = iter(B1)
+    b2iter = iter(B2)
+    common = set()
+    b1only = set()
+    b2only = set([next(b2iter)])
+    pairs = 0
+    #print B1
+    #print B2
+
+    try:
+        while True:
+            if not b1only and not b2only:
+                pairs += consume_common(common, b1iter, b1only) * consume_common(common, b2iter, b2only)
+                if not b1only or not b2only:
+                    break
+                if b1only == b2only:
+                    common.add(b1only.pop())
+                    b2only.pop()
+                continue
+
+            while b2only:
+                g = next(b1iter)
+                #print 'Got: ', g, ' waiting for: ', list(b2only)
+                if g in b2only:
+                    b2only.remove(g)
+                    common.add(g)
+                elif g not in common:
+                    b1only.add(g)
+
+            #print 'Swap!'
+            b1iter, b2iter = b2iter, b1iter
+            b1only, b2only = b2only, b1only
+
+    except StopIteration:
+        pass
+
+    return pairs
+
+
+def main():
+    t = int(next(cin))
+    for i in range(1, t+1):
+        print 'Case #%d: %s' % (i, count_magic_pairs(cin))
+
+if __name__ == '__main__':
+    main()

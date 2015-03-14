@@ -1,0 +1,147 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+static bool dobet(int C1, int C2, int N, ll all)
+{
+    int sum = C1 + C2;
+
+    ll win = 0;
+    for (int i = 2; i <= N - 2; i++)
+    {
+        if (i == C1 || i == C2)
+            continue;
+        int maxi = min(sum - i - (i > C2), i - 1);
+        if (maxi <= 0)
+            break;
+        for (int j = i + 1; j <= N - 1; j++)
+        {
+            if (j == C1 || j == C2)
+                continue;
+            int maxj = min(sum - j - (j > C2), j - 1);
+            if (maxj <= 0)
+                break;
+            for (int k = j + 1; k <= N; k++)
+            {
+                if (k == C1 || k == C2)
+                    continue;
+                int maxk = min(sum - k - (k > C2), k - 1);
+                if (maxk <= 0)
+                    break;
+
+                int ms[3] = {maxi, maxj, maxk};
+                sort(RA(ms));
+                for (int p = 0; p < 3; p++)
+                    ms[p] -= (C1 <= ms[p]) + (C2 <= ms[p]) + (i <= ms[p]) + (j <= ms[p]) + (k <= ms[p]);
+                ms[1]--;
+                ms[2] -= 2;
+                if (ms[0] > 0 && ms[1] > 0 && ms[2] > 0)
+                    win += ms[0] * ms[1] * ms[2];
+            }
+        }
+    }
+    win *= 48;
+    return win * 4 > all;
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        int N, H;
+        cin >> N >> H;
+        cout << "Case #" << cas + 1 << ": ";
+        ll all = 1;
+        for (int i = 0; i < 6; i++)
+            all *= N - i - 2;
+
+        vi minbet(N);
+        for (int c1 = 1; c1 < N; c1++)
+        {
+            if (dobet(c1, c1 + 1, N, all))
+                minbet[c1] = c1 + 1;
+            else if (!dobet(c1, N, N, all))
+                minbet[c1] = N + 1;
+            else
+            {
+                int L = c1 + 1;
+                int R = N;
+                while (R - L > 1)
+                {
+                    int m = (L + R) / 2;
+                    if (dobet(c1, m, N, all))
+                        R = m;
+                    else
+                        L = m;
+                }
+                minbet[c1] = R;
+            }
+        }
+
+        for (int i = 0; i < H; i++)
+        {
+            int C1, C2;
+            cin >> C1 >> C2;
+            if (C1 > C2)
+                swap(C1, C2);
+            char s = (C2 >= minbet[C1]) ? 'B' : 'F';
+            cout << s;
+        }
+        cout << '\n';
+    }
+    return 0;
+}

@@ -1,0 +1,124 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <algorithm>
+#include <map>
+
+using namespace std;
+
+int board[1000000][2];
+int unicols[2000000];
+map<int,int> cmap;
+
+int nc1,nc2;
+int cols1[1000000][3];
+int cols2[1000000][3];
+char seen1[2000000], seen2[2000000], seenboth[2000000];
+
+int N,M,x1,x2,a1,a2,b1,b2,c1,c2,r1,r2;
+
+int genBoard(int bn, int p) {
+	if(board[p][bn] < 0) {
+		long long l,r,val;
+		if(bn == 0) {
+			l = a1;
+			l *= genBoard(0,(p-1)%N);
+			r = b1;
+			r *= genBoard(1,(p-1)%M);
+			val = (l + r + c1)%r1;
+		} else {
+			l = a2;
+			l *= genBoard(0,(p-1)%N);
+			r = b2;
+			r *= genBoard(1,(p-1)%M);
+			val = (l + r + c2) % r2;
+		}
+		return (board[p][bn] = val);
+
+	} else
+		return board[p][bn];
+}
+
+
+int main() {
+	int nc;
+	scanf("%d",&nc);
+	for(int cc = 1; cc <= nc; cc++) {
+		scanf("%d%d",&N,&M);
+		scanf("%d%d%d%d%d",&x1,&a1,&b1,&c1,&r1);
+		scanf("%d%d%d%d%d",&x2,&a2,&b2,&c2,&r2);
+		memset(board,-1,sizeof(board));
+		memset(seen1,0,sizeof(seen1));
+		memset(seen2,0,sizeof(seen2));
+		memset(seenboth,0,sizeof(seenboth));
+		board[0][0] = x1;
+		board[0][1] = x2;
+		for(int i = 1; i < N; i++) 
+			genBoard(0,i);
+		for(int i = 1; i < M; i++)
+			genBoard(1,i);
+		for(int i = 0; i < N; i++)	
+			unicols[i] = board[i][0];
+		for(int i = 0; i < M; i++)
+			unicols[i+N] = board[i][1];
+		sort(unicols,unicols+N+M);
+		for(int i = 0; i < N+M; i++) {
+			if(cmap.find(unicols[i]) == cmap.end())
+				cmap[unicols[i]] = cmap.size();
+		}
+		for(int i = 0; i < N; i++)
+			board[i][0] = cmap[board[i][0]];
+		for(int i = 0; i < M; i++)
+			board[i][1] = cmap[board[i][1]];
+		
+		nc1 = nc2 = 1;
+		cols1[0][0] = board[0][0];
+		cols2[0][0] = board[0][1];
+		cols1[0][1] = cols1[0][2] = cols2[0][1] = cols2[0][2] = 0;
+		seen1[board[0][0]] = 1;
+		seen2[board[0][1]] = 1;
+		for(int i = 1; i < N; i++) {
+			if(seen1[board[i][0]]) 
+				cols1[nc1-1][2] = i;	
+			else {
+				cols1[nc1][0] = board[i][0];
+				cols1[nc1][1] = cols1[nc1][2] = i;
+				seen1[board[i][0]] = 1;
+				nc1++;
+			}
+		}
+		for(int i = 1; i < M; i++) {
+			if(seen2[board[i][1]]) 
+				cols2[nc2-1][2] = i;
+			else {
+				cols2[nc2][0] = board[i][1];
+				cols2[nc2][1] = cols2[nc2][2] = i;
+				seen2[board[i][1]] = 1;
+				nc2++;
+			}
+		}
+
+		long long cnt = 0;
+		int paired = 0;
+		for(int i = 0; i < min(nc1,nc2); i++) {
+			seenboth[cols1[i][0]]++;
+			seenboth[cols2[i][0]]++;
+			if(seenboth[cols1[i][0]] == 2) {
+				seenboth[cols1[i][0]]++;
+				paired++;
+			}
+			if(seenboth[cols2[i][0]] == 2) {
+				seenboth[cols2[i][0]]++;
+				paired++;
+			}
+			if((i+1) == paired) {
+				long long cv = cols1[i][2]-cols1[i][1]+1;
+				cv *= (cols2[i][2]-cols2[i][1]+1);
+				cnt += cv;
+			}
+		}
+		printf("Case #%d: %lld\n",cc,cnt);
+	}
+	return 0;
+}

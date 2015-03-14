@@ -1,0 +1,150 @@
+#include <cstdio>
+#include <string>
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <vector>
+#include <cstdarg>
+#include <iostream>
+#include <utility>
+#include <sstream>
+#include <cmath>
+#include <ctime>
+#include <iostream>
+
+#define clr(a) memset(a, 0, sizeof(a))
+#define fill(a, b) memset(a, b, sizeof(a))
+
+using namespace std;
+
+typedef long long ll;
+typedef unsigned long long ull;
+typedef std::pair<int,int> pii;
+
+#define DBG2 1
+
+void dbg(const char * fmt, ...)
+{
+#ifdef DBG1
+#if DBG2
+	FILE* file = stderr;
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(file, fmt, args);
+	va_end(args);
+
+	fflush(file);
+#endif
+#endif
+}
+
+ll getPower(ll a, int n, ll P)
+{
+	ll b = 1;
+	while (n)
+	{
+		if (n & 1)
+			b = (a * b) % P;
+		a = (a * a) % P;
+		n /= 2;
+	}
+	return b;
+}
+
+const ll P = ll(1e9) + 7;
+
+const int N = 5100;
+ll pow2[2 * N];
+
+int lca[N][N];
+vector <int> lcaV[N][N];
+
+void clearV(vector <int> & v)
+{
+	vector <int> tmp;
+	v.swap(tmp);
+}
+
+int getCountEqLca(int row, int eq, int l, int r)
+{
+	vector <int> & v = lcaV[row][eq];
+/*	int cnt = 0;
+	for (int i = 0; i < v.size(); ++i)
+		if (l <= v[i] && v[i] <= r)
+			++cnt;
+	return cnt;*/
+	return lower_bound(v.begin(), v.end(), r + 1) - lower_bound(v.begin(), v.end(), l);
+}
+
+void solve()
+{
+	int n;
+	scanf("%d", &n);
+	vector <int> a(n);
+	ll res = 1;
+	a[0] = 0;
+	for (int i = 1; i < n; ++i)
+		scanf("%d", &a[i]);
+	for (int i = 0; i < n; ++i)
+	{
+		for (int j = 0; j < i; ++j)
+			lca[i][j] = lca[j][i];
+		lca[i][i] = i;
+		for (int j = i + 1; j < n; ++j)
+			lca[i][j] = (i > j) ? lca[a[i]][j] : lca[i][a[j]];
+	}
+
+	for (int i = 0; i < n; ++i)
+	{
+		for (int j = 0; j < n; ++j)
+			clearV(lcaV[i][j]);
+		for (int j = 0; j < n; ++j)
+			lcaV[i][lca[i][j]].push_back(j);
+	}
+
+	for (int i = 1; i < n; ++i)
+	{
+		ll cur1 = 1;
+		for (int j = a[i] + 1; j < i; ++j)
+			if (a[j] >= a[i])
+				(cur1 *= 2) %= P;
+
+		ll cur2 = 0;
+		int deg1 = 0;
+		for (int j = i - 1; j > a[i]; --j)
+			if (a[j] >= a[i])
+			{
+				int deg2 = getCountEqLca(j, a[i], j + 1, i - 1);
+				ll cur = (pow2[deg1 - deg2] * (pow2[deg2] + P - 1)) % P;
+//				dbg("i = %d, j = %d, deg1 = %d, deg2 = %d\n", i, j, deg1, deg2);
+				++deg1;
+
+				cur2 += cur;
+				if (cur2 >= P)
+					cur2 -= P;
+			}
+		(res *= (cur1 + cur2)) %= P;
+	}
+	cout << res << endl;
+}
+
+int main()
+{
+	pow2[0] = 1;
+	for (int i = 1; i < 2 * N; ++i)
+		pow2[i] = (pow2[i - 1] * 2) % P;
+
+	int tt;
+	scanf("%d", &tt);
+	for (int ii = 1; ii <= tt; ++ii)
+	{
+		printf("Case #%d: ", ii);
+		dbg("Case #%d:\n", ii);
+		solve();
+		fflush(stdout);
+	}
+
+	return 0;
+}

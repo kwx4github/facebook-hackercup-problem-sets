@@ -1,0 +1,176 @@
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <deque>
+#include <iostream>
+#include <limits>
+#include <numeric>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+#define MP make_pair
+#define all(v) (v).begin(), (v).end()
+#define PROBLEM_ID "ski"
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<vvi> vvvi;
+typedef vector<bool> vb;
+typedef long long ll;
+typedef pair<int, int> pii;
+
+const int MOD = 1000000007;
+
+int SolutionFast(const vi& a, int n) {
+  vector<int> descendants(n, 0);
+  vvi children(n);
+  ll result = 1;
+  vector<int> pow2;
+  pow2.push_back(1);
+  for (int i = 0; i <= n; ++i) {
+    pow2.push_back(ll(pow2.back()) * 2 % MOD);
+  }
+  for (int i = 0; i < a.size(); ++i) {
+    int parent = a[i];
+    //result = ll(result) * ll(pow2[descendants[parent] + 1] - descendants[parent] - 1 + MOD) % MOD;
+    int sum_bad = 1;
+    for (int j = 0; j < children[parent].size(); ++j) {
+      int child = children[parent][j];
+      sum_bad = (sum_bad + pow2[descendants[child] + 1] - 1 + MOD) % MOD;
+    }
+    result = ll(result) * ll(pow2[descendants[parent] + 1] + MOD - sum_bad) % MOD;
+    children[parent].push_back(i + 1);
+    do {
+      descendants[parent]++;
+      if (parent > 0) {
+        parent = a[parent - 1];
+      } else {
+        break;
+      }
+    } while (true);
+    
+  }
+  return result;
+}
+
+void dfs(int a, const vvi& G, vb& done) {
+  done[a] = true;
+  for (int i = 0; i < G[a].size(); ++i) {
+    if (G[a][i] && !done[i]) {
+      dfs(i, G, done);
+    }
+  }
+}
+
+int SolutionSlow(const vi& a, int n) {
+  int edges = n * (n - 1) / 2;
+  cout << (1 << edges) << " graphs to consider, " << n << " nodes each" << endl;
+  int result = 0;
+  for (int mask = 0; mask < (1 << edges); ++mask) {
+    vvi G(n, vi(n, 0));
+    int edge_index = 0;
+    for (int i = 0; i < n; ++i) {
+      for (int j = i + 1; j < n; ++j) {
+        if ((mask >> edge_index) & 1) {
+          G[i][j] = 1;
+        }
+        ++edge_index;
+      }
+    }
+    vb done(n, false);
+    dfs(0, G, done);
+    bool ok = true;
+    for (int i = 1; i < n; ++i) {
+      if (!done[i]) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) {
+      continue;
+    }
+    for (int i = 1; i < n; ++i) {
+      vvi G_copy = G;
+      for (int j = 0; j < n; ++j) {
+        G[a[i - 1]][j] = G[j][a[i - 1]] = 0;
+      }
+      done.assign(n, false);
+      dfs(0, G, done);
+      if (done[i]) {
+        ok = false;
+        break;
+      }
+      G = G_copy;
+      for (int j = a[i - 1] + 1; j < i; ++j) {
+        G_copy = G; 
+        for (int k = 0; k < n; ++k) {
+          G[j][k] = G[k][j] = 0;
+        }
+        done.assign(n, false);
+        dfs(0, G, done);
+        if (!done[i]) {
+          ok = false;
+          break;
+        }
+        G = G_copy;
+      }
+      if (!ok) {
+        break;
+      }
+    }
+    if (!ok) {
+      continue;
+    }
+    ++result;
+  }
+  return result % MOD;
+}
+
+int main() {
+  /*while (true) {
+    int n = rand() % 6 + 1;
+    vector<int> a(n - 1);
+    for (int i = 1; i < n; ++i) {
+      a[i - 1] = rand() % i;
+    }
+    cerr << n << endl;
+    for (int i = 0; i < a.size(); ++i) {
+      cerr << a[i] << ' ';
+    }
+    cerr << endl;
+    int result2 = SolutionFast(a, n);
+    int result1 = SolutionSlow(a, n);    
+    if (result1 != result2) {
+      cerr << "Wrong answer: " << result1 << ' ' << result2 << endl;
+      break;
+    } else {
+      cerr << "OK " << result1 << ' ' << result2 << endl;
+    }
+  }*/
+  freopen(PROBLEM_ID".in", "r", stdin);
+  freopen(PROBLEM_ID".out", "w", stdout);
+  int tests;
+  cin >> tests;
+  for (int test_index = 0; test_index < tests; ++test_index) {
+    int n;
+    cin >> n;
+    vector<int> a(n - 1);
+    for (int i = 0; i < n - 1; ++i) {
+      cin >> a[i];
+    }
+    int result = SolutionFast(a, n);
+    cout << "Case #" << test_index + 1 << ": " << result << endl;
+    cerr << "Case #" << test_index + 1 << ": " << result << endl;
+  }
+  return 0;
+}

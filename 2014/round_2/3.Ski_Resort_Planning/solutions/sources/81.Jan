@@ -1,0 +1,81 @@
+#include <vector>
+#include <algorithm>
+#include <cstdio>
+using namespace std;
+const int mod = 1000000007;
+vector<vector<int> > childs;
+vector<vector<int> > subtree;
+int power_of_two[1000005];
+void sub_dfs(int root, int x) {
+	subtree[root].push_back(x);
+	for (vector<int>::iterator it=childs[x].begin(); it!=childs[x].end(); ++it) {
+		int y = *it;
+		sub_dfs(root, y);
+	}
+}
+int dfs(int x) {
+	sort(childs[x].begin(), childs[x].end());
+	// cross edges can point only to the root of the other subtree.
+	int answer = 1;
+	for (vector<int>::iterator it=childs[x].begin(); it!=childs[x].end(); ++it) {
+		int y = *it;
+		sub_dfs(y, y);
+		sort(subtree[y].begin(), subtree[y].end());
+	}
+	reverse(childs[x].begin(), childs[x].end());
+	for (vector<int>::iterator it=childs[x].begin(); it!=childs[x].end(); ++it) {
+		int y = *it;
+		vector<int> sizes;
+		for (vector<int>::iterator it_other=childs[x].begin(); it_other!=childs[x].end(); ++it_other) {
+			int other_child = *it_other;
+			while (!subtree[other_child].empty() && subtree[other_child].back() >= y) {
+				subtree[other_child].pop_back();
+			}
+			sizes.push_back(subtree[other_child].size());
+		}
+		int sum_sizes = 0;
+		for (int i=0; i<(int)sizes.size(); i++) {
+			sum_sizes += sizes[i];
+		}
+		int term = 0;
+		// #ways to reach y: from other nodes and/or from x.
+		// 1. includes x: all subsets of other nodes are valid.
+		term += power_of_two[sum_sizes];
+		term %= mod;
+		// 2. does not include x: all subsets except empty and those that all have the same root.
+		term += power_of_two[sum_sizes];
+		term %= mod;
+		term -= 1;
+		term %= mod; term += mod; term %= mod;
+		for (int i=0; i<(int)sizes.size(); i++) {
+			term -= power_of_two[sizes[i]] - 1;
+			term %= mod; term += mod; term %= mod;
+		}
+		answer = (long long) answer * term % mod;
+	}
+	for (vector<int>::iterator it=childs[x].begin(); it!=childs[x].end(); ++it) {
+		int y = *it;
+		answer = (long long) answer * dfs(y) % mod;
+	}
+	return answer;
+}
+int main() {
+	power_of_two[0] = 1;
+	for (int i=1; i<=1000000; i++) {
+		power_of_two[i] = (long long) power_of_two[i-1] * 2 % mod;
+	}
+	int T;
+	scanf("%d",&T);
+	for (int tc=1; tc<=T; tc++) {
+		int N;
+		scanf("%d",&N);
+		childs = vector<vector<int> > (N);
+		subtree = vector<vector<int> > (N);
+		for (int i=1; i<N; i++) {
+			int parent;
+			scanf("%d",&parent);
+			childs[parent].push_back(i);
+		}
+		printf("Case #%d: %d\n", tc, dfs(0));
+	}
+}

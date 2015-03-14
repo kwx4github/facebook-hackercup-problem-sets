@@ -1,0 +1,105 @@
+#!/usr/bin/python
+
+import hashlib, sys, subprocess
+
+def genDigests(arr):
+	seen = {}
+	result = []
+	curXor = [0] * (160/8)
+	hexXor = None
+	for x in arr:
+		if x not in seen:
+			seen[x] = 1
+			SHA = hashlib.sha1()
+			SHA.update(str(x))
+			digest = SHA.digest()
+			for i in xrange(160/8):
+				curXor[i] ^= ord(digest[i])
+			hexXor = ""
+			for i in xrange(20):
+				hexXor += "0123456789abcdef"[curXor[i] / 16] + "0123456789abcdef"[curXor[i] % 16]
+		result.append(hexXor)
+	return result
+
+def printf(s):
+	print s
+	sys.stdout.flush()
+
+def solve(f):
+	N, M = map(int, f.readline().strip().split())
+	x1, a1, b1, c1, r1 = map(int, f.readline().strip().split())
+	x2, a2, b2, c2, r2 = map(int, f.readline().strip().split())
+	Board1 = [0] * N
+	Board2 = [0] * M
+	Board1[0] = x1
+	Board2[0] = x2
+	for i in xrange(1, min(N, M)):
+		Board1[i] = (a1 * Board1[(i-1) % N] + b1 * Board2[(i-1) % M] + c1) % r1
+		Board2[i] = (a2 * Board1[(i-1) % N] + b2 * Board2[(i-1) % M] + c2) % r2
+	for i in xrange(min(N, M), max(N, M)):
+		if i < N: Board1[i] = (a1 * Board1[(i-1) % N] + b1 * Board2[(i-1) % M] + c1) % r1
+		if i < M: Board2[i] = (a2 * Board1[(i-1) % N] + b2 * Board2[(i-1) % M] + c2) % r2
+	printf("RMR generating digests1")
+	digests1 = genDigests(Board1)
+	printf("RMR generating digests2")
+	digests2 = genDigests(Board2)
+	if N < 10:
+		printf("RMR Board1 " + str(Board1))
+	if M < 10:
+		printf("RMR Board2 " + str(Board2))
+	printf("RMR pass1")
+	counts2 = {}
+	for digest in digests2:
+		if digest not in counts2:
+			counts2[digest] = 0
+		counts2[digest] += 1
+	printf("RMR pass2")
+	result = 0
+	for digest in digests1:
+		if digest in counts2:
+			result += counts2[digest]
+	return result
+
+MAXSPAWN = 8
+
+if len(sys.argv) != 2:
+	T = int(raw_input())
+	for tc in xrange(1, 1 + T):
+		s1 = raw_input()
+		s2 = raw_input()
+		s3 = raw_input()
+		f = open("a-temp-%d.in" % tc, "w")
+		f.write(str(tc) + "\n")
+		f.write(s1 + "\n")
+		f.write(s2 + "\n")
+		f.write(s3 + "\n")
+		f.close()
+	i = 1
+	while i <= T:
+		j = i
+		children = []
+		while j <= T and j < i + MAXSPAWN:
+			child = subprocess.Popen(["./a.parallel.py", "a-temp-%d.in" % j])
+			children.append(child)
+			print "launched pid %d for tc %d" % (child.pid, j)
+			j += 1
+		for child in children:
+			pid = child.pid
+			child.wait()
+			print "Done", pid
+		i = j
+	print "assembling..."
+	f = open("a-res.txt", "w")
+	for i in xrange(1, 1 + T):
+		fi = open("a-temp-%d.out" % i, "r")
+		s = fi.readline()
+		fi.close()
+		f.write(s)
+	f.close()
+else:
+	f = open(sys.argv[1], "r")
+	tc = int(f.readline().strip())
+	fo = open("a-temp-%d.out" % tc, "w")
+	fo.write("Case #%d: %d\n" % (tc, solve(f)))
+	f.close()
+	fo.close()

@@ -1,0 +1,209 @@
+package round2;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.util.HashSet;
+import java.util.Set;
+
+public class MagicPairs {
+	public static void main(String[] args) {
+		if (args.length != 1) {
+			System.out.println("MagicPairs <input file name>");
+			System.exit(1);
+		}
+		
+		BufferedReader reader = null;
+		InputStreamReader isr = null;
+		FileInputStream fis = null;
+		
+		try {
+			fis = new FileInputStream(args[0]);
+			isr = new InputStreamReader(fis);
+			reader = new BufferedReader(isr);
+			
+			int T = Integer.parseInt(reader.readLine().trim());
+			assert 1 <= T && T <= 20;
+			
+			for (int i = 0; i < T; i++) {
+				String[] fields = reader.readLine().split(" ");
+				assert fields.length == 2;
+				int N = Integer.parseInt(fields[0].trim());
+				int M = Integer.parseInt(fields[1].trim());
+				
+				assert 1 <= N && N <= 1000000;
+				assert 1 <= M && M <= 1000000;
+				
+				fields = reader.readLine().split(" ");
+				assert fields.length == 5;
+				int x1 = Integer.parseInt(fields[0].trim());
+				int a1 = Integer.parseInt(fields[1].trim());
+				int b1 = Integer.parseInt(fields[2].trim());
+				int c1 = Integer.parseInt(fields[3].trim());
+				int r1 = Integer.parseInt(fields[4].trim());
+				
+				fields = reader.readLine().split(" ");
+				assert fields.length == 5;
+				int x2 = Integer.parseInt(fields[0].trim());
+				int a2 = Integer.parseInt(fields[1].trim());
+				int b2 = Integer.parseInt(fields[2].trim());
+				int c2 = Integer.parseInt(fields[3].trim());
+				int r2 = Integer.parseInt(fields[4].trim());
+				
+				int[] board1 = new int[N];
+				int[] board2 = new int[M];
+				
+				board1[0] = x1;
+				board2[0] = x2;
+				int max = Math.max(N, M);
+				for (int j = 1; j < max; j++) {
+					if (j < N) {
+						board1[j] =  (a1 * board1[(j-1) % N] + b1 * board2[(j-1) % M] + c1) % r1;
+					}
+					
+					if (j < M) {
+						board2[j] = (a2 * board1[(j-1) % N] + b2 * board2[(j-1) % M] + c2) % r2;
+					}
+				}
+				
+				/*
+				for (int k = 0; k < board1.length; k++) {
+					System.out.print(board1[k] + ", ");
+				}
+				System.out.println();
+				
+				for (int k = 0; k < board2.length; k++) {
+					System.out.print(board2[k] + ", ");
+				}
+				System.out.println();
+				*/
+				long pairs = findMagicPair(board1, board2);
+				
+				System.out.println("Case #" + (i+1) + ": " + pairs);
+			}
+		} catch (Throwable t) {
+			t.printStackTrace();
+		} finally {
+			if (reader != null) {
+				try {
+					reader.close();
+				} catch (Throwable t) {}
+			}
+			
+			if (isr != null) {
+				try {
+					isr.close();
+				} catch (Throwable t) {}
+			}
+			
+			if (fis != null) {
+				try {
+					fis.close();
+				} catch (Throwable t) {}
+			}
+		}
+	}
+	
+	private static final int START = 0;
+	private static final int MATCH1 = 1;
+	private static final int MATCH2 = 2;
+	private static final int MATCHED = 3;
+	
+	private static long findMagicPair(int[] board1, int[] board2) {
+		int N = board1.length;
+		int M = board2.length;
+		
+		long numPairs = 0;
+
+		Set<Integer> matchedColors = new HashSet<Integer>();
+		Set<Integer> unMatched1 = new HashSet<Integer>();
+		Set<Integer> unMatched2 = new HashSet<Integer>();
+		
+		int state = START;		
+		int index1 = 0;
+		int index2 = 0;
+		
+		while(true) {
+			//System.out.println("matched:"+matchedColors + ", unMatched1="+unMatched1 + ", unMatched2=" + unMatched2 + "index1=" + index1 + ", index2=" + index2);
+			if (state == START) {
+				if (index1 >= N) {
+					break;
+				}
+				
+				unMatched1.add(board1[index1++]);
+				state = MATCH1;
+			} else if (state == MATCH1) {
+				if (index2 >= M) {
+					break;
+				}
+				
+				Integer newInteger = new Integer(board2[index2++]);
+				if (unMatched1.remove(newInteger)) {
+					matchedColors.add(newInteger);
+					if (unMatched1.size() == 0) {
+						if (unMatched2.size() == 0) {
+							state = MATCHED;
+						} else {
+							state = MATCH2;
+						}
+					}
+				} else {
+					if (!matchedColors.contains(newInteger)) {
+						unMatched2.add(newInteger);
+					}
+				}
+			} else if (state == MATCH2) {
+				if (index1 >= N) {
+					break;
+				}
+				
+				Integer newInteger = new Integer(board1[index1++]);
+				if (unMatched2.remove(newInteger)) {
+					matchedColors.add(newInteger);
+					if (unMatched2.size() == 0) {
+						if (unMatched1.size() == 0) {
+							state = MATCHED;
+						} else {
+							state = MATCH1;
+						}
+					}
+				} else {
+					if (!matchedColors.contains(newInteger)) {
+						unMatched1.add(newInteger);
+					}
+				}
+			} else {
+				assert state == MATCHED;
+				//System.out.println("matched, index1="+ index1 + ", index2=" + index2);
+				int i;
+				for (i = index1; i < N; i++) {
+					Integer newInteger = new Integer(board1[i]);
+					if (!matchedColors.contains(newInteger))	{
+						break;
+					}
+				}
+				
+				int count1 = i - index1 + 1;
+				index1 = i;
+				
+				for (i = index2; i < M; i++) {
+					Integer newInteger = new Integer(board2[i]);
+					if (!matchedColors.contains(newInteger))	{
+						break;
+					}
+				}
+				
+				int count2 = i - index2 + 1;
+				index2 = i;
+				
+				numPairs += count1 * count2;
+				
+				state = START;
+			}
+		}
+		
+		return numPairs;
+	}
+	
+}
+

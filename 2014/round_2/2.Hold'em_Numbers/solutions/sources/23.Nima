@@ -1,0 +1,198 @@
+#include <iostream>
+#include <algorithm>
+#include <set>
+#include <vector>
+using namespace std;
+typedef long long ll;
+int n,m;
+int d[8];
+struct event{
+  int x;
+  int ind;
+  event(){}
+  event(int x,int ind):x(x),ind(ind){}
+};
+bool operator<(event e1, event e2){
+  return e1.x<e2.x;
+}
+event e[6];
+int bc(int mask){
+  return (mask&1)+((mask>>1)&1)+((mask>>2)&1);
+}
+bool simple(int n, int c1, int c2){
+  int c[8];
+  c[6]=c1;
+  c[7]=c2;
+  ll cnt=0;
+  ll den=0;
+  for (c[0]=0;c[0]<n;++c[0])
+    for (c[1]=0;c[1]<n;++c[1])
+      for (c[2]=0;c[2]<n;++c[2])
+        for (c[3]=0;c[3]<n;++c[3])
+          for (c[4]=0;c[4]<n;++c[4])
+            for (c[5]=0;c[5]<n;++c[5]){
+              bool bad=false;
+              for (int i=0;i<8;++i)
+                for (int j=i+1;j<8;++j)
+                  if (c[i]==c[j])
+                    bad=true;
+              if (bad)
+                continue;
+              den+=1;
+              for (int i=0;i<3;++i)
+                if (c[i+i]+c[i+i+1]>c1+c2 || (c[i+i]+c[i+i+1]==c1+c2 && max(c1,c2)<max(c[i+i],c[i+i+1])))
+                  bad=true;
+              if (bad)
+                continue;
+              cnt+=1;
+            }
+  cout<<cnt/8<<' '<<den/8<<endl;
+  return cnt*4>den;
+}
+bool good(int n, int c1, int c2){
+  d[3]=c1;
+  d[4]=c2;
+  ll cnt=0;
+  for (d[0]=0;d[0]<n;++d[0])
+    for (d[1]=0;d[1]<n;++d[1])
+      for (d[2]=0;d[2]<n;++d[2]){
+        bool bad = false;
+        for (int i=0;i<5;++i)
+          for (int j=i+1;j<5;++j)
+            if (d[i]==d[j])
+              bad=true;
+        if (bad)
+          continue;
+        int a[3];
+        int b[3];
+        for (int i=0;i<3;++i){
+          a[i]=d[i]+1;
+          b[i]=min(c1+c2-d[i], n-1);
+          if (d[i]+b[i]==c1+c2 && b[i]>max(c1, c2))
+            --b[i];
+        }
+        for (int i=0;i<3;++i)
+          if (b[i]<a[i])
+            bad=true;
+        if (bad)
+          continue;
+        int A[3], B[3];
+        for (int i=0;i<3;++i){
+          A[i]=a[i];
+          B[i]=b[i];
+        }
+        for (int i=0;i<3;++i)
+          for (int j=0;j<5;++j){
+            if (d[j]<A[i])
+              --a[i];
+            if (d[j]<=B[i])
+              --b[i];
+          }
+        for (int i=0;i<3;++i){
+          e[i+i]=event(a[i], i);
+          e[i+i+1]=event(b[i]+1, i);
+        }
+        sort(e, e+6);
+        vector<int> dyn, tdyn;
+        dyn = vector<int>(8, 0);
+        dyn[0]=1;
+        int mask=0;
+        for (int i=0;i<5;++i){
+          tdyn=dyn;
+          dyn = vector<int>(8, 0);
+          mask^=(1<<e[i].ind);
+          int l=e[i+1].x-e[i].x;
+          int ways[4]={1, l, l*(l-1), l*(l-1)*(l-2)};
+          for (int j=0;j<8;++j)
+            for (int k=0;k<8;++k)
+              if ((j&k)==j && (j&mask)==j){
+                dyn[k]+=tdyn[k-j]*ways[bc(j)];
+              }
+        }
+        ll ways=dyn[7];
+        /*
+        ll rough=0;
+        {
+          for (d[5]=d[0]+1;d[5]<n;++d[5])
+            for (d[6]=d[1]+1;d[6]<n;++d[6])
+              for (d[7]=d[2]+1;d[7]<n;++d[7]){
+                bool bad=false;
+                for (int i=0;i<8;++i)
+                  for (int j=i+1;j<8;++j)
+                    if (d[i]==d[j])
+                      bad=true;
+                if (bad)
+                  continue;
+                for (int i=0;i<3;++i)
+                  if (d[i]+d[i+5]>c1+c2 || (d[i+5]>max(c1,c2) && d[i]+d[i+5]==c1+c2))
+                    bad=true;
+                if (bad)
+                  continue;
+                  rough+=1;
+              }
+        }
+        if (rough!=ways){
+          cout<<d[0]<<' '<<d[1]<<' '<<d[2]<<endl;
+          for (int i=0;i<3;++i)
+            cout<<A[i]<<' '<<B[i]<<endl;
+          cout<<ways<<' '<<rough<<endl;
+          exit(0);
+        }*/
+        cnt+=ways;
+      }
+  ll den=1;
+  for (int i=0;i<6;++i)
+    den*=(n-2-i);
+  den/=8;
+  return cnt*4>den;
+}
+struct hand{
+  int c1, c2;
+  hand(){}
+  hand(int c1, int c2):c1(c1),c2(c2){}
+  int sum() const{
+    return c1+c2;
+  }
+  int max() const{
+    return ::max(c1,c2);
+  }
+  bool good(int n) const{
+    return ::good(n, c1, c2);
+  }
+};
+bool operator<(const hand& h1,const hand& h2){
+  if (h1.sum()!=h2.sum())
+    return h1.sum()<h2.sum();
+  return h1.max()<h2.max();
+}
+vector<hand> hands[101];
+hand pivot[101];
+int main(){
+  int tnum;cin>>tnum;int tcou=0;
+  while (tnum--){
+    cin>>n>>m;
+    hands[n].clear();
+    for (int i=0;i<n;++i)
+      for (int j=i+1;j<n;++j)
+        hands[n].push_back(hand(i, j));
+    sort(hands[n].begin(), hands[n].end());
+    int l=0, u=hands[n].size()-1;
+    while (u!=l){
+      int m=(l+u)/2;
+      if (hands[n][m].good(n))
+        u=m;
+      else
+        l=m+1;
+    }
+    pivot[n]=hands[n][l];
+    cout<<"Case #"<<++tcou<<": ";
+    for (int i=0;i<m;++i){
+      int c1, c2;
+      cin>>c1>>c2;--c1;--c2;
+      bool fold=(hand(c1, c2)<pivot[n]);
+      cout<<(fold?"F":"B");
+    }
+    cout<<endl;
+  }
+  return 0;
+}
