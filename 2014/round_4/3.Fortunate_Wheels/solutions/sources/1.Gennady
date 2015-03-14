@@ -1,0 +1,191 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <memory.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+const long long inf = (long long)1e18;
+
+const int N = (int)1e6;
+
+int last[N], pred[N];
+pair <int, int> t[N];
+
+char s[N];
+int a[N], g[N], pz[N];
+int na[N], ng[N];
+
+int d[25][N];
+int lcp[N];
+
+long long f[N];
+
+int pr[N], ne[N];
+
+multiset < int, greater <int> > p;
+multiset < int >::iterator it;
+
+vector <long double> ret;
+
+int main() {
+  freopen("in", "r", stdin);
+  freopen("out", "w", stdout);
+  int tt;
+  scanf("%d", &tt);
+  for (int qq = 1; qq <= tt; qq++) {
+    printf("Case #%d:", qq);
+    int deals, M, W, X, Y, Z;
+    scanf("%d %d %d %d %d %d", &deals, &M, &W, &X, &Y, &Z);
+    scanf("%s", s + 1);
+    int n = strlen(s + 1);
+    {
+      for (int c = 0; c < 255; c++) last[c] = 0;
+      for (int i = 1; i <= n; i++) {
+        pred[i] = last[s[i]];
+        last[s[i]] = i;
+      }
+      int kg = 0, nn = 0;
+      for (int c = 0; c < 255; c++)
+        if (last[c] > 0) {
+          kg++;
+          int j = last[c];
+          while (j > 0) {
+            nn++;
+            a[nn] = j;
+            g[nn] = kg;
+            pz[j] = nn;
+            j = pred[j];
+          }
+        }
+      int it = 0, step = 1;
+      while (kg < n) {
+        for (int i = 1; i <= n; i++) d[it][i] = g[pz[i]];
+        it++;
+        int nkg = 0;
+        int beg = 1;
+        while (beg <= n) {
+          int end = beg;
+          while (end + 1 <= n && g[end + 1] == g[beg]) {
+            end++;
+          }
+          for (int i = beg; i <= end; i++) {
+            int p = a[i] + step;
+            t[i] = make_pair((p > n ? 0 : g[pz[p]]), a[i]);
+          }
+          sort(t + beg, t + end + 1);
+          for (int i = beg; i <= end; i++) {
+            if (i == beg || t[i].first != t[i - 1].first) {
+              nkg++;
+            }
+            na[i] = t[i].second;
+            ng[i] = nkg;
+          }
+          beg = end + 1;
+        }
+        kg = nkg;
+        for (int i = 1; i <= n; i++) {
+          a[i] = na[i];
+          g[i] = ng[i];
+          pz[a[i]] = i;
+        }
+        step <<= 1;
+      }
+      for (int i = 1; i <= n - 1; i++) {
+        int v = 0;
+        for (int j = it - 1; j >= 0; j--)
+          if (a[i] + v <= n && a[i + 1] + v <= n && d[j][a[i] + v] == d[j][a[i + 1] + v]) {
+            v += (1 << j);
+          }
+        lcp[i] = v;
+      }
+    }
+    {
+      for (int i = 0; i <= n; i++) f[i] = inf;
+      f[0] = 0;
+      while (deals--) {
+        int C, L;
+        scanf("%d %d", &C, &L);
+        C += W;
+        for (int i = 0; i <= n - L; i++)
+          if (f[i] + C < f[i + L]) {
+            f[i + L] = f[i] + C;
+          }
+      }
+    }
+    for (int i = 0; i <= n; i++) {
+      last[i] = 0;
+    }
+    for (int i = 1; i <= n - 1; i++) {
+      pred[i] = last[lcp[i]];
+      last[lcp[i]] = i;
+    }
+    for (int i = 0; i <= n; i++) {
+      pr[i] = i - 1;
+      ne[i] = i + 1;
+    }
+    p.clear();
+    ret.clear();
+    for (int word = n - 1; word >= 1; word--) {
+      int j = last[word];
+      while (j > 0) {
+        {
+          int u = j - pr[j] - 1;
+          if (u > 0) {
+            p.erase(p.find(u));
+          }
+        }
+        {
+          int u = ne[j] - j - 1;
+          if (u > 0) {
+            p.erase(p.find(u));
+          }
+        }
+        p.insert(ne[j] - pr[j] - 1);
+        pr[ne[j]] = pr[j];
+        ne[pr[j]] = ne[j];
+        j = pred[j];
+      }
+      if (f[word] == inf) {
+        continue;
+      }
+      long long cost = f[word] - W;
+      long double den = ((long double)0.5 * (n - word)) * (n - word + 1);
+      it = p.begin();
+      for (int tmp = 0; tmp < M; tmp++) {
+        int z;
+        if (it != p.end()) {
+          z = *it;
+          it++;
+        } else {
+          z = 0;
+        }
+        long double num = ((long double)0.5 * z) * (z + 1);
+        long double score = n - abs(X - word);
+        score = Y * score * score + Z;
+        long double res = (num / den) * score - cost;
+        ret.push_back(res);
+      }
+    }
+    sort(ret.begin(), ret.end());
+    reverse(ret.begin(), ret.end());
+    for (int i = 0; i < M; i++) printf(" %.3lf", (double)ret[i]);
+    printf("\n");
+  }
+  return 0;
+}

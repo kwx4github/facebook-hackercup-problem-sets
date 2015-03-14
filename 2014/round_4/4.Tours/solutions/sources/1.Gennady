@@ -1,0 +1,267 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <memory.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+const int N = (int)4e6;
+
+vector < pair <int, int> > g[N];
+int de[N], md[N];
+bool was[N];
+
+int kc, comp[N];
+
+int from[N], to[N];
+bool bridge[N];
+
+void dfs(int v, int depth, int pr, int pj) {
+  was[v] = true;
+  de[v] = depth;
+  md[v] = depth;
+  int sz = g[v].size();
+  for (int j = 0; j < sz; j++) {
+    int u = g[v][j].first;
+    if (u == pr) {
+      continue;
+    }
+    if (!was[u]) {
+      dfs(u, depth + 1, v, g[v][j].second);
+      if (md[u] < md[v]) {
+        md[v] = md[u];
+      }
+    } else {
+      if (de[u] < md[v]) {
+        md[v] = de[u];
+      }
+    }
+  }
+  if (md[v] == de[v] && pr != -1) {
+    bridge[pj] = true;
+  }
+}
+
+void set_comp(int v) {
+  comp[v] = kc;
+  int sz = g[v].size();
+  for (int j = 0; j < sz; j++) {
+    int id = g[v][j].second;
+    if (bridge[id]) {
+      continue;
+    }
+    int u = g[v][j].first;
+    if (comp[u] == 0) {
+      set_comp(u);
+    }
+  }
+}
+
+int size[N], heavy[N];
+int pv[N];
+int T, tin[N], tout[N];
+int kw, w[N];
+
+int pr[22][N];
+
+void make_tree(int v) {
+  was[v] = true;
+  w[++kw] = v;
+  tin[v] = ++T;
+  size[v] = 1;
+  int sz = g[v].size();
+  for (int j = 0; j < sz; j++) {
+    int u = g[v][j].first;
+    if (!was[u]) {
+      pv[u] = v;
+      make_tree(u);
+      size[v] += size[u];
+    }
+  }
+  int km = -1;
+  for (int j = 0; j < sz; j++) {
+    int u = g[v][j].first;
+    if (pv[u] == v) {
+      if (km == -1) km = u; else
+      if (size[u] > size[km]) km = u;
+    }
+  }
+  heavy[v] = km;
+  tout[v] = ++T;
+}
+
+bool anc(int x, int y) {
+  return (tin[x] <= tin[y] && tout[y] <= tout[x]);
+}
+
+int lca(int x, int y) {
+  if (anc(x, y)) return x;
+  for (int j = 19; j >= 0; j--)
+    if (!anc(pr[j][x], y)) x = pr[j][x];
+  return pv[x];
+}
+
+int sum_b, sum[N];
+
+void add(int x, int v) {
+  while (x <= sum_b) {
+    sum[x] += v;
+    x = (x | (x - 1)) + 1;
+  }
+}
+
+int findsum(int x) {
+  int v = 0;
+  while (x > 0) {
+    v += sum[x];
+    x &= x - 1;
+  }
+  return v;
+}
+
+int add_segm(int ll, int rr, int v) {
+  add(ll, v);
+  add(rr + 1, -v);
+}
+
+int real[N], pos[N], head[N];
+
+int add_all(int x, int v) {
+  while (true) {
+    add_segm(pos[head[x]], pos[x], v);
+    x = head[x];
+    if (pv[x] == x) break;
+    x = pv[x];
+  }
+}
+
+int get_point(int x) {
+  return findsum(pos[x]);
+}
+
+const int MOD = 1000000007;
+
+int ans[N];
+
+int main() {
+  freopen("in", "r", stdin);
+  freopen("out", "w", stdout);
+  int tt;
+  scanf("%d", &tt);
+  for (int qq = 1; qq <= tt; qq++) {
+    printf("Case #%d: ", qq);
+    int n, m, tt;
+    scanf("%d %d %d", &n, &m, &tt);
+    for (int i = 1; i <= n; i++) g[i].clear();
+    for (int i = 1; i <= m; i++) {
+      int foo, bar;
+      scanf("%d %d", &foo, &bar);
+      from[i] = foo;
+      to[i] = bar;
+      g[foo].push_back(make_pair(bar, i));
+      g[bar].push_back(make_pair(foo, i));
+    }
+    for (int i = 1; i <= n; i++) was[i] = false;
+    for (int i = 1; i <= m; i++) bridge[i] = false;
+    for (int i = 1; i <= n; i++)
+      if (!was[i]) {
+        dfs(i, 1, -1, -1);
+      }
+    for (int i = 1; i <= n; i++) comp[i] = 0;
+    kc = 0;
+    for (int i = 1; i <= n; i++)
+      if (comp[i] == 0) {
+        kc++;
+        set_comp(i);
+      }
+    int mm = 0;
+    for (int i = 1; i <= m; i++)
+      if (bridge[i]) {
+        mm++;
+        from[mm] = comp[from[i]];
+        to[mm] = comp[to[i]];
+      }
+    m = mm;
+    for (int i = 1; i <= kc; i++) g[i].clear();
+    for (int i = 1; i <= m; i++) {
+      int foo = from[i];
+      int bar = to[i];
+      g[foo].push_back(make_pair(bar, 0));
+      g[bar].push_back(make_pair(foo, 0));
+    }
+    for (int i = 1; i <= kc; i++) was[i] = false;
+    T = 0;
+    kw = 0;
+    for (int i = 1; i <= kc; i++)
+      if (!was[i]) {
+        pv[i] = i;
+        make_tree(i);
+      }
+    for (int i = 1; i <= kc; i++) pr[0][i] = pv[i];
+    for (int j = 1; j < 20; j++)
+      for (int i = 1; i <= kc; i++) pr[j][i] = pr[j - 1][pr[j - 1][i]];
+    for (int i = 1; i <= kc; i++) pos[i] = -1;
+    int nkc = 0;
+    for (int ii = 1; ii <= kw; ii++) {
+      int i = w[ii];
+      if (pos[i] != -1) {
+        continue;
+      }
+      int p = i;
+      while (true) {
+        nkc++;
+        real[nkc] = p;
+        pos[p] = nkc;
+        head[p] = i;
+        if (heavy[p] == -1) {
+          break;
+        }
+        p = heavy[p];
+      }
+    }
+    sum_b = kc;
+    for (int i = 1; i <= kc; i++) sum[i] = 0;
+    for (int i = 1; i <= n; i++) ans[i] = 0;
+    while (tt--) {
+      char ch = getchar();
+      while (ch != 'T' && ch != 'S') ch = getchar();
+      if (ch == 'T') {
+        int x, y, d;
+        scanf("%d %d %d", &x, &y, &d);
+        x = comp[x];
+        y = comp[y];
+        if (pr[19][x] != pr[19][y]) {
+          continue;
+        }
+        int z = lca(x, y);
+        add_all(x, d);
+        add_all(y, d);
+        add_all(z, -2 * d);
+        add_segm(pos[z], pos[z], d);
+      } else {
+        int ver;
+        scanf("%d", &ver);
+        ans[ver] = get_point(comp[ver]);
+      }
+    }
+    long long res = 0;
+    for (int i = 1; i <= n; i++) res += ans[i];
+    cout << (res % MOD) << endl;
+  }
+  return 0;
+}

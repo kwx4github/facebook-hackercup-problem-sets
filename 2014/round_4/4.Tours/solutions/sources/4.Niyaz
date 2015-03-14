@@ -1,0 +1,325 @@
+import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Niyaz Nigmatullin
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		FastScanner in = new FastScanner(inputStream);
+		FastPrinter out = new FastPrinter(outputStream);
+		Tours solver = new Tours();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class Tours {
+    static List<Integer>[] edges;
+    static int[] up;
+    static int[] depth;
+    static boolean[] was;
+    static int[] cv;
+    static int colorCount, currentTime;
+    static int[] color;
+    static int[] pv;
+    static int[] en;
+    static int[] ex;
+    static List<Integer>[] treeEdges;
+
+    static void dfs(int v, int p, int d) {
+        depth[v] = d;
+        up[v] = d;
+        was[v] = true;
+        for (int i = 0; i < edges[v].size(); i++) {
+            int to = edges[v].get(i);
+            if (to == p) continue;
+            if (!was[to]) {
+                dfs(to, v, d + 1);
+                up[v] = Math.min(up[v], up[to]);
+            } else {
+                up[v] = Math.min(up[v], depth[to]);
+            }
+        }
+    }
+
+    static void color(int v, int curc) {
+        color[v] = curc;
+        for (int i = 0; i < edges[v].size(); i++) {
+            int to = edges[v].get(i);
+            if (color[to] < 0 && depth[to] == depth[v] + 1) {
+                int newc;
+                if (up[to] > depth[v]) {
+                    newc = colorCount++;
+                } else {
+                    newc = curc;
+                }
+                color(to, newc);
+            }
+        }
+    }
+
+    public void solve(int testNumber, FastScanner in, FastPrinter out) {
+        out.print("Case #" + testNumber + ": ");
+        System.err.println("[" + testNumber + "]");
+        int n = in.nextInt();
+        int m = in.nextInt();
+        int days = in.nextInt();
+        edges = new List[n];
+        for (int i = 0; i < n; i++) {
+            edges[i] = new ArrayList<>();
+        }
+        for (int i = 0; i < m; i++) {
+            int x = in.nextInt() - 1;
+            int y = in.nextInt() - 1;
+            edges[x].add(y);
+            edges[y].add(x);
+        }
+        was = new boolean[n];
+        color = new int[n];
+        up = new int[n];
+        depth = new int[n];
+        colorCount = 0;
+        for (int i = 0; i < n; i++) {
+            if (!was[i]) {
+                dfs(i, -1, 0);
+            }
+        }
+        Arrays.fill(color, -1);
+        for (int i = 0; i < n; i++) {
+            if (color[i] < 0) {
+                int cc = colorCount++;
+                color(i, cc);
+            }
+        }
+        treeEdges = new List[colorCount];
+        for (int i = 0; i < colorCount; i++) {
+            treeEdges[i] = new ArrayList<>();
+        }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < edges[i].size(); j++) {
+                int to = edges[i].get(j);
+                if (color[i] != color[to]) {
+                    treeEdges[color[i]].add(color[to]);
+                }
+            }
+        }
+        currentTime = 0;
+        en = new int[colorCount];
+        ex = new int[colorCount];
+        was = new boolean[colorCount];
+        depth = new int[colorCount];
+        pv = new int[colorCount];
+        cv = new int[colorCount];
+        int components = 0;
+        for (int i = 0; i < colorCount; i++) {
+            if (!was[i]) {
+                dfs2(i, -1, 0, components++);
+            }
+        }
+        lca = new int[CO][colorCount];
+        for (int i = 0; i < colorCount; i++) lca[0][i] = pv[i] < 0 ? i : pv[i];
+        for (int i = 1; i < CO; i++) {
+            for (int v = 0; v < colorCount; v++) {
+                lca[i][v] = lca[i - 1][lca[i - 1][v]];
+            }
+        }
+        Fenwick f = new Fenwick(colorCount);
+        int[] inV = new int[n];
+        int ans = 0;
+        for (int day = 0; day < days; day++) {
+            String op = in.next();
+            if (op.equals("T")) {
+                int v = in.nextInt() - 1;
+                int u = in.nextInt() - 1;
+                int count = in.nextInt() % MOD;
+                if (cv[color[v]] != cv[color[u]]) {
+                    continue;
+                }
+                int lca = lca(color[v], color[u]);
+                f.add(en[color[v]], count);
+                f.add(en[color[u]], count);
+                f.add(en[lca], MOD - count);
+                if (pv[lca] >= 0) {
+                    f.add(en[pv[lca]], MOD - count);
+                }
+            } else {
+                int v = in.nextInt() - 1;
+                int cur = f.getSum(en[color[v]], ex[color[v]]);
+                ans = add(ans, add(cur, MOD - inV[v]));
+                inV[v] = cur;
+            }
+        }
+        out.println(ans);
+    }
+
+    static final int CO = 21;
+
+    static int[][] lca;
+
+    static boolean anc(int v, int u) {
+        return en[v] <= en[u] && ex[u] <= ex[v];
+    }
+
+    static int lca(int v, int u) {
+        if (anc(v, u)) return v;
+        for (int it = CO - 1; it >= 0; it--) {
+            if (!anc(lca[it][v], u)) {
+                v = lca[it][v];
+            }
+        }
+        return pv[v];
+    }
+
+    static final int MOD = 1000000007;
+
+    static int add(int x, int y) {
+        x += y;
+        if (x >= MOD) x -= MOD;
+        return x;
+    }
+
+    public class Fenwick {
+        int[] a;
+
+        public Fenwick(int n) {
+            a = new int[n];
+        }
+
+        public void add(int x, int y) {
+            for (int i = x; i < a.length; i |= i + 1) {
+                a[i] = Tours.add(a[i], y);
+            }
+        }
+
+        public int getSum(int x) {
+            if (x >= a.length) x = a.length - 1;
+            int ret = 0;
+            for (int i = x; i >= 0; i = (i & (i + 1)) - 1) {
+                ret = Tours.add(ret, a[i]);
+            }
+            return ret;
+        }
+
+        public int getSum(int l, int r) {
+            return getSum(r - 1) - getSum(l - 1);
+        }
+    }
+
+    static void dfs2(int v, int p, int d, int cc) {
+        pv[v] = p;
+        depth[v] = d;
+        was[v] = true;
+        cv[v] = cc;
+        en[v] = currentTime++;
+        ex[v] = currentTime;
+        for (int i = 0; i < treeEdges[v].size(); i++) {
+            int to = treeEdges[v].get(i);
+            if (was[to]) continue;
+            dfs2(to, v, d + 1, cc);
+            ex[v] = ex[to];
+        }
+    }
+}
+
+class FastScanner extends BufferedReader {
+
+    public FastScanner(InputStream is) {
+        super(new InputStreamReader(is));
+    }
+
+    public int read() {
+        try {
+            int ret = super.read();
+//            if (isEOF && ret < 0) {
+//                throw new InputMismatchException();
+//            }
+//            isEOF = ret == -1;
+            return ret;
+        } catch (IOException e) {
+            throw new InputMismatchException();
+        }
+    }
+
+    public String next() {
+        StringBuilder sb = new StringBuilder();
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        if (c < 0) {
+            return null;
+        }
+        while (c >= 0 && !isWhiteSpace(c)) {
+            sb.appendCodePoint(c);
+            c = read();
+        }
+        return sb.toString();
+    }
+
+    static boolean isWhiteSpace(int c) {
+        return c >= 0 && c <= 32;
+    }
+
+    public int nextInt() {
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        int sgn = 1;
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        }
+        int ret = 0;
+        while (c >= 0 && !isWhiteSpace(c)) {
+            if (c < '0' || c > '9') {
+                throw new NumberFormatException("digit expected " + (char) c
+                        + " found");
+            }
+            ret = ret * 10 + c - '0';
+            c = read();
+        }
+        return ret * sgn;
+    }
+
+    public String readLine() {
+        try {
+            return super.readLine();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    }
+
+class FastPrinter extends PrintWriter {
+
+    public FastPrinter(OutputStream out) {
+        super(out);
+    }
+
+    public FastPrinter(Writer out) {
+        super(out);
+    }
+
+
+}
+

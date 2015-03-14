@@ -1,0 +1,94 @@
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int N, M;
+bool isconstant[1<<21];
+long long leftconstlength[1<<21];
+long long rightconstlength[1<<21];
+int leftval[1<<21];
+int rightval[1<<21];
+long long numcontained[1<<21];
+
+void fixup(int i) {
+	leftval[i] = leftval[2*i];
+	rightval[i] = rightval[2*i+1];
+
+	bool matches = (rightval[2*i] == leftval[2*i+1]);
+	isconstant[i] = (matches && isconstant[2*i] && isconstant[2*i+1]);
+
+	leftconstlength[i] = leftconstlength[2*i];
+	if (matches && isconstant[2*i])
+		leftconstlength[i] += leftconstlength[2*i+1];
+	rightconstlength[i] = rightconstlength[2*i+1];
+	if (matches && isconstant[2*i+1])
+		rightconstlength[i] += rightconstlength[2*i];
+
+	numcontained[i] = numcontained[2*i] + numcontained[2*i+1];
+	if (matches)
+		numcontained[i] += rightconstlength[2*i]*leftconstlength[2*i+1];
+}
+
+long long query(int i, int first, int last, int nodefirst, int nodelength) {
+	if (first < nodefirst) first = nodefirst;
+	if (last >= nodefirst + nodelength) last = nodefirst+nodelength-1;
+
+	if (first <= nodefirst && last >= nodefirst+nodelength-1)
+		return numcontained[i];
+	if (last < nodefirst + nodelength/2) return query(2*i, first, last, nodefirst, nodelength/2);
+	if (first >= nodefirst + nodelength/2) return query(2*i+1, first, last, nodefirst+nodelength/2, nodelength/2);
+
+	long long ans = 0;
+	ans += query(2*i, first, last, nodefirst, nodelength/2);
+	ans += query(2*i+1, first, last, nodefirst+nodelength/2, nodelength/2);
+	if (rightval[2*i] == leftval[2*i+1]) {
+		long long leftext = min((long long)(nodefirst+nodelength/2 - first), rightconstlength[2*i]);
+		long long rightext = min((long long)(last - nodefirst - nodelength/2 + 1), leftconstlength[2*i+1]);
+		ans += leftext*rightext;
+	}
+	return ans;
+}
+
+int main() {
+	int T;
+	cin >> T;
+	for (int i = (1<<20); i < (1<<21); i++) {
+		leftconstlength[i] = rightconstlength[i] = numcontained[i] = 1;
+		isconstant[i] = true;
+	}
+
+	for (int t = 1; t <= T; t++) {
+		cin >> N;
+		for (int i = 0; i < N; i++) {
+			int num;
+			cin >> num;
+			leftval[(1<<20)+i] = rightval[(1<<20)+i] = num-i;
+		}
+
+		for (int i = (1<<20)-1; i >= 1; i--) fixup(i);
+
+		int M;
+		cin >> M;
+		long long ans = 0;
+		for (int i = 0; i < M; i++) {
+			int op;
+			cin >> op;
+			if (op == 0) {
+				int P, K;
+				cin >> P >> K;
+				leftval[(1<<20)+P] = rightval[(1<<20)+P] = K-P;
+				int node = ((1<<20)+P)/2;
+				while (node > 0) {
+					fixup(node);
+					node /= 2;
+				}
+			} else {
+				int L, R;
+				cin >> L >> R;
+				ans = (ans + query(1, L, R, 0, (1<<20)))%1000000007;
+			}
+		}
+		cout << "Case #" << t << ": " << ans << "\n";
+	}
+	return 0;
+}

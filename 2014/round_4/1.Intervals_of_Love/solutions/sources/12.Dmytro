@@ -1,0 +1,165 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <cstdio>
+#include <algorithm>
+#include <string>
+#include <set>
+#include <map>
+#include <queue>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const int maxN = 1100000;
+const long long P = 1000000007LL;
+int n, a[maxN];
+long long S[4 * maxN];
+long long L_value[4 * maxN], R_value[4 * maxN];
+long long L[4 * maxN], R[4 * maxN];
+int len[4 * maxN];
+
+void build(int i, int l, int r) {
+	if (l == r) {
+		S[i] = 1;
+		L_value[i] = a[l];
+		R_value[i] = a[r];
+
+		L[i] = 1;
+		R[i] = 1;
+		len[i] = 1;
+		return ;
+	}
+	build(2 * i, l, (l + r) / 2);
+	build(2 * i + 1, (l + r) / 2 + 1, r);
+
+	len[i] = len[2 * i] + len[2 * i + 1];
+	S[i] = S[2 * i] + S[2 * i + 1];
+	L[i] = L[2 * i];
+	R[i] = R[2 * i + 1];
+	L_value[i] = L_value[2 * i];
+	R_value[i] = R_value[2 * i + 1];
+	if (L_value[2 * i + 1] == R_value[2 * i] + 1) {
+		S[i] += R[2 * i] * L[2 * i + 1];
+		S[i] %= P;
+	}
+
+	if (L_value[2 * i + 1] == R_value[2 * i] + 1 && L[2 * i] == len[2 * i]) {
+		L[i] = L[2 * i] + L[2 * i + 1];
+	}
+	if (L_value[2 * i + 1] == R_value[2 * i] + 1 && R[2 * i + 1] == len[2 * i + 1]) {
+		R[i] = R[2 * i + 1] + R[2 * i];
+	}
+}
+
+void update(int i, int l, int r, int k, int value) {
+	if (l == r) {
+		S[i] = 1;
+		L_value[i] = value;
+		R_value[i] = value;
+
+		L[i] = 1;
+		R[i] = 1;
+		len[i] = 1;
+		return ;
+	}
+
+	if (k > (l + r) / 2) {
+		update(2 * i + 1, (l + r) / 2 + 1, r, k, value);
+	} else {
+		update(2 * i, l, (l + r) / 2, k, value);
+	}
+
+	len[i] = len[2 * i] + len[2 * i + 1];
+	S[i] = S[2 * i] + S[2 * i + 1];
+	L[i] = L[2 * i];
+	R[i] = R[2 * i + 1];
+	L_value[i] = L_value[2 * i];
+	R_value[i] = R_value[2 * i + 1];
+	if (L_value[2 * i + 1] == R_value[2 * i] + 1) {
+		S[i] += R[2 * i] * L[2 * i + 1];
+		S[i] %= P;
+	}
+
+	if (L_value[2 * i + 1] == R_value[2 * i] + 1 && L[2 * i] == len[2 * i]) {
+		L[i] = L[2 * i] + L[2 * i + 1];
+	}
+	if (L_value[2 * i + 1] == R_value[2 * i] + 1 && R[2 * i + 1] == len[2 * i + 1]) {
+		R[i] = R[2 * i + 1] + R[2 * i];
+	}
+}
+
+long long get(int i, int l, int r, int cl, int cr) {
+	if (l == cl && r == cr) {
+		return S[i];
+	}
+
+	if (cl > (l + r) / 2) {
+		return get(2 * i + 1, (l + r) / 2 + 1, r, cl, cr);
+	}
+	if (cr <= (l + r) / 2) {
+		return get(2 * i, l, (l + r) / 2, cl, cr);
+	}
+
+	long long A = get(2 * i, l, (l + r) / 2, cl, (l + r) / 2);
+	long long B = get(2 * i + 1, (l + r) / 2 + 1, r, (l + r) / 2 + 1, cr);
+
+	long long len_right = min(R[2 * i], (long long)((l + r) / 2 - cl + 1));
+	long long len_left = min(L[2 * i + 1], (long long)(cr - ((l + r) / 2 + 1) + 1));
+
+	long long res = A + B;
+	if (R_value[2 * i] + 1 == L_value[2 * i + 1]) {
+		res += len_left * len_right;
+	}
+	return res % P;
+}
+
+void solve(int test) {
+	memset(S, 0, sizeof(S));
+	memset(L, 0, sizeof(L));
+	memset(R, 0, sizeof(R));
+	memset(L_value, 0, sizeof(L_value));
+	memset(R_value, 0, sizeof(R_value));
+	memset(len, 0, sizeof(len));
+	scanf("%d", &n);
+	for (int i = 0; i < n; ++i) {
+		scanf("%d", &a[i]);
+	}
+	build(1, 0, n - 1);
+	int m;
+	scanf("%d", &m);
+	long long res = 0;
+	for (int i = 1; i <= m; ++i) {
+		int mode;
+		scanf("%d", &mode);
+		if (mode == 0) {
+			int p, k;
+			scanf("%d%d", &p, &k);
+			update(1, 0, n - 1, p, k);
+		} else {
+			int l, r;
+			scanf("%d%d", &l, &r);
+			res += get(1, 0, n - 1, l, r);
+			res %= P;
+		}
+	}
+	printf("Case #%d: %d\n", test, (int)(res));
+}
+
+int main() {
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	//printf("%d%d\n", left_bound, right_bound);
+
+	int tests;
+	scanf("%d", &tests);
+	for (int i = 1; i <= tests; ++i) {
+		solve(i);
+		cerr << i << ": " << clock() << endl;
+	}
+	return 0;
+}

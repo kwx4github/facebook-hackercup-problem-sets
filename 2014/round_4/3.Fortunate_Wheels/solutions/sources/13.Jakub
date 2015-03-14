@@ -1,0 +1,296 @@
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+#include <sstream>
+#include <stack>
+#include <cstring>
+#include <iomanip>
+#include <ctime>
+using namespace std;
+#define pb push_back
+#define INF 1001001001
+#define FOR(i,n) for(int (i)=0;(i)<(n);++(i))
+#define FORI(i,n) for(int (i)=1;(i)<=(n);++(i))
+#define mp make_pair
+#define pii pair<int,int>
+#define ll long long
+#define vi vector<int>
+#define SZ(x) ((int)((x).size()))
+#define fi first
+#define se second
+#define wez(n) int (n); scanf("%d",&(n));
+#define wez2(n,m) int (n),(m); scanf("%d %d",&(n),&(m));
+#define wez3(n,m,k) int (n),(m),(k); scanf("%d %d %d",&(n),&(m),&(k));
+inline void pisz(int n) { printf("%d\n",n); }
+template<typename T,typename TT> ostream& operator<<(ostream &s,pair<T,TT> t) {return s<<"("<<t.first<<","<<t.second<<")";}
+template<typename T> ostream& operator<<(ostream &s,vector<T> t){FOR(i,SZ(t))s<<t[i]<<" ";return s; }
+#define DBG(vari) cerr<<#vari<<" = "<<(vari)<<endl;
+#define ALL(t) t.begin(),t.end()
+#define FOREACH(i,t) for (typeof(t.begin()) i=t.begin(); i!=t.end(); i++)
+#define TESTS wez(testow)while(testow--)
+#define REP(i,a,b) for(int (i)=(a);(i)<=(b);++i)
+#define REPD(i,a,b) for(int (i)=(a); (i)>=(b);--i)
+#define REMAX(a,b) (a)=max((a),(b));
+#define REMIN(a,b) (a)=min((a),(b));
+#define IOS ios_base::sync_with_stdio(0);
+
+// zastąpić tym maina
+// wypełnić readInput(), compute() i writeOutput(); zmienne definiować wewnątrz klasy Instance
+// PARALLEL - czy ma odpalić testy równolegle, CORES - liczba rdzeni
+// uwaga - wersja równoległa może potrzebować dużo pamięci! (T razy więcej)
+//         mozna sobie z tym poradzić tworząc duże tablice dynamicznie dopiero w compute()
+//         (bo naraz wykonywane są co najwyżej CORES=3 kopie compute())
+//         (pamiętać o delete [] na koniec compute)
+// linkować z pthreads
+
+#include <pthread.h>
+#include <semaphore.h>
+#define PARALLEL 0
+#define CORES 4
+
+#define MAXN 300007
+int temp[MAXN], s0[MAXN], s12[MAXN], rank[MAXN], recOut[MAXN], c[MAXN], sa[MAXN], arr[MAXN], lcp[MAXN], n, *_s;
+void countSort(int* in, int* out, int* key, int N, int M) {
+   fill_n(c, M, 0);
+   FOR(i,N) ++c[key[in[i]]];
+   REP(i,1,M-1) c[i] += c[i-1];
+   REPD(i,N-1,0) out[--c[key[in[i]]]] = in[i];
+}
+
+inline bool cmp(int u, int v) {
+   while(1) {
+      if (_s[u] != _s[v]) return _s[u] < _s[v];
+      if ((u%3) && (v%3)) return rank[u] < rank[v];
+      ++u; ++v;
+   }
+}
+
+void suffixArray(int* s, int N, int* out, int K) {
+   int n0 = (N+2)/3, n1 = (N+1)/3, n12 = 0; 
+   FOR(i,N) if (i%3) temp[n12++] = i;
+
+   countSort(temp, s12, s+2, n12, K);
+   countSort(s12, temp, s+1, n12, K);
+   countSort(temp, s12, s,   n12, K);    
+
+   int cnt = 2, *recIn = new int[n12 + 5];
+   FOR(i,n12) {
+      if (i>0 && !equal(s+s12[i-1], s+s12[i-1]+3, s+s12[i])) ++cnt;
+      recIn[s12[i]%3==1 ? s12[i]/3 : s12[i]/3+n1+1] = cnt;  
+   }  
+
+   if (cnt != n12+1) {
+      FOR(i,3) recIn[n12+1+i] = 0;  
+      recIn[n1] = 1;
+      suffixArray(recIn, n12+1, recOut, cnt+1);
+      FORI(i,n12) s12[i-1] = recOut[i]<n1? 3*recOut[i]+1 : 3*(recOut[i]-n1)-1;
+   }  
+   delete [] recIn;
+
+   FOR(i,n12) rank[s12[i]] = i+1;  
+   rank[N] = 0;
+
+   FOR(i,n0) s0[i] = 3*i;
+   countSort(s0,temp,rank+1,n0,n12+2);   
+   countSort(temp,s0,s,n0,K);  
+
+   _s = s;
+   merge(s12, s12+n12, s0, s0+n0, out, cmp);  
+}
+
+void init (const string &t) {
+   n = SZ(t);
+   if (n <= 1) sa[0] = 0; else {
+      FOR(i,n) arr[i] = t[i];
+      arr[n] = arr[n+1] = arr[n+2] = 0;
+      suffixArray(arr, n, sa, *max_element(arr,arr+n)+1);
+   }
+   FOR(i,n) rank[sa[i]] = i; // "rank" changes meaning now
+   // Kasai
+   for (int i = 0, k = 0; i < n; i++) {
+      if (k > 0) k--;
+      if (rank[i] == n-1) { lcp[n-1] = -1; k = 0; continue; }
+      int j = sa[rank[i]+1];
+      while (t[i+k] == t[j+k]) k++;
+      lcp[rank[i]] = k;
+   }
+}
+
+struct UnionFind {
+   vi tab, ile;
+   multiset<int,greater<int> > rozmiary;
+
+   UnionFind(int  nn) : // tworzy UF na 0, 1, ..., n-1
+      tab(nn), ile(nn,1) {
+      FOR(i,nn) tab[i] = i;
+      FOR(i,nn) rozmiary.insert(1);
+   }
+
+   int find(int a) {
+      if (tab[a] == a) return a;
+      return tab[a] = find(tab[a]);
+   }
+
+   bool unia(int a, int b) { // zwraca, czy odbylo sie polaczenie
+      a = find(a), b = find(b);
+      if (a==b) return 0;
+      rozmiary.erase(rozmiary.find(ile[a]));
+      rozmiary.erase(rozmiary.find(ile[b]));
+      if (ile[a] <= ile[b]) {
+         ile[b] += ile[a];
+         rozmiary.insert(ile[b]);
+         tab[a] = b;
+      } else {
+         ile[a] += ile[b];
+         rozmiary.insert(ile[a]);
+         tab[b] = a;
+      }
+      return 1;
+   }
+};
+
+double sq (double x) { return x *  x; }
+
+
+
+struct Instance {
+   pthread_mutex_t finished;
+   Instance() : finished(PTHREAD_MUTEX_INITIALIZER) { pthread_mutex_lock(&finished); }
+   
+   // define variables here
+   #define N 200007
+   int a[25], b[25], d, m, w, x, y, z;
+   ll koszt[N];
+   string s;
+   vi lc[MAXN];
+   vector<double> res;
+   
+   //vi maxpowt[N];
+   
+   void readInput() { // should read input; will run sequentially
+      cin >> d >> m >> w >> x >> y >> z;
+      cin >> s;
+      FOR(i,d) cin >> a[i] >> b[i];
+   }
+   
+   void compute() { // should produce output and store it, not use IO; will run in parallel
+      koszt[0] = 0;
+      n = SZ(s);     
+      REP(i,1,n-1) {
+         koszt[i] = 1000LL*INF;
+         FOR(j,d) if (b[j] == i) REMIN(koszt[i], (ll)a[j]);
+         FOR(j,d) if (b[j] < i) {
+            REMIN(koszt[i], koszt[i - b[j]] + a[j] + w);
+         }
+      }
+      
+      //REP(i,0,n+2) lc[
+      init(s);
+      FOR(i,n-1) lc[lcp[i]].pb(i);
+      
+      
+      
+      UnionFind uf(n);
+      //REP(i,1,n-1) maxpowt[i] = 1;
+      REPD(i,n-1,1) {
+         FOREACH(it,lc[i]) uf.unia(*it, *it + 1);
+         //maxpowt[i] = uf.maxile;
+         int lim = 0;
+         vi maxpowt;
+         FOREACH(it,uf.rozmiary) {
+            maxpowt.pb(*it);
+            if (++lim == m) break;
+         }
+         
+         //DBG(i)
+         //DBG(maxpowt)
+         
+         FOREACH(it,maxpowt) {
+            int all = n+1-i;
+            int good = *it;
+            int l = i;
+            double wyn = (1.0 * good * (good-1)) / (1.0 * all * (all-1)) * (y * sq(n - abs(x - l)) + z) - koszt[l];
+            if (koszt[i] != 1000LL*INF) res.pb(wyn);
+         }
+      }
+      
+      //DBG(vector<vi>(maxpowt + 1, maxpowt + n));
+      
+      ll mincost = 1000LL*INF;
+      REP(i,1,n-1) REMIN(mincost, koszt[i]);
+      //DBG(mincost)
+      FOR(k,20) {
+         res.pb(-mincost);
+      }
+   }
+   
+   void writeOutput () { // should write stored output, without newline; will run sequentially
+      sort(ALL(res));
+      reverse(ALL(res));
+      FOR(k,m) {
+         cout << setprecision(3) << fixed << res[k] << " ";
+      }
+      //DBG(res)
+      
+   }
+};
+
+Instance *instances;
+sem_t coreSemaphore;
+pthread_mutex_t cerr_lock = PTHREAD_MUTEX_INITIALIZER;
+int tests, finishedTests = 0;
+
+void* runner (void* input) {
+   int testno = *reinterpret_cast<int*>(input);
+   sem_wait(&coreSemaphore);
+   instances[testno].compute();
+   pthread_mutex_lock(&cerr_lock);
+   cerr << "test " << testno+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+   pthread_mutex_unlock(&cerr_lock);
+   pthread_mutex_unlock(&instances[testno].finished);
+   sem_post(&coreSemaphore);
+   return 0;
+}
+
+int main () {
+   string pierwszalinia;
+   getline(cin,pierwszalinia);
+   tests = atoi(pierwszalinia.c_str());
+   if (PARALLEL) {
+      instances = new Instance[tests];
+      // reading input
+      FOR(i,tests) {
+         instances[i].readInput();
+      }
+      
+      // running computations in parallel
+      sem_init(&coreSemaphore, 0, CORES);
+      pthread_t irrelevant;
+      FOR(i,tests) pthread_create(&irrelevant, NULL, runner, new int(i));
+      FOR(i,tests) pthread_mutex_lock(&instances[i].finished); // wait until all are finished
+      
+      // writing output
+      FOR(i,tests) {
+         printf("Case #%d: ", i+1);
+         instances[i].writeOutput();
+         printf("\n");
+      }
+   } else {
+      FOR(i,tests) {
+         instances = new Instance;
+         instances->readInput();
+         instances->compute();
+         printf("Case #%d: ", i+1);
+         instances->writeOutput();
+         printf("\n");
+         cerr << "test " << i+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+         delete instances;
+      }
+   }
+}

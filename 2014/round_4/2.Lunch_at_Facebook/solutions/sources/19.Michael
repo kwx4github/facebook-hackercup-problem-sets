@@ -1,0 +1,279 @@
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class Lunch {
+
+	static class Input {
+		int employeesCount, visitorsCount;
+		int[] employees, visitors;
+
+		Input(InputReader in) throws IOException {
+			employeesCount = in.nextInt();
+			visitorsCount = in.nextInt();
+			employees = new int[employeesCount];
+			visitors = new int[visitorsCount];
+			for (int i = 0; i < employeesCount; i++) {
+				employees[i] = in.nextInt();
+			}
+			for (int i = 0; i < visitorsCount; i++) {
+				visitors[i] = in.nextInt();
+			}
+//			 employeesCount = 100000;
+//			 visitorsCount = 100000;
+//			 employees = new int[employeesCount];
+//			 visitors = new int[visitorsCount];
+//			 for (int i = 0; i < employeesCount; i++) {
+//			 employees[i] = i;
+//			 visitors[i] = employeesCount + i;
+//			 }
+			Arrays.sort(visitors);
+		}
+
+		Output solve() {
+			long time = System.currentTimeMillis();
+			compress();
+			int people = employeesCount + visitorsCount;
+			int[] count = new int[people];
+			for (int value : employees) {
+				++count[value];
+			}
+			for (int i = 1; i < people; i++) {
+				count[i] += count[i - 1];
+			}
+
+//			int[] employeesHigherThanVisitorPassed = new int[visitorsCount];
+
+			int[] employeesLowerThanVisitorLeft = new int[visitorsCount];
+			for (int i = 0; i < visitorsCount; i++) {
+				employeesLowerThanVisitorLeft[i] = count[visitors[i]];
+			}
+
+//			long[] dp = new long[visitorsCount + 1];
+//			for (int i = 0; i < visitorsCount; i++) {
+//				dp[i + 1] = dp[i] + employeesLowerThanVisitorLeft[i];
+//			}
+			// System.err.println(Arrays.toString(dp));
+			
+			long ans = 0;
+
+			for (int v = 0; v < visitorsCount; v++) {
+				int man = visitors[v];
+				int x = employeesLowerThanVisitorLeft[v];
+				int best = x;
+				for (int e = 0; e < employeesCount; e++) {
+					if (man < employees[e]) {
+						++x;
+					} else {
+						--x;
+					}
+					if (x < best) {
+						best = x;
+					}
+				}
+				ans += best;
+			}
+
+//			for (int employeesGotThrough = 0; employeesGotThrough < employeesCount; employeesGotThrough++) {
+//				int currentMan = employees[employeesGotThrough];
+//				for (int visitor = 0; visitor < visitorsCount; visitor++) {
+//					long cur = dp[visitor];
+//					long to = cur + employeesHigherThanVisitorPassed[visitor]
+//							+ employeesLowerThanVisitorLeft[visitor];
+//					if (dp[visitor + 1] > to) {
+//						dp[visitor + 1] = to;
+//					}
+//
+//					if (currentMan > visitors[visitor]) {
+//						++employeesHigherThanVisitorPassed[visitor];
+//					} else {
+//						--employeesLowerThanVisitorLeft[visitor];
+//					}
+//				}
+//			}
+//			for (int visitor = 0; visitor < visitorsCount; visitor++) {
+//				long cur = dp[visitor];
+//				long to = cur + employeesHigherThanVisitorPassed[visitor]
+//						+ employeesLowerThanVisitorLeft[visitor];
+//				if (dp[visitor + 1] > to) {
+//					dp[visitor + 1] = to;
+//				}
+//			}
+			// System.err.println(Arrays.toString(dp));
+			// System.err.println(Arrays.toString(employeesLowerThanVisitorLeft));
+			// System.err.println(Arrays.toString(employeesHigherThanVisitorPassed));
+			//
+			// System.err.println("bad part "+(countInversions(employees)
+			// + countInversions(visitors)));
+			time = System.currentTimeMillis() - time;
+			long good = testsPassed.incrementAndGet();
+			System.err.println("PASSED in " + time + " - " + good
+					+ " tests done");
+			long answer = ans + countInversions(employees)
+					+ countInversions(visitors);
+			return new Output(answer);
+		}
+
+		private void compress() {
+			NavigableSet<Integer> compressed = new TreeSet<Integer>();
+			for (int value : employees) {
+				compressed.add(value);
+			}
+			for (int value : visitors) {
+				compressed.add(value);
+			}
+			int cnt = 0;
+			int[] array = new int[compressed.size()];
+			for (int value : compressed) {
+				array[cnt++] = value;
+			}
+
+			for (int i = 0; i < employeesCount; i++) {
+				employees[i] = Arrays.binarySearch(array, employees[i]);
+			}
+			for (int i = 0; i < visitorsCount; i++) {
+				visitors[i] = Arrays.binarySearch(array, visitors[i]);
+			}
+		}
+	}
+
+	static AtomicLong testsPassed = new AtomicLong(0);
+
+	static long countInversions(int[] array) {
+		int maxValue = 0;
+		for (int i : array) {
+			maxValue = Math.max(maxValue, i);
+		}
+		Fenwick fenwick = new Fenwick(maxValue + 1);
+
+		long answer = 0;
+
+		for (int i = 0; i < array.length; i++) {
+			answer += i - fenwick.getSum(array[i]);
+			fenwick.add(array[i], 1);
+		}
+
+		return answer;
+	}
+
+	static class Fenwick {
+		private final int[] s;
+
+		public Fenwick(int n) {
+			s = new int[n];
+		}
+
+		public int getSum(int i) {
+			int res = 0;
+			for (; i >= 0; i = (i & i + 1) - 1) {
+				res += s[i];
+			}
+			return res;
+		}
+
+		public void add(int i, int val) {
+			for (; i < s.length; i |= i + 1) {
+				s[i] += val;
+			}
+		}
+
+		public int getValue(int i) {
+			int stop = (i & i + 1) - 1;
+			int res = s[i];
+			for (--i; i != stop; i = (i & i + 1) - 1) {
+				res -= s[i];
+			}
+			return res;
+		}
+
+		public int getSum(int l, int r) {
+			int res = 0;
+			for (--r; r >= l; r = (r & r + 1) - 1) {
+				res += s[r];
+			}
+			for (--l; l != r; l = (l & l + 1) - 1) {
+				res -= s[l];
+			}
+			return res;
+		}
+	}
+
+	static class Output {
+		long value;
+
+		public Output(long value) {
+			this.value = value;
+		}
+
+		void writeOutput(PrintWriter out) {
+			out.println(value);
+		}
+	}
+
+	public static void main(String[] args) throws IOException,
+			InterruptedException, ExecutionException {
+		InputReader in = new InputReader(new FileInputStream("lunch.in"));
+		PrintWriter out = new PrintWriter("lunch.out");
+		ExecutorService executor = Executors.newFixedThreadPool(6);
+		int testCases = in.nextInt();
+		final Input[] inputs = new Input[testCases];
+		for (int i = 0; i < testCases; i++) {
+			inputs[i] = new Input(in);
+		}
+
+		@SuppressWarnings("unchecked")
+		Future<Output> outputs[] = new Future[testCases];
+
+		for (int i = 0; i < testCases; i++) {
+			final int testCase = i;
+			outputs[i] = executor.submit(new Callable<Output>() {
+				@Override
+				public Output call() throws Exception {
+					return inputs[testCase].solve();
+				}
+			});
+		}
+
+		for (int i = 0; i < testCases; i++) {
+			out.print("Case #" + (i + 1) + ": ");
+			outputs[i].get().writeOutput(out);
+		}
+
+		out.close();
+		executor.shutdown();
+	}
+
+	static class InputReader {
+
+		InputReader(InputStream input) {
+			br = new BufferedReader(new InputStreamReader(input));
+		}
+
+		BufferedReader br;
+		StringTokenizer st;
+
+		String nextToken() throws IOException {
+			while (st == null || !st.hasMoreTokens()) {
+				String line = br.readLine();
+				if (line == null) {
+					return null;
+				}
+				st = new StringTokenizer(line);
+			}
+			return st.nextToken();
+		}
+
+		int nextInt() throws IOException {
+			return Integer.parseInt(nextToken());
+		}
+
+		long nextLong() throws IOException {
+			return Long.parseLong(nextToken());
+		}
+
+		double nextDouble() throws IOException {
+			return Double.parseDouble(nextToken());
+		}
+	}
+}

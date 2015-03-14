@@ -1,0 +1,222 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <cstdio>
+#include <algorithm>
+#include <string>
+#include <set>
+#include <map>
+#include <queue>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const int maxN = 110000;
+int a[maxN], b[maxN];
+int n, m;
+
+void compress(int a[], int n, int b[], int m) {
+	set < int > values;
+	for (int i = 0; i < n; ++i) {
+		values.insert(a[i]);
+	}
+	for (int j = 0; j < m; ++j) {
+		values.insert(b[j]);
+	}
+
+	map < int, int > M;
+	int index = 0;
+	for (set < int > :: iterator it = values.begin(); it != values.end(); ++it) {
+		M[*it] = index ++;
+	}
+
+	for (int i = 0; i < n; ++i) {
+		a[i] = M[a[i]];
+	}
+	for (int j = 0; j < m; ++j) {
+		b[j] = M[b[j]];
+	}
+}
+
+int f[2 * maxN];
+int g[2 * maxN];
+
+void update(int t[], int k, int delta) {
+	for (int i = k; i < 2 * maxN; i |= (i + 1)) {
+		t[i] += delta;
+	}
+}
+
+int get(int t[], int k) {
+	int res = 0;
+	for (int i = k; i >= 0; i = (i & (i + 1)) - 1) {
+		res += t[i];
+	}
+	return res;
+}
+
+long long trivial() {
+	const long long inf = 1000000000000000000LL;
+	vector < vector < long long > > d(n + 1, vector < long long > (m + 1, inf));
+
+	long long current = 0;
+	for (int i = 0; i < n; ++i) {
+		for (int j = i + 1; j < n; ++j) {
+			if (a[i] > a[j]) {
+				++current;
+			}
+		}
+	}
+	d[0][0] = current;
+	for (int i = 0; i <= n; ++i) {
+		for (int j = 0; j <= m; ++j) {
+			if (d[i][j] == inf) {
+				continue;
+			}
+
+			if (i + 1 <= n) {
+				long long add = 0;
+				for (int k = j; k < m; ++k) {
+					if (b[k] < a[i]) {
+						++add;
+					}
+				}
+				d[i + 1][j] = min(d[i + 1][j], d[i][j] + add);
+			}
+			if (j + 1 <= m) {
+				long long add = 0;
+				for (int k = i; k < n; ++k) {
+					if (a[k] < b[j]) {
+						++add;
+					}
+				}
+				d[i][j + 1] = min(d[i][j + 1], d[i][j] + add);
+			}
+		}
+	}
+	return d[n][m];
+}
+
+void read_data(int test) {
+	scanf("%d%d", &n, &m);
+	for (int i = 0; i < n; ++i) {
+		scanf("%d", &a[i]);
+	}
+	for (int i = 0; i < m; ++i) {
+		scanf("%d", &b[i]);
+	}
+}
+
+void solve(int test) {
+	scanf("%d%d", &n, &m);
+	for (int i = 0; i < n; ++i) {
+		scanf("%d", &a[i]);
+	}
+	for (int i = 0; i < m; ++i) {
+		scanf("%d", &b[i]);
+	}
+	compress(a, n, b, m);
+	memset(f, 0, sizeof(f));
+	memset(g, 0, sizeof(g));
+
+	long long res = 0;
+
+	for (int i = 0; i < n; ++i) {
+		update(f, a[i], +1);
+	}
+
+	for (int i = 0; i < n; ++i) {
+		res += get(f, a[i] - 1);
+		update(f, a[i], -1);
+	}
+
+	for (int i = 0; i < n; ++i) {
+		update(f, a[i], +1);
+	}
+
+	sort(b, b + m);
+	for (int i = 0; i < m; ++i) {
+		int start = get(f, b[i]);
+		int current = start;
+		for (int j = 0; j < n; ++j) {
+			if (b[i] > a[j]) {
+				--start;
+			} else {
+				++start;
+			}
+			if (start < current) {
+				current = start;
+			}
+		}
+		res += current;
+	}
+
+	printf("Case #%d: %lld\n", test, res);
+
+	/*if (res != trivial()) {
+		for (int i = 0; i < n; ++i) {
+			cerr << a[i] << " ";
+		}
+		cerr << endl;
+		for (int i = 0; i < m; ++i) {
+			cerr << b[i] << " ";
+		}
+		cerr << endl;
+		cerr << trivial() << endl;
+		cerr << res << endl;
+		cerr << "BAD" << endl;
+		exit(0);
+	}*/
+}
+
+int main(int argc, char* argv[]) {
+	//freopen("input.txt", "r", stdin);
+	//freopen("output.txt", "w", stdout);
+	freopen("input.txt", "r", stdin);
+	freopen(argv[3], "w", stdout);
+
+	int left_bound, right_bound;
+	sscanf(argv[1], "%d", &left_bound);
+	sscanf(argv[2], "%d", &right_bound);
+
+
+	//printf("%d%d\n", left_bound, right_bound);
+
+	/*srand(time(0));
+	n = 100000, m = 100000;
+	int t = 0;
+	while (true) {
+		++t;
+		if (t % 100 == 0) {
+			cerr << t << endl;
+		}
+		vector < int > c(n + m, 0);
+		for (int i = 0; i < n + m; ++i) {
+			c[i] = i;
+		}
+		random_shuffle(c.begin(), c.end());
+		for (int i = 0; i < n; ++i) {
+			a[i] = c[i];
+		}
+		for (int j = 0; j < m; ++j) {
+			b[j] = c[j + n];
+		}
+		solve(t);
+		cerr << clock() << endl;
+	}*/
+
+	int tests;
+	scanf("%d", &tests);
+	for (int i = 1; i <= tests; ++i) {
+		if (i >= left_bound && i <= right_bound) {
+			solve(i);
+			cerr << i << ": " << clock() << endl;
+		} else {
+			read_data(i);
+		}
+	}
+	return 0;
+}

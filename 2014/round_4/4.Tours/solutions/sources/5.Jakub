@@ -1,0 +1,349 @@
+#include <cstdio>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <string>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <sstream>
+#include <iomanip>
+using namespace std;
+#define FI first
+#define SE second
+#define X first
+#define Y second
+#define ST first
+#define ND second
+#define MP make_pair
+#define PB push_back
+typedef long long LL;
+typedef vector<int> VI;
+typedef long double LD;
+typedef double D;
+typedef pair<int,int> PII;
+#define REP(i,n) for(int i=0;i<(n);++i)
+#define FOR(i,a,b) for(int i=(a);i<=(b);++i)
+#define FORD(i,a,b) for(int i=(a);i>=(b);--i)
+#define FORE(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define FOREACH(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define VAR(a,b) __typeof(b) a=(b)
+#define SIZE(a) ((int)(a).size())
+#define ALL(x) (x).begin(),(x).end()
+#define CLR(x,a) memset(x,a,sizeof(x))
+
+struct UnionFind {
+	vector<int> p;
+
+	int gp(int x) {
+		if (p[x] != x) {
+			p[x] = gp(p[x]);
+		}
+		return p[x];
+	}
+
+	void un(int a, int b) {
+		p[gp(a)] = gp(b);
+	}
+
+	UnionFind(int n) :p(n) {
+		for (int i = 0; i < n; ++i) {
+			p[i] = i;
+		}
+	}
+
+};
+
+const int N = 100005;
+const int MD = (int) 1e9 + 7;
+
+void ad(int& a, int b) {
+	a = (a + b) % MD;
+}
+
+vector<int> e[N];
+int n, m;
+
+bool visited[N];
+int depth[N];
+int low[N];
+int parent[N];
+
+void dfs_low(int x, UnionFind& uf) {
+	visited[x] = true;
+	low[x] = depth[x];
+	FORE (it, e[x]) {
+		if (!visited[*it]) {
+			depth[*it] = depth[x] + 1;
+			parent[*it] = x;
+			dfs_low(*it, uf);
+			low[x] = min(low[x], low[*it]);
+			if (low[*it] <= depth[x]) {
+				uf.un(x, *it);
+			}
+		} else if (*it != parent[x]) {
+			low[x] = min(low[x], depth[*it]);
+		}
+	}
+}
+
+int tree_index[N];
+
+vector<int> tree_e[N];
+int tree_p[N];
+
+int pjumps[N][20];
+
+int removed[N];
+
+int ltime[N];
+int rtime[N];
+int curtime;
+
+int tree_d[N];
+
+void dfs_time(int x) {
+	ltime[x] = ++curtime;
+	FORE (it, tree_e[x]) {
+		dfs_time(*it);
+	}
+	rtime[x] = ++curtime;
+}
+
+void dfs_pjumps(int x) {
+	pjumps[x][0] = tree_p[x];
+	for (int i = 1; i < 20; ++i) {
+		pjumps[x][i] = pjumps[pjumps[x][i - 1]][i - 1];
+	}
+	FORE (it, tree_e[x]) {
+		dfs_pjumps(*it);
+	}
+}
+
+inline bool anc(int x, int y) {
+	return ltime[x] <= ltime[y] && rtime[x] >= rtime[y];
+}
+
+int lca(int a, int b) {
+	for (int i = 19; i >= 0; --i) {
+		if (!anc(pjumps[a][i], b)) {
+			a = pjumps[a][i];
+		}
+	}
+	if (anc(a, b)) {
+		return a;
+	} else {
+		return tree_p[a];
+	}
+}
+
+int tree_s[N];
+
+void dfs_d(int x) {
+	FORE (it, tree_e[x]) {
+		tree_d[*it] = tree_d[x] + 1;
+		dfs_d(*it);
+	}
+}
+
+void dfs_s(int x) {
+	tree_s[x] = 1;
+	FORE (it, tree_e[x]) {
+		dfs_s(*it);
+		tree_s[x] += tree_s[*it];
+	}
+}
+
+struct Summer {
+	vector<int> s;
+
+	void add(int x, int v) {
+		while (x > 0) {
+			ad(s[x], v);
+			x -= x & -x;
+		}
+	}
+
+	int get(int x) {
+		int result = 0;
+		while (x < (int) s.size()) {
+			ad(result, s[x]);
+			x += x & -x;
+		}
+		return result;
+	}
+};
+
+vector<Summer> summers;
+
+int summer_no[N];
+int summer_top[N];
+int summer_size[N];
+int tree_removed[N];
+int n_summers;
+
+void dfs_summers(int x) {
+	if (x == 0 || 2 * tree_s[x] <= tree_s[tree_p[x]]) {
+		summers.PB(Summer());
+		summer_no[x] = n_summers;
+		summer_top[n_summers] = x;
+		summer_size[n_summers] = 1;
+		++n_summers;
+	} else {
+		summer_no[x] = summer_no[tree_p[x]];
+		++summer_size[summer_no[x]];
+	}
+	FORE (it, tree_e[x]) {
+		dfs_summers(*it);
+	}
+}
+
+void add_to_root_path(int x, int v) {
+	while (true) {
+		summers[summer_no[x]].add(tree_d[x] - tree_d[summer_top[summer_no[x]]] + 1, v);
+		x = summer_top[summer_no[x]];
+		if (x == 0) {
+			break;
+		} else {
+			x = tree_p[x];
+		}
+	}
+}
+
+int get_sum(int x) {
+	return summers[summer_no[x]].get(tree_d[x] - tree_d[summer_top[summer_no[x]]] + 1);
+}
+
+void alg() {
+	int n_queries;
+	cin >> n >> m >> n_queries;
+
+	UnionFind comps(n);
+	for (int i = 0; i < m; ++i) {
+		int a, b;
+		cin >> a >> b;
+		--a;
+		--b;
+		comps.un(a, b);
+		e[a].PB(b);
+		e[b].PB(a);
+	}
+	UnionFind bicomps(n);
+
+	for (int i = 0; i < n; ++i) {
+		visited[i] = false;
+	}
+	for (int i = 0; i < n; ++i) {
+		if (!visited[i]) {
+			depth[i] = 0;
+			parent[i] = -1;
+			dfs_low(i, bicomps);
+		}
+	}
+
+	tree_p[0] = -1;
+	int n_tree = 1;
+
+	for (int i = 0; i < n; ++i) {
+		if (bicomps.p[i] == i) {
+			tree_p[n_tree] = -1;
+			tree_index[i] = n_tree++;
+		}
+	}
+	for (int i = 0; i < n; ++i) {
+		tree_index[i] = tree_index[bicomps.gp(i)];
+	}
+
+	for (int i = 0; i < n; ++i) {
+		FORE (it, e[i]) {
+			if (tree_index[i] != tree_index[*it] && depth[i] > depth[*it]) {
+				assert(tree_p[tree_index[i]] == -1);
+				tree_p[tree_index[i]] = tree_index[*it];
+				tree_e[tree_index[*it]].PB(tree_index[i]);
+			}
+		}
+	}
+
+	for (int i = 1; i < n_tree; ++i) {
+		if (tree_p[i] == -1) {
+			tree_p[i] = 0;
+			tree_e[0].PB(i);
+		}
+	}
+	tree_p[0] = 0;
+
+	curtime = 0;
+	dfs_time(0);
+
+	dfs_pjumps(0);
+
+	tree_d[0] = 0;
+	dfs_d(0);
+
+	dfs_s(0);
+
+	n_summers = 0;
+	dfs_summers(0);
+
+	for (int i = 0; i < n_summers; ++i) {
+		summers[i].s.assign(summer_size[i] + 1, 0);
+	}
+
+	int result = 0;
+
+	for (int i = 0; i < n_queries; ++i) {
+		string s;
+		cin >> s;
+		if (s == "T") {
+			int a, b, o;
+			cin >> a >> b >> o;
+			--a;
+			--b;
+			if (comps.gp(a) != comps.gp(b)) {
+				continue;
+			}
+			a = tree_index[a];
+			b = tree_index[b];
+			int x = lca(a, b);
+			add_to_root_path(a, o);
+			add_to_root_path(b, o);
+			ad(tree_removed[x], o);
+			add_to_root_path(tree_p[x], (LL(MD) - (2*LL(o))%MD) % MD);
+		} else {
+			int x;
+			cin >> x;
+			--x;
+			int val = get_sum(tree_index[x]);
+			ad(val, MD - removed[x]);
+			ad(val, MD - tree_removed[tree_index[x]]);
+			ad(removed[x], val);
+			ad(result, val);
+		}
+	}
+
+
+	static int case_no = 0;
+	++case_no;
+	cout << "Case #" << case_no << ": " << result << endl;
+
+	for (int i = 0; i < n; ++i) {
+		removed[i] = 0;
+		e[i].clear();
+	}
+	for (int i = 0; i < n_tree; ++i) {
+		tree_removed[i] = 0;
+		tree_e[i].clear();
+	}
+	summers.clear();
+}
+
+int main() {
+	int d;
+	cin >> d;
+	while (d--) {
+		alg();
+	}
+}

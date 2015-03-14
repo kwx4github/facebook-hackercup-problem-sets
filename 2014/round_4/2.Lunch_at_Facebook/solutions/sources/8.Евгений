@@ -1,0 +1,190 @@
+import static java.lang.Double.parseDouble;
+import static java.lang.Integer.parseInt;
+import static java.lang.Long.parseLong;
+import static java.lang.Math.min;
+import static java.lang.System.exit;
+import static java.util.Arrays.sort;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.util.StringTokenizer;
+
+public class B {
+	
+	static BufferedReader in;
+	static PrintWriter out;
+	static StringTokenizer tok;
+	static int test;
+	
+	static int addConstant[][];
+	static int minimum[][];
+	
+	static void fix(int i, int j) {
+		minimum[i][j] = min(minimum[i - 1][j << 1], minimum[i - 1][(j << 1) + 1]) + addConstant[i][j];
+	}
+	
+	static void add(int i, int v) {
+		addConstant[0][i] += v;
+		minimum[0][i] = addConstant[0][i];
+		i >>= 1;
+		for (int j = 1; j < addConstant.length && i < addConstant[j].length; j++, i >>= 1) {
+			fix(j, i);
+		}
+	}
+	
+	static void add(int l, int r, int v) {
+		for (int i = 0; i < addConstant.length; i++, l >>= 1, r >>= 1) {
+			if (i > 0) {
+				if (l > 0) {
+					fix(i, l - 1);
+				}
+				if (r < addConstant[i].length) {
+					fix(i, r);
+				}
+			}
+			if (l < r) {
+				if ((l & 1) != 0) {
+					addConstant[i][l] += v;
+					minimum[i][l] += v;
+					++l;
+				}
+				if ((r & 1) != 0) {
+					--r;
+					addConstant[i][r] += v;
+					minimum[i][r] += v;
+				}
+			}
+		}
+	}
+	
+	static int getMin2(int i, int j) {
+		int res = minimum[i][j];
+		for (i++, j >>= 1; i < addConstant.length && j < addConstant[i].length; i++, j >>= 1) {
+			res += addConstant[i][j];
+		}
+		return res;
+	}
+
+	static int getMin(int l, int r) {
+		int res = Integer.MAX_VALUE;
+		for (int i = 0; l < r; i++, l >>= 1, r >>= 1) {
+			if ((l & 1) != 0) {
+				res = min(res, getMin2(i, l));
+				++l;
+			}
+			if ((r & 1) != 0) {
+				--r;
+				res = min(res, getMin2(i, r));
+			}
+		}
+		return res;
+	}
+
+	static class Event implements Comparable<Event> {
+		final boolean type;
+		final int i, value;
+		public Event(boolean type, int i, int value) {
+			this.type = type;
+			this.i = i;
+			this.value = value;
+		}
+		
+		public int compareTo(Event o) {
+			return value - o.value;
+		}
+	}
+	
+	static void solve() throws Exception {
+		int n = nextInt();
+		int m = nextInt();
+		int a[] = new int[n];
+		for (int i = 0; i < n; i++) {
+			a[i] = nextInt();
+		}
+		int b[] = new int[m];
+		for (int i = 0; i < m; i++) {
+			b[i] = nextInt();
+		}
+		addConstant = new int[32 - Integer.numberOfLeadingZeros(n + 1)][];
+		minimum = new int[32 - Integer.numberOfLeadingZeros(n + 1)][];
+		for (int i = 0, j = n + 1; j > 0; i++, j >>= 1) {
+			addConstant[i] = new int[j];
+			minimum[i] = new int[j];
+		}
+		for (int i = 1; i <= n; i++) {
+			add(i, i);
+		}
+		Event evs[] = new Event[n + m];
+		for (int i = 0; i < n; i++) {
+			evs[i] = new Event(false, i, a[i]);
+		}
+		for (int i = 0; i < m; i++) {
+			evs[n + i] = new Event(true, i, b[i]);
+		}
+		sort(evs);
+		long ans = (long) n * (n - 1) >> 1;
+		int fenw[] = new int[n];
+		for (Event ev: evs) {
+			if (ev.type) {
+				ans += getMin(0, n + 1);
+			} else {
+				for (int i = ev.i; i >= 0; i = (i & (i + 1)) - 1) {
+					ans -= fenw[i];
+				}
+				for (int i = ev.i; i < n; i |= i + 1) {
+					++fenw[i];
+				}
+				add(0, ev.i + 1, 1);
+				add(ev.i + 1, n + 1, -1);
+			}
+		}
+		printCase();
+		out.println(ans);
+	}
+	
+	static void printCase() {
+		out.print("Case #" + test + ": ");
+	}
+	
+	static void printlnCase() {
+		out.println("Case #" + test + ":");
+	}
+	
+	static int nextInt() throws IOException {
+		return parseInt(next());
+	}
+
+	static long nextLong() throws IOException {
+		return parseLong(next());
+	}
+
+	static double nextDouble() throws IOException {
+		return parseDouble(next());
+	}
+
+	static String next() throws IOException {
+		while (tok == null || !tok.hasMoreTokens()) {
+			tok = new StringTokenizer(in.readLine());
+		}
+		return tok.nextToken();
+	}
+
+	public static void main(String[] args) {
+		try {
+			in = new BufferedReader(new InputStreamReader(System.in));
+			out = new PrintWriter(new OutputStreamWriter(System.out));
+			int tests = nextInt();
+			for (test = 1; test <= tests; test++) {
+				solve();
+			}
+			in.close();
+			out.close();
+		} catch (Throwable e) {
+			e.printStackTrace();
+			exit(1);
+		}
+	}
+}

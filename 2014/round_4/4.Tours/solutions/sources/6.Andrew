@@ -1,0 +1,379 @@
+import java.io.*;
+import java.util.*;
+
+import static java.lang.Math.*;
+
+public class D {
+    long MOD = 1_000_000_007;
+
+    ArrayList<Integer>[] e;
+    Set<Integer>[] be;
+    int[] enter;
+    int[] up;
+    int[] comp;
+    int[] bicomp;
+    boolean[] u;
+    boolean[] v;
+    int time;
+    int cc;
+    int nbc;
+
+    void dfs(int x, int from, int cn) {
+        u[x] = true;
+        comp[x] = cn;
+        enter[x] = time++;
+        up[x] = enter[x];
+        for (int y : e[x]) {
+            if (!u[y]) {
+                dfs(y, x, cn);
+                up[x] = min(up[x], up[y]);
+                if (up[y] >= enter[y]) {
+                    be[x].add(y);
+                }
+            } else if (y != from) {
+                up[x] = min(up[x], enter[y]);
+            }
+        }
+    }
+
+    void dfs2(int x, int bc) {
+        v[x] = true;
+        bicomp[x] = bc;
+        for (int y : e[x]) {
+            if (!v[y]) {
+                int ybc = bc;
+                if (be[x].contains(y)) {
+                    ybc = nbc;
+                    nbc++;
+                }
+                dfs2(y, ybc);
+            }
+        }
+    }
+
+    int[] bipar;
+    int[] bidepth;
+    int[] bisize;
+    ArrayList<Integer>[] bichi;
+
+
+    void hang(int x, int depth) {
+        u[x] = true;
+        bidepth[bicomp[x]] = depth;
+        for (int y : e[x]) {
+            if (!u[y]) {
+                hang(y, depth + (bicomp[x] == bicomp[y] ? 0 : 1));
+                if (bicomp[x] != bicomp[y] && bipar[bicomp[y]] == -1) {
+                    bipar[bicomp[y]] = bicomp[x];
+                    bichi[bicomp[x]].add(bicomp[y]);
+                    bisize[bicomp[x]] += bisize[bicomp[y]];
+                }
+            }
+        }
+    }
+
+    int[][] bigo;
+
+    int goup(int x, int k) {
+        for (int i = 0; i < bigo[x].length; i++) {
+            if ((k & (1 << i)) != 0) {
+                x = bigo[x][i];
+            }
+        }
+        return x;
+    }
+
+    int bilca(int x, int y) {
+        if (bidepth[x] > bidepth[y]) {
+            int k = bidepth[x] - bidepth[y];
+            x = goup(x, k);
+        }
+        if (bidepth[x] < bidepth[y]) {
+            int k = bidepth[y] - bidepth[x];
+            y = goup(y, k);
+        }
+
+        if (x == y) {
+            return x;
+        }
+        for (int k = bigo[x].length - 1; k >= 0; k--) {
+            if (bigo[x][k] != bigo[y][k]) {
+                x = bigo[x][k];
+                y = bigo[y][k];
+            }
+        }
+        return bipar[x];
+    }
+
+    int[] hpar;
+
+    class RSQ {
+        int n;
+        long[] d;
+
+        RSQ(int n) {
+            this.n = n;
+            d = new long[4 * n];
+        }
+
+        void add(int p, int L, int R, int A, int B, long v) {
+            if (R <= A || B <= L) {
+                return;
+            }
+            if (A <= L && R <= B) {
+                d[p] = ((d[p] + v) % MOD + MOD) % MOD;
+                return;
+            }
+
+            int M = (L + R) / 2;
+            d[2 * p + 1] = (d[2 * p + 1] + d[p]) % MOD;
+            d[2 * p + 2] = (d[2 * p + 2] + d[p]) % MOD;
+            d[p] = 0;
+            add(2 * p + 1, L, M, A, B, v);
+            add(2 * p + 2, M, R, A, B, v);
+        }
+
+        long get(int p, int L, int R, int z) {
+            if (L == R - 1) {
+                return d[p];
+            }
+            int M = (L + R) / 2;
+            d[2 * p + 1] = (d[2 * p + 1] + d[p]) % MOD;
+            d[2 * p + 2] = (d[2 * p + 2] + d[p]) % MOD;
+            d[p] = 0;
+            if (z < M) {
+                return get(2 * p + 1, L, M, z);
+            } else {
+                return get(2 * p + 2, M, R, z);
+            }
+        }
+
+        long get(int pos) {
+            return get(0, 0, n, pos);
+        }
+
+        void add(int from, long val) {
+            add(0, 0, n, from, n, val);
+        }
+    }
+
+    void heavy(int x) {
+        int mx = 0;
+        int mxy = -1;
+        for (int y : bichi[x]) {
+            heavy(y);
+            if (bisize[y] > mx) {
+                mx = bisize[y];
+                mxy = y;
+            }
+        }
+        if (mxy != -1) {
+            hpar[mxy] = x;
+        }
+    }
+
+    void hladd(int i, long val) {
+        while (i != -1) {
+            int pos = vp.get(i);
+            RSQ rsq = path.get(i);
+//            System.out.println(i + " "+  val);
+            rsq.add(pos, val);
+            i = bipar[top.get(i)];
+        }
+    }
+
+    Map<Integer, RSQ> path;
+    Map<Integer, Integer> top;
+    Map<Integer, Integer> vp;
+
+    public void run() throws IOException {
+        in = new FastScanner(new FileInputStream("tours.txt"));
+        out = new PrintWriter(new FileOutputStream("tours.out"));
+
+        int tn = in.nextInt();
+        for (int test = 1; test <= tn; test++) {
+            long ans = 0;
+
+            int n = in.nextInt();
+            e = new ArrayList[n];
+            be = new Set[n];
+            for (int i = 0; i < n; i++) {
+                e[i] = new ArrayList<>();
+                be[i] = new HashSet<>();
+            }
+            int m = in.nextInt();
+            int d = in.nextInt();
+            for (int i = 0; i < m; i++) {
+                int a = in.nextInt() - 1;
+                int b = in.nextInt() - 1;
+                e[a].add(b);
+                e[b].add(a);
+            }
+
+            enter = new int[n];
+            up = new int[n];
+            comp = new int[n];
+            bicomp = new int[n];
+            u = new boolean[n];
+            v = new boolean[n];
+            cc = 0;
+            nbc = 0;
+            for (int i = 0; i < n; i++) {
+                if (!u[i]) {
+                    time = 0;
+                    dfs(i, -1, cc);
+                    nbc++;
+                    dfs2(i, nbc - 1);
+                    cc++;
+                }
+            }
+
+//            System.out.println(Arrays.toString(comp));
+//            System.out.println(Arrays.toString(bicomp));
+
+            Arrays.fill(u, false);
+            bipar = new int[nbc];
+            Arrays.fill(bipar, -1);
+            bichi = new ArrayList[nbc];
+            bisize = new int[nbc];
+            bidepth = new int[nbc];
+            Arrays.fill(bisize, 1);
+            for (int i = 0; i < nbc; i++) {
+                bichi[i] = new ArrayList<>();
+            }
+            for (int i = 0; i < n; i++) {
+                if (!u[i]) {
+                    hang(i, 0);
+                }
+            }
+            int nlev = 0;
+            while ((1 << nlev) < nbc) {
+                nlev++;
+            }
+
+            bigo = new int[nbc][nlev + 1];
+            for (int i = 0; i < nbc; i++) {
+                bigo[i][0] = bipar[i];
+            }
+            for (int j = 1; j <= nlev; j++) {
+                for (int i = 0; i < nbc; i++) {
+                    bigo[i][j] = bigo[i][j - 1] == -1 ? -1 : bigo[bigo[i][j - 1]][j - 1];
+                }
+            }
+
+            hpar = new int[nbc];
+            Arrays.fill(hpar, -1);
+            for (int i = 0; i < nbc; i++) {
+                if (bipar[i] == -1) {
+                    heavy(i);
+                }
+            }
+
+            path = new HashMap<>();
+            vp = new HashMap<>();
+            top = new HashMap<>();
+
+            for (int i = 0; i < nbc; i++) {
+                if (bichi[i].size() == 0) {
+                    ArrayList<Integer> vx = new ArrayList<>();
+                    int j = i;
+                    int last = i;
+                    while (j != -1) {
+                        vp.put(j, vx.size());
+                        vx.add(j);
+                        last = j;
+                        j = hpar[j];
+                    }
+
+                    RSQ rsq = new RSQ(vx.size());
+                    j = i;
+                    while (j != -1) {
+                        path.put(j, rsq);
+                        top.put(j, last);
+                        j = hpar[j];
+                    }
+                }
+            }
+
+//            System.out.println(Arrays.toString(hpar));
+            Map<Integer, Long> was = new HashMap<>();
+
+//            System.out.println(nbc);
+            for (int i = 0; i < d; i++) {
+                String op = in.next();
+                if (op.equals("T")) {
+                    int x = in.nextInt() - 1;
+                    int y = in.nextInt() - 1;
+                    long sz = in.nextInt();
+                    if (comp[x] != comp[y]) {
+                        continue;
+                    }
+                    x = bicomp[x];
+                    y = bicomp[y];
+                    hladd(x, sz);
+                    hladd(y, sz);
+                    int z = bilca(x, y);
+                    hladd(z, -sz);
+                    z = bipar[z];
+                    hladd(z, -sz);
+                } else {
+                    int room = in.nextInt() - 1;
+                    int z = bicomp[room];
+                    RSQ r = path.get(z);
+                    int pos = vp.get(z);
+                    long val = r.get(pos);
+                    if (was.containsKey(room)) {
+                        long they = was.get(room);
+                        was.put(room, val);
+                        val = ((val - they) % MOD + MOD) % MOD;
+                    } else {
+                        was.put(room, val);
+                    }
+//                    System.out.println(val);
+                    ans = (ans + val) % MOD;
+                }
+            }
+
+            out("Case #%d: %d\n", test, ans);
+        }
+
+        out.close();
+    }
+
+    void out(String format, Object... args) {
+        out.printf(format, args);
+        System.out.printf(format, args);
+    }
+
+    FastScanner in;
+    PrintWriter out;
+
+    public static void main(String[] args) throws IOException {
+        new D().run();
+    }
+
+    static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+
+        FastScanner(InputStream in) throws IOException {
+            br = new BufferedReader(new InputStreamReader(in));
+        }
+
+        String next() {
+            try {
+                while (st == null || !st.hasMoreTokens()) {
+                    st = new StringTokenizer(br.readLine());
+                }
+            } catch (IOException e) {
+                System.err.println(e);
+                System.exit(1);
+            }
+            return st.nextToken();
+       }
+
+        int nextInt() {
+            return Integer.parseInt(next());
+        }
+    }
+}

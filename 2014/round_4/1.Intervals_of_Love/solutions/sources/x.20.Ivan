@@ -1,0 +1,137 @@
+package contest;
+
+import java.util.*;
+import java.io.*;
+import java.math.*;
+
+public class IntervalsOfLove {
+    final static String PROBLEM_NAME = "intervals";
+    final static String WORK_DIR = "D:\\HackerCup\\" + PROBLEM_NAME + "\\";
+
+    class Tree {
+        int L, R;
+
+        long internalSum;
+        Tree left, right;
+
+        int startNum;
+        int startLen;
+        int finishNum;
+        int finishLen;
+
+        public Tree(Tree left, Tree right) {
+            this.left = left;
+            this.right = right;
+
+            this.L = left.L;
+            this.R = right.R;
+
+            refreshSelf();
+        }
+
+        public void refreshSelf() {
+            this.startNum = left.startNum;
+            this.startLen = (left.startLen == left.R - left.L + 1 && left.startNum == right.startNum ? left.startLen + right.startLen : left.startLen);
+
+            this.finishNum = right.finishNum;
+            this.finishLen = (right.finishLen == right.R - right.L + 1 && right.finishNum == left.finishNum ? right.finishLen + left.finishLen : right.finishLen);
+
+            this.internalSum = (left.finishNum != right.startNum ? left.internalSum + right.internalSum :
+                    left.internalSum + right.internalSum - F(left.finishLen) - F(right.startLen) + F(left.finishLen + right.startLen));
+        }
+
+        public Tree(int pos, int value) {
+            this.L = pos;
+            this.R = pos;
+
+            this.startNum = value;
+            this.startLen = 1;
+            this.finishNum = value;
+            this.finishLen = 1;
+            this.internalSum = 1;
+        }
+    }
+
+    Tree buildTree(int[] A, int L, int R) {
+        if (L == R) return new Tree(L, A[L]);
+
+        Tree left = buildTree(A, L, (L+R)/2);
+        Tree right = buildTree(A, (L+R)/2+1, R);
+        return new Tree(left, right);
+    }
+
+    void update(Tree t, int pos, int value) {
+        if (t.L == t.R) {
+            t.startNum = t.finishNum = value;
+            return;
+        } else {
+            if (pos <= t.left.R) {
+                update(t.left, pos, value);
+            } else {
+                update(t.right, pos, value);
+            }
+            t.refreshSelf();
+        }
+    }
+
+    Tree processSegment(Tree t, int L, int R) {
+        if (t.L == L && t.R == R) {
+            return t;
+        }
+        if (L >= t.right.L) {
+            return processSegment(t.right, L, R);
+        }
+        if (R <= t.left.R) {
+            return processSegment(t.left, L, R);
+        }
+        Tree left = processSegment(t.left, L, t.left.R);
+        Tree right = processSegment(t.right, t.right.L, R);
+        return new Tree(left, right);
+    }
+
+    long F(long len) {
+        return len * (len + 1) / 2;
+    }
+
+    int[] A;
+
+    void solve(BufferedReader br, PrintWriter pw) throws Exception {
+        int N = Integer.parseInt(br.readLine());
+        A = new int[N];
+        StringTokenizer st = new StringTokenizer(br.readLine());
+        for (int i=0; i<N; i++) {
+            A[i] = Integer.parseInt(st.nextToken()) - i;
+        }
+        Tree root = buildTree(A, 0, N-1);
+        int M = Integer.parseInt(br.readLine());
+        long ans = 0;
+        for (int i=0; i<M; i++) {
+            st = new StringTokenizer(br.readLine());
+            int op = Integer.parseInt(st.nextToken());
+            if (op == 0) {
+                int P = Integer.parseInt(st.nextToken());
+                int K = Integer.parseInt(st.nextToken());
+                update(root, P, K - P);
+            } else {
+                int L = Integer.parseInt(st.nextToken());
+                int R = Integer.parseInt(st.nextToken());
+                ans += processSegment(root, L, R).internalSum;
+            }
+        }
+        pw.println(ans);
+    }
+
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new FileReader(WORK_DIR + "input.txt"));
+        PrintWriter pw = new PrintWriter(new FileWriter(WORK_DIR + "output.txt"));
+        int caseCnt = Integer.parseInt(br.readLine());
+        for (int caseNum=0; caseNum<caseCnt; caseNum++) {
+            System.out.println("Processing test case " + (caseNum + 1));
+            pw.print("Case #" + (caseNum+1) + ": ");
+            new IntervalsOfLove().solve(br, pw);
+        }
+        pw.flush();
+        pw.close();
+        br.close();
+    }
+}

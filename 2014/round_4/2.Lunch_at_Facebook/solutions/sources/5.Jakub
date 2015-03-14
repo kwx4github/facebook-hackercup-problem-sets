@@ -1,0 +1,153 @@
+#include <cstdio>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <string>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <sstream>
+#include <iomanip>
+using namespace std;
+#define FI first
+#define SE second
+#define X first
+#define Y second
+#define ST first
+#define ND second
+#define MP make_pair
+#define PB push_back
+typedef long long LL;
+typedef vector<int> VI;
+typedef long double LD;
+typedef double D;
+typedef pair<int,int> PII;
+#define REP(i,n) for(int i=0;i<(n);++i)
+#define FOR(i,a,b) for(int i=(a);i<=(b);++i)
+#define FORD(i,a,b) for(int i=(a);i>=(b);--i)
+#define FORE(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define FOREACH(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define VAR(a,b) __typeof(b) a=(b)
+#define SIZE(a) ((int)(a).size())
+#define ALL(x) (x).begin(),(x).end()
+#define CLR(x,a) memset(x,a,sizeof(x))
+
+const int N = (1 << 22) + 5;
+
+struct Score {
+	int sum;
+	int min_lsum;
+};
+
+Score join(const Score& a, const Score& b) {
+	Score result;
+	result.sum = a.sum + b.sum;
+	result.min_lsum = min(a.min_lsum, a.sum + b.min_lsum);
+	return result;
+}
+
+Score score[N];
+
+int input[N];
+
+inline int ls(int x) { return x << 1; }
+inline int rs(int x) { return (x << 1) + 1; }
+
+int n;
+int offset;
+
+void change(int x, int l, int r, int c, int nv) {
+	if (l == r) {
+		assert(x == offset + c);
+		score[x].sum = nv;
+		score[x].min_lsum = min(0, nv);
+		return;
+	}
+	int m = (l + r) / 2;
+	if (c <= m) {
+		change(ls(x), l, m, c, nv);
+	} else {
+		change(rs(x), m + 1, r, c, nv);
+	}
+	score[x] = join(score[ls(x)], score[rs(x)]);
+}
+
+Score get(int x, int l, int r, int cl, int cr) {
+	if (l == cl && r == cr) {
+		return score[x];
+	}
+	int m = (l + r) / 2;
+	if (cr <= m) {
+		return get(ls(x), l, m, cl, cr);
+	}
+	if (cl > m) {
+		return get(rs(x), m + 1, r, cl, cr);
+	}
+	return join(get(ls(x), l, m, cl, m), get(rs(x), m + 1, r, m + 1, cr));
+}
+
+
+void alg() {
+	int m;
+	cin >> n >> m;
+	for (int i = 1; i <= n; ++i) {
+		cin >> input[i];
+	}
+	vector<PII> sorted;
+	for (int i = 1; i <= n; ++i) {
+		sorted.PB(MP(input[i], i));
+	}
+	sort(ALL(sorted));
+	vector<int> queries(m);
+	for (int i = 1; i <= m; ++i) {
+		cin >> queries[i - 1];
+	}
+	sort(ALL(queries));
+	int n_smaller = 0;
+	int z = 1;
+	while (z <= n) {
+		z *= 2;
+	}
+	offset = z - 1;
+	for (int i = 1; i <= z; ++i) {
+		score[offset + i].sum = 1;
+		score[offset + i].min_lsum = 0;
+	}
+	for (int i = z - 1; i >= 1; --i) {
+		score[i] = join(score[ls(i)], score[rs(i)]);
+	}
+	LL result2 = 0;
+	LL result = 0;
+	int last = 0;
+	FORE (it, queries) {
+		while (last < (int) sorted.size() && sorted[last].ST < *it) {
+			result2 += n_smaller + ((sorted[last].ND > 1) ? get(1, 1, z, 1, sorted[last].ND - 1).sum : 0);
+			++n_smaller;
+			change(1, 1, z, sorted[last].ND, -1);
+			++last;
+		}
+		result += n_smaller + get(1, 1, z, 1, n).min_lsum;
+	}
+	while (last < (int) sorted.size()) {
+		result2 += n_smaller + ((sorted[last].ND > 1) ? get(1, 1, z, 1, sorted[last].ND - 1).sum : 0);
+		++n_smaller;
+		change(1, 1, z, sorted[last].ND, -1);
+		++last;
+	}
+	result += result2 / 2;
+	static int case_no = 0;
+	++case_no;
+	cout << "Case #" << case_no << ": " << result << endl;
+}
+
+int main() {
+	ios_base::sync_with_stdio(false);
+	int d;
+	cin >> d;
+	while (d--) {
+		alg();
+	}
+}

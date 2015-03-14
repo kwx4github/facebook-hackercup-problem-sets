@@ -1,0 +1,170 @@
+import java.io.*;
+import static java.lang.Math.*;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.StringTokenizer;
+
+public class B {
+
+    final long MOD = 1_000_000_007;
+
+    int[] x;
+    long[] mn;
+    long[] du;
+    int n;
+
+    void build(int p, int L, int R) {
+        if (L == R - 1) {
+            mn[p] = L;
+            return;
+        }
+
+        int M = (L + R) / 2;
+        build(2 * p + 1, L, M);
+        build(2 * p + 2, M, R);
+        mn[p] = min(mn[2 * p + 1], mn[2 * p + 2]);
+    }
+
+    void update(int p, int L, int R, int A, int B, int um) {
+        if (R <= A || B <= L) {
+            return;
+        }
+        if (A <= L && R <= B) {
+            du[p] += um;
+            mn[p] += um;
+            return;
+        }
+
+        du[2 * p + 1] += du[p];
+        mn[2 * p + 1] += du[p];
+        du[2 * p + 2] += du[p];
+        mn[2 * p + 2] += du[p];
+        du[p] = 0;
+        int M = (L + R) / 2;
+        update(2 * p + 1, L, M, A, B, um);
+        update(2 * p + 2, M, R, A, B, um);
+        mn[p] = min(mn[2 * p + 1], mn[2 * p + 2]);
+    }
+
+    int[] tmp;
+
+    long cinv(int[] x, int L, int R) {
+        if (L == R - 1) {
+            return 0;
+        }
+        int M = (L + R) / 2;
+        long r = cinv(x, L, M) + cinv(x, M, R);
+        int i = L;
+        int j = M;
+        int k = L;
+        while (i < M || j < R) {
+            if (i < M && (j == R || x[i] < x[j])) {
+                tmp[k] = x[i];
+                i++;
+            } else {
+                tmp[k] = x[j];
+                j++;
+                r += (M - i);
+            }
+            k++;
+        }
+        for (i = L; i < R; i++) {
+            x[i] = tmp[i];
+        }
+        return r;
+    }
+
+    public void run() throws IOException {
+        in = new FastScanner(new FileInputStream("lunch_at_facebook.txt"));
+        out = new PrintWriter(new FileOutputStream("lunch_at_facebook.out"));
+
+        int tn = in.nextInt();
+        for (int test = 1; test <= tn; test++) {
+            long ans = 0;
+
+            Map<Integer, Integer> pos = new HashMap<>();
+            n = in.nextInt();
+            int m = in.nextInt();
+            x = new int[n];
+            for (int i = 0; i < n; i++) {
+                x[i] = in.nextInt();
+                pos.put(x[i], i);
+            }
+            du = new long[4 * (n + 1)];
+            mn = new long[4 * (n + 1)];
+            build(0, 0, n + 1);
+
+            int[] xs = x.clone();
+            tmp = new int[n];
+            ans = cinv(xs, 0, n);
+//            System.out.println(ans);
+            Arrays.sort(xs);
+            int[] y = new int[m];
+            for (int i = 0; i < m; i++) {
+                y[i] = in.nextInt();
+            }
+            Arrays.sort(y);
+
+            int xp = 0;
+            int yp = 0;
+//            System.out.println(pos);
+//            System.out.println(Arrays.toString(xs));
+            while (yp < m) {
+                while (xp < n && xs[xp] < y[yp]) {
+                    int q = pos.get(xs[xp]);
+//                    System.out.println(q);
+                    update(0, 0, n + 1, 0, q + 1, 1);
+                    update(0, 0, n + 1, q + 1, n + 1, -1);
+//                    System.out.println(Arrays.toString(du));
+//                    System.out.println(Arrays.toString(mn));
+                    xp++;
+                }
+                ans = ans + mn[0];
+                yp++;
+            }
+
+            out("Case #%d: %d\n", test, ans);
+        }
+
+        out.close();
+    }
+
+    void out(String format, Object... args) {
+        out.printf(format, args);
+        System.out.printf(format, args);
+    }
+
+    FastScanner in;
+    PrintWriter out;
+
+    public static void main(String[] args) throws IOException {
+        new B().run();
+    }
+
+    static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+
+        FastScanner(InputStream in) throws IOException {
+            br = new BufferedReader(new InputStreamReader(in));
+        }
+
+        String next() {
+            try {
+                while (st == null || !st.hasMoreTokens()) {
+                    st = new StringTokenizer(br.readLine());
+                }
+            } catch (IOException e) {
+                System.err.println(e);
+                System.exit(1);
+            }
+            return st.nextToken();
+       }
+
+        int nextInt() {
+            return Integer.parseInt(next());
+        }
+    }
+}

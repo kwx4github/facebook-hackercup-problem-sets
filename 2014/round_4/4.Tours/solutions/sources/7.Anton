@@ -1,0 +1,276 @@
+#pragma comment(linker, "/STACK:60777216")  
+
+#include <cassert>
+#include<iostream>
+#include<algorithm>
+#include<cstdio>
+#include<complex>
+#include<vector>
+#include<set>
+#include<map>
+#include<cmath>
+#include<queue>
+#include<string>
+#include<cstdlib>
+#include<memory.h>
+#include<ctime>
+#include<bitset>
+#include<fstream>
+#include<queue>
+
+using namespace std;
+
+
+typedef long double ld;
+
+typedef long long ll;
+typedef pair<int, int>	pii;
+typedef pair<ld, ld>	pdd;
+typedef vector<int> vi;
+typedef vector<ld> vd;
+typedef pair<ll, ll> pl;
+
+#define FOR(i,a,b)		for(int i=(a);i<(b);i++)
+#define REP(i,n)		FOR(i,0,n)
+#define SORT(v)			sort((v).begin(),(v).end())
+#define UN(v)			SORT(v),(v).erase(unique((v).begin(),(v).end()),(v).end())
+#define CL(a,b)			memset(a,b,sizeof a)
+#define pb				push_back
+
+const int mod = 1000000007;
+
+const int MAXN = 111111;
+vi g[MAXN];
+int n, m, d;
+
+bool used[MAXN];
+int timer, tin[MAXN], fup[MAXN];
+
+set<pii> br;
+
+void dfs(int v, int p = -1) {
+	used[v] = true;
+	tin[v] = fup[v] = timer++;
+	for (size_t i = 0; i<g[v].size(); ++i) {
+		int to = g[v][i];
+		if (to == p)  continue;
+		if (used[to])
+			fup[v] = min(fup[v], tin[to]);
+		else {
+			dfs(to, v);
+			fup[v] = min(fup[v], fup[to]);
+			if (fup[to] > tin[v]){
+				br.insert(pii(v, to));;
+			}
+		}
+	}
+}
+
+void find_bridges() {
+	timer = 0;
+	for (int i = 0; i<n; ++i)
+		used[i] = false;
+	for (int i = 0; i<n; ++i)
+		if (!used[i])
+			dfs(i);
+}
+
+int p[MAXN];
+bool u[MAXN];
+int P(int x){ return p[x] == x ? x : p[x] = P(p[x]); }
+
+void dfs2(int ver){
+	if (u[ver])return;
+	u[ver] = true;
+	REP(i, g[ver].size()){
+		int other = g[ver][i];
+		if (br.count(pii(ver, other))) continue;
+		if (br.count(pii(other, ver))) continue;
+		if (!u[other]){
+			p[other] = ver;
+			dfs2(other);
+		}
+	}
+}
+
+vi t[MAXN];
+ll sub[MAXN];
+
+bool u2[MAXN];
+
+int par[MAXN][20];
+int dp[MAXN];
+
+void dfs4(int ver, int pp){
+	if (u2[ver]) return;
+	u2[ver] = true;
+	par[ver][0] = pp;
+	REP(i, t[ver].size()){
+		if (u2[t[ver][i]]) continue;
+		dp[t[ver][i]] = dp[ver] + 1;
+		dfs4(t[ver][i], ver);
+	}
+}
+
+vi ps;
+int inv_ps[MAXN];
+int from[MAXN];
+int to[MAXN];
+
+void dfs3(int ver,int par=-1){
+	ps.pb(ver);
+	inv_ps[ver] = ps.size() - 1;
+	from[ver] = ps.size() - 1;
+	//cout << ver << endl;
+	REP(i, t[ver].size()){
+		int o = t[ver][i];
+		if (o == par) continue;
+		//cout << ver << ' ' << o << endl;
+		dfs3(o,ver);
+	}
+	to[ver] = ps.size() - 1;
+}
+
+ll sum[1 << 20];
+
+void addVal(int pos, int x){
+	pos += (1 << 19);
+	while (pos){
+		sum[pos] = (sum[pos] + x) % mod;
+		pos >>= 1;
+	}
+}
+ll getSum(int p1, int p2){
+	p1 += (1 << 19);
+	p2 += (1 << 19);
+	ll ss = 0;
+	while (p1 <= p2){
+		if (p1 & 1)ss = (ss + sum[p1]) % mod;
+		if (!(p2 & 1)) ss = (ss + sum[p2]) % mod;
+		p1 = (p1 + 1) >> 1;
+		p2 = (p2 - 1) >> 1;
+	}
+	return ss;
+}
+
+void buildTree(){
+	ps.clear();
+	dfs3(n);
+
+	//REP(i, n + 1){
+	//	REP(j, t[i].size()) cout << i << ' ' << t[i][j] << endl;
+	//}
+}
+
+int getLCA(int p1, int p2){
+	if (dp[p1] < dp[p2])swap(p1, p2);
+	for (int i = 19; i >= 0;i--)
+	if (dp[p1] - (1 << i) >= dp[p2]) p1 = par[p1][i];
+	if (p1 == p2) return p1;
+	for (int i = 19; i >= 0;i--)
+	if (par[p1][i] != par[p2][i]){
+		p1 = par[p1][i];
+		p2 = par[p2][i];
+	}
+	return par[p1][0];
+}
+
+void addSegVal(int to, int val){
+	addVal(inv_ps[to],val);
+}
+int clr[MAXN];
+
+int main(){
+#ifdef LocalHost
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt","w",stdout);
+#endif
+
+	int tc;
+	cin >> tc;
+	REP(TC, tc){
+		cin >> n >> m >> d;
+		REP(i, n)g[i].clear();
+		REP(i, m){
+			int x, y;
+			scanf("%d %d", &x, &y);
+			x--, y--;
+			g[x].pb(y);
+			g[y].pb(x);
+		}
+		br.clear();
+		find_bridges();
+		//for (set<pii>::iterator it = br.begin(); it != br.end(); it++)
+		//	cout << it->first << ' ' << it->second << endl;
+		REP(i, n)p[i] = i;
+		CL(u, 0);
+		vi roots;
+		REP(i, n)if (!u[i]){
+			dfs2(i);
+			roots.pb(i);
+		}
+		REP(i, roots.size()) roots[i] = P(roots[i]);
+		REP(i, MAXN) t[i].clear();
+		for (set<pii>::iterator it = br.begin(); it != br.end(); it++){
+			int v1 = it->first;
+			int v2 = it->second;
+			v1 = P(v1);
+			v2 = P(v2);
+
+			t[v1].pb(v2);
+			t[v2].pb(v1);
+		}
+		CL(u2, false); CL(par, -1);
+		CL(dp, 0);
+		REP(i, roots.size())if(!u2[roots[i]]){
+			dp[roots[i]] = 1;
+			dfs4(roots[i], n);
+			t[n].pb(roots[i]);
+			t[roots[i]].pb(n);
+		}
+		CL(sub, 0);
+		FOR(i, 1, 20){
+			REP(j, n + 1)if (par[j][i - 1] != -1){
+				int v1 = par[j][i - 1];
+				if (v1 == -1) continue;
+				v1 = par[v1][i - 1];
+				par[j][i] = v1;
+			}
+		}
+
+		buildTree();
+		CL(sum, 0);
+
+		ll res = 0;
+		CL(clr, 0);
+		REP(i, d){
+			char c;
+			scanf(" %c", &c);
+			if (c == 'S'){
+				int z;
+				scanf("%d", &z); z--;
+				ll x = getSum(from[P(z)],to[P(z)]) - clr[z];
+				res = (res + x) % mod;
+				clr[z] += x;
+			}else{
+				int x, y,o;
+				scanf("%d %d %d", &x, &y, &o); x--, y--;
+				int p1 = P(x);
+				int p2 = P(y);
+				int p3 = getLCA(p1, p2);
+				if (p3 == n) continue;
+				addSegVal(p1, o);
+				addSegVal(p2, o);
+				addSegVal(p3, -o);
+				addSegVal(par[p3][0],-o);
+			}
+		}
+		if (res < 0) res += mod;
+		printf("Case #%d: %d\n", TC + 1, res);
+	}
+	
+#ifdef LocalHost
+	//printf("TIME: %.3lf\n", ld(clock()) / CLOCKS_PER_SEC);
+#endif 
+	return 0;
+}

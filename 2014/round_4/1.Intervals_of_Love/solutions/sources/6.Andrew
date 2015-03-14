@@ -1,0 +1,160 @@
+import java.util.*;
+import java.io.*;
+
+public class A {
+
+    final long MOD = 1_000_000_007;
+
+    int[] x;
+    long[] c;
+    long[] vl;
+    long[] vr;
+
+    void build(int p, int L, int R) {
+        if (L == R - 1) {
+            c[p] = 1;
+            vl[p] = 1;
+            vr[p] = 1;
+            return;
+        }
+
+        int M = (L + R) / 2;
+        build(2 * p + 1, L, M);
+        build(2 * p + 2, M, R);
+        relax(p, L, R);
+    }
+
+    void relax(int p, int L, int R) {
+        int M = (L + R) / 2;
+        if (vr[2 * p + 2] < R - M || x[M - 1] + 1 != x[M]) {
+            vr[p] = vr[2 * p + 2];
+        } else {
+            vr[p] = vr[2 * p + 1] + vr[2 * p + 2];
+        }
+        if (vl[2 * p + 1] < M - L || x[M - 1] + 1 != x[M]) {
+            vl[p] = vl[2 * p + 1];
+        } else {
+            vl[p] = vl[2 * p + 1] + vl[2 * p + 2];
+        }
+        c[p] = (c[2 * p + 1] + c[2 * p + 2]) % MOD;
+        if (x[M - 1] + 1 == x[M]) {
+            c[p] = (c[p] + vr[2 * p + 1] * vl[2 * p + 2]) % MOD;
+        }
+    }
+
+    void update(int p, int L, int R, int z, int v) {
+        if (L == R - 1) {
+            x[z] = v;
+            return;
+        }
+
+        int M = (L + R) / 2;
+        if (z < M) {
+            update(2 * p + 1, L, M, z, v);
+        } else {
+            update(2 * p + 2, M, R, z, v);
+        }
+        relax(p, L, R);
+    }
+
+    long get(int p, int L, int R, int A, int B) {
+        if (B <= L || R <= A) {
+            return 0;
+        }
+        if (A <= L && R <= B) {
+            return c[p];
+        }
+
+        int M = (L + R) / 2;
+        long r = (get(2 * p + 1, L, M, A, B) +
+                get(2 * p + 2, M, R, A, B)) % MOD;
+        if (x[M - 1] + 1 == x[M]) {
+            long cleft = Math.min(M - A, vr[2 * p + 1]);
+            if (cleft < 0) {
+                cleft = 0;
+            }
+            long crite = Math.min(B - M, vl[2 * p + 2]);
+            if (crite < 0) {
+                crite = 0;
+            }
+            r = (r + cleft * crite) % MOD;
+        }
+        return r;
+    }
+
+    public void run() throws IOException {
+        in = new FastScanner(new FileInputStream("intervals_of_love.txt"));
+        out = new PrintWriter(new FileOutputStream("intervals_of_love.out"));
+
+        int tn = in.nextInt();
+        for (int test = 1; test <= tn; test++) {
+            long ans = 0;
+
+            int n = in.nextInt();
+            x = new int[n];
+            for (int i = 0; i < n; i++) {
+                x[i] = in.nextInt();
+            }
+            c = new long[4 * n];
+            vl = new long[4 * n];
+            vr = new long[4 * n];
+            build(0, 0, n);
+
+            int m = in.nextInt();
+            for (int i = 0; i < m; i++) {
+                int op = in.nextInt();
+                if (op == 0) {
+                    int p = in.nextInt();
+                    int k = in.nextInt();
+                    update(0, 0, n, p, k);
+                } else {
+                    int a = in.nextInt();
+                    int b = in.nextInt() + 1;
+                    long val = get(0, 0, n, a, b);
+                    ans = (ans + val) % MOD;
+                }
+            }
+
+            out("Case #%d: %d\n", test, ans);
+        }
+
+        out.close();
+    }
+
+    void out(String format, Object... args) {
+        out.printf(format, args);
+        System.out.printf(format, args);
+    }
+
+    FastScanner in;
+    PrintWriter out;
+
+    public static void main(String[] args) throws IOException {
+        new A().run();
+    }
+
+    static class FastScanner {
+        BufferedReader br;
+        StringTokenizer st;
+
+        FastScanner(InputStream in) throws IOException {
+            br = new BufferedReader(new InputStreamReader(in));
+        }
+
+        String next() {
+            try {
+                while (st == null || !st.hasMoreTokens()) {
+                    st = new StringTokenizer(br.readLine());
+                }
+            } catch (IOException e) {
+                System.err.println(e);
+                System.exit(1);
+            }
+            return st.nextToken();
+       }
+
+        int nextInt() {
+            return Integer.parseInt(next());
+        }
+    }
+}

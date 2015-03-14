@@ -1,0 +1,580 @@
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+
+public class Tours {
+
+	static class Edge {
+		int u, v;
+
+		public Edge(int u, int v) {
+			this.u = u;
+			this.v = v;
+		}
+
+		boolean isBridge;
+	}
+
+	static class Input {
+		int n;
+		List<Edge>[] edges;
+		int queries;
+
+		int[] x, y, o;
+
+		@SuppressWarnings("unchecked")
+		Input(InputReader in) throws IOException {
+			n = in.nextInt();
+			int edgesCount = in.nextInt();
+			edges = new List[n];
+			for (int i = 0; i < n; i++) {
+				edges[i] = new ArrayList<Tours.Edge>();
+			}
+			queries = in.nextInt();
+			for (int i = 0; i < edgesCount; i++) {
+				int u = in.nextInt() - 1;
+				int v = in.nextInt() - 1;
+				Edge edge = new Edge(u, v);
+				edges[u].add(edge);
+				edges[v].add(edge);
+			}
+			x = new int[queries];
+			y = new int[queries];
+			o = new int[queries];
+			for (int i = 0; i < queries; i++) {
+				String type = in.nextToken();
+				if ("T".equals(type)) {
+					x[i] = in.nextInt() - 1;
+					y[i] = in.nextInt() - 1;
+					o[i] = in.nextInt();
+				} else {
+					x[i] = -1;
+					y[i] = -1;
+					o[i] = in.nextInt() - 1;
+				}
+			}
+		}
+
+		int[] component;
+
+		boolean[] visited;
+		int[] timeIn;
+		int[] up;
+		int currentTime;
+
+		void dfs1(int u, Edge parent) {
+			visited[u] = true;
+			timeIn[u] = currentTime++;
+			up[u] = timeIn[u];
+			for (Edge e : edges[u]) {
+				if (e == parent) {
+					continue;
+				}
+				int v = e.u ^ e.v ^ u;
+				if (!visited[v]) {
+					dfs1(v, e);
+					if (up[v] < up[u]) {
+						up[u] = up[v];
+					}
+					if (up[v] > timeIn[u]) {
+						e.isBridge = true;
+					}
+				} else {
+					if (up[u] > timeIn[v]) {
+						up[u] = timeIn[v];
+					}
+				}
+			}
+		}
+		
+		List<Integer> e[];
+		
+		int[] parent;
+
+		Output solve() {
+			up = new int[n];
+			timeIn = new int[n];
+			visited = new boolean[n];
+			Arrays.fill(up, -1);
+			currentTime = 0;
+			for (int i = 0; i < n; i++) {
+				if (!visited[i]) {
+					dfs1(i, null);
+				}
+			}
+
+			DisjointSets dsu = new DisjointSets(n);
+			for (int i = 0; i < n; i++) {
+				for (Edge edge : edges[i]) {
+					if (!edge.isBridge) {
+						dsu.union(edge.u, edge.v);
+					}
+				}
+			}
+
+			int[] id = new int[n];
+			int components = 0;
+			Arrays.fill(id, -1);
+
+			for (int i = 0; i < n; i++) {
+				int x = dsu.get(i);
+				if (id[x] < 0) {
+					id[x] = components++;
+				}
+				id[i] = id[x];
+			}
+
+			Node[] nodes = new Node[components];
+			for (int i = 0; i < components; i++) {
+				nodes[i] = new Node();
+			}
+			for (int i = 0; i < n; i++) {
+				for (Edge edge : edges[i]) {
+					if (edge.isBridge) {
+						if (i != edge.u) {
+							continue;
+						}
+						int u = id[edge.u];
+						int v = id[edge.v];
+//						e[u].add(v);
+//						e[v].add(u);
+						if (u > v) {
+							int t = u;
+							u = v;
+							v = t;
+						}
+						LinkCutTrees.expose(nodes[u]);
+						LinkCutTrees.expose(nodes[v]);
+						nodes[u].reverse ^= true;
+						nodes[v].reverse ^= true;
+						LinkCutTrees.link(nodes[v], nodes[u]);
+					}
+				}
+			}
+			
+			parent = new int[components];
+
+			long[] addByOurOperations = new long[n];
+			
+			long answer = 0;
+
+			for (int query = 0; query < queries; query++) {
+				if (x[query] < 0) {
+					int pos = o[query];
+					Node node = nodes[id[pos]];
+					LinkCutTrees.expose(node);
+					long ok = node.value;
+					ok += addByOurOperations[pos];
+					
+					answer += ok;
+					addByOurOperations[pos] -= ok;
+				} else {
+					int u = x[query];
+					int v = y[query];
+					int getLost =o[query];
+					Node p = nodes[id[u]];
+					Node q = nodes[id[v]];
+					Node lca = LinkCutTrees.getLCA(p, q);
+					if (lca == null) {
+						continue;
+					}
+					
+					if (p != lca) {
+						p.add += getLost;
+						p.value += getLost;
+					}
+					if (q != lca) {
+						q.add += getLost;
+						q.value += getLost;
+					}
+					lca.value += getLost;
+				}
+			}
+			System.err.println("passed");
+
+			return new Output(answer);
+		}
+
+	}
+
+	static class Node extends LinkCutTrees.OpenNode<Node> {
+		long value;
+		long add;
+		boolean reverse;
+
+		@Override
+		protected void push() {
+			if (reverse) {
+				if (left != null) {
+					left.reverse ^= true;
+				}
+				if (right != null) {
+					right.reverse ^= true;
+				}
+				Node t = left;
+				left = right;
+				right = t;
+				reverse = false;
+			}
+			if (add != 0) {
+				if (left != null) {
+					left.add += add;
+					left.value += add;
+				}
+				if (right != null) {
+					right.add += add;
+					right.value += add;
+				}
+				add = 0;
+			}
+		}
+
+		@Override
+		protected void recalc() {
+		}
+	}
+
+	static class DisjointSets {
+		private int[] p;
+
+		public DisjointSets(int n) {
+			p = new int[n];
+			Arrays.fill(p, ~0);
+		}
+
+		public int get(int i) {
+			int root = i;
+			while (p[root] >= 0) {
+				root = p[root];
+			}
+			while (i != root) {
+				int ni = p[i];
+				p[i] = root;
+				i = ni;
+			}
+			return root;
+		}
+
+		public void union(int i, int j) {
+			i = get(i);
+			j = get(j);
+			if (i == j) {
+				return;
+			}
+			if (~p[i] < ~p[j]) {
+				p[i] = j;
+			} else {
+				if (~p[i] == ~p[j]) {
+					--p[i];
+				}
+				p[j] = i;
+			}
+		}
+
+		public void clear() {
+			Arrays.fill(p, ~0);
+		}
+	}
+
+	static class Output {
+		long answer;
+
+		public Output(long answer) {
+			this.answer = answer;
+		}
+
+		void writeOutput(PrintWriter out) {
+			out.println(answer);
+		}
+	}
+
+	public static void main(String[] args) throws IOException,
+			InterruptedException, ExecutionException {
+		InputReader in = new InputReader(new FileInputStream("tours.in"));
+		PrintWriter out = new PrintWriter("tours.out");
+		ExecutorService executor = Executors.newFixedThreadPool(6);
+		int testCases = in.nextInt();
+		final Input[] inputs = new Input[testCases];
+		for (int i = 0; i < testCases; i++) {
+			inputs[i] = new Input(in);
+		}
+
+		@SuppressWarnings("unchecked")
+		Future<Output> outputs[] = new Future[testCases];
+
+		for (int i = 0; i < testCases; i++) {
+			final int testCase = i;
+			outputs[i] = executor.submit(new Callable<Output>() {
+				@Override
+				public Output call() throws Exception {
+					return inputs[testCase].solve();
+				}
+			});
+		}
+
+		for (int i = 0; i < testCases; i++) {
+			out.print("Case #" + (i + 1) + ": ");
+			outputs[i].get().writeOutput(out);
+		}
+
+		out.close();
+		executor.shutdown();
+	}
+
+	static class InputReader {
+
+		InputReader(InputStream input) {
+			br = new BufferedReader(new InputStreamReader(input));
+		}
+
+		BufferedReader br;
+		StringTokenizer st;
+
+		String nextToken() throws IOException {
+			while (st == null || !st.hasMoreTokens()) {
+				String line = br.readLine();
+				if (line == null) {
+					return null;
+				}
+				st = new StringTokenizer(line);
+			}
+			return st.nextToken();
+		}
+
+		int nextInt() throws IOException {
+			return Integer.parseInt(nextToken());
+		}
+
+		long nextLong() throws IOException {
+			return Long.parseLong(nextToken());
+		}
+
+		double nextDouble() throws IOException {
+			return Double.parseDouble(nextToken());
+		}
+	}
+}
+
+class LinkCutTrees {
+
+	/**
+	 * Base class for a node of linking-cutting trees.
+	 * 
+	 * @param <Node>
+	 */
+	public static abstract class OpenNode<Node extends OpenNode<Node>> {
+		protected Node left, right, parent;
+
+		/**
+		 * If the node has a lazy tag, pushes the changes to its children.
+		 */
+		protected abstract void push();
+
+		/**
+		 * Recalculates the information in the node after its children have
+		 * changed.
+		 */
+		protected abstract void recalc();
+
+	}
+
+	// public functions
+	/**
+	 * Links <tt>p</tt> to <tt>q</tt>. <tt>p</tt> must be a root.
+	 * 
+	 * @param p
+	 *            node to link
+	 * @param q
+	 *            node to link to
+	 * @throws IllegalArgumentException
+	 *             if <tt>p</tt> is not a root
+	 */
+	public static <Node extends OpenNode<Node>> void link(Node p, Node q) {
+		expose(p);
+		if (p.right != null) {
+			throw new IllegalArgumentException("non-root link");
+		}
+		p.parent = q;
+	}
+
+	/**
+	 * Cuts the edge between <tt>p</tt> and its parent. <tt>p</tt> must not be a
+	 * root.
+	 * 
+	 * @param p
+	 *            node to cut from its parent
+	 * @throws IllegalArgumentException
+	 *             if <tt>p</tt> is a root
+	 */
+	public static <Node extends OpenNode<Node>> void cut(Node p) {
+		expose(p);
+		if (p.right == null) {
+			throw new IllegalArgumentException("root cut");
+		}
+		p.right.parent = null;
+		p.right = null;
+	}
+
+	/**
+	 * Returns the root of a tree
+	 * 
+	 * @param p
+	 *            a node
+	 * @return the root of the tree containing <tt>p</tt>
+	 */
+	public static <Node extends OpenNode<Node>> Node getRoot(Node p) {
+		expose(p);
+		while (p.right != null) {
+			p = p.right;
+			p.push();
+		}
+		splay(p);
+		return p;
+	}
+
+	/**
+	 * Returns the least common ancestor of two nodes. After the call the LCA is
+	 * the root of its splay tree which contains the path to the root. If
+	 * <tt>p</tt> or <tt>q</tt> do not coincide with the LCA then after the call
+	 * their corresponding splay trees contain the paths to LCA (not including
+	 * it) and <tt>p</tt> and <tt>q</tt> become roots.
+	 * 
+	 * @param p
+	 *            first node
+	 * @param q
+	 *            second node
+	 * @return the least common ancestor of <tt>p</tt> and <tt>q</tt>, or
+	 *         <tt>null</tt> <tt>p</tt> and <tt>q</tt> are not connected
+	 */
+	public static <Node extends OpenNode<Node>> Node getLCA(Node p, Node q) {
+		if (p == q) {
+			expose(p);
+			return p;
+		}
+
+		expose(p);
+		expose(q);
+		splay(p);
+
+		if (p.parent == null) {
+			if (q.parent == null) {
+				return null;
+			}
+			expose(p);
+			splay(q);
+			return p;
+		}
+
+		Node lca = p.parent;
+		expose(lca);
+		splay(q);
+		return lca;
+	}
+
+	/**
+	 * Makes q the root of the virtual tree. After the call, the splay tree of
+	 * <tt>q</tt> contains the path from <tt>q</tt> to the root of the real tree
+	 * and <tt>q</tt> is the root and leftmost node of it.
+	 * 
+	 * @param q
+	 *            a node
+	 */
+	public static <Node extends OpenNode<Node>> void expose(Node q) {
+		Node last = null;
+		Node p = q;
+		while (p != null) {
+			splay(p);
+
+			p.left = last;
+			p.recalc();
+			last = p;
+
+			p = p.parent;
+		}
+		splay(q);
+	}
+
+	/**
+	 * Applies a series of tree rotations to make <tt>p</tt> the root of its
+	 * splay tree.
+	 * 
+	 * @param p
+	 */
+	public static <Node extends OpenNode<Node>> void splay(Node p) {
+		if (isSplayRoot(p)) {
+			p.push();
+			return;
+		}
+		while (!isSplayRoot(p)) {
+			Node q = p.parent;
+			if (isSplayRoot(q)) {
+				rotate(p);
+			} else {
+				Node r = q.parent;
+				if ((r.left == q) ^ (q.left == p)) {
+					rotate(p);
+					rotate(p);
+				} else {
+					rotate(q);
+					rotate(p);
+				}
+			}
+		}
+		p.recalc();
+	}
+
+	// private functions
+	/**
+	 * Checks if a node is the root of its splay tree.
+	 * 
+	 * @param node
+	 *            a node
+	 * @return <tt>true</tt> if the node is the root of its splay tree,
+	 *         <tt>false</tt> otherwise
+	 */
+	private static <Node extends OpenNode<Node>> boolean isSplayRoot(Node node) {
+		return (node.parent == null)
+				|| (node.parent.left != node && node.parent.right != node);
+	}
+
+	/**
+	 * Rotates the tree to move <tt>p</tt> up and its parent down.
+	 * 
+	 * @param p
+	 */
+	private static <Node extends OpenNode<Node>> void rotate(Node p) {
+		Node q = p.parent;
+		Node r = q.parent;
+
+		q.push();
+		p.push();
+
+		if (q.right == p) {
+			q.right = p.left;
+			if (q.right != null) {
+				q.right.parent = q;
+			}
+
+			p.left = q;
+			q.parent = p;
+		} else {
+			q.left = p.right;
+			if (q.left != null) {
+				q.left.parent = q;
+			}
+
+			p.right = q;
+			q.parent = p;
+		}
+		p.parent = r;
+		if (r != null) {
+			if (r.left == q) {
+				r.left = p;
+			} else if (r.right == q) {
+				r.right = p;
+			}
+		}
+		q.recalc();
+	}
+
+}

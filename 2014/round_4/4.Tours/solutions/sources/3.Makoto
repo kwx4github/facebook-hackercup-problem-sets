@@ -1,0 +1,261 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <bitset>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstdio>
+
+using namespace std;
+
+#define REP(i,n) for((i)=0;(i)<(int)(n);(i)++)
+#define snuke(c,itr) for(__typeof((c).begin()) itr=(c).begin();itr!=(c).end();itr++)
+
+typedef long long ll;
+
+#define MAXV 100010
+
+int N;
+ll eliminated[MAXV];
+
+vector <int> tree[MAXV];
+bool visited[MAXV];
+int K;
+int rank1[MAXV],rank2[MAXV];
+int pp[MAXV][20];
+int depth[MAXV];
+
+void dfs_tree(int p, int x, int d){
+	visited[x] = true;
+	depth[x] = d;
+	pp[x][0] = p;
+	rank1[x] = K; K++;
+	int i;
+	REP(i,tree[x].size()){
+		int y = tree[x][i];
+		if(!visited[y]){
+			dfs_tree(x, y, d+1);
+		}
+	}
+	rank2[x] = K; K++;
+}
+
+void pre_tree(void){
+	int i,j;
+	
+	K = 0;
+	REP(i,N) visited[i] = false;
+	REP(i,N) if(!visited[i]) dfs_tree(-1, i, 0);
+	
+	for(i=1;i<20;i++) REP(j,N){
+		int k = pp[j][i-1];
+		if(k == -1){
+			pp[j][i] = -1;
+		} else {
+			pp[j][i] = pp[k][i-1];
+		}
+	}
+}
+
+int LCA(int x, int y){
+	int i;
+	
+	if(depth[x] > depth[y]) swap(x, y);
+	
+	for(i=19;i>=0;i--) if(depth[y] - (1<<i) >= depth[x]){
+		y = pp[y][i];
+	}
+	
+	if(x == y) return x;
+	
+	for(i=19;i>=0;i--){
+		int x2 = pp[x][i];
+		int y2 = pp[y][i];
+		if(x2 != y2){
+			x = x2;
+			y = y2;
+		}
+	}
+	
+	return pp[x][0];
+}
+
+#define T (1<<18)
+
+ll bit[T];
+
+void bit_init(void){
+	int i;
+	REP(i,T) bit[i] = 0;
+}
+
+void add(int pos, ll val){
+	for(int i=pos;i<T;i=((i)|(i+1))) bit[i] += val;
+}
+
+ll sum(int pos){
+	ll ans = 0;
+	for(int i=pos;i>0;i=((i)&(i-1))) ans += bit[i-1];
+	return ans;
+}
+
+void path_query(int s, int t, ll val){
+	if(depth[s] > depth[t]) swap(s, t);
+	int p = LCA(s, t);
+	if(p == -1) return;
+	add(rank1[t], val);
+	int ppp = pp[p][0];
+	if(ppp != -1) add(rank1[ppp], -val);
+	if(s != p){
+		add(rank1[s], val);
+		add(rank1[p], -val);
+	}
+}
+
+ll get_query(int s){
+	return sum(rank2[s]) - sum(rank1[s]);
+}
+
+int parent[MAXV],rank[MAXV];
+
+void uf_init(int n){
+	int i;
+	REP(i,n) {parent[i] = i; rank[i] = 1;}
+}
+
+int root(int x){
+	if(parent[x] != x) parent[x] = root(parent[x]);
+	return parent[x];
+}
+
+void connect(int x, int y){
+	int rx=root(x),ry=root(y);
+	if(rx == ry) return;
+	if(rank[rx] > rank[ry]) {parent[ry] = rx; rank[rx] += rank[ry];}
+	if(rank[rx] <= rank[ry]) {parent[rx] = ry; rank[ry] += rank[rx];}
+}
+
+// Lowlink
+// graph[u][v] == true, id[u] < id[v], lowlink[v] == id[v] -> u-v bridge
+
+vector <int> graph[MAXV];
+int C,id[MAXV],lowlink[MAXV];
+
+int dfs_lowlink(int p, int v){
+	int ans=C,i,j;
+	id[v] = C; C++;
+	
+	REP(j,graph[v].size()){
+		i = graph[v][j];
+		if(i != p){
+			if(id[i] != -1) ans = min(ans,id[i]);
+			else ans = min(ans,dfs_lowlink(v,i));
+		}
+	}
+	
+	return lowlink[v] = ans;
+}
+
+void calc_lowlink(void){
+	int i;
+	C = 0;
+	REP(i,N) id[i] = -1;
+	REP(i,N) if(id[i] == -1) dfs_lowlink(-1,i);
+}
+
+void main2(void){
+	int M,Q,i,j;
+	
+	// cout << "A" << endl;
+	
+	cin >> N >> M >> Q;
+	REP(i,N) graph[i].clear();
+	REP(i,M){
+		int a,b;
+		cin >> a >> b;
+		a--; b--;
+		graph[a].push_back(b);
+		graph[b].push_back(a);
+	}
+	
+	calc_lowlink();
+	uf_init(N);
+	
+	REP(i,N) REP(j,graph[i].size()){
+		int p = i, q = graph[i][j];
+		bool bridge = false;
+		if(id[p] < id[q] && lowlink[q] == id[q]) bridge = true;
+		if(id[q] < id[p] && lowlink[p] == id[p]) bridge = true;
+		if(!bridge) connect(p, q);
+	}
+	
+	REP(i,N) tree[i].clear();
+	
+	REP(i,N) REP(j,graph[i].size()){
+		int p = i, q = graph[i][j];
+		bool bridge = false;
+		if(id[p] < id[q] && lowlink[q] == id[q]) bridge = true;
+		if(id[q] < id[p] && lowlink[p] == id[p]) bridge = true;
+		if(bridge){
+			p = root(p);
+			q = root(q);
+			tree[p].push_back(q);
+			tree[q].push_back(p);
+		}
+	}
+	
+	pre_tree();
+	
+	// REP(i,N) cout << root(i) << ' ';
+	// cout << endl;
+	
+	ll ans = 0;
+	REP(i,N) eliminated[i] = 0;
+	bit_init();
+	
+	REP(i,Q){
+		string type;
+		cin >> type;
+		if(type == "T"){
+			int X,Y,O;
+			cin >> X >> Y >> O;
+			X--; Y--;
+			X = root(X); Y = root(Y);
+			// cout << X << ' ' << Y << ' ' << O << endl;
+			path_query(X, Y, O);
+		} else {
+			int Z;
+			cin >> Z;
+			Z--;
+			int Z_init = Z;
+			Z = root(Z);
+			ll tmp = get_query(Z) - eliminated[Z_init];
+			ans = (ans + tmp) % 1000000007ll;
+			eliminated[Z_init] += tmp;
+			// cout << tmp << endl;
+		}
+	}
+	
+	cout << ans << endl;
+}
+
+int main(void){
+	int TC,tc;
+	cin >> TC;
+	REP(tc,TC){
+		printf("Case #%d: ", tc+1);
+		main2();
+	}
+	return 0;
+}

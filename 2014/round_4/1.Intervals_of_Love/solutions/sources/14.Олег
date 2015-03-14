@@ -1,0 +1,169 @@
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+
+
+
+const int ST = 20;// TO CHANGE TO 20
+const int LEVEL = (1 << ST);
+const int TREE_SIZE = (1 << (ST + 1) );
+const long long mod = (long long) 1e9 + 7;
+
+struct Node
+{
+	int lVal, rVal, lCnt, rCnt, len;
+	long long sum, insum;
+	Node() : lVal(), rVal(), lCnt(), rCnt(), sum(), insum() {}
+	Node(int val) : lVal(val), rVal(val), lCnt(1), rCnt(1), len(1), sum(1), insum(0) {}
+};
+
+
+Node tree[TREE_SIZE];
+
+
+Node merge(Node l, Node r)
+{
+	Node ans = Node();
+	ans.insum = l.insum + r.insum;
+	ans.len = l.len + r.len;
+	ans.lVal = l.lVal;
+	ans.rVal = r.rVal;
+	ans.lCnt = l.lCnt;
+	ans.rCnt = r.rCnt;
+	if (l.rVal + 1 == r.lVal)
+	{
+		if (l.lCnt == l.len)
+		{
+			ans.lCnt += r.lCnt;
+		}
+		if (r.rCnt == r.len)
+		{
+			ans.rCnt += l.rCnt;
+		}
+		if (l.lCnt != l.len && r.rCnt != r.len)
+		{
+			long long x = l.rCnt + r.lCnt;
+			ans.insum += x * (x + 1) / 2;
+			ans.insum %= mod;
+		}
+	}
+	else
+	{
+		if (l.lCnt != l.len)
+		{
+			long long x = l.rCnt;
+			ans.insum += x * (x + 1) / 2;
+			ans.insum %= mod;
+		}
+		if (r.rCnt != r.len)
+		{
+			long long x = r.lCnt;
+			ans.insum += x * (x + 1) / 2;
+			ans.insum %= mod;
+		}
+	}
+	ans.sum = ans.insum;
+	if (ans.lCnt != ans.len)
+	{
+		long long x = ans.lCnt;
+		ans.sum += x * (x + 1) / 2;
+		ans.sum %= mod;
+		x = ans.rCnt;
+		ans.sum += x * (x + 1) / 2;
+		ans.sum %= mod;
+	}
+	else
+	{
+		long long x = ans.len;
+		ans.sum += x * (x + 1) / 2;
+		ans.sum %= mod;
+	}
+	return ans;
+}
+
+void setValue(int pos, int val)
+{
+	int v = pos + LEVEL;
+	tree[v] = Node(val);
+	while (v != 1)
+	{
+		v /= 2;
+		tree[v] = merge(tree[2 * v], tree[2 * v + 1] );
+	}
+}
+
+Node getSum(int v, int l, int r, int tl, int tr)
+{
+	if (r <= tl || l >= tr)
+		return Node();
+	if (l <= tl && tr <= r)
+	{
+		return tree[v];
+	}
+	int tm = (tl + tr) / 2;
+	Node a = getSum(v * 2, l, r, tl, tm);
+	Node b = getSum(v * 2 + 1, l, r, tm, tr);
+	Node ans = merge(a, b);
+	return ans;
+}
+
+void clear()
+{
+	memset(tree, 0, sizeof tree);
+}
+
+void solve()
+{
+	clear();
+
+	int n;
+	scanf("%d", &n);
+	for (int i = 0; i < n; i++)
+	{
+		int x;
+		scanf("%d", &x);
+		setValue(i, x);
+	}
+	int m;
+	scanf("%d", &m);
+
+	long long ans = 0;
+	for (int i = 0; i < m; i++)
+	{
+		int op, a, b;
+		scanf("%d%d%d", &op, &a, &b);
+		if (op == 0)
+		{
+			setValue(a, b);
+		}
+		else
+		{
+			ans += getSum(1, a, b + 1, 0, LEVEL).sum;
+			ans %= mod;
+		}
+	}
+	printf("%lld", ans);
+
+	return;
+}
+
+
+int main()
+{
+	freopen("intervals_of_love.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int t;
+	scanf("%d", &t);
+	for (int i = 1; i <= t; i++)
+	{
+		fprintf(stderr, "Case #%d \n", i);
+		printf("Case #%d: ", i);
+		solve();
+		printf("\n");
+	}
+
+
+	return 0;
+}

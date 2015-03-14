@@ -1,0 +1,149 @@
+// by shik {{{
+#include <bits/stdc++.h>
+#include <unistd.h>
+#define SZ(x) ((int)(x).size())
+#define ALL(c) begin(c),end(c)
+#define REP(i,n) for ( int i=0; i<(int)(n); i++ )
+#define REP1(i,a,b) for ( int i=(int)(a); i<=(int)(b); i++ )
+#define MP make_pair
+#define PB push_back
+using namespace std;
+typedef pair<int,int> PII;
+typedef vector<int> VI;
+
+void RI() {}
+
+template<typename... T>
+void RI( int& head, T&... tail ) {
+    scanf("%d",&head);
+    RI(tail...);
+}
+
+void WI( int x ) {
+    printf("%d\n",x);
+}
+
+template<typename... Args>
+void WI(int head, Args... tail) {
+    printf("%d ",head);
+    WI(tail...);
+}
+/// }}}
+
+#define N 100010
+
+struct Seg {
+#define lid (2*id)
+#define rid (2*id+1)
+    int add[4*N],sml[4*N];
+    void push( int id ) {
+        add[lid]+=add[id];
+        add[rid]+=add[id];
+        add[id]=0;
+    }
+    int get( int id ) { return sml[id]+add[id]; }
+    void pull( int id ) {
+        sml[id]=min(get(lid),get(rid));
+    }
+    void init( int id, int l, int r ) {
+        if ( l==r ) {
+            add[id]=sml[id]=0;
+            return;
+        }
+        int m=(l+r)/2;
+        init(lid,l,m);
+        init(rid,m+1,r);
+        add[id]=0;
+        pull(id);
+    }
+    void ins( int id, int l, int r, int ql, int qr, int qv ) {
+        if ( qr<l || r<ql ) return;
+        if ( ql<=l && r<=qr ) {
+            add[id]+=qv;
+            return;
+        }
+        push(id);
+        int m=(l+r)/2;
+        ins(lid,l,m,ql,qr,qv);
+        ins(rid,m+1,r,ql,qr,qv);
+        pull(id);
+    }
+} seg;
+
+int n,m,a[N],b[N];
+void input() {
+    RI(n,m);
+    REP1(i,1,n) RI(a[i]);
+    REP1(i,1,m) RI(b[i]);
+}
+
+int xs[2*N],xn;
+void lshua() {
+    xn=0;
+    REP1(i,1,n) xs[xn++]=a[i];
+    REP1(i,1,m) xs[xn++]=b[i];
+    sort(xs,xs+xn);
+    REP1(i,1,n) a[i]=lower_bound(xs,xs+xn,a[i])-xs+1;
+    REP1(i,1,m) b[i]=lower_bound(xs,xs+xn,b[i])-xs+1;
+}
+
+struct BIT {
+    int dat[2*N];
+    void init() {
+        memset(dat,0,sizeof(dat));
+    }
+    void ins( int x ) {
+        for ( int i=x; i<2*N; i+=i&-i ) dat[i]++;
+    }
+    int ask( int x ) {
+        int s=0;
+        for ( int i=x; i; i-=i&-i ) s+=dat[i];
+        return s;
+    }
+} bit;
+
+PII sa[N];
+void solve() {
+    lshua();
+    long ans=0;
+    bit.init();
+    for ( int i=n; i>=1; i-- ) {
+        ans+=bit.ask(a[i]);
+        bit.ins(a[i]);
+    }
+    //printf("== %ld\n",ans);
+    seg.init(1,1,n+1);
+    REP1(i,1,n) seg.ins(1,1,n+1,i+1,n+1,+1);
+    REP1(i,1,n) sa[i]=PII(a[i],i);
+    sort(sa+1,sa+n+1);
+    sort(b+1,b+m+1);
+    for ( int bi=1,ai=1; bi<=m; bi++ ) {
+        while ( ai<=n && sa[ai].first<b[bi] ) {
+            int p=sa[ai].second;
+            //printf("p = %d\n",p);
+            seg.ins(1,1,n+1,p+1,n+1,-1);
+            seg.ins(1,1,n+1,1,p,+1);
+            ai++;
+        }
+        //printf("ans += %d\n",seg.get(1));
+        ans+=seg.get(1);
+    }
+    printf("%ld\n",ans);
+}
+
+int main( int argc, char *argv[] ) {
+    int n_case;
+    RI(n_case);
+    //fprintf(stderr,"n_case = %d\n",n_case);
+    REP1(i,1,n_case) {
+        input();
+        if ( argc==2 && atoi(argv[1])!=i ) continue;
+        if ( argc==3 && (atoi(argv[1])<i || atoi(argv[2])>i) ) continue;
+        //fprintf(stderr,"Running #%d...\n",i);
+        printf("Case #%d: ",i);
+        solve();
+        fflush(stdout);
+    }
+    return 0;
+}
+

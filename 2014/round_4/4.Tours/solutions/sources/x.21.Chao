@@ -1,0 +1,363 @@
+/*
+	Author : ChnLich
+*/
+#include<cstdio>
+#include<cmath>
+#include<iomanip>
+#include<cstring>
+#include<cstdlib>
+#include<ctime>
+#include<iostream>
+#include<sstream>
+#include<fstream>
+#include<algorithm>
+#include<vector>
+#include<list>
+#include<stack>
+#include<queue>
+#include<deque>
+#include<set>
+#include<map>
+#include<string>
+#include<bitset>
+#include<functional>
+#include<utility>
+
+using namespace std;
+
+typedef long long llint;
+typedef pair<int,int> ipair;
+typedef unsigned int ui;
+typedef unsigned long long ull;
+#define pb push_back
+#define fi first
+#define se second
+#define mp make_pair
+#define REP(i,n) for(int i=0;i<n;i++)
+
+const int MOD=1000000007,dx[]={0,1,0,-1},dy[]={1,0,-1,0};
+const double eps=1e-8;
+
+void read(int &k)
+{
+	k=0; char x=getchar();
+	while(x<'0'||x>'9') x=getchar();
+	while(x>='0'&&x<='9') { k=k*10-48+x; x=getchar(); }
+}
+
+typedef long long int64;
+const int MAX_N = int(1e5) + 10;
+
+struct Mark {
+	int64 add, mul; //x*mul+add
+	Mark(int64 add, int64 mul) {
+		this->add = add;
+		this->mul = mul;
+	}
+	Mark() {
+		mul = 1;
+		add = 0;
+	}
+	bool isId() {
+		return mul == 1 && add == 0;
+	}
+};
+
+Mark operator*(Mark a, Mark b) {
+	return Mark((a.add * b.mul + b.add) % MOD, a.mul * b.mul % MOD);
+}
+
+struct Node {
+	Node*p, *ch[2];
+	bool rev;
+	Mark m;
+	int64 sum, val;
+	int size;
+	bool isRoot;
+	Node*fa;
+	Node() {
+		sum = 0;
+		isRoot = 0;
+		size = 0;
+	}
+	void sc(Node*c, int d) {
+		ch[d] = c;
+		c->p = this;
+	}
+	bool d() {
+		return this == p->ch[1];
+	}
+	void upd() {
+		sum = (val + ch[0]->sum + ch[1]->sum) % MOD;
+		size = 1 + ch[0]->size + ch[1]->size;
+	}
+	void apply(Mark a) {
+		m = m * a;
+		sum = (sum * a.mul + a.add * size) % MOD;
+		val = (val * a.mul + a.add) % MOD;
+	}
+	void revIt() {
+		rev ^= 1;
+		swap(ch[0], ch[1]);
+	}
+	void relax();
+	void setRoot(Node*f);
+} Tnull, *null = &Tnull;
+
+void Node::setRoot(Node*f) {
+	fa = f;
+	isRoot = true;
+	p = null;
+}
+
+void Node::relax() {
+	if (!m.isId()) {
+		REP(i,2)
+			if (ch[i] != null)
+				ch[i]->apply(m);
+		m = Mark();
+	}
+	if (rev) {
+		REP(i,2)
+			if (ch[i] != null)
+				ch[i]->revIt();
+		rev = 0;
+	}
+}
+
+Node mem[MAX_N], *C = mem;
+
+Node*make(int v) {
+	C->sum = C->val = v;
+	C->rev = 0;
+	C->m = Mark();
+	C->ch[0] = C->ch[1] = null;
+	C->isRoot = true;
+	C->p = null;
+	C->fa = null;
+	return C++;
+}
+
+void rot(Node*t) {
+	Node*p = t->p;
+	p->relax();
+	t->relax();
+	bool d = t->d();
+	p->p->sc(t, p->d());
+	p->sc(t->ch[!d], d);
+	t->sc(p, !d);
+	p->upd();
+	if (p->isRoot) {
+		p->isRoot = false;
+		t->isRoot = true;
+		t->fa = p->fa;
+	}
+}
+
+void pushTo(Node*t) {
+	static Node*stk[MAX_N];
+	int top = 0;
+	while (t != null) {
+		stk[top++] = t;
+		t = t->p;
+	}
+	for (int i = top - 1; i >= 0; --i)
+		stk[i]->relax();
+}
+
+void splay(Node*u, Node*f = null) {
+	pushTo(u);
+	while (u->p != f) {
+		if (u->p->p == f)
+			rot(u);
+		else
+			u->d() == u->p->d() ? (rot(u->p), rot(u)) : (rot(u), rot(u));
+	}
+	u->upd();
+}
+
+Node*v[MAX_N];
+vector<int> E[MAX_N];
+int n, nQ;
+
+int que[MAX_N], fa[MAX_N], qh = 0, qt = 0;
+
+void bfs() {
+	que[qt++] = 0;
+	fa[0] = -1;
+	while (qh < qt) {
+		int u = que[qh++];
+		for (vector<int>::iterator e = E[u].begin(); e != E[u].end(); ++e)
+			if (*e != fa[u])
+				fa[*e] = u, v[*e]->fa = v[u], que[qt++] = *e;
+	}
+}
+
+Node* expose(Node*u) {
+	Node*v;
+	for (v = null; u != null; v = u, u = u->fa) {
+		splay(u);
+		u->ch[1]->setRoot(u);
+		u->sc(v, 1);
+		v->fa = u;
+	}
+	return v;
+}
+
+void makeRoot(Node*u) {
+	expose(u);
+	splay(u);
+	u->revIt();
+}
+
+void addEdge(Node*u, Node*v) {
+	makeRoot(v);
+	v->fa = u;
+}
+
+void delEdge(Node*u, Node*v) {
+	makeRoot(u);
+	expose(v);
+	splay(u);
+	u->sc(null, 1);
+	u->upd();
+	v->fa = null;
+	v->isRoot = true;
+	v->p = null;
+}
+
+void markPath(Node*u, Node*v, Mark m) {
+	makeRoot(u);
+	expose(v);
+	splay(v);
+	v->apply(m);
+}
+
+int queryPath(Node*u, Node*v) {
+	makeRoot(u);
+	expose(v);
+	splay(v);
+	return v->sum;
+}
+
+
+int m,T,rec[100010],x,y,col;
+
+struct graphA
+{
+	int a[100010],b[2000010],c[2000010],p;
+	int dfn[100010],low[100010],sta[100010],instack[100010],sl,ind;
+	void addedge(int x,int y)
+	{
+		c[++p]=a[x]; a[x]=p; b[p]=y;
+		c[++p]=a[y]; a[y]=p; b[p]=x;
+	}
+	void clear()
+	{
+		sl=0; ind=0;
+		memset(a,0,sizeof a);
+		p=1;
+		memset(dfn,0,sizeof dfn);
+		memset(rec,0,sizeof rec);
+	}
+	int dfs(int k,int fa)
+	{
+		dfn[k]=low[k]=++ind;
+		instack[sta[++sl]=k]=1;
+		for(int i=a[k];i;i=c[i]) if ((i^1)!=fa)
+		{
+			if (!dfn[b[i]]) low[k]=min(low[k],dfs(b[i],i));
+			else if (instack[b[i]]) low[k]=min(low[k],low[b[i]]);
+		}
+		if (dfn[k]==low[k])
+		{
+			col++;
+			while(sta[sl]!=k)
+			{
+				instack[sta[sl]]=0;
+				rec[sta[sl]]=col;
+				sl--;
+			}
+			instack[sta[sl]]=0;
+			rec[sta[sl]]=col;
+			sl--;
+		}
+		return low[k];
+	}
+	void tarjan()
+	{
+		for(int i=1;i<=n;i++) if (!dfn[i]) dfs(i,0);
+	}
+} A;
+
+void makenewgraph()
+{
+	for(int i=0;i<=n;i++) E[i].clear();
+	for(int i=1;i<=n;i++)
+		for(int j=A.a[i];j;j=A.c[j]) if (rec[A.b[j]]>rec[i])
+		{
+		//	printf("%d %d\n",A.b[j],i);
+			E[rec[i]-1].pb(rec[A.b[j]]-1);
+			E[rec[A.b[j]]-1].pb(rec[i]-1);
+		}
+	n=col;
+}
+
+int Ft[100010],swp[100010];
+char s[10];
+
+int Fa(int x)
+{
+	if (Ft[x]==x) return x;
+	return Ft[x]=Fa(Ft[x]);
+}
+
+int main()
+{
+	freopen("D.in","r",stdin);
+	freopen("D.out","w",stdout);
+	
+	int T;
+	scanf("%d",&T);
+	for(int tt=1;tt<=T;tt++)
+	{
+		read(n); read(m); read(nQ);
+		A.clear();
+		memset(swp,0,sizeof swp);
+		for(int i=1;i<=n;i++) Ft[i]=i;
+		col=0;
+		for(int i=1;i<=m;i++)
+		{
+			read(x); read(y);
+			A.addedge(x,y);
+			Ft[Fa(x)]=Fa(y);
+		}
+		A.tarjan();
+		makenewgraph();
+		REP(i,n)
+			v[i] = make(0);
+		bfs();
+		int ans=0;
+		REP(i,nQ) {
+			scanf("%s",s);
+			if (s[0]=='T')
+			{
+				int x,y,z;
+				read(x); read(y); read(z);
+			//	printf("%d %d\n",x,y);
+				if (Fa(x)!=Fa(y)) continue;
+				Node*u = ::v[rec[x]-1], *v = ::v[rec[y]-1];
+				markPath(u,v,Mark(z,1));
+			} else
+			{
+				read(x);
+				Node*u = ::v[rec[x]-1];
+				int num=queryPath(u,u);
+				ans=(ans+num-swp[x])%MOD;
+				swp[x]=num;
+			}
+		}
+		
+		printf("Case #%d: %d\n",tt,ans);
+	}
+}

@@ -1,0 +1,367 @@
+import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.io.PrintStream;
+import java.util.Comparator;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.Reader;
+import java.io.Writer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Niyaz Nigmatullin
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		FastScanner in = new FastScanner(inputStream);
+		FastPrinter out = new FastPrinter(outputStream);
+		LunchAtFacebook solver = new LunchAtFacebook();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class LunchAtFacebook {
+    public void solve(int testNumber, FastScanner in, FastPrinter out) {
+        out.print("Case #" + testNumber + ": ");
+        System.err.println("[" + testNumber + "]");
+        int n = in.nextInt();
+        int m = in.nextInt();
+        int[] a = new int[n];
+        Event[] events = new Event[n + m];
+        for (int i = 0; i < n; i++) {
+            events[i] = new Event(false, a[i] = in.nextInt(), i);
+        }
+        for (int i = 0; i < m; i++) {
+            events[i + n] = new Event(true, in.nextInt(), -1);
+        }
+        Arrays.sort(events, new Comparator<Event>() {
+            @Override
+            public int compare(Event o1, Event o2) {
+                return Integer.compare(o1.x, o2.x);
+            }
+        });
+        MultiSegmentTree tree = new MultiSegmentTree(n + 1);
+        int zeros = n;
+        for (int i = 0; i <= n; i++) {
+            tree.add(i, i + 1, -i);
+        }
+        for (int i = 0; i <= n; i++) {
+            tree.add(i, i + 1, 2 * i);
+        }
+        long best = 0;
+        for (Event e : events) {
+            if (e.type) {
+                best += n - zeros + tree.getMin(0, n + 1);
+            } else {
+                --zeros;
+                tree.add(e.id + 1, n + 1, -2);
+            }
+        }
+        out.println(best + ArrayUtils.countNumberOfInversions(a));
+    }
+
+//    public Collection<Test> createTests() {
+//        List<Test> test = new ArrayList<>();
+//        Random rand = new Random(82334L);
+//        for (int it = 0; it <= 10; it++) {
+//            int n = rand.nextInt(10) + 1;
+//            int m = rand.nextInt(10) + 1;
+//            int[] a = new int[n];
+//            int[] b = new int[m];
+//            HashSet<Integer> set = new HashSet<>();
+//            for (int i = 0; i < n; i++) {
+//                do {
+//                    a[i] = rand.nextInt(100);
+//                } while (!set.add(a[i]));
+//            }
+//            for (int i = 0; i < m; i++) {
+//                do {
+//                    b[i] = rand.nextInt(100);
+//                } while (!set.add(b[i]));
+//            }
+//            StringBuilder sb = new StringBuilder();
+//            sb.append("1\n");
+//            sb.append(n).append(" ").append(m).append("\n");
+//            for (int i = 0; i < n; i++) {
+//                sb.append(a[i]).append(' ');
+//            }
+//            sb.append('\n');
+//            for (int i = 0; i < m; i++) {
+//                sb.append(b[i]).append(' ');
+//            }
+//            sb.append('\n');
+//            test.add(new Test(sb.toString(), stupid(a, b) + ""));
+//        }
+//        return test;
+//    }
+
+    static class Event {
+        boolean type;
+        int x;
+        int id;
+
+        Event(boolean type, int x, int id) {
+            this.type = type;
+            this.x = x;
+            this.id = id;
+        }
+    }
+}
+
+class FastScanner extends BufferedReader {
+
+    public FastScanner(InputStream is) {
+        super(new InputStreamReader(is));
+    }
+
+    public int read() {
+        try {
+            int ret = super.read();
+//            if (isEOF && ret < 0) {
+//                throw new InputMismatchException();
+//            }
+//            isEOF = ret == -1;
+            return ret;
+        } catch (IOException e) {
+            throw new InputMismatchException();
+        }
+    }
+
+    public String next() {
+        StringBuilder sb = new StringBuilder();
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        if (c < 0) {
+            return null;
+        }
+        while (c >= 0 && !isWhiteSpace(c)) {
+            sb.appendCodePoint(c);
+            c = read();
+        }
+        return sb.toString();
+    }
+
+    static boolean isWhiteSpace(int c) {
+        return c >= 0 && c <= 32;
+    }
+
+    public int nextInt() {
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        int sgn = 1;
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        }
+        int ret = 0;
+        while (c >= 0 && !isWhiteSpace(c)) {
+            if (c < '0' || c > '9') {
+                throw new NumberFormatException("digit expected " + (char) c
+                        + " found");
+            }
+            ret = ret * 10 + c - '0';
+            c = read();
+        }
+        return ret * sgn;
+    }
+
+    public String readLine() {
+        try {
+            return super.readLine();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    }
+
+class FastPrinter extends PrintWriter {
+
+    public FastPrinter(OutputStream out) {
+        super(out);
+    }
+
+    public FastPrinter(Writer out) {
+        super(out);
+    }
+
+
+}
+
+class MultiSegmentTree {
+    private long[] min;
+    private long[] max;
+    private long[] sum;
+    private long[] add;
+    private long[] set;
+    private boolean[] toSet;
+    private int[] count;
+    final int n;
+
+    public MultiSegmentTree(int n) {
+        this.n = Integer.highestOneBit(n) << 1;
+        min = new long[this.n << 1];
+        max = new long[this.n << 1];
+        sum = new long[this.n << 1];
+        add = new long[this.n << 1];
+        set = new long[this.n << 1];
+        count = new int[this.n << 1];
+        toSet = new boolean[this.n << 1];
+        count(0, 0, this.n);
+    }
+
+    private int count(int node, int l, int r) {
+        if (l == r - 1) {
+            count[node] = 1;
+            return 1;
+        }
+        int m = (l + r) >> 1;
+        return count[node] = count((node << 1) | 1, l, m)
+                + count((node << 1) + 2, m, r);
+    }
+
+    private void add(int node, long x) {
+        if (toSet[node]) {
+            set[node] += x;
+        } else {
+            add[node] += x;
+        }
+    }
+
+    private void set(int node, long x) {
+        add[node] = 0;
+        set[node] = x;
+        toSet[node] = true;
+    }
+
+    private void relax(int node) {
+        if (!toSet[node] && add[node] == 0) {
+            return;
+        }
+        min[node] = getMin(node);
+        max[node] = getMax(node);
+        sum[node] = getSum(node);
+        if (toSet[node]) {
+            set((node << 1) | 1, set[node]);
+            set((node << 1) + 2, set[node]);
+            toSet[node] = false;
+        } else {
+            add((node << 1) | 1, add[node]);
+            add((node << 1) + 2, add[node]);
+            add[node] = 0;
+        }
+    }
+
+    private long getSum(int node) {
+        return toSet[node] ? set[node] * count(node) : sum[node]
+                + add[node] * count(node);
+    }
+
+    private long count(int node) {
+        return count[node];
+    }
+
+    private long getMax(int node) {
+        return toSet[node] ? set[node] : max[node] + add[node];
+    }
+
+    private long getMin(int node) {
+        return toSet[node] ? set[node] : min[node] + add[node];
+    }
+
+    private void add(int node, int l, int r, int left, int right, long x) {
+        if (right <= l || r <= left) {
+            return;
+        }
+        if (left <= l && r <= right) {
+            add(node, x);
+            return;
+        }
+        relax(node);
+        int m = (l + r) >> 1;
+        add((node << 1) | 1, l, m, left, right, x);
+        add((node << 1) + 2, m, r, left, right, x);
+        min[node] = Math.min(getMin((node << 1) | 1),
+                getMin((node << 1) + 2));
+        max[node] = Math.max(getMax((node << 1) | 1),
+                getMax((node << 1) + 2));
+        sum[node] = getSum((node << 1) | 1) + getSum((node << 1) + 2);
+    }
+
+    private long getMin(int node, int l, int r, int left, int right) {
+        if (right <= l || r <= left) {
+            return Long.MAX_VALUE;
+        }
+        if (left <= l && r <= right) {
+            return getMin(node);
+        }
+        relax(node);
+        int m = (l + r) >> 1;
+        return Math.min(getMin((node << 1) | 1, l, m, left, right),
+                getMin((node << 1) + 2, m, r, left, right));
+    }
+
+    public void add(int l, int r, long x) {
+        if (l >= r) {
+            return;
+        }
+        add(0, 0, n, l, r, x);
+    }
+
+    public long getMin(int l, int r) {
+        if (l >= r) {
+            return Long.MAX_VALUE;
+        }
+        return getMin(0, 0, n, l, r);
+    }
+}
+
+class ArrayUtils {
+
+
+    public static long countNumberOfInversions(int[] a) {
+        return inversions(a, null, 0, a.length);
+    }
+
+    static long inversions(int[] a, int[] b, int left, int right) {
+        if (b == null) {
+            b = new int[a.length];
+        }
+        if (left + 1 >= right) {
+            return 0;
+        }
+        int middle = left + right >> 1;
+        long ret = inversions(a, b, left, middle) + inversions(a, b, middle, right);
+        for (int i = left, j = middle, k = 0; i < middle || j < right; k++) {
+            if (j >= right || i < middle && a[i] <= a[j]) {
+                ret += j - middle;
+                b[k] = a[i++];
+            } else {
+                b[k] = a[j++];
+            }
+        }
+        for (int i = left; i < right; i++) {
+            a[i] = b[i - left];
+        }
+        return ret;
+    }
+
+
+    }
+

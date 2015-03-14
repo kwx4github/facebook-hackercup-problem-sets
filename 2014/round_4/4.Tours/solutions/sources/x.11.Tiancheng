@@ -1,0 +1,260 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <cctype>
+#include <string>
+#include <cstring>
+#include <ctime>
+#include <string.h>
+
+using namespace std;
+
+typedef long long int64;
+typedef unsigned long long uint64;
+#define two(X) (1<<(X))
+#define twoL(X) (((int64)(1))<<(X))
+#define contain(S,X) (((S)&two(X))!=0)
+#define containL(S,X) (((S)&twoL(X))!=0)
+const double pi=acos(-1.0);
+const double eps=1e-11;
+template<class T> inline void checkmin(T &a,T b){if(b<a) a=b;}
+template<class T> inline void checkmax(T &a,T b){if(b>a) a=b;}
+template<class T> inline T sqr(T x){return x*x;}
+typedef pair<int,int> ipair;
+#define SIZE(A) ((int)A.size())
+#define LENGTH(A) ((int)A.length())
+#define MP(A,B) make_pair(A,B)
+#define PB(X) push_back(X)
+
+const int maxn=1<<20;
+const int64 MOD=1000000007;
+
+int n,m,nqueries;
+vector<int> g[maxn];
+int c;
+int prev[maxn];
+vector<int> h[maxn];
+int counter;
+int dfn[maxn],low[maxn];
+vector<int> pts;
+int depth[maxn],f[maxn][20];
+int d1[maxn];
+int d2[maxn];
+set<ipair> bridges;
+int father[maxn],color[maxn];
+
+int getf(int p)
+{
+	return (father[p]<0)?p:(father[p]=getf(father[p]));
+}
+void mergef(int a,int b)
+{
+	a=getf(a);
+	b=getf(b);
+	if (a!=b) father[a]=b;
+}
+void dfs1(int p,int father)
+{
+	dfn[p]=(counter++);
+	low[p]=dfn[p];
+	for (int i=0;i<SIZE(g[p]);i++)
+	{
+		int key=g[p][i];
+		if (key==father) continue;
+		if (dfn[key]>=0)
+		{
+			checkmin(low[p],dfn[key]);
+			continue;
+		}
+		dfs1(key,p);
+		if (low[key]<low[p])
+			low[p]=low[key];
+	}
+	if (father>=0 && low[p]==dfn[p])
+	{
+		bridges.insert(MP(p,father));
+		bridges.insert(MP(father,p));
+	}
+}
+void dfs3(int p,int _prev)
+{
+	prev[p]=_prev;
+	depth[p]=((prev[p]<0)?0:(depth[prev[p]]+1));
+	f[p][0]=prev[p];
+	for (int i=1;two(i)<=depth[p];i++) f[p][i]=f[f[p][i-1]][i-1];
+	for (int i=0;i<SIZE(g[p]);i++) if (g[p][i]!=_prev) dfs3(g[p][i],p);
+}
+int getfather(int p,int d)
+{
+	for (int i=0;i<20;i++) if (d&two(i)) p=f[p][i];
+	return p;
+}
+int get_lca(int a,int b)
+{
+	if (depth[a]>depth[b]) swap(a,b);
+	b=getfather(b,depth[b]-depth[a]);
+	if (a==b) return a;
+	int e=depth[a];
+	int c1=getfather(a,e);
+	int c2=getfather(b,e);
+	if (c1!=c2) return -1;
+	int ret=c1;
+	int h=0,t=e;
+	for (;h+1<t;)
+	{
+		int m=(h+t)/2;
+		c1=getfather(a,m);
+		c2=getfather(b,m);
+		if (c1==c2)
+			t=m,ret=c1;
+		else
+			h=m;
+	}
+	return ret;
+}
+bool is_bridge(int a,int b)
+{
+	return bridges.find(MP(a,b))!=bridges.end();
+}
+int main()
+{
+	//freopen("input.txt","r",stdin);
+	freopen("d.in","r",stdin); freopen("d.out","w",stdout);
+	int testcase;
+	scanf("%d",&testcase);
+	for (int case_id=1;case_id<=testcase;case_id++)
+	{
+		bool is_solve=!(case_id<=testcase/2);
+		scanf("%d%d%d",&n,&m,&nqueries);
+		for (int i=0;i<maxn;i++) g[i].clear();
+		for (int i=0;i<maxn;i++) h[i].clear();
+		for (int i=0;i<m;i++)
+		{
+			int a,b;
+			scanf("%d%d",&a,&b);
+			a--;
+			b--;
+			g[a].push_back(b);
+			g[b].push_back(a);
+		}
+		if (!is_solve)
+		{
+			for (;nqueries>0;nqueries--)
+			{
+				char str[10];
+				scanf("%s",str);
+				if (str[0]=='S')
+				{
+					int key;
+					scanf("%d",&key);
+					key--;
+				}
+				else
+				{
+					int s,t,delta;
+					scanf("%d%d%d",&s,&t,&delta);
+					s--;
+					t--;
+				}
+			}
+			continue;
+		}
+		memset(dfn,255,sizeof(dfn));
+		counter=0;
+		bridges.clear();
+		for (int i=0;i<n;i++) if (dfn[i]<0) dfs1(0,-1);
+		memset(father,255,sizeof(father));
+		for (int i=0;i<n;i++)
+			for (int j=0;j<SIZE(g[i]);j++)
+			{
+				int k=g[i][j];
+				if (is_bridge(i,k)) continue;
+				mergef(i,k);
+			}
+		c=0;
+		for (int i=0;i<n;i++) if (father[i]<0) color[i]=(c++);
+		for (int i=0;i<n;i++) if (father[i]>=0) color[i]=color[getf(i)];
+		for (int i=0;i<maxn;i++) h[i].clear();
+		for (int i=0;i<n;i++) h[color[i]].push_back(i);
+		vector<ipair> edges;
+		for (int i=0;i<n;i++)
+			for (int j=0;j<SIZE(g[i]);j++)
+			{
+				int k=g[i][j];
+				if (!is_bridge(i,k)) continue;
+				int a=color[i];
+				int b=color[k];
+				if (a==b) continue;
+				edges.push_back(MP(a,b));
+			}
+		for (int i=0;i<maxn;i++) g[i].clear();
+		for (int i=0;i<SIZE(edges);i++)
+		{
+			int a=edges[i].first,b=edges[i].second;
+			g[a].push_back(b);
+			g[b].push_back(a);
+		}
+		for (int i=0;i<c;i++) prev[i]=-2;
+		for (int i=0;i<c;i++) if (prev[i]==-2) dfs3(i,-1);
+		int64 ret=0;
+		memset(d1,0,sizeof(d1));
+		memset(d2,0,sizeof(d2));
+		for (;nqueries>0;nqueries--)
+		{
+			char str[10];
+			scanf("%s",str);
+			if (str[0]=='S')
+			{
+				int key;
+				scanf("%d",&key);
+				key--;
+				int pkey=color[key];
+				for (int i=0;i<SIZE(h[pkey]);i++) d2[h[pkey][i]]+=d1[pkey];
+				d1[pkey]=0;
+				ret+=d2[key];
+				d2[key]=0;
+			}
+			else
+			{
+				int s,t,delta;
+				scanf("%d%d%d",&s,&t,&delta);
+				s--;
+				t--;
+				int ps=color[s];
+				int pt=color[t];
+				if (ps==pt)
+					d1[ps]+=delta;
+				else
+				{
+					int pc=get_lca(ps,pt);
+					if (pc>=0)
+					{
+						for (int k=ps;k!=pc;k=prev[k]) d1[k]+=delta;
+						for (int k=pt;k!=pc;k=prev[k]) d1[k]+=delta;
+						d1[pc]+=delta;
+					}
+				}
+			}
+		}
+		printf("Case #%d: ",case_id);
+		printf("%d\n",(int)(ret%MOD));
+		fflush(stdout);
+	}
+	return 0;
+}
+

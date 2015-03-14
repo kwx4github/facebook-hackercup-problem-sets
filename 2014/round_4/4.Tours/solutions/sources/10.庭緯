@@ -1,0 +1,229 @@
+// by shik {{{
+#include <bits/stdc++.h>
+#include <unistd.h>
+#define SZ(x) ((int)(x).size())
+#define ALL(c) begin(c),end(c)
+#define REP(i,n) for ( int i=0; i<(int)(n); i++ )
+#define REP1(i,a,b) for ( int i=(int)(a); i<=(int)(b); i++ )
+#define FOR(i,c) for (auto i=(c).begin(); i!=(c).end(); i++)
+#define MP make_pair
+#define PB push_back
+using namespace std;
+typedef pair<int,int> PII;
+typedef vector<int> VI;
+
+void RI() {}
+
+template<typename... T>
+void RI( int& head, T&... tail ) {
+    scanf("%d",&head);
+    RI(tail...);
+}
+
+void WI( int x ) {
+    printf("%d\n",x);
+}
+
+template<typename... Args>
+void WI(int head, Args... tail) {
+    printf("%d ",head);
+    WI(tail...);
+}
+/// }}}
+
+#define N 100010
+#define M 1000010
+#define D 1000010
+#define MOD 1000000007
+
+struct BIT {
+    long dat[N];
+    void init() {
+        memset(dat,0,sizeof(dat));
+    }
+    void add( int x, int v ) {
+        for ( int i=x; i; i-=i&-i ) dat[i]+=v;
+    }
+    void add( int l, int r, int v ) {
+        if ( l>r ) puts("OAO");
+        add(r,v);
+        add(l-1,-v);
+    }
+    long ask( int x ) {
+        long s=0;
+        for ( int i=x; i<N; i+=i&-i ) s+=dat[i];
+        return s;
+    }
+} bit;
+
+struct DJS {
+    int fa[N];
+    void init( int n ) { REP1(i,1,n) fa[i]=i; }
+    int Find( int x ) { return x==fa[x]?x:fa[x]=Find(fa[x]); }
+    void Union( int a, int b ) { fa[Find(a)]=Find(b); }
+} conn,djs;
+
+struct Q {
+    char op;
+    int a,b,c;
+    void read() {
+        scanf(" %c",&op);
+        if ( op=='T' ) RI(a,b,c);
+        else if ( op=='S' ) RI(a);
+        else puts("QQ");
+    }
+} q[D];
+
+struct E {
+    int a,b;
+    void read() {
+        RI(a,b);
+    }
+} e[M];
+
+int n,m,d;
+
+void input() {
+    RI(n,m,d);
+    REP1(i,1,m) e[i].read();
+    REP1(i,1,d) q[i].read();
+}
+
+VI es[N];
+int low[N],dfn[N],ts;
+bool bri[M];
+
+void dfs( int p, int f ) {
+    dfn[p]=low[p]=++ts;
+    FOR(it,es[p]) {
+        int to=p^e[*it].a^e[*it].b;
+        if ( to==f ) continue;
+        if ( !dfn[to] ) {
+            dfs(to,p);
+            low[p]=min(low[p],low[to]);
+            if ( low[to]>dfn[p] ) bri[*it]=1;
+        } else {
+            low[p]=min(low[p],dfn[to]);
+        }
+    }
+}
+
+int gn,gid[N];
+VI ge[N];
+
+bool vis2[N];
+int fa[N],dep[N],sz[N];
+void dfs2( int p, int f ) {
+    vis2[p]=1;
+    fa[p]=f;
+    dep[p]=dep[f]+1;
+    sz[p]=1;
+    FOR(it,ge[p]) if ( *it!=f ) {
+        dfs2(*it,p);
+        sz[p]+=sz[*it];
+    }
+}
+
+bool vis3[N];
+int tid[N],ntid,root[N];
+void dfs3( int p, int f, int r ) {
+    vis3[p]=1;
+    tid[p]=++ntid;
+    root[p]=r;
+    int son=0;
+    FOR(it,ge[p]) if ( *it!=f && (son==0 || sz[*it]>sz[son])) son=*it;
+    if ( son ) dfs3(son,p,r);
+    FOR(it,ge[p]) if ( *it!=f && *it!=son ) dfs3(*it,p,*it);
+}
+
+void build() {
+    conn.init(n);
+    REP1(i,1,m) conn.Union(e[i].a,e[i].b);
+
+    REP1(i,1,n) es[i].clear();
+    REP1(i,1,m) {
+        es[e[i].a].PB(i);
+        es[e[i].b].PB(i);
+    }
+    ts=0;
+    memset(low,0,sizeof(low));
+    memset(dfn,0,sizeof(dfn));
+    memset(bri,0,sizeof(bri));
+    REP1(i,1,n) if ( !dfn[i] ) dfs(i,0);
+
+    djs.init(n);
+    REP1(i,1,m) if ( !bri[i] ) djs.Union(e[i].a,e[i].b);
+    gn=0;
+    memset(gid,0,sizeof(gid));
+    REP1(i,1,n) if ( djs.Find(i)==i ) gid[i]=++gn;
+    REP1(i,1,n) gid[i]=gid[djs.Find(i)];
+    
+    REP1(i,1,n) ge[i].clear();
+    REP1(i,1,m) if ( bri[i] ) {
+        int a=gid[e[i].a];
+        int b=gid[e[i].b];
+        ge[a].PB(b);
+        ge[b].PB(a);
+    }
+
+    memset(vis2,0,sizeof(vis2));
+    REP1(i,1,n) if ( !vis2[i] ) dfs2(i,0);
+
+    memset(vis3,0,sizeof(vis3));
+    ntid=0;
+    REP1(i,1,n) if ( !vis3[i] ) dfs3(i,0,i);
+}
+
+
+long got[N];
+
+void solve_t( int a, int b, int v ) {
+    if ( conn.Find(a)!=conn.Find(b) ) return;
+    a=gid[a];
+    b=gid[b];
+    while ( root[a]!=root[b] ) {
+        if ( dep[root[a]] < dep[root[b]] ) swap(a,b);
+        bit.add(tid[root[a]],tid[a],v);
+        a=fa[root[a]];
+    }
+    if ( dep[a]>dep[b] ) swap(a,b);
+    bit.add(tid[a],tid[b],v);
+}
+
+void solve_s( int p ) {
+    got[p]=bit.ask(tid[gid[p]]);
+}
+
+void solve() {
+    build();
+    memset(got,0,sizeof(got));
+    bit.init();
+    REP1(i,1,d) {
+        if ( q[i].op=='T' ) {
+            solve_t(q[i].a,q[i].b,q[i].c);
+        } else if ( q[i].op=='S' ) {
+            solve_s(q[i].a);
+        } else puts("QQ");
+    }
+    long ans=0;
+    REP1(i,1,n) ans+=got[i];
+    ans%=MOD;
+    printf("%ld\n",ans);
+}
+
+int main( int argc, char *argv[] ) {
+    int n_case;
+    RI(n_case);
+    //fprintf(stderr,"n_case = %d\n",n_case);
+    REP1(i,1,n_case) {
+        input();
+        if ( argc==2 && atoi(argv[1])!=i ) continue;
+        if ( argc==3 && (atoi(argv[1])<i || atoi(argv[2])>i) ) continue;
+        //fprintf(stderr,"Running #%d...\n",i);
+        printf("Case #%d: ",i);
+        solve();
+        fflush(stdout);
+    }
+    return 0;
+}
+

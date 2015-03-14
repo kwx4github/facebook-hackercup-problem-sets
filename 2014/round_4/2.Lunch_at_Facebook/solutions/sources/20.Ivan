@@ -1,0 +1,121 @@
+package contest;
+
+import java.util.*;
+import java.io.*;
+import java.math.*;
+
+public class LunchAtFacebook {
+    final static String PROBLEM_NAME = "lunch";
+    final static String WORK_DIR = "D:\\HackerCup\\" + PROBLEM_NAME + "\\";
+
+    static class Solver implements Runnable {
+        boolean finished;
+        int[] A, B;
+
+        public Solver(int[] A, int[] B) {
+            this.A = A;
+            this.B = B;
+        }
+
+        long ans = 0;
+
+        public void run() {
+            solve();
+        }
+
+        int[] sort(int[] A, int L, int R) {
+            if (L == R) return new int[] {A[L]};
+
+            int[] left = sort(A, L, (L+R)/2);
+            int[] right = sort(A, (L+R)/2+1, R);
+
+            int posL = 0, posR = 0;
+            int[] res = new int[left.length + right.length];
+            int pos = 0;
+            while (posL < left.length || posR < right.length) {
+                int atLeft = (posL < left.length ? left[posL] : Integer.MAX_VALUE);
+                int atRight = (posR < right.length ? right[posR] : Integer.MAX_VALUE);
+                if (atLeft < atRight) {
+                    res[pos++] = atLeft;
+                    ans += posR;
+                    posL++;
+                } else {
+                    res[pos++] = atRight;
+                    posR++;
+                }
+            }
+
+            return res;
+        }
+
+        void solve() {
+            int N = A.length;
+            int M = B.length;
+
+            List<List<Integer>> insert = new ArrayList<List<Integer>>();
+            for (int i=0; i<=N; i++) insert.add(new ArrayList<Integer>());
+
+            for (int elm : B) {
+                int best = 0;
+                int bestPos = 0;
+                int cur = 0;
+                for (int i=0; i<N; i++) {
+                    if (elm > A[i]) cur--; else cur++;
+                    if (cur < best) {
+                        best = cur;
+                        bestPos = i+1;
+                    }
+                }
+                insert.get(bestPos).add(elm);
+            }
+
+            int[] data = new int[N+M];
+            int pos = 0;
+            for (int i=0; i<=N; i++) {
+                Collections.sort(insert.get(i));
+                for (int elm : insert.get(i)) data[pos++] = elm;
+                if (i<N) data[pos++] = A[i];
+            }
+
+            ans = 0;
+            sort(data, 0, data.length - 1);
+
+            finished = true;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        long time = System.currentTimeMillis();
+        BufferedReader br = new BufferedReader(new FileReader(WORK_DIR + "input.txt"));
+        PrintWriter pw = new PrintWriter(new FileWriter(WORK_DIR + "output.txt"));
+        int caseCnt = Integer.parseInt(br.readLine());
+        Solver[] solvers = new Solver[caseCnt];
+        for (int caseNum=0; caseNum<caseCnt; caseNum++) {
+            StringTokenizer st = new StringTokenizer(br.readLine());
+            int N = Integer.parseInt(st.nextToken());
+            int M = Integer.parseInt(st.nextToken());
+            int[] A = new int[N];
+            int[] B = new int[M];
+            st = new StringTokenizer(br.readLine());
+            for (int i=0; i<N; i++) A[i] = Integer.parseInt(st.nextToken());
+            st = new StringTokenizer(br.readLine());
+            for (int i=0; i<M; i++) B[i] = Integer.parseInt(st.nextToken());
+            solvers[caseNum] = new Solver(A, B);
+            new Thread(solvers[caseNum]).start();
+        }
+
+        while (true) {
+            int cntFinished = 0;
+            for (int i=0; i<caseCnt; i++) if (solvers[i].finished) cntFinished++;
+            if (cntFinished == caseCnt) break;
+            System.out.println(cntFinished);
+            Thread.sleep(100);
+        }
+
+        for (int i=0; i<caseCnt; i++) pw.println("Case #" + (i+1) + ": " + solvers[i].ans);
+
+        pw.flush();
+        pw.close();
+        br.close();
+    }
+}

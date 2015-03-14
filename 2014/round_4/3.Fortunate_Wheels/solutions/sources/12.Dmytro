@@ -1,0 +1,229 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <cstdio>
+#include <algorithm>
+#include <string>
+#include <set>
+#include <map>
+#include <queue>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const int maxL = 110000;
+const long long inf = 1000000000000000000LL;
+int n, m, w, x, y, z;
+string s;
+int a[maxL], b[maxL];
+long long best[maxL];
+int p[maxL];
+
+bool comp(int x, int y) {
+	return s[x] < s[y];
+}
+
+int pn[maxL], cn[maxL];
+int c[maxL];
+int cnt[maxL];
+
+void build_suff_array() {
+	s += '$';
+
+	memset (cnt, 0, sizeof(cnt));
+	memset(pn, 0, sizeof(pn));
+	memset(p, 0, sizeof(p));
+	memset(cn, 0, sizeof(cn));
+
+	int n = s.size();
+	for (int i=0; i<n; ++i)
+		++cnt[s[i]];
+	for (int i=1; i<maxL; ++i)
+		cnt[i] += cnt[i-1];
+	for (int i=0; i<n; ++i)
+		p[--cnt[s[i]]] = i;
+	c[p[0]] = 0;
+	int classes = 1;
+	for (int i=1; i<n; ++i) {
+		if (s[p[i]] != s[p[i-1]])  ++classes;
+		c[p[i]] = classes-1;
+	}
+	for (int h=0; (1<<h)<n; ++h) {
+		for (int i=0; i<n; ++i) {
+			pn[i] = p[i] - (1<<h);
+			if (pn[i] < 0)  pn[i] += n;
+		}
+		memset (cnt, 0, sizeof(cnt));
+		for (int i=0; i<n; ++i)
+			++cnt[c[pn[i]]];
+		for (int i=1; i<classes; ++i)
+			cnt[i] += cnt[i-1];
+		for (int i=n-1; i>=0; --i)
+			p[--cnt[c[pn[i]]]] = pn[i];
+		cn[p[0]] = 0;
+		classes = 1;
+		for (int i=1; i<n; ++i) {
+			int mid1 = (p[i] + (1<<h)) % n,  mid2 = (p[i-1] + (1<<h)) % n;
+			if (c[p[i]] != c[p[i-1]] || c[mid1] != c[mid2])
+				++classes;
+			cn[p[i]] = classes-1;
+		}
+		for (int i = 0; i < maxL; ++i) {
+			c[i] = cn[i];
+		}
+	}
+}
+
+void sufarr_lcp(string s, int a[], int lcp[], int p[]) {
+	int n = s.size();
+	memset(lcp, 0, sizeof(lcp));
+	for (int i = 0; i < n; ++i)
+		p[a[i]] = i;
+    int r = 0;
+    for (int i = 0; i < n; ++i) {
+        int x = p[i];
+        if (x) {
+            int y = a[x-1];
+            while(i+r<n && y+r<n && s[i+r] == s[y+r]) ++r; 
+            lcp[x-1] = r; 
+        } else {
+            r = 0;
+		}
+        if(r > 0) --r; 
+	}
+} 
+
+int lcp[maxL];
+int used[maxL];
+
+void read_data(int test) {
+	scanf("%d%d%d%d%d%d", &n, &m, &w, &x, &y, &z);
+	cin >> s;
+	for (int i = 0; i < n; ++i) {
+		scanf("%d%d", &a[i], &b[i]);
+	}
+}
+
+void solve(int test) {
+	scanf("%d%d%d%d%d%d", &n, &m, &w, &x, &y, &z);
+	cin >> s;
+	for (int i = 0; i < n; ++i) {
+		scanf("%d%d", &a[i], &b[i]);
+	}
+	for (int i = 0; i < maxL; ++i) {
+		best[i] = inf;
+	}
+	for (int i = 0; i < n; ++i) {
+		best[b[i]] = min(best[b[i]], (long long)(a[i]));
+	}
+	for (int i = 0; i < maxL; ++i) {
+		if (best[i] == inf) {
+			continue;
+		}
+		for (int j = 0; j < n; ++j) {
+			if (i + b[j] < maxL) {
+				best[i + b[j]] = min(best[i + b[j]], best[i] + (long long)(a[j]) + (long long)(w));
+			}
+		}
+	}
+
+	int L = s.size();
+	build_suff_array();
+	sufarr_lcp(s, p, lcp, pn);
+
+	vector < double > scores;
+	for (int length = L - 1; length >= 1; --length) {
+		if (best[length] == inf) {
+			continue;
+		}
+		memset(used, 0, sizeof(used));
+		int current = 1;
+		for (int i = 2; i <= L + 1; ++i) {
+			if (i == L + 1 || lcp[i - 1] < length) {
+				++used[current];
+				current = 1;
+			} else {
+				++current;
+			}
+		}
+
+		used[0] = 20;
+		int need = 20;
+		double win = (double)(y) * (double)(L - abs(x - length)) * (double)(L - abs(x - length)) + (double)(z);
+		for (int i = L; i >= 0 && need > 0; --i) {
+			if (used[i] == 0) {
+				continue;
+			}
+			int current = min(used[i], need);
+			double A = (double)(i) * (double)(i - 1);
+			double B = (double)(L - length + 1) * (double)(L - length);
+
+			double score = A / B * win - (double)(best[length]);
+			for (int j = 0; j < current; ++j) {
+				scores.push_back(score);
+			}
+			need -= current;
+		}
+	}
+
+	sort(scores.rbegin(), scores.rend());
+	printf("Case #%d:", test);
+	for (int i = 0; i < m; ++i) {
+		printf(" %.3lf", scores[i]);
+	}
+	printf("\n");
+}
+
+void gen() {
+	int n = 20, m = 20, w = rand() % 10000, x = rand() % 10000, y = rand() % 100, z = rand() % 100;
+	printf("%d %d %d %d %d %d\n", n, m, w, x, y, z);
+	for (int i = 0; i < 100000; ++i) {
+		printf("%c", rand() % 10 + 'A');
+	}
+	printf("\n");
+	for (int i = 0; i < n; ++i) {
+		printf("%d %d\n", rand() % 10000 + 1, rand() % 2 + 1);
+	}
+}
+
+int main(int argc, char* argv[]) {
+	freopen("input.txt", "r", stdin);
+	//freopen("output.txt", "w", stdout);
+	freopen(argv[3], "w", stdout);
+
+	int left_bound, right_bound;
+	//left_bound = 1, right_bound = 5;
+	sscanf(argv[1], "%d", &left_bound);
+	sscanf(argv[2], "%d", &right_bound);
+
+
+	/*int t = 20;
+	printf("%d\n", t);
+	for (int i = 1; i <= t; ++i) {
+		gen();
+	}*/
+
+	int tests;
+	scanf("%d", &tests);
+	for (int i = 1; i <= tests; ++i) {
+		if (i >= left_bound && i <= right_bound) {
+			solve(i);
+			cerr << i << ": " << clock() << endl;
+		} else {
+			read_data(i);
+		}
+	}
+
+	//printf("%d%d\n", left_bound, right_bound);
+
+	/*int tests;
+	scanf("%d", &tests);
+	for (int i = 1; i <= tests; ++i) {
+		solve(i);
+		cerr << i << ": " << clock() << endl;
+	}*/
+	return 0;
+}

@@ -1,0 +1,152 @@
+//{{{
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
+#include <cstring>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+#include <cassert>
+#include <ctime>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+#define REP(i,n) for(int _n=n, i=0;i<_n;++i)
+#define FOR(i,a,b) for(int i=(a),_b=(b);i<=_b;++i)
+#define FORD(i,a,b) for(int i=(a),_b=(b);i>=_b;--i)
+#define TRACE(x) cerr << "TRACE(" #x ")" << endl;
+#define DEBUG(x) cerr << #x << " = " << (x) << endl;
+
+typedef long long LL;
+typedef unsigned long long ULL;
+const int INF = 1000000000; const LL INFLL = LL(INF) * LL(INF);
+template<class T> inline int size(const T&c) { return c.size(); }
+int rint() { int x; if(scanf("%d",&x)!=1) return -1; return x; }
+LL rLL() { LL x; if(scanf("%lld",&x)!=1) return -1; return x; }
+string rstring() { static char buf[100000]; if(scanf("%s",buf)!=1) return ""; return buf; }
+//}}}
+
+template<unsigned MOD>
+class Modulo {
+  unsigned v;
+ public:
+  Modulo() {}
+  Modulo(LL x):v(x%MOD) {}
+  Modulo(unsigned x):v(x%MOD) {}
+  Modulo(int x):v(x%MOD) {}
+  int get() const { return v; }
+  Modulo operator+(Modulo b) const { return Modulo(v+b.v); }
+  void operator+=(Modulo b) { *this = *this + b; }
+  Modulo operator-(Modulo b) const { return Modulo(v+MOD-b.v); }
+  void operator-=(Modulo b) { *this = *this - b; }
+  Modulo operator*(Modulo b) const { return Modulo(unsigned(ULL(v) * ULL(b.v) % MOD)); }
+  void operator*=(Modulo b) { *this = *this * b; }
+  Modulo operator/(Modulo b) const { return *this * b.inverse(); }
+  void operator/=(Modulo b) { *this = *this / b; }
+  Modulo inverse() const { return mypower(*this, MOD-2); }
+};
+
+typedef Modulo<1000000007> Mod;
+
+struct Entry {
+  Mod total;
+  int sz;
+  int left;
+  int right;
+  int leftEq;
+  int rightEq;
+};
+
+vector<Entry> entries;
+vector<int> val;
+
+int N;
+
+inline Mod Func(int n) {
+  return Mod(LL(n)*LL(n+1)/2);
+}
+
+Entry combine(const Entry &a, const Entry &b) {
+  Entry e;
+  e.total = a.total + b.total;
+  e.sz = a.sz + b.sz;
+  e.left = a.left;
+  e.right = b.right;
+  e.leftEq = a.leftEq;
+  e.rightEq = b.rightEq;
+  if(a.right == b.left) {
+    e.total -= Func(a.rightEq) + Func(b.leftEq);
+    e.total += Func(a.rightEq + b.leftEq);
+    if(a.leftEq == a.sz) e.leftEq += b.leftEq;
+    if(b.rightEq == b.sz) e.rightEq += a.rightEq;
+  }
+  return e;
+}
+
+void Init() {
+  int n = rint();
+  N=1;
+  while(N<=n) N*=2;
+  val.assign(N,0);
+  entries.assign(2*N, Entry{0,0,0,0,0,0});
+  REP(i,n) val[i] = rint() - i;
+  REP(i,N) entries[N+i] = Entry{1,1,val[i],val[i],1,1};
+  FORD(i,N-1,1) entries[i] = combine(entries[2*i], entries[2*i+1]);
+}
+
+void setValue(int p, int v) {
+  assert(p>=0 && p<N);
+  val[p] = v;
+  p+=N;
+  entries[p] = Entry{1,1,v,v,1,1};
+  p>>=1;
+  while(p>0) {
+    entries[p] = combine(entries[2*p], entries[2*p+1]);
+    p>>=1;
+  }
+}
+
+Entry CombineAll(int p, int sz, int L, int R) {
+  if(L==0 && R==sz) return entries[p];
+  sz>>=1;
+  if(R<=sz) return CombineAll(2*p, sz, L,R);
+  if(L>=sz) return CombineAll(2*p+1,sz,L-sz,R-sz);
+  else return combine(
+      CombineAll(2*p, sz, L, sz),
+      CombineAll(2*p+1, sz, 0, R-sz)
+      );
+}
+
+Mod Calc(int L, int R) {
+  return CombineAll(1,N,L,R).total;
+}
+
+int main(int argc, char **argv) {
+  int ntc = rint();
+  FOR(tc,1,ntc) {
+    Init();
+    Mod res = 0;
+    int nq = rint();
+    REP(q,nq) {
+      int op = rint();
+      if(op==0) {
+        int p = rint();
+        int k = rint();
+        setValue(p,k-p);
+      } else {
+        assert(op==1);
+        int L = rint();
+        int R = rint()+1;
+        res += Calc(L,R);
+      }
+    }
+    cout << "Case #" << tc << ": " << res.get() << endl;
+  }
+}
+

@@ -1,0 +1,160 @@
+#include <cstdio>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <string>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <cassert>
+#include <sstream>
+#include <iomanip>
+using namespace std;
+#define FI first
+#define SE second
+#define X first
+#define Y second
+#define ST first
+#define ND second
+#define MP make_pair
+#define PB push_back
+typedef long long LL;
+typedef vector<int> VI;
+typedef long double LD;
+typedef double D;
+typedef pair<int,int> PII;
+#define REP(i,n) for(int i=0;i<(n);++i)
+#define FOR(i,a,b) for(int i=(a);i<=(b);++i)
+#define FORD(i,a,b) for(int i=(a);i>=(b);--i)
+#define FORE(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define FOREACH(a,b) for(VAR(a,(b).begin());a!=(b).end();++a)
+#define VAR(a,b) __typeof(b) a=(b)
+#define SIZE(a) ((int)(a).size())
+#define ALL(x) (x).begin(),(x).end()
+#define CLR(x,a) memset(x,a,sizeof(x))
+
+const int MD = (int) 1e9 + 7;
+
+LL val(int x) {
+	return (x * (LL) (x + 1)) / 2;
+}
+
+const int N = (1 << 21) + 5;
+
+void ad(int& x, LL y) {
+	x = (x + y) % MD;
+}
+
+struct Score {
+	int total, le, ri, vle, vri, size;
+};
+
+Score join(const Score& a, const Score& b) {
+	Score result;
+	result.total = (a.total + b.total) % MD;
+	result.le = a.le;
+	result.ri = b.ri;
+	result.vle = a.vle;
+	result.vri = b.vri;
+	result.size = a.size + b.size;
+	if (a.vri + 1 == b.vle) {
+		ad(result.total, LL(MD) - val(a.ri) + LL(MD) - val(b.le));
+		ad(result.total, val(a.ri + b.le));
+		if (a.le == a.size) {
+			result.le += b.le;
+		}
+		if (b.ri == b.size) {
+			result.ri += a.ri;
+		}
+	}
+	return result;
+}
+
+Score score[N];
+
+int input[N];
+
+inline int ls(int x) { return x << 1; }
+inline int rs(int x) { return (x << 1) + 1; }
+
+int n;
+int offset;
+
+void change(int x, int l, int r, int c, int nv) {
+	if (l == r) {
+		assert(x == offset + c);
+		score[x].vle = score[x].vri = nv;
+		return;
+	}
+	int m = (l + r) / 2;
+	if (c <= m) {
+		change(ls(x), l, m, c, nv);
+	} else {
+		change(rs(x), m + 1, r, c, nv);
+	}
+	score[x] = join(score[ls(x)], score[rs(x)]);
+}
+
+Score get(int x, int l, int r, int cl, int cr) {
+	if (l == cl && r == cr) {
+		return score[x];
+	}
+	int m = (l + r) / 2;
+	if (cr <= m) {
+		return get(ls(x), l, m, cl, cr);
+	}
+	if (cl > m) {
+		return get(rs(x), m + 1, r, cl, cr);
+	}
+	return join(get(ls(x), l, m, cl, m), get(rs(x), m + 1, r, m + 1, cr));
+}
+
+void alg() {
+	cin >> n;
+	for (int i = 1; i <= n; ++i) {
+		cin >> input[i];
+	}
+	int z = 1;
+	while (z <= n) {
+		z *= 2;
+	}
+	offset = z - 1;
+	for (int i = 1; i <= z; ++i) {
+		score[offset + i].vle = score[offset + i].vri = 0;
+		score[offset + i].total = 1;
+		score[offset + i].size = 1;
+		score[offset + i].le = score[offset + i].ri = 1;
+	}
+	for (int i = z - 1; i >= 1; --i) {
+		score[i] = join(score[ls(i)], score[rs(i)]);
+	}
+	for (int i = 1; i <= n; ++i) {
+		change(1, 1, z, i, input[i]);
+	}
+	int m;
+	cin >> m;
+	int result = 0;
+	for (int i = 1; i <= m; ++i) {
+		int q, a, b;
+		cin >> q >> a >> b;
+		if (q == 0) {
+			change(1, 1, z, a + 1, b);
+		} else {
+			ad(result, get(1, 1, z, a + 1, b + 1).total);
+		}
+	}
+	static int case_no = 0;
+	++case_no;
+	cout << "Case #" << case_no << ": " << result << endl;
+}
+
+int main() {
+	ios_base::sync_with_stdio(false);
+	int d;
+	cin >> d;
+	while (d--) {
+		alg();
+	}
+}

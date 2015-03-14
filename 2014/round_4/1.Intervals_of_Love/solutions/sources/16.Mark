@@ -1,0 +1,135 @@
+#include <iostream>
+#include <vector>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <numeric>
+#include <queue>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+using namespace std;
+
+#define MOD 1000000007
+#define MAXN (1 << 20)
+
+struct val {
+  val() : rval(0), lval(0), rlen(0), llen(0), same(true), sm(0) {
+  }
+
+  int rval, lval;  
+  int rlen, llen;
+  bool same;
+  long long sm;
+};
+
+val Z[MAXN * 2];
+
+long long ss(long long n) {
+  return (n * (n + 1) / 2) % MOD;
+}
+
+val comb(val x, val y) {
+  if(x.rlen == 0) return y;
+  if(y.rlen == 0) return x;
+
+  val ret;
+  ret.lval = x.lval;
+  ret.llen = x.llen;
+  ret.rval = y.rval;
+  ret.rlen = y.rlen;
+  ret.same = false;
+  ret.sm = x.sm + y.sm;
+
+  if(x.same && y.same) {
+    if(x.lval == y.lval) {
+      ret.rlen = ret.llen = x.rlen + y.rlen;
+      ret.same = true;
+    }
+    return ret;
+  }
+
+  if(x.same) {
+    if(x.rval == y.lval) {
+      ret.llen += y.llen;
+    } else {
+      ret.sm += ss(y.llen);
+    }
+  } else if(y.same) {
+    if(x.rval == y.lval) {
+      ret.rlen += x.rlen;
+    } else {
+      ret.sm += ss(x.rlen);
+    }
+  } else if(x.rval == y.lval) {
+    ret.sm += ss(x.rlen + y.llen);
+  } else {
+    ret.sm += ss(x.rlen) + ss(y.llen);
+  }
+  ret.sm %= MOD;
+  return ret;
+}
+
+void adjust(int x, int A, int B, int id, int v) {
+  if(A + 1 == B) {
+    Z[x].rval = Z[x].lval = v;
+    Z[x].rlen = Z[x].llen = 1;
+    Z[x].same = true;
+    Z[x].sm = 0;
+    return;
+  }
+
+  int M = (A + B) / 2;
+  int c0 = 2 * x;
+  int c1 = c0 + 1;
+  if(id < M) {
+    adjust(c0, A, M, id, v);
+  } else {
+    adjust(c1, M, B, id, v);
+  }
+  Z[x] = comb(Z[c0], Z[c1]);
+}
+
+val query(int x, int A, int B, int a, int b) {
+  if(b <= A) return val();
+  if(B <= a) return val();
+  if(a <= A && B <= b) return Z[x];
+  
+  int c0 = 2 * x;
+  int c1 = c0 + 1;
+  int M = (A + B) / 2;
+  return comb(query(c0, A, M, a, b), query(c1, M, B, a, b));
+}
+
+int main() {
+  int T; cin >> T;
+  for(int t = 1; t <= T; t++) {
+    int N; cin >> N;
+    for(int i = 0; i < N; i++) {
+      int v; cin >> v;
+      adjust(1, 0, MAXN, i, v - i);
+    }
+
+    int M; cin >> M;
+    long long result = 0;
+    for(int i = 0; i < M; i++) {
+      int a, b, c;
+      cin >> a >> b >> c;
+      if(a == 0) {
+        adjust(1, 0, MAXN, b, c - b);
+      } else {
+        val v = query(1, 0, MAXN, b, c + 1);
+        if(v.same) {
+          result += ss(c - b + 1);
+        } else {
+          result += ss(v.llen) + ss(v.rlen) + v.sm;
+        }
+        result %= MOD;
+      }
+    }
+    cout << "Case #" << t << ": " << result << endl;
+  }
+  return 0;
+}

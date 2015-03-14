@@ -1,0 +1,211 @@
+//{{{
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
+#include <cstring>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+#include <cassert>
+#include <ctime>
+#include <queue>
+#include <map>
+#include <set>
+#include <sys/time.h>
+#include <sys/resource.h>
+using namespace std;
+#define REP(i,n) for(int _n=n, i=0;i<_n;++i)
+#define FOR(i,a,b) for(int i=(a),_b=(b);i<=_b;++i)
+#define FORD(i,a,b) for(int i=(a),_b=(b);i>=_b;--i)
+#define TRACE(x) cerr << "TRACE(" #x ")" << endl;
+#define DEBUG(x) cerr << #x << " = " << (x) << endl;
+
+typedef long long LL;
+typedef unsigned long long ULL;
+const int INF = 1000000000; const LL INFLL = LL(INF) * LL(INF);
+template<class T> inline int size(const T&c) { return c.size(); }
+int rint() { int x; if(scanf("%d",&x)!=1) return -1; return x; }
+LL rLL() { LL x; if(scanf("%lld",&x)!=1) return -1; return x; }
+string rstring() { static char buf[100000]; if(scanf("%s",buf)!=1) return ""; return buf; }
+//}}}
+
+int V;
+vector<vector<int>> edges;
+vector<vector<int>> queries;
+vector<int> depth;
+vector<int> lowlink;
+vector<int> bigcomponent;
+vector<int> component;
+
+int NBIG;
+int VT;
+vector<vector<int>> tedges;
+vector<int> tparent;
+vector<int> tdepth;
+
+void ReadInput() {
+  int M,nq;
+  cin >> V >> M >> nq;
+  edges.clear(); queries.clear();
+  edges.resize(V);
+  REP(i,M) {
+    int a = rint()-1;
+    int b = rint()-1;
+    edges[a].push_back(b);
+    edges[b].push_back(a);
+  }
+  string s;
+  queries.reserve(nq);
+  REP(i,nq) {
+    cin >> s;
+    int cnt = s[0]=='T' ? 3 : 1;
+    vector<int> v;
+    REP(j,cnt) v.push_back(rint());
+    queries.push_back(v);
+  }
+}
+
+vector<int> thestack;
+
+void Go(int x,int par) {
+  bigcomponent[x] = NBIG-1;
+  lowlink[x] = depth[x];
+  thestack.push_back(x);
+  for(int y : edges[x]) if(y!=par) {
+    if(depth[y]==-1) {
+      depth[y] = depth[x]+1;
+      Go(y,x);
+      lowlink[x] = min(lowlink[x], lowlink[y]);
+      if(lowlink[y]>=depth[y]) {
+        ++VT;
+        for(;;) {
+          int z = thestack.back(); thestack.pop_back();
+          component[z] = VT-1;
+          if(z==y) break;
+        }
+      }
+    } else {
+      lowlink[x] = min(lowlink[x], depth[y]);
+    }
+  }
+}
+
+void CalcComponents() {
+  depth.assign(V,-1);
+  lowlink.assign(V,-1);
+  bigcomponent.assign(V,-1);
+  component.assign(V,-1);
+  NBIG=0;
+  VT = 0;
+  REP(x,V) if(depth[x]==-1) {
+    ++NBIG;
+    depth[x]=0;
+    Go(x,-1);
+    assert(!thestack.empty());
+    ++VT;
+    for(int a : thestack) {
+      component[a] = VT-1;
+    }
+    thestack.clear();
+  }
+}
+
+void TDFS(int x) {
+  for(int y : tedges[x]) if (y!=tparent[x]) {
+    tdepth[y]=tdepth[x]+1;
+    tparent[y] = x;
+    TDFS(y);
+  }
+}
+
+void CalcTree() {
+  tedges.clear();
+  tedges.resize(VT);
+  REP(x,V) for(int y : edges[x]) {
+    if(component[x] != component[y] && x < y) {
+      int cx = component[x];
+      int cy = component[y];
+      tedges[cx].push_back(cy);
+      tedges[cy].push_back(cx);
+    }
+  }
+  tdepth.assign(VT,-1);
+  tparent.assign(VT,-1);
+  REP(x,VT) if(tdepth[x]==-1) {
+    tdepth[x] = 0;
+    TDFS(x);
+  }
+}
+
+vector<int> leftComponent;
+vector<int> leftIndividual;
+
+void Init() {
+  leftComponent.assign(VT, 0);
+  leftIndividual.assign(V, 0);
+}
+
+void Tour(int a, int b, int o) {
+  if(bigcomponent[a] != bigcomponent[b]) return;
+  a = component[a];
+  b = component[b];
+  if(tdepth[a] < tdepth[b]) swap(a,b);
+  while(tdepth[a] > tdepth[b]) {
+    leftComponent[a] += o;
+    a = tparent[a];
+  }
+  while(a != b) {
+    leftComponent[a] += o;
+    leftComponent[b] += o;
+    a = tparent[a];
+    b = tparent[b];
+  }
+  leftComponent[a] += o;
+}
+
+int Sweep(int x) {
+  int c = component[x];
+  int d = leftComponent[c] + leftIndividual[x];
+  leftIndividual[x] -= d;
+  return d;
+}
+
+LL Calc() {
+  CalcComponents();
+  CalcTree();
+  Init();
+  LL res = 0;
+  for(vector<int> q : queries) {
+    if(size(q)==3) {
+      --q[0];
+      --q[1];
+      Tour(q[0],q[1],q[2]);
+    } else {
+      assert(size(q)==1);
+      int r = Sweep(q[0]-1);
+      res += r;
+    }
+  }
+  return res;
+}
+
+int main(int argc, char **argv) {
+  rlimit rlim;
+  getrlimit(RLIMIT_STACK, &rlim);
+  rlim.rlim_cur = rlim.rlim_max;
+  setrlimit(RLIMIT_STACK, &rlim);
+
+  int ntc = rint();
+  FOR(tc,1,ntc) {
+    ReadInput();
+    if(argc==2 && tc!=atoi(argv[1])) continue;
+    LL res = Calc();
+    cout << "Case #" << tc << ": " << res % (INF+7) << endl;
+  }
+}
+

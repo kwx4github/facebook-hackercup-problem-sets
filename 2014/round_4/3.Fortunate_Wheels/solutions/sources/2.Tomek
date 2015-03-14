@@ -1,0 +1,159 @@
+//{{{
+#include <algorithm>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
+#include <cstring>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+#include <cassert>
+#include <ctime>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+#define REP(i,n) for(int _n=n, i=0;i<_n;++i)
+#define FOR(i,a,b) for(int i=(a),_b=(b);i<=_b;++i)
+#define FORD(i,a,b) for(int i=(a),_b=(b);i>=_b;--i)
+#define TRACE(x) cerr << "TRACE(" #x ")" << endl;
+#define DEBUG(x) cerr << #x << " = " << (x) << endl;
+
+typedef long long LL;
+typedef unsigned long long ULL;
+const int INF = 1000000000; const LL INFLL = LL(INF) * LL(INF);
+template<class T> inline int size(const T&c) { return c.size(); }
+int rint() { int x; if(scanf("%d",&x)!=1) return -1; return x; }
+LL rLL() { LL x; if(scanf("%lld",&x)!=1) return -1; return x; }
+string rstring() { static char buf[100000]; if(scanf("%s",buf)!=1) return ""; return buf; }
+//}}}
+
+typedef long double ld;
+
+struct BasicDeal {
+  int cost;
+  int len;
+};
+
+int M,W,X,Y,Z;
+string text;
+int LEN;
+vector<BasicDeal> basicDeals;
+const int ALPHA = 26;
+
+void ReadInput() {
+  int N;
+  cin >> N >> M >> W >> X >> Y >> Z >> text;
+  LEN = size(text);
+  basicDeals.clear();
+  REP(i,N) {
+    BasicDeal bd;
+    cin >> bd.cost >> bd.len;
+    basicDeals.push_back(bd);
+  }
+}
+
+struct Word {
+  int code;
+  int pos;
+};
+
+vector<Word> words;
+vector<int> cost;
+
+void CalcCost() {
+  cost.assign(LEN,INF);
+  cost[0] = -W;
+  FOR(len,1,LEN) for(const BasicDeal &bd : basicDeals) {
+    if(bd.len <= len) cost[len] = min(cost[len], cost[len-bd.len] + bd.cost + W);
+  }
+}
+
+void UpdateWords(int len) {
+  static vector<int> cnt;
+  static vector<Word> words2;
+  cnt.assign(ALPHA, 0);
+  for(const Word &w : words) if(w.pos + len-1 < LEN) {
+    int c = text[w.pos+len-1]-'A';
+    ++cnt[c];
+  }
+  FOR(c,1,ALPHA-1) cnt[c] += cnt[c-1];
+  words2.resize(cnt[ALPHA-1]);
+  for(const Word &w : words) if(w.pos + len-1 < LEN) {
+    int c = text[w.pos+len-1]-'A';
+    Word w2 = w;
+    w2.code = w.code * ALPHA + c;
+    words2[--cnt[c]] = w2;
+  }
+  words.swap(words2);
+  int curCode = -1;
+  int lastCode = -1;
+  for(Word &w : words) {
+    if(w.code == lastCode) w.code = curCode;
+    else {
+      lastCode = w.code;
+      ++curCode;
+      w.code = curCode;
+    }
+  }
+}
+
+template<class T>
+void Reduce(vector<T> &v) {
+  sort(v.begin(), v.end(), greater<T>());
+  if(size(v)>M) v.resize(M);
+}
+
+vector<int> CalcBestWords() {
+  vector<int> res(M,0);
+  int p = 0;
+  while(p<size(words)) {
+    int q = p+1;
+    while(q < size(words) && words[p].code == words[q].code) ++q;
+    res.push_back(q-p);
+    p = q;
+    if(size(res)>=3*M) Reduce(res);
+  }
+  Reduce(res);
+  return res;
+}
+
+vector<ld> Calc() {
+  CalcCost();
+
+  words.resize(LEN);
+  REP(i,LEN) words[i] = Word{0,i};
+
+  vector<ld> res;
+  FOR(len,1,LEN-1) {
+    UpdateWords(len);
+    if (cost[len] < INF) {
+      vector<int> v = CalcBestWords();
+      ld a = (LEN - abs(X-len));
+      ld val = a*a*Y + Z;
+      for(int x : v) {
+        ld p = ld(x)*ld(x-1) / (ld(LEN-len+1)*ld(LEN-len));
+        res.push_back(p*val - cost[len]);
+      }
+      Reduce(res);
+    }
+  }
+  return res;
+}
+
+int main(int argc, char **argv) {
+  int ntc = rint();
+  FOR(tc,1,ntc) {
+    ReadInput();
+    if(argc==2 && tc!=atoi(argv[1])) continue;
+    vector<ld> res = Calc();
+    printf("Case #%d:", tc);
+    for(ld x : res) printf(" %.3Lf", x);
+    printf("\n");
+  }
+}
+

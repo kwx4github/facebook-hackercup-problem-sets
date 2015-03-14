@@ -1,0 +1,151 @@
+// by shik {{{
+#include <bits/stdc++.h>
+#include <unistd.h>
+#define SZ(x) ((int)(x).size())
+#define ALL(c) begin(c),end(c)
+#define REP(i,n) for ( int i=0; i<(int)(n); i++ )
+#define REP1(i,a,b) for ( int i=(int)(a); i<=(int)(b); i++ )
+#define MP make_pair
+#define PB push_back
+using namespace std;
+typedef pair<int,int> PII;
+typedef vector<int> VI;
+
+void RI() {}
+
+template<typename... T>
+void RI( int& head, T&... tail ) {
+    scanf("%d",&head);
+    RI(tail...);
+}
+
+void WI( int x ) {
+    printf("%d\n",x);
+}
+
+template<typename... Args>
+void WI(int head, Args... tail) {
+    printf("%d ",head);
+    WI(tail...);
+}
+/// }}}
+
+#define N 1000010
+#define MOD 1000000007
+
+inline long calc( long x ) { return x*(x+1)/2; }
+int a[N];
+
+struct Node {
+    int l,r,lv,rv;
+    long s;
+    bool full() const { return lv==r-l+1; }
+    int shik() {
+        if ( full() ) return calc(lv)%MOD;
+        else return (s+calc(lv)+calc(rv))%MOD;
+    }
+    Node() {}
+    Node( int _l, int _r, int _lv, int _rv, long _s ):l(_l),r(_r),lv(_lv),rv(_rv),s(_s) {}
+    Node( const Node &lc, const Node &rc ):l(lc.l),r(rc.r),lv(lc.lv),rv(rc.rv),s(lc.s+rc.s) {
+        bool fl=lc.full();
+        bool fr=rc.full();
+        if ( a[lc.r]+1!=a[rc.l] ) {
+            if ( !fl ) s+=calc(lc.rv);
+            if ( !fr ) s+=calc(rc.lv);
+            return;
+        }
+        if ( fl && fr ) lv=rv=r-l+1;
+        else if ( fl ) lv=lc.lv+rc.lv;
+        else if ( fr ) rv=lc.rv+rc.rv;
+        else s+=calc(lc.rv+rc.lv);
+    }
+} node[4*N];
+
+struct Seg {
+#define lid (2*id)
+#define rid (2*id+1)
+    void init( int id, int l, int r ) {
+        if ( l==r ) {
+            node[id]=Node(l,r,1,1,0);
+            return;
+        }
+        int m=(l+r)/2;
+        init(lid,l,m);
+        init(rid,m+1,r);
+        node[id]=Node(node[lid],node[rid]);
+    }
+    Node ask( int id, int l, int r, int ql, int qr ) {
+        if ( ql<=l && r<=qr ) return node[id];
+        int m=(l+r)/2;
+        if ( qr<=m ) return ask(lid,l,m,ql,qr);
+        else if ( m+1<=ql ) return ask(rid,m+1,r,ql,qr);
+        else {
+            Node lc=ask(lid,l,m,ql,qr);
+            Node rc=ask(rid,m+1,r,ql,qr);
+            return Node(lc,rc);
+        }
+    }
+    void chg( int id, int l, int r, int p, int k ) {
+        //printf("chg %d,%d,%d,%d,%d\n",id,l,r,p,k);
+        if ( l==r ) {
+            a[p]=k;
+            return;
+        }
+        int m=(l+r)/2;
+        if ( p<=m ) chg(lid,l,m,p,k);
+        else chg(rid,m+1,r,p,k);
+        node[id]=Node(node[lid],node[rid]);
+    }
+} seg;
+
+int n,m;
+struct Q {
+    int op,x,y;
+    void read() {
+        RI(op,x,y);
+        if ( op==0 ) x++; // p k
+        else if ( op==1 ) x++,y++; // l r
+        else puts("QQ");
+    }
+} q[N];
+void input() {
+    RI(n);
+    REP1(i,1,n) RI(a[i]);
+    RI(m);
+    REP1(i,1,m) q[i].read();
+}
+
+void solve() {
+    long ans=0;
+    seg.init(1,1,n);
+    REP1(i,1,m) {
+        if ( q[i].op==0 ) {
+            seg.chg(1,1,n,q[i].x,q[i].y);
+        } else if ( q[i].op==1 ) {
+            Node ret=seg.ask(1,1,n,q[i].x,q[i].y);
+            int now=ret.shik();
+            //printf("now = %d(%d, %d, %ld)\n",now,ret.lv,ret.rv,ret.s);;
+            ans+=now;
+        } else puts("QQ");
+    }
+    ans%=MOD;
+    printf("%ld\n",ans);
+}
+
+int main( int argc, char *argv[] ) {
+    int n_case;
+    RI(n_case);
+    //fprintf(stderr,"n_case = %d\n",n_case);
+    REP1(i,1,n_case) {
+        input();
+        if ( argc==2 && atoi(argv[1])!=i ) continue;
+        if ( argc==3 && (atoi(argv[1])<i || atoi(argv[2])>i) ) continue;
+        //fprintf(stderr,"Running #%d...\n",i);
+        printf("Case #%d: ",i);
+        solve();
+        fflush(stdout);
+    }
+    return 0;
+}
+
+

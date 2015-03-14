@@ -1,0 +1,245 @@
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.InputMismatchException;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.Reader;
+import java.io.Writer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Niyaz Nigmatullin
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		FastScanner in = new FastScanner(inputStream);
+		FastPrinter out = new FastPrinter(outputStream);
+		IntervalsOfLove solver = new IntervalsOfLove();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class IntervalsOfLove {
+
+    static final int INF = 1 << 30;
+
+    static class Tree {
+        int[] last;
+        int[] first;
+        int[] countSuffixes;
+        int[] countPrefixes;
+        long[] countAll;
+        boolean[] isGood;
+        int n;
+
+        Tree(int n) {
+            this.n = Integer.highestOneBit(n) << 1;
+            last = new int[this.n * 2];
+            first = new int[this.n * 2];
+            countPrefixes = new int[this.n * 2];
+            countSuffixes = new int[this.n * 2];
+            countAll = new long[this.n * 2];
+            isGood = new boolean[this.n * 2];
+        }
+
+        void set(int x, int y) {
+            x += n;
+            first[x] = y;
+            last[x] = y;
+            countSuffixes[x] = 1;
+            countPrefixes[x] = 1;
+            countAll[x] = 1;
+            isGood[x] = true;
+            while (x > 1) {
+                x >>= 1;
+                first[x] = first[x * 2];
+                last[x] = last[x * 2 + 1];
+                countSuffixes[x] = countSuffixes[x * 2 + 1] + (isGood[x * 2 + 1] && last[x * 2] + 1 == first[x * 2 + 1] ? countSuffixes[x * 2] : 0);
+                countPrefixes[x] = countPrefixes[x * 2] + (isGood[x * 2] && last[x * 2] + 1 == first[x * 2 + 1] ? countPrefixes[x * 2 + 1] : 0);
+                countAll[x] = countAll[x * 2] + countAll[x * 2 + 1] + (last[x * 2] + 1 == first[x * 2 + 1] ? (long) countPrefixes[x * 2 + 1] * countSuffixes[x * 2] : 0);
+                isGood[x] = isGood[x * 2] && isGood[x * 2 + 1] && last[x * 2] + 1 == first[x * 2 + 1];
+            }
+        }
+
+        long getAll(int l, int r) {
+            l += n;
+            r += n;
+            int firstL = -INF;
+            int lastL = -INF;
+            int countSufL = 0;
+            int countPrefL = 0;
+            long countAllL = 0;
+            boolean isGoodL = true;
+            int firstR = -INF;
+            int lastR = -INF;
+            int countSufR = 0;
+            int countPrefR = 0;
+            long countAllR = 0;
+            boolean isGoodR = true;
+            while (l <= r) {
+                if ((l & 1) == 1) {
+                    if (lastL == -INF) {
+                        countSufL = countSuffixes[l];
+                        countPrefL = countPrefixes[l];
+                        countAllL = countAll[l];
+                        isGoodL = isGood[l];
+                        firstL = first[l];
+                        lastL = last[l];
+                    } else {
+                        countAllL = countAllL + countAll[l] + (lastL + 1 == first[l] ? (long) countPrefixes[l] * countSufL : 0);
+                        countSufL = countSuffixes[l] + (isGood[l] && lastL + 1 == first[l] ? countSufL : 0);
+                        countPrefL = countPrefL + (isGoodL && lastL + 1 == first[l] ? countPrefixes[l] : 0);
+                        isGoodL = isGoodL && isGood[l] && lastL + 1 == first[l];
+                        lastL = last[l];
+                    }
+//                    System.out.println("left " + first[l] + " " + last[l] + " " + countSuffixes[l] + " " + countPrefixes[l] + " " + countAll[l] + " " + isGood[l]);
+                    ++l;
+                }
+                if ((r & 1) == 0) {
+                    if (firstR == -INF) {
+                        firstR = first[r];
+                        lastR = last[r];
+                        countSufR = countSuffixes[r];
+                        countPrefR = countPrefixes[r];
+                        countAllR = countAll[r];
+                        isGoodR = isGood[r];
+                    } else {
+                        countAllR = countAllR + countAll[r] + (last[r] + 1 == firstR ? (long) countPrefR * countSuffixes[r] : 0);
+                        countSufR = countSufR + (isGoodR && last[r] + 1 == firstR ? countSuffixes[r] : 0);
+                        countPrefR = countPrefixes[r] + (isGood[r] && last[r] + 1 == firstR ? countPrefR : 0);
+                        isGoodR = isGoodR && isGood[r] && last[r] + 1 == firstR;
+                        firstR = first[r];
+                    }
+//                    System.out.println("right  " + first[r] + " " + last[r] + " " + countSuffixes[r] + " " + countPrefixes[r] + " " + countAll[r] + " " + isGood[r]);
+                    --r;
+                }
+                l >>= 1;
+                r >>= 1;
+            }
+//            System.out.println(countAllL + " " + countAllR + " " + countSufL + " " + countPrefR);
+            return countAllL + countAllR + (lastL + 1 == firstR ? (long) countSufL * countPrefR : 0);
+        }
+
+    }
+
+    public void solve(int testNumber, FastScanner in, FastPrinter out) {
+        out.print("Case #" + testNumber + ": ");
+        System.err.println("[" + testNumber + "]");
+        int n = in.nextInt();
+        Tree tree = new Tree(n);
+//        StupidTree tree = new StupidTree(n);
+        for (int i = 0; i < n; i++) {
+            tree.set(i, in.nextInt());
+        }
+        long ans = 0;
+        int m = in.nextInt();
+        for (int i = 0; i < m; i++) {
+            int type = in.nextInt();
+            if (type == 0) {
+                int x = in.nextInt();
+                int y = in.nextInt();
+                tree.set(x, y);
+            } else {
+                int l = in.nextInt();
+                int r = in.nextInt();
+                ans += (tree.getAll(l, r));
+            }
+        }
+        out.println(ans);
+    }
+}
+
+class FastScanner extends BufferedReader {
+
+    public FastScanner(InputStream is) {
+        super(new InputStreamReader(is));
+    }
+
+    public int read() {
+        try {
+            int ret = super.read();
+//            if (isEOF && ret < 0) {
+//                throw new InputMismatchException();
+//            }
+//            isEOF = ret == -1;
+            return ret;
+        } catch (IOException e) {
+            throw new InputMismatchException();
+        }
+    }
+
+    public String next() {
+        StringBuilder sb = new StringBuilder();
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        if (c < 0) {
+            return null;
+        }
+        while (c >= 0 && !isWhiteSpace(c)) {
+            sb.appendCodePoint(c);
+            c = read();
+        }
+        return sb.toString();
+    }
+
+    static boolean isWhiteSpace(int c) {
+        return c >= 0 && c <= 32;
+    }
+
+    public int nextInt() {
+        int c = read();
+        while (isWhiteSpace(c)) {
+            c = read();
+        }
+        int sgn = 1;
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        }
+        int ret = 0;
+        while (c >= 0 && !isWhiteSpace(c)) {
+            if (c < '0' || c > '9') {
+                throw new NumberFormatException("digit expected " + (char) c
+                        + " found");
+            }
+            ret = ret * 10 + c - '0';
+            c = read();
+        }
+        return ret * sgn;
+    }
+
+    public String readLine() {
+        try {
+            return super.readLine();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    }
+
+class FastPrinter extends PrintWriter {
+
+    public FastPrinter(OutputStream out) {
+        super(out);
+    }
+
+    public FastPrinter(Writer out) {
+        super(out);
+    }
+
+
+}
+

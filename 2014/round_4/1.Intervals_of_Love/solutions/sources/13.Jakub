@@ -1,0 +1,607 @@
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <cmath>
+#include <algorithm>
+#include <sstream>
+#include <stack>
+#include <cstring>
+#include <iomanip>
+#include <ctime>
+using namespace std;
+#define pb push_back
+#define INF 1001001001
+#define FOR(i,n) for(int (i)=0;(i)<(n);++(i))
+#define FORI(i,n) for(int (i)=1;(i)<=(n);++(i))
+#define mp make_pair
+#define pii pair<int,int>
+#define ll long long
+#define vi vector<int>
+#define SZ(x) ((int)((x).size()))
+#define fi first
+#define se second
+#define wez(n) int (n); scanf("%d",&(n));
+#define wez2(n,m) int (n),(m); scanf("%d %d",&(n),&(m));
+#define wez3(n,m,k) int (n),(m),(k); scanf("%d %d %d",&(n),&(m),&(k));
+inline void pisz(int n) { printf("%d\n",n); }
+template<typename T,typename TT> ostream& operator<<(ostream &s,pair<T,TT> t) {return s<<"("<<t.first<<","<<t.second<<")";}
+template<typename T> ostream& operator<<(ostream &s,vector<T> t){FOR(i,SZ(t))s<<t[i]<<" ";return s; }
+#define DBG(vari) cerr<<#vari<<" = "<<(vari)<<endl;
+#define ALL(t) t.begin(),t.end()
+#define FOREACH(i,t) for (typeof(t.begin()) i=t.begin(); i!=t.end(); i++)
+#define TESTS wez(testow)while(testow--)
+#define REP(i,a,b) for(int (i)=(a);(i)<=(b);++i)
+#define REPD(i,a,b) for(int (i)=(a); (i)>=(b);--i)
+#define REMAX(a,b) (a)=max((a),(b));
+#define REMIN(a,b) (a)=min((a),(b));
+#define IOS ios_base::sync_with_stdio(0);
+
+// w drzewie nie moga pojawiac sie duplikaty; w takim wypadku insert
+// używa +, tzn. np. gdy + to suma, to:
+// tr.insert(6,2); tr.insert(6,3); daje drzewo zawierające <6,5>
+// mozna to zmienic na zastepowanie odkomentowujac przedostatnia linijke
+// w insert_aux, tzn. wtedy byloby drzewo zaw. <6,3>
+
+template <typename T, typename Aug>
+struct AugTreap {
+   struct Node {
+      T v; // wartosc
+      int pr; // priorytet
+      Node *le, *ri;
+      Aug al, ag; // aug dla samego wierzcholka i dla calego poddrzewa
+   };
+
+   Node *root;
+   AugTreap() : root(0) {}
+
+   inline static void recalc(Node* &n) { // oblicza nowe ag dla n
+      Aug left = n->le ? n->le->ag + n->al : n->al;
+      n->ag = n->ri ? left + n->ri->ag : left;
+   }
+
+   inline void rotle(Node* &n) { // wyciagnij lewe dziecko n do gory
+      Node *syn = n->le;
+      n->le = syn->ri;
+      syn->ri = n;
+      n = syn;
+
+      recalc(n->ri);
+      recalc(n);
+   }
+
+   inline void rotri(Node* &n) { // wyciagnij prawe dziecko n do gory
+      Node *syn = n->ri;
+      n->ri = syn->le;
+      syn->le = n;
+      n = syn;
+
+      recalc(n->le);
+      recalc(n);
+   }
+
+   void insert_aux(Node* &n, const T &x, const Aug &aug) {
+      if (!n) {
+         n = new Node;
+         n->v = x;
+         n->pr = rand();
+         n->le = n->ri = 0;
+         n->al = n->ag = aug;
+      } else if (x < n->v) {
+         insert_aux(n->le, x, aug);
+         if (n->pr > n->le->pr) rotle(n);
+         else recalc(n);
+      } else if (x > n->v) {
+         insert_aux(n->ri, x, aug);
+         if (n->pr > n->ri->pr) rotri(n);
+         else recalc(n);
+      } else {
+         // x juz jest w drzewie - robimy update
+         //n->al = n->al + aug;
+         n->al = aug; // OVERWRITE
+         recalc(n);
+      }
+   }
+
+   void insert (const T &x, const Aug &aug) {
+      insert_aux(root, x, aug);
+   }
+   
+   Aug sumgeq_aux (const T &x, Node *n) {
+      if (!n) return Aug();
+      if (x > n->v) return sumgeq_aux(x, n->ri);
+      if (x < n->v) {
+         Aug left = sumgeq_aux(x, n->le) + n->al;
+         return n->ri ? left + n->ri->ag : left;
+      }
+      // x == n->v
+      return n->ri ? n->al + n->ri->ag : n->al;
+   }
+
+   // suma Augów po wszystkich kluczach >= x
+   Aug sumgeq (const T &x) {
+      return sumgeq_aux(x,root);
+   }
+
+// ****************************************
+// OPCJONALNE: SUMY W PÓŁGRUPIE
+// (jeśli Aug to grupa, to zamiast sumbetween(L,R) można robić sumgeq(L) - sumgeq(R+1))
+// ****************************************
+
+   Aug sumleq_aux (const T &x, Node *n) {
+      if (!n) return Aug();
+      if (x < n->v) return sumleq_aux(x, n->le);
+      if (x > n->v) {
+         Aug right = n->al + sumleq_aux(x, n->ri);
+         return n->le ? n->le->ag + right : right;
+      }
+      // x == n->v
+      return n->le ? n->le->ag + n->al : n->al;
+   }
+   
+   // suma Augów po wszystkich kluczach <= x
+   Aug sumleq (const T &x) {
+      return sumleq_aux(x,root);
+   }
+   
+   Aug sumbetween_aux (const T &x, const T &y, Node *n) {
+      if (!n) return Aug();
+      if (y < n->v) return sumbetween_aux(x,y,n->le);
+      if (x > n->v) return sumbetween_aux(x,y,n->ri);
+      // x <= n->v <= y
+      return sumgeq_aux(x,n->le) + n->al + sumleq_aux(y,n->ri);
+   }
+   
+   // suma Augów po wszystkich kluczach z [x,y]
+   Aug sumbetween (const T &x, const T &y) {
+      return sumbetween_aux(x,y,root);
+   }
+
+// ****************************************
+// OPCJONALNE: USUWANIE
+// (zamiast usuwac mozna ustawiac Aug na zero)
+// ****************************************
+
+   bool remove (const T &x) {
+      return remove_aux(root,x);
+   }
+
+   bool remove_aux (Node* &n, const T &x) {
+      if (!n) return 0;
+      if (x < n->v) {
+         bool wyn = remove_aux(n->le, x);
+         if (wyn) recalc(n);
+         return wyn;
+      }
+      if (x > n->v) {
+         bool wyn = remove_aux(n->ri, x);
+         if (wyn) recalc(n);
+         return wyn;
+      }
+      // mamy go!
+      remove_node(n);
+      return 1;
+   }
+
+   void remove_node (Node* &n) {
+      if (!n->le) {
+         Node *syn = n->ri;
+         delete n;
+         n = syn;
+      } else if (!n->ri) {
+         Node *syn = n->le;
+         delete n;
+         n = syn;
+      } else
+      // n ma dwoje dzieci - trzeba rotowac
+      if (n->le->pr < n->ri->pr) {
+         rotle(n);
+         remove_node(n->ri);
+         recalc(n);
+      } else {
+         rotri(n);
+         remove_node(n->le);
+         recalc(n);
+      }
+   }
+
+};
+
+pair<int,ll> operator + (const pair<int,ll> &a, const pair<int,ll> &b) { return mp(a.fi + b.fi, a.se + b.se); }
+
+// Aug musi byc polgrupa (laczna) z zerem
+// zero to wynik konstruktora bez parametrow
+// dzialanie to operator +
+// (uwaga: np. int() = 0, wiec mozna robic AugTreap<T,int>)
+struct IntMin {
+   int x;
+   IntMin(int y = INF) : x(y) {}
+   inline IntMin operator + (const IntMin &s) const { return IntMin(min(x,s.x)); }
+};
+struct IntMax {
+   int x;
+   IntMax(int y = -INF) : x(y) {}
+   inline IntMax operator + (const IntMax &s) const { return IntMax(max(x,s.x)); }
+};
+
+// dodatkowe rzeczy:
+/* // dla Aug = int, al (aug_local) = 1 (drzewo statystyk pozycyjnych)
+   T find_kth (int k, Node* n) {
+      if (!n->le) {
+         if (k == 1) return n->v;
+         else return find_kth(k-1, n->ri);
+      } else {
+         if (k <= n->le->ag) return find_kth(k, n->le);
+         else if (k-1 == n->le->ag) return n->v;
+         else return find_kth(k - n->le->ag - 1, n->ri);
+      }
+   }
+   
+   T find_kth (int k) { // zakładamy że jest >= k elementow w drzewie
+      return find_kth(k,root);
+   }
+*/
+
+/* // lower boundy
+
+   // zwraca [najmniejsze y z drzewa tze y >= x] lub min, ktorekolwiek jest mniejsze (jesli nie ma takiego y, to tez zwraca min)
+   T upper (const T &x, T min) {
+      Node *n = root;
+      while (n) {
+         if (x < n->v) {
+            if (n->v < min) min = n->v;
+            n = n->le;
+         } else if (x > n->v) {
+            n = n->ri;
+         } else return x;
+      }
+      return min;
+   }
+
+   // zwraca [najwieksze y z drzewa tze y <= x] lub max, ktorekolwiek jest wieksze (jesli nie ma takiego y, to tez zwraca max)
+   T lower (const T &x, T max) {
+      Node *n = root;
+      while (n) {
+         if (x > n->v) {
+            if (n->v > max) max = n->v;
+            n = n->ri;
+         } else if (x < n->v) {
+            n = n->le;
+         } else return x;
+      }
+      return max;
+   }
+*/
+
+
+/*
+// ****************************************
+// BINARY SEARCHE
+// ****************************************
+   
+   // glowna funkcja: minquery(s) ktora zwraca jak daleko trzeba pociagnac
+   // przedzial [s,t] tak zeby zaczelo zachodzic enough(sumbetween(s,t))
+   
+   // nie trzeba przepisywac sumgeq/sumleq/sumbetween
+   
+   // wszystkie funkcje dzialaja w O(log n) ale dosc wolno
+   
+   // bool enough(const Aug &aug) to globalna funkcja
+   // ktora ma spelniac enough(x) => enough(x+y)
+   // (lub dla wersji rev: enough(x) => enough(y+x))
+   // np. dla AugTreap<int,unsigned> moze byc enough(x) = (x >= 56)
+   // np. dla AugTreap<int,IntMin> moze byc enough(a) = (a.x < 34)
+   
+      // wyjatek 0 jest rzucany gdy odpowiedz nie istnieje;
+      // zamiast go rzucac/probowac lapac znacznie wygodniej i wydajniej
+      // jest ustawic straznika na koncu tak zeby wyniki zawsze istnialy
+      
+      // oprocz tego mozna zaoszczedzic kilkanascie % wydajnosci
+      // zamieniajac vector<Node*> na statyczna tablice w minquery
+
+   // zwraca min t z poddrzewa n tze enough(sum + [sumleq(t) w tym poddrzewie])
+   // precondition: takie t istnieje (inaczej RE)
+   T minsubtreequery (Node *n, Aug sum) const {
+      if (n->le) {
+         Aug sum2 = sum + n->le->ag;
+         if (enough(sum2)) {
+            return minsubtreequery(n->le, sum);
+         }
+         sum = sum2;
+      }
+      sum = sum + n->al;
+      if (enough(sum)) return n->v;
+      return minsubtreequery(n->ri, sum);
+   }
+
+   // zwraca min t tze: t >= s, t nalezy do drzewa, enough(sumbetween(s,t))
+   // jesli takie t nie istnieje to rzuca wyjatek None
+   // s nie musi nalezec do drzewa
+   T minquery (const T &s) const {
+      vector<Node*> roots;
+      Node *n = root;
+      while (n) {
+         if (n->v < s) {
+            n = n->ri;
+         } else if (n->v > s) {
+            roots.pb(n);
+            n = n->le;
+         } else {
+            roots.pb(n);
+            break;
+         }
+      }
+      // { wezel n + drzewo n->ri | n in roots } = { wezly w drzewie ktore sa >= s }
+      
+      Aug sum;
+      REPD(i,SZ(roots)-1,0) {
+         sum = sum + roots[i]->al;
+         if (enough(sum)) {
+            return roots[i]->v;
+         }
+         if (roots[i]->ri) {
+            Aug sum2 = sum + roots[i]->ri->ag;
+            if (enough(sum2)) {
+               // zwroc min t z poddrzewa zaczepionego w roots[i]->ri
+               // tze enough(sum + [sumleq(t) w tym poddrzewie])
+               // (wiemy juz ze taki istnieje)
+               return minsubtreequery(roots[i]->ri, sum);
+            }
+            sum = sum2;
+         }
+      }
+      throw 0;
+   }
+   // uwaga: nie da sie tego tylko lekko zmodyfikowac zeby dostawac
+   // max t tze t >= s i jeszcze nie enough(sumbetween(s,t))!
+
+
+   
+   // wersje tych funkcji ktore rozciagaja przedzial w lewo:
+   
+   // zwraca max t z poddrzewa n tze enough([sumgeq(t) w tym poddrzewie] + sum)
+   // precondition: takie t istnieje (inaczej RE)
+   T revminsubtreequery (Node *n, Aug sum) const {
+      if (n->ri) {
+         Aug sum2 = n->ri->ag + sum;
+         if (enough(sum2)) {
+            return revminsubtreequery(n->ri, sum);
+         }
+         sum = sum2;
+      }
+      sum = n->al + sum;
+      if (enough(sum)) return n->v;
+      return revminsubtreequery(n->le, sum);
+   }
+   
+   // zwraca max t tze: t <= s, t nalezy do drzewa, enough(sumbetween(t,s))
+   // jesli takie t nie istnieje to rzuca wyjatek None
+   // s nie musi nalezec do drzewa
+   T revminquery (const T &s) const {
+      vector<Node*> roots;
+      Node *n = root;
+      while (n) {
+         if (n->v > s) {
+            n = n->le;
+         } else if (n->v < s) {
+            roots.pb(n);
+            n = n->ri;
+         } else {
+            roots.pb(n);
+            break;
+         }
+      }
+      
+      Aug sum;
+      REPD(i,SZ(roots)-1,0) {
+         sum = roots[i]->al + sum;
+         if (enough(sum)) {
+            return roots[i]->v;
+         }
+         if (roots[i]->le) {
+            Aug sum2 = roots[i]->le->ag + sum;
+            if (enough(sum2)) {
+               return revminsubtreequery(roots[i]->le, sum);
+            }
+            sum = sum2;
+         }
+      }
+      throw 0;
+   }
+*/
+
+// zastąpić tym maina
+// wypełnić readInput(), compute() i writeOutput(); zmienne definiować wewnątrz klasy Instance
+// PARALLEL - czy ma odpalić testy równolegle, CORES - liczba rdzeni
+// uwaga - wersja równoległa może potrzebować dużo pamięci! (T razy więcej)
+//         mozna sobie z tym poradzić tworząc duże tablice dynamicznie dopiero w compute()
+//         (bo naraz wykonywane są co najwyżej CORES=3 kopie compute())
+//         (pamiętać o delete [] na koniec compute)
+// linkować z pthreads
+
+#include <pthread.h>
+#include <semaphore.h>
+#define PARALLEL 0
+#define CORES 4
+struct Instance {
+   pthread_mutex_t finished;
+   Instance() : finished(PTHREAD_MUTEX_INITIALIZER) { pthread_mutex_lock(&finished); }
+   
+   // define variables here
+   #define N 1000007
+   int a[N], n;
+   ll res;
+   static const int mod = 1000000007;
+   
+   void readInput() { // should read input; will run sequentially
+      cin >> n;
+      FOR(i,n) cin >> a[i];
+   }
+   
+   int locate (set<int> &s, int x) {
+      set<int>::iterator it = s.upper_bound(x);
+      --it;
+      return *it;
+   }
+   
+   void compute() { // should produce output and store it, not use IO; will run in parallel
+      int m;
+      cin >> m;
+      res = 0;
+      AugTreap<int,pair<int,ll> > v;
+      set<int> s;
+      v.insert(0, mp(1,1));
+      s.insert(0);
+      int last = 0;
+      REP(i,1,n-1) {
+         if (a[i] == a[i-1] + 1) {
+            pii pr = v.sumbetween(last,last);
+            pr.fi++;
+            pr.se = (1LL * pr.fi * (pr.fi + 1)) / 2;
+            v.insert(last, pr);
+         } else {
+            last = i;
+            v.insert(i, mp(1,1));
+            s.insert(i);
+         }
+      }
+
+      while (m--) {
+         int typ, x, y;
+         cin >> typ >> x >> y;
+         if (typ == 0) {
+            a[x] = y;
+            
+            int p = locate(s, x), len = v.sumbetween(p,p).fi;
+            if (p == x && len == 1) {
+               // nic
+            } else if (p == x) {
+               // len > 1
+               --len;
+               v.insert(x, mp(1,1));
+               v.insert(x+1, mp(len, 1LL * len * (len + 1) / 2));
+               s.insert(x+1);
+            } else if (p + len - 1 == x) {
+               --len;
+               v.insert(p, mp(len, 1LL * len * (len + 1) / 2));
+               v.insert(x, mp(1,1));
+               s.insert(x);
+            } else {
+               int len1 = x - p, len2 = p+len-x-1;
+               v.insert(p, mp(len1, 1LL * len1 * (len1 + 1) / 2));
+               v.insert(x, mp(1,1));
+               s.insert(x);
+               v.insert(x+1, mp(len2, 1LL * len2 * (len2 + 1) / 2));
+               s.insert(x+1);
+            }
+            
+            // dodawanie i mergowanie
+            if (x != 0) {
+               if (a[x-1] == a[x] - 1) {
+                  int p = locate(s, x-1);
+                  int len = v.sumbetween(p,p).fi;
+                  ++len;
+                  v.insert(p, mp(len, 1LL * len * (len + 1) / 2));
+                  v.remove(x);
+                  s.erase(x);
+               }
+            }
+            
+            if (x != n-1) {
+               if (a[x+1] == a[x] + 1) {
+                  int p = locate(s, x);
+                  int len = v.sumbetween(x+1,x+1).fi;
+                  len = x+1+len - p;
+                  v.remove(x+1);
+                  s.erase(x+1);
+                  v.insert(p, mp(len, 1LL * len * (len + 1) / 2));
+               }
+            }
+            
+         } else {
+            int a = locate(s,x), b = locate(s,y);
+            if (a == b) {
+               int len = y - x + 1;
+               res += 1LL * len * (len + 1) / 2;
+            } else if (*s.upper_bound(a) == b) {
+               int f = b - 1, len1 = f - x + 1;
+               int len2 = y - b + 1;
+               res += 1LL * len1 * (len1 + 1) / 2;
+               res += 1LL * len2 * (len2 + 1) / 2;
+            } else {
+               int f = (*s.upper_bound(a)) - 1;
+               int len1 = f - x + 1;
+               int len2 = y - b + 1;
+               res += 1LL * len1 * (len1 + 1) / 2;
+               res += 1LL * len2 * (len2 + 1) / 2;
+               int aa = *(s.upper_bound(a));
+               int bb = locate(s, b-1);
+               res += v.sumbetween(aa,bb).se;
+            }
+         }
+      }
+   }
+   
+   void writeOutput () { // should write stored output, without newline; will run sequentially
+      res %= mod;
+      if (res < 0) res += mod;
+      cout << res;
+   }
+};
+
+Instance *instances;
+sem_t coreSemaphore;
+pthread_mutex_t cerr_lock = PTHREAD_MUTEX_INITIALIZER;
+int tests, finishedTests = 0;
+
+void* runner (void* input) {
+   int testno = *reinterpret_cast<int*>(input);
+   sem_wait(&coreSemaphore);
+   instances[testno].compute();
+   pthread_mutex_lock(&cerr_lock);
+   cerr << "test " << testno+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+   pthread_mutex_unlock(&cerr_lock);
+   pthread_mutex_unlock(&instances[testno].finished);
+   sem_post(&coreSemaphore);
+   return 0;
+}
+
+int main () {
+   string pierwszalinia;
+   getline(cin,pierwszalinia);
+   tests = atoi(pierwszalinia.c_str());
+   if (PARALLEL) {
+      instances = new Instance[tests];
+      // reading input
+      FOR(i,tests) {
+         instances[i].readInput();
+      }
+      
+      // running computations in parallel
+      sem_init(&coreSemaphore, 0, CORES);
+      pthread_t irrelevant;
+      FOR(i,tests) pthread_create(&irrelevant, NULL, runner, new int(i));
+      FOR(i,tests) pthread_mutex_lock(&instances[i].finished); // wait until all are finished
+      
+      // writing output
+      FOR(i,tests) {
+         printf("Case #%d: ", i+1);
+         instances[i].writeOutput();
+         printf("\n");
+      }
+   } else {
+      FOR(i,tests) {
+         instances = new Instance;
+         instances->readInput();
+         instances->compute();
+         printf("Case #%d: ", i+1);
+         instances->writeOutput();
+         printf("\n");
+         cerr << "test " << i+1 << " is finished (" << ++finishedTests << "/" << tests << ")" << endl;
+         delete instances;
+      }
+   }
+}

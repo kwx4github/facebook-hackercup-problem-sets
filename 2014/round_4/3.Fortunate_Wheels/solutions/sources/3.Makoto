@@ -1,0 +1,218 @@
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <algorithm>
+#include <functional>
+#include <utility>
+#include <bitset>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstdio>
+
+using namespace std;
+
+#define REP(i,n) for((i)=0;(i)<(int)(n);(i)++)
+#define snuke(c,itr) for(__typeof((c).begin()) itr=(c).begin();itr!=(c).end();itr++)
+
+#define INF 1.0E+12
+#define _abs(x) ((x)>0?(x):-(x))
+
+#define MAXN 100010
+
+int N;
+int s[MAXN+40];
+int sa[MAXN+40], sainv[MAXN+40], lcp[MAXN+40];
+pair <pair <int, int>, int> p[MAXN+40], q[MAXN+40];
+int freq[MAXN+40];
+
+void radix_sort(void){
+	int i;
+	
+	REP(i,N+30) freq[i] = 0;
+	REP(i,N) freq[p[i].first.second+2]++;
+	for(i=1;i<N+30;i++) freq[i] += freq[i-1];
+	REP(i,N){
+		q[freq[p[i].first.second+1]] = p[i];
+		freq[p[i].first.second+1]++;
+	}
+	
+	REP(i,N+30) freq[i] = 0;
+	REP(i,N) freq[q[i].first.first+2]++;
+	for(i=1;i<N+30;i++) freq[i] += freq[i-1];
+	REP(i,N){
+		p[freq[q[i].first.first+1]] = q[i];
+		freq[q[i].first.first+1]++;
+	}
+}
+
+void suffix_array(void){
+	int i,j,tmp=0;
+	
+	REP(i,N) sainv[i] = s[i];
+	
+	for(int t=1;t<N;t*=2){
+		REP(i,N) p[i] = make_pair(make_pair(sainv[i], ((i+t >= N) ? -1 : sainv[i+t])), i);
+		radix_sort();
+		int sz = 0;
+		REP(i,N){
+			if(i > 0 && p[i].first != p[i-1].first) sz++;
+			sainv[p[i].second] = sz;
+		}
+	}
+	
+	REP(i,N) sa[sainv[i]] = i;
+	
+	REP(i,N) if(sainv[i] != N-1){
+		j = sa[sainv[i] + 1];
+		while(i+tmp < N && j+tmp < N && s[i+tmp] == s[j+tmp]) tmp++;
+		lcp[sainv[i]] = tmp;
+		if(tmp > 0) tmp--;
+	}
+}
+
+int M;
+string str;
+int ans[100010][30];
+
+vector <int> v[100010];
+bool separated[100010];
+set <int> separator;
+multiset <int> width;
+
+void get_max(int id){
+	int i;
+	
+	vector <int> v;
+	__typeof(width.begin()) itr = width.end();
+	REP(i,M){
+		itr--;
+		v.push_back(*itr);
+		if(itr == width.begin()) break;
+	}
+	
+	REP(i,v.size()) ans[id][i] = v[i];
+}
+
+void separate(int x){
+	if(separated[x]) return;
+	separated[x] = true;
+	__typeof(separator.begin()) itr = separator.lower_bound(x);
+	int y = (*itr);
+	itr--;
+	int z = (*itr);
+	width.erase(width.find(y-z));
+	width.insert(y-x);
+	width.insert(x-z);
+	separator.insert(x);
+}	
+
+void func(void){
+	int i,j;
+	
+	REP(i,N) REP(j,M) ans[i][j] = 0;
+//	cout << str << endl;
+	REP(i,N) s[i] = str[i] - 'A';
+	suffix_array();
+	
+/*	REP(i,N) cout << sa[i] << ' ';
+	cout << endl;
+	REP(i,N-1) cout << lcp[i] << ' ';
+	cout << endl; */
+	
+	REP(i,N+1) separated[i] = false;
+	REP(i,N+1) v[i].clear();
+	REP(i,N-1) v[lcp[i]].push_back(i+1);
+	width.clear();
+	width.insert(N);
+	
+	separator.clear();
+	separator.insert(0);
+	separator.insert(N);
+	for(i=1;i<=N-1;i++){
+		REP(j,v[i-1].size()) separate(v[i-1][j]);
+		if(i != 1){
+			// erase(N+1-i);
+			width.erase(width.find(1));
+		}
+		get_max(i);
+	}
+}
+
+/*
+void func_brute(void){
+	int i,j;
+	
+	REP(i,N) REP(j,M) ans[i][j] = 0;
+	
+	// cout << N << ' ' << M << endl;
+	
+	for(i=1;i<=N-1;i++){
+		map <string, int> mp;
+		REP(j,N-i+1) mp[s.substr(j, i)]++;
+		vector <int> v;
+		snuke(mp,itr) v.push_back(itr->second);
+		sort(v.begin(),v.end());
+		reverse(v.begin(),v.end());
+	//	REP(j,v.size()) cout << v[j] << ' ';
+		REP(j,M) if(j < v.size()){
+			ans[i][j] = v[j];
+		//	cout << ans[i][j] << endl;
+		}
+	}
+}
+*/
+
+int A[30],B[30];
+double dp[100010];
+
+void main2(void){
+	int K,W,X,Y,Z,i,j;
+	
+	cin >> K >> M >> W >> X >> Y >> Z;
+	cin >> str;
+	REP(i,K) cin >> A[i] >> B[i];
+	
+	N = str.length();
+	
+	REP(i,K) A[i] += W;
+	REP(i,N) dp[i] = INF;
+	dp[0] = 0.0;
+	REP(i,N) REP(j,K) if(i + B[j] < N) dp[i+B[j]] = min(dp[i+B[j]], dp[i] + A[j]);
+	REP(i,N) dp[i] -= W;
+	
+	func();
+	
+	vector <double> v;
+	for(i=1;i<N;i++) if(dp[i] < INF / 2.0){
+		double tmp = (double)Y * (double)(N - _abs(X - i)) * (double)(N - _abs(X - i)) + (double)Z;
+		//cout << tmp << endl;
+		REP(j,M){
+			double C = ans[i][j], D = N - i + 1;
+			double p = (C * (C - 1)) / (D * (D - 1));
+			v.push_back(-dp[i] + tmp * p);
+		}
+	}
+	
+	sort(v.begin(),v.end());
+	reverse(v.begin(),v.end());
+	REP(i,M) printf(" %.3f", v[i]);
+	cout << endl;
+}
+
+int main(void){
+	int TC,tc;
+	cin >> TC;
+	REP(tc,TC){
+		printf("Case #%d:", tc+1);
+		main2();
+	}
+	return 0;
+}

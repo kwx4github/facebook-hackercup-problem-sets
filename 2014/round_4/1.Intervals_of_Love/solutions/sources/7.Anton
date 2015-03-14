@@ -1,0 +1,191 @@
+#pragma comment(linker, "/STACK:60777216")  
+
+#include <cassert>
+#include<iostream>
+#include<algorithm>
+#include<cstdio>
+#include<complex>
+#include<vector>
+#include<set>
+#include<map>
+#include<cmath>
+#include<queue>
+#include<string>
+#include<cstdlib>
+#include<memory.h>
+#include<ctime>
+#include<bitset>
+#include<fstream>
+#include<queue>
+
+using namespace std;
+
+
+typedef long double ld;
+
+typedef long long ll;
+typedef pair<int, int>	pii;
+typedef pair<ld, ld>	pdd;
+typedef vector<int> vi;
+typedef vector<ld> vd;
+typedef pair<ll, ll> pl;
+
+#define FOR(i,a,b)		for(int i=(a);i<(b);i++)
+#define REP(i,n)		FOR(i,0,n)
+#define SORT(v)			sort((v).begin(),(v).end())
+#define UN(v)			SORT(v),(v).erase(unique((v).begin(),(v).end()),(v).end())
+#define CL(a,b)			memset(a,b,sizeof a)
+#define pb				push_back
+
+const int mod = 1000000007;
+
+
+ll sum[1 << 21];
+
+int a[1111111];
+set<pii> curr;
+int n;
+
+void addVal(int pos, ll val){
+	pos += 1 << 20;
+	while (pos){
+		sum[pos] = (sum[pos]+val)%mod;
+		pos >>= 1;
+	}
+}
+
+int getSum(int p1, int p2){
+	p1 += (1 << 20);
+	p2 += (1 << 20);
+	ll rr = 0;
+	while (p1 <= p2){
+		if (p1 & 1) rr = (rr + sum[p1]) % mod;
+		if (!(p2 & 1)) rr = (rr + sum[p2]) % mod;
+		p1 = (p1 + 1) >> 1;
+		p2 = (p2 - 1) >> 1;
+	}
+	return rr;
+}
+int main(){
+#ifdef LocalHost
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt","w",stdout);
+#endif
+
+	int tc;
+	cin >> tc;
+	REP(TC, tc){
+		cin >> n;
+		//n = 1000000;
+		CL(sum, 0);
+		curr.clear();
+		REP(i, n){
+			scanf("%d", a + i);
+			//a[i] = rand();
+		}
+		for (int i = 0; i < n;){
+			//if(i%10000==0)cout << i << endl;
+			int j = i;
+			while (j < n && a[j] == a[i] + (j - i))++j;
+			curr.insert(pii(i,j-i));
+			addVal(i, ll(j - i)*(j - i + 1) / 2 % mod);
+			i = j;
+		}
+		int m;
+		cin >> m;
+		//m = 1000000;
+		ll res = 0;
+		REP(i, m){
+			int t;
+			//if (i % 10000 == 0)cout << i << endl;
+			scanf("%d", &t);
+			//t = rand() % 2;
+			if (t == 0){
+				int p, k;
+				scanf("%d %d", &p, &k);
+				//p = rand(); k = rand();
+				if (a[p] == k) continue;
+				set<pii>::iterator it = curr.lower_bound(pii(p + 1, 1));
+				--it;
+				int from1 = it->first;
+				int len1 = it->second;
+				addVal(from1, (mod - ll(len1)*(len1 + 1) / 2 % mod) % mod);
+				curr.erase(it);
+				if (p - from1){
+					curr.insert(pii(from1, p - from1));
+					addVal(from1, ll(p - from1)*(p - from1 + 1) / 2 % mod);
+				}
+				//curr.insert(pii(p, 1));
+				//addVal(p, ll(1)*(1 + 1) / 2 % mod);
+				if (from1 + len1 != p + 1){
+					curr.insert(pii(p + 1, len1 - 1 - (p - from1)));
+					addVal(p + 1, ll(len1 - 1 - (p - from1))*(len1 - 1 - (p - from1) + 1) / 2 % mod);
+				}
+				int from = p;
+				int len = 1;
+				a[p] = k;
+				// union left
+				if (p && a[p] == a[p - 1] + 1){
+					it = curr.lower_bound(pii(p, 0));
+					it--;
+					addVal(it->first, (mod-ll(it->second)*(it->second+1)/2%mod)%mod);
+					from = it->first;;
+					len += it->second;
+					curr.erase(it);
+				}
+				if (p + 1 < n && a[p + 1] == a[p] + 1)
+				{
+					it = curr.lower_bound(pii(p + 1, 0));
+					addVal(it->first, (mod - ll(it->second)*(it->second + 1) / 2 % mod) % mod);
+					len += it->second;
+					curr.erase(it);
+				}
+
+				curr.insert(pii(from, len));
+				addVal(from, ll(len)*(len + 1) / 2 % mod);
+			}
+			else{
+				int l, r;
+				scanf("%d %d", &l, &r);
+				//l = rand(); r = rand();
+				ll tmp = 0;
+
+				set<pii>::iterator it = curr.lower_bound(pii(l + 1, 0));
+				it--;
+
+				int from = it->first;
+				int to = from + it->second - 1;
+
+				if (l >= from && r <= to){
+					tmp = ll(r - l + 1)*(r - l + 2) / 2 % mod;
+				}
+				else{
+					tmp = ll(to - l + 1)*(to - l + 2) / 2 % mod;
+					l = to + 1;
+				
+
+					it = curr.lower_bound(pii(r + 1, 0));
+					it--;
+					from = it->first;
+					to = from + it->second - 1;
+
+					tmp = (tmp + ll(r - from + 1)*(r - from + 2) / 2 % mod) % mod;
+					r = from - 1;
+
+					if (l <= r){
+						tmp = (tmp + getSum(l, r)) % mod;
+					}
+
+				}
+
+				res = (res + tmp) % mod;
+			}
+		}
+		printf("Case #%d: %d\n", TC + 1, res);
+	}
+	
+#ifdef LocalHost
+	printf("TIME: %.3lf\n", ld(clock()) / CLOCKS_PER_SEC);
+#endif 
+	return 0;
+}

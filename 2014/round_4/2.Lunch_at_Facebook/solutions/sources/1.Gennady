@@ -1,0 +1,129 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <memory.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+
+using namespace std;
+
+const int N = (int)1e7;
+
+int t, s[N];
+
+void modsum(int x, int v) {
+  while (x <= t) {
+    s[x] += v;
+    x = (x | (x - 1)) + 1;
+  }
+}
+
+int findsum(int x) {
+  int v = 0;
+  while (x > 0) {
+    v += s[x];
+    x &= x - 1;
+  }
+  return v;
+}
+
+struct Segment {
+  int sum;
+  int mx;
+};
+
+Segment seg[N];
+
+Segment unite(Segment a, Segment b) {
+  Segment c;
+  c.sum = a.sum + b.sum;
+  c.mx = a.sum + b.mx;
+  if (a.mx > c.mx) c.mx = a.mx;
+  return c;
+}
+
+void build(int x, int l, int r) {
+  if (l == r) {
+    seg[x].sum = -1;
+    seg[x].mx = 0;
+    return;
+  }
+  int y = (l + r) >> 1;
+  build(x + x, l, y);
+  build(x + x + 1, y + 1, r);
+  seg[x] = unite(seg[x + x], seg[x + x + 1]);
+}
+
+void modify(int x, int l, int r, int p) {
+  if (l == r) {
+    seg[x].sum = 1;
+    seg[x].mx = 1;
+    return;
+  }
+  int y = (l + r) >> 1;
+  if (p <= y) modify(x + x, l, y, p);
+  else modify(x + x + 1, y + 1, r, p);
+  seg[x] = unite(seg[x + x], seg[x + x + 1]);
+}
+
+int a[N], b[N];
+pair <int, int> e[N];
+
+int main() {
+  freopen("in", "r", stdin);
+  freopen("out", "w", stdout);
+  int tt;
+  scanf("%d", &tt);
+  for (int qq = 1; qq <= tt; qq++) {
+    printf("Case #%d: ", qq);
+    int n, m;
+    scanf("%d %d", &n, &m);
+    for (int i = 1; i <= n; i++) scanf("%d", a + i);
+    for (int i = 1; i <= m; i++) scanf("%d", b + i);
+    for (int i = 1; i <= n; i++) {
+      e[i] = make_pair(a[i], i);
+    }
+    for (int i = 1; i <= m; i++) {
+      e[n + i] = make_pair(b[i], ~i);
+    }
+    t = n + m;
+    sort(e + 1, e + t + 1);
+    for (int i = 1; i <= t; i++) {
+      int id = e[i].second;
+      if (id >= 0) a[id] = i;
+      else b[~id] = i;
+    }
+    for (int i = 1; i <= t; i++) s[i] = 0;
+    long long ans = 0;
+    for (int i = n; i >= 1; i--) {
+      ans += findsum(a[i]);
+      modsum(a[i], 1);
+    }
+    build(1, 1, n);
+    int passed = 0;
+    for (int i = 1; i <= t; i++) {
+      int id = e[i].second;
+      if (id >= 0) {
+        modify(1, 1, n, id);
+        passed++;
+      } else {
+        ans += passed - seg[1].mx;
+      }
+    }
+    cout << ans << endl;
+  }
+  return 0;
+}
