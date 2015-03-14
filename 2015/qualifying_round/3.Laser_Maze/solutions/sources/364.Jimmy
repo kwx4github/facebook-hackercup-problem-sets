@@ -1,0 +1,206 @@
+package fb2014_qual;
+
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.LinkedList;
+import java.util.StringTokenizer;
+
+public class C {
+    public static void main(String[] args) throws FileNotFoundException {
+        Kattio io;
+
+//        io = new Kattio(System.in, System.out);
+//        io = new Kattio(new FileInputStream("src/fb2014_qual/C-sample.in"), System.out);
+        io = new Kattio(new FileInputStream("src/fb2014_qual/laser_maze.txt"), new FileOutputStream("src/fb2014_qual/laser_maze.out"));
+//        io = new Kattio(new FileInputStream("fb2014_qual/C-large-0.in"), new FileOutputStream("fb2014_qual/C-large-0.out"));
+
+        int cases = io.getInt();
+        for (int i = 1; i <= cases; i++) {
+            io.print("Case #" + i + ": ");
+            new C().solve(io);
+        }
+        io.close();
+    }
+
+    private int xsize, ysize;
+    private boolean block[][];
+    private int turret[][];
+    private boolean dead[][][];
+    private int earliest[][][];
+    private LinkedList<Integer> queue;
+
+    private void solve(Kattio io) {
+        ysize = io.getInt();
+        xsize = io.getInt();
+        block = new boolean[ysize][xsize];
+        turret = new int[ysize][xsize];
+        dead = new boolean[ysize][xsize][4];
+        earliest = new int[ysize][xsize][4];
+        for (int y = 0; y < ysize; y++) {
+            for (int x = 0; x < xsize; x++) {
+                for (int d = 0; d < 4; d++) {
+                    earliest[y][x][d] = Integer.MAX_VALUE;
+                }
+            }
+        }
+        int sx = -1, sy = -1, ex = -1, ey = -1;
+        int dx[] = new int[] { -1, 0, 1, 0};
+        int dy[] = new int[] { 0, -1, 0, 1};
+        for (int y = 0; y < ysize; y++) {
+            String s = io.getWord();
+            for (int x = 0; x < xsize; x++) {
+                switch (s.charAt(x)) {
+                    case 'S' :
+                        sx = x;
+                        sy = y;
+                        break;
+                    case 'G' :
+                        ex = x;
+                        ey = y;
+                        break;
+                    case '#' :
+                        block[y][x] = true;
+                        break;
+                    case '<':
+                        block[y][x] = true;
+                        turret[y][x] = 1;
+                        break;
+                    case '^':
+                        block[y][x] = true;
+                        turret[y][x] = 2;
+                        break;
+                    case '>':
+                        block[y][x] = true;
+                        turret[y][x] = 3;
+                        break;
+                    case 'v':
+                        block[y][x] = true;
+                        turret[y][x] = 4;
+                        break;
+                }
+            }
+        }
+        for (int y = 0; y < ysize; y++) {
+            for (int x = 0; x < xsize; x++) {
+                if (turret[y][x] > 0) {
+                    int d = turret[y][x] - 1;
+                    for (int t = 1; t <= 4; t++) {
+                        d = (d+1)%4;
+                        int cx = x+dx[d], cy = y+dy[d];
+                        while (empty(cx,cy)) {
+                            dead[cy][cx][t%4] = true;
+                            cx += dx[d];
+                            cy += dy[d];
+                        }
+                    }
+                }
+            }
+        }
+
+        queue = new LinkedList<>();
+        earliest[sy][sx][0] = 0;
+        queue.add(sx * ysize * 4 + sy * 4);
+
+        while (!queue.isEmpty()) {
+            int cur = queue.pop();
+            int tm4 = cur % 4;
+            cur /= 4;
+            int y = cur % ysize;
+            cur /= ysize;
+            int x = cur;
+//            io.println("At " + x + "," + y + " @ " + tm4);
+            for (int d = 0; d < 4; d++) {
+                int nx = x + dx[d], ny = y + dy[d];
+                add(nx, ny, earliest[y][x][tm4] + 1);
+            }
+        }
+
+        int ans = Integer.MAX_VALUE;
+        for (int t = 0; t < 4; t++) {
+            ans = Math.min(ans, earliest[ey][ex][t]);
+        }
+
+        if (ans == Integer.MAX_VALUE) {
+            io.println("impossible");
+        } else {
+            io.println(ans);
+        }
+    }
+
+    private void add(int x, int y, int tm) {
+        if (empty(x, y) && !dead[y][x][tm%4] && earliest[y][x][tm%4] == Integer.MAX_VALUE) {
+            earliest[y][x][tm%4] = tm;
+            queue.add(x * ysize * 4 + y * 4 + tm % 4);
+        }
+    }
+
+    private boolean empty(int cx, int cy) {
+        return cx >= 0 && cy >= 0 && cx < xsize && cy < ysize && !block[cy][cx];
+    }
+
+    public static class Kattio extends PrintWriter {
+        public Kattio(InputStream i) {
+            super(new BufferedOutputStream(System.out));
+            r = new BufferedReader(new InputStreamReader(i));
+        }
+
+        public Kattio(InputStream i, OutputStream o) {
+            super(new BufferedOutputStream(o));
+            r = new BufferedReader(new InputStreamReader(i));
+        }
+
+        public boolean hasMoreTokens() {
+            return peekToken() != null;
+        }
+
+        public int getInt() {
+            return Integer.parseInt(nextToken());
+        }
+
+        public double getDouble() {
+            return Double.parseDouble(nextToken());
+        }
+
+        public long getLong() {
+            return Long.parseLong(nextToken());
+        }
+
+        public String getWord() {
+            return nextToken();
+        }
+
+
+        private BufferedReader r;
+        private String line;
+        private StringTokenizer st;
+        private String token;
+
+        private String peekToken() {
+            if (token == null)
+                try {
+                    while (st == null || !st.hasMoreTokens()) {
+                        line = r.readLine();
+                        if (line == null) return null;
+                        st = new StringTokenizer(line);
+                    }
+                    token = st.nextToken();
+                } catch (IOException e) {
+                }
+            return token;
+        }
+
+        private String nextToken() {
+            String ans = peekToken();
+            token = null;
+            return ans;
+        }
+    }
+}

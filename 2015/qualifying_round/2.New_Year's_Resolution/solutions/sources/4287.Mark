@@ -1,0 +1,127 @@
+<?php
+
+session_start();
+
+function add_foods($value1,$value2,$method){
+	$target = $_SESSION["T"];
+	$value2 = $_SESSION["F_" . $value2];
+	if($method == 0){
+		$sum0 = $target[0] - $value2[0];
+		$sum1 = $target[1] - $value2[1];
+		$sum2 = $target[2] - $value2[2];
+	}
+	if($method == 1){
+		$value1 = $_SESSION["F_" . $value1];
+		$sum0 = $target[0] - ($value1[0] + $value2[0]);
+		$sum1 = $target[1] - ($value1[1] + $value2[1]);
+		$sum2 = $target[2] - ($value1[2] + $value2[2]);
+	}
+	if($method == 2){
+		$value1 = explode("//",$value1);
+		$value1 = explode(".",$value1[2]);
+		$sum0 = $value1[0] - $value2[0];
+		$sum1 = $value1[1] - $value2[1];
+		$sum2 = $value1[2] - $value2[2];
+	}
+	return array($sum0,$sum1,$sum2);
+}
+
+if(!empty($_FILES["file"])){
+	$data = fopen($_FILES['file']['tmp_name'], "r");
+	$line = fgets($data);
+	$cases = range(1,preg_replace('/\D/','',$line));
+	
+	foreach($cases as $case){
+	
+		$valid = array();
+		$answer = "no";
+		
+		// Set Target
+		$_SESSION["T"] = explode(" ",fgets($data));
+		
+		$TotalFood = fgets($data);
+		if($TotalFood > 0){
+			
+			// Setup Foods
+			$Foods = range(1,$TotalFood);
+			foreach($Foods as $Food){
+				$_SESSION["F_" . $Food] = explode(" ",fgets($data));
+			}
+			
+			// Test Method 0
+			if($TotalFood == 1){
+				$result = add_foods(0,1,0);
+				if($result[0] > -1 and $result[1] > -1 and $result[2] > -1){
+					array_push($valid,"1//1//$result[0].$result[1].$result[2]");
+				}
+				$test_cycle = 1;
+			}
+			
+			// Test Method 1
+			if($TotalFood > 1){
+				foreach($Foods as $Food){
+					foreach($Foods as $Test){
+						if($Food == $Test){}else{
+							$result = add_foods($Food,$Test,1);
+							if($result[0] > -1 and $result[1] > -1 and $result[2] > -1){
+								array_push($valid,"2//$Food.$Test//$result[0].$result[1].$result[2]");
+							}
+						}
+					}
+				}
+				$test_cycle = 2;
+			}
+			
+			$target = $_SESSION["T"];
+			
+			// Test Method 2
+			$stop = 0;
+			while($stop < 1 and $test_cycle <= $TotalFood):
+				$valid_size = sizeof($valid);
+				if($valid_size > 0){
+
+					$i = 0;
+					while($i < $valid_size){
+
+						// Check for winner
+						$validrecord = explode("//",$valid[$i]);
+						$check = explode(".",$validrecord[2]);
+						if($check[0] == 0 and $check[1] == 0 and $check[2] == 0){
+							$stop = 1;
+							$answer = "yes";
+						}else{
+							// Next Test
+							$banned = explode(".",$validrecord[1]);
+							foreach($Foods as $Test){
+								if(in_array($Test,$banned)){}else{
+
+									$result = add_foods($validrecord[0]."//".$validrecord[1]."//".$validrecord[2],$Test,2);
+									if($result[0] > -1 and $result[1] > -1 and $result[2] > -1){
+										array_push($valid,$test_cycle + 1 . "//" . $validrecord[1] . "." . $Test . "//$result[0].$result[1].$result[2]");
+									}
+								}
+							}
+						}
+						
+						$i ++;
+					}
+					// Array Housekeeping
+					$i = 0;
+					while($i < $valid_size){
+						array_shift($valid);
+						$i ++;
+					}
+				}else{
+					$stop = 1;
+				}
+				$test_cycle ++;	
+			endwhile;
+			
+		}
+	echo "Case #$case: " . $answer . "<br>";
+	}
+}
+
+fclose($data);
+
+?>

@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys, os, shutil
+import subprocess
+import time
+import math
+import random
+
+TESTGROUPS = 7
+
+def solve(iData):
+  GP, GC, GF = iData[0]
+  foods = iData[1]
+  N = len(foods)
+  
+  for mask in range(1 << N):
+    SP, SC, SF = 0, 0, 0
+    for i, (P, C, F) in enumerate(foods):
+      if (1 << i) & mask:
+        SP += P
+        SF += F
+        SC += C
+    if (SP, SC, SF) == (GP, GC, GF):
+      return ['yes']
+  
+  return ['no']
+
+def readTestInput(IN):
+  GP, GC, GF = map(int, IN.readline().split())
+  N = int(IN.readline())
+  foods = []
+  for i in range(N):
+    P, C, F = map(int, IN.readline().split())
+    foods.append([P, C, F])
+  return [[GP, GC, GF], foods]
+
+def writeTestInput(OUT, iData):
+  GP, GC, GF = iData[0]
+  foods = iData[1]
+  N = len(foods)
+  OUT.write('%d %d %d\n' % (GP, GC, GF))
+  OUT.write('%d \n' % N)
+  for P, C, F in foods:
+    OUT.write('%d %d %d\n' % (P, C, F))
+
+def readTestOutput(IN):
+  a = IN.readline().strip()
+  return [a]
+
+def writeTestOutput(OUT, oData):
+  a = oData[0]
+  OUT.write('%s\n' % a)
+
+def readAllTests(inputFileName):
+  IN = open(inputFileName, 'rt')
+  T = int(IN.readline())
+  allTests = []
+  for i in range(T): allTests.append(readTestInput(IN))
+  IN.close()
+  return allTests
+
+def prepareInputParts():
+  inputFileName = testName + '.txt'
+  
+  if not os.path.exists(subtestsDir):
+    os.mkdir(subtestsDir)
+    enumeratedTests = list(enumerate(readAllTests(inputFileName)))
+    for i in range(TESTGROUPS):
+      testGroupFileName = os.path.join(subtestsDir, '%s_%.1d.in' % (testName, i))
+      OUT = open(testGroupFileName, 'wt')
+      OUT.write('%d\n' % len(enumeratedTests[i::TESTGROUPS]))
+      for testId, iData in enumeratedTests[i::TESTGROUPS]:
+        OUT.write('%d\n' % testId)
+        writeTestInput(OUT, iData)
+      OUT.close()
+
+def runAllTests():
+  processes = []
+  for i in range(TESTGROUPS): processes.append(subprocess.Popen(sys.argv + [str(i)]))
+  for i in range(TESTGROUPS): processes[i].wait()
+
+def solveGroup(testGroupFileName):
+  testGroupOutputFileName = testGroupFileName[:-3] + '.out'
+  IN = open(testGroupFileName, 'rt')
+  OUT = open(testGroupOutputFileName, 'wt')
+  testsInGroup = int(IN.readline())
+  OUT.write('%d\n' % testsInGroup)
+  for i in range(testsInGroup):
+    testId = int(IN.readline())
+    iData = readTestInput(IN)
+    oData = solve(iData)
+    OUT.write('%d\n' % testId)
+    writeTestOutput(OUT, oData)
+  IN.close()
+
+def mergeOutputs():
+  outputs = []
+  for i in range(TESTGROUPS):
+    testGroupOutputFileName = os.path.join(subtestsDir, '%s_%.1d.out' % (testName, i))
+    IN = open(testGroupOutputFileName, 'rt')
+    testsInGroup = int(IN.readline())
+    for i in range(testsInGroup):
+      testId = int(IN.readline())
+      oData = readTestOutput(IN)
+      while testId >= len(outputs): outputs.append(None)
+      outputs[testId] = oData
+    IN.close()
+  outputFileName = testName + '_my_output.txt'
+  OUT = open(outputFileName, 'wt')
+  for testId, oData in enumerate(outputs):
+    OUT.write('Case #%d: ' % (testId + 1))
+    writeTestOutput(OUT, oData)
+  OUT.close()
+
+os.chdir(os.path.dirname(sys.argv[0]))
+
+assert __name__ == '__main__'
+assert len(sys.argv) in (2, 3)
+
+testName = sys.argv[1]
+subtestsDir = testName + '-testgroups'
+
+if len(sys.argv) == 2:
+  if os.path.exists(subtestsDir): shutil.rmtree(subtestsDir)
+  prepareInputParts()
+  runAllTests()
+  mergeOutputs()
+elif len(sys.argv) == 3:
+  testGroupFileName = os.path.join(subtestsDir, '%s_%.1d.in' % (testName, int(sys.argv[2])))
+  solveGroup(testGroupFileName)

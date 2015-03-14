@@ -1,0 +1,201 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <time.h>
+
+#include <iostream>
+#include <utility>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+vector<char> decode(int n)
+{
+    if (n == 0)
+    {
+        return vector<char>(1, 0);
+    }
+    vector<char> numbers;
+    while (n > 0)
+    {
+        numbers.push_back(n % 10);
+        n /= 10;
+    }
+    reverse(numbers.begin(), numbers.end());
+    return numbers;
+}
+
+int encode(const vector<char> numbers)
+{
+    int n = 0;
+    for (const char& number : numbers)
+    {
+        n = 10 * n + number;
+    }
+    return n;
+}
+
+pair<int, int> solve(int n)
+{
+    if (n == 0)
+    {
+        return make_pair(0, 0);
+    }
+
+    vector<char> numbers = decode(n);
+
+    // look for minimum
+    vector<char> minimum = numbers;
+    bool found = false;
+    for (size_t i = 0; !found && i < numbers.size(); i++)
+    {
+        char min_number = 10;
+        for (size_t j = i + 1; j < numbers.size(); j++)
+            if (minimum[j] < min_number && (i > 0 || minimum[j] > 0))
+                min_number = minimum[j];
+
+        if (min_number >= minimum[i])
+        {
+            continue;
+        }
+        
+        for (size_t j = numbers.size() - 1; !found && j > i; j--)
+            if (minimum[j] == min_number)
+            {
+                swap(minimum[i], minimum[j]);
+                found = true;
+            }        
+    }
+
+    //look for maximum
+    vector<char> maximum = numbers;
+    found = false;
+    for (size_t i = 0; !found && i < numbers.size(); i++)
+    {
+        char max_number = -1;
+        for (size_t j = i + 1; j < numbers.size(); j++)
+            if (maximum[j] > max_number)
+                max_number = maximum[j];
+
+        if (max_number <= maximum[i])
+        {
+            continue;
+        }
+
+        for (size_t j = numbers.size() - 1; !found && j > i; j--)
+            if (maximum[j] == max_number)
+            {
+                swap(maximum[i], maximum[j]);
+                found = true;
+            }
+    }
+
+    return make_pair(encode(minimum), encode(maximum));
+}
+
+pair<int, int> solve2(int n)
+{
+    if (n == 0)
+    {
+        return pair<int, int>(0, 0);
+    }
+
+    vector<char> numbers = decode(n);    
+    
+    int minimum_value = n, maximum_value = n;
+    for (size_t i = 0; i < numbers.size(); i++)
+        for (size_t j = i + 1; j < numbers.size(); j++)
+        {
+            swap(numbers[i], numbers[j]);
+            if (numbers[0] > 0)
+            {
+                int new_number = encode(numbers);
+                minimum_value = min(minimum_value, new_number);
+                maximum_value = max(maximum_value, new_number);
+            }
+            swap(numbers[i], numbers[j]);
+        }    
+
+    return make_pair(minimum_value, maximum_value);
+}
+
+void test();
+
+int main(int argc, char* argv[])
+{
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    ios_base::sync_with_stdio(false);
+
+    // test();
+
+    int T;
+    cin >> T;
+    for (int t = 1; t <= T; t++)
+    {
+        int n;
+        cin >> n;
+        pair<int, int> ans = solve(n);
+        cout << "Case #" << t << ": " << ans.first << " " << ans.second << endl;
+    }
+
+	return 0;
+}
+
+void test()
+{
+    solve(101);
+
+    double worst_time1 = 0, worst_time2 = 0;
+
+    const double FPS = 30;
+    double last_showed = 0;
+
+    //for (int n = 0; n <= 999999999; n++)
+    for (int n = 999999999; n >= 0; n--)
+    {
+        if ((clock() - last_showed) / CLOCKS_PER_SEC > 1 / FPS)
+        {
+            cout << "\r" << n;
+            last_showed = clock();
+        }
+        /*
+        if (n != encode(decode(encode(decode(n)))))
+        {
+            cout << endl << "WA!" << endl;
+            return;
+        }
+        */
+
+        double time = clock();
+        pair<int, int> ans1 = solve(n);
+        time = (clock() - time) / CLOCKS_PER_SEC;
+        if (worst_time1 < time)
+        {
+            worst_time1 = time;
+            cout << endl;
+            cout << "Worst time is " << worst_time1 << " and " << worst_time2 << endl;
+        }
+
+        time = clock();
+        pair<int, int> ans2 = solve2(n);
+        time = (clock() - time) / CLOCKS_PER_SEC;
+        if (worst_time2 < time)
+        {
+            worst_time2 = time;
+            cout << endl;
+            cout << "Worst time is " << worst_time1 << " and " << worst_time2 << endl;
+        }
+
+        if (ans1 != ans2)
+        {
+            cout << endl << "WA!" << endl;
+            cout << ans1.first << " " << ans1.second << endl;
+            cout << ans2.first << " " << ans2.second << endl;
+            return;
+        }
+    }
+    cout << endl << "OK" << endl;
+}
+

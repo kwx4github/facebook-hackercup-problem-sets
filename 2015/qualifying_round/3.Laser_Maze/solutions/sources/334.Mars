@@ -1,0 +1,165 @@
+// mars.ma
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+
+using namespace std;
+
+int main(void)
+{
+  int testcase;  cin >> testcase;
+  for (int tc = 0; tc < testcase; ++tc) {
+    int height, width;  cin >> height >> width;
+    vector<string> maze;
+    pair<int, int> start, goal;
+    map<pair<int, int>, int> turrets;  // <row, col> ===>>> direct(0 ~ 3)
+    for (int row = 0; row < height; ++row) {
+      string line;  cin >> line;
+      for (int col = 0; col < width; ++col) {
+        auto& label = line[col];
+        pair<int, int> point({row, col});
+        switch (label) {
+          case '^' :
+            turrets[point] = 0;
+            label = '#';
+            break;
+
+          case '>' :
+            turrets[point] = 1;
+            label = '#';
+            break;
+
+          case 'v' :
+            turrets[point] = 2;
+            label = '#';
+            break;
+
+          case '<' :
+            turrets[point] = 3;
+            label = '#';
+            break;
+
+          case 'S' :
+            start = point;
+            label = '.';
+            break;
+
+          case 'G' :
+            goal = point;
+            label = '.';
+            break;
+
+          default :
+            break;
+        }
+      }
+      maze.push_back(line);
+    }
+
+    vector<set<pair<int, int> > > traps(4);
+    for (int i = 0; i < 4; ++i) {
+      auto& trap = traps[i];
+      for (auto& turret : turrets) {
+        switch (turret.second) {
+          case 0 :
+            for (int row = turret.first.first-1; (0 <= row) && ('.' == maze[row][turret.first.second]); --row) {
+              trap.insert({row, turret.first.second});
+            }
+            break;
+
+          case 1 :
+            for (int col = turret.first.second+1; (col < width) && ('.' == maze[turret.first.first][col]); ++col) {
+              trap.insert({turret.first.first, col});
+            }
+            break;
+
+          case 2 :
+            for (int row = turret.first.first+1; (row < height) && ('.' == maze[row][turret.first.second]); ++row) {
+              trap.insert({row, turret.first.second});
+            }
+            break;
+
+          case 3 :
+            for (int col = turret.first.second-1; (0 <= col) && ('.' == maze[turret.first.first][col]); --col) {
+              trap.insert({turret.first.first, col});
+            }
+            break;
+
+          default :
+            break;
+        }
+
+        turret.second++;
+        turret.second %= 4;
+      }
+    }
+
+    set<pair<pair<int, int>, int> > filter({ {start, 0} });  // already travel
+    auto nexts(filter);
+    int step = 0;
+    bool finish = false;
+    do {
+      step++;
+      auto seeds(nexts);
+      filter.insert(seeds.begin(), seeds.end());
+      nexts.clear();
+      for (const auto seed : seeds) {
+        // for each seed, get four neighbors
+        vector<pair<int, int> > neighbors;
+        for (int row = seed.first.first-1; !finish && (row < seed.first.first+2); row += 2) {
+          neighbors.push_back({row, seed.first.second});
+        }
+
+        for (int col = seed.first.second-1; !finish && (col < seed.first.second+2); col += 2) {
+          neighbors.push_back({seed.first.first, col});
+        }
+
+        for (size_t i = 0; !finish && (i < neighbors.size()); ++i) {
+          auto row = neighbors[i].first;
+          auto col = neighbors[i].second;
+          // 1. check inside maze
+          if ((row < 0) || (height <= row) || (col < 0) || (width <= col)) {
+            continue;
+          }
+          // 2. is wall or turret
+          if ('#' == maze[row][col]) {
+            continue;
+          }
+
+          auto next = seed;  next = { {row, col}, step%4 };
+          // 3. check in trap
+          const auto& trap = traps[step%4];
+          if (trap.end() != trap.find(next.first)) {
+            continue;
+          }
+          // 4. is goal
+          if (next.first == goal) {
+            finish = true;
+          }
+          // 5. already travel --> filter
+          if (filter.end() != filter.find(next)) {
+            continue;
+          }
+          // 6. add as nexts
+          nexts.insert(next);
+        }
+
+        if (finish) {
+          break;
+        }
+      }
+    } while ((! finish) && (! nexts.empty()));
+
+    cout << "Case #" << tc+1 << ": ";
+    if (finish) {
+      cout << step << endl;
+    } else {
+      cout << "impossible" << endl;
+    }
+  }
+
+  return 0;
+}
+

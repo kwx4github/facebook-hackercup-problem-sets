@@ -1,0 +1,250 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LazerMaze
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            int T;
+            int maxSteps = 10000;
+            bool killed, goal;
+
+            T = int.Parse(Console.ReadLine());
+            for (int i = 0; i < T; i++)
+            {
+                killed = false;
+                goal = false;
+                Map map = Program.InitMap();
+                Queue<Point> actual = new Queue<Point>();
+                actual.Enqueue(map.Start);
+                int step = 0;
+                int amountOfSteps = 0;
+                for (step = 1; (step <= maxSteps) && !goal; step++)
+                {
+                    //Console.WriteLine("STEP {0}", step);
+                    Queue<Point> next = new Queue<Point>();
+                    while (actual.Count > 0)
+                    {
+                        Point pos = actual.Dequeue();
+                        //Console.WriteLine(string.Format("{0}-{1} BASE", pos.Row, pos.Col));
+                        char[][] maze = map.Maze[step % 4];
+                        Program.Decide(new Point() { Col = pos.Col + 1, Row = pos.Row }, maze, next, out killed, out goal);
+                        if (goal) { amountOfSteps = step; break; }
+                        Program.Decide(new Point() { Col = pos.Col - 1, Row = pos.Row }, maze, next, out killed, out goal);
+                        if (goal) { amountOfSteps = step; break; }
+                        Program.Decide(new Point() { Col = pos.Col, Row = pos.Row + 1 }, maze, next, out killed, out goal);
+                        if (goal) { amountOfSteps = step; break; }
+                        Program.Decide(new Point() { Col = pos.Col, Row = pos.Row - 1}, maze, next, out killed, out goal);
+                        if (goal) { amountOfSteps = step; break; }
+                        //Console.WriteLine("---");
+                        
+                    }
+                    if (next.Count == 0)
+                    {
+                        break;
+                    }
+                    actual = new Queue<Point>();
+                    while (next.Count > 0)
+                    {
+                        actual.Enqueue(next.Dequeue());
+                    }
+                }
+                Console.WriteLine("Case #{0}: {1}", i, goal ? amountOfSteps.ToString() : "impossible");
+            }
+        }
+
+        private static void Decide(Point pos, char[][] maze, Queue<Point> next, out bool killed, out bool goal)
+        {
+            char c = maze[pos.Row][pos.Col];
+            killed = false;
+            goal = false;
+            switch (c)
+            {
+                case '.':
+                case 'S':
+                    if (next.Where(p => p.Row.Equals(pos.Row) && p.Col.Equals(pos.Col)).Count() == 0)
+                    {
+                        next.Enqueue(pos);
+                        //Console.WriteLine(string.Format("{0}-{1}", pos.Row, pos.Col));
+                    }
+                    break;
+                case '*':
+                    killed = true;
+                    break;
+                case '#':
+                case '^':
+                case '>':
+                case 'v':
+                case '<':
+                    break;
+                case 'G':
+                    goal = true;
+                    //Console.WriteLine(string.Format("{0}-{1}-GOAL", pos.Row, pos.Col));
+                    break;
+            }
+            
+        }
+
+        private static char[][] InitMaze()
+        {
+            string[] dimensions = Console.ReadLine().Split(' ');
+            int M = int.Parse(dimensions[0]);
+            int N = int.Parse(dimensions[1]);
+            char[][] maze = new char[M+2][];
+            for (int i = 0; i < M+2; i++)
+            {
+                maze[i] = new char[N + 2];
+                for (int j = 0; j < N+2; j++)
+                {
+                    maze[i][j] = '#';
+                }
+            }
+            for (int i = 0; i < M; i++)
+            {
+                char[] linha = Console.ReadLine().ToCharArray();
+                for (int j = 0; j < N; j++)
+                {
+                    maze[i + 1][j + 1] = linha[j];
+                }
+            }
+            return maze;
+        }
+
+        private static char[][] Rotate(char[][] maze, Point posStart, Point posGoal)
+        {
+            char[][] rotated = (char[][])maze.Clone();
+            for (int i = 0; i < rotated.Length; i++)
+            {
+                rotated[i] = (char[])maze[i].Clone();
+                for (int j = 0; j < rotated[i].Length; j++)
+                {
+                    if (maze[i][j] == '*')
+                    {
+                        char c = '.';
+                        if ((posStart.Row == i) && (posStart.Col == j))
+                        {
+                            c = 'S';
+                        }
+                        else if ((posGoal.Row == i) && (posGoal.Col == j))
+                        {
+                            c = 'G';
+                        }
+                        rotated[i][j] = c;
+                    }
+                }
+            }
+            for (int i = 0; i < rotated.Length; i++)
+            {
+                for (int j = 0; j < rotated[i].Length; j++)
+                {
+                    switch (rotated[i][j])
+                    {
+                        case '^':
+                            rotated[i][j] = '>';
+                            for (int k = j + 1; k < rotated[i].Length; k++)
+                            {
+                                if ((rotated[i][k] == '.') || (rotated[i][k] == 'S') || (rotated[i][k] == 'G'))
+                                {
+                                    rotated[i][k] = '*';
+                                }
+                            }
+                            break;
+                        case '>':
+                            rotated[i][j] = 'v';
+                            for (int k = i + 1; k < rotated.Length; k++)
+                            {
+                                if ((rotated[k][j] == '.') || (rotated[k][j] == 'S') || (rotated[k][j] == 'G'))
+                                {
+                                    rotated[k][j] = '*';
+                                }
+                            }
+                            break;
+                        case 'v':
+                            rotated[i][j] = '<';
+                            for (int k = j - 1; k >= 0; k--)
+                            {
+                                if ((rotated[i][k] == '.') || (rotated[i][k] == 'S') || (rotated[i][k] == 'G'))
+                                {
+                                    rotated[i][k] = '*';
+                                }
+                            }
+                            break;
+                        case '<':
+                            rotated[i][j] = '^';
+                            for (int k = i - 1; k >= 0; k--)
+                            {
+                                if ((rotated[k][j] == '.') || (rotated[k][j] == 'S') || (rotated[k][j] == 'G'))
+                                {
+                                    rotated[k][j] = '*';
+                                }
+                            }
+                            break;
+                    }
+                }
+            }
+            return rotated;
+        }
+
+        private static Map InitMap()
+        {
+            Map map = new Map();
+            map.Maze = new char[4][][];
+                
+            char[][] maze = Program.InitMaze();
+            for (int i = 0; i < maze.Length; i++)
+            {
+                for (int j = 0; j < maze[i].Length; j++)
+                {
+                    switch (maze[i][j])
+                    {
+                        case 'S':
+                            map.Start = new Point()
+                            {
+                                Row = i,
+                                Col = j
+                            };
+                            break;
+                        case 'G':
+                            map.Goal = new Point()
+                            {
+                                Row = i,
+                                Col = j
+                            };
+                            break;
+                    }
+                }
+            } 
+            for (int i = 1; i <= 4; i++)
+            {
+                maze = Program.Rotate(maze, map.Start, map.Goal);
+                map.Maze[i % 4] = (char[][])maze.Clone();
+                for (int j = 0; j < maze.Length; j++)
+                {
+                    map.Maze[i % 4][j] = (char[])maze[j].Clone();
+                }
+            }
+            
+
+            return map;
+
+        }
+
+        private struct Point
+        {
+            public int Row { get; set; }
+            public int Col { get; set; }
+        }
+
+        private struct Map
+        {
+            public char[][][] Maze { get; set; }
+            public Point Start { get; set; }
+            public Point Goal { get; set; }
+        }
+    }
+}

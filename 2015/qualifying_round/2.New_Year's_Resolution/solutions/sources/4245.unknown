@@ -1,0 +1,89 @@
+package de.mooxmirror.fhc.quali;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class NewYearsResolution {
+	private static List<ArrayList<Integer>> combinations;
+
+	public static void combinate(ArrayList<Integer> current, int index, int size) {
+		boolean doesContain = false;
+		for (Integer j : current) {
+			if (j.intValue() == index) {
+				doesContain = true;
+				break;
+			}
+		}
+		if (!doesContain) {
+			current.add(index);
+			combinations.add(current);
+			
+			for (int i = index; i < size; i++) {
+				combinate(new ArrayList<Integer>(current), i, size);
+			}
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+		// reading input file
+		List<String> lines = Files.readAllLines(FileSystems.getDefault().getPath("input.txt"));
+		int testCaseCount = Integer.parseInt(lines.get(0));
+		lines.remove(0);
+		int currentLine = 0;
+		
+		PrintWriter printer = new PrintWriter(new FileWriter("output.txt"));
+		for (int testCase = 1; testCase <= testCaseCount; testCase++) {
+			combinations = new ArrayList<ArrayList<Integer>>();
+			System.out.println("Reading target nutrients ...");
+			// read target gp gc gf
+			String[] targetStats = lines.get(currentLine++).split(" ");
+			int targetProteins = Integer.parseInt(targetStats[0]),
+				targetCarbo = Integer.parseInt(targetStats[1]),
+				targetFat = Integer.parseInt(targetStats[2]);
+			// read food count
+			int foodCount = Integer.parseInt(lines.get(currentLine++));
+			// read p c f and sum up
+			List<int[]> nutrients = new ArrayList<int[]>();
+			for (int food = 0; food < foodCount; food++) {
+				String[] foodStats = lines.get(currentLine++).split(" ");
+				int foodProteins = Integer.parseInt(foodStats[0]),
+					foodCarbo = Integer.parseInt(foodStats[1]),
+					foodFat = Integer.parseInt(foodStats[2]);
+				nutrients.add(new int[]{foodProteins, foodCarbo, foodFat});
+			}
+			System.out.println("Calculating food options ...");
+			long milliStart = System.currentTimeMillis();
+			for (int i = 0; i < foodCount; i++) {
+				combinate(new ArrayList<Integer>(), i, foodCount);
+			}
+			long milliDiff = System.currentTimeMillis() - milliStart;
+			System.out.println("Needed " + (milliDiff / 1000.0f) + "s for calculations.\nRunning food comparison ...");
+			
+			boolean solved = false;
+			for (ArrayList<Integer> comb : combinations) {
+				int sumProteins = 0, sumCarbo = 0, sumFat = 0;
+				for (Integer index : comb) {
+					sumProteins += nutrients.get(index)[0];
+					sumCarbo += nutrients.get(index)[1];
+					sumFat += nutrients.get(index)[2];
+				}
+				if (sumProteins == targetProteins && sumCarbo == targetCarbo && sumFat == targetFat) {
+					solved = true;
+					break;
+				}
+			}
+			System.out.println("Solved food comparison, test case is " + (solved ? "valid" : "not valid"));
+			
+			// output true or false if possible
+			printer.write("Case #" + testCase + ": " + (solved ? "yes" : "no") + "\n");
+		}
+		printer.close();
+	}
+
+}

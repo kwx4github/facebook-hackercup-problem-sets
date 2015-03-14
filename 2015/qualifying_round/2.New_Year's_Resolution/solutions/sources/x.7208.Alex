@@ -1,0 +1,72 @@
+#include <algorithm>
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <tuple>
+
+std::tuple<int, int, int> operator+(const std::tuple<int, int, int> & lhs, const std::tuple<int, int, int> & rhs) {
+	return std::make_tuple(std::get<0>(lhs) + std::get<0>(rhs), std::get<1>(lhs) + std::get<1>(rhs), std::get<2>(lhs) + std::get<2>(rhs));
+}
+
+bool depthFirst(const std::tuple<int, int, int> & maxMeal, const std::tuple<int, int, int> & accum, const std::vector<std::tuple<int, int, int>> & meals) {
+	if (accum >= maxMeal) return accum == maxMeal;
+
+	for (std::size_t i = 0; i < meals.size(); ++i) {
+		auto newMeal = meals;
+		const auto newAccum = accum + meals[i];
+		newMeal.erase(std::begin(newMeal) + i);
+		if (depthFirst(maxMeal, newAccum, newMeal)) return true;
+	}
+	return false;
+}
+
+std::string test(std::ifstream & inFile) {
+	int max_p, max_c, max_f;
+	inFile >> max_p >> max_c >> max_f;
+	const std::tuple<int, int, int> maxMeal{max_p, max_c, max_f};
+	int foodCount;
+	inFile >> foodCount;
+	std::vector<std::tuple<int, int, int>> meals;
+
+	for (int i = 0; i < foodCount; ++i) {
+		int protein, carbo, fat;
+		inFile >> protein >> carbo >> fat;
+		if (protein <= max_p && carbo <= max_c && fat <= max_f) {
+			meals.emplace_back(protein, carbo, fat);
+		}
+	}
+
+	for(int i = 0; i < meals.size() - 1; ++i) {
+        bool aa{false}, bb{false}, cc{false};
+        for(int j = i+1; j < meals.size(); ++j) {
+            if(std::get<0>(meals[i]) + std::get<0>(meals[j]) < max_p) aa = true;
+            if(std::get<1>(meals[i]) + std::get<1>(meals[j]) < max_c) bb = true;
+            if(std::get<2>(meals[i]) + std::get<2>(meals[j]) < max_f) cc = true;
+        }
+        if(!aa || !bb || !cc) {
+            meals.erase(meals.begin() + i);
+            --i;
+        }
+    }
+
+	const std::tuple<int, int, int> maxFood = std::accumulate(std::begin(meals), std::end(meals), std::tuple<int, int, int>{0, 0, 0}, [](const std::tuple<int, int, int> & accum, const std::tuple<int, int, int> & add){
+		return accum + add;
+	});
+	if (maxFood < maxMeal) {
+		return "no";
+	}
+
+	return depthFirst(maxMeal, std::tuple<int, int, int>{0, 0, 0}, meals) ? "yes" : "no";
+}
+
+int main(int argc, char * argv[]) {
+	std::ifstream file(argv[1]);
+
+	std::string line;
+	std::getline(file, line);
+
+	for (int i = 1; i <= std::stoi(line); ++i) {
+		std::cout << "Case #" << i << ": " << test(file) << std::endl;
+	}
+}

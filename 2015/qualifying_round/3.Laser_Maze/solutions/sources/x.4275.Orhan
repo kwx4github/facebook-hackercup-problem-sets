@@ -1,0 +1,187 @@
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.util.*;
+
+/**
+ * Created by ocozalp on 1/10/15.
+ */
+public class Q3 {
+
+    final static int EMPTY = 10;
+    final static int BLOCKED = 20;
+    final static int UP = 0;
+    final static int RIGHT = 1;
+    final static int DOWN = 2;
+    final static int LEFT = 3;
+
+    static int[][] directions = new int [][] { {-1, 0}, {0, 1}, {1, 0}, {0, -1} };
+
+    public static void main(String [] args) throws Exception {
+        Scanner sc = new Scanner(new InputStreamReader(new FileInputStream("/home/ocozalp/Desktop/q3.in")));
+
+        int t = sc.nextInt();
+
+        for(int i = 1; i<=t; i++) {
+            int m = sc.nextInt();
+            int n = sc.nextInt();
+            sc.nextLine();
+
+            int [][][] mazes = new int[4][m][n];
+
+            int startRow = 0, startCol = 0;
+            int goalRow = 0, goalCol = 0;
+            for(int j = 0; j<m; j++) {
+                String line = sc.nextLine();
+
+                for(int k = 0; k<n; k++) {
+                    char c = line.charAt(k);
+                    if(c == '#') {
+                        mazes[0][j][k] = BLOCKED;
+                    } else if(c == 'S') {
+                        mazes[0][j][k] = EMPTY;
+                        startRow = j;
+                        startCol = k;
+                    } else if(c == 'G') {
+                        mazes[0][j][k] = EMPTY;
+                        goalRow = j;
+                        goalCol = k;
+                    } else if(c == '.') {
+                        mazes[0][j][k] = EMPTY;
+                    } else if(c == '^') mazes[0][j][k] = UP;
+                    else if(c == '>') mazes[0][j][k] = RIGHT;
+                    else if(c == 'v') mazes[0][j][k] = DOWN;
+                    else if(c == '<') mazes[0][j][k] = LEFT;
+
+                    for(int mIndex = 1; mIndex < mazes.length; mIndex++) mazes[mIndex][j][k] = mazes[0][j][k];
+                }
+            }
+
+            generateMazes(mazes, m, n);
+
+            //printMazes(mazes, m, n);
+
+            int result = bfs(mazes, m, n, startRow, startCol, goalRow, goalCol);
+            String resultStr;
+            if(result == -1) resultStr = "impossible";
+            else resultStr = "" + result;
+
+            System.out.println("Case #" + i + ": " + resultStr);
+        }
+
+        sc.close();
+    }
+
+    private static void printMazes(int [][][] mazes, int m, int n) {
+        for(int i = 0; i<mazes.length; i++) {
+            System.out.println("Maze : " + i);
+            for(int j = 0; j<m; j++) {
+                for(int k = 0; k<n; k++) {
+                    System.out.print(mazes[i][j][j] + "-");
+                }
+                System.out.println();
+            }
+        }
+    }
+
+    private static void generateMazes(int [][][] mazes, int m, int n) {
+        for(int i = 0; i<mazes.length; i++) {
+            for(int j = 0; j<m; j++) {
+                for(int k = 0; k<n; k++) {
+                    if(mazes[i][j][k] <= LEFT) {
+                        int [] dir = directions[(i + mazes[i][j][k]) % directions.length];
+                        int row = j;
+                        int col = k;
+                        mazes[i][row][col] = BLOCKED;
+
+                        row += dir[0];
+                        col += dir[1];
+                        while(row >= 0 && row < m && col >= 0 && col < n) {
+                            if(mazes[i][row][col] == BLOCKED) break;
+
+                            if(mazes[i][row][col] <= LEFT) {
+                                mazes[i][row][col] = BLOCKED;
+                                break;
+                            }
+
+                            mazes[i][row][col] = BLOCKED;
+                            row += dir[0];
+                            col += dir[1];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static int bfs(int[][][] mazes, int m, int n, int startRow, int startCol, int goalRow, int goalCol) {
+        PriorityQueue<Node> [] queues = new PriorityQueue[mazes.length];
+        for(int i = 0; i<queues.length; i++) queues[i] = new PriorityQueue<Node>(100, new Comparator<Node>() {
+            @Override
+            public int compare(Node o1, Node o2) {
+                return o1.cost - o2.cost;
+            }
+        });
+
+        boolean [][][] visited = new boolean[mazes.length][m][n];
+
+        int [] results = new int[mazes.length];
+        for(int i = 0; i<results.length; i++) results[i] = Integer.MAX_VALUE;
+
+        int tIndex = 0;
+        queues[tIndex].add(new Node(startRow, startCol, 0));
+
+        while(!allEmpty(queues)) {
+            if(queues[tIndex].isEmpty()) {
+                tIndex = (tIndex + 1) % mazes.length;
+                continue;
+            }
+
+            Node currentNode = queues[tIndex].poll();
+
+            if(currentNode.cost > 0 && mazes[tIndex][currentNode.row][currentNode.col] == BLOCKED) {
+                tIndex = (tIndex + 1) % mazes.length;
+                continue;
+            } else if(currentNode.row == goalRow && currentNode.col == goalCol) {
+                return currentNode.cost;
+            }
+
+            if(!visited[tIndex][currentNode.row][currentNode.col]) {
+                visited[tIndex][currentNode.row][currentNode.col] = true;
+                int nextT = (tIndex + 1) % mazes.length;
+
+                if(currentNode.row > 0 && mazes[nextT][currentNode.row-1][currentNode.col] == EMPTY)
+                    queues[nextT].add(new Node(currentNode.row-1, currentNode.col, currentNode.cost + 1));
+
+                if(currentNode.row < m-1 && mazes[nextT][currentNode.row+1][currentNode.col] == EMPTY)
+                    queues[nextT].add(new Node(currentNode.row+1, currentNode.col, currentNode.cost + 1));
+
+                if(currentNode.col > 0 && mazes[nextT][currentNode.row][currentNode.col-1] == EMPTY)
+                    queues[nextT].add(new Node(currentNode.row, currentNode.col-1, currentNode.cost + 1));
+
+                if(currentNode.col < n-1 && mazes[nextT][currentNode.row][currentNode.col+1] == EMPTY)
+                    queues[nextT].add(new Node(currentNode.row, currentNode.col+1, currentNode.cost + 1));
+            }
+        }
+
+        return -1;
+    }
+
+    private static boolean allEmpty(PriorityQueue<Node> [] queues) {
+        for(int i = 0; i<queues.length; i++) if(!queues[i].isEmpty()) return false;
+
+        return true;
+    }
+
+    private static class Node {
+        int row;
+        int col;
+        int cost;
+
+        public Node(int row, int col, int cost) {
+            this.row = row;
+            this.col = col;
+            this.cost = cost;
+        }
+    }
+}

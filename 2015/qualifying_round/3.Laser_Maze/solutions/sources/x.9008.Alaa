@@ -1,0 +1,113 @@
+#include <cstdio>
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <cmath>
+#include <cstdlib>
+#include <vector>
+#include <map>
+#include <queue>
+#include <algorithm>
+using namespace std;
+struct Node{
+    int r,c,cost,steps;
+    char state;
+    Node(){}
+    Node(int r,int c,int cost,int steps ):r(r),c(c),cost(cost),steps(steps){}
+};
+char states[] = {'^','>','v','<'};
+int rd[] = {-1,0,1,0};
+int cd[] = {0,1,0,-1};
+int ID,n,m,dist[105][105][10005];
+int vis[105][105][10005];
+string grid[105];
+vector<Node> laser;
+bool valid[105][105];
+map<char,int>getState;
+void validate(int steps){
+    for(int i=0;i<n;i++){
+        for(int j=0;j<m;j++){
+            valid[i][j] = true;
+        }
+    }
+    for(int i=0;i<(int)laser.size();i++){
+        int st = getState[grid[laser[i].r][laser[i].c]];
+        st+=steps; st%=4;
+        if(states[st]=='>'){
+            for(int j=laser[i].c;j<m;j++){
+                valid[laser[i].r][j] = false;
+            }
+        }else if(states[st]=='<'){
+            for(int j=0;j<=laser[i].c;j++){
+                valid[laser[i].r][j] = false;
+            }
+        }else if(states[st]=='^'){
+            for(int j=0;j<=laser[i].r;j++){
+                valid[j][laser[i].c] = false;
+            }
+        }else if(states[st]=='v'){
+            for(int j=laser[i].r;j<n;j++){
+                valid[j][laser[i].c] = false;
+            }
+        }
+    }
+}
+int bfs(Node s,Node e){
+    ID++;
+    queue<Node>q ;
+    q.push(s);
+    dist[s.r][s.c][0] = 0;
+    int mini = 1<<29;
+    while(!q.empty()){
+        Node cur = q.front(); q.pop();
+        //cout << cur.r << " " << cur.c << endl;
+        if(cur.r == e.r && cur.c == e.c){
+            return dist[cur.r][cur.c][cur.steps];
+        }
+        for(int i=0;i<4;i++){
+            int rr = cur.r + rd[i];
+            int cc = cur.c + cd[i];
+            if(rr>=0&&rr<n&&cc>=0&&cc<m&&(grid[rr][cc]=='.'||grid[rr][cc]=='S'||grid[rr][cc]=='G')){
+                validate(cur.steps+1);
+                if(valid[rr][cc]&&vis[rr][cc][cur.steps+1]!=ID){
+                    vis[rr][cc][cur.steps+1] = ID;
+                    dist[rr][cc][cur.steps+1] = dist[cur.r][cur.c][cur.steps] + 1;
+                    Node temp = Node(rr,cc,dist[rr][cc][cur.steps+1],cur.steps+1);
+                    q.push(temp);
+                }
+            }
+        }
+    }
+    return -1;
+}
+int main(){
+    freopen("input.txt","r",stdin);
+    freopen("output.txt","w",stdout);
+    getState['^'] = 0;
+    getState['>'] = 1;
+    getState['v'] = 2;
+    getState['<'] = 3;
+    int t,k=1;
+    cin >> t;
+    while(t--){
+        laser.clear();
+        ID++;
+        cin >> n >> m;
+        Node s,e;
+        for(int i=0;i<n;i++){
+            cin >> grid[i];
+            for(int j=0;j<m;j++){
+                if(grid[i][j]=='S') s =  Node(i,j,0,0);
+                else if(grid[i][j]=='G') e = Node(i,j,0,0);
+                else if(grid[i][j]=='.'||grid[i][j]=='#') continue;
+                else if(grid[i][j]=='>'||grid[i][j]=='<'||grid[i][j]=='^'||grid[i][j]=='v')laser.push_back(Node(i,j,0,0));
+            }
+        }
+        int ans = bfs(s,e);
+        if(ans==-1)
+        cout << "Case #" << k << ": " << "impossible" << endl;
+        else cout << "Case #" << k << ": " << ans << endl;
+        k++;
+    }
+    return 0;
+}

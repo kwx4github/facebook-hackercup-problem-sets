@@ -1,0 +1,177 @@
+#define ONLINE_JUDGE
+#ifdef ONLINE_JUDGE
+#include <bits/stdc++.h>
+using namespace std;
+#else
+#include "header.h"
+#include "debug.h"
+#endif
+#define sz(s) int((s).size())
+#define clr(a) memset(a,0,sizeof(a))
+#define all(x) (x).begin(),(x).end()
+#define rep(i,n) for(int(i)=0; (i)<(n);++(i))
+#define ru(i,a,b) for(int(i)=a;(i)<=(b);++(i))
+#define eb emplace_back
+#define pb push_back
+#define ff first
+#define ss second
+typedef pair <int,int> pii;
+typedef long long LL;
+template <class T> inline T gcd(T a,T b){return (!b? a : gcd(b,a%b));}
+template <class T> inline T ABS(T x){return ((x)>0?(x):(-(x)));}
+const int N = 111;
+
+int n, m;
+int startx, starty, endx, endy;
+string str [N];
+bool blocked [N][N][4];
+// R, D, L, U
+const int dx [4] = {0, 1, 0, -1};
+const int dy [4] = {1, 0, -1, 0};
+map <char, int> hush;
+int dist [N][N];
+
+
+inline bool ins (int x, int y) {
+  return (x >= 0 && x < n && y >= 0 && y < m);
+}
+
+void create (int idx, int x, int y) {
+  int cnt = 4;
+  int curr = 0;
+  while (cnt--) {
+    if (idx == 4) idx = 0;
+    if (idx == 0) {
+      for (int j = y + 1; j < m && (str [x][j] == '.' || str [x][j] == 'G' || str [x][j] == 'S'); ++j) {
+        blocked [x][j][curr] = 1;
+      }
+    }
+    if (idx == 1) {
+      for (int i = x + 1; i < n && (str [i][y] == '.' || str [i][y] == 'G' || str [i][y] == 'S'); ++i) {
+        blocked [i][y][curr] = 1;
+      }
+    }
+    if (idx == 2) {
+      for (int j = y - 1; j >= 0 && (str [x][j] == '.' || str [x][j] == 'G' || str [x][j] == 'S'); --j) {
+        blocked [x][j][curr] = 1;
+      }
+    }
+    if (idx == 3) {
+      for (int i = x - 1; i >= 0 && (str [i][y] == '.' || str [i][y] == 'G' || str [i][y] == 'S'); --i) {
+        blocked [i][y][curr] = 1;
+      }
+    }
+    ++curr;
+    ++idx;
+  }
+}
+  
+
+void prepare () {
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (str [i][j] == '.') {
+        continue;
+      }
+      if (str [i][j] == 'S') {
+        startx = i;
+        starty = j;
+        continue;
+      }
+      if (str [i][j] == 'G') {
+        endx = i;
+        endy = j;
+        continue;
+      }
+      for (int k = 0; k < 4; ++k) {
+        blocked [i][j][k] = 1;
+      }
+      if (str [i][j] == '#') {
+        continue;
+      }
+      create (hush [str [i][j]], i, j);
+    }
+  }
+}
+
+inline bool full (int x, int y) {
+  for (int k = 0; k < 4; ++k) {
+    if (blocked [x][y][k] == 0) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+inline bool good_prev (int x, int y, int uu, int vv, int curr) {
+  for (int i = 0; i < 4; ++i) {
+    int u = x + dx [i];
+    int v = y + dy [i];
+    if (!ins (u, v) || (u == uu && v == vv)) continue;
+    if (blocked [u][v][curr] == 0) return 1;
+  }
+  return 0;
+}
+
+void bfs (int x, int y) {
+  queue <pii> qq;
+  qq.push ({x, y});
+  dist [x][y] = 0;
+  while (!qq.empty ()) {
+    x = qq.front().ff;
+    y = qq.front().ss;
+    qq.pop ();
+    for (int i = 0; i < 4; ++i) {
+      int u = x + dx [i];
+      int v = y + dy [i];
+      int curr = dist [x][y] + 1;
+      if (!ins (u, v) || full (u, v) || dist [u][v] <= dist [x][y] + 1) continue;
+      if (blocked [u][v][curr % 4] && blocked[u][v][(curr + 2) % 4]) continue;
+      if (!blocked [u][v][curr % 4]) {
+        dist [u][v] = curr;
+      } else if (!blocked[u][v][(curr + 2) % 4] && good_prev (x, y, u, v, curr) && (blocked [x][y][curr + 1] == 0)) {
+        dist [u][v] = curr + 2;
+      }
+      if (u == endx && v == endy) return;
+      qq.push ({u, v});
+    }
+  }
+}
+  
+
+int main() {
+  #ifndef ONLINE_JUDGE
+    freopen ("in.txt", "r", stdin);
+    freopen ("out.txt", "w", stdout);
+  #endif
+  cin.sync_with_stdio (0); cin.tie (0);
+  hush ['>'] = 0;
+  hush ['v'] = 1;
+  hush ['<'] = 2;
+  hush ['^'] = 3;
+  int tt;
+  cin >> tt;
+  for (int tc = 1; tc <= tt; ++tc) {
+    cout << "Case #" << tc << ": ";
+    cin >> ::n >> ::m;
+    for (int i = 0; i < n; ++i) {
+      cin >> str [i];
+    }
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        dist [i][j] = (1 << 30);
+      }
+    }
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        for (int k = 0; k < 4; ++k) {
+          blocked [i][j][k] = 0;
+        }
+      }
+    }
+    prepare ();
+    bfs (startx, starty);
+    if (dist [endx][endy] == (1 << 30)) cout << "impossible\n";
+    else cout << dist [endx][endy] << '\n';
+  }
+}

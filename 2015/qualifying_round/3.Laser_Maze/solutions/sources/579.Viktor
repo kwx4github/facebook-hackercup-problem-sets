@@ -1,0 +1,179 @@
+#include <iostream>
+#include <vector>
+#include <iomanip>
+#include <set>
+#include <queue>
+#include <deque>
+#include <map>
+#include <list>
+#include <algorithm>
+#include <stdlib.h>
+#include <stdio.h>
+#include <cstring>
+#include <ctime>
+#include <string>
+#include <sstream>
+#include <math.h>
+
+using namespace std;
+
+const int N = 105, M = 105;
+
+const char EMPTY = '.';
+const char WALL = '#';
+const char START = 'S';
+const char GOAL = 'G';
+
+const char TURRETS[5] = "<^>v";
+
+int get_turret_id(char c) {
+	for (int i = 0; i < 4; ++i) {
+		if (c == TURRETS[i]) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+const int dx[4] = { 0, -1, 0, 1};
+const int dy[4] = {-1,  0, 1, 0};
+
+struct Item {
+	int x, y, mod;
+	Item () {}
+	Item (int x, int y, int mod) : x(x), y(y), mod(mod) {}
+};
+
+const int INF = 1e9;
+
+int solve(const vector<string>& field) {
+	int n = field.size();
+	int m = field[0].size();
+
+	bool is_blocked[N][M][4];
+	int distance[N][M][4];
+	memset(is_blocked, 0, sizeof(is_blocked));
+
+	int start_x, start_y;
+	int goal_x, goal_y;
+
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+
+			for (int z = 0; z < 4; ++z) {
+				distance[i][j][z] = INF;
+			}
+
+			char c = field[i][j];
+
+			if (c == EMPTY) {
+				continue;
+			}
+
+			if (c == START) {
+				start_x = i;
+				start_y = j;
+				continue;
+			}
+
+			if (c == GOAL) {
+				goal_x = i;
+				goal_y = j;
+				continue;
+			}
+
+			if (c == WALL) {
+				for (int z = 0; z < 4; ++z) {
+					is_blocked[i][j][z] = true;
+				}
+				continue;
+			}
+
+			for (int z = 0; z < 4; ++z) {
+				is_blocked[i][j][z] = true;
+			}
+
+			int turret_id = get_turret_id(c);
+
+			for (int shift = 0; shift < 4; ++shift) {
+				int current_dx = dx[(turret_id + shift) % 4];
+				int current_dy = dy[(turret_id + shift) % 4];
+
+				int tx = i + current_dx;
+				int ty = j + current_dy;
+
+				while (tx >= 0 && tx < n && ty >= 0 && ty < m 
+						&& 
+						(field[tx][ty] == EMPTY || field[tx][ty] == START || field[tx][ty] == GOAL)) {
+					is_blocked[tx][ty][shift] = true;
+					tx += current_dx;
+					ty += current_dy;
+				}
+			}			
+		}
+	}
+
+	is_blocked[start_x][start_y][0] = false;
+	distance[start_x][start_y][0] = 0;
+
+	queue<Item> q;
+	q.push(Item(start_x, start_y, 0));
+
+	while (!q.empty()) {
+		int x = q.front().x;
+		int y = q.front().y;
+		int mod = q.front().mod;
+		int next_mod = (mod + 1) % 4;
+		q.pop();
+
+		for (int z = 0; z < 4; ++z) {
+			int nx = x + dx[z];
+			int ny = y + dy[z];
+
+			if (nx < 0 || nx >= n || ny < 0 || ny >= m || is_blocked[nx][ny][next_mod] || distance[nx][ny][next_mod] != INF) {
+				continue;
+			}
+
+			distance[nx][ny][next_mod] = distance[x][y][mod] + 1;
+			q.push(Item(nx, ny, next_mod));
+		}
+	}
+
+	int answer = INF;
+	for (int i = 0; i < 4; ++i) {
+		answer = min(answer, distance[goal_x][goal_y][i]);
+	}
+
+	return answer;
+}
+
+int main() {
+	
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	const string NO = "impossible";
+
+	int T; cin >> T;
+	for (int test = 1; test <= T; ++test) {
+
+		int n, m;
+		cin >> n >> m;
+		vector<string> field(n);
+		for (int i = 0; i < n; ++i) {
+			cin >> field[i];
+		}
+
+		int answer = solve(field);
+		
+		if (answer == INF) {
+			cout << "Case #" << test << ": " << NO << "\n";
+			cerr << "Case #" << test << ": " << NO << "[" << 1. * clock() / CLOCKS_PER_SEC << "]\n";
+		} else {
+			cout << "Case #" << test << ": " << answer << "\n";
+			cerr << "Case #" << test << ": " << answer << "[" << 1. * clock() / CLOCKS_PER_SEC << "]\n";
+		}
+	}
+	
+	return 0;
+}

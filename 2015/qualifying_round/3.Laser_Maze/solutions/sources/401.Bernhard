@@ -1,0 +1,125 @@
+#include <cstdio>
+#include <algorithm>
+#include <cstring>
+#include <cassert>
+#include <deque>
+
+using namespace std;
+
+char x[128][128];
+int val[128][128][4];
+
+struct state {
+	int r, c, t;
+};
+
+struct turret {
+	int r, c, t;
+};
+
+const int dr[] = { -1, 0, 1, 0 };
+const int dc[] = { 0, 1, 0, -1 };
+
+bool tur_mask[4][128][128];
+
+void prep_tur_mask(int rows, int cols, const vector<turret>& tur) {
+	for (int i = 0; i < 4; ++i) {
+		for (int r = 0; r < rows; ++r) {
+			for (int c = 0; c < cols; ++c) {
+				tur_mask[i][r][c] = false;
+			}
+		}
+		for (int j = 0; j < (int) tur.size(); ++j) {
+			int r = tur[j].r;
+			int c = tur[j].c;
+			int t = (tur[j].t + i) % 4;
+
+			r += dr[t];
+			c += dc[t];
+
+			while (0 <= r && r < rows && 0 <= c && c < cols
+					&& (x[r][c] == 'S' || x[r][c] == 'G' || x[r][c] == '.')) {
+				tur_mask[i][r][c] = true;
+				r += dr[t];
+				c += dc[t];
+			}
+		}
+	}
+}
+
+int main() {
+	int n_cases;
+	deque<state> d;
+	vector<turret> tur;
+
+	scanf("%d", &n_cases);
+	for (int cur_case = 0; cur_case < n_cases; ++cur_case) {
+		printf("Case #%d: ", cur_case + 1);
+		int rows, cols;
+		scanf("%d%d", &rows, &cols);
+		for (int r = 0; r < rows; ++r) {
+			scanf("%s", x[r]);
+		}
+		int src_r = -1, src_c = -1, dst_r = -1;
+		tur.clear();
+		for (int r = 0; r < rows; ++r) {
+			for (int c = 0; c < cols; ++c) {
+				if (x[r][c] == 'S') {
+					src_r = r;
+					src_c = c;
+				} else if (x[r][c] == 'G') {
+					dst_r = r;
+				} else if (x[r][c] == '<') {
+					tur.push_back( { r, c, 3 });
+				} else if (x[r][c] == '^') {
+					tur.push_back( { r, c, 0 });
+				} else if (x[r][c] == '>') {
+					tur.push_back( { r, c, 1 });
+				} else if (x[r][c] == 'v') {
+					tur.push_back( { r, c, 2 });
+				} else if (x[r][c] != '.' && x[r][c] != '#') {
+					assert(0);
+				}
+			}
+		}
+
+		prep_tur_mask(rows, cols, tur);
+
+		assert(src_r != -1 && dst_r != -1);
+		memset(val, -1, sizeof(val));
+
+		val[src_r][src_c][0] = 0;
+		d.clear();
+		d.push_back( { src_r, src_c, 0 });
+
+		int res = -1;
+
+		while (!d.empty()) {
+			state s = d.front();
+			d.pop_front();
+
+			if (x[s.r][s.c] == 'G') {
+				res = val[s.r][s.c][s.t];
+				break;
+			}
+
+			for (int i = 0; i < 4; ++i) {
+				int r = s.r + dr[i];
+				int c = s.c + dc[i];
+				int t = (s.t + 1) % 4;
+				if (0 <= r && r < rows && 0 <= c && c < cols
+						&& (x[r][c] == 'S' || x[r][c] == 'G' || x[r][c] == '.')
+						&& val[r][c][t] == -1 && tur_mask[t][r][c] == false) {
+					val[r][c][t] = val[s.r][s.c][s.t] + 1;
+					d.push_back( { r, c, t });
+				}
+			}
+		}
+
+		if (res == -1)
+			puts("impossible");
+		else
+			printf("%d\n", res);
+	}
+	return 0;
+}

@@ -1,0 +1,115 @@
+import copy
+import Queue
+INF = 9999999999
+
+ROTATE = {">":"v", "v": "<", "<":"^", "^": ">"}
+STEP = {">" : (0,1), "v": (1,0), "<": (0,-1), "^": (-1,0)}
+STEP_X = {">" : 0, "v": 1, "<": 0, "^": -1}
+STEP_Y = {">" : 1, "v": 0, "<": -1, "^": 0}
+
+def print_maze(M,N,maze):
+  for i in xrange(M):
+    line_str = ""
+    for j in xrange(N):
+      line_str += maze[i][j]
+    print line_str
+  print
+
+def is_turrent(cell):
+  return cell in ROTATE
+
+def is_open(cell):
+  return cell == '.'
+
+def is_wall(cell):
+  return cell == '#'
+
+def is_start(cell):
+  return cell == 'S'
+
+def is_goal(cell):
+  return cell == 'G'
+
+def get_all_cells(M,N,maze,func):
+  ret = []
+  for i in xrange(M):
+   for j in xrange(N):
+     if func(maze[i][j]):
+       ret.append((i,j))
+  return ret 
+
+def rotate_maze(M,N,maze):
+  rotated_maze = copy.deepcopy(maze)
+  for x in range(M):
+    for y in range(N):
+      if rotated_maze[x][y] in ROTATE:
+       rotated_maze[x][y] = ROTATE[rotated_maze[x][y]]
+  return rotated_maze
+
+
+def maze_rotates(M,N,maze): 
+  mazes = [maze]
+  for i in range(3):
+    maze = rotate_maze(M,N,maze)
+    mazes.append(maze)
+  return mazes 
+
+def in_bound(M,N,maze,x,y):
+  return x >= 0 and x < M and y >= 0 and y < N and maze[x][y] not in ['#','^','<','>','v']
+
+def extend_turrents(M,N,maze):
+  for t_x, t_y in get_all_cells(M,N,maze, is_turrent):
+    turrent = maze[t_x][t_y]
+    t_x, t_y = t_x + STEP_X[turrent], t_y + STEP_Y[turrent]
+    while in_bound(M,N,maze,t_x,t_y):
+      maze[t_x][t_y] = '*'
+      t_x, t_y = t_x + STEP_X[turrent], t_y + STEP_Y[turrent]
+
+  return maze
+
+def enum_movements(x,y):
+  yield x+1,y
+  yield x,y+1
+  yield x-1,y
+  yield x,y-1
+
+def build_maze_graph(M,N,maze):
+  mazes = maze_rotates(M,N,maze)
+  mazes = [extend_turrents(M,N,maze) for maze in mazes]
+  return mazes 
+
+def solve_maze(M,N,maze):
+  start_x, start_y = get_all_cells(M,N,maze, is_start)[0]
+  mazes = build_maze_graph(M,N,maze)
+
+  visited = set()
+  q = Queue.Queue()
+  q.put((start_x, start_y, 0, 0))
+  while not q.empty():
+    x,y,maze_num,path_len = q.get()
+    next_maze = (maze_num + 1)% 4
+    if mazes[maze_num][x][y] == 'G':
+      return path_len
+   
+    for next_x, next_y in enum_movements(x,y):
+      if in_bound(M,N,mazes[next_maze],next_x,next_y) and mazes[next_maze][next_x][next_y] != '*' and not (next_x, next_y, next_maze) in visited:
+        visited.add((next_x, next_y, next_maze))
+        q.put((next_x, next_y, next_maze, path_len+1)) 
+
+  return INF
+ 
+if __name__ == '__main__':
+  T = int(raw_input())
+  for i in xrange(T):
+    M,N = tuple(int(x) for x in raw_input().split())
+    maze_lines = []
+    for j in xrange(M):
+      maze_line = raw_input().strip()
+      assert len(maze_line) == N
+      maze_lines.append(list(maze_line))
+     
+    n_solve_maze = solve_maze(M,N,maze_lines)
+    if n_solve_maze == INF:
+      print "Case #%s: impossible" % (i+1)
+    else:
+      print "Case #%s: %s" % (i+1, n_solve_maze)

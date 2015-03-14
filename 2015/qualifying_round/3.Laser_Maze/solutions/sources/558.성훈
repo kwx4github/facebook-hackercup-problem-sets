@@ -1,0 +1,167 @@
+# We are brothers
+import copy
+from collections import deque
+
+inputfile = open(__file__.replace('.py', '.txt'), 'r')
+outputfile = open(__file__.replace('.py', '_result.txt'), 'w')
+
+def readline():
+  global inputfile
+  return inputfile.readline().strip()
+
+def print_map(map_arr):
+  print '-' * 100
+  for y_arr in map_arr:
+    print "".join(y_arr)
+  print '-' * 100
+
+def laser_turn(map_arr):
+  turn_dict = dict()
+  turn_dict['>'] = 'v'
+  turn_dict['v'] = '<'
+  turn_dict['<'] = '^'
+  turn_dict['^'] = '>'
+  for y, y_arr in enumerate(map_arr):
+    for x, val in enumerate(y_arr):
+      if val in ['>', 'v', '<', '^']:
+        map_arr[y][x] = turn_dict[val]
+  return map_arr
+
+
+def fire_laser(map_arr):
+  min_x = -1
+  min_y = -1
+  max_x = len(map_arr[0])
+  max_y = len(map_arr)
+  for y, y_arr in enumerate(map_arr):
+    for x, val in enumerate(y_arr):
+      if val == 'v':
+        target_x = x
+        for target_y in xrange(y+1, max_y):
+          if map_arr[target_y][target_x] in ['#', '>', 'v', '<', '^']:
+            break
+          else:
+            map_arr[target_y][target_x] = 'x'
+      elif val == '<':
+        target_y = y
+        for target_x in xrange(x-1, min_x, -1):
+          if map_arr[target_y][target_x] in ['#', '>', 'v', '<', '^']:
+            break
+          else:
+            map_arr[target_y][target_x] = 'x'
+      elif val == '^':
+        target_x = x
+        for target_y in xrange(y-1, min_y, -1):
+          if map_arr[target_y][target_x] in ['#', '>', 'v', '<', '^']:
+            break
+          else:
+            map_arr[target_y][target_x] = 'x'
+      elif val == '>':
+        target_y = y
+        for target_x in xrange(x+1, max_x):
+          if map_arr[target_y][target_x] in ['#', '>', 'v', '<', '^']:
+            break
+          else:
+            map_arr[target_y][target_x] = 'x'
+  return map_arr
+
+
+def find_coordinates(map_arr, str):
+  for y, y_arr in enumerate(map_arr):
+    for x, val in enumerate(y_arr):
+      if val == str:
+        return [x, y]
+
+# four directions
+fd = [
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+  [0, -1],
+]
+
+case_length = int(readline())
+for case_num in xrange(case_length):
+
+  map_arr = []
+  map_y_x = map(lambda x: int(x), readline().split(' '))
+  max_y = map_y_x[0]
+  max_x = map_y_x[1]
+  for y in xrange(map_y_x[0]):
+    map_arr.append(list(readline()))
+
+  # Make turn laser 3 map
+  maps_arr = []
+  map_arr = laser_turn(map_arr)
+  maps_arr.append(copy.deepcopy(map_arr))
+  map_arr = laser_turn(map_arr)
+  maps_arr.append(copy.deepcopy(map_arr))
+  map_arr = laser_turn(map_arr)
+  maps_arr.append(copy.deepcopy(map_arr))
+  map_arr = laser_turn(map_arr)
+  maps_arr.append(copy.deepcopy(map_arr))
+
+  # Make fire laser on map
+  for arr in maps_arr:
+    arr = fire_laser(arr)
+
+  # Find S
+  start_xy = find_coordinates(map_arr, 'S')
+
+  # Find G
+  goal_xy = find_coordinates(map_arr, 'G')
+
+  # Make checked_maps_arr
+  checked_maps_arr = [[['n' for xs in range(map_y_x[1])] for ys in range(map_y_x[0])] for zs in range(4)]
+
+  # Loop
+  start_zxy = start_xy[:]
+  start_zxy.insert(0, 3)
+  candidate_zxys = deque()
+  candidate_zxys.append(start_zxy)
+  checked_maps_arr[start_zxy[0]][start_zxy[2]][start_zxy[1]] = 0
+
+  gold_distance = 'impossible'
+
+  while candidate_zxys:
+    zxy = candidate_zxys.popleft()
+    z = zxy[0]
+    x = zxy[1]
+    y = zxy[2]
+
+    # visit here
+    cur_distance = checked_maps_arr[z][y][x]
+    new_distance = cur_distance + 1
+
+    # is_goal
+    if map_arr[y][x] == 'G':
+      gold_distance = cur_distance
+      break
+
+    # check adjoined zxy z++ x+-1 y+-1
+
+    # - real check
+    new_z = z + 1
+    if new_z == 4:
+      new_z = 0
+    for direction in fd:
+      new_x = x + direction[0]
+      new_y = y + direction[1]
+      if 0 <= new_x < max_x and 0 <= new_y < max_y:
+        if maps_arr[new_z][new_y][new_x] in ['.', 'G', 'S']:
+          if checked_maps_arr[new_z][new_y][new_x] == 'n':
+            checked_maps_arr[new_z][new_y][new_x] = new_distance
+            candidate_zxys.append([new_z, new_x, new_y])
+
+    # maps_arr[new_z][x][y+1]
+    # maps_arr[new_z][x-1][y]
+    # maps_arr[new_z][x][y-1]
+
+    # - cache check
+
+  print_string = 'Case #%d: %s' % ((case_num + 1), gold_distance)
+  print print_string
+  outputfile.write(print_string + "\n")
+
+inputfile.close()
+outputfile.close()

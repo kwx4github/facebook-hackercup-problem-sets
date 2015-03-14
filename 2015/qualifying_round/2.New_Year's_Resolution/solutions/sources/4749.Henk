@@ -1,0 +1,143 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+
+namespace Hackercup
+{
+	static class Program
+	{
+		static void Main(string[] args)
+		{
+			List<TestCase> testCases = ParseTestCases(File.ReadAllLines("input.txt"));
+
+			foreach (TestCase testCase in testCases)
+			{
+				foreach (NutrientAmounts food in testCase.Foods)
+				{
+					if (food.Equals(testCase.Target) || SolveRecursively(testCase, new List<NutrientAmounts> { food }, food))
+					{
+						testCase.IsPossible = true;
+						break;
+					}
+				}
+			}
+
+			using (FileStream stream = File.OpenWrite("output.txt"))
+			using (StreamWriter writer = new StreamWriter(stream))
+			{
+				for (int i = 1; i <= testCases.Count; i++)
+				{
+					string output = String.Format("Case #{0}: {1}", i, testCases[i - 1].IsPossible ? "yes" : "no");
+					Console.WriteLine(output);
+					writer.WriteLine(output);
+					writer.Flush();
+				}
+			}
+			Console.Read();
+		}
+
+		static bool SolveRecursively(TestCase testCase, List<NutrientAmounts> currentChain, NutrientAmounts chainTotal)
+		{
+			foreach (NutrientAmounts food in testCase.Foods)
+			{
+				if (currentChain.ContainsRef(food))
+					continue;
+
+				NutrientAmounts sum = chainTotal + food;
+				if (sum.Equals(testCase.Target))
+					return true;
+
+				if (sum > testCase.Target)
+					continue;
+
+				List<NutrientAmounts> newChain = new List<NutrientAmounts>(currentChain);
+				newChain.Add(food);
+
+				if (SolveRecursively(testCase, newChain, sum))
+					return true;
+			}
+			return false;
+		}
+
+		static List<TestCase> ParseTestCases(string[] input)
+		{
+			List<TestCase> testCases = new List<TestCase>();
+			int numTestCases = Int32.Parse(input[0]);
+			int currentCaseOffset = 1;
+
+			while (numTestCases-- > 0)
+			{
+				int caseLength = Int32.Parse(input[currentCaseOffset + 1]) + 2;
+				string[] caseInput = new string[caseLength];
+				Array.Copy(input, currentCaseOffset, caseInput, 0, caseLength);
+				testCases.Add(TestCase.FromInput(caseInput));
+				currentCaseOffset += caseLength;
+			}
+
+			return testCases;
+		}
+
+		static bool ContainsRef<T>(this IEnumerable<T> chain, T instance)
+		{
+			return chain.Any(item => ReferenceEquals(item, instance));
+		}
+	}
+
+	class TestCase
+	{
+		public NutrientAmounts Target { get; set; }
+
+		public List<NutrientAmounts> Foods { get; set; }
+
+		public bool IsPossible { get; set; }
+
+		public static TestCase FromInput(string[] input)
+		{
+			TestCase testCase = new TestCase();
+			testCase.Target = NutrientAmounts.FromString(input[0]);
+
+			testCase.Foods = new List<NutrientAmounts>();
+			for (int i = 2; i < Int32.Parse(input[1]) + 2; i++)
+				testCase.Foods.Add(NutrientAmounts.FromString(input[i]));
+
+			return testCase;
+		}
+	}
+
+	class NutrientAmounts : Tuple<int, int, int>
+	{
+		public NutrientAmounts(int proteins, int carbohydrates, int fat)
+			: base(proteins, carbohydrates, fat)
+		{
+		}
+
+		public static NutrientAmounts FromString(string input)
+		{
+			string[] parts = input.Split(' ');
+			return new NutrientAmounts(
+				Int32.Parse(parts[0]),
+				Int32.Parse(parts[1]),
+				Int32.Parse(parts[2])
+			);
+		}
+
+		public static bool operator >(NutrientAmounts a, NutrientAmounts b)
+		{
+			return a.Item1 > b.Item1 || a.Item2 > b.Item2 || a.Item3 > b.Item3;
+		}
+
+		public static bool operator <(NutrientAmounts a, NutrientAmounts b)
+		{
+			return a.Item1 < b.Item1 && a.Item2 < b.Item2 && a.Item3 < b.Item3;
+		}
+
+		public static NutrientAmounts operator +(NutrientAmounts a, NutrientAmounts b)
+		{
+			if (a == null || b == null)
+				return a ?? b;
+
+			return new NutrientAmounts(a.Item1 + b.Item1, a.Item2 + b.Item2, a.Item3 + b.Item3);
+		}
+	}
+}

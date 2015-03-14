@@ -1,0 +1,268 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#include <algorithm>
+#include <bitset>
+#include <cstdio>
+#include <cassert>
+#include <cstring>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cctype>
+#include <functional>
+#include <hash_map>
+#include <iostream>
+#include <iomanip>
+#include <list>
+#include <deque>
+#include <queue>
+#include <math.h>
+#include <map>
+#include <numeric>
+#include <set>
+#include <stack>
+#include <stdio.h>
+#include <string>
+#include <sstream>
+#include <utility>
+#include <vector>
+
+using namespace std;
+#define debug(x) cerr<<#x<<" = "<<(x)<<endl;
+bool test = false;
+const double pi=acos(-1.0);
+const double eps=1e-11;
+int breakpoint = 0;
+
+const char rootdir[] = "C:\\HackerCup\\LaserMaze";
+void reopen(char* a) {
+	char input[256], output[256];
+	sprintf(input, "%s\\%s", rootdir, a);
+	sprintf(output, "%s\\%s", rootdir, a);
+	char *p = strstr(output, ".in");
+	if (p) sprintf(p, ".out"); 
+	else sprintf(&output[strlen(output)], ".out");
+	debug(input);
+	freopen(input, "r", stdin);
+	if (!test) {
+    debug(output);
+    freopen(output,"w",stdout);
+  }
+}
+
+int T;
+int M;
+int N;
+char G[128][128];
+char H[4][128][128];
+int dist[4][128][128];
+int sr = -1;
+int sc = -1;
+int gr = -1;
+int gc = -1;
+
+void showin() {
+  printf("%d %d\n", M, N);
+  for (int i = 0; i < M; i++) {
+    printf("%s\n", G[i]);
+  }
+}
+
+void showMaze() {
+  for (int k = 0; k < 4; k++) {
+    printf("\n%d %d k=%d\n", M, N, k);
+    for (int i = 0; i < M; i++) {
+      printf("%2d %s\n", i, H[k][i]);
+    }
+  }
+}
+
+bool isLaser(char c) {
+  // < > ^ v 
+  return (c == '<' || c == '>' || c == '^' || c == 'v');
+}
+
+bool isBlocked(char c) {
+  return (c == '#' || isLaser(c) || c == 'D');
+}
+
+
+char getLaserAtTime(char c, int k) {
+  assert(k >= 0 && k <= 3);
+  if (k == 0) {
+    return c;
+  }
+  // 90 degree clockwise
+  switch(c) {
+  case '<':
+    if (k == 0) return '<';
+    else if (k == 1) return '^';
+    else if (k == 2) return '>';
+    else if (k == 3) return 'v';
+    break;
+  case '^':
+    if (k == 0) return '^';
+    else if (k == 1) return '>';
+    else if (k == 2) return 'v';
+    else if (k == 3) return '<';
+    break;
+  case '>':
+    if (k == 0) return '>';
+    else if (k == 1) return 'v';
+    else if (k == 2) return '<';
+    else if (k == 3) return '^';
+    break;
+  case 'v':
+    if (k == 0) return 'v';
+    else if (k == 1) return '<';
+    else if (k == 2) return '^';
+    else if (k == 3) return '>';
+    break;
+  }
+  return c;
+}
+
+void initDist() {
+  sr = -1;
+  sc = -1;
+  gr = -1;
+  gc = -1;
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+      for (int k = 0; k < 4; k++) {
+        dist[k][i][j] = -1;
+      }
+      if (G[i][j] == 'S') {
+        dist[0][i][j] = 0;
+        sr = i;
+        sc = j;
+      }
+      if (G[i][j] == 'G') {
+        gr = i;
+        gc = j;
+      }
+    }
+  }
+  assert(sr >= 0 && sc >= 0 && gr >= 0 && gc >= 0);
+}
+
+int main(int argc, char* argv[]) {
+  test = false;
+	// reopen("laser_maze_example_input.txt");
+  reopen("laser_maze.txt");
+	scanf("%d\n", &T);
+	for(int t=1; t<=T; t++) {
+    scanf("%d %d\n", &M, &N);
+    for (int i = 0; i < M; i++) {
+      scanf("%s\n", G[i]);
+      for (int k = 0; k < 4; k++) {
+        strcpy(H[k][i], G[i]);
+      }
+    }
+    if (test) showin();
+    for (int k = 0; k < 4; k++) {
+      for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+          if (!isLaser(G[i][j])) continue;
+          char c = getLaserAtTime(G[i][j], k);
+          H[k][i][j] = c;
+          // < > ^ v
+          if (c == '^') {
+            for (int l = i-1; l >= 0; l--) {
+              if (isBlocked(G[l][j])) break;
+              H[k][l][j] = 'D';
+            }
+          } else if (c == 'v') {
+            for (int l = i+1; l < N; l++) {
+              if (isBlocked(G[l][j])) break;
+              H[k][l][j] = 'D';
+            }
+          } else if (c == '<') {
+            for (int l = j-1; l >= 0; l--) {
+              if (isBlocked(G[i][l])) break;
+              H[k][i][l] = 'D';
+            }
+          } else if (c == '>') {
+            for (int l = j+1; l < N; l++) {
+              if (isBlocked(G[i][l])) break;
+              H[k][i][l] = 'D';
+            }
+          }
+        }
+      }
+    }
+    if (test) {
+      showMaze();
+      printf("\n\n");
+    }
+
+    initDist();
+    int step = 0;
+    // row and column of newly reached slots.
+    vector<int> rows;
+    vector<int> cols;
+    rows.push_back(sr);
+    cols.push_back(sc);
+    bool ok = false;
+    while(true) {
+      step++;
+      int k = step % 4;
+      if (rows.size() == 0) {
+        break;
+      }
+      vector<int> newrows;
+      vector<int> newcols;
+      for (int i = 0; i < rows.size(); i++) {
+        int r = rows[i];
+        int c = cols[i];
+        if (r == 9 && c == 0) {
+          breakpoint++;
+        }
+        if (c > 0 && !isBlocked(H[k][r][c-1]) && dist[k][r][c-1] < 0) {
+          dist[k][r][c-1] = step;
+          newrows.push_back(r);
+          newcols.push_back(c-1);
+          // if (test) printf("visited (%d,%d) at step %d\n", r, c-1, step);
+        }
+
+        if (c < N-1 && !isBlocked(H[k][r][c+1]) && dist[k][r][c+1] < 0) {
+          dist[k][r][c+1] = step;
+          newrows.push_back(r);
+          newcols.push_back(c+1);
+          // if (test) printf("visited (%d,%d) at step %d\n", r, c+1, step);
+        }
+
+        if (r > 0 && !isBlocked(H[k][r-1][c]) && dist[k][r-1][c] < 0) {
+          dist[k][r-1][c] = step;
+          newrows.push_back(r-1);
+          newcols.push_back(c);
+          // if (test) printf("visited (%d,%d) at step %d\n", r-1, c, step);
+        }
+
+        if (r < M-1 && !isBlocked(H[k][r+1][c]) && dist[k][r+1][c] < 0) {
+          dist[k][r+1][c] = step;
+          newrows.push_back(r+1);
+          newcols.push_back(c);
+          // if (test) printf("visited (%d,%d) at step %d\n", r+1, c, step);
+        }
+      }
+      if (test) printf("visited %2d nodes at step %2d\n", newrows.size(), step);
+      if (dist[k][gr][gc] >= 0) {
+        ok = true;
+        break;
+      }
+      assert(newrows.size() == newcols.size());
+      if (newrows.size() == 0) {
+        if (test) printf("stuck at (%2d,%2d)\n", rows[0], cols[0]);
+        break;
+      }
+      rows.swap(newrows);
+      cols.swap(newcols);
+    }
+    if (ok) {
+      printf("Case #%d: %d\n", t, step);
+    } else {
+      printf("Case #%d: impossible\n", t);
+    }
+  }
+ 	return 0;
+}

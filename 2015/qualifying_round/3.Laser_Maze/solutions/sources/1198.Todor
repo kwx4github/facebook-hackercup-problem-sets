@@ -1,0 +1,470 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+
+public class QR3 {
+
+	private final static String INPUT_FILE_NAME = "input.in";
+	private final static String OUTPUT_FILE_NAME = "output.out";
+
+	private final static int START = 1;
+	private final static int FINAL = 2;
+	private final static int EMPTY = 3;
+	private final static int WALL = 4;
+	private final static int TUR_L = 5;
+	private final static int TUR_R = 6;
+	private final static int TUR_U = 7;
+	private final static int TUR_D = 8;
+
+	private String solveCase() throws Exception {
+		int m = readNextUInt();
+		int n = readNextUInt();
+		int[][] maze = new int[m][n];
+		char c;
+		int startI = -1, startJ = -1, endI = -1, endJ = -1;
+		for (int i = 0; i < m; i++) {
+			for (int j = 0; j < n; j++) {
+				c = readNextChar();
+				switch (c) {
+				case '.':
+					maze[i][j] = EMPTY;
+					break;
+				case '#':
+					maze[i][j] = WALL;
+					break;
+				case 'S':
+					startI = i;
+					startJ = j;
+					maze[i][j] = START;
+					break;
+				case 'G':
+					endI = i;
+					endJ = j;
+					maze[i][j] = FINAL;
+					break;
+				case '<':
+					maze[i][j] = TUR_L;
+					break;
+				case '>':
+					maze[i][j] = TUR_R;
+					break;
+				case 'v':
+					maze[i][j] = TUR_D;
+					break;
+				case '^':
+					maze[i][j] = TUR_U;
+					break;
+				default:
+					throw new Exception("BAD CHAR");
+				}
+			}
+		}
+		if (endI == -1 || endJ == -1) {
+			throw new Exception("BAD INP");
+		}
+		// DO BFS
+		boolean visited[][][] = new boolean[m][n][4];
+		visited[startI][startJ][0] = true;
+		Queue<int[]> queue = new ArrayDeque<int[]>();
+		queue.add(new int[] { startI, startJ, 0 });
+		int[] head;
+		while ((head = (int[]) queue.poll()) != null) {
+			List<int[]> validNeighs = validNeibs(head, visited, maze);
+			for (int[] neib : validNeighs) {
+				if (neib[0] == endI && neib[1] == endJ) {
+					return String.valueOf(neib[2]);
+				}
+				queue.add(neib);
+			}
+		}
+		return "impossible";
+	}
+
+	boolean lookingUp(int or, int turret) {
+		switch (turret) {
+		case TUR_U:
+			return or % 4 == 0;
+		case TUR_D:
+			return or % 4 == 2;
+		case TUR_L:
+			return or % 4 == 1;
+		case TUR_R:
+			return or % 4 == 3;
+		}
+		return false;
+	}
+
+	boolean lookingDown(int or, int turret) {
+		switch (turret) {
+		case TUR_U:
+			return or % 4 == 2;
+		case TUR_D:
+			return or % 4 == 0;
+		case TUR_L:
+			return or % 4 == 3;
+		case TUR_R:
+			return or % 4 == 1;
+		}
+		return false;
+	}
+
+	boolean lookingLeft(int or, int turret) {
+		switch (turret) {
+		case TUR_U:
+			return or % 4 == 3;
+		case TUR_D:
+			return or % 4 == 1;
+		case TUR_L:
+			return or % 4 == 0;
+		case TUR_R:
+			return or % 4 == 2;
+		}
+		return false;
+	}
+
+	boolean lookingRight(int or, int turret) {
+		switch (turret) {
+		case TUR_U:
+			return or % 4 == 1;
+		case TUR_D:
+			return or % 4 == 3;
+		case TUR_L:
+			return or % 4 == 2;
+		case TUR_R:
+			return or % 4 == 0;
+		}
+		return false;
+	}
+
+	private List<int[]> validNeibs(int[] head, boolean[][][] visited,
+			int[][] maze) {
+		ArrayList<int[]> res = new ArrayList<int[]>(4);
+		int m = maze.length;
+		int n = maze[0].length;
+		int x = head[0];
+		int y = head[1];
+		int or = head[2];
+		int newOr = or + 1;
+		// check right
+		int newY = y + 1;
+		if (newY < n && maze[x][newY] < WALL) {
+			boolean canAdd = true;
+			// check turrets
+			// up
+			for (int i = x - 1; i >= 0; i--) {
+				if (maze[i][newY] >= WALL) {
+					if (lookingDown(newOr, maze[i][newY])) {
+						canAdd = false;
+					}
+					break;
+				}
+			}
+			// down
+			if (canAdd)
+				for (int i = x + 1; i < m; i++) {
+					if (maze[i][newY] >= WALL) {
+						if (lookingUp(newOr, maze[i][newY])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// left
+			if (canAdd)
+				for (int j = newY - 1; j >= 0; j--) {
+					if (maze[x][j] >= WALL) {
+						if (lookingRight(newOr, maze[x][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// right
+			if (canAdd)
+				for (int j = newY + 1; j < n; j++) {
+					if (maze[x][j] >= WALL) {
+						if (lookingLeft(newOr, maze[x][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			if (canAdd && !visited[x][newY][newOr % 4]) {
+				res.add(new int[] { x, newY, newOr });
+				visited[x][newY][newOr % 4] = true;
+			}
+		}
+		// check left
+		newY = y - 1;
+		if (newY >= 0 && maze[x][newY] < WALL) {
+			boolean canAdd = true;
+			// check turrets
+			// up
+			for (int i = x - 1; i >= 0; i--) {
+				if (maze[i][newY] >= WALL) {
+					if (lookingDown(newOr, maze[i][newY])) {
+						canAdd = false;
+					}
+					break;
+				}
+			}
+			// down
+			if (canAdd)
+				for (int i = x + 1; i < m; i++) {
+					if (maze[i][newY] >= WALL) {
+						if (lookingUp(newOr, maze[i][newY])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// left
+			if (canAdd)
+				for (int j = newY - 1; j >= 0; j--) {
+					if (maze[x][j] >= WALL) {
+						if (lookingRight(newOr, maze[x][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// right
+			if (canAdd)
+				for (int j = newY + 1; j < n; j++) {
+					if (maze[x][j] >= WALL) {
+						if (lookingLeft(newOr, maze[x][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			if (canAdd && !visited[x][newY][newOr % 4]) {
+				res.add(new int[] { x, newY, newOr });
+				visited[x][newY][newOr % 4] = true;
+			}
+		}
+		// check up
+		int newX = x + 1;
+		if (newX < m && maze[newX][y] < WALL) {
+			boolean canAdd = true;
+			// check turrets
+			// up
+			for (int i = x - 1; i >= 0; i--) {
+				if (maze[i][y] >= WALL) {
+					if (lookingDown(newOr, maze[i][y])) {
+						canAdd = false;
+					}
+					break;
+				}
+			}
+			// down
+			if (canAdd)
+				for (int i = x + 1; i < m; i++) {
+					if (maze[i][y] >= WALL) {
+						if (lookingUp(newOr, maze[i][y])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// left
+			if (canAdd)
+				for (int j = y - 1; j >= 0; j--) {
+					if (maze[newX][j] >= WALL) {
+						if (lookingRight(newOr, maze[newX][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// right
+			if (canAdd)
+				for (int j = y + 1; j < n; j++) {
+					if (maze[newX][j] >= WALL) {
+						if (lookingLeft(newOr, maze[newX][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			if (canAdd && !visited[newX][y][newOr % 4]) {
+				res.add(new int[] { newX, y, newOr });
+				visited[newX][y][newOr % 4] = true;
+			}
+		}
+		// check down
+		newX = x - 1;
+		if (newX >= 0 && maze[newX][y] < WALL) {
+			boolean canAdd = true;
+			// check turrets
+			// up
+			for (int i = x - 1; i >= 0; i--) {
+				if (maze[i][y] >= WALL) {
+					if (lookingDown(newOr, maze[i][y])) {
+						canAdd = false;
+					}
+					break;
+				}
+			}
+			// down
+			if (canAdd)
+				for (int i = x + 1; i < m; i++) {
+					if (maze[i][y] >= WALL) {
+						if (lookingUp(newOr, maze[i][y])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// left
+			if (canAdd)
+				for (int j = y - 1; j >= 0; j--) {
+					if (maze[newX][j] >= WALL) {
+						if (lookingRight(newOr, maze[newX][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			// right
+			if (canAdd)
+				for (int j = y + 1; j < n; j++) {
+					if (maze[newX][j] >= WALL) {
+						if (lookingLeft(newOr, maze[newX][j])) {
+							canAdd = false;
+						}
+						break;
+					}
+				}
+			if (canAdd && !visited[newX][y][newOr % 4]) {
+				res.add(new int[] { newX, y, newOr });
+				visited[newX][y][newOr % 4] = true;
+			}
+		}
+		return res;
+	}
+
+	private void solve() throws Exception {
+		int tests = readNextUInt();
+		for (int test = 1; test <= tests; test++) {
+			write(String.format("Case #%d: %s\n", test, solveCase()));
+		}
+	}
+
+	private InputStream inputStream;
+	private BufferedInputStream bufferedInputStream;
+
+	private OutputStream outputStream;
+	private BufferedOutputStream bufferedOutputStream;
+
+	protected QR3() throws Exception {
+		File outputFile = new File(OUTPUT_FILE_NAME);
+		outputFile.createNewFile();
+		outputStream = new FileOutputStream(outputFile);
+		bufferedOutputStream = new BufferedOutputStream(outputStream);
+		inputStream = new FileInputStream(INPUT_FILE_NAME);
+		bufferedInputStream = new BufferedInputStream(inputStream);
+	}
+
+	public static void main(String[] args) throws Exception {
+		QR3 solver = new QR3();
+		solver.solve();
+		solver.closeFiles();
+
+	}
+
+	private void closeFiles() {
+		Closeable[] streams = new Closeable[4];
+		streams[0] = bufferedInputStream;
+		streams[1] = inputStream;
+		streams[2] = bufferedOutputStream;
+		streams[3] = outputStream;
+		for (int i = 0; i < 4; ++i) {
+			try {
+				streams[i].close();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private int readUInt() throws Exception {
+		int c;
+		int res = 0;
+		boolean hasNum = false;
+		while ((c = bufferedInputStream.read()) >= '0' && c <= '9') {
+			hasNum = true;
+			res *= 10;
+			res += c - '0';
+		}
+		if (!hasNum && c == -1) {
+			throw new Exception("EOF");
+		}
+		return hasNum ? res : -1;
+	}
+
+	protected int readNextUInt() throws Exception {
+		int r;
+		while ((r = readUInt()) == -1) {
+		}
+		return r;
+	}
+
+	protected void write(String str) throws Exception {
+		bufferedOutputStream.write(str.getBytes());
+	}
+
+	/**
+	 * Reads string containing ([a..z]|[A..Z]|[0..9])*
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	private String readStr() throws Exception {
+		StringBuilder strB = new StringBuilder();
+		int c;
+		boolean hasChars = false;
+		while (((c = bufferedInputStream.read()) >= 'a' && c <= 'z')
+				|| (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+			hasChars = true;
+			strB.append((char) c);
+		}
+		if (!hasChars && c == -1) {
+			throw new Exception("EOF");
+		}
+		return hasChars ? strB.toString() : null;
+	}
+
+	private char readNextChar() throws Exception {
+		int c;
+		while ((c = bufferedInputStream.read()) != '.' && c != '#' && c != 'S'
+				&& c != 'G' && c != '>' && c != '<' && c != 'v' && c != '^') {
+		}
+		if (c == -1)
+			throw new Exception("EOF");
+		return (char) c;
+	}
+
+	/**
+	 * Reads string containing ([a..z]|[A..Z]|[0..9])*
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	protected String readNextStr() throws Exception {
+		String s;
+		while ((s = readStr()) == null) {
+		}
+		return s;
+	}
+
+}

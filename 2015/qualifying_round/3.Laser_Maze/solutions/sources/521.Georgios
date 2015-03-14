@@ -1,0 +1,117 @@
+import sys
+from collections import deque
+
+
+DIRECTIONS = '^>v<'
+DI = (-1, 0, 1, 0)
+DJ = (0, 1, 0, -1)
+
+
+blocked = set()
+width = 0
+height = 0
+
+
+def inside(i, j):
+    if i < 0 or j < 0 or i >= height or j >= width:
+        return False
+    return True
+
+
+def next_steps(x):
+    i, j, t = x
+    r = []
+    nt = (t + 1) % 4
+    for d in xrange(4):
+        ni = i + DI[d]
+        nj = j + DJ[d]
+        nx = (ni, nj, nt)
+        if not inside(ni, nj):
+            continue
+        if nx in blocked:
+            continue
+        r.append((ni, nj, nt))
+    return r
+
+
+def bfs(start, targets, f_next):
+    q = deque()
+    depth = {}
+    depth[start] = 0
+    q.append(start)
+    while q:
+        x = q.popleft()
+        d = depth[x] + 1
+        for nx in f_next(x):
+            if nx in depth:
+                continue
+            if nx in targets:
+                return d
+            q.append(nx)
+            depth[nx] = d
+    return None
+            
+
+def laser(maze, i0, j0, d):
+    for dd in xrange(4):
+        di = DI[(d + dd) % 4]
+        dj = DJ[(d + dd) % 4]
+        i = i0
+        j = j0
+        blocked.add((i, j, dd))
+        while True:
+            i += di
+            j += dj
+            if not inside(i, j):
+                break
+            if maze[i][j] in DIRECTIONS or maze[i][j] == '#':
+                break
+            blocked.add((i, j, dd))
+    return
+
+
+def compute(M, N, maze):
+    global width, height
+    width = N
+    height = M
+    blocked.clear()
+    for i in xrange(height):
+        for j in xrange(width):
+            if maze[i][j] == '#':
+                blocked.add((i, j, 0))
+                blocked.add((i, j, 1))
+                blocked.add((i, j, 2))
+                blocked.add((i, j, 3))
+            elif maze[i][j] == 'S':
+                start = (i, j, 0)
+            elif maze[i][j] == 'G':
+                goal = (i, j)
+            elif maze[i][j] in DIRECTIONS:
+                laser(maze, i, j, DIRECTIONS.find(maze[i][j]))
+    goals = set()
+    i, j = goal
+    for t in xrange(4):
+        if (i, j, t) not in blocked:
+            goals.add((i, j, t))
+    depth = bfs(start, goals, next_steps)
+    if depth is None:
+        return "impossible"
+    else:
+        return depth
+
+
+def parse():
+    M, N = map(int, sys.stdin.readline().strip().split())
+    maze = []
+    for i in xrange(M):
+        maze.append(sys.stdin.readline().strip())
+    return M, N, maze
+
+
+if __name__ == "__main__":
+    sys.setrecursionlimit(100000)
+    T = int(sys.stdin.readline().strip())
+    for i in xrange(T):
+        data = parse()
+        result = compute(*data)
+        print "Case #%d: %s" % (i + 1, result)

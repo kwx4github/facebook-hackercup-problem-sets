@@ -1,0 +1,203 @@
+from copy import deepcopy
+
+def displayboard (state):
+    for i in state:
+        out = ''
+        for x in i:
+            out = out + str(x) + ' '
+        print(str(out))
+    print("\n-----")
+
+#assume start has been initilized
+
+def shortest (board, startpos, goalpos):
+    
+    state = deepcopy(board)
+    
+    def isvalidmove (pos, z):
+        passable = True
+        if pos[0] < 0: passable = False
+        if pos[1] < 0: passable = False
+        if pos[0] >= len(state[z]): passable = False
+        if passable == True:
+            if pos[1] >= len(state[z][pos[0]]): passable = False
+        if passable == True:
+            passable = ispassable(state[z][pos[0]][pos[1]])
+        return passable
+
+    def trymove (pos, z, value):
+        if isvalidmove(pos, z):
+            if state [z][pos[0]][pos[1]] == '.':
+                state [z][pos[0]][pos[1]] = value
+
+    def writemoves (pos, z, value):
+        trymove((pos[0] + 1, pos[1]), (z + 1) % 4, value)
+        trymove((pos[0] - 1, pos[1]), (z + 1) % 4, value)
+        trymove((pos[0], pos[1] + 1), (z + 1) % 4, value)
+        trymove((pos[0], pos[1] - 1), (z + 1) % 4, value)
+    
+    finished = False
+    step = 1
+    layer = 0
+    result = False
+
+    writemoves(startpos, -1, 1)
+
+  #  displayboard (state [layer])
+
+    while finished == False:
+        
+        finished = True
+        for y in range(len(state[layer])):
+            for x in range(len(state[layer][y])):
+                if state[layer][y][x] == step:
+                    finished = False
+                    writemoves((y,x), layer, step + 1)
+        for i in range(4):
+            if state[i][goalpos[0]][goalpos[1]] != '.':
+                if state[i][goalpos[0]][goalpos[1]] != '#':
+                    result = state[i][goalpos[0]][goalpos[1]]
+                    finished = True
+                    break
+        
+        layer = (layer + 1) % 4
+        
+   #     displayboard (state [layer])
+        
+        step = step + 1
+                               
+    return result
+
+#replace turrets and sectons to be hit with a laser with '#'
+
+def replace (board):
+    state = [list(i) for i in board]
+    for y in range(len(board)):
+        for x in range(len(board[y])):
+            (a,b) = isturret (board[y][x])
+            if a != -2:
+                state[y][x] = '#'
+                n = y + a
+                m = x + b
+                passable = True
+                if n < 0: passable = False
+                if m < 0: passable = False
+                if n >= len(state): passable = False
+                if m >= len(state[y]): passable = False
+                if passable == True: passable = ispassable(state[n][m])
+                while passable:
+                    state[n][m] = '#'
+                    n = n + a
+                    m = m + b
+                    passable = True
+                    if n < 0: passable = False
+                    if m < 0: passable = False
+                    if n >= len(state): passable = False
+                    if m >= len(state[y]): passable = False
+                    if passable == True: passable = ispassable(state[n][m])
+    return state
+
+#tests for passability
+
+def ispassable (test):
+    if test == '#':
+        return False
+    (a,b) = isturret(test)
+    if a == -2:
+        return True
+    return False
+
+#tests for turretness
+
+def isturret (test):
+    if test == '^':
+        return (-1,0)
+    if test == '>':
+        return (0,1)
+    if test == 'v':
+        return (1,0)
+    if test == '<':
+        return (0,-1)
+    return (-2, -2)
+
+#generate the list of rotated boards
+
+def genrot (start):
+    layer = [[],
+         [],
+         [],
+         []]
+    layer[0] = rotate(start)
+    for i in range(1,4):
+        layer[i] = rotate(layer[i-1])
+    return layer
+
+#rotates
+
+def rotate (board):
+    state = [list(i) for i in board]
+    for y in range(len(state)):
+        for x in range(len(state[y])):
+            if state[y][x] == '^':
+                state[y][x] = '>'
+            elif state[y][x] == '>':
+                state[y][x] = 'v'
+            elif state[y][x] == 'v':
+                state[y][x] = '<'
+            elif state[y][x] == '<':
+                state[y][x] = '^'
+    return state
+
+def toboard (strings):
+    result = []
+    startpos = (0,0)
+    goalpos = (0,0)
+    for i in strings:
+        result.append(list(i))
+    for y in range(len(result)):
+        for x in range(len(result[y])):
+            if result[y][x] == 'S':
+                startpos = (y,x)
+                result[y][x] = '.'
+            if result[y][x] == 'G':
+                goalpos = (y,x)
+                result[y][x] = '.'
+    return (result, startpos, goalpos)
+
+def processboard (state):
+    return [replace(i) for i in genrot(board)]
+
+handle = open("data.txt", "r")
+
+rawdata = handle.read()
+rawdata = rawdata.split("\n")
+boardlist = []
+for i in range(int(rawdata[0])):
+    boardlist.append([])
+index = 0
+last = True
+for i in rawdata:
+    if i[0].isdigit() == True:
+        if last == False:
+            index = index + 1
+            last = True
+    else:
+        last = False
+        boardlist[index].append(i)
+        
+handle.close()
+
+boardlist = [toboard(i) for i in boardlist]
+
+handle = open("answer.txt", "w")
+
+iterator = 0
+
+for i in boardlist:
+    iterator = iterator + 1
+    (board, startpos, goalpos) = i
+    answer = shortest(processboard(board),startpos,goalpos)
+    if answer == False: answer = "impossible"
+    else: answer = str(answer)
+    handle.write('Case #' + str(iterator) + ': ' + str(answer) + "\n")
+handle.close()

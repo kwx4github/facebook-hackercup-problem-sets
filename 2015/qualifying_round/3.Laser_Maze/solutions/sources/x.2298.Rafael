@@ -1,0 +1,221 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+//Solves a laser maze! Because... lasers! ... and mazes!
+/* 
+ * The way I conceptualized this maze is as a 3D maze with one modular dimension;
+ * the laser turrets essentially create walls where they shoot, so you can generate four maze states,
+ * which span the 3rd modular dimension. Movement can then only occur downward through the 3rd dimension.
+ * This conceptualization removes the element of time/turns in terms of pathing, allowing you to focus
+ * on a static maze and find an optimal solution using a simple memoized recursive search (basically Dijkstra's).
+ * ... in retrospect, it probably would've been easier to just convert to a graph and run Dijkstra's.
+ */
+public class LaserMaze
+{
+	private abstract class TILES
+	{
+		public static final char SPACE = '.';
+		public static final char WALL = '#';
+		public static final char LTURRET = '<';
+		public static final char RTURRET = '>';
+		public static final char UTURRET = '^';
+		public static final char DTURRET = 'v';
+		public static final char START = 'S';
+		public static final char GOAL = 'G';
+	}
+	
+	private static char[] turretTransitions = {TILES.LTURRET, TILES.UTURRET, TILES.RTURRET, TILES.DTURRET};
+	private static Map<Character, Integer[]> turretVectors = new HashMap<Character, Integer[]>();
+	
+	private static int[] start;
+	private static int[] goal;
+
+	public static void main(String[] args)
+	{
+		long start = System.nanoTime();
+		solveLaserMaze();
+		long end = System.nanoTime();
+		printTime(start, end);
+	}
+	
+	private static void solveLaserMaze()
+	{
+		Scanner sc = openFileForReading("laser_maze.txt");
+		PrintWriter pw = openFileForWriting("output.txt");
+		int size = sc.nextInt();
+		int states = turretTransitions.length;
+		Integer[] lvect = {-1, 0};
+		turretVectors.put(TILES.LTURRET, lvect);
+		Integer[] uvect = {0, 1};
+		turretVectors.put(TILES.UTURRET, uvect);
+		Integer[] rvect = {1, 0};
+		turretVectors.put(TILES.RTURRET, rvect);
+		Integer[] dvect = {0, -1};
+		turretVectors.put(TILES.DTURRET, dvect);
+		for(int casenum = 1; casenum <= size; casenum++)
+		{
+			if(casenum != 1) pw.println();
+			int M = sc.nextInt();
+			int N = sc.nextInt();
+			char[][] maze = new char[M][N];
+			sc.nextLine();
+			ArrayList<Integer[]> turrets = new ArrayList<Integer[]>();
+			for(int row = 0; row < M; row++)
+				addLine(maze, sc.nextLine(), row, turrets);
+			char[][][] metamaze = new char[states][M][N];
+			for(int turn = 0; turn < states; turn++)
+				addMazeState(turn, metamaze, maze, turrets);
+			pw.print("Case #" + casenum + ": " + shortestPath(metamaze));
+		}
+		sc.close();
+		pw.close();
+	}
+	
+	private static String shortestPath(char[][][] metamaze)
+	{
+		Integer[][][] mindists = new Integer[metamaze.length][metamaze[0].length][metamaze[0][0].length];
+		recurseShortest(mindists, metamaze, 0, start[0], start[1]);
+		Integer fastestGoal = null;
+		for(int state = 0; state < turretTransitions.length; state++)
+		{
+			Integer goalspeed = mindists[state][goal[0]][goal[1]];
+			if(goalspeed != null)
+				if(fastestGoal == null || fastestGoal > goalspeed)
+					fastestGoal = goalspeed;
+		}
+		return fastestGoal == null ? "impossible" : "" + fastestGoal;
+	}
+	
+	private static void recurseShortest(Integer[][][] mindists, char[][][] metamaze, int turn, int r, int c)
+	{
+		int state = turn%turretTransitions.length;
+		if(turn != 0 && (!validpos(metamaze, state, r, c) || metamaze[state][r][c] == TILES.WALL)) return;
+		Integer curdist = mindists[state][r][c];
+		if(curdist == null || curdist > turn)
+		{
+			mindists[state][r][c] = turn;
+			recurseShortest(mindists, metamaze, turn+1, r+1, c);
+			recurseShortest(mindists, metamaze, turn+1, r-1, c);
+			recurseShortest(mindists, metamaze, turn+1, r, c+1);
+			recurseShortest(mindists, metamaze, turn+1, r, c-1);
+		}
+		//basically this only terminates if it hits a wall or a tile that already has a recorded shorter distance
+		//this means we lose some time propagating shorter distances along paths that were previously explored with a bad path
+		//it would be better to use a priority queue and do proper Dijkstra's, but this is easier
+		
+	}
+	
+	private static void addMazeState(int turn, char[][][] metamaze, char[][] maze, ArrayList<Integer[]> turrets)
+	{
+		for(int r = 0; r < maze.length; r++) for(int c = 0; c < maze[r].length; c++)
+			metamaze[turn][r][c] = maze[r][c];
+		for(Integer[] turretpos : turrets)
+		{
+			int r = turretpos[0];
+			int c = turretpos[1];
+			Integer[] vector = getTurretVector(maze[r][c], turn);
+			metamaze[turn][r][c] = TILES.SPACE;
+			while(validpos(metamaze, turn, r, c) && metamaze[turn][r][c] == TILES.SPACE)
+			{
+				metamaze[turn][r][c] = TILES.WALL;
+				r -= vector[1];
+				c += vector[0];
+			}
+		}
+	}
+	
+	private static boolean validpos(char[][][] metamaze, int turn, int r, int c)
+	{
+		return (turn >= 0 && turn < metamaze.length)
+			&& (r >= 0 && r < metamaze[turn].length)
+			&& (c >= 0 && c < metamaze[turn][r].length);
+	}
+	
+	private static Integer[] getTurretVector(char turret, int turn)
+	{
+		int i = 0;
+		while(turretTransitions[i] != turret)
+			i++;
+		i = (i + turn)%turretTransitions.length;
+		turret = turretTransitions[i];
+		return turretVectors.get(turret);
+	}
+	
+	private static void addLine(char[][] maze, String line, int row, ArrayList<Integer[]> turrets)
+	{
+		for(int i = 0; i < line.length(); i++)
+		{
+			char ch = line.charAt(i);
+			if(ch == TILES.START)
+			{
+				int[] pos = {row, i};
+				start = pos;
+				ch = TILES.SPACE;
+			}
+			else if(ch == TILES.GOAL)
+			{
+				int[] pos = {row, i};
+				goal = pos;
+				ch = TILES.SPACE;
+			}
+			else if(ch != TILES.SPACE && ch != TILES.WALL) //it's a trap!
+			{
+				Integer[] turretpos = {row, i};
+				turrets.add(turretpos);
+			}
+			maze[row][i] = ch;
+		}
+	}
+		
+	//Returns a scanner for the file of name fileName
+	private static Scanner openFileForReading(String filename)
+	{
+		Scanner scanner = null;
+		try {	scanner = new Scanner(new File(filename));	}
+		catch (FileNotFoundException e)
+		{
+			System.out.println("Could not open " + filename);
+			e.printStackTrace();
+		}
+		return scanner;
+	}
+
+	//Returns a writer for a file of name fileName
+	private static PrintWriter openFileForWriting(String filename)
+	{
+		PrintWriter writer = null;
+		try {	writer = new PrintWriter(new FileWriter(filename));	}
+		catch (IOException e)
+		{
+			System.out.println("Could not create " + filename);
+			e.printStackTrace();
+		}
+		return writer;
+	}
+
+	private static void printTime(long start, long end)
+	{
+		long time = end - start;
+		print("\nTime elapsed: ");
+		int seconds = (int)(time/1000000000);
+		int minutes = seconds/60;
+		seconds%=60;
+		int milliseconds = (int)((time/1000000)%1000);
+		int microseconds = (int)((time/1000)%1000);
+		int nanoseconds = (int)(time%1000);
+		if(minutes > 0)			print(minutes + " minutes");
+		if(seconds > 0) 		print(seconds + " seconds");
+		if(milliseconds > 0)	print(milliseconds + " milliseconds");
+		if(microseconds > 0)	print(microseconds + " microseconds");
+		if(nanoseconds > 0)		print(nanoseconds + " nanoseconds");
+	}
+	
+	private static void print(Object ob) { System.out.println(ob); }
+}

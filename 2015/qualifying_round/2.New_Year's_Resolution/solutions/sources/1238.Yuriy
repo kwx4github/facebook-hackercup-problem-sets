@@ -1,0 +1,174 @@
+// NewYearResolution.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+
+#include <iostream>
+#include <string>
+#include <exception>
+#include <vector>
+#include <map>
+#include <array>
+#include <sstream>
+#include <numeric>
+
+struct Food
+{
+    enum Type
+    {
+        Start,
+        Prot = Start, Carb, Fat,
+        Count
+    };
+
+    int c[Type::Count];
+
+    // these have to be non-members, but I'm lazy now
+    bool operator==(const Food& other) const
+    {
+        return memcmp(c, other.c, sizeof(c)) == 0;
+    }
+    bool operator<(const Food& other) const
+    {
+        for (int i = Type::Start; i < Type::Count; ++i)
+        {
+            if (c[i] != other.c[i])
+            {
+                return c[i] < other.c[i];
+            }
+        }
+        return false;
+    }
+    bool operator>(const Food& other) const
+    {
+        return other < *this;
+    }
+    Food operator-(const Food& other) const
+    {
+        Food res;
+        for (int i = Type::Start; i < Type::Count; ++i)
+        {
+            res.c[i] = c[i] - other.c[i];
+        }
+        return res;
+    }
+    Food operator+(const Food& other) const
+    {
+        Food res;
+        for (int i = Type::Start; i < Type::Count; ++i)
+        {
+            res.c[i] = c[i] + other.c[i];
+        }
+        return res;
+    }
+
+    static Food load()
+    {
+        Food res;
+
+        std::string s;
+        std::getline(std::cin, s);
+        std::istringstream in(s);
+        for (int& c : res.c)
+        {
+            in >> c;
+        }
+
+        return res;
+    }
+};
+
+struct DynProgSum
+{
+    const Food& target;
+    const std::vector<Food>& fridge;
+
+    // dynamic programming cache
+    // [item index][target sum] = (can eat this sum by here)?
+    std::vector<std::map<Food, bool>> q;
+
+    bool fill_q_i(int i, const Food& s)
+    {
+        if (s < Food{{10, 10, 10}})
+        {
+            return false;
+        }
+
+        auto it = q[i].find(s);
+        if (it != q[i].end())
+        {
+            return it->second;
+        }
+
+        bool val = (fridge[i] == s);
+        if (i > 0)
+        {
+            if (!val)
+            {
+                val = fill_q_i(i - 1, s);
+            }
+            if (!val)
+            {
+                val = fill_q_i(i - 1, s - fridge[i]);
+            }
+        }
+
+        q[i][s] = val;
+        return val;
+    }
+
+    bool can_eat()
+    {
+        if (target > Food{{1000, 1000, 1000}})
+        {
+            return false;
+        }
+
+        Food sum = std::accumulate(fridge.begin(), fridge.end(), Food());
+        if (sum < target)
+        {
+            return false;
+        }
+
+        q.resize(fridge.size());
+        for (int i = 0; i < (int)fridge.size(); ++i)
+        {
+            if (fill_q_i(i, target))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
+
+int main()
+{
+    std::string line;
+    std::getline(std::cin, line);
+    int count = std::stoi(line);
+
+    Food target;
+    std::vector<Food> fridge; // :)
+
+    for (int lineNo = 1; lineNo <= count; ++lineNo)
+    {
+        target = Food::load();
+
+        std::getline(std::cin, line);
+        const int fridgeCount = std::stoi(line);
+
+        fridge.clear();
+        for (int i = 0; i < fridgeCount; ++i)
+        {
+            fridge.push_back(Food::load());
+        }
+
+        // done loading
+
+        bool canEat = (DynProgSum { target, fridge }).can_eat();
+
+        std::cout << "Case #" << lineNo << ": " << (canEat ? "yes" : "no") << '\n';
+    }
+}

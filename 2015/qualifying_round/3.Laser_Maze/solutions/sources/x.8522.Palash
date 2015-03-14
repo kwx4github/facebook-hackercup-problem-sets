@@ -1,0 +1,322 @@
+#include <stdio.h>
+#include <string.h>
+
+
+char a[102][102],f[100][100];
+
+char ca[4][102][102];
+int M,N,cost,mincost;
+int mxStep=4;
+
+pr(int k)
+{
+	int i,j;
+	for(i=0;i<M;i++,printf("\n"))
+		for(j=0;j<N;j++)
+			printf("%c",ca[k][i][j]);
+	printf("\n\n");
+}
+
+
+
+copy(int k1,int k2)
+{
+	register int i,j;
+
+	for(i=0;i<M;i++)
+		for(j=0;j<N;j++)	
+			ca[k2][i][j]=ca[k1][i][j];
+}
+
+
+
+void rotate(int k)
+{
+	register int i,j;
+	for(i=0;i<M;i++)
+		for(j=0;j<N;j++)
+			switch(ca[k][i][j])
+			{
+				case '^': ca[k][i][j]='>';	break;
+				case '>': ca[k][i][j]='v';	break;
+				case 'v': ca[k][i][j]='<';	break;
+				case '<': ca[k][i][j]='^';	break;
+			}
+}
+
+
+
+
+void burn(int k)
+{
+ register int i,j,i1,j1;
+ 
+ for(i=0;i<M;i++)
+  for(j=0;j<N;j++)
+	switch(ca[k][i][j])
+	{
+		case 'v': 	
+				  for(i1=i+1;i1<M;i1++)
+    			  	switch(ca[k][i1][j])
+    			  	{
+    			  		case '.' :	case 'S' :	case 'G' :
+    			  		case '*' :
+    			  					ca[k][i1][j]='*';
+    			  					break;
+    			  		default	 : i1=M;
+    			  	}
+				  break;
+		case '^': 	
+				  for(i1=i-1;i1>=0;i1--)
+    			  	switch(ca[k][i1][j])
+    			  	{
+    			  		case '.' :	case 'S' :	case 'G' :
+    			  		case '*' :
+    			  					ca[k][i1][j]='*';
+    			  					break;
+    			  		default	 : i1=-1;
+    			  	}				  	
+				  break;
+		case '>': 	
+				  for(j1=j+1;j1<N;j1++)
+    			  	switch(ca[k][i][j1])
+    			  	{
+    			  		case '.' :	case 'S' :	case 'G' :
+    			  		case '*' :
+    			  					ca[k][i][j1]='*';
+    			  					break;
+    			  		default	 : j1=N;
+    			  	}
+				  break;
+		case '<': 	
+				  for(j1=j-1;j1>=0;j1--)
+    			  	switch(ca[k][i][j1])
+    			  	{
+    			  		case '.' :	case 'S' :	case 'G' :
+    			  		case '*' :
+    			  					ca[k][i][j1]='*';
+    			  					break;
+    			  		default	 : j1=-1;
+    			  	}
+				  break;
+		
+	}
+}
+
+
+
+X;
+int solve(register int i,register int j)
+{
+	X++;
+	if(X>9000000 && mincost<M*N)
+		return 0;
+//	printf("try# %d\t%d\t%d\r",X,mincost,cost);
+	register int mov,k=cost%4,ti,tj;
+
+//	printf("Currently at %d,%d=%c\n",i,j,ca[k][i][j]);
+//	printf("Proceed,%d\n",cost);
+	if(ca[k][i][j]=='G')
+	{
+		mincost=cost<mincost?cost:mincost;
+//		printf("Got answer %d\n",mincost);
+		return 1;
+	}
+	
+	int		dir[4][3]={
+						{i,j-1,j==0},
+						{i-1,j,i==0},
+						{i,j+1,j==N-1},
+						{i+1,j,i==M-1}
+					  };
+	  
+	int	cmp(const void *x,const void *y)
+	{
+		register int *d1=x,*d2=y;
+		
+		if(d1[2])// || d1[0]<0 || d1[1]<0 || d1[0]>=M || d1[1]>=N)
+			return -1;
+		if(d2[2])// || d2[0]<0 || d2[1]<0 || d2[0]>=M || d2[1]>=N)
+			return 1;
+		
+		return f[d1[0]][d1[1]]-f[d2[0]][d2[1]];
+	}
+	
+	qsort(dir,4,sizeof(dir[0]),cmp);
+
+
+	f[i][j]+=1;
+	cost++;
+	k=cost%4;
+	for(mov=0;mov<4;mov++)
+	{
+		ti=dir[mov][0];
+		tj=dir[mov][1];
+
+		if(	!dir[mov][2]	//ti>=0 && tj>=0 && ti<M && tj<N
+		 && f[ti][tj]<mxStep && cost<=mincost 
+		 && (ca[k][ti][tj]=='.' || ca[k][ti][tj]=='S'||ca[k][ti][tj]=='G'))
+			
+			solve(ti,tj);
+	}
+	cost--;
+	f[i][j]-=1;
+	
+	return 1;
+}
+
+
+
+int main()
+{
+	register int z,T,i,j;
+//	printf("%d\n",2+4>5);
+	scanf("%d",&T);
+	
+	for(z=1;z<=T;z++)
+	{
+		scanf("%d %d",&M,&N);
+		memset(f,0,M*N*sizeof(char));
+
+		for(i=0;i<M;i++)
+			scanf("%s",ca[0][i]);
+		
+		mxStep= M*N < 49 ? 4:1	;
+		cost=0;
+		
+		mincost=2;
+		for(i=0;i<M;i++)
+			for(j=0;j<N;j++)
+				if(ca[0][i][j]=='.')
+					mincost++;
+		if(mincost==2)
+			mincost=M*N;
+		X=0;
+		for(i=0;i<M*N;i++)
+			if(ca[0][i/N][i%N]=='S')
+					break;
+		j=i%N;
+		i=i/N;
+		
+		
+		copy(0,1);	rotate(1);
+		copy(1,2);	rotate(2);
+		copy(2,3);	rotate(3);
+		
+		burn(0); burn(1); burn(2); burn(3); 
+	//	pr(0); pr(1); pr(2); pr(3); 
+		
+		solve(i,j);
+		
+//		printf("try# %d\t%d\t%d\n",X,mincost,cost);
+		printf("Case %d: ",z);
+		printf(mincost==M*N?"impossible\n":"%d\n",mincost);
+	}
+	
+	return 0;
+}
+
+
+
+
+
+
+
+/*
+
+1
+1 6
+S...G<
+
+*/
+
+
+
+/*
+5
+2 5
+##^##
+S...G
+2 5
+##v##
+S...G
+1 5
+S..G<
+1 6
+S...G<
+5 5
+S....
+.....
+.>v..
+.^<..
+....G
+*/
+
+
+
+
+/*
+
+5
+1
+5
+S...G
+3
+7
+S..#...
+.#.#..G
+.#.....
+3
+7
+S..#...
+.#.#.#G
+.#...#.
+3
+7
+S..#...
+.#.<..G
+.#.....
+2
+7
+^S...G<
+<......
+
+
+
+
+
+
+2
+7 31
+#.<..##.#....#>.#....###.....#.
+v..#...............#.........#.
+.....<......#...##..v...^#.....
+..#.G#..##....#.............#.#
+.#..........#.....#.#^....^....
+......###..#.^.#...^#...##..#..
+<..#.#.....v...#.....#........S
+14 39
+#.<..##.#....#>.#....###.....#..^......
+v..#...............#.........#...##.#..
+.....<......#...##..v...^#.........#...
+..#.G#..##....#.............#.#........
+.#..........#.....#.#^....^......#.....
+......###..#.^.#...^#...##..#..#.......
+<..#.#.....v...#.....#........S..<..#..
+.#>.v...#..v...#..#.....##v<...........
+.<.....#.........#.....^.....#....#.#^.
+.....^.^.......^...#......#.#........^.
+#....v.#...#....#........#.............
+.......##.....#.......<.#.#....<.......
+......#.....#.#><#..............#.#..##
+......#...>....#.........#.......#.....
+
+
+
+
+
+
+*/
+
+
+

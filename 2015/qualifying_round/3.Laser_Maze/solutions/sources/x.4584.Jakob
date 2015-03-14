@@ -1,0 +1,234 @@
+var fs = require('fs');
+var outputLine = 0;
+var output = '';
+
+fs.readFile('laserinput.txt', function(err, d) {
+    d = d.toString();
+    d = d.split("\n");
+
+    var len = parseInt(d[0]);
+    var line = 1;
+
+    for (var i = 0; i < len; i++) { //each line
+        var dimensions = d[line].split(" ");
+        var boxes = [];
+        line++;
+
+        var lenx = +dimensions[1];
+        var leny = +dimensions[0];
+
+        //x,y zero based
+        var start;
+        var goal;
+        var walls = [];
+        var lasers = []; //x,y,direction:^=0;>=1;v=2;<=3
+
+        for (var j = 0; j < lenx; j++) {
+            var yarr = [];
+            for (var k = 0; k < leny; k++) {
+                var content = d[line+k].split('')[j];
+                switch (content) {
+                    case 'S':
+                        start = [j,k];
+                        break;
+                    case 'G':
+                        goal = [j,k];
+                        break;
+                    case '#':
+                        walls.push([j,k]);
+                        break;
+                    case '^':
+                        lasers.push([j,k,0]);
+                        break;
+                    case '>':
+                        lasers.push([j,k,1]);
+                        break;
+                    case 'v':
+                        lasers.push([j,k,2]);
+                        break;
+                    case '<':
+                        lasers.push([j,k,3]);
+                        break;
+                }
+                yarr.push(content);
+            }
+            boxes.push(yarr);
+        }
+
+        line += leny;
+
+        process(boxes, [lenx, leny], start, goal, walls, lasers);
+
+    }
+
+    fs.writeFile('laseroutput.txt', output);
+});
+
+function addLine(test) {
+    outputLine += 1;
+    output += ((outputLine === 1) ? '' : "\n") + 'Case #' + outputLine + ": " + test;
+    console.log(((outputLine === 1) ? '' : "\n") + 'Case #' + outputLine + ": " + test);
+}
+
+function process(matrix, dimensions, start, goal, walls, lasers) {
+    var successfulWalksStepsCount = [];
+
+    startMoving(+start[0],+start[1],0);
+
+    function startMoving(whereamix,whereamiy,trycount) {
+        var c = matrix[whereamix][whereamiy];
+        if (successfulWalksStepsCount.length > 0 && +successfulWalksStepsCount[0] > trycount) {
+            //If there is a faster way, why bother...
+        } else if (trycount < 1000) {
+            if (c == 'G') {//Check if you are on the finish now
+                successfulWalksStepsCount.push(trycount);
+            } else {
+                if (canMove(+whereamix+1,+whereamiy)) {
+                    move(+whereamix+1,+whereamiy,trycount);
+                } else if (canMove(+whereamix,+whereamiy+1)) {
+                    move(+whereamix,+whereamiy+1,trycount);
+                } else if (canMove(+whereamix-1,+whereamiy)) {
+                    move(+whereamix-1,+whereamiy,trycount);
+                } else if (canMove(+whereamix,+whereamiy-1)) {
+                    move(+whereamix,+whereamiy-1,trycount);
+                }
+            }
+        }
+    }
+
+    //The ending
+    var slen = successfulWalksStepsCount.length;
+    if (slen == 0) {
+        addLine('impossible');
+    } else {
+        //Check smallest
+        var smallest = null;
+        for (var i = 0; i < slen; i++) {
+            var cur = successfulWalksStepsCount[i];
+            if (smallest === null || smallest > cur) {
+                smallest = cur;
+            }
+        }
+        addLine(smallest);
+    }
+
+    function move(myx,myy,trycount) {
+        var len = lasers.length;
+        //Turn around laser 90deg
+        for(var i = 0; i < len; i++) {
+            var laser = lasers[i];
+            var x = laser[0];
+            var y = laser[1];
+            lasers[i] = [x,y,(laser[2] + 1) % 4];
+            switch(+laser[2]) {
+                case 0:
+                    matrix[x][y] = '^';
+                    break;
+                case 1:
+                    matrix[x][y] = '>';
+                    break;
+                case 2:
+                    matrix[x][y] = 'v';
+                    break;
+                case 3:
+                    matrix[x][y] = '<';
+                    break;
+            }
+        }
+
+        startMoving(myx,myy,trycount+1);
+    }
+
+    function canMove(newx, newy) {
+        //check if new pos is in raster
+        if (newx < 0 || newy < 0 || newx > (dimensions[0] - 1) || newy > (dimensions[1] - 1)) {
+            return false;
+        }
+
+        var content = matrix[newx][newy];
+        //One does not simply pass through a wall or a laser
+        if (content == '#' || isLaser(newx, newy)) {
+            return false;
+        }
+
+        if (isNearbiestLaserPointing(newx,newy)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    function isLaser(x,y) {
+        var c = matrix[x][y];
+        switch (c) {
+            case '^':
+            case '>':
+            case 'v':
+            case '<':
+                return true;
+        }
+        return false;
+    }
+
+    function isNearbiestLaserPointing(x,y) {
+        //check for 4 lasers
+        var len = lasers.length;
+        if (x == 2) {
+        }
+        for (var i = 0; i < len; i++) {
+            var laser = lasers[i];
+            if (+laser[0] === +x) {
+                //Think one step further for rotation
+                if ((y < +laser[1] && ((laser[2] + 1) % 4) == 0) || (y > +laser[1] && ((laser[2] + 1) % 4) == 2)) {
+                    if (!isThereALaserCloser(x,y,+laser[0],+laser[1])) {
+                        return true;
+                    }
+                }
+            }
+            if (+laser[1] === +y) {
+                if ((x < +laser[0] && ((laser[2] + 1) % 4) == 3) || (x > +laser[0] && ((laser[2] + 1) % 4) == 1)) {
+                    if (!isThereALaserCloser(x,y,+laser[0],+laser[1])) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    function isThereALaserCloser(xme,yme,xlaser,ylaser) {
+        var len = lasers.length;
+        for (var i = 0; i < len; i++) {
+            var laser = lasers[i];
+            var distoriginallaser;
+            var distthislaser;
+            //same x-axis
+            if (+laser[0] === +xme) {
+                distoriginallaser = ylaser - yme;
+                distthislaser = laser[1] - yme;
+
+                if ((distoriginallaser > 0 && distthislaser < 0) || (distoriginallaser < 0 && distthislaser > 0)) {
+                    //Do nothing, laser can be pointing from up and down ;)
+                } else {
+                    if (Math.abs(distthislaser) < Math.abs(distoriginallaser)) {
+                        return true;
+                    }
+                }
+            }
+            //Same y-axis
+            if (+laser[1] === +yme) {
+                distoriginallaser = xlaser - xme;
+                distthislaser = laser[0] - xme;
+
+                if ((distoriginallaser > 0 && distthislaser < 0) || (distoriginallaser < 0 && distthislaser > 0)) {
+                    //Do nothing, laser can be pointing from up and down ;)
+                } else {
+                    if (Math.abs(distthislaser) < Math.abs(distoriginallaser)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}

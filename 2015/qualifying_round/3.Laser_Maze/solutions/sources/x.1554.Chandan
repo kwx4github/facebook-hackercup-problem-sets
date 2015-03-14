@@ -1,0 +1,267 @@
+package hackercup.qual2015.LaserMaze;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.StringTokenizer;
+
+public class Main {
+
+    static String BASE = "/Users/chandangiri/contest/src/main/java/hackercup/qual2015/LaserMaze/";
+    public static void main(String args[]) throws FileNotFoundException {
+        InputStream inputStream = new FileInputStream(new File(BASE + "in.txt"));
+        OutputStream outputStream = new FileOutputStream(new File(BASE + "out.txt"));
+        InputReader in = new InputReader(inputStream);
+        PrintWriter out = new PrintWriter(outputStream);
+        Solver solver = new Solver();
+        int testCount = in.nextInt();
+        for (int i = 1; i <= testCount; i++) {
+            out.printf("Case #%d: ", i);
+            solver.solve(in, out);
+        }
+        out.close();
+    }
+
+    static class Point {
+        final int x, y;
+        final char ch;
+        final boolean isLaser;
+        final boolean isBarrier;
+        final int dir;
+        final boolean unsafe[];
+        int dist[];
+
+        Point(int x, int y, char ch) {
+            this.x = x;
+            this.y = y;
+            this.ch = ch;
+            isLaser = isLaser(ch);
+            isBarrier = isBarrier(ch);
+            dir = direction(ch);
+            unsafe = new boolean[4];
+            dist = new int[4];
+            Arrays.fill(dist, Integer.MAX_VALUE);
+        }
+
+        void updateDist(int d) {
+            int dx = d % 4;
+            dist[dx] = Math.min(dist[dx], d);
+        }
+
+        int minDist() {
+            int mi = dist[0];
+            for (int i=1; i<4; i++) {
+                mi = Math.min(mi, dist[i]);
+            }
+            return mi;
+        }
+
+        private static int direction(final char c) {
+            int d = -1;
+            if (c == '>') {
+                d = 0;
+            } else if (c == 'v') {
+                d = 1;
+            } else if (c == '<') {
+                d = 2;
+            } else if (c == '^') {
+                d = 3;
+            }
+            return d;
+        }
+
+        private static boolean isBarrier(final char c) {
+            return c == '#' || isLaser(c);
+        }
+
+        private static boolean isLaser(final char c) {
+            return c == '<' || c == '>' || c == '^' || c == 'v';
+        }
+
+        private boolean isReachable(int t) {
+            int x = t % 4;
+            return unsafe[x];
+        }
+
+        @Override public String toString() {
+            return "Point{" +
+                    "ch=" + ch +
+                    ", unsafe=" + Arrays.toString(unsafe) +
+                    ", dist=" + Arrays.toString(dist) +
+                    '}';
+        }
+    }
+
+    private static class Solver {
+
+        public void solve(InputReader in, PrintWriter out) {
+            int n = in.nextInt();
+            int m = in.nextInt();
+
+            Point maze[][] = new Point[n+2][m+2];
+            Point start = null;
+            Point end = null;
+
+            for (int i=1; i<=n; i++) {
+                String st = in.next();
+                for (int j=1; j<=m; j++) {
+                    char ch = st.charAt(j-1);
+                    maze[i][j] = new Point(i, j, ch);
+
+                    if (ch == 'S') {
+                        start = maze[i][j];
+                    } else if (ch == 'G') {
+                        end = maze[i][j];
+                    }
+                }
+            }
+
+            //Barrier
+            for (int i=0; i<=n+1; i++) {
+                maze[i][0] = new Point(i, 0, '#');
+                maze[i][m+1] = new Point(i, m+1, '#');
+            }
+
+            for (int i=0; i<=m+1; i++) {
+                maze[0][i] = new Point(0, i, '#');
+                maze[n+1][i] = new Point(n+1, i, '#');
+            }
+
+            for (int dir = 0; dir < 4; dir++) {
+                for (int i=1; i<=n; i++) {
+                    for (int j=1; j<=m; j++) {
+                        if (maze[i][j].isLaser) {
+                            int d = rotate(maze[i][j].dir, dir);
+                            if (d == 0) {
+                                for (int k=j+1; k<=m; k++) {
+                                    if (maze[i][k].isBarrier) {
+                                        break;
+                                    }
+                                    maze[i][k].unsafe[dir] = true;
+                                }
+                            } else if (d == 1) {
+                                for (int k=i+1; k<=n; k++) {
+                                    if (maze[k][j].isBarrier) {
+                                        break;
+                                    }
+                                    maze[k][j].unsafe[dir] = true;
+                                }
+                            } else if (d == 2) {
+                                for (int k=j-1; k>=1; k--) {
+                                    if (maze[i][k].isBarrier) {
+                                        break;
+                                    }
+                                    maze[i][k].unsafe[dir] = true;
+                                }
+                            } else if (d == 3) {
+                                for (int k=i-1; k>=1; k++) {
+                                    if (maze[k][j].isBarrier) {
+                                        break;
+                                    }
+                                    maze[k][j].unsafe[dir] = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            start.unsafe[0] = false;
+            bfs(maze, n, m, start, out);
+
+            if (end.minDist() == Integer.MAX_VALUE) {
+                out.println("impossible");
+            } else {
+                out.println(end.minDist());
+            }
+        }
+
+        private void bfs(final Point[][] maze, final int n, final int m, Point start, PrintWriter out) {
+            Queue<Point> q = new LinkedList<>();
+
+            //check if killed at start.
+            if (start.unsafe[0]) {
+                return;
+            }
+
+            q.add(start);
+            start.updateDist(0);
+
+            int xx[] = {1, 2, 3, 0};
+
+            while (!q.isEmpty()) {
+                Point p = q.poll();
+
+                runBfs(q, xx, p, maze[p.x][p.y + 1]);
+                runBfs(q, xx, p, maze[p.x][p.y - 1]);
+                runBfs(q, xx, p, maze[p.x - 1][p.y]);
+                runBfs(q, xx, p, maze[p.x + 1][p.y]);
+            }
+        }
+
+        private void runBfs(final Queue<Point> q, final int[] xx, final Point p, final Point next) {
+            if (!next.isBarrier) {
+                for (int i=0; i<4; i++) {
+                    if (p.dist[i] != Integer.MAX_VALUE) {
+                        int nx = xx[i];
+                        int nextDist = p.dist[i] + 1;
+                        if (!next.unsafe[nx] && next.dist[nx] > nextDist) {
+                            next.updateDist(nextDist);
+                            q.add(next);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void debug(final PrintWriter out, final int n, final Point[][] maze) {
+            out.println();
+            for (int i=0; i<=n+1; i++) {
+                out.println(Arrays.toString(maze[i]));
+            }
+        }
+
+        private int rotate(int d, int r) {
+            d = d + r;
+            if (d >= 4) {
+                d -= 4;
+            }
+            return d;
+        }
+    }
+
+    private static class InputReader {
+        private final BufferedReader reader;
+        private StringTokenizer tokenizer;
+
+        public InputReader(InputStream stream) {
+            reader = new BufferedReader(new InputStreamReader(stream));
+        }
+
+        public String next() {
+            while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+                try {
+                    tokenizer = new StringTokenizer(reader.readLine());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return tokenizer.nextToken();
+        }
+
+        public int nextInt() {
+            return Integer.parseInt(next());
+        }
+    }
+}
+

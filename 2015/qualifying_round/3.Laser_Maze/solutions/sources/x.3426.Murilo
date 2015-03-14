@@ -1,0 +1,193 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+char board[102][102];
+int dir[][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+int n, m;
+
+typedef struct pos
+{
+	int x, y;
+	pos(int x = 0, int y = 0) : x(x), y(y) {}
+
+	bool operator < ( const pos &a ) const
+	{
+		if ( x != a.x ) return x < a.x;
+		return y < a.y;
+	}
+}pos;
+
+typedef struct laser
+{
+	int x, y, d;
+	laser(int x = 0, int y = 0, int d = 0) : x(x), y(y), d(d) {}
+	bool operator < ( const laser &a ) const
+	{
+		if ( x != a.x ) return x < a.x;
+		else if ( y != a.y ) return y < a.y;
+		return d < a.d;
+	}
+}laser;
+
+
+pos ori, des;
+vector<laser> lsr;
+map<int, set<pos> > blow;
+map<laser, bool> vis;
+
+void scan()
+{
+	for ( int i = 1 ; i <= n ; i++ )
+	{
+		for ( int j = 1 ; j <= m ; j++ )
+		{
+			cin >> board[i][j];
+			if ( board[i][j] != '#' )
+			{
+				if ( board[i][j] == 'S' )
+				{
+					ori = pos(i, j);
+					board[i][j] = '.';
+				}
+				else if ( board[i][j] == 'G' )
+				{
+					des = pos(i, j);
+					board[i][j] = '.';
+				}
+				else if ( board[i][j] != '.' )
+				{
+					int d;
+					switch(board[i][j])
+					{
+						case '>':
+							d = 0;
+							break;
+						case 'v':
+							d = 1;
+							break;
+						case '<':
+							d = 2;
+							break;
+						default:
+							d = 3;
+					}
+					board[i][j] = '.';
+					lsr.push_back(laser(i, j, d));
+				}
+			}
+		}
+	}
+}
+
+void print(int time = 0)
+{
+	for ( int i = 0; i <= n+1 ; i++ )
+	{
+		for ( int j = 0 ; j <= m+1 ; j++ )
+		{
+			if ( blow[time].find(pos(i, j)) == blow[time].end() )
+				cout << board[i][j] << " \n"[j == m+1];
+			else
+				cout << '#' << " \n"[j == m+1];
+		}
+	}
+
+	cout << "-------------------------\n\n";
+}
+
+void processLsr()
+{
+	for ( int i = 0 ; i < lsr.size() ; i++ )
+	{
+		for ( int j = 0 ; j < 4 ; j++ )
+		{
+			pos ini(lsr[i].x, lsr[i].y);
+			ini.x += dir[(lsr[i].d+j)%4][0];
+			ini.y += dir[(lsr[i].d+j)%4][1];
+			while ( board[ini.x][ini.y] != '#' )
+			{
+				blow[j].insert(ini);	
+				ini.x += dir[(lsr[i].d+j)%4][0];
+				ini.y += dir[(lsr[i].d+j)%4][1];
+			}
+		}
+	}
+
+	for ( int i = 0 ; i < lsr.size() ; i++ )
+	{
+		board[lsr[i].x][lsr[i].y] = '#';
+	}
+}
+
+void init()
+{
+	lsr.clear();
+	blow.clear();
+	vis.clear();
+	scan();
+	for ( int i = 0 ; i <= n+1 ; i++ )
+		board[i][0] = board[i][m+1] = '#';
+	for ( int j = 0 ; j <= m+1 ; j++ )
+		board[0][j] = board[n+1][j] = '#';
+	processLsr();
+	
+	/*
+	for ( int i = 0 ; i < 4 ; i++ )
+		print(i), cin.ignore();
+	*/
+}
+
+
+int main()
+{
+	int t, caso = 1;
+	cin >> t;
+	while ( t-- )
+	{
+		cin >> n >> m;
+		init();
+		queue<pair<laser, int> > q;
+		q.push(make_pair(laser(ori.x, ori.y, 0), 0));
+		int ans = 0;
+		int time;
+		laser act, tmp;
+		while ( !q.empty() )
+		{
+			act = q.front().first;
+			time = q.front().second;
+			q.pop();
+
+			if ( act.x == des.x && act.y == des.y )
+			{
+				ans = time;
+				break;
+			}
+
+			for ( int i = 0 ; i < 4 ; i++ )
+			{
+				tmp = act;
+				tmp.d++;
+				tmp.d %= 4;
+				tmp.x += dir[i][0];
+				tmp.y += dir[i][1];
+
+				if ( board[tmp.x][tmp.y] != '#' && blow[tmp.d].find(pos(tmp.x, tmp.y)) == blow[tmp.d].end() )
+				{
+					if ( !vis[tmp] )
+					{
+						vis[tmp]  = true;
+						q.push(make_pair(tmp, time+1));
+					}
+				}
+			}
+		}
+		
+		cout << "Case #" << caso++ << ": ";
+		if ( ans == 0 )
+			cout << "impossible\n";
+		else
+			cout << ans << "\n";
+	}
+	return 0;
+}

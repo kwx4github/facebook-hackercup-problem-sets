@@ -1,0 +1,148 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+)
+
+var sols []string
+
+func convertToStr(nums []int) (string) {
+	return fmt.Sprint(nums)
+}
+
+func getPossibleCombinations(ra int, food []int) (combs map[string]bool) {
+	usedNum := make(map[int][][]int)
+	combs = make(map[string]bool)
+
+	for i, v := range food {
+		if v == ra {
+			combs[convertToStr([]int{i})] = true
+		}
+		if _, ok := usedNum[ra-v]; ok {
+			for _, c := range usedNum[ra-v] {
+				combs[convertToStr(append(c, i))] = true
+			}
+		}
+
+		toAppend := make(map[int][][]int)
+		for uv, l := range usedNum {
+			if uv + v < ra {
+				if _, ok := toAppend[uv + v]; !ok {
+					toAppend[uv + v] = [][]int{}
+				}
+				for _, item := range l {
+					auxItem := make([]int, len(item)+1)
+					copy(auxItem, item)
+					auxItem[len(auxItem)-1] = i
+					toAppend[uv + v] = append(toAppend[uv + v], auxItem)
+				}
+			}
+		}
+		for k, v := range toAppend {
+			if _, ok := usedNum[k]; !ok {
+				usedNum[k] = v
+			} else {
+				for _, n := range v {
+					usedNum[k] = append(usedNum[k], n)
+				}
+			}
+		}
+
+		if _, ok := usedNum[v]; ok {
+			usedNum[v] = append(usedNum[v], []int{i})
+		} else {
+			usedNum[v] = [][]int{[]int{i}}
+		}
+	}
+
+	return
+}
+
+func intersection(l, r map[string]bool) (int map[string]bool) {
+	int = make(map[string]bool)
+	for k := range l {
+		if _, ok := r[k]; ok {
+			int[k] = true
+		}
+	}
+
+	return
+}
+
+func solveProblem(ra [3]int, food [3][]int, pos int, c chan bool) {
+	inter := intersection(
+                getPossibleCombinations(ra[0], food[0]),
+                getPossibleCombinations(ra[1], food[1]))
+
+	if len(inter) == 0 {
+		sols[pos] = fmt.Sprintf("Case #%d: no", pos+1)
+		c <- true
+		return
+	}
+	inter = intersection(
+		inter,
+		getPossibleCombinations(ra[2], food[2]))
+
+	if len(inter) == 0 {
+		sols[pos] = fmt.Sprintf("Case #%d: no", pos+1)
+		c <- true
+		return
+	}
+
+	sols[pos] = fmt.Sprintf("Case #%d: yes", pos+1)
+	c <- true
+	return
+}
+
+func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	reader := bufio.NewReader(os.Stdin)
+
+	text, _ := reader.ReadString('\n')
+	problems, _ := strconv.ParseInt(text[:len(text)-1], 10, 64)
+	sols = make([]string, problems)
+	solsChan := make(chan bool)
+	for p := 0; p < int(problems); p++ {
+		rationsT, _ := reader.ReadString('\n')
+		rationsTL := strings.Split(rationsT[:len(rationsT)-1], " ")
+		r1, _ := strconv.ParseInt(rationsTL[0], 10, 64)
+		r2, _ := strconv.ParseInt(rationsTL[1], 10, 64)
+		r3, _ := strconv.ParseInt(rationsTL[2], 10, 64)
+
+		rations := [3]int{int(r1), int(r2), int(r3)}
+
+		text, _ = reader.ReadString('\n')
+		lines, _ := strconv.ParseInt(text[:len(text)-1], 10, 64)
+		rationsL := [3][]int{
+			make([]int, lines),
+			make([]int, lines),
+			make([]int, lines),
+		}
+		for l := 0; l < int(lines); l++ {
+			rationsT, _ = reader.ReadString('\n')
+			rationsTL = strings.Split(rationsT[:len(rationsT)-1], " ")
+			r1, _ = strconv.ParseInt(rationsTL[0], 10, 64)
+			r2, _ = strconv.ParseInt(rationsTL[1], 10, 64)
+			r3, _ = strconv.ParseInt(rationsTL[2], 10, 64)
+
+			rationsL[0][l] = int(r1)
+			rationsL[1][l] = int(r2)
+			rationsL[2][l] = int(r3)
+		}
+
+		go solveProblem(rations, rationsL, p, solsChan)
+	}
+
+	for p := 0; p < int(problems); p++ {
+		<-solsChan
+	}
+	for p := 0; p < int(problems); p++ {
+		fmt.Println(sols[p])
+	}
+}

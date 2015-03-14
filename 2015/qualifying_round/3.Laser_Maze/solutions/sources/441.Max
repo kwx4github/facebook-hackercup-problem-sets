@@ -1,0 +1,145 @@
+#include <bits/stdc++.h>
+
+const int N = 105, INF = 1e9;
+
+bool blocked[N][N], under_fire[4][N][N];
+char turret[N][N];
+int dist[4][N][N];
+int dx[] = {0, 1, 0, -1}, dy[] = {-1, 0, 1, 0};
+
+bool is_turret(char ch) {
+    return ch == '<' || ch == '>' || ch == '^' || ch == 'v';
+}
+
+int get_side(char ch) {
+    if (ch == '^')
+        return 0;
+    if (ch == '>')
+        return 1;
+    if (ch == 'v')
+        return 2;
+    return 3;
+}
+
+bool is_correct_coord(std::pair<int, int>, int, int);
+
+void bfs(std::pair<int, int> start, int n, int m) {
+    struct _type_for_queue {
+        int side;
+        std::pair<int, int> coord;
+
+        _type_for_queue (int side, std::pair<int, int> coord) :
+            side(side), coord(coord) {}
+    };
+    
+    dist[0][start.first][start.second] = 0;
+    std::queue<_type_for_queue> queue;
+    queue.push(_type_for_queue(0, start));
+    while (!queue.empty()) {
+        auto t = queue.front();
+        auto coord = t.coord;
+        int next_time = (t.side+1)%4;
+        queue.pop();
+        for (int side = 0; side < 4; side++) {
+            std::pair<int, int> new_coord = {coord.first+dy[side], coord.second+dx[side]};
+            int cost = dist[t.side][coord.first][coord.second] + 1;
+            if (is_correct_coord(new_coord, n, m) &&
+                !under_fire[t.side][new_coord.first][new_coord.second] &&
+                !blocked[new_coord.first][new_coord.second] &&
+                dist[next_time][new_coord.first][new_coord.second] > cost) 
+            {
+                dist[next_time][new_coord.first][new_coord.second] = cost;
+                queue.push(_type_for_queue(next_time, new_coord));
+            }
+        }
+    }
+}
+
+bool is_correct_coord(std::pair<int, int> coord, int n, int m) {
+    return coord.first >= 0 && coord.second >= 0 &&
+           coord.first < n  && coord.second < m;
+}
+
+int get_dist(std::pair<int, int> point) {
+    int res = INF;
+    for (int i = 0; i < 4; i++) {
+        res = std::min(res, dist[i][point.first][point.second]);
+    }
+    return res;
+}
+
+void solve() {
+    int n, m;
+    std::cin >> n >> m;
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            blocked[i][j] = false;
+            turret[i][j] = ' ';
+        }
+    }
+
+    for (int p = 0; p < 4; p++) {
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                dist[p][i][j] = INF;
+                under_fire[p][i][j] = 0;
+            }
+        }
+    }
+
+    std::pair<int, int> start, finish;
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            char ch;
+            std::cin >> ch;
+            if (ch == '#') {
+                blocked[i][j] = 1;
+            } else if (is_turret(ch)) {
+                blocked[i][j] = 1;
+                turret[i][j] = ch;
+            } else if (ch == 'S') {
+                start = {i, j};
+            } else if (ch == 'G') {
+                finish = {i, j};
+            }
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            if (turret[i][j] == ' ')
+                continue;
+
+            int side = get_side(turret[i][j]);
+            for (int shift = 0; shift < 4; ++shift) {
+                int turn = (side+shift+1)%4;
+                std::pair<int, int> coord = {i, j};
+                coord.first += dy[turn];
+                coord.second += dx[turn];
+                while (is_correct_coord(coord, n, m) && 
+                       !blocked[coord.first][coord.second]) {
+                    under_fire[shift][coord.first][coord.second] = true;
+                    coord.first += dy[turn];
+                    coord.second += dx[turn];
+                }
+            }
+        }
+    }
+
+    bfs(start, n, m);
+    if (get_dist(finish) == INF)
+        std::cout << "impossible\n";
+    else
+        std::cout << get_dist(finish) << "\n";
+}
+
+int main() {
+
+    int t;
+    std::cin >> t;
+    for (int i = 0; i < t; ++i) {
+        std::cout << "Case #" << i+1 << ": ";
+        solve();
+    }
+}

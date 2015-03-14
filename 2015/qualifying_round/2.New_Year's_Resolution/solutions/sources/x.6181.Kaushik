@@ -1,0 +1,196 @@
+package hackercup;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.*;
+
+public class Resolution {
+
+	public static void main(String[] args) {
+		Resolution r = new Resolution();
+		try {
+			r.readInput();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	private void readInput() throws FileNotFoundException {
+		String fName = "src/new_years_resolution.txt";
+		File f = new File(fName);
+		Scanner scan = new Scanner(f);
+		int T = scan.nextInt();
+		for(int i=1;i<=T;i++) {
+			//System.out.println("case:" + i);
+			GID = 0;
+			Food goal = new Food(scan.nextInt(), scan.nextInt(), scan.nextInt());
+			int N = scan.nextInt();
+			ArrayList<Food> fList = new ArrayList<Food>();
+			for(int j=0;j<N;j++) {
+				Food item = new Food(scan.nextInt(), scan.nextInt(), scan.nextInt());
+				
+				if(item.prot > goal.prot || item.carbo > goal.carbo || item.fat > goal.carbo)
+					continue;
+				
+				fList.add(item);
+			}
+			if(isTargetRechable(goal, fList)) {
+				printSuccess(i);
+			} else {
+				printFail(i);
+			}
+			
+		}
+		scan.close();
+	}
+	
+	private void printFail(int caseNum) {
+		System.out.println("Case #" + caseNum + ": no");
+	}
+	
+	private void printSuccess(int caseNum) {
+		System.out.println("Case #" + caseNum + ": yes");
+	}
+	
+	private boolean isTargetRechable(Food goal, ArrayList<Food> itemList) {
+		return possibleSubsetList(goal, itemList, 1);
+	}
+	
+	private boolean possibleSubsetList(final Food goal, final List<Food> itemList, int nCode) {
+		int ROW = goal.prot;
+		if(nCode == 1) {
+			ROW = goal.prot;			
+		} else if( nCode == 2) {
+			ROW = goal.carbo;
+		} else if(nCode == 3){
+			ROW = goal.fat;
+		} else
+			return false;
+		
+		int COL = itemList.size();
+		
+		boolean[][] matrix = new boolean[ROW+1][COL+1];
+		ArrayList<Entry>[][] parent = new ArrayList[ROW+1][COL+1];
+		
+		for(int i=1; i<=ROW; i++) {
+			for(int j=1; j<=COL; j++) {
+				Food val = itemList.get(j-1);
+				if(i == val.getValue(nCode)) {
+					matrix[i][j] = true;
+					ArrayList<Entry> list = parent[i][j];
+					if(list == null) {
+						list = new ArrayList<Entry>();
+						parent[i][j] = list;
+					}
+					list.add(new Entry(-1, -1 , true));
+				}
+				if(i >= val.getValue(nCode)) {
+					//including
+					if(matrix[i-val.getValue(nCode)][j-1] = true) {
+						matrix[i][j] = true;
+						
+						ArrayList<Entry> list = parent[i][j];
+						if(list == null) {
+							list = new ArrayList<Entry>();
+							parent[i][j] = list;
+						}
+						list.add(new Entry(i-val.getValue(nCode), j-1, true));
+					}
+				}
+				if(matrix[i][j-1] == true) {
+					matrix[i][j] = matrix[i][j-1];
+					ArrayList<Entry> list = parent[i][j];
+					if(list == null) {
+						list = new ArrayList<Entry>();
+						parent[i][j] = list;
+					}
+					list.add(new Entry(i, j-1, false));
+				}
+			}
+		}
+		if(matrix[ROW][COL] == true) {
+			ArrayList<Food> paths = new ArrayList<Food>();
+			boolean result = tracePath(parent, ROW, COL, paths, itemList, nCode, goal);
+			//System.out.println("possibleSubsetList::nCode" + nCode + "::res=" + result);
+			return result;
+		} 
+		
+		return false;
+	}
+	
+	private boolean tracePath(ArrayList<Entry>[][] matrix, int i, int j, List<Food> path, List<Food> itemList, int nCode, Food goal) {
+		if( i == -1 && j == -1) {
+			if(nCode == 3 && !path.isEmpty()) {
+				//System.out.println("nCode=" + nCode + "::path=" + path);
+				return true;
+			}
+
+			List<Food> list = Collections.unmodifiableList(path);
+			return possibleSubsetList(goal, list, nCode+1);
+		}
+		
+		ArrayList<Entry> entry = matrix[i][j];
+		boolean result = false;
+		if(entry != null) {
+			for(Entry val: entry) {
+				if(val.including) {
+					path.add(itemList.get(j-1));
+				}
+				result = tracePath(matrix, val.i, val.j, path, itemList, nCode, goal);
+				if(result)
+					return result;
+				if(val.including) {
+					path.remove(path.size() -1);
+				}
+			}
+		}
+		
+		return result;
+	}
+	
+	
+	
+	static int GID;
+	public static class Food {
+		int id;
+		int prot;
+		int carbo;
+		int fat;
+		Food(int prot, int carbo, int fat) {
+			id = ++GID;
+			this.prot = prot;
+			this.carbo = carbo;
+			this.fat = fat;
+		}
+		
+		public int getValue(int nutrientCode) {
+			switch(nutrientCode) {
+				case 1: return this.prot;
+				case 2: return this.carbo;
+				case 3: return this.fat;
+			}
+			return -1;
+		}
+		
+		@Override
+		public String toString() {
+			return id + ":" + prot;
+		}
+	}
+	
+	public static class Entry {
+		int i;
+		int j;
+		boolean including;
+		Entry(int i, int j, boolean incl) {
+			this.i = i;
+			this.j = j;
+			this.including = incl;
+		}
+		@Override
+		public String toString() {
+			return "(" + i + "," + j + ")";
+		}
+	}
+
+}

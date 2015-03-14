@@ -1,0 +1,285 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Policy;
+
+namespace Problem3
+{
+    internal class Program
+    {
+        public static void RunTestCases(string[] rawTestCases,
+            int numTestCases,
+            Action<String> outputAction,
+            Action<String> debugAction)
+        {
+            int currentLine = 0;
+            for (int i = 0; i < numTestCases; i++)
+            {
+                int[] settings = rawTestCases.GetSettings(currentLine++);
+                int depth = settings[0];
+                int width = settings[1];
+
+                Maze maze = ExtractMaze(rawTestCases.Skip(currentLine).Take(depth), depth, width);
+                currentLine += depth;
+
+                int? moves = Solve(maze); 
+
+                string outcome = moves == null? "impossible":moves.ToString();
+                outputAction("Case #" + (i + 1) + ": " + outcome);
+            }
+        }
+
+        private static int? Solve(Maze maze)
+        {
+            Queue<Tuple<Tuple<int,int,int>,int>> moves =  new Queue<Tuple<Tuple<int,int,int>,int>>();
+            HashSet<Tuple<int,int,int>> usedMoves = new HashSet<Tuple<int, int, int>>();
+
+            moves.Enqueue(Tuple.Create(Tuple.Create(maze.Start.Item1, maze.Start.Item2, 0), 0));
+
+            while (moves.Count > 0)
+            {
+                var current = moves.Dequeue();
+                var currentPos = current.Item1;
+                var currentTurn = current.Item2;
+                if (usedMoves.Contains(currentPos)) continue;
+
+                if (currentPos.Item1 == maze.Goal.Item1 && currentPos.Item2 == maze.Goal.Item2) return currentTurn;
+                usedMoves.Add(currentPos);
+
+                //move to next actions
+                currentTurn++;
+                var possibleMoves = MakePlayerMoves(currentPos, maze);
+                var turretShots = maze._turrets.SelectMany(x => x.Shoot(currentTurn)).ToList();
+                var validMoves = possibleMoves.Where(x => !(usedMoves.Contains(x) || turretShots.Contains(x)));
+                foreach (var validMove in validMoves)
+                {
+                    moves.Enqueue(new Tuple<Tuple<int, int, int>, int>(validMove,currentTurn));
+                }
+
+            }
+            return null;
+        }
+
+        private static List<Tuple<int, int, int>> MakePlayerMoves(Tuple<int, int, int> currentMove,Maze maze)
+        {
+            var results = new List<Tuple<int, int, int>>();
+            var currentTurn = (currentMove.Item3 + 1)%4;
+            Action<Tuple<int,int>> addMoveIfNotNull = (Tuple<int, int> move) =>
+            {
+                if (move!=null) results.Add(Tuple.Create(move.Item1,move.Item2,currentTurn));
+            };
+            var currentPosition = Tuple.Create(currentMove.Item1, currentMove.Item2);
+            addMoveIfNotNull(maze.Move(currentPosition, Facing.Left));
+            addMoveIfNotNull(maze.Move(currentPosition, Facing.Up));
+            addMoveIfNotNull(maze.Move(currentPosition, Facing.Right));
+            addMoveIfNotNull(maze.Move(currentPosition, Facing.Down));
+            return results;
+        } 
+
+        private static Maze ExtractMaze(IEnumerable<string> rows, int depth, int width)
+        {
+            var maze = new Maze(depth, width,rows);
+            return maze;
+        }
+
+        private static void Main(string[] args)
+        {
+            string filename = args.Length == 0 ? "" : args[0];
+            if (filename == "")
+            {
+                var filenames = Directory.GetFiles(Environment.CurrentDirectory).Where(x => x.EndsWith(".in")).ToArray();
+                Console.WriteLine("Test file?");
+                int n = 0;
+                foreach (var f in filenames)
+                {
+                    Console.WriteLine(n++ + ":" + f);
+                }
+                var i = int.Parse(Console.ReadLine());
+                filename = filenames[i];
+            }
+            if (filename == "")
+            {
+                filename = Directory.GetFiles(Environment.CurrentDirectory).First(x => x.EndsWith(".in"));
+            }
+
+            string[] testFile = File.ReadAllLines(filename);
+            int NumberOfTestCases = int.Parse(testFile.First().Trim());
+
+            List<string> output = new List<string>();
+            RunTestCases(testFile.Skip(1).ToArray(),
+                NumberOfTestCases,
+                output.Add,
+                Console.WriteLine);
+            File.WriteAllLines("output.out", output);
+            Console.WriteLine("Finished " + filename);
+            Console.WriteLine("-- press any key --");
+            Console.ReadKey();
+        }
+    }
+
+    internal class Maze
+    {
+        private readonly int _depth;
+        private readonly int _width;
+        public char[,] Layout;
+        public List<Turret> _turrets = new List<Turret>();
+        public Tuple<int, int> Start;
+        public Tuple<int, int> Goal;
+
+        public Maze(int depth, int width, IEnumerable<string> rows)
+        {
+            _depth = depth;
+            _width = width;
+            Layout = new char[depth, width];
+            var rowArray = rows.ToArray();
+            for (int i = 0; i < depth; i++)
+            {
+                SetRow(i,rowArray[i]);
+            }
+        }
+
+        private void SetRow(int rowNumber, string rowValues)
+        {
+            char[] row = rowValues.ToCharArray();
+            for (int i = 0; i < _width; i++)
+            {
+                var c = row[i];
+                if (c == 'S')
+                {
+                    SetStart(rowNumber, i);
+                }
+                if (c == 'G') SetEnd(rowNumber, i);
+                if (c == '^')
+                {
+                    CreateTurret(rowNumber, i, Facing.Up);
+                    c = '#';
+                }
+                if (c == '>')
+                {
+                    CreateTurret(rowNumber, i, Facing.Right);
+                    c = '#';
+                }
+                if (c == 'v')
+                {
+                    CreateTurret(rowNumber, i, Facing.Down);
+                    c = '#';
+                }
+                if (c == '<')
+                {
+                    CreateTurret(rowNumber, i, Facing.Left);
+                    c = '#';
+                }
+
+                Layout[rowNumber, i] = c;
+            }
+        }
+
+        public Tuple<int, int> Move(Tuple<int,int> startingPoint, Facing facing)
+        {
+            int moveX =0;
+            int moveY =0;
+
+            switch (facing)
+            {
+                case Facing.Up:
+                    moveY = -1;
+                    break;
+                case Facing.Right:
+                    moveX = 1;
+                    break;
+                case Facing.Down:
+                    moveY = 1;
+                    break;
+                case Facing.Left:
+                    moveX = -1;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException("facing");
+            }
+
+            int newX = startingPoint.Item1 + moveX;
+            int newY = startingPoint.Item2 + moveY;
+
+            if (newX < 0 || newX == _width) return null;
+            if (newY < 0 || newY == _depth) return null;
+
+            if (Layout[newY, newX] == '#') return null;
+            return Tuple.Create(newX,newY);
+
+        }
+        
+
+        private void SetEnd(int rowNumber, int i)
+        {
+            Goal = Tuple.Create(i, rowNumber);
+        }
+
+        private void SetStart(int rowNumber, int i)
+        {
+            Start = Tuple.Create(i, rowNumber);
+        }
+
+        private void CreateTurret(int row, int column, Facing startingFace)
+        {
+            _turrets.Add(new Turret(row, column, startingFace,this));
+        }
+
+        
+    }
+
+    internal class Turret
+    {
+        public int Row { get; private set; }
+        public int Column { get; private set; }
+        private readonly Facing _startingFace;
+        private readonly Maze _maze;
+
+        public Turret(int row, int column, Facing startingFace, Maze maze)
+        {
+            Row = row;
+            Column = column;
+            _startingFace = startingFace;
+            _maze = maze;
+        }
+
+        public Facing GetFaceForTurn(int turnNumber)
+        {
+            return (Facing) (((int) _startingFace + turnNumber)%4);
+        }
+
+        public List<Tuple<int, int,int>> Shoot(int turnNumber)
+        {
+            var facing = GetFaceForTurn(turnNumber);
+            List<Tuple<int,int,int>> result = new List<Tuple<int, int,int>>();
+            Tuple<int, int> nextSpace = Tuple.Create(Column,Row);
+            do
+            {
+                nextSpace = _maze.Move(nextSpace, facing);
+                if (nextSpace!=null)result.Add(new Tuple<int, int,int>(nextSpace.Item1,nextSpace.Item2,turnNumber%4));
+            } while (nextSpace != null);
+            return result;
+        } 
+    }
+
+    internal enum Facing
+    {
+        Up = 0,
+        Right = 1,
+        Down = 2,
+        Left = 3
+    }
+
+    internal static class Helpers
+    {
+        public static int[] GetSettings(this string[] rawFile, int line)
+        {
+            return rawFile[line].Split(' ')
+                .Select(x => int.Parse(x.Trim())).ToArray();
+        }
+    }
+}

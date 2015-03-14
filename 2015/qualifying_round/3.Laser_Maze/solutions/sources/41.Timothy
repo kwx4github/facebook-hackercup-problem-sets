@@ -1,0 +1,138 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+int N, M;
+char grid[101][101];
+bool spots[4][101][101];
+int dist[4][101][101];
+bool inQ[4][101][101]; // do we need spfa? why not
+
+struct node
+{
+    int t, x, y;
+};
+
+queue<node> Q;
+
+char rot(char c)
+{
+    if(c=='^')
+        return '>';
+    if(c=='>')
+        return 'v';
+    if(c=='v')
+        return '<';
+    if(c=='<')
+        return '^';
+    return c;
+}
+
+bool bounds(int x, int y)
+{
+    return 0<=x && x<N && 0<=y && y<M;
+}
+
+void simulate(int t, int x, int y)
+{
+    int dx=0, dy=0;
+    if(grid[x][y]=='^')
+        dx=-1, dy=0;
+    else if(grid[x][y]=='>')
+        dx=0, dy=1;
+    else if(grid[x][y]=='v')
+        dx=1, dy=0;
+    else if(grid[x][y]=='<')
+        dx=0, dy=-1;
+    else
+        return;
+    spots[t][x][y]=false;
+    x+=dx;
+    y+=dy;
+    while(bounds(x, y) && (grid[x][y]=='.' || grid[x][y]=='S' || grid[x][y]=='G'))
+    {
+        spots[t][x][y]=false;
+        x+=dx;
+        y+=dy;
+    }
+}
+
+void flood(int t, int x, int y, int d)
+{
+    if(!bounds(x, y) || !spots[t][x][y])
+        return;
+    if(d<dist[t][x][y])
+    {
+        dist[t][x][y]=d;
+        if(!inQ[t][x][y])
+        {
+            inQ[t][x][y]=true;
+            Q.push((node){t, x, y});
+        }
+    }
+}
+
+void solve()
+{
+    memset(spots, 1, sizeof spots);
+    memset(dist, 0x3f, sizeof dist);
+    scanf("%d%d", &N, &M);
+    int sx=-1, sy=-1, tx=-1, ty=-1;
+    for(int i=0; i<N; i++)
+    {
+        scanf("%s", grid[i]);
+        for(int j=0; j<M; j++)
+            if(grid[i][j]=='S')
+                sx=i, sy=j;
+            else if(grid[i][j]=='G')
+                tx=i, ty=j;
+    }
+    for(int t=0; t<4; t++)
+    {
+        for(int i=0; i<N; i++)
+            for(int j=0; j<M; j++)
+                if(grid[i][j]=='#')
+                    spots[t][i][j]=false;
+                else
+                    simulate(t, i, j);
+        for(int i=0; i<N; i++)
+            for(int j=0; j<M; j++)
+                grid[i][j]=rot(grid[i][j]);
+    }
+    Q=queue<node>();
+    dist[0][sx][sy]=0;
+    Q.push((node){0, sx, sy});
+    while(!Q.empty())
+    {
+        int t=Q.front().t;
+        int x=Q.front().x;
+        int y=Q.front().y;
+        Q.pop();
+        inQ[t][x][y]=false;
+        flood((t+1)%4, x+1, y, dist[t][x][y]+1);
+        flood((t+1)%4, x-1, y, dist[t][x][y]+1);
+        flood((t+1)%4, x, y+1, dist[t][x][y]+1);
+        flood((t+1)%4, x, y-1, dist[t][x][y]+1);
+    }
+    int ans=0x3f3f3f3f;
+    for(int i=0; i<4; i++)
+        ans=min(ans, dist[i][tx][ty]);
+    if(ans==0x3f3f3f3f)
+        printf("impossible\n");
+    else
+        printf("%d\n", ans);
+}
+
+int main()
+{
+    freopen("laser_maze.txt", "r", stdin);
+    freopen("laser_maze.out", "w", stdout);
+    int T;
+    scanf("%d", &T);
+    for(int i=1; i<=T; i++)
+    {
+        printf("Case #%d: ", i);
+        solve();
+    }
+    return 0;
+}

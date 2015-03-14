@@ -1,0 +1,252 @@
+import java.io.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        InputStream inputStream = System.in;
+        OutputStream outputStream = System.out;
+        InputReader in = new InputReader(inputStream);
+        PrintWriter out = new PrintWriter(outputStream);
+        Solution sol = new Solution();
+        int testCount = Integer.parseInt(in.next());
+        for (int i = 1; i <= testCount; i++)
+            sol.solve(i, in, out);
+        out.close();
+    }
+}
+
+class Pair {
+    public int x, y;
+
+    public Pair(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public boolean equals(Object o) {
+        Pair p = (Pair) o;
+
+        return p.x == x && p.y == y;
+    }
+}
+
+class Solution {
+    static final int UP = 0;
+    static final int RIGHT = 1;
+    static final int DOWN = 2;
+    static final int LEFT = 3;
+    static final int FREE = -1;
+    static final int WALL = -2;
+
+    static final char START = 'S';
+    static final char END = 'G';
+
+    public void solve(int test, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        int m = in.nextInt();
+
+        int[][] board = new int[n][m];
+
+        Pair startPos = null;
+        Pair endPos = null;
+
+        Map<Character, Integer> map = createTransfMap();
+
+        for (int i = 0; i < n; i++) {
+            String s = "";
+            while (s.length() == 0) {
+                s = in.next();
+            }
+
+            for (int j = 0; j < m; j++) {
+                board[i][j] = map.get(s.charAt(j));
+                if (s.charAt(j) == START) {
+                    startPos = new Pair(i, j);
+                }
+
+                if (s.charAt(j) == END) {
+                    endPos = new Pair(i, j);
+                }
+            }
+
+        }
+
+        int[][][] boardConf = new int[4][][];
+
+        for (int i = 0; i < 4; i++) {
+            boardConf[i] = configure(board, i, n, m);
+        }
+
+        int sol = solve(boardConf, startPos, endPos, n, m);
+
+        if (sol == -1) {
+            printSol(out, "impossible", test);
+        } else {
+            printSol(out, "" + sol, test);
+        }
+    }
+
+    private int[][] configure(int[][] board, int conf, int n, int m) {
+        //create the resulting board
+        int[][] a = new int[n][m];
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (board[i][j] == FREE) {
+                    a[i][j] = FREE;
+                } else {
+                    a[i][j] = WALL;
+                }
+
+            }
+        }
+
+        List<Pair> left = new ArrayList<Pair>();
+        List<Pair> right = new ArrayList<Pair>();
+        List<Pair> up = new ArrayList<Pair>();
+        List<Pair> down = new ArrayList<Pair>();
+
+        List[] pairs = new List[4];
+        pairs[UP] = up;
+        pairs[DOWN] = down;
+        pairs[LEFT] = left;
+        pairs[RIGHT] = right;
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (board[i][j] >= UP && board[i][j] <= LEFT) {
+                    pairs[(board[i][j] + conf) % 4].add(new Pair(i, j));
+                }
+            }
+        }
+
+        //right -> left
+        invalidate(board, a, left, 0, -1, n, m);
+
+        //left -> right
+        invalidate(board, a, right, 0, 1, n, m);
+
+        //top -> down
+        invalidate(board, a, down, 1, 0, n, m);
+
+        //down -> top
+        invalidate(board, a, up, -1, 0, n, m);
+
+        return a;
+    }
+
+    private void invalidate(int[][] board, int[][] a, List<Pair> pairs, int di, int dj, int n, int m) {
+        for (Pair p : pairs) {
+            int i = p.x + di;
+            int j = p.y + dj;
+
+            while (i >= 0 && j >= 0 && i < n && j < m && a[i][j] == FREE) {
+                a[i][j] = WALL;
+
+                i += di;
+                j += dj;
+            }
+        }
+    }
+
+    private void printSol(PrintWriter out, String s, int test) {
+        out.println(String.format("Case #%d: %s", test, s));
+    }
+
+    private int solve(int[][][] boardConf, Pair startPos, Pair endPos, int n, int m) {
+        boolean[][][] visited = new boolean[4][n][m];
+        int[] dx = {-1, 1, 0, 0};
+        int[] dy = {0, 0, -1, 1};
+
+        class Element {
+            Pair pos;
+            int offset;
+            int dist;
+
+            public Element(Pair p, int offset, int dist) {
+                this.pos = p;
+                this.offset = offset;
+                this.dist = dist;
+            }
+        }
+
+        Queue<Element> q = new LinkedList<Element>();
+        q.add(new Element(startPos, 0, 0));
+
+        while (!q.isEmpty()) {
+            Element e = q.poll();
+
+            if (!visited[e.offset][e.pos.x][e.pos.y]) {
+                visited[e.offset][e.pos.x][e.pos.y] = true;
+
+                if (endPos.equals(e.pos)) {
+                    return e.dist;
+                }
+
+                for (int i = 0; i < 4; i++) {
+                    int x = dx[i] + e.pos.x;
+                    int y = dy[i] + e.pos.y;
+
+                    if (inRange(x, y, n, m)) {
+                        Element next = new Element(new Pair(x, y), (e.offset + 1) % 4, e.dist + 1);
+
+                        if (!visited[next.offset][next.pos.x][next.pos.y]
+                                && boardConf[next.offset][next.pos.x][next.pos.y] == FREE) {
+
+                            q.add(next);
+                        }
+                    }
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private boolean inRange(int x, int y, int n, int m) {
+        return x >= 0 && x < n && y >= 0 && y < m;
+    }
+
+    private Map<Character, Integer> createTransfMap() {
+        Map<Character, Integer> map = new HashMap<Character, Integer>();
+
+        map.put('.', FREE);
+        map.put('#', WALL);
+        map.put('S', FREE);
+        map.put('G', FREE);
+        map.put('^', UP);
+        map.put('>', RIGHT);
+        map.put('v', DOWN);
+        map.put('<', LEFT);
+
+        return map;
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException("FATAL ERROR", e);
+            }
+        }
+
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.valueOf(next());
+    }
+
+}
+

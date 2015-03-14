@@ -1,0 +1,284 @@
+import java.io.BufferedReader;
+import java.io.CharConversionException;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.LinkedList;
+
+
+
+class CookingTheBooks {
+
+	static String inPath = ".//input//cooking_the_books.txt";
+	static String outPath = ".//output//output.txt";
+
+	/**
+	 *  9394 --> min: 3994 max: 9934
+	 *  3494 --> min: 3449 max: 9434
+	 *  3394 --> min: 3349 max: 9334 orderedIndex: 0132
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		try{
+			FileReader fin = new FileReader(inPath);
+			BufferedReader reader = new BufferedReader(fin);
+
+			// read T
+			String line = reader.readLine();
+			Integer T = Integer.valueOf(line);
+
+			// read Nvals & produce results
+			for(int i=0; i<T; i++){
+				line = reader.readLine();
+				
+				// decide minVal
+				String minVal = "-1";
+				if(line.contains("0")){
+					// exception for 0
+					// remove all 0s 
+					ArrayList<Integer> zerosIndex = new ArrayList<Integer>();
+					int fromIndex = 0;
+					int index = line.indexOf("0", fromIndex);
+					while(index != -1){
+						zerosIndex.add(index);
+						fromIndex = index+1;
+						index = line.indexOf("0", fromIndex);
+					}
+						
+					String lineTmp = line.replace("0", "");
+							
+					//findMinVal acc
+					LinkedList<Integer> orderedIndexIncreasing = decideIndexOrderIncreasing(lineTmp);
+					minVal = produceMinVal(orderedIndexIncreasing, lineTmp);
+					
+					//insert 0s back!!
+					for(Integer zindex:zerosIndex){
+						minVal = new StringBuilder(minVal).insert(zindex, "0").toString();	
+					}
+					
+					
+				} else {
+					LinkedList<Integer> orderedIndexIncreasing = decideIndexOrderIncreasing(line);
+					minVal = produceMinVal(orderedIndexIncreasing, line);
+				}
+				
+				//decide maxVal
+				LinkedList<Integer> orderedIndexDecreasing = decideIndexOrderDecreasing(line);
+				String maxVal = produceMaxVal(orderedIndexDecreasing, line);
+
+				// writeToFile
+				writeResult(outPath, i, minVal, maxVal);
+			}
+
+			// close
+			reader.close();
+			fin.close();
+
+		} catch(Exception e){
+			e.printStackTrace();
+		} 
+
+	}
+
+	/**
+	 * 	9394 --> min: 3994 max: 9934 orderedIndex: 1302 
+	 *  3394 --> min: 3349 max: 9334 orderedIndex: 0132
+	 * @param orderedIndex
+	 * @return
+	 */
+	private static String produceMaxVal(LinkedList<Integer> orderedIndex,
+			String nStr) {
+		char[] cArray = nStr.toCharArray();
+
+		// control if val and its index are matching
+		int size = orderedIndex.size();
+		for(int i=0; i<size; i++){
+			Integer indexVal = orderedIndex.get(i);
+			if(indexVal.equals(i)){
+				// match, no problem
+			} else {
+				// not match: get char at indexVal value & i--> swap!!
+				char c1 = cArray[indexVal]; // the largerVal
+				char c2 = cArray[i]; // the smallerVal
+
+				cArray[i] = c1;
+				cArray[indexVal] = c2;
+
+				break;
+			}
+		}
+
+		String newVal = new String(cArray);
+		return newVal;
+	}
+
+	/**
+	 * 	9394 --> min: 3994 max: 9934 orderedIndex: 1302 
+	 *  3394 --> min: 3349 max: 9334 orderedIndex: 0132
+	 * @param orderedIndex
+	 * @return
+	 */
+	private static String produceMinVal(LinkedList<Integer> orderedIndex, String nStr) {
+
+		char[] cArray = nStr.toCharArray();
+
+		// control if val and its index are matching
+		int size = orderedIndex.size();
+		for(int i=0; i<size; i++){
+			Integer indexVal = orderedIndex.get(i);
+			if(indexVal.equals(i)){
+				// match, no problem
+			} else {
+				// not match: get char at indexVal value & i--> swap!!
+				char c1 = cArray[indexVal]; // the smallerVal
+				char c2 = cArray[i]; // the largerVal
+
+				// exception for 0!! cannot be at the beginning!!
+				if(Character.getNumericValue(c1) == 0){
+					continue;
+				}
+				
+				// swap
+				cArray[i] = c1;
+				cArray[indexVal] = c2;
+
+				break;
+			}
+		}
+
+		String newVal = new String(cArray);
+		return newVal;
+	}
+
+	/**
+	 * 9394 --> orderedVal: 9943, orderedIndex: 0231 
+	 * 3494 --> orderedVal: 9443, orderedIndex: 2130
+	 * @param nStr
+	 * @return index list with decreasing val of digits 
+	 */
+	private static LinkedList<Integer> decideIndexOrderDecreasing(String nStr) {
+		LinkedList<Integer> orderedIndexList = new LinkedList<Integer>();
+		LinkedList<Integer> orderedValsList = new LinkedList<Integer>();
+
+		int size = nStr.length();
+		for(int i=0; i<size; i++){
+			char c = nStr.charAt(i);
+			Integer cVal = Character.getNumericValue(c); 
+
+			// control if this val is already inserted, and act accordingly
+			int lastIndex = orderedValsList.lastIndexOf(cVal);
+			if(lastIndex!=-1){
+				// this val is already inserted
+				// insert this before than lastIndex 
+				orderedValsList.add(lastIndex+1, cVal);
+				orderedIndexList.add(lastIndex+1, i);
+			} else {
+				// this val is not inserted before
+				// insert this to appropriate place, in decreasing order
+				Integer foundIndex = findAppropriateIndexDecreasing(orderedValsList,cVal);
+				if(foundIndex == -1){
+					// add to last
+					orderedValsList.add(cVal);
+					orderedIndexList.add(i);
+				} else {
+					// add to index
+					orderedValsList.add(foundIndex, cVal);
+					orderedIndexList.add(foundIndex, i);
+				}
+
+			}
+		}
+
+
+		return orderedIndexList;
+	}
+
+	private static Integer findAppropriateIndexDecreasing(
+			LinkedList<Integer> orderedValsList, Integer cVal) {
+		Integer index = -1;
+		int size = orderedValsList.size();
+		for(int i=0; i<size; i++){
+			Integer val = orderedValsList.get(i);
+			if(cVal > val){
+				index = i;
+				break;
+			}
+		}
+
+		return index;
+	}
+
+	/**
+	 * 9394 --> orderedVal: 3499, orderedIndex: 1302 
+	 * 3494 --> orderedVal: 3449, orderedIndex: 0132
+	 * @param nStr
+	 * @return index list with increasing val of digits 
+	 */
+	private static LinkedList<Integer> decideIndexOrderIncreasing(String nStr) {
+		LinkedList<Integer> orderedIndexList = new LinkedList<Integer>();
+		LinkedList<Integer> orderedValsList = new LinkedList<Integer>();
+
+		int size = nStr.length();
+		for(int i=0; i<size; i++){
+			char c = nStr.charAt(i);
+			Integer cVal = Character.getNumericValue(c); 
+
+			// control if this val is already inserted, and act accordingly
+			int lastIndex = orderedValsList.lastIndexOf(cVal);
+			if(lastIndex!=-1){
+				// this val is already inserted
+				// insert this next to lastIndex 
+				orderedValsList.add(lastIndex+1, cVal);
+				orderedIndexList.add(lastIndex+1, i);
+			} else {
+				// this val is not inserted before
+				// insert this to appropriate place, in increasing order
+				Integer foundIndex = findAppropriateIndexIncreasing(orderedValsList,cVal);
+				if(foundIndex == -1){
+					// add to last
+					orderedValsList.add(cVal);
+					orderedIndexList.add(i);
+				} else {
+					// add to index
+					orderedValsList.add(foundIndex, cVal);
+					orderedIndexList.add(foundIndex, i);
+				}
+
+			}
+		}
+
+
+		return orderedIndexList;
+	}
+
+	private static Integer findAppropriateIndexIncreasing(
+			LinkedList<Integer> orderedValsList, Integer cVal) {
+		Integer index = -1;
+		int size = orderedValsList.size();
+		for(int i=0; i<size; i++){
+			Integer val = orderedValsList.get(i);
+			if(cVal < val){
+				index = i;
+				break;
+			}
+		}
+
+		return index;
+	}
+
+	private static void writeResult(String path, Integer index,
+			String minVal, String maxVal) throws FileNotFoundException {
+		//print  to file
+		FileOutputStream fos = new FileOutputStream(path,true);
+		PrintStream ps = new PrintStream(fos);
+
+		ps.println("Case #" + (index+1) + ": " + minVal + " " + maxVal);
+
+		ps.flush();
+		ps.close();
+
+	}
+
+}

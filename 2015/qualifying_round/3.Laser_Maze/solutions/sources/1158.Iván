@@ -1,0 +1,132 @@
+#include <algorithm>
+#include <bitset>
+#include <cmath>
+#include <cstring>
+#include <cstdio>
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <vector>
+
+using namespace std;
+typedef pair<int,int> pii;
+
+#define CODE(s) (10000 * s.rot + 100 * s.pos.first + s.pos.second)
+
+struct state {
+	pii pos;
+	int rot, steps;
+	state(pii p, int r, int s) : pos(p), rot(r), steps(s) {}
+};
+
+int dirX[4] = {0, 0, 1, -1};
+int dirY[4] = {1, -1, 0, 0};
+
+char make_number(char c) {
+	if (c == '^') return 0;
+	if (c == '>') return 1;
+	if (c == 'v') return 2;
+	return 3;
+}
+
+bool threat(const vector< vector<char> >& M, const pii& pos, const int rot, const vector<pii>& T) {
+	for (int i = 0; i < (int)T.size(); i++) {
+		int dir = (M[T[i].first][T[i].second] + rot) % 4;
+		if (dir == 0 && T[i].second == pos.second && T[i].first > pos.first) {
+			bool threat = true;
+			for (int j = T[i].first - 1; threat && j > pos.first; j--)
+				if (M[j][pos.second] != '.')
+					threat = false;
+			if (threat) return true;
+		}
+		if (dir == 1 && T[i].first == pos.first && T[i].second < pos.second) {
+			bool threat = true;
+			for (int j = T[i].second + 1; threat && j < pos.second; j++)
+				if (M[pos.first][j] != '.')
+					threat = false;
+			if (threat) return true;
+		}
+		if (dir == 2 && T[i].second == pos.second && T[i].first < pos.first) {
+			bool threat = true;
+			for (int j = T[i].first + 1; threat && j < pos.first; j++)
+				if (M[j][pos.second] != '.')
+					threat = false;
+			if (threat) return true;
+		}
+		if (dir == 3 && T[i].first == pos.first && T[i].second > pos.second) {
+			bool threat = true;
+			for (int j = T[i].second - 1; threat && j > pos.second; j--)
+				if (M[pos.first][j] != '.')
+					threat = false;
+			if (threat) return true;
+		}
+	}
+	return false;
+}
+
+int main() {
+#ifdef TESTING
+	ifstream cin("input.txt");
+	ofstream cout("output.txt");
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+#endif
+	int T, M, N;
+	cin >> T;
+	for (int caso = 1; caso <= T; ++caso) {
+		cin >> M >> N;
+		vector< vector<char> > maze(M, vector<char>(N));
+		vector<pii> turret;
+		pii start, goal;
+		for (int i = 0; i < M; i++) {
+			for (int j = 0; j < N; j++) {
+				cin >> maze[i][j];
+				if (maze[i][j] == '^' || maze[i][j] == 'v' || maze[i][j] == '<' || maze[i][j] == '>') {
+					maze[i][j] = make_number(maze[i][j]);
+					turret.push_back(pii(i,j));
+				} else if (maze[i][j] == 'S') {
+					maze[i][j] = '.';
+					start.first = i, start.second = j;
+				} else if (maze[i][j] == 'G') {
+					maze[i][j] = '.';
+					goal.first = i, goal.second = j;
+				}
+			}
+		}
+
+		vector<bool> visited(40000);
+		int minsteps = -1;
+		queue<state> cola;
+		cola.push(state(start, 0, 0));
+		while (!cola.empty() && minsteps < 0) {
+			state s = cola.front();
+			cola.pop();
+			for (int i = 0; i < 4 && minsteps < 0; i++) {
+				if (s.pos.first + dirY[i] >= 0 && s.pos.first + dirY[i] < M &&
+					s.pos.second + dirX[i] >= 0 && s.pos.second + dirX[i] < N &&
+					maze[s.pos.first + dirY[i]][s.pos.second + dirX[i]] == '.') {
+					state next(pii(s.pos.first + dirY[i], s.pos.second + dirX[i]), (s.rot + 1) % 4, s.steps + 1);
+					if (!visited[CODE(next)] && !threat(maze, next.pos, next.rot, turret)) {
+						visited[CODE(next)] = true;
+						cola.push(next);
+						if (next.pos == goal)
+							minsteps = next.steps;
+					}
+				}
+			}
+		}
+
+		cout << "Case #" << caso << ": ";
+		if (minsteps < 0)
+			cout << "impossible" << endl;
+		else
+			cout << minsteps << endl;
+	}
+	return 0;
+}

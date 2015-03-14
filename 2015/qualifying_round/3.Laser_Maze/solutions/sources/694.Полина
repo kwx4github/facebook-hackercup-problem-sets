@@ -1,0 +1,191 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#ifdef _DEBUG
+#define DEBUG(x) do { cerr << x << endl; } while (0)
+#else
+#define DEBUG(x)
+#endif
+
+const int MAXV = 102 * 102 * 4 + 4;
+
+void rotate(char c[102][102], int H, int W) {
+    for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+            switch (c[i][j]) {
+                case '^':
+                    c[i][j] = '>';
+                    break;
+                case '>':
+                    c[i][j] = 'v';
+                    break;
+                case 'v':
+                    c[i][j] = '<';
+                    break;
+                case '<':
+                    c[i][j] = '^';
+                    break;
+            }
+        }
+    }
+}
+
+void MakeMap(const char c[102][102], int H, int W, bool empt[102][102][4], int l) {
+    for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+            empt[i][j][l] = true;
+        }
+    }
+    for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+            if (c[i][j] == '.') {
+                continue;
+            }
+            if (c[i][j] == '#') {
+                empt[i][j][l] = false;
+                continue;
+            }
+            int x = i, y = j;
+            do {
+                empt[x][y][l] = false;
+                switch (c[i][j]) {
+                    case '^':
+                        --x;
+                        break;
+                    case '>':
+                        ++y;
+                        break;
+                    case 'v':
+                        ++x;
+                        break;
+                    case '<':
+                        --y;
+                        break;
+                }
+            } while (x < H && x > -1 && y < W && y > -1 && c[x][y] == '.');
+        }
+    }
+}
+
+void PrintMap(bool empt[102][102][4], int H, int W) {
+    for (int l = 0; l < 4; ++l) {
+        for (int i = 0; i < H; ++i) {
+            for (int j = 0; j < W; ++j) {
+                cout << (empt[i][j][l] ? '.' : '#');
+            }
+            cout << "\n";
+        }
+        cout << "\n";
+    }
+}
+
+int BFS(const vector<int> e[MAXV], int H, int W, int S, int G) {
+    vector<bool> used;
+    vector<int> ans;
+    used.resize(MAXV);
+    ans.resize(MAXV);
+    queue<int> q;
+    q.push(S);
+    used[S] = true;
+    while (!q.empty()) {
+        int v = q.front();
+        q.pop();
+        for (int i = 0; i < e[v].size(); ++i) {
+            if (!used[e[v][i]] || ans[e[v][i]] > ans[v] + 1) {
+                ans[e[v][i]] = ans[v] + 1;
+                used[e[v][i]] = true;
+                q.push(e[v][i]);
+            }
+        }
+    }
+    int min_time = MAXV;
+    for (int i = 0; i < 4; ++i) {
+        if (used[G + i] && ans[G + i] < min_time) {
+            min_time = ans[G + i];
+        }
+    }
+    return min_time;
+}
+
+void PrintEdges (const vector<int> e[MAXV], int H, int W) {
+    for (int i = 0; i < 4 * H * W; ++i) {
+        printf("%4d: ", i);
+        for (int j = 0; j < e[i].size(); ++j) {
+            printf("%3d", e[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+bool empty (bool empt[102][102][4], int i, int j, int l, int H, int W) {
+    l %= 4;
+    return (i > -1 && i < H && j > -1 && j < W && empt[i][j][l]);
+}
+
+int ver (int i, int j, int l, int W) {
+    return ((i * W + j) * 4 + l % 4);
+} 
+
+int Test () {
+    vector<int> e[MAXV];
+    int H, W;
+    int S, G;
+    char c[102][102];
+    bool empt[102][102][4];
+    scanf("%d%d", &H, &W);
+    for (int i = 0; i < H; ++i) {
+        for (int j = 0; j < W; ++j) {
+            cin >> c[i][j];
+            if (c[i][j] == 'S') {
+                S = i * W + j;
+                c[i][j] = '.';
+            }
+            if (c[i][j] == 'G') {
+                G = i * W + j;
+                c[i][j] = '.';
+            }
+        }
+    }
+    for (int i = 0; i < 4; ++i) {
+        MakeMap(c, H, W, empt, i);
+        rotate(c, H, W);
+    }
+    for (int l = 0; l < 4; ++l) {
+        for (int i = 0; i < H; ++i) {
+            for (int j = 0; j < W; ++j) {
+                int v = ver(i, j, l, W);
+                if (empty(empt, i, j + 1, l + 1, H, W)) {
+                    e[v].push_back(ver(i, j + 1, l + 1, W));
+                }
+                if (empty(empt, i, j - 1, l + 1, H, W)) {
+                    e[v].push_back(ver(i, j - 1, l + 1, W));
+                }
+                if (empty(empt, i - 1, j, l + 1, H, W)) {
+                    e[v].push_back(ver(i - 1, j, l + 1, W));
+                }
+                if (empty(empt, i + 1, j, l + 1, H, W)) {
+                    e[v].push_back(ver(i + 1, j, l + 1, W));
+                }
+            }
+        }
+    }
+    //PrintEdges(e, H, W);
+    //PrintMap(empt, H, W);
+    return BFS(e, H, W, S * 4, G * 4);
+}       
+
+main () {
+#ifdef _DEBUG
+    freopen("laser_maze.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+#endif
+    //Test();
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; ++i) {
+        printf("Case #%d: ", i + 1);
+        int t = Test();
+        t == MAXV ? printf("impossible\n") : printf("%d\n", t);
+    }
+}

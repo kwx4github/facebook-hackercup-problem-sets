@@ -1,0 +1,174 @@
+package com.yehara.fbhc.fbhc2015.qual;
+
+import java.io.*;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class LaserMaze {
+
+	static PrintWriter out;
+
+	public static void main(String[] args) throws IOException {
+		File dir = new File("file/fbhc2015/qual/");
+		String name = "C";
+		Scanner s = new Scanner(new File(dir, name + ".in"));
+		int count = s.nextInt();
+		s.nextLine();
+		out = new PrintWriter(new BufferedWriter(new FileWriter(new File(dir,
+				name + ".out"))));
+		// out = new PrintWriter(System.out);
+		for (int cn = 1; cn <= count; cn++) {
+			out.print("Case #" + cn + ": ");
+			int h = s.nextInt();
+			int w = s.nextInt();
+			char[][] maze = new char[h][];
+			for(int i=0; i<h; i++) {
+				maze[i] = s.next().toCharArray();
+			}
+			int res = new LaserMaze().solve(h, w, maze);
+			out.print(res < 0 ? "impossible" : res);
+			out.println();
+		}
+		out.close();
+		s.close();
+	}
+
+	char[][][] b;
+	int[][][] step;
+	int h;
+	int w;
+	int sx=-1,sy=-1,gx=-1,gy=-1;
+	private int solve(int h, int w, char[][] maze) {
+		this.h = h;
+		this.w = w;
+		for(int x=0; x<h; x++) {
+			for(int y=0; y<w; y++) {
+				if(maze[x][y] == 'S') {
+					sx = x;
+					sy = y;
+					maze[x][y] = '.';
+				}
+				if(maze[x][y] == 'G') {
+					gx = x;
+					gy = y;
+					maze[x][y] = '.';
+				}
+			}
+		}
+		b = new char[h][w][4];
+		step = new int[h][w][4];
+		int[] dx = {-1, 0, 1, 0};
+		int[] dy = {0, 1, 0, -1};
+		for(int i=0; i<4; i++) {
+			for(int x=0; x<h; x++) {
+				for(int y=0; y<w; y++) {
+					// System.out.println(String.format("[%d,%d,%d]",x,y,i));
+					b[x][y][i] = rotate(maze[x][y], i);
+					step[x][y][i] = Integer.MAX_VALUE;
+				}
+			}
+			for(int x=0; x<h; x++) {
+				for(int y=0; y<w; y++) {
+					if(isLaser(b[x][y][i])) {
+						int dxx = dx[dir(b[x][y][i])];
+						int dyy = dy[dir(b[x][y][i])];
+						int xx = x + dxx;
+						int yy = y + dyy;
+						while(!isOutOfMaze(xx, yy) && !isWall(xx, yy, i) && !isLaser(xx, yy, i)) {
+							b[xx][yy][i] = 'x';
+							xx += dxx;
+							yy += dyy;
+						}
+					}
+				}
+			}
+		}
+
+		Queue<P> q = new LinkedList<>();
+		q.add(new P(sx,sy,0));
+		step[sx][sy][0] = 0;
+		while(!q.isEmpty()) {
+			P p = q.poll();
+			int nz = (p.z + 1) % 4;
+			for(int d=0; d<4; d++) {
+				int nx = p.x + dx[d];
+				int ny = p.y + dy[d];
+				if(canGo(nx, ny, nz) && step[nx][ny][nz] == Integer.MAX_VALUE) {
+					step[nx][ny][nz] = step[p.x][p.y][p.z] + 1;
+					if(nx == gx && ny == gy) return step[nx][ny][nz];
+					q.offer(new P(nx, ny, nz));
+				}
+			}
+		}
+		return -1;
+	}
+	private static class P {
+		public int x;
+		public int y;
+		public int z;
+		public P(int x, int y, int z) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+		@Override
+		public boolean equals(Object o) {
+			P p = (P)o;
+			return x==p.x && y==p.y && z==p.z;
+		}
+		@Override
+		public int hashCode() {
+			return x + y * 100 + z * 10000;
+		}
+	}
+	private boolean canGo(int x, int y, int z) {
+		return isFloor(x, y, z);
+	}
+	private boolean isWall(char c) {
+		return c == '#';
+	}
+	private boolean isWall(int x, int y, int z) {
+		return isWall(b[x][y][z]);
+	}
+	private boolean isFloor(int x, int y, int z) {
+		if(isOutOfMaze(x, y)) return false;
+		return b[x][y][z] == '.';
+	}
+	private boolean isLaser(char c) {
+		return c == '^' || c == '<' || c == '>' || c == 'v';
+	}
+	private boolean isLaser(int x, int y, int z) {
+		return isLaser(b[x][y][z]);
+	}
+	private boolean isOutOfMaze(int x, int y) {
+		return x<0 || x>=h || y<0 || y>=w;
+	}
+	private int dir(char c) {
+		if(!isLaser(c)) throw new RuntimeException();
+		return "^>v<".indexOf(c);
+	}
+	private char rotate(char c, int n) {
+		for(int i=0; i<n; i++) {
+			switch(c) {
+				case '<': c = '^' ; break;
+				case '^': c = '>' ; break;
+				case '>': c = 'v' ; break;
+				case 'v': c = '<' ; break;
+			}
+		}
+		return c;
+	}
+	private void showBoard() {
+		for(int i=0; i<4; i++) {
+			System.out.println("--------------------");
+			for(int x=0; x<h; x++) {
+				for(int y=0; y<w; y++) {
+					System.out.print(b[x][y][i]);
+				}
+				System.out.println();
+			}
+		}
+	}
+
+}

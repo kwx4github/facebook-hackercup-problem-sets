@@ -1,0 +1,349 @@
+package hackercode;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Locale;
+import java.util.StringTokenizer;
+
+/**
+ *
+ * @author Dinnot
+ */
+public class HackerCode implements Runnable{
+
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) {
+        new Thread(null, new HackerCode(), "", 256 * (1L << 20)).start();
+    }
+    
+    BufferedReader in;
+    PrintWriter out;
+    StringTokenizer tok = new StringTokenizer("");
+    
+    public void run() {
+        try {
+            long t1 = System.currentTimeMillis();
+            in = new BufferedReader(new FileReader("E:\\xampp\\htdocs\\HackerCode\\src\\hackercode\\input.txt"));
+            out = new PrintWriter("E:\\xampp\\htdocs\\HackerCode\\src\\hackercode\\output.txt");
+            Locale.setDefault(Locale.US);
+            int T = readInt();
+            for(int i = 0; i < T; i++)
+                solve(i+1);
+            in.close();
+            out.close();
+            long t2 = System.currentTimeMillis();
+            System.err.println("Time = " + (t2 - t1));
+        } catch (Throwable t) {
+            t.printStackTrace(System.err);
+            System.exit(-1);
+        }
+    }
+    
+    String readString() throws IOException {
+            while (!tok.hasMoreTokens()) {
+                    tok = new StringTokenizer(in.readLine());
+            }
+            return tok.nextToken();
+    }
+
+    String readLine() throws IOException {
+        return in.readLine();
+    }
+    
+    int readInt() throws IOException {
+            return Integer.parseInt(readString());
+    }
+
+    long readLong() throws IOException {
+            return Long.parseLong(readString());
+    }
+
+    double readDouble() throws IOException {
+            return Double.parseDouble(readString());
+    }
+
+    // solution
+
+    void solve(int caseNr) throws IOException {
+        int rows = readInt();
+        int columns = readInt();
+        Cell[][] maze = new Cell[rows][columns];
+        int start_x = 0, start_y = 0, end_x = 0, end_y = 0;
+        for(int i = 0; i < rows; i++) {
+            String row = readLine();
+            for(int j = 0; j < columns; j++) {
+                char ch = row.charAt(j);
+                if(ch == '#') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_WALL);
+                } else if(ch == '>') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_GUN, Cell.ORIENTATION_RIGHT);
+                } else if(ch == 'v') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_GUN, Cell.ORIENTATION_DOWN);
+                } else if(ch == '^') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_GUN, Cell.ORIENTATION_UP);
+                } else if(ch == '<') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_GUN, Cell.ORIENTATION_LEFT);
+                } else if(ch == '.') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_WAY);
+                } else if(ch == 'S') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_WAY);
+                    start_x = i;
+                    start_y = j;
+                } else if(ch == 'G') {
+                    maze[i][j] = new Cell(i, j, Cell.TYPE_WAY);
+                    end_x = i;
+                    end_y = j;
+                }
+            }
+        }
+        
+        //set bombs
+        for(int i = 0; i < rows; i++) {
+            for(int j = 0; j < columns; j++) {
+                if(maze[i][j].IsGun()) {
+                    int time, x, y;
+                    //up
+                    time = maze[i][j].GetOrientationTime(Cell.ORIENTATION_UP);
+                    x = i-1;
+                    y = j;
+                    while(ValidPosition(x, y, rows, columns) && maze[x][y].AddBomb(time)) {
+                        x--;
+                    }
+                    //down
+                    time = maze[i][j].GetOrientationTime(Cell.ORIENTATION_DOWN);
+                    x = i+1;
+                    y = j;
+                    while(ValidPosition(x, y, rows, columns) && maze[x][y].AddBomb(time)) {
+                        x++;
+                    }
+                    //left
+                    time = maze[i][j].GetOrientationTime(Cell.ORIENTATION_LEFT);
+                    x = i;
+                    y = j-1;
+                    while(ValidPosition(x, y, rows, columns) && maze[x][y].AddBomb(time)) {
+                        y--;
+                    }
+                    //right
+                    time = maze[i][j].GetOrientationTime(Cell.ORIENTATION_RIGHT);
+                    x = i;
+                    y = j+1;
+                    while(ValidPosition(x, y, rows, columns) && maze[x][y].AddBomb(time)) {
+                        y++;
+                    }
+                }
+            }
+        }
+        //start check
+        if((ValidPosition(start_x-1, start_y, rows, columns) && maze[start_x-1][start_y].TimeNotBombed(1))
+            || (ValidPosition(start_x+1, start_y, rows, columns) && maze[start_x+1][start_y].TimeNotBombed(1))
+            || (ValidPosition(start_x, start_y-1, rows, columns) && maze[start_x][start_y-1].TimeNotBombed(1))
+            || (ValidPosition(start_x, start_y+1, rows, columns) && maze[start_x][start_y+1].TimeNotBombed(1))
+            ) {
+            maze[start_x][start_y].AddTime(0);
+            maze[start_x][start_y].AddTime(2);
+        }
+        
+        ArrayList<Cell> queue = new ArrayList<Cell>();
+        queue.add(maze[start_x][start_y]);
+        boolean found = true;
+        while(found) {
+            found = false;
+            //find first usable node
+            Cell node = queue.get(0);
+            for(int i = 0; !found && i < queue.size(); i++) {
+                if(queue.get(i).NeedsCheck()) {
+                    found = true;
+                    node = queue.get(i);
+                }
+            }
+            if(found && node != null) {
+                int x = node.GetX();
+                int y = node.GetY();
+                int[] ntimes = maze[x][y].GetNextTimes();
+                //check up
+                if(ValidPosition(x-1, y, rows, columns) && maze[x-1][y].IsWay()) {
+                    for(int i = 0; i < ntimes.length; i++) {
+                        maze[x-1][y].AddTime(ntimes[i]);
+                    }
+                    AddIfNotExists(queue, maze[x-1][y]);
+                }
+                //check down
+                if(ValidPosition(x+1, y, rows, columns) && maze[x+1][y].IsWay()) {
+                    for(int i = 0; i < ntimes.length; i++) {
+                        maze[x+1][y].AddTime(ntimes[i]);
+                    }
+                    AddIfNotExists(queue, maze[x+1][y]);
+                }
+                //check left
+                if(ValidPosition(x, y-1, rows, columns) && maze[x][y-1].IsWay()) {
+                    for(int i = 0; i < ntimes.length; i++) {
+                        maze[x][y-1].AddTime(ntimes[i]);
+                    }
+                    AddIfNotExists(queue, maze[x][y-1]);
+                }
+                //check right
+                if(ValidPosition(x, y+1, rows, columns) && maze[x][y+1].IsWay()) {
+                    for(int i = 0; i < ntimes.length; i++) {
+                        maze[x][y+1].AddTime(ntimes[i]);
+                    }
+                    AddIfNotExists(queue, maze[x][y+1]);
+                }
+                //set visited
+                node.SetVisited();
+            }
+        }
+        
+        out.print("Case #");
+        out.print(caseNr);
+        out.print(": ");
+        if(!maze[end_x][end_y].HasTimes()) {
+            out.println("impossible");
+        } else {
+            out.println(maze[end_x][end_y].MinTime());
+        }
+    }
+    
+    public void AddIfNotExists(ArrayList<Cell> queue, Cell node) {
+        for(int i = 0; i < queue.size(); i++) {
+            if(queue.get(i).GetX() == node.GetX() && queue.get(i).GetY() == node.GetY())
+                return;
+        }
+        queue.add(node);
+    }
+    
+    public boolean ValidPosition(int x, int y, int rows, int columns) {
+        return x >= 0 && y >= 0 && x < rows && y < columns;
+    }
+    
+    
+    
+    public class Cell {
+        public static final int TYPE_WALL = 0;
+        public static final int TYPE_GUN = 1;
+        public static final int TYPE_WAY = 2;
+        
+        public static final int ORIENTATION_UP = 0;
+        public static final int ORIENTATION_RIGHT = 1;
+        public static final int ORIENTATION_DOWN = 2;
+        public static final int ORIENTATION_LEFT = 3;
+        
+        private int x;
+        private int y;
+        private int type;
+        private ArrayList<Integer> bombs = new ArrayList<Integer>();
+        private ArrayList<Integer> times = new ArrayList<Integer>();
+        private boolean visited = true;
+        private int degrees;
+        
+        public Cell(int x, int y, int type) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+        }
+        
+        public Cell(int x, int y, int type, int degrees) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            this.degrees = degrees;
+        }
+        
+        public int GetX() {
+            return x;
+        }
+        
+        public int GetY() {
+            return y;
+        }
+        
+        public int GetOrientationTime(int orientation) {
+            if(type != Cell.TYPE_GUN)
+                return -1;
+            if(orientation < degrees)
+                orientation += 4;
+            if(orientation == degrees) return 4;
+            else return orientation - degrees;
+        }
+        
+        public boolean AddBomb(int time) {
+            if(type != Cell.TYPE_WAY) {
+                return false;
+            } else {
+                if(!bombs.contains(Integer.valueOf(time)))
+                    bombs.add(Integer.valueOf(time));
+                return true;
+            }
+        }
+        
+        public boolean TimeNotBombed(int time) {
+            for(int i = 0; i < bombs.size(); i++) {
+                int bomb = bombs.get(i).intValue();
+                if(time >= bomb && (time - bomb) % 4 == 0)
+                    return false;
+            }
+            return true;
+        }
+        
+        public boolean TimeNotExists(int time) {
+            for(int i = 0; i < times.size(); i++) {
+                int etime = times.get(i).intValue();
+                if(etime <= time && (etime-time) % 4 == 0)
+                    return false;
+            }
+            return true;
+        }
+        
+        public void AddTime(int time) {
+            if(!TimeNotBombed(time) || !TimeNotExists(time)) return;
+            visited = false;
+            times.add(Integer.valueOf(time));
+        }
+        
+        public void SetVisited() {
+            visited = true;
+        }
+        
+        public boolean NeedsCheck() {
+            return !visited;
+        }
+        
+        public int[] GetNextTimes() {
+            int[] next = new int[times.size()];
+            for(int i = 0; i < times.size(); i++) {
+                next[i] = times.get(i).intValue()+1;
+            }
+            return next;
+        }
+        
+        public int MinTime() {
+            int min = Integer.MAX_VALUE;
+            for(int i = 0; i < times.size(); i++) {
+                int time = times.get(i).intValue();
+                if(time < min)
+                    min = time;
+            }
+            return min;
+        }
+        
+        public boolean HasTimes() {
+            return !times.isEmpty();
+        }
+        
+        public boolean IsGun() {
+            return type == Cell.TYPE_GUN;
+        }
+        
+        public boolean IsWall() {
+            return type == Cell.TYPE_WALL;
+        }
+        
+        public boolean IsWay() {
+            return type == Cell.TYPE_WAY;
+        }
+    }
+}

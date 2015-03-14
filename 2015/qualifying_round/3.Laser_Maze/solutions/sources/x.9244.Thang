@@ -1,0 +1,338 @@
+
+import java.util.*;
+import java.lang.*;
+import java.io.*;
+
+
+public class p3 {
+
+	private static final int empty = 0;
+	private static final int turrest = 1;
+	private static final int wall = 2;
+
+	private static final int left = -1;
+	private static final int right = -3;
+	private static final int up = -2;
+	private static final int down = -4;
+
+	private static final boolean debug = false;
+	private static final boolean step = false;
+	private static final int delay = 1000;
+	private static HashSet<MazeLoc> hash = new HashSet<MazeLoc>();
+	private static Queue<MazeLoc> queue = new LinkedList<MazeLoc>();
+
+	public static void main (String[] args)	{
+		Scanner s = new Scanner(System.in);
+		int T = s.nextInt();
+		for (int t=0; t<T; t++) {
+			hash = new HashSet<MazeLoc>();
+			queue = new LinkedList<MazeLoc>();
+			int M = s.nextInt();
+			int N = s.nextInt();
+			int[][] maze = new int[M][N];
+			int[] startind = new int[2];
+			int[] endind = new int[2];
+			ArrayList<Turrest> tur = new ArrayList<Turrest>();
+			s.nextLine();
+			for (int i=0; i<M; i++) {
+				String line = s.nextLine();
+				println(line);
+				for (int j=0; j<N; j++) {
+					if (line.charAt(j) == '#') {
+                        maze[i][j] = wall;
+                    } else if (line.charAt(j) == '.') {
+                        maze[i][j] = empty;
+                    } else if (line.charAt(j) == 'S') {
+                        maze[i][j] = empty;
+                        startind[0] = i; startind[1] = j;
+                    } else if (line.charAt(j) == 'G') {
+                        maze[i][j] = empty;
+                        endind[0] = i; endind[1] = j;
+                    } else {
+                    	maze[i][j] = turrest;
+                    	int val = -10;
+                    	if (line.charAt(j) == '^') {
+                        	val = up;
+                    	} else if (line.charAt(j) == 'v') {
+                        	val = down;
+                    	} else if (line.charAt(j) == '<') {
+                        	val = left;
+                    	} else if (line.charAt(j) == '>') {
+                        	val = right;
+                    	}
+                    	tur.add(new Turrest(i,j,val));
+                	}
+				}
+			}
+			//if (t == 0)
+				solve(maze,startind,endind,tur,t);
+		}
+	}
+	
+	public static void solve(int[][] maze, int[] start, int[] end, ArrayList<Turrest> tur, int c) {
+		int depth = solver(maze,start,end,tur);
+		System.out.println("Case #"+(c+1)+":"+" "+(depth==-1 ? "impossible" : String.valueOf(depth)));
+	}
+
+	// TODO: breadth first search
+	// given a location, find neighbours, attempt to move to neighbour, 
+	// check both, neighbour + current turrest config is not in hashset, and 
+	// move cannot be destroyed by laser (note the wall and turrest in the middle)
+	// if yes, enqueue
+	// get from the queue
+	public static int solver(int[][] maze, int[] start, int[] end, ArrayList<Turrest> tur) {
+		// first location, init queue, add to hash
+		MazeLoc first = new MazeLoc(start[0],start[1],tur);
+		first.depth = 0;
+		queue.add(first);
+		hash.add(first);
+		MazeLoc loc = queue.remove();
+		while (loc != null) {
+			print("Current loc: "); loc.print();
+			MazeLoc newloc = check(loc,maze,-1,0);
+			if (newloc != null) {
+				print("Adding new loc to queue: ");
+				newloc.print();
+				queue.add(newloc);
+				if ((newloc.curx == end[0]) && (newloc.cury == end[1])) 
+					return newloc.depth;
+			}
+			newloc = check(loc,maze,1,0);
+			if (newloc != null) {
+				print("Adding new loc to queue: ");
+				newloc.print();
+				queue.add(newloc);
+				if ((newloc.curx == end[0]) && (newloc.cury == end[1])) 
+					return newloc.depth;
+			}
+			newloc = check(loc,maze,0,-1);
+			if (newloc != null) {
+				print("Adding new loc to queue: ");
+				newloc.print();
+				queue.add(newloc);
+				if ((newloc.curx == end[0]) && (newloc.cury == end[1])) 
+					return newloc.depth;
+			}
+			newloc = check(loc,maze,0,1);
+			if (newloc != null) {
+				print("Adding new loc to queue: ");
+				newloc.print();
+				queue.add(newloc);
+				if ((newloc.curx == end[0]) && (newloc.cury == end[1])) 
+					return newloc.depth;
+			}
+			if (queue.isEmpty()) return -1;
+			loc = queue.remove();
+		}
+		return -1;
+	}
+
+	public static MazeLoc check(MazeLoc cur, int[][] maze, int dx, int dy) {
+		int xnew = cur.curx + dx;
+		int ynew = cur.cury + dy;
+		println("xnew " + xnew + ", ynew " + ynew);
+		if (xnew < 0 || xnew >= maze.length) {
+			println("x out of range");
+			return null;
+		}
+		if (ynew < 0 || ynew >= maze[0].length) {
+			println("y out of range");
+			return null;
+		}
+		if (maze[xnew][ynew] == turrest || maze[xnew][ynew] == wall) {
+			println("wall or turrest");
+			return null;
+		}
+		ArrayList<Turrest> turlist = (ArrayList<Turrest>)cur.tur.clone();
+		boolean check = true;
+		for (int i=0; i<turlist.size(); i++) {
+			Turrest tur = turlist.get(i);
+			int turx = tur.x;
+			int tury = tur.y;
+			int turval = tur.val-1; if (turval == -5) turval = -1;
+			Turrest newtur = new Turrest(turx,tury,turval);
+			turlist.set(i,newtur);
+			check = check && checkLaser(maze,xnew,ynew,turx,tury,turval);
+		}
+		println("check for laser: " + (check?"ok":"died!"));
+		if (check) {
+			MazeLoc newloc = new MazeLoc(xnew,ynew,turlist);
+			if (hash.contains(newloc)) {
+				println("this loc is already explored");
+				return null;
+			} else {
+				hash.add(newloc);
+			}
+			newloc.depth = cur.depth+1;
+			println("returning new loc with depth " + newloc.depth);
+			return newloc;
+		}
+		return null;
+
+	}
+
+	public static boolean checkLaser(int[][] maze, int x, int y, int turx, int tury, int turval) {
+		println("check laser, x: " + x + " turx: " + turx + " y: " + y + " tury: " + tury + " turval: " + turval);
+		if (!(x == turx || y == tury)) return true;
+
+		if (x == turx) {
+			// turrest is pointing left
+			if (y < tury && turval == -1) {
+				boolean check = false;
+				println("turrest is pointing left");
+				for (int j=y+1; j<tury; j++) {
+					if (maze[x][j] == wall || maze[x][j] == turrest) {
+						check = true; break;
+					} 
+				}
+				if (!check) return false;
+			}
+			// turrest is pointing right;
+			if (y > tury && turval == -3) {
+				boolean check = false;
+				println("turrest is pointing right");
+				for (int j=tury+1; j<y; j++) {
+					if (maze[x][j] == wall || maze[x][j] == turrest) {
+						check = true; break;
+					} 
+				}
+				if (!check) return false;
+			}
+		}
+
+		if (y == tury) {
+			// turrest is pointing up
+			if (x < turx && turval == -2) {
+				boolean check = false;
+				println("turrest is pointing up");
+				for (int j=x+1; j<turx; j++) {
+					if (maze[j][y] == wall || maze[j][y] == turrest) {
+						check = true; break;
+					} 
+				}
+				if (!check) return false;
+			}
+			// turrest is pointing down
+			if (x > turx && turval == -4) {
+				boolean check = false;
+				println("turrest is pointing down");
+				for (int j=turx+1; j<x; j++) {
+					if (maze[j][y] == wall || maze[j][y] == turrest) {
+						check = true; break;
+					} 
+				}	
+				println("turrest is pointing down " + check);
+				if (!check) return false;
+			}
+		}
+
+		return true;
+	}
+
+
+	public static void printList(List<Integer> list) {
+		for (int i=0; i<list.size(); i++) {
+			System.out.print(list.get(i)+" ");
+		}
+		System.out.println();
+	}
+
+	public static void printArray(int[] array) {
+		for (int i=0; i<array.length; i++) {
+			System.out.print(array[i]+" ");
+		}
+		System.out.println();
+	}
+
+	public static void println(String str){
+		if (debug) System.out.println(str);
+		if (debug && step) {
+			try {
+			    Thread.sleep(delay);                 //1000 milliseconds is one second.
+			} catch(InterruptedException ex) {
+			    Thread.currentThread().interrupt();
+			}
+		}
+	}
+
+	public static void print(String str){
+		if (debug) System.out.print(str);
+		if (debug && step) {
+			try {
+			    Thread.sleep(delay);                 //1000 milliseconds is one second.
+			} catch(InterruptedException ex) {
+			    Thread.currentThread().interrupt();
+			}
+		}
+	}
+
+	private static class MazeLoc {
+		public int curx;
+		public int cury;
+		public ArrayList<Turrest> tur;
+		public int depth = 0;
+		public MazeLoc(int curx, int cury, ArrayList<Turrest> tur) {
+			this.curx = curx; this.cury = cury; this.tur = tur;
+		}
+
+		@Override
+		public boolean equals(Object object) {
+			if (object instanceof MazeLoc) {
+				MazeLoc obj = (MazeLoc) object;
+				return ((obj.curx == this.curx) && (obj.cury == this.cury) && (this.tur.equals(obj.tur)));
+			}
+			return false;
+		}
+
+		public void print(){
+			if (debug)
+				System.out.println("x: " + curx + ",y: " + cury + ", depth: " + depth);
+			if (debug && step) {
+				try {
+				    Thread.sleep(delay);                 //1000 milliseconds is one second.
+				} catch(InterruptedException ex) {
+				    Thread.currentThread().interrupt();
+				}
+			}
+		}
+
+		@Override
+	    public int hashCode() {
+	        int result = curx + cury;
+	        return result;
+	    }
+	}
+
+	private static class Turrest implements Comparable<Turrest>{
+		public int x;
+		public int y;
+		public int val;
+
+		public Turrest(int x, int y, int val) {
+			this.x = x; this.y = y; this.val = val;
+		}
+
+		@Override
+    	public int compareTo(Turrest other) {
+    		if ((this.x == other.x) && (this.y == other.y) && (this.val == other.val))
+    			return 0;
+    		else return -1;
+    	}
+
+    	@Override
+    	public boolean equals(Object object) {
+    		if (object instanceof Turrest)
+    			return this.compareTo((Turrest)object)==0;
+    		return false;
+    	}
+
+    	@Override
+	    public int hashCode() {
+	        int result = x + y;
+	        return result;
+	    }
+
+	}
+
+}
+

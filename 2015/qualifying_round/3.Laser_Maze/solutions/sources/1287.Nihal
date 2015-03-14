@@ -1,0 +1,189 @@
+#include<stdio.h>
+#include<queue>
+#include<vector>
+#include<utility>
+
+using namespace std;
+
+char maze[4][100+5][100+5];
+vector<int> adj_list[4][10000+5];
+
+char rotate90(char x)
+{
+    if(x == '<') return '^';
+    if(x == '^') return '>';
+    if(x == '>') return 'v';
+    if(x == 'v') return '<';
+    return x;
+}
+
+inline int trans(int i, int j, int N)
+{
+    return i*N + j;
+}
+
+bool subs(int i, int j, int k)
+{
+    char temp = maze[i][j][k];
+    if(temp == '<' || temp == '^' || temp == '>' || temp == 'v' || temp == '#') return false;
+    maze[i][j][k] = 'x';
+    return true;
+}
+
+void fill_maze(int i, int M, int N)
+{
+    for(int j=0; j<M; ++j)
+    {
+        for(int k=0; k<N; ++k)
+        {
+            if(maze[i][j][k] == '>')
+            {
+                int t = k+1;
+                while(t < N)
+                {
+                    if(subs(i,j,t)) t++;
+                    else break;
+                }
+            }
+            else if(maze[i][j][k] == '<')
+            {
+                int t = k-1;
+                while(t >= 0)
+                {
+                    if(subs(i,j,t)) t--;
+                    else break;
+                }
+            }
+            else if(maze[i][j][k] == 'v')
+            {
+                int t = j+1;
+                while(t < M)
+                {
+                    if(subs(i,t,k)) t++;
+                    else break;
+                }
+            }
+            else if(maze[i][j][k] == '^')
+            {
+                int t = j-1;
+                while(t >= 0)
+                {
+                    if(subs(i,t,k)) t--;
+                    else break;
+                }
+            }
+        }
+    }
+}
+
+bool seen[4][10000+5];
+
+int bfs(int k, int M, int N)
+{
+    for(int i=0; i<M*N; ++i) for(int j=0; j<4; ++j) seen[j][i] = false;
+    queue< pair<int,int> > Q;
+    Q.push(make_pair(k,0));
+    seen[0][k] = true;
+    while(!Q.empty())
+    {
+        pair<int,int> c = Q.front(); Q.pop();
+        int x = c.first;
+        int i = x / N;
+        int j = x % N;
+        int t = c.second;
+        if(maze[t%4][i][j] == 'G') return t;
+        int n = t+1;
+        int n4 = n%4;
+        if(i > 0)
+        {
+            char temp = maze[n4][i-1][j];
+            if(temp == '.' || temp == 'S' || temp == 'G')
+            {
+                int tot = trans(i-1,j,N);
+                if(!seen[n4][tot])
+                {
+                    Q.push(make_pair(tot, n));
+                    seen[n4][tot] = true;
+                }
+            }
+        }
+        if(i < M-1)
+        {
+            char temp = maze[n4][i+1][j];
+            if(temp == '.' || temp == 'S' || temp == 'G')
+            {
+                int tot = trans(i+1,j,N);
+                if(!seen[n4][tot])
+                {
+                    Q.push(make_pair(tot, n));
+                    seen[n4][tot] = true;
+                }
+            }
+        }
+        if(j > 0)
+        {
+            char temp = maze[n4][i][j-1];
+            if(temp == '.' || temp == 'S' || temp == 'G')
+            {
+                int tot = trans(i,j-1,N);
+                if(!seen[n4][tot])
+                {
+                    Q.push(make_pair(tot, n));
+                    seen[n4][tot] = true;
+                }
+            }
+        }
+        if(j < N-1)
+        {
+            char temp = maze[n4][i][j+1];
+            if(temp == '.' || temp == 'S' || temp == 'G')
+            {
+                int tot = trans(i,j+1,N);
+                if(!seen[n4][tot])
+                {
+                    Q.push(make_pair(tot, n));
+                    seen[n4][tot] = true;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+int main()
+{
+    //freopen("laser_maze.txt", "r", stdin);
+    //freopen("laser_maze_out.txt", "w", stdout);
+    int T;
+    scanf("%d", &T);
+    for(int u = 1; u <= T; ++u)
+    {
+        int N,M;
+        scanf("%d %d", &M, &N);
+        for(int i=0; i<M; ++i) scanf("%s", maze[0][i]);
+        int start;
+        for(int i=0; i<M; ++i) for(int j=0; j<N; ++j) if(maze[0][i][j] == 'S')
+        {
+            start = trans(i,j,N);
+            break;
+        }
+        for(int i=1; i<4; ++i) for(int j=0; j<M; ++j) for(int k=0; k<N; ++k) maze[i][j][k] = rotate90(maze[i-1][j][k]);
+        for(int i=0; i<4; ++i) fill_maze(i,M,N);
+        /*
+        for(int i=0; i<4; ++i)
+        {
+            for(int j=0; j<M; ++j)
+            {
+                maze[i][j][N] = '\0';
+                printf("%s\n", maze[i][j]);
+            }
+            printf("\n\n");
+        }
+        */
+        int ans = bfs(start, M, N);
+        printf("Case #%d: ", u);
+        if(ans == -1) printf("impossible\n");
+        else printf("%d\n", ans);
+    }
+    return 0;
+}

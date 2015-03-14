@@ -1,0 +1,113 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const int N = 102;
+int dx[] = {1, -1, 0, 0};
+int dy[] = {0, 0, 1, -1};
+
+int n, m;
+char a[N][N];
+bool ok[256];
+
+struct cell{
+    int u, v, s;
+    cell(int _u = 0, int _v = 0, int _s = 0) : u(_u), v(_v), s(_s){}
+} c, d;
+
+char gnext(char x){
+    if (x == '>') return '^';
+    if (x == '^') return '<';
+    if (x == '<') return 'v';
+    if (x == 'v') return '>';
+}
+
+struct state{
+    int a[N][N];
+    bool was[N][N];
+    state(){memset(a, 0, sizeof a); memset(was, false, sizeof was);}
+} s[4];
+
+queue<cell> myque;
+
+bool inside(int u, int v){
+    return (0 <= u && u < n && 0 <= v && v < m);
+}
+
+int solve(){
+    cin >> n >> m;
+    for(int i = 0; i < 4; ++i){
+        memset(s[i].a, 0, sizeof s[i].a);
+        memset(s[i].was, false, sizeof s[i].was);
+    }
+    for(int i = 0; i < n; ++i) cin >> a[i];
+    for(int t = 0; t < 4; ++t){
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j) if (ok[ a[i][j] ] || a[i][j] == '#') s[t].a[i][j] = -1;
+        for(int i = 0; i < n; ++i)
+        for(int j = 0; j < m; ++j) if (ok[ a[i][j] ]){
+            int x = i, y = j;
+            if (a[i][j] == '^') {--x; while (x >= 0 && s[t].a[x][y] != -1) {s[t].a[x][y] = -2; --x;}}
+            if (a[i][j] == 'v') {++x; while (x < n && s[t].a[x][y] != -1) {s[t].a[x][y] = -2; ++x;}}
+            if (a[i][j] == '<') {--y; while (y >= 0 && s[t].a[x][y] != -1) {s[t].a[x][y] = -2; --y;}}
+            if (a[i][j] == '>') {++y; while (y < m && s[t].a[x][y] != -1) {s[t].a[x][y] = -2; ++y;}}
+        }
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j) if (s[t].a[i][j] < 0) s[t].a[i][j] = -1;
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j) if (ok[ a[i][j] ]) a[i][j] = gnext(a[i][j]);
+    }
+    /*for(int i = 0; i < n; ++i){
+        for(int j = 0; j < m; ++j) cerr << s[0].a[i][j] + 1 << ' ';
+        cerr << endl;
+    }*/
+    //cerr << endl;
+    int sx = -1, sy = -1, fx = -1, fy = -1;
+    for(int i = 0; i < n; ++i)
+    for(int j = 0; j < m; ++j) if (a[i][j] == 'S'){sx = i; sy = j; break;}
+    for(int i = 0; i < n; ++i)
+    for(int j = 0; j < m; ++j) if (a[i][j] == 'G'){fx = i; fy = j; break;}
+    //cerr << sx << ' ' << sy << " -> " << fx << ' ' << fy << endl;
+    if (sx == -1) return -1;
+    if (fx == -1) return -1;
+
+    while (!myque.empty()) myque.pop();
+    myque.push(cell(sx, sy, 0));
+    s[0].was[sx][sy] = true;
+    s[0].a[sx][sy] = 0;
+
+    while (!myque.empty()){
+        c = myque.front();
+        myque.pop();
+        for(int i = 0 ;i < 4; ++i){
+            d = cell(c.u + dx[i], c.v + dy[i], (c.s + 1) % 4);
+            if (!inside(d.u, d.v)) continue;
+            if (s[d.s].a[d.u][d.v] == -1) continue;
+            if (s[d.s].was[d.u][d.v]) continue;
+            myque.push(d);
+            s[d.s].a[d.u][d.v] = s[c.s].a[c.u][c.v] + 1;
+            s[d.s].was[d.u][d.v] = true;
+        }
+    }
+    int ans = int(1e9);
+    for(int i = 0; i < 4; ++i) if (s[i].was[fx][fy]) ans = min(ans, s[i].a[fx][fy]);
+    if (ans == int(1e9)) return -1;
+    return ans;
+}
+
+int main(){
+    //freopen("input.txt", "r", stdin);
+    //freopen("output.txt", "w", stdout);
+    memset(ok, false, sizeof ok);
+    ok['^'] = ok['v'] = ok['<'] = ok['>'] = true;
+    int tc;
+    cin >> tc;
+    for(int i = 1; i <= tc; ++i){
+        //cerr << i << endl;
+        int here = solve();
+        cout << "Case #" << i << ": ";
+        if (here == -1) cout << "impossible" << endl;
+        else cout << here << endl;
+    }
+    return 0;
+}

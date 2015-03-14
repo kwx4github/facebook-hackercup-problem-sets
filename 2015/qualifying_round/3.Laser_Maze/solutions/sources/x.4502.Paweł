@@ -1,0 +1,167 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys, os, shutil
+import subprocess
+import time
+import math
+import random
+import copy
+
+TESTGROUPS = 4
+
+def solve(iData):
+  maze = iData
+  N, M = len(maze[0]), len(maze)
+  
+  laserChars = frozenset('^>v<')
+  
+  rotations = {'^': '^>v<', '>': '>v<^', 'v': 'v<^>', '<': '<^>v'}
+  vectors   = {'^': (-1,0), '>': (0,+1), 'v': (+1,0), '<': (0,-1)}
+  moves = [(-1,0), (0,+1), (+1,0), (0,-1)]
+  
+  S, G = None, None
+  
+  lasers = []
+  for i in range(M):
+    for j in range(N):
+      if maze[i][j] in laserChars:
+        lasers.append((i, j))
+      if maze[i][j] == 'S': S = (i, j)
+      if maze[i][j] == 'G': G = (i, j)
+  
+  assert S != None
+  assert G != None
+  
+  mazes = [copy.deepcopy(maze) for z in range(4)]
+  
+  for z in range(4):
+    for i, j in lasers:
+      mazes[z][i][j] = rotations[maze[i][j]][z]
+      di, dj = vectors[mazes[z][i][j]]
+      i += di
+      j += dj
+      while 0 <= i < M and 0 <= j < N and mazes[z][i][j] in ('.', 'S', 'G'):
+        mazes[z][i][j] = '*'
+        i += di
+        j += dj
+  
+  far = 100000
+  dist = [[[far for i in range(N)] for j in range(M)] for z in range(4)]
+  
+  dist[0][S[0]][S[1]] = 0
+  q = [(0, S[0], S[1])]
+  
+  while q:
+    z, i, j = q.pop(0)
+    if (i, j) == G: return str(dist[z][i][j])
+    nz = (z + 1) % 4
+    for di, dj in moves:
+      ni = i + di
+      nj = j + dj
+      if not (0 <= ni < M and 0 <= nj < N): continue
+      if mazes[nz][ni][nj] in ('.', 'S', 'G') and dist[nz][ni][nj] > dist[z][i][j] + 1:
+        dist[nz][ni][nj] = dist[z][i][j] + 1
+        q.append((nz, ni, nj))
+  
+  return 'impossible'
+
+def readTestInput(IN):
+  M, N = map(int, IN.readline().split())
+  maze = []
+  for i in range(M):
+    maze.append(list(IN.readline().strip()))
+  return maze
+
+def writeTestInput(OUT, iData):
+  maze = iData
+  N, M = len(maze[0]), len(maze)
+  OUT.write('%d %d\n' % (M, N))
+  for i in range(M):
+    OUT.write('%s\n' % ''.join(maze[i]))
+
+def readTestOutput(IN):
+  a = IN.readline().strip()
+  return a
+
+def writeTestOutput(OUT, oData):
+  a = oData
+  OUT.write('%s\n' % a)
+
+def readAllTests(inputFileName):
+  IN = open(inputFileName, 'rt')
+  T = int(IN.readline())
+  allTests = []
+  for i in range(T): allTests.append(readTestInput(IN))
+  IN.close()
+  return allTests
+
+def prepareInputParts():
+  inputFileName = testName + '.txt'
+  
+  if not os.path.exists(subtestsDir):
+    os.mkdir(subtestsDir)
+    enumeratedTests = list(enumerate(readAllTests(inputFileName)))
+    for i in range(TESTGROUPS):
+      testGroupFileName = os.path.join(subtestsDir, '%s_%.1d.in' % (testName, i))
+      OUT = open(testGroupFileName, 'wt')
+      OUT.write('%d\n' % len(enumeratedTests[i::TESTGROUPS]))
+      for testId, iData in enumeratedTests[i::TESTGROUPS]:
+        OUT.write('%d\n' % testId)
+        writeTestInput(OUT, iData)
+      OUT.close()
+
+def runAllTests():
+  processes = []
+  for i in range(TESTGROUPS): processes.append(subprocess.Popen(sys.argv + [str(i)]))
+  for i in range(TESTGROUPS): processes[i].wait()
+
+def solveGroup(testGroupFileName):
+  testGroupOutputFileName = testGroupFileName[:-3] + '.out'
+  IN = open(testGroupFileName, 'rt')
+  OUT = open(testGroupOutputFileName, 'wt')
+  testsInGroup = int(IN.readline())
+  OUT.write('%d\n' % testsInGroup)
+  for i in range(testsInGroup):
+    testId = int(IN.readline())
+    iData = readTestInput(IN)
+    oData = solve(iData)
+    OUT.write('%d\n' % testId)
+    writeTestOutput(OUT, oData)
+  IN.close()
+
+def mergeOutputs():
+  outputs = []
+  for i in range(TESTGROUPS):
+    testGroupOutputFileName = os.path.join(subtestsDir, '%s_%.1d.out' % (testName, i))
+    IN = open(testGroupOutputFileName, 'rt')
+    testsInGroup = int(IN.readline())
+    for i in range(testsInGroup):
+      testId = int(IN.readline())
+      oData = readTestOutput(IN)
+      while testId >= len(outputs): outputs.append(None)
+      outputs[testId] = oData
+    IN.close()
+  outputFileName = testName + '_my_output.txt'
+  OUT = open(outputFileName, 'wt')
+  for testId, oData in enumerate(outputs):
+    OUT.write('Case #%d: ' % (testId + 1))
+    writeTestOutput(OUT, oData)
+  OUT.close()
+
+os.chdir(os.path.dirname(sys.argv[0]))
+
+assert __name__ == '__main__'
+assert len(sys.argv) in (2, 3)
+
+testName = sys.argv[1]
+subtestsDir = testName + '-testgroups'
+
+if len(sys.argv) == 2:
+  if os.path.exists(subtestsDir): shutil.rmtree(subtestsDir)
+  prepareInputParts()
+  runAllTests()
+  mergeOutputs()
+elif len(sys.argv) == 3:
+  testGroupFileName = os.path.join(subtestsDir, '%s_%.1d.in' % (testName, int(sys.argv[2])))
+  solveGroup(testGroupFileName)

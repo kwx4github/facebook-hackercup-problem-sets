@@ -1,0 +1,218 @@
+import java.io.*;
+import java.util.*;
+import java.math.BigInteger;
+
+public class Main{
+    final boolean isFileIO =  true;
+    BufferedReader in;
+    PrintWriter out;
+    StringTokenizer st = new StringTokenizer("");
+    String delim = " ";
+
+    public static void main(String[] args) throws IOException {
+        Main m = new Main();
+        m.initIO();
+        m.solve();
+        m.in.close();
+        m.out.close();
+    }
+
+    public void initIO() throws IOException {
+        if(!isFileIO) {
+            in = new BufferedReader(new InputStreamReader(System.in));
+            out = new PrintWriter(System.out);
+        } else {
+            in = new BufferedReader(new FileReader("laser_maze.txt"));
+            out = new PrintWriter("output.txt"); 
+        }
+    }
+  
+    String nextToken() throws IOException {
+        if(!st.hasMoreTokens()) {
+            st = new StringTokenizer(in.readLine());
+        }
+        return st.nextToken(delim);
+    }
+
+    String readLine() throws IOException {
+        return in.readLine();
+    }
+
+    int nextInt() throws IOException {
+        return Integer.parseInt(nextToken());
+    }
+
+    long nextLong() throws IOException {
+        return Long.parseLong(nextToken());
+    }
+
+    double nextDouble() throws IOException {
+        return Double.parseDouble(nextToken());
+    }
+
+    class Cell {
+        public int x, y, moment;
+        public Cell(int x, int y, int moment) {
+            this.x = x;
+            this.y = y;
+            this.moment = moment;
+        }
+    }
+
+    //0 - <, 1 - ^, 2 - >, 3 - v    
+    int n, m;
+    boolean[][][] free;
+    boolean[][][] used;
+    int[][][] dist;
+    int[][] d = {{0, -1}, {-1, 0}, {0, 1}, {1, 0}};
+    char[][] map;
+    int startX, startY;
+    int endX, endY;
+    public void solve() throws IOException {
+        int t = nextInt();
+        for(int i = 1; i <= t; i++) {
+            out.print("Case #" + i + ": ");
+            n = nextInt(); m = nextInt();
+            map = new char[n][m];
+            free = new boolean[n][m][4];
+            used = new boolean[n][m][4];
+            dist = new int[n][m][4];
+            for(int j = 0; j < n; j++) {
+                String s = readLine();
+                for(int z = 0; z < m; z++) {
+                    char ch = s.charAt(z);
+                    if(ch == '<') {
+                        map[j][z] = '0';
+                    } else if(ch == '^') {
+                        map[j][z] = '1';
+                    } else if(ch == '>') {
+                        map[j][z] = '2';
+                    } else if(ch == 'v') {
+                        map[j][z] = '3';
+                    } else if (ch == 'S') {
+                        map[j][z] = '.';
+                        startX = j; startY = z;
+                    } else if(ch == 'G') {
+                        map[j][z] = '.';
+                        endX = j; endY = z;
+                    } else {
+                        map[j][z] = ch;
+                    }
+                }
+            }
+            fillFreeArray();
+            bfs();
+            boolean found = false;
+            int min = Integer.MAX_VALUE;
+            for(int j = 0; j < 4; j++) {
+                if(used[endX][endY][j]) {
+                    found = true;
+                    min = Math.min(min, dist[endX][endY][j]);
+                }
+            }
+            if(!found) {
+                out.println("impossible");
+            } else {
+                out.println(min);
+            }
+
+        }
+    }
+
+    public void bfs() {
+        ArrayDeque<Cell> q = new ArrayDeque<Cell>();
+        q.push(new Cell(startX, startY, 0));
+        used[startX][startY][0] = true;
+        while(!q.isEmpty()) {
+            Cell cell = q.poll();
+            for(int i = 0; i < 4; i++) {
+                int x = cell.x + d[i][0];
+                int y = cell.y + d[i][1];
+                int nextMoment = (cell.moment + 1) % 4;
+                if(isCellOkay(x, y) && map[x][y] == '.' && !used[x][y][nextMoment] && free[x][y][nextMoment]) {
+                    used[x][y][nextMoment] = true;
+                    q.push(new Cell(x, y, nextMoment));
+                    dist[x][y][nextMoment] = dist[cell.x][cell.y][cell.moment] + 1;
+                }
+            }
+        }
+    }
+
+    public boolean isCellOkay(int x, int y) {
+        return (x >= 0 && x < n && y >= 0 && y < m);
+    }
+
+    public void fillFreeArray() {
+        for(int i = 0; i < n; i++) {
+            for(int j = 0; j < m; j++) {
+                char ch = map[i][j];
+                if(ch == '.') {
+                    for(int z = 0; z < 4; z++) {
+                        free[i][j][z] = !isUnderAttack(i, j, z);
+                    }
+                } else {
+                    for(int z = 0; z < 4; z++) {
+                        free[i][j][z] = false;
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean isUnderAttack(int x, int y, int moment) {
+        boolean found = false;
+        for(int i = 0; i < 4; i++) {
+            int dx = d[i][0];
+            int dy = d[i][1];
+            for(int j = x, z = y; j >= 0 && j < n && z >= 0 && z < m; j += dx, z += dy) {
+                if(map[j][z] == '#') {
+                    break;
+                }
+                if(Character.isDigit(map[j][z])) {
+                    int dir = Character.getNumericValue(map[j][z]);
+                    dir = (dir + moment) % 4;
+                    if(dir == (i + 2) % 4) {
+                        found = true;    
+                    }
+                    break;
+                }
+            }
+        }
+        return found;
+    }
+
+}
+
+class Utils {
+
+    public static long binpow(long a, long exp, long mod) {
+        if(exp == 0) {
+            return 1;
+        }
+        if(exp % 2 == 0) {
+            long temp = binpow(a, exp / 2, mod);
+            return (temp * temp) % mod;
+        } else {
+            return (binpow(a, exp - 1, mod) * a) % mod;
+        }
+    }
+
+    public static long inv(long a, long mod) {
+        return binpow(a, mod - 2, mod);
+    }
+
+    public static long addmod(long a, long b, long mod) {
+        return ((a + b) % mod + mod) % mod;
+    }
+
+    public static long gcd(long a, long b) {
+        if(b == 0)
+            return a;
+        return gcd(b, a % b);
+    }
+
+    //mul must be < 10^18
+    public static long mulmod(long a, long b, long mod) {
+        return (a * b + (((a * b) / mod) + 1) * mod) % mod;
+    }
+}

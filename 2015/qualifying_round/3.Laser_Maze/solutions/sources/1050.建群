@@ -1,0 +1,115 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include <algorithm>
+#include <deque>
+
+using namespace std;
+
+typedef struct State {
+  int x, y, d;
+  State(int _x, int _y, int _d) : x(_x), y(_y), d(_d) {}
+} State;
+
+const int N = 101;
+
+char A[N][N];
+bool G[4][N][N];
+int D[4][N][N];
+
+int dd[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+char C[4] = {'^', '>', 'v', '<'};
+int m, n;
+
+int GetDir(char c, int d) {
+  int i = 0;
+  for (; i < 4 && c != C[i]; i++);
+  return i < 4 ? (i + d) % 4 : -1;
+}
+bool Empty(int x, int y) {
+  return x >= 0 && x < m && y >= 0 && y < n && (A[x][y] == '.' || A[x][y] == 'S' || A[x][y] == 'G');
+}
+int GetDist() {
+  memset(D, -1, sizeof(D));
+  deque<State> Q;
+  State start(0, 0, 0);
+  int ex = -1;
+  int ey = -1;
+  for (int i = 0; i < m; i++) {
+    for (int j = 0; j < n; j++) {
+      if (A[i][j] == 'S') {
+        start = State(i, j, 0);
+        Q.push_back(start);
+      } else if (A[i][j] == 'G') {
+        ex = i;
+        ey = j;
+      }
+    }
+  }
+  D[start.d][start.x][start.y] = 0;
+  while (Q.size() > 0) {
+    State s = Q.front();
+    //printf("Now at (%d, %d) direct %c\n", s.x, s.y, C[s.d]);
+    Q.pop_front();
+    for (int d = 0; d < 4; d++) {
+      State ns = State(s.x + dd[d][0], s.y + dd[d][1], (s.d + 1) % 4);
+      //printf("New State at (%d, %d) direct %c\n", ns.x, ns.y, C[ns.d]);
+      if (Empty(ns.x, ns.y) && G[ns.d][ns.x][ns.y]) {
+        if (D[ns.d][ns.x][ns.y] == -1) {
+          D[ns.d][ns.x][ns.y] = D[s.d][s.x][s.y] + 1;
+          if (ns.x == ex && ns.y == ey) {
+            return D[ns.d][ns.x][ns.y];
+          }
+          Q.push_back(ns);
+        }
+      }
+    }
+  }
+  return -1;
+}
+int main() {
+  int cas;
+  scanf("%d", &cas);
+  for (int ic = 1; ic <= cas; ic++) {
+    scanf("%d%d", &m, &n);
+    for (int i = 0; i < m; i++) {
+      scanf("%s", A[i]);
+    }
+    for (int d = 0; d < 4; d++) {
+      memset(G[d], 0, sizeof(G[d]));
+      for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+          if (A[i][j] == '.' || A[i][j] == 'S' || A[i][j] == 'G') {
+            G[d][i][j] = true;
+          }
+        }
+      }
+      for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+          int dir = GetDir(A[i][j], d);
+          if (dir >= 0) {
+            for (int di = 1; Empty(i + di * dd[dir][0], j + di * dd[dir][1]); di++) {
+              G[d][i + di * dd[dir][0]][j + di * dd[dir][1]] = false;
+            }
+          }
+        }
+      }
+      /*
+      for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+          printf("%d ", G[d][i][j]);
+        }
+        printf("\n");
+      }
+      */
+    }
+    int ans = GetDist();
+    if (ans == -1) {
+      printf("Case #%d: impossible\n", ic);
+    } else {
+      printf("Case #%d: %d\n", ic, ans);
+    }
+  }
+  return 0;
+}

@@ -1,0 +1,231 @@
+#include <iostream>
+#include <string>
+#include <queue>
+
+using namespace std;
+
+struct Point{ int x, y; };
+struct Point3{ int x, y, z, t; };
+
+bool debug = false;
+
+char nxt(char in) {
+    switch (in) {
+    case '^':
+        return '>';
+    case '>':
+        return 'v';
+    case 'v':
+        return '<';
+    case '<':
+        return '^';
+    }
+}
+
+bool tow(char in) {
+    string bars = "^><v";
+    return bars.find(in) != string::npos;
+}
+bool barr(char in) {
+    string bars = "^><v#";
+    return bars.find(in) != string::npos;
+}
+
+void do_laser(vector< vector<string> >& m, int z, int r, int c) {
+    char t = m[z][r][c];
+    m[z][r][c] = '#';
+    if (t == '^') {
+        for (int x = r - 1; x > 0; --x) {
+            if (barr(m[z][x][c]))
+                break;
+            m[z][x][c] = '*';
+        }
+    } else if (t == '>') {
+        for (int y = c + 1; y < m[0][0].length(); ++y) {
+            if (barr(m[z][r][y]))
+                break;
+            m[z][r][y] = '*';
+        }
+    } else if (t == 'v') {
+        for (int x = r + 1; x < m[0].size(); ++x) {
+            if (barr(m[z][x][c]))
+                break;
+            m[z][x][c] = '*';
+        }
+    } else if (t == '<') {
+        for (int y = c - 1; y > 0; --y) {
+            if (barr(m[z][r][y]))
+                break;
+            m[z][r][y] = '*';
+        }
+    } else cout << "ERROR";
+}
+
+void fill4(char in, vector< vector<string> >& m, int r, int c) {
+    m[0][r][c] = in;
+    m[1][r][c] = in;
+    m[2][r][c] = in;
+    m[3][r][c] = in;
+}
+
+void mout(vector< vector<string> >& m) {
+    cout << "------" << endl;
+    for (int i = 0; i < m.size(); ++i)
+    {
+        for (int j = 0; j < m[0].size(); ++j)
+        {
+            for (int k = 0; k < m[0][0].length(); ++k)
+            {
+                cout << m[i][j][k];
+            }
+            cout << endl;
+        }
+        cout << '-' << endl;
+    }
+    cout << "------" << endl;
+}
+
+vector< vector<string> > process(vector<string>& maze, Point& s, Point& e) {
+    vector< vector<string> > out;
+    out.push_back(maze);
+    out.push_back(maze);
+    out.push_back(maze);
+    out.push_back(maze);
+
+    for (int r = 0; r < maze.size(); ++r) {
+        for (int c = 0; c < maze[0].length(); ++c) {
+            //cout << "oper " << r << ',' << c << endl;
+            switch (maze[r][c]) {
+            case 'S':
+                s.x = r; s.y = c;
+                fill4('.',out, r, c);
+                break;
+            case 'G':
+                e.x = r; e.y = c;
+                fill4('.',out, r, c);
+                break;
+            case '^':
+            case '>':
+            case 'v':
+            case '<':
+                out[1][r][c] = nxt(maze[r][c]);
+                out[2][r][c] = nxt(nxt(maze[r][c]));
+                out[3][r][c] = nxt(nxt(nxt(maze[r][c])));
+                do_laser(out, 0, r, c);
+                do_laser(out, 1, r, c);
+                do_laser(out, 2, r, c);
+                do_laser(out, 3, r, c);
+                break;
+            case '.':
+            case '*':
+            case '#':
+                break;
+            default:
+                cout << "ERROR in SCAN" << endl;
+            }
+        }
+    }
+    if (debug) cout << "About to out" << endl;
+    if (debug) mout(out);
+    if (debug) cout << "Done out" << endl;
+    return out;
+}
+
+int solve(vector< vector<string> > m, Point s, Point e) {
+    Point3 st;
+    st.x = s.x;
+    st.y = s.y;
+    st.z = 0;
+    st.t = 0;
+
+    queue<Point3> q;
+    q.push(st);
+
+    size_t turn = 0;
+    while (true) {
+        ++turn;
+
+        if (q.empty())
+            return -1;
+
+        Point3 p = q.front();
+        q.pop();
+
+        if( p.x == e.x && p.y == e.y && m[p.z][p.x][p.y] != '*')
+            return p.t;
+
+        switch (m[p.z][p.x][p.y]) {
+        case '#':
+        case 'x':
+            continue;
+        case '*':
+            if (turn > 1)
+                continue;
+        case '.':
+            Point3 a;
+            a.x = p.x + 1;
+            a.y = p.y;
+            a.z = (p.z + 1) % 4;
+            a.t = p.t + 1;
+            Point3 b;
+            b.x = p.x;
+            b.y = p.y + 1;
+            b.z = (p.z + 1) % 4;
+            b.t = p.t + 1;
+            Point3 c;
+            c.x = p.x - 1;
+            c.y = p.y;
+            c.z = (p.z + 1) % 4;
+            c.t = p.t + 1;
+            Point3 d;
+            d.x = p.x;
+            d.y = p.y - 1;
+            d.z = (p.z + 1) % 4;
+            d.t = p.t + 1;
+            q.push(a);
+            q.push(b);
+            q.push(c);
+            q.push(d);
+            m[p.z][p.x][p.y] = 'x';
+            if (debug) cout << "TIME: " << p.t << endl;
+            if (debug) mout(m);
+        }
+
+    }
+}
+
+
+int main() {
+    int n;
+    cin >> n;
+
+    for (int i = 1; i <= n; ++i) {
+        int r, c;
+        char ch;
+        vector<string> maze;
+        cin >> r >> c;
+        maze.push_back(string(c + 2, '#'));
+        for (int R = 0; R < r; ++R) {
+            cin.get(ch);
+            string row = "#";
+            for (int C = 0; C < c; ++C) {
+                char ch1;
+                cin.get(ch1);
+                row += ch1;
+            }
+            row += '#';
+            maze.push_back(row);
+            if (debug) cout << "Row " << (R + 1) << ": " << row << endl;
+        }
+        maze.push_back(string(c + 2, '#'));
+        Point s, e;
+        int res = solve(process(maze, s, e), s, e);
+        cout << "Case #" << i << ": ";
+        if (res < 0)
+            cout << "impossible";
+        else
+            cout << res;
+        cout << endl;
+    }
+}
+

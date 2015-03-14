@@ -1,0 +1,324 @@
+#undef NDEBUG
+#ifdef _DEBUG
+#define _GLIBCXX_DEBUG
+#endif
+
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <algorithm>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <list>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <cmath>
+#include <ctime>
+#include <cassert>
+
+using namespace std;
+
+#define forn(i, n) for(int i = 0; i < (int)(n); i++)
+#define forn1(i, n) for(int i = 1; i <= (int)(n); i++)
+#define all(a) (a).begin(), (a).end()
+#define sz(a) (int)((a).size())
+#define mp make_pair
+#define pb push_back
+#define X first
+#define Y second
+#define y1 __y1
+#define endl '\n'
+#define sqr(x) (x) * (x)
+
+typedef long long li;
+typedef long double ld;
+typedef pair<ld, ld> pt;
+
+const int INF = (int)(1e9);
+const li INF64 = (li)(INF) * (li)(INF);
+const ld eps = 1e-9;
+const ld pi = ld(3.1415926535897932384626433832795);
+
+bool in(int i, int j, int n, int m)
+{
+    return i >= 1 && i <= n && j >= 1 && j <= m;
+}
+
+inline int myrand()
+{
+    return rand() ^ (rand() << 15);
+}
+
+const int dx[] = {-1, 0, 1, 0};
+const int dy[] = {0, 1, 0, -1};
+
+const int dxh[] = {-2, -1, 1, 2, 2, 1, -1, -2};
+const int dyh[] = {1, 2, 2, 1, -1, -2, -2, -1};
+
+const char sym[] = {'.', '>', 'v', '<', '^', '#', '.', '#', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.', '.'};
+
+const int N = 111;
+
+char a[N][N];
+bool dp[N * 10][N][N];
+int d[N][N][4];
+int n, m;
+map<char, int> id;
+
+inline bool good(int i, int j)
+{
+	return a[i][j] == '.' || a[i][j] == 'S' || a[i][j] == 'G';
+}
+
+inline bool atacked(int dir, int cur)
+{
+	if(dir == 0 && cur == 2)
+		return true;
+	if(dir == 1 && cur == 3)
+		return true;
+	if(dir == 2 && cur == 0)
+		return true;
+	if(dir == 3 && cur == 1)
+		return true;
+	return false;
+}
+
+inline bool check(int i, int j, int cnt)
+{
+	if(!in(i, j, n, m))
+		return false;
+	if(!good(i, j))
+		return false;
+
+	forn(dir, 4)
+	{
+		int ii = i, jj = j;
+		while(in(ii, jj, n, m) && good(ii, jj))
+			ii += dx[dir], jj += dy[dir];
+		if(!in(ii, jj, n, m))
+			continue;
+		if(a[ii][jj] == '#')
+			continue;
+		int cur = cnt % 4;
+		cur += id[a[ii][jj]];
+		cur %= 4;
+		if(atacked(dir, cur))
+			return false;
+	}
+
+	return true;
+}
+
+inline int bfs(const pt start, const pt finish)
+{
+	forn(i, N)
+	{
+		forn(j, N)
+		{
+			forn(k, 4)
+			{
+				d[i][j][k] = INF;
+			}
+		}
+	}
+
+	int xx = start.X, yy = start.Y;
+	int fx = finish.X, fy = finish.Y;
+	queue<pair<pt, int> > q;
+	q.push(mp(mp(xx, yy), 0));
+	d[xx][yy][0] = 0;
+
+	while(!q.empty())
+	{
+		pair<pt, int> v = q.front();
+		q.pop();
+		int i = v.X.X, j = v.X.Y;
+		int cnt = v.Y;
+		int curd = d[i][j][cnt];
+
+		forn(dir, 4)
+		{
+			int ni = i + dx[dir];
+			int nj = j + dy[dir];
+			int ncnt = cnt + 1;
+
+			if(check(ni, nj, ncnt) && curd + 1 < d[ni][nj][ncnt % 4])
+			{
+				d[ni][nj][ncnt % 4] = curd + 1;
+				q.push(mp(mp(ni, nj), ncnt % 4));
+			}
+		}
+	}
+
+	int res = INF;
+	forn(mod, 4)
+	{
+		res = min(res, d[fx][fy][mod]);
+	}
+
+	if(res == INF)
+		res = -1;
+	
+	return res;
+}
+
+inline int naive(pt start, pt finish)
+{
+	memset(dp, false, sizeof dp);
+	int xx = start.X, yy = start.Y;
+	int fx = finish.X, fy = finish.Y;
+	dp[0][xx][yy] = true;
+
+	forn(k, 1000)
+	{
+		forn1(i, n)
+		{
+			forn1(j, m)
+			{
+				if(!dp[k][i][j])
+					continue;
+				forn(dir, 4)
+				{
+					int ni = i + dx[dir];
+					int nj = j + dy[dir];
+					if(check(ni, nj, k + 1))
+					{
+						dp[k + 1][ni][nj] = true;
+					}
+				}
+			}
+		}
+	}
+
+	forn(k, 1000)
+	{
+		if(dp[k][fx][fy])
+		{
+			cerr << "ans == " << k << endl;
+			return k;
+		}
+	}
+
+	return -1;
+}
+
+inline bool read()
+{
+	if(scanf("%d %d", &n, &m) != 2)
+		return false;
+
+	forn(i, n)
+	{
+		string s;
+		cin >> s;
+		assert(sz(s) == m);
+		forn(j, m)
+		{
+			a[i + 1][j + 1] = s[j];
+		}
+	}
+
+	return true;
+}
+
+inline void gen()
+{
+	n = 10, m = 10;
+	forn1(i, n)
+	{
+		forn1(j, m)
+		{
+			int r = myrand();
+			r = abs(r) % 30;
+			a[i][j] = sym[r];
+		}
+	}
+
+	a[1][1] = 'S';
+	a[n][m] = 'G';
+
+	cout << "TABLE" << endl;
+	forn1(i, n)
+	{
+		forn1(j, m)
+		{
+			cout << a[i][j];
+		}
+
+		cout << endl;
+	}
+
+	return;
+}
+
+inline void solve()
+{
+	pt start = mp(-1, -1), finish = mp(-1, -1);
+	forn1(i, n)
+	{
+		forn1(j, m)
+		{
+			if(a[i][j] == 'S')
+			{
+				start = mp(i, j);
+			}
+
+			if(a[i][j] == 'G')
+			{
+				finish = mp(i, j);
+			}
+		}
+	}
+
+	//assert(start != mp(-1, -1) && finish != mp(-1, -1));
+	assert(good(start.X, start.Y));
+	assert(good(finish.X, finish.Y));
+
+	id['^'] = 0;
+	id['>'] = 1;
+	id['v'] = 2;
+	id['<'] = 3;
+
+	int ans = bfs(start, finish);
+	//assert(ans == naive(start, finish));
+
+	if(ans == -1)
+	{
+		cout << "impossible" << endl;
+	}
+	else
+	{
+		cout << ans << endl;
+	}
+
+	return;
+}
+
+int main(){
+#ifdef _DEBUG
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+#endif
+
+    cout << setprecision(15) << fixed;
+    cerr << setprecision(10) << fixed;
+
+    srand(int(time(NULL)));
+
+	int T;
+	cin >> T;
+
+	forn(tt, T)
+	{
+		assert(read());
+		//gen();
+		cout << "Case #" << tt + 1 << ": ";
+		solve();
+	}
+
+    cerr << "TIME == " << clock() << " ms" << endl;
+    return 0;
+}

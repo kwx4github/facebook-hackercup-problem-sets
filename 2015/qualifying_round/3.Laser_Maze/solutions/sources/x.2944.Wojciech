@@ -1,0 +1,253 @@
+#include <iostream>
+#include <list>
+#include <queue>
+#include <string>
+using namespace std;
+
+struct D {
+    int i;
+    int j;
+    D(char laser) {
+        switch(laser) {
+            case '>':
+                i = 0;
+                j = 1;
+                break;
+            case 'v':
+                i = 1;
+                j = 0;
+                break;
+            case '<':
+                i = 0;
+                j = -1;
+                break;
+            case '^':
+                i = -1;
+                j = 0;
+                break;
+        }
+    }
+};
+
+char a[100][100][4];
+bool visited[100][100][4];
+int m, n;
+
+struct C {
+    int i;
+    int j;
+    int k;
+    C(int _i, int _j, int _k) {
+        i = _i;
+        j = _j;
+        k = _k;
+    }
+    C() {
+        i = -1;
+        j = -1;
+        k = -1;
+    }
+    bool operator==(const C& that) const {
+        return i == that.i && j == that.j && k == that.k;
+    }
+    C& operator=(const C& that) {
+        i = that.i;
+        j = that.j;
+        k = that.k;
+        return *this;
+    }
+    void move(const D& d) {
+        i += d.i;
+        j += d.j;
+    }
+    bool is_accessible() {
+        return 0 <= i && i < m && 0 <= j && j < n;
+    }
+};
+
+struct Q {
+    C c;
+    int t;
+    Q(const C& _c) {
+        c = _c;
+        t = 0;
+    }
+    Q(const C& _c, int _t) {
+        c = _c;
+        t = _t;
+    }
+};
+
+C goal, start;
+queue<Q> q;
+
+bool is_goal(const C& c) {
+    return c.i == goal.i && c.j == goal.j;
+}
+
+char next_laser(char c) {
+    switch(c) {
+        case '>':
+            return 'v';
+        case 'v':
+            return '<';
+        case '<':
+            return '^';
+        case '^':
+            return '>';
+    }
+    return -1;
+}
+
+bool is_laser(char c) {
+    return c == '>' || c == 'v' || c == '<' || c == '^';
+}
+
+void set_field(int i, int j) {
+    if(is_laser(a[i][j][0])) {
+        for(int k = 1; k < 4; ++k) {
+            a[i][j][k] = next_laser(a[i][j][k - 1]);
+        }
+    } else {
+        for(int k = 1; k < 4; ++k) {
+            a[i][j][k] = a[i][j][0];
+        }
+    }
+}
+
+void make_shot(int i, int j, int k) { //assert(is_laser(a[i][j][k]))
+    C c(i, j, k);
+    D d(a[i][j][k]);
+    while(c.is_accessible()) {
+        if(!is_laser(a[c.i][c.j][c.k])) {
+            a[c.i][c.j][c.k] = '#';
+        }
+        c.move(d);
+    }
+}
+
+void replace_lasers() {
+    for(int i = 0; i < m; ++i) {
+        for(int j = 0; j < n; ++j) {
+            for(int k = 0; k < 4; ++k) {
+                if(is_laser(a[i][j][k])) {
+                    a[i][j][k] = '#';
+                }
+            }
+        }
+    }
+}
+
+void read_board() {
+    for(int i = 0; i < m; ++i) {
+        string s;
+        cin >> s;
+        for(int j = 0; j < n; ++j) {
+            a[i][j][0] = s[j];
+            if(a[i][j][0] == 'S') {
+                start = C(i, j, 0);
+                a[i][j][0] = '.';
+            } else {
+                if(s[j] == 'G') {
+                    goal = C(i, j, 0);
+                    a[i][j][0] = '.';
+                }
+            }
+            set_field(i, j);
+        }
+    }
+    for(int i = 0; i < m; ++i) {
+        for(int j = 0; j < n; ++j) {
+            for(int k = 0; k < 4; ++k) {
+                visited[i][j][k] = false;
+                if(is_laser(a[i][j][k])) {
+                    make_shot(i, j, k);
+                }
+            }
+        }
+    }
+    replace_lasers();
+}
+
+list<C> neighbours(int i, int j, int k) {
+    list<C> ans;
+    ++k;
+    k = k % 4;
+    if(0 < i && a[i - 1][j][k] != '#') {
+        ans.push_back(C(i - 1, j, k));
+    }
+    if(0 < j && a[i][j - 1][k] != '#') {
+        ans.push_back(C(i, j - 1, k));
+    }
+    if(i < m - 1 && a[i + 1][j][k] != '#') {
+        ans.push_back(C(i + 1, j, k));
+    }
+    if(j < n - 1 && a[i][j + 1][k] != '#') {
+        ans.push_back(C(i, j + 1, k));
+    }
+    return ans;
+}
+
+/* test */
+
+void print_board() {
+    for(int k = 0; k < 4; ++k) {
+        for(int i = 0; i < m; ++i) {
+            for(int j = 0; j < n; ++j) {
+                cout << a[i][j][k];
+            }
+            cout << endl;
+        }
+        cout << endl;
+    }
+}
+
+/* ~test */
+
+int bfs() {
+    while(!q.empty()) {
+        Q next_q = q.front();
+        q.pop();
+        C& c = next_q.c;
+        int t = next_q.t;
+//        cout << "(" << c.i << "," << c.j << "," << c.k << "," << t << ")" << endl;
+        if(visited[c.i][c.j][c.k]) {
+            continue;
+        } else {
+            visited[c.i][c.j][c.k] = true;
+        }
+        if(is_goal(c)) {
+            return t;
+        }
+        list<C> neigh = neighbours(c.i, c.j, c.k);
+        for(list<C>::iterator it = neigh.begin(); it != neigh.end(); ++it) {
+            q.push(Q(*it, t + 1));
+        }
+    }
+    return -1;
+}
+
+void run(int i) {
+    while(!q.empty()) {
+        q.pop();
+    }
+    cin >> m >> n;
+    read_board();
+//    print_board(); //DEBUG
+    q.push(start);
+    int t = bfs();
+    if(t == -1) {
+        cout << "Case #" << i << ": impossible" << endl;
+    } else {
+        cout << "Case #" << i << ": " << t << endl;
+    }
+}
+
+int main() {
+    ios_base::sync_with_stdio(0);
+    int t;
+    cin >> t;
+    for(int i = 1; i <= t; ++i) {
+        run(i);
+    }
+}

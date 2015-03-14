@@ -1,0 +1,175 @@
+import string
+
+inputFile = open('laser_maze.txt', 'r')
+inputData = string.split(inputFile.read(), '\n')
+BIG_NUM   = 10**8
+
+numCases  = int(inputData[0])
+testCase  = 1
+index     = 1
+LASERS    = '<^>v'
+
+# Returns a list of laser positions in the format (row, column)
+def getRelevantLasers(col,row,maze):
+  lasers = []
+  for colSpot in range(len(maze[row])):
+    if maze[row][colSpot] in LASERS:
+      lasers.append((row,colSpot))
+  for rowSpot in range(len(maze)):
+    if maze[rowSpot][col] in LASERS:
+      lasers.append((rowSpot, col))
+  return lasers
+
+def getDirectionOfLaser(laserType,turn):
+  if laserType not in LASERS or len(laserType) != 1:
+    raise Exception('Bad input!')
+  originalLaserPosition = LASERS.find(laserType)
+  newPosition           = LASERS[(originalLaserPosition + turn) % 4]
+  return newPosition
+
+def filterOutBadDirectionLasers(maze, col,row,laserList, turn):
+  relevantLasers = []
+  for laser in laserList:
+    [laserRow,laserCol] = laser
+    if laserRow  == row:
+      if laserCol < col:
+        if getDirectionOfLaser(maze[laserRow][laserCol],turn) == '>':
+          relevantLasers.append(laser)
+      elif laserCol > col:
+        if getDirectionOfLaser(maze[laserRow][laserCol],turn) == '<':
+          relevantLasers.append(laser)
+    elif laserCol == col:
+      if laserRow < row:
+        if getDirectionOfLaser(maze[laserRow][laserCol],turn) == 'v':
+          relevantLasers.append(laser)
+      elif laserRow > row:
+        if getDirectionOfLaser(maze[laserRow][laserCol],turn) == '^':
+          relevantLasers.append(laser)
+  return relevantLasers
+
+def indexOf(array, value):
+  if value not in array:
+    return -1
+  return array.index(value)
+
+def filterOutWallsBlocking(maze,col,row,laserList):
+  nonBlockedLasers = []
+  maxCol           = maze[row][col:].find('#') + col
+  minCol           = maze[row][:col].rfind('#')
+  maxRow           = indexOf([mazerow[col] for mazerow in maze[row:]],'#') + row
+  distFromPosRow   = indexOf([mazerow[col] for mazerow in maze[:row]][::-1],'#')
+  minRow           = row - distFromPosRow
+
+  if maxCol == col - 1: # There were no lasers in the column
+    maxCol = BIG_NUM
+  if maxRow == row - 1: # There were no lasers in the row
+    maxRow = BIG_NUM
+
+  for laser in laserList:
+    [laserRow,laserCol] = laser
+    if laserRow  == row:
+      if laserCol < maxCol and laserCol > minCol:
+        nonBlockedLasers.append(laser)
+    if laserCol  == col:
+      if laserRow < maxRow and laserRow > minRow:
+        nonBlockedLasers.append(laser)
+
+  return nonBlockedLasers
+
+# Turn is mod 4
+def isValidMove(col,row,turn, maze):
+
+  # Check to make sure position is on grid
+  if col < 0 or row < 0 or len(maze) <= row or len(maze[0]) <= col:
+    return False
+
+  # Wall/Laser Turret check!
+  if maze[row][col] in LASERS:
+    #print 'Went onto laser or wall'
+    return False
+  relevantLasers = getRelevantLasers(col,row,maze)
+  #print 'relevantLasers', relevantLasers
+
+  # No lasers, we're good to go.
+  if len(relevantLasers) == 0:
+    return True
+
+  # First check if any of the lasers are actually pointing in your direction
+  yourDirectionLasers = filterOutBadDirectionLasers(maze,col,row,relevantLasers, turn)
+  #print 'lasers facing your direction', yourDirectionLasers
+
+  if len(yourDirectionLasers) == 0:
+    return True
+
+  # Then check if any walls are in the way
+  killerLasers = filterOutWallsBlocking(maze,col,row,yourDirectionLasers)
+  #print 'lasers facing you not blocked by walls', killerLasers
+  return len(yourDirectionLasers) == 0
+
+# returns a tuple with start location (col,row)
+def getStartLocation(maze):
+  for rowIndex in range(len(maze)):
+    for colIndex in range(len(maze[rowIndex])):
+      if maze[rowIndex][colIndex] == 'S':
+        return (rowIndex,colIndex)
+  raise Exception('Badly formatted maze passed in')
+
+# returns a tuple with goal location (col,row)
+def getGoalLocation(maze):
+  for rowIndex in range(len(maze)):
+    for colIndex in range(len(maze[rowIndex])):
+      if maze[rowIndex][colIndex] == 'G':
+        return (rowIndex,colIndex)
+  raise Exception('Badly formatted maze passed in')
+
+def getAdjacentPositions(pos):
+  newPositions = [ \
+      (pos[0]-1,pos[1]), \
+      (pos[0]+1,pos[1]), \
+      (pos[0],pos[1]+1), \
+      (pos[0],pos[1]-1) ]
+  return newPositions
+
+pathLen = dict()
+def findNumMoves(maze, position, goal, turn, firstMove=False):
+  [row,col] = position
+  #print (row,col), turn, maze
+  # Memoize results
+  if (position, turn) in pathLen:
+    return pathLen[(position,turn)]
+  # Don't allow invalid moves
+  elif not isValidMove(col,row,turn, maze) and not firstMove:
+    return BIG_NUM
+  elif position == goal:
+    return 0
+  else:
+    pathLen[(position,turn)] = BIG_NUM # This avoids the problem of recursing back and forth
+    newPositions = getAdjacentPositions(position)
+    moveCost     = 1 + min([findNumMoves(maze,pos,goal, (turn+1)%4) for pos in newPositions])
+    pathLen[(position,turn)] = moveCost
+
+  return moveCost
+
+def solveMaze(maze, testCase):
+  startLoc = getStartLocation(maze)
+  endLoc   = getGoalLocation(maze)
+  turn     = 0
+
+  numMoves = findNumMoves(maze, startLoc, endLoc, turn,True)
+  if numMoves >= BIG_NUM:
+    numMoves = "impossible"
+  return "Case #" + str(testCase) + ": " + str(numMoves)
+
+
+while testCase <= numCases:
+  height, width = string.split(inputData[index])
+  height, width = int(height), int(width)
+  maze          = inputData[index+1:index+1+height]
+
+  print solveMaze(maze, testCase)
+  # Reset the memoization dictionary
+  pathLen = dict()
+
+  index    += height + 1
+  testCase += 1
+

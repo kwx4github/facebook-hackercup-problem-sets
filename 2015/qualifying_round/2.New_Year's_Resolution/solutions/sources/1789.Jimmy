@@ -1,0 +1,222 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace hc
+{
+	public partial class Form1 : Form
+	{
+		#region form logic
+		BackgroundWorker worker;
+		DateTime startTime;
+		Timer timer;
+		String result;
+
+		public Form1()
+		{
+			InitializeComponent();
+			worker = new BackgroundWorker();
+			worker.DoWork += new DoWorkEventHandler(PerformWork);
+			worker.ProgressChanged += new ProgressChangedEventHandler(ReportProgress);
+			worker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(OnWorkerCompleted);
+
+			timer = new Timer();
+			timer.Interval = 1000;
+			timer.Tick += new EventHandler(timer_Tick);
+			timer.Start();
+		}
+
+		void timer_Tick(object sender, EventArgs e)
+		{
+			if (worker.IsBusy && startTime != null)
+			{
+				var elapsed = DateTime.Now - startTime;
+				btnProcess.Text = "Working... " + Math.Round(elapsed.TotalSeconds) + " seconds.";
+			}
+		}
+
+		void OnWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+		{
+			var elapsed = DateTime.Now - startTime;
+			btnProcess.Text = "Finished in " + elapsed.Minutes + " minutes, " + elapsed.Seconds + " seconds.";
+			txtOutput.Text = result;
+		}
+
+		void ReportProgress(object sender, ProgressChangedEventArgs e)
+		{
+			
+		}
+
+		void PerformWork(object sender, DoWorkEventArgs e)
+		{
+			startTime = DateTime.Now;
+			var text = txtInput.Text;
+			result = DoTask(text);
+		}
+
+		private void btnProcess_Click(object sender, EventArgs e)
+		{
+			worker.RunWorkerAsync();
+		}
+
+		#endregion
+
+		private String DoTask(String input)
+		{
+			var output = "";
+
+			var lines = input.Split('\n');
+			var count = Convert.ToInt32(lines[0]);
+			var currentline = 1;
+
+			for (int current = 1; current <= count; current++)
+			{
+				var totals = new Groups(lines[currentline]);
+				var foods = new List<Groups>();
+				var isPossible = false;
+
+				currentline++;
+				var fcount = Convert.ToInt32(lines[currentline].Trim());
+				currentline++;
+
+				for (int i = 0; i < fcount; i++)
+				{
+					foods.Add(new Groups(lines[currentline]));
+					currentline++;
+				}
+
+				var combos = ComboCreator(foods.ToArray());
+
+				foreach (var combo in combos)
+				{
+					var total = new Groups() { Gc = 0, Gf = 0, Gp = 0 };
+					foreach (var item in combo)
+					{
+						total = total + item;
+					}
+					if (total.Equals(totals))
+					{
+						isPossible = true;
+						break;
+					}
+				}
+				output += "Case #" + current + ": " + (isPossible ? "yes" : "no") + "\r\n";
+			}
+
+			return output;
+		}
+
+		private static List<List<Groups>> ComboCreator(Groups[] elements)
+        {
+            // I have an array where I want every possible combination of the indexes for the array.
+            // The order of the indexes does not matter, only how they are combined.
+            // For example the array elements specified by indexes 1, 2, and 3 are equal
+            // to the indexes 3, 2, and 1 so I only want the distinct combination.
+ 
+            int numOfElements = elements.Length;
+ 
+            // Bitmask to the rescue.
+            // I know how many elements I have. If I treat each of of the elements as a true/false,
+            // I can create a bitmask from it that is the length of the number of elements.
+            // Then I can represent the max value as a uint which would be all elements and loop
+            // over all the values. KAKOW!
+ 
+            uint combos; // max number of permutations.
+            double tmp = Math.Pow(2, numOfElements) - 1; // Minus one for the 0 value.
+ 
+            if (tmp > uint.MaxValue) // This shouldn't happen. Better safe than sorry.
+            {
+                combos = uint.MaxValue;
+            }
+            else
+            {
+                combos = Convert.ToUInt32(tmp);
+            }
+ 
+            List<Groups> indexCombos = new List<Groups>();
+            List<List<Groups>> comboCombos = new List<List<Groups>>();
+ 
+            uint i = 0; // outer loop
+            int j = 0; // inner loop
+            uint mybit = 0; // we will use this to determine whether to include an index or not
+            uint computed = 0; // the result of the logical AND will go in this variable
+ 
+            // for each digit representation of the bitmask
+            for (i = 1; i <= combos; ++i)
+            {
+                mybit = 0;
+                computed = 0;
+                indexCombos = new List<Groups>();
+ 
+                for (j = 0; j < elements.Length; ++j)
+                {
+                    mybit = 1u << j;  // bit shift, this represents the index we are testing.
+                    computed = i & mybit; // logical AND
+                    // if the binary represented by i has a bit set to true,
+                    // and the binary represented by mybit also has that bit set to true,
+                    // then the logical and of them should equal the value of mybit since mybit only
+                    // has 1 binary place set to true at a time.
+                    if (computed == mybit)
+                    {
+                        // This index is needed for this permutation
+                        indexCombos.Add(elements[j]);
+                    }
+                }
+                if (indexCombos.Count > 0)
+                {
+                    comboCombos.Add(indexCombos);
+                }
+            }
+            return comboCombos;
+        }
+
+		private class Groups
+		{
+			public int Gp;
+			public int Gc;
+			public int Gf;
+
+			public Groups()
+			{
+			}
+
+			public Groups(String line)
+			{
+				var totals = line.Trim().Split(' ');
+				Gp = Convert.ToInt32(totals[0]);
+				Gc = Convert.ToInt32(totals[1]);
+				Gf = Convert.ToInt32(totals[2]);
+			}
+
+			public static Groups operator +(Groups g1, Groups g2)
+			{
+				var output = new Groups();
+				output.Gp = g1.Gp + g2.Gp;
+				output.Gc = g1.Gc + g2.Gc;
+				output.Gf = g1.Gf + g2.Gf;
+
+				return output;
+			}
+
+			public bool CanAdd(Groups totals)
+			{
+				return this.Gp <= totals.Gp && this.Gc <= totals.Gc && this.Gf <= totals.Gf;
+			}
+
+			public override bool Equals(Object g)
+			{
+				if (g.GetType() != typeof(Groups))
+				{
+					return false;
+				}
+				var group = (Groups)g;
+				return this.Gp == group.Gp && this.Gc == group.Gc && this.Gf == group.Gf;
+			}
+		}
+	}
+}

@@ -1,0 +1,208 @@
+package quals;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class pr03 {
+
+	static char empty = '.';
+	static char wall = '#';
+	static char l = '<';
+	static char u = '^';
+	static char r = '>';
+	static char d = 'v';
+
+	static char start = 'S';
+	static char end = 'G';
+
+	public static void main(String[] args) throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(
+				"laser_maze.txt"));
+		int t = Integer.parseInt(reader.readLine());
+
+		for (int i = 0; i < t; i++) {
+			String[] d = reader.readLine().split(" ");
+			int h = Integer.parseInt(d[0]);
+			int w = Integer.parseInt(d[1]);
+
+			int startX = 0;
+			int startY = 0;
+
+			int endX = 0;
+			int endY = 0;
+
+			char[][] maze = new char[h][w];
+			for (int j = 0; j < h; j++) {
+				maze[j] = reader.readLine().toCharArray();
+				for (int k = 0; k < maze[j].length; k++) {
+					if (maze[j][k] == start) {
+						startY = j;
+						startX = k;
+						maze[j][k] = '.'; // we know the start
+					}
+					if (maze[j][k] == end) {
+						endY = j;
+						endX = k;
+						maze[j][k] = '.'; // -||- end
+					}
+				}
+			}
+			char[][][] mazes = generateMazes(maze, h, w);
+
+			Set<String> positionHashes = new HashSet<String>();
+			positionHashes.add(hash(startX, startY, 0));
+
+			List<Position> positions = new ArrayList<Position>();
+			positions.add(new Position(startX, startY, 0));
+
+			boolean end = false;
+			int endsteps = -1;
+			while (!positions.isEmpty()) {
+				Position p = positions.remove(0);
+				for (Position other : generateSteps(p,
+						mazes[(p.steps) % 4], positionHashes, h, w)) {
+					if (other.is(endX, endY)) {
+						end = true;
+						endsteps = other.steps;
+						break;
+					}
+					positions.add(other);
+				}
+				if (end) {
+					break;
+				}
+			}
+			if (end) {
+				System.out.printf("Case #%d: %d\n", i + 1, endsteps);
+			} else {
+				System.out.printf("Case #%d: impossible\n", i + 1);
+			}
+		}
+	}
+
+	static List<Position> generateSteps(Position p, char[][] maze,
+			Set<String> hashes, int h, int w) {
+		List<Position> ret = new ArrayList<Position>();
+		int x = p.x;
+		int y = p.y;
+		int steps = p.steps + 1;
+		int vers = steps % 4;
+		if (y > 0) {
+			if (maze[y - 1][x] == '.' && !hashes.contains(hash(x, y - 1, vers))) {
+				hashes.add(hash(x, y - 1, vers));
+				Position pl = new Position(x, y - 1, steps);
+				ret.add(pl);
+			}
+		}
+		if ((y + 1) < h) {
+			if (maze[y + 1][x] == '.' && !hashes.contains(hash(x, y + 1, vers))) {
+				hashes.add(hash(x, y + 1, vers));
+				Position pl = new Position(x, y + 1, steps);
+				ret.add(pl);
+			}
+		}
+		if (x > 0) {
+			if (maze[y][x - 1] == '.' && !hashes.contains(hash(x - 1, y, vers))) {
+				hashes.add(hash(x - 1, y, vers));
+				Position pl = new Position(x - 1, y, steps);
+				ret.add(pl);
+			}
+		}
+		if ((x + 1) < w) {
+			if (maze[y][x + 1] == '.' && !hashes.contains(hash(x + 1, y, vers))) {
+				hashes.add(hash(x + 1, y, vers));
+				Position pl = new Position(x + 1, y, steps);
+				ret.add(pl);
+			}
+		}
+		return ret;
+	}
+
+	static char[][][] generateMazes(char[][] originalMaze, int h, int w) {
+
+		// original = after 360 turn
+		char[][][] ret = new char[4][h][w];
+		for (int i = 0; i < 4; i++) {
+			char[][] maze = new char[h][w];
+			// first we turn
+			int p = 0;
+			for (char[] row : originalMaze) {
+				maze[p] = turnLasers(row);
+				for (int j = 0; j < i; j++) {
+					maze[p] = turnLasers(maze[p]);
+				}
+				p++;
+			}
+			// then we shoot
+			for (int j = 0; j < h; j++) {
+				for (int k = 0; k < w; k++) {
+					if (maze[j][k] == u) {
+						int s = j - 1;
+						while (s >= 0 && originalMaze[s][k] == '.') {
+							maze[s--][k] = '#';
+						}
+					} else if (maze[j][k] == d) {
+						int s = j + 1;
+						while (s < h && originalMaze[s][k] == '.') {
+							maze[s++][k] = '#';
+						}
+					} else if (maze[j][k] == l) {
+						int s = k - 1;
+						while (s >= 0 && originalMaze[j][s] == '.') {
+							maze[j][s--] = '#';
+						}
+					} else if (maze[j][k] == r) {
+						int s = k + 1;
+						while (s < w && originalMaze[j][s] == '.') {
+							maze[j][s++] = '#';
+						}
+					}
+				}
+			}
+			ret[i] = maze;
+		}
+		return ret;
+	}
+
+	static char[] turnLasers(char[] row) {
+		char[] newrow = row.clone();
+		for (int i = 0; i < newrow.length; i++) {
+			if (newrow[i] == u) {
+				newrow[i] = r;
+			} else if (newrow[i] == r) {
+				newrow[i] = d;
+			} else if (newrow[i] == d) {
+				newrow[i] = l;
+			} else if (newrow[i] == l) {
+				newrow[i] = u;
+			}
+		}
+		return newrow;
+	}
+
+	static class Position {
+		int x;
+		int y;
+		int steps;
+
+		public Position(int x, int y, int steps) {
+			this.x = x;
+			this.y = y;
+			this.steps = steps;
+		}
+
+		public boolean is(int x, int y) {
+			return this.x == x && this.y == y;
+		}
+	}
+
+	static String hash(int x, int y, int mod) {
+		return x + "," + y + "," + mod;
+
+	}
+}

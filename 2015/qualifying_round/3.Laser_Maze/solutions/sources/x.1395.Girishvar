@@ -1,0 +1,118 @@
+#include <bits/stdc++.h>
+#define MAX_N 100
+using namespace std;
+
+char poss[4]={'<','^','>','v'};
+int dir[4][2]={{1,0},{0,1},{-1,0},{0,-1}};
+int m, n;
+int sx, sy;
+int gx, gy;
+char mat[MAX_N][MAX_N];
+int dp[MAX_N][MAX_N][4];
+int state[MAX_N][MAX_N];
+bool attack[MAX_N][MAX_N][4];
+
+int find_state(char c) {
+    for (int i=0; i<4; i++) if (c==poss[i]) return i;
+    return -1;
+}
+
+int is_valid(int r, int c) {
+    return (r>=0 && r<m && c>=0 && c<n);
+}
+
+void laser(int r, int c, int st, int ind) {
+    bool good=true;
+    attack[r][c][ind]=true;
+    if (st==0) {
+        for (int i=c-1; i>=0 && good; i--) {
+            if (mat[r][i]=='#' || state[r][i]!=-1) {
+                good=false;
+            }
+            attack[r][i][ind]=true;
+        }
+    }
+    else if (st==1) {
+        for (int i=r-1; i>=0 && good; i--) {
+            if (mat[i][c]=='#' || state[i][c]!=-1) {
+                good=false;
+            }
+            attack[i][c][ind]=true;
+        }
+    }
+    else if (st==2) {
+        for (int i=c+1; i<n && good; i++) {
+            if (mat[r][i]=='#' || state[r][i]!=-1) {
+                good=false;
+            }
+            attack[r][i][ind]=true;
+        }
+    }
+    else if (st==3) {
+        for (int i=r+1; i<m && good; i++) {
+            if (mat[i][c]=='#' || state[i][c]!=-1) {
+                good=false;
+            }
+            attack[i][c][ind]=true;
+        }
+    }
+}
+
+int dfs(int r, int c, int s) {
+    if (dp[r][c][s]!=-1) return dp[r][c][s];
+    if (r==gx && c==gy) {
+        dp[r][c][s]=0;
+        return 0;
+    }
+    dp[r][c][s]=-2;
+    for (int i=0; i<4; i++) {
+        if (is_valid(r+dir[i][0],c+dir[i][1]) && !attack[r+dir[i][0]][c+dir[i][1]][(s+1) %4]) {
+            int k=dfs(r+dir[i][0],c+dir[i][1], (s+1) % 4);
+            if (k!=-2) {
+                if (dp[r][c][s]==-2) dp[r][c][s]=k+1;
+                else dp[r][c][s]=min(k+1,dp[r][c][s]);
+            }
+        }
+    }
+    return dp[r][c][s];
+}
+
+int main(void) {
+    if (fopen("input3.txt","r")) {
+        freopen("input3.txt","r",stdin);
+        freopen("output3.txt","w",stdout);
+    }
+    int t;
+    cin >> t;
+    for (int ii=0; ii<t; ii++) {
+        memset(dp,-1,sizeof(dp));
+        memset(attack,false,sizeof(attack));
+        cin >> m >> n;
+        for (int i=0; i<m; i++) {
+            for (int j=0; j<n; j++) {
+                cin >> mat[i][j];
+                state[i][j]=find_state(mat[i][j]);
+                if (mat[i][j]=='S') {
+                    sx=i; sy=j;
+                }
+                else if (mat[i][j]=='G') {
+                    gx=i; gy=j;
+                }
+            }
+        }
+        for (int i=0; i<m; i++) {
+            for (int j=0; j<n; j++) {
+                if (state[i][j]!=-1) {
+                    for (int k=0; k<4; k++) {
+                        laser(i,j,(state[i][j]+k) % 4, k);
+                    }
+                }
+            }
+        }
+        cout << "Case #" << ii+1 << ": ";
+        int ans=dfs(sx,sy,0);
+        if (ans==-2) cout << "impossible\n";
+        else cout << ans << "\n";
+    }
+    return 0;
+}

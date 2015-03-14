@@ -1,0 +1,285 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef void* objeto;
+
+typedef unsigned char byte;
+
+
+typedef struct no
+{
+	objeto o;
+	struct no *prox;	
+}no;
+
+typedef struct lista
+{
+	int tam;
+	no *head;
+}lista;
+
+lista *constroiLista()
+{
+	lista * l = (lista *)malloc(sizeof(lista));
+	if(!l){ printf("lista nao criada\n");return NULL;}
+
+	l->tam = 0;
+	l->head=NULL;
+	return l;
+}
+
+no *constroiNo(objeto o)
+{
+	no * n = (no *)malloc(sizeof(no));	
+	if(!n){ printf("No nao criado\n");return NULL;}
+
+	n->o = o;
+	n->prox=NULL;
+	return n;	
+}
+
+int tamLista(lista *l)
+{
+	return l->tam;;
+}
+
+void insereLista(lista *l,objeto o)
+{
+	no* p=constroiNo(o);
+	
+	if(tamLista(l)==0)
+		l->head=p;
+	else
+	{
+		int i=0;
+		no * aux = l->head;
+		int tam = tamLista(l);
+		for(i;i<tam-1;i++)
+			aux=aux->prox;
+		aux->prox=p;
+	}
+	l->tam=l->tam+1;
+}
+
+void insereListaProx(lista *l,objeto o)
+{
+	no* p=constroiNo(o);
+	
+	if(tamLista(l)==0)
+		l->head=p;
+	else
+	{
+		int i=0;
+		no * aux = l->head;
+		int tam = tamLista(l);
+		for(i;i<tam-1;i++)
+			aux=aux->prox;
+		aux->prox=p;
+	}
+	l->tam=l->tam+1;
+}
+
+void destroiLista(lista *l)
+{
+	if(l->head==NULL)
+	{	free(l); return;}
+
+	no *aux = l->head;
+	l->head = aux->prox;
+	l->tam = l->tam-1;
+	free(aux);
+
+	destroiLista(l);
+}
+
+void imprimeLista(lista *l)
+{
+	int i=0;int val;
+
+	int tam = l->tam;
+	no *aux = l->head;
+	for(i;i<tam;i++)
+	{
+		val = aux->o;
+		printf("%d \n",val);
+		aux=aux->prox;
+	}
+}
+
+
+int hash[20];
+lista *cachorroInicial[20];
+int somaP,somaC,somaF;
+
+int verificaArvoreRecursivamente(int *v,int **mat,int i,int j,int count,int tam)
+{
+	if(count==tam) return 0;  //Nodo Folha
+	
+	int previous = hash[i]; int current = hash[j]; //Pai e Filho corrente
+	int P = somaP + mat[current][0];int C = somaC + mat[current][1];int F = somaF + mat[current][2]; //peso do caminho
+	
+	int Peq = (P==v[0]); int Ceq = (C==v[1]); int Feq = (F==v[2]); //Comparação de objetivo
+
+	if((Peq)&&(Ceq)&&(Feq)) 
+		return 1; 
+
+	if( 
+		(P>v[0])||(C>v[1])||(F>v[2])||( (Peq) && ((C<v[1])||(F<v[2])) )||
+		( (Ceq) && ((P<v[0])||(F<v[2])) )||( (Feq) && ((P<v[0])||(C<v[1])) )
+	  ) 	//Se condição satisfeita, então o o bjetivo é Impossivel por este ramo
+		return 0; 
+	
+	int backTrackingValue=0;
+	no * filho = cachorroInicial[j]->head; 	
+	for(filho;filho;filho=filho->prox)
+	{
+		somaP=P; somaC=C; somaF=F; 
+		backTrackingValue = verificaArvoreRecursivamente(v,mat,j,(int)filho->o,count+1,tam); 
+		if(backTrackingValue)
+		{	return 1;}
+	}
+	somaP=P; somaC=C; somaF=F;
+	return 0; //Não achou solução para esta arvore
+}
+
+
+int buscaSubconjuntoDoConjuntoSatisfativelRec(int *v,int **mat,int tam)
+{	
+	int i,start;
+	for(i=0;i<tam;i++)
+	{
+		start = hash[i]; no *filho = cachorroInicial[i]->head;
+		for(filho;filho;filho=filho->prox)
+		{
+			somaP=mat[start][0];
+			somaC=mat[start][1];
+			somaF=mat[start][2];
+			if(verificaArvoreRecursivamente(v,mat,i,(int)filho->o,1,tam)) return 1;
+		}				
+		//destroiLista(cachorroInicial[i]);
+	}
+	return 0;
+}
+
+void formataInicioPossivel(int *v,int **mat,int count)
+{
+	int i,j;
+	for(i=0;i<count;i++)
+	{
+		for(j=i+1;j<count;j++)
+		{
+
+			if( 
+				(mat[hash[i]][0]+mat[hash[j]][0]<=v[0]) &&
+				(mat[hash[i]][1]+mat[hash[j]][1]<=v[1]) &&
+				(mat[hash[i]][2]+mat[hash[j]][2]<=v[2]) 
+			  )
+				insereLista(cachorroInicial[i],(objeto)j);
+			
+		}
+	}	
+}
+
+
+int recorrencia(int *v,int **mat,int tam)
+{
+	int i;
+	int count=0;
+	for(i=0;i<tam;i++)
+	{
+		if( !(
+			(mat[i][0]>v[0])||
+			(mat[i][1]>v[1])||
+			(mat[i][2]>v[2])||
+			( (mat[i][0]==v[0])&&((mat[i][1]!=v[1])||(mat[i][2]!=v[2]))) ||	
+			( (mat[i][1]==v[1])&&((mat[i][0]!=v[0])||(mat[i][2]!=v[2]))) ||
+			( (mat[i][2]==v[2])&&((mat[i][0]!=v[0])||(mat[i][1]!=v[1]))))
+		  )
+		{
+			hash[count]=i; 
+			cachorroInicial[count] = constroiLista(); 
+			count++;   
+		}
+		
+	}
+	
+	if(count<2){ return 0; }
+	
+	formataInicioPossivel(v,mat,count);
+
+	//for(i=0;i<count;i++)
+	//{		//printf("linha %d P = %d,C = %d, F = %d\n", hash[i],mat[hash[i]][0],mat[hash[i]][1],mat[hash[i]][2]);
+			//imprimeLista(cachorroInicial[i]);
+	//}
+
+	/*
+	Vamos la processador cachorro (Não frite com esta analise combinatória)
+	*/
+	
+	return buscaSubconjuntoDoConjuntoSatisfativelRec(v,mat,count);	
+}
+
+int resulta(int *v,int **mat)
+{
+	int n,P,C,F;
+	P=0;C=0;F=0;
+
+	scanf("%d",&n);
+
+	int i;	int ret=0;
+	for(i=0;i<n;i++)	
+	{	
+		scanf("%d %d %d",&mat[i][0],&mat[i][1],&mat[i][2]);
+		
+		if((mat[i][0]==v[0])&&(mat[i][1]==v[1])&&(mat[i][2]==v[2])) 
+			ret=1;
+
+		P=P+mat[i][0];
+		C=C+mat[i][1];
+		F=F+mat[i][2];
+	}
+	
+	if(ret==1) 
+		return ret;
+
+	if((P<v[0])||(C<v[1])||(F<v[2]))
+		return 0;
+
+	if((P==v[0])&&(C==v[1])&&(F==v[2]))
+		return 1;
+
+	return recorrencia(v,mat,n);			
+}
+
+main()
+{
+	int    *v = (int *)malloc(sizeof(int)*3);
+	int **mat = (int **)malloc(sizeof(int*)*20);
+	int i;
+	for(i=0;i<20;i++)
+		mat[i]=(int *)malloc(sizeof(int)*3);
+
+	int T,n;
+	scanf("%d",&T);
+
+	int count = 1;
+	while(count<=T)
+	{
+		scanf("%d %d %d",&v[0],&v[1],&v[2]);
+
+		int resp = resulta(v,mat);
+
+		if(resp==1)
+			printf("Case #%d: yes\n",count);
+		else
+			printf("Case #%d: no\n",count);
+
+		
+		count++;
+	}
+
+	for(i=0;i<20;i++)
+		free(mat[i]);
+	free(mat);
+	free(v);
+}

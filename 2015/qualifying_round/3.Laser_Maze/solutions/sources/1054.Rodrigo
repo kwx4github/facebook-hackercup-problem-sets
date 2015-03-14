@@ -1,0 +1,211 @@
+#include <cstdio>
+#include <cstring>
+#include <deque>
+#include <vector>
+
+using namespace std;
+
+struct Pos {
+    unsigned r, c;
+    
+    Pos() : r(0), c(0) {}
+    
+    Pos(unsigned row, unsigned column) :
+        r(row), c(column)
+    {}
+};
+
+enum Direction {
+    UP = 0,
+    RIGHT = 1,
+    DOWN = 2,
+    LEFT = 3
+};
+
+struct Turret {
+    unsigned r, c;
+    unsigned d;
+    
+    Turret() : r(0), c(0), d(UP) {}
+    
+    Turret(unsigned row, unsigned column, unsigned direction) :
+        r(row), c(column), d(direction) {}
+};
+
+char maze[101][101] = {0};
+bool markerTable[101][101] = {0};
+bool visited[101][101][4] = {0};
+unsigned m, n;
+
+void placeMarker(Pos p, deque<Pos> & markers, int ticks)
+{
+    if (p.r < m && p.c < n) {
+        if ((maze[p.r][p.c] == '.' || maze[p.r][p.c] == 'G' || maze[p.r][p.c] == 'S') &&
+            (!markerTable[p.r][p.c])) {
+            if (!visited[p.r][p.c][ticks % 4]) {
+                markerTable[p.r][p.c] = true;
+                markers.push_back(p);
+                visited[p.r][p.c][ticks % 4] = true;
+            }
+        }
+    }
+}
+
+void affectTiles(const Turret & t)
+{
+    switch (t.d) {
+    case UP:
+        for (int i = t.r - 1; i >= 0; i--) {
+            if (maze[i][t.c] == '#' ||
+                maze[i][t.c] == '<' ||
+                maze[i][t.c] == '>' ||
+                maze[i][t.c] == '^' ||
+                maze[i][t.c] == 'v') {
+                break;
+            }
+            if (markerTable[i][t.c]) {
+                markerTable[i][t.c] = false;
+            }
+        }
+        break;
+    case RIGHT:
+        for (int i = t.c + 1; i < n; i++) {
+            if (maze[t.r][i] == '#' ||
+                maze[t.r][i] == '<' ||
+                maze[t.r][i] == '>' ||
+                maze[t.r][i] == '^' ||
+                maze[t.r][i] == 'v') {
+                break;
+            }
+            if (markerTable[t.r][i]) {
+                markerTable[t.r][i] = false;
+            }
+        }
+        break;
+    case DOWN:
+        for (int i = t.r + 1; i < m; i++) {
+            if (maze[i][t.c] == '#' ||
+                maze[i][t.c] == '<' ||
+                maze[i][t.c] == '>' ||
+                maze[i][t.c] == '^' ||
+                maze[i][t.c] == 'v') {
+                break;
+            }
+            if (markerTable[i][t.c]) {
+                markerTable[i][t.c] = false;
+            }
+        }
+        break;
+    case LEFT:
+        for (int i = t.c - 1; i >= 0; i--) {
+            if (maze[t.r][i] == '#' ||
+                maze[t.r][i] == '<' ||
+                maze[t.r][i] == '>' ||
+                maze[t.r][i] == '^' ||
+                maze[t.r][i] == 'v') {
+                break;
+            }
+            if (markerTable[t.r][i]) {
+                markerTable[t.r][i] = false;
+            }
+        }
+        break;
+    }
+}
+
+int traverse()
+{
+    deque<Pos> markers[2];
+    vector<Turret> turrets;
+    Pos start;
+    Pos curMarker;
+    int ticks = 0;
+    bool goOn = true;
+    bool impossible = false;
+    unsigned nTurrets;
+    unsigned nMarkers;
+    
+    for (unsigned i = 0; i < m; i++) {
+        for (unsigned j = 0; j < n; j++) {
+            if (maze[i][j] == 'S') {
+                start.r = i;
+                start.c = j;
+            } else if (maze[i][j] == '<') {
+                turrets.push_back(Turret(i, j, LEFT));
+            } else if (maze[i][j] == '>') {
+                turrets.push_back(Turret(i, j, RIGHT));
+            } else if (maze[i][j] == '^') {
+                turrets.push_back(Turret(i, j, UP));
+            } else if (maze[i][j] == 'v') {
+                turrets.push_back(Turret(i, j, DOWN));
+            }
+            markerTable[i][j] = false;
+            memset(&visited[i][j], 0, sizeof(bool) * 4);
+        }
+    }
+    //printf("Num turrets: %u\n", turrets.size());
+    nTurrets = turrets.size();
+    markerTable[start.r][start.c] = true;
+    markers[0].push_back(start);
+    while (goOn && !impossible) {
+        //printf("Tick %d\n", ticks);
+        while (!markers[ticks % 2].empty()) {
+            curMarker = markers[ticks % 2].front();
+            if (markerTable[curMarker.r][curMarker.c]) {
+                placeMarker(Pos(curMarker.r + 1, curMarker.c), markers[(ticks + 1) % 2], ticks);
+                placeMarker(Pos(curMarker.r - 1, curMarker.c), markers[(ticks + 1) % 2], ticks);
+                placeMarker(Pos(curMarker.r, curMarker.c + 1), markers[(ticks + 1) % 2], ticks);
+                placeMarker(Pos(curMarker.r, curMarker.c - 1), markers[(ticks + 1) % 2], ticks);
+                markerTable[curMarker.r][curMarker.c] = false;
+            }
+            markers[ticks % 2].pop_front();
+        }
+        for (unsigned i = 0; i < nTurrets; i++) {
+            turrets[i].d = (turrets[i].d + 1) % 4;
+            //printf("Turret %u: %u %u %u\n", i, turrets[i].r, turrets[i].c, turrets[i].d);
+            affectTiles(turrets[i]);
+        }
+        ticks++;
+        nMarkers = markers[ticks % 2].size();
+        if (nMarkers == 0) {
+            impossible = true;
+        } else {
+            for (unsigned i = 0; i < nMarkers; i++) {
+                curMarker = markers[ticks % 2][i];
+                if (markerTable[curMarker.r][curMarker.c]) {
+                    //printf("Mark: %u %u\n", curMarker.r, curMarker.c);
+                    if (maze[curMarker.r][curMarker.c] == 'G') {
+                        goOn = false;
+                    }
+                }
+            }
+        }
+    }
+    
+    if (!impossible) return ticks;
+    else return -1;
+}
+
+int main()
+{
+    int t;
+    int i, j;
+    int time;
+    
+    scanf("%d", &t);
+    for (i = 0; i < t; i++) {
+        scanf("%d %d%*c", &m, &n);
+        for (j = 0; j < m; j++) {
+            scanf("%[^\n]%*c", maze[j]);
+        }
+        time = traverse();
+        printf("Case #%d: ", i + 1);
+        if (time >= 0) {
+            printf("%d\n", time);
+        } else {
+            printf("impossible\n");
+        }
+    }
+    
+    return 0;
+}

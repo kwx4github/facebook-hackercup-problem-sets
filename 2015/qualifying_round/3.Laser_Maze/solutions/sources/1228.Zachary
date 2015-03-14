@@ -1,0 +1,190 @@
+#include <cstdio>
+#include <set>
+#include <queue>
+#include <map>
+#include <vector>
+
+#define UP 0
+#define RIGHT 1
+#define DOWN 2
+#define LEFT 3
+
+struct State {
+  int x;
+  int y;
+  int r;
+  int d;
+  State(const State &s) {
+    x = s.x;
+    y = s.y;
+    r = s.r;
+    d = s.d;
+  }
+  State(int _x, int _y, int _r, int _d) : x(_x), y(_y), r(_r), d(_d) { }
+  bool operator<(const State &that) const {
+    if (x < that.x) {
+      return true;
+    }
+    if (x == that.x && y < that.y) {
+      return true;
+    }
+    if (x == that.x && y == that.y && r < that.r) {
+      return true;
+    }
+    return false;
+  }
+
+  bool operator==(const State &that) const {
+    if (x == that.x && y == that.y && r == that.r) {
+      return true;
+    }
+    return false;
+  }
+};
+
+bool slp(int px, int py, int lx, int ly, int dir, char **maze)
+{
+  if (dir == UP) {
+    if (py != ly) return false;
+    if (px > lx) return false;
+    for (int i = px; i < lx; i++) {
+      if (maze[i][py] != '.') return false;
+    }
+  } else if (dir == DOWN) {
+    if (py != ly) return false;
+    if (px < lx) return false;
+    for (int i = px; i > lx; i--) {
+      if (maze[i][py] != '.') return false;
+    }
+  } else if (dir == RIGHT) {
+    if (px != lx) return false;
+    if (py < ly) return false;
+    for (int i = py; i > ly; i--) {
+      if (maze[px][i] != '.') return false;
+    }
+  } else if (dir == LEFT) {
+    if (px != lx) return false;
+    if (py > ly) return false;
+    for (int i = py; i < ly; i++) {
+      if (maze[px][i] != '.') return false;
+    }
+  }
+  return true;
+}
+
+bool legal(const State &s, char **maze, int l, int w, 
+  std::map<int, std::vector<int> > lx, std::map<int, std::vector<int> > ly)
+{
+  int x = s.x;
+  int y = s.y;
+  int r = s.r;
+  // basic cases
+  if (x >= l || x < 0) return false;
+  if (y >= w || y < 0) return false;
+  if (maze[x][y] != '.') return false;
+  // Or if we got shot
+  for (int i = 0; i < lx[x].size(); i++) {
+    int lpx = x;
+    int lpy = lx[x][i];
+    if (slp(x, y, lpx, lpy, (maze[lpx][lpy]+r)%4, maze)) return false;
+  }
+  for (int i = 0; i < ly[y].size(); i++) {
+    int lpx = ly[y][i];
+    int lpy = y;
+    if (slp(x, y, lpx, lpy, (maze[lpx][lpy]+r)%4, maze)) return false;
+  }
+  return true;
+}
+
+int getFastest(char **maze, int l, int w)
+{
+  std::set<State> visited;
+  std::queue<State> q;
+  std::map<int, std::vector<int> > lx, ly;
+  int sx, sy;
+  int gx, gy;
+  for (int i = 0; i < l; i++) {
+    for (int j = 0; j < w; j++) {
+      if (maze[i][j] == 'G') {
+        gx = i;
+        gy = j;
+        maze[i][j] = '.';
+      }
+      if (maze[i][j] == 'S') {
+        sx = i;
+        sy = j;
+        maze[i][j] = '.';
+      }
+      if (maze[i][j] == '^') {
+        maze[i][j] = UP;
+        lx[i].push_back(j);
+        ly[j].push_back(i);
+      }
+      if (maze[i][j] == '>') {
+        maze[i][j] = RIGHT;
+        lx[i].push_back(j);
+        ly[j].push_back(i);
+      }
+      if (maze[i][j] == 'v') {
+        maze[i][j] = DOWN;
+        lx[i].push_back(j);
+        ly[j].push_back(i);
+      }
+      if (maze[i][j] == '<') {
+        maze[i][j] = LEFT;
+        lx[i].push_back(j);
+        ly[j].push_back(i);
+      }
+    }
+  }
+  State start = State(sx, sy, 0, 0);
+  q.push(start);
+  visited.insert(start);
+  while (!q.empty()) {
+    State s = q.front();
+    q.pop();
+    if (s.x == gx && s.y == gy) {
+      return s.d;
+    }
+    State ss[4] = {
+      State(s.x+1, s.y, (s.r+1)%4, s.d+1),
+      State(s.x-1, s.y, (s.r+1)%4, s.d+1),
+      State(s.x, s.y+1, (s.r+1)%4, s.d+1),
+      State(s.x, s.y-1, (s.r+1)%4, s.d+1)
+    };
+    for (int i = 0; i < 4; i++) {
+      if (!visited.count(ss[i]) && legal(ss[i], maze, l, w, lx, ly)) {
+        q.push(ss[i]);
+        visited.insert(ss[i]);
+      }
+    }
+  }
+  return -1;
+}
+
+int main()
+{
+  int t;
+  scanf("%d", &t);
+  for (int i = 0; i < t; i++) {
+    int l;
+    int w;
+    scanf("%d %d\n", &l, &w);
+    char ** maze = new char*[l];
+    for (int j = 0; j < l; j++) {
+      maze[j] = new char[w+1];
+      gets(maze[j]);
+    }
+
+    int res = getFastest(maze, l, w);
+    if (res == -1) {
+      printf("Case #%d: %s\n", i+1, "impossible");
+    } else {
+      printf("Case #%d: %d\n", i+1, res);
+    }
+    for (int j = 0; j < l; j++) {
+      delete maze[j];
+    }
+    delete maze;
+  }
+}

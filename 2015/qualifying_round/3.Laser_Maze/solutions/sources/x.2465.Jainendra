@@ -1,0 +1,193 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+typedef vector<vector<char > > vvc;
+typedef vector<vector<int > > vvi;
+typedef vector<vector<vector<int> > > vvv;
+
+struct box{
+    pair<int, int> ind;
+    int cost;
+};
+
+bool ValidIndex(int i, int j, int m, int n){
+    if( i >=m || j >= n || i < 0 || j < 0) return false;
+    return true;
+}
+
+bool isTurret(char c){
+    if (c == '<' || c=='>' || c=='^' || c == 'v')return true;
+    return false;
+}
+
+typedef enum {
+    TURRET_TOP,
+    TURRET_RIGHT,
+    TURRET_BOTTOM,
+    TURRET_LEFT,
+    TURRET_MAX
+}turret_type;
+
+turret_type Turret(char c){
+    if (c == '^')return TURRET_TOP;
+    if (c == '>') return TURRET_RIGHT;
+    if (c == 'v') return TURRET_BOTTOM;
+    if (c == '<') return TURRET_LEFT;
+    return TURRET_MAX;
+}
+
+char table[TURRET_MAX][4] = {
+                    {'^','>','v','<'},
+                    {'>','v','<','^'},
+                    {'v','<','^','>'},
+                    {'<','^','>','v'},
+                    };
+
+bool IsBoxSafe(vvc &maze, int i, int j, int m, int n, int cost){
+    // check top
+    for (int t = i-1; t >= 0; t--){
+        if (maze[t][j] == '#')break;
+        else if (isTurret(maze[t][j])){
+            if (table[Turret(maze[t][j])][cost%4] == 'v')return false;
+        }
+    }
+
+    //check right
+    for (int t = j+1; t < n ; t++){
+        if (maze[i][t] == '#')break;
+        else if (isTurret(maze[i][t])){
+            if (table[Turret(maze[i][t])][cost%4] == '<')return false;
+        }
+    }
+
+    //check bottom
+     for (int t = i+1; t < m; t++){
+        if (maze[t][j] == '#')break;
+        else if (isTurret(maze[t][j])){
+            if (table[Turret(maze[t][j])][cost%4] == '^')return false;
+        }
+    }
+
+    //check left
+    for (int t = j-1; t >= 0 ; t--){
+        if (maze[i][t] == '#')break;
+        else if (isTurret(maze[i][t])){
+            if (table[Turret(maze[i][t])][cost%4] == '>')return false;
+        }
+    }
+
+    return true;
+}
+
+bool LeftChildValid(vvc &maze,int i, int j, int m, int n, int cost){
+    if (!ValidIndex(i,j-1,m,n))return false;
+    j = j-1;
+    if(maze[i][j] != '.' && maze[i][j] != 'S' && maze[i][j] != 'G')return false;
+    if (!IsBoxSafe(maze, i, j, m, n, cost)) return false;
+    return true;
+}
+
+bool RightChildValid(vvc &maze,int i, int j, int m, int n, int cost){
+    if (!ValidIndex(i,j+1,m,n))return false;
+    j = j+1;
+    if(maze[i][j] != '.' && maze[i][j] != 'S' && maze[i][j] != 'G')return false;
+    if (!IsBoxSafe(maze, i, j, m, n, cost)) return false;
+    return true;
+}
+
+bool TopChildValid(vvc &maze,int i, int j, int m, int n, int cost){
+    if (!ValidIndex(i-1,j,m,n))return false;
+    i = i-1;
+    if(maze[i][j] != '.' && maze[i][j] != 'S' && maze[i][j] != 'G')return false;
+    if (!IsBoxSafe(maze, i, j, m, n, cost)) return false;
+    return true;
+}
+
+bool BottomChildValid(vvc &maze,int i, int j, int m, int n, int cost){
+    if (!ValidIndex(i+1,j,m,n))return false;
+    i = i+1;
+    if(maze[i][j] != '.' && maze[i][j] != 'S' && maze[i][j] != 'G')return false;
+    if (!IsBoxSafe(maze, i, j, m, n, cost)) return false;
+    return true;
+}
+
+ struct compare{
+     bool operator() (box a, box b) const
+     {
+       return (a.cost > b.cost);
+     }
+   };
+
+int main(){
+    freopen("laser_maze.txt","r",stdin);
+    freopen("laser_maze_output.txt","w",stdout);
+
+    int T, M, N;
+    char c;
+    cin>>T;
+    for(int t = 1; t <=T; t++) {
+        cin>>M>>N;
+        int si, sj;
+        vector<vector<char> > maze;
+        for(int i = 0; i <M; i++){
+            vector<char> row;
+            for (int j = 0; j <N; j++){
+                cin>>c;
+                if (c == 'S'){
+                    si = i;
+                    sj = j;
+                }
+                row.push_back(c);
+            }
+            maze.push_back(row);
+            row.clear();
+        }
+        priority_queue<box, vector<box>, compare> q;
+        q.push({{si,sj},0});
+        bool success = false;
+        vvv done(4, vvi(M,vector<int>(N,0)));
+        cout<<"Case #"<<t<<": ";
+        while(!q.empty()){
+            box top = q.top();
+            q.pop();
+            int i = top.ind.first;
+            int j = top.ind.second;
+
+            if(maze[i][j] == 'G')
+            {
+                success = true;
+                cout<<top.cost<<endl;
+                break;
+            }
+
+            if(done[top.cost%4][i][j]==1)continue;
+            done[top.cost%4][i][j]=1;
+
+            if (LeftChildValid(maze,i,j,M,N,top.cost+1)){
+                box left = {{i,j-1},top.cost+1}; //cout<<"left "<<i<<" "<<j-1<<" "<<top.cost+1<<"\n";
+                q.push(left);
+            }
+            if (RightChildValid(maze,i,j,M,N,top.cost+1)){
+                box right = {{i,j+1},top.cost+1};//cout<<"right "<<i<<" "<<j+1<<" "<<top.cost+1<<"\n";
+                q.push(right);
+            }
+            if (TopChildValid(maze,i,j,M,N,top.cost+1)){
+                box up = {{i-1,j},top.cost+1};//cout<<"top "<<i-1<<" "<<j<<" "<<top.cost+1<<"\n";
+                q.push(up);
+            }
+            if (BottomChildValid(maze,i,j,M,N,top.cost+1)){
+                box bottom = {{i+1,j},top.cost+1};//cout<<"bottom "<<i+1<<" "<<j<<" "<<top.cost+1<<"\n";
+                q.push(bottom);
+            }
+        }
+
+        if (!success){
+            cout<<"impossible\n";
+        }
+        while(!q.empty())q.pop();
+        maze.clear();
+    }
+
+    return 0;
+}

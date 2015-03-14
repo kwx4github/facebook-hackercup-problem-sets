@@ -1,0 +1,151 @@
+let id x = x
+
+module StateS = Set.Make (struct
+                            type t = int * (int * int)
+                            let compare = compare end)
+
+module DoneS = Set.Make (struct
+                            type t = int * (int * int)
+                            let compare = compare end)
+                 (*
+let solve bd =
+  let calc bd =
+    List.fold_left2 (fun score (x, y) (gx, gy) ->
+        score + abs(x-gx) + abs(y-gy))
+      0 bd.balls bd.goals
+  in
+  let add_priority_queue bd ans_rev queue =
+    let score = calc bd in
+    StateS.add (score, bd.balls, ans_rev) queue
+  in
+  let dirs = [Left; Right; Up; Down] in
+  let rec bfs next visited =
+    let (score, bs, ans_rev) = StateS.min_elt next in
+    if score = 0 then List.rev ans_rev else
+      let bd' = {bd with balls = bs} in
+      let next' = StateS.remove (score, bs, ans_rev) next in
+      let next2 = List.fold_left (fun next_s d -> 
+          let bd2 = move d bd' in
+          if bd2.balls = bd'.balls || DoneS.mem bd2.balls visited then next_s
+          else add_priority_queue bd2 (d :: ans_rev) next_s
+        ) next' dirs
+      in
+      bfs next2 (DoneS.add bs visited)
+  in
+  bfs (add_priority_queue bd [] StateS.empty) DoneS.empty
+                 *)
+
+let solver h w =
+  let maze_orig = Array.init h (fun _ -> Scanf.scanf "%s " id) in
+  let start_pos =
+    let rec loop x y =
+      if y < h then
+        if x < w then
+          if maze_orig.(y).[x] = 'S' then (x, y)
+          else loop (x+1) y
+        else loop 0 (y+1)
+      else raise Not_found
+    in
+    loop 0 0
+  in
+  let rotate m =
+    for y=0 to (h-1) do
+      for x=0 to (w-1) do
+        match m.(y).[x] with
+        | '>' -> m.(y).[x] <- 'v'
+        | 'v' -> m.(y).[x] <- '<'
+        | '<' -> m.(y).[x] <- '^'
+        | '^' -> m.(y).[x] <- '>'
+        | _ -> ()
+      done
+    done
+  in
+  let filling m =
+    let f dx dy x y =
+      let rec loop x y =
+        if x >= 0 && y >= 0 && x < w && y < h then
+          match m.(y).[x] with
+          | '>'
+          | 'v' 
+          | '<'
+          | '^'
+          | '#' -> ()
+          | _ ->
+              m.(y).[x] <- '#'; loop (x+dx) (y+dy)
+         else ()
+      in
+      m.(y).[x] <- '.'; 
+      loop x y
+    in
+    for y=0 to (h-1) do
+      for x=0 to (w-1) do
+        match m.(y).[x] with
+        | '>' -> f 1 0 x y
+        | 'v' -> f 0 1 x y 
+        | '<' -> f (-1) 0 x y
+        | '^' -> f 0 (-1) x y
+        | _ -> ()
+      done
+    done
+  in
+  let maze = Array.init 4 (fun _ ->
+                             let m = Array.copy maze_orig in
+                             let m = Array.map String.copy m in
+                             rotate maze_orig;
+                             filling m;
+                             m)
+  in
+(*
+(*   maze |> Array.iter (fun m -> Array.iter prerr_endline m); *)
+  let maze_str = Array.map (fun m -> Array.to_list m |> String.concat "") maze in
+(*   maze_str |> Array.iter print_endline; *)
+  let maze_tbl = Array.init 4 (fun j ->
+                                 let rec loop i =
+                                   if i = j then i
+                                   else if maze_str.(i) = maze_str.(j) then i
+                                   else loop (i+1)
+                                 in
+                                 loop 0)
+  in
+ *)
+(*   maze_tbl |> Array.map string_of_int |> Array.iter print_endline; *)
+  let dirs = [1,0; 0,1; -1,0; 0,-1] in
+  let add_priority_queue steps pos queue =
+    StateS.add (steps, pos) queue
+  in
+  let rec bfs next visited =
+    if StateS.is_empty next then None else
+    let elt = StateS.min_elt next in
+    let (steps, (x,y)) = elt in
+    let idx = steps mod 4 in
+    if maze.(idx).(y).[x] = 'G' then Some steps
+    else
+      let next' = StateS.remove elt next in
+      let oldidx_pos = idx, (x,y) in
+      let steps = steps + 1 in
+      let next_maze = maze.(steps mod 4) in
+      let next2 = List.fold_left (fun next_s (dx,dy) ->
+          let x = x + dx in
+          let y = y + dy in
+          if x >= 0 && y >= 0 && x < w && y < h then
+            if next_maze.(y).[x] = '#' then next_s
+            else if DoneS.mem ((steps mod 4), (x,y)) visited then next_s
+            else add_priority_queue steps (x,y) next_s
+          else
+            next_s
+        ) next' dirs
+      in
+      bfs next2 (DoneS.add oldidx_pos visited)
+  in
+  bfs (add_priority_queue 0 start_pos StateS.empty) DoneS.empty
+
+let () = 
+  let t = Scanf.scanf "%d " id in
+  for i=1 to t do
+    let ans = 
+      match Scanf.scanf "%d %d " solver with
+      | None -> "impossible"
+      | Some n -> string_of_int n
+    in
+    Printf.printf "Case #%d: %s\n" i ans
+  done

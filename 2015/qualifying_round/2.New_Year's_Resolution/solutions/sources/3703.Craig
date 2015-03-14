@@ -1,0 +1,102 @@
+#!/usr/bin/env node
+
+var Promise = require('bluebird');
+var fs = Promise.promisifyAll(require('fs'));
+
+fs.readFileAsync('./new_years_resolution.txt', {encoding: 'utf-8' })
+.then(function (input) {
+    var lines = input.split(/\r\n?|\n/);
+    var rest = lines.splice(1).filter(Boolean);
+
+    var cases = [];
+    for (var i = 0; i < +lines[0]; i += 1) {
+        cases.push(i + 1);
+    }
+
+    results = cases.map(function (caseNumber) {
+        lines = rest;
+        var ammountToEat = spaceSeparatedStringToNumber(lines.shift());
+        var numberOfFoods = +lines.shift();
+        rest = lines.splice(numberOfFoods);
+        var foods = lines.map(function (line) {
+            return spaceSeparatedStringToNumber(line);
+        });
+
+        var exact = findExactCombination(foods, ammountToEat);
+
+        return 'Case #' + (caseNumber) + ': ' + (exact ? 'yes' : 'no');
+    });
+
+    return results.join('\n');
+})
+.then(function (result) {
+    return fs.writeFileAsync('./new_years_resolution_result.txt', result)
+})
+.then(function () {
+    console.log('yay!');
+})
+.catch(function (e) {
+    console.log(e, 'oh no.');
+});
+
+function spaceSeparatedStringToNumber (string) {
+    return string.split(' ').map(Number);
+}
+
+function findExactCombination (foods, ammountToEat) {
+    var gP = ammountToEat[0];
+    var gC = ammountToEat[1];
+    var gF = ammountToEat[2];
+    var sumP = 0, sumC = 0, sumF = 0;
+
+    foods = foods.map(function (food) {
+        var p = food[0];
+        var c = food[1];
+        var f = food[2];
+
+        if (p > gP || c > gC || f > gF) {
+           return null;
+        }
+
+        sumP += p;
+        sumC += c;
+        sumF += f;
+
+        return food;
+    }).filter(Boolean);
+
+    if (sumP < gP || sumC < gC || sumF < gF) {
+        return false;
+    } else if (sumP === gP && sumC === gC && sumF === gF) {
+        return true;
+    } else {
+        return !!checkSumCombinations(foods, ammountToEat);
+    }
+}
+
+function checkSumCombinations (foods, ammountToEat) {
+    var gP = ammountToEat[0];
+    var gC = ammountToEat[1];
+    var gF = ammountToEat[2];
+    for (var n = 3; n < Math.pow(2, foods.length) - 1; n += 1) {
+        if (!isPowerOfTwo(n)) {
+            var addIndices = n.toString(2);
+            while (addIndices.length < foods.length) {
+                addIndices = '0' + addIndices;
+            }
+            addIndices = addIndices.split('').map(Number).map(Boolean);
+            var sum = foods.reduce(function (sum, next, index) {
+                return addIndices[index] ? [sum[0] + next[0], sum[1] + next[1], sum[2] + next[2]] : sum;
+            }, [0, 0, 0]);
+            if (sum[0] === gP && sum[1] === gC && sum[2] === gF) {
+                console.log('sum', sum);
+                console.log('addIndices', addIndices.map(Number).join(''));
+                return true;
+            }
+        }
+    }
+}
+
+function isPowerOfTwo (n) {
+    return n & (n - 1) === 0
+}

@@ -1,0 +1,204 @@
+#include <fstream>
+#include <vector>
+#include <queue>
+#include <cstring>
+#define INF 0x3f3f3f3f
+
+using namespace std;
+
+ifstream fin("input.txt");
+ofstream fout("output.txt");
+
+struct triplet
+{
+    int first;
+    int second;
+    int third;
+    triplet()
+    {
+        first = second = third = 0;
+    }
+    triplet(int F, int S, int T)
+    {
+        first = F;
+        second = S;
+        third = T;
+    }
+};
+
+queue<triplet> Q;
+
+int n,m;
+int a[101][101];
+int dmin[4][101][101];
+bool p[4][101][101];
+
+class Laser{
+    public: int x, y, orientation;
+    public: Laser()
+    {
+        x = y = orientation = 0;
+    }
+    public: Laser(int X, int Y, int Orientation)
+    {
+        x = X;
+        y = Y;
+        orientation = Orientation;
+    }
+    public: void spin()
+    {
+        orientation ++;
+        if(orientation == 4)
+            orientation = 0;
+    }
+
+};
+
+vector<Laser> LaserList;
+
+bool inside(int i, int j)
+{
+    return i >= 1 && i <= n && j >= 1 && j <= m;
+}
+
+const int di[] = {0,0,-1,1};
+const int dj[] = {1,-1,0,0};
+
+void compute(int xG, int yG)
+{
+    while(!Q.empty())
+    {
+        triplet nod = Q.front();
+        Q.pop();
+        int t = nod.first;
+        int i = nod.second;
+        int j = nod.third;
+        int tnou = t + 1;
+        if(tnou == 4)
+            tnou = 0;
+        for(int k = 0; k < 4; k ++)
+        {
+            int inou = i + di[k];
+            int jnou = j + dj[k];
+            if(inside(inou,jnou) && a[inou][jnou] == 0 && !p[tnou][inou][jnou]
+               && dmin[t][i][j] + 1 < dmin[tnou][inou][jnou])
+            {
+                Q.push(triplet(tnou,inou,jnou));
+                dmin[tnou][inou][jnou] = dmin[t][i][j] + 1;
+            }
+        }
+    }
+    int sol = INF;
+    for(int k = 0; k < 4; k++)
+        if(dmin[k][xG][yG] < sol)
+            sol = dmin[k][xG][yG];
+    if(sol == INF)
+        fout<<"impossible\n";
+    else fout<<sol<<'\n';
+}
+
+
+void createPrajitura()  // fried = parjit(ro) && pajitura(ro) = cookie
+{
+    for(int k = 0; k < 4; k++)
+        for(vector<Laser>::iterator it = LaserList.begin(); it!= LaserList.end(); it++)
+        {
+            int o = (*it).orientation;
+            int dei = 0, dej = 0;
+            if(o == 0)
+                dei = -1;
+            else if(o == 1)
+                dej = 1;
+            else if(o == 2)
+                dei = 1;
+            else dej = -1;
+            int x = (*it).x + dei;
+            int y = (*it).y + dej;
+            while(inside(x,y) && a[x][y] == 0)
+            {
+                p[k][x][y] = true;
+                x += dei;
+                y += dej;
+            }
+            (*it).spin();
+
+        }
+
+
+}
+
+void InitData()
+{
+    memset(dmin, INF, sizeof(dmin));
+    memset(a,0,sizeof(a));
+    memset(p,false,sizeof(p));
+    LaserList.clear();
+}
+
+void solve()
+{
+    InitData();
+    fin>>n>>m;
+    int xS, yS, xG, yG;
+    for(int i=1;i<=n;i++)
+        for(int j =1;j<=m;j++){
+            char ch;
+            fin>>ch;
+            if(ch=='#')
+                a[i][j] = -1;
+            else if(ch == '.')
+                a[i][j] = 0;
+            else if(ch == 'S')
+            {
+                xS = i;
+                yS = j;
+                a[i][j] = 0;
+                Q.push(triplet(0,i,j));
+                dmin[0][i][j] = 0;
+            }
+            else if(ch == 'G')
+            {
+                xG = i;
+                yG = j;
+                a[i][j] = 0;
+
+
+            }
+            else
+            {
+                Laser x = Laser(i,j,0);
+                a[i][j] = -2;
+                if(ch == '^')
+                    x.orientation = 0;
+                else if(ch == '>')
+                    x.orientation = 1;
+                else if(ch == 'v')
+                    x.orientation = 2;
+                else if(ch == '<')
+                    x.orientation = 3;
+                LaserList.push_back(x);
+            }
+
+
+        }
+
+    createPrajitura();
+    compute(xG,yG);
+}
+
+
+
+
+int main()
+{
+    int T;
+    fin>>T;
+    for(int i=1;i<=T;i++)
+    {
+        fout<<"Case #"<<i<<": ";
+        solve();
+    }
+    fin.close();
+    fout.close();
+    return 0;
+}

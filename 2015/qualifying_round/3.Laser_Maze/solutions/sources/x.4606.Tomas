@@ -1,0 +1,344 @@
+package fbhc15_LaserMaze;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.TreeSet;
+
+public class LaserMaze {
+
+	class LMList implements Comparable<LMList> {
+		
+		int length=-1;
+		TreeSet<Node> nodes;
+		
+		public LMList(int length) {
+			this.length=length;
+			nodes=new TreeSet<Node>();
+		}
+		
+		public void add(Node n) {
+			nodes.add(n);
+		};
+		
+		public int compareTo(LMList n) {
+			if (n.length<length)
+				return(1);
+			if (n.length>length)
+				return(-1);
+			if (n.length==length)
+				return(0);
+			return(0);
+		}
+	}
+	
+	class Node implements Comparable<Node> {
+		int length=0;
+		int x;
+		int y;
+		
+		public Node(int len, int x, int y) {
+			this.length=len;
+			this.x=x;
+			this.y=y;
+		}
+
+		public int compareTo(Node n) {
+			if (n.length<length)
+				return(1);
+			if (n.length>length)
+				return(-1);
+			if (n.length==length) {
+				if (n.x<x)
+					return(1);
+				if (n.x>x)
+					return(-1);
+				if (n.x==x) {
+					if (n.y<y)
+						return(1);
+					if (n.y>y)
+						return(-1);
+				}
+			}
+			return(0);
+		}
+	}
+	
+	class MultiList {
+		TreeSet<LMList> djikstras;
+		
+		public MultiList() {
+			djikstras=new TreeSet<LMList>();
+		}
+		
+		public void add(Node n) {
+			//System.out.println("Add x="+n.x+" y="+n.y+" len="+(n.length+1));
+			if (n.length>4*100*100) {
+				return; //turrets can have 4 position and no spot should need to be visited more than 4 times, m can be 100, and n can be one hundred
+			}
+			Iterator<LMList> it=djikstras.iterator();
+			LMList list;
+			boolean done=false;
+			while(it.hasNext()&&(!done)) {
+				list=it.next();
+				if (list.length==n.length) {
+					djikstras.remove(list);
+					list.add(n);
+					djikstras.add(list);
+					done=true;
+//					System.out.println("Adding");
+				}
+			}
+			if (!done) {
+				list=new LMList(n.length);
+				list.add(n);
+				djikstras.add(list);
+//				System.out.println("Adding");
+			}
+		}
+		
+		public Node poll() {
+			if (djikstras.isEmpty())
+				return(null);
+			LMList list=djikstras.first();
+			djikstras.remove(list);
+			Node n=list.nodes.pollFirst();
+			if (!list.nodes.isEmpty())
+				djikstras.add(list);
+//			if (n!=null)
+//				System.out.println("Poll x="+n.x+" y="+n.y+" len="+(n.length+1));
+			return(n);
+		}
+	}
+	
+	char mazec[][][];
+	
+	MultiList data;
+	
+	public static void main(String[] args) {
+		if (args.length==1) {
+			new LaserMaze(args[0]);
+		}
+	}
+
+	public LaserMaze(String filename) {
+		try{
+			FileReader fr=new FileReader(filename);
+			BufferedReader br=new BufferedReader(fr);
+			String tmp=br.readLine();
+			tmp=tmp.trim();
+			String tmpd[];
+			int t; //1<=t<=20
+			int m; // 1 <= n <= 100
+			int n; // 1 <= m <= 100
+			t=Integer.parseInt(tmp);
+			//System.out.println("Number of tests "+t);
+			int output;
+			for(int i=0;i<t;i++) {
+				tmp=br.readLine();
+				tmp.trim();
+				tmpd=tmp.split(" ");
+				m=Integer.parseInt(tmpd[0]);
+				n=Integer.parseInt(tmpd[1]);
+				String maze[]=new String[m];
+				for( int k=0;k<m;k++) {
+					tmp=br.readLine();
+					tmp.trim();
+					maze[k]=tmp;
+				}
+				output=processData(m,n,maze);
+				System.out.println("Case #"+(i+1)+": "+((output<1)?"impossible":output));
+			}
+			br.close();
+			fr.close();
+		}catch(IOException ioe) {
+			System.out.println(ioe.getMessage());
+		}
+	}
+	
+	public int processData(int n, int m, String maze[]) {
+		int turn=0;
+		int cnt=0;
+		int sxy[]=findStart(maze);
+		data=new MultiList();
+		data.add(new Node(0,sxy[0],sxy[1]));
+		multiMaze(maze);
+		while(((turn=addPath())==-1)&&(cnt++<15000000)); //abort if to many iterations have been used
+		//System.out.println("Count="+cnt);
+		if (cnt>10000000) {
+			//System.out.println("No more turns...");
+			return(-1);
+		}
+		return(turn);
+	}
+
+	public int[] findStart(String maze[]) {
+		int sxy[]=new int[2];
+		for(int i=0;i<maze.length;i++) {
+			sxy[0]=maze[i].indexOf('S');
+			sxy[1]=i;
+			if (sxy[0]>=0)
+				break;
+		}
+ 		return(sxy);
+	}
+
+	public void multiMaze(String maze[]) {
+		mazec=new char[4][][];
+		mazec[0]=copyMaze(maze);
+		extendLasers(mazec[0]);
+		//printMaze(mazec[0]);
+		mazec[1]=copyMaze(maze);
+		rotateTurrets(1, mazec[1]);
+		extendLasers(mazec[1]);
+		//printMaze(mazec[1]);
+		mazec[2]=copyMaze(maze);
+		rotateTurrets(2, mazec[2]);
+		extendLasers(mazec[2]);
+		//printMaze(mazec[2]);
+		mazec[3]=copyMaze(maze);
+		rotateTurrets(3, mazec[3]);
+		extendLasers(mazec[3]);
+		//printMaze(mazec[3]);
+	}
+	
+	public char[][] copyMaze(String mazes[]) {
+		char mazed[][]=new char[mazes.length][mazes[0].length()];
+		for(int i=0;i<mazes.length;i++) {
+			for(int j=0;j<mazes[i].length();j++) {
+				mazed[i][j]=mazes[i].charAt(j);
+			}
+		}
+		return(mazed);
+	}
+	
+	public void printMaze(char mazed[][]) {
+		for(int i=0;i<mazed.length;i++) {
+			for(int j=0;j<mazed[i].length;j++) {
+				System.out.print(mazed[i][j]);
+			}
+			System.out.println();
+		}
+	}
+	
+	public void rotateTurrets(int turns, char maze[][]) {
+		String turrets="^>v<";
+		for(int i=0;i<maze.length;i++) {
+			for(int j=0;j<maze[i].length;j++) {
+				char c=maze[i][j];
+				switch(c) {
+				case '<':
+					maze[i][j]=turrets.charAt((3+turns)%4);
+					break;
+				case '>':
+					maze[i][j]=turrets.charAt((1+turns)%4);
+					break;
+				case 'v':
+					maze[i][j]=turrets.charAt((2+turns)%4);
+					break;
+				case '^':
+					maze[i][j]=turrets.charAt((0+turns)%4);
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+	
+	public void extendLasers(char maze[][]) {
+		for(int i=0;i<maze.length;i++) {
+			for(int j=0;j<maze[i].length;j++) {
+				char c=maze[i][j];
+				switch(c) {
+				case '<':
+					for(int k=j-1;k>=0;k--) {
+						if ((maze[i][k]=='.')||(maze[i][k]=='S')||(maze[i][k]=='G'))
+							maze[i][k]='x';
+						else
+							break;
+					}
+					break;
+				case '>':
+					for(int k=j+1;k<maze[i].length;k++) {
+						if ((maze[i][k]=='.')||(maze[i][k]=='S')||(maze[i][k]=='G'))
+							maze[i][k]='x';
+						else
+							break;
+					}
+					break;
+				case 'v':
+					for(int k=i+1;k<maze.length;k++) {
+						if ((maze[k][j]=='.')||(maze[k][j]=='S')||(maze[k][j]=='G'))
+							maze[k][j]='x';
+						else
+							break;
+					}
+					break;
+				case '^':
+					for(int k=i-1;k>=0;k--) {
+						if ((maze[k][j]=='.')||(maze[k][j]=='S')||(maze[k][j]=='G'))
+							maze[k][j]='x';
+						else
+							break;
+					}
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+	
+	public int addPath() {
+		Node n=data.poll();
+		if (n==null) {
+			return(-2);
+		}
+		int x=n.x;
+		int y=n.y;
+		int t=(n.length+1)%4;
+		//System.out.println("x="+x+" y="+y+" len="+(n.length+1));
+		if (x<mazec[t][y].length-1) {
+			if ((mazec[t][y][x+1]=='.')||(mazec[t][y][x+1]=='G')||(mazec[t][y][x+1]=='S')) {
+				data.add(new Node(n.length+1,x+1,y));
+				//System.out.println("Lägger till x+1");
+				if (mazec[t][y][x+1]=='G') {
+					return(n.length+1);
+				}
+			}
+		}
+		if (x>0) {
+			if ((mazec[t][y][x-1]=='.')||(mazec[t][y][x-1]=='G')||(mazec[t][y][x-1]=='S')) {
+				data.add(new Node(n.length+1,x-1,y));
+				//System.out.println("Lägger till x-1");
+				if (mazec[t][y][x-1]=='G') {
+					return(n.length+1);
+				}
+			}
+		}
+		if (y<mazec[t].length-1) {
+			if ((mazec[t][y+1][x]=='.')||(mazec[t][y+1][x]=='G')||(mazec[t][y+1][x]=='S')) {
+				data.add(new Node(n.length+1,x,y+1));
+				//System.out.println("Lägger till y+1");
+				if (mazec[t][y+1][x]=='G') {
+					return(n.length+1);
+				}
+			}
+		}
+		if (y>0) {
+			if ((mazec[t][y-1][x]=='.')||(mazec[t][y-1][x]=='G')||(mazec[t][y-1][x]=='S')) {
+				data.add(new Node(n.length+1,x,y-1));
+				//System.out.println("Lägger till y-1");
+				if (mazec[t][y-1][x]=='G') {
+					return(n.length+1);
+				}
+			}
+		}
+//		System.out.println("Storleken på kön"+data.size());
+		return(-1);
+	}
+	
+	
+}

@@ -1,0 +1,230 @@
+#! /usr/bin/perl
+## Author: Milan Sorm <sorm@milansorm.cz>
+## Facebook Hacker Cup 2015 Qualification ROund
+
+use strict;
+use warnings;
+no warnings 'recursion';
+
+# $DB::deep = 10_000_000;
+
+# algorithm:
+# - backtracking, mark my steps with 'x'
+# - in each step turn turrets
+# - test dead by laser
+# - do not only steps, but also second step with small dance (step back and repeat without dance)
+# - collect smallest step possible
+# - if all possible steps are done -> result is smallest number or impossible
+# - store everything in strings instead of large arrays
+
+our @directions = ( [ 0, -1 ], [ 1, 0 ], [ 0, 1 ], [ -1, 0 ] );
+our %turret_direction = ( '^' => 0, '>' => 1, 'v' => 2, '<' => 3 );
+our %fire_can_go_through = map { $_ => 1 } qw/. x S G f/;
+our $height;
+our $width;
+our @turret_positions = ();
+
+sub fire_turrets {
+	my $copy_container = ${ shift @_ };
+	my $temp_field = \$copy_container;
+	
+	for ( @turret_positions ) {
+		my $ty = $_->{ y };
+		my $tx = $_->{ x };
+		my $dir = $directions[ $turret_direction{ substr $$temp_field, $ty * $width + $tx, 1 } ];
+
+		while ( 1 ) {
+			$tx += $dir->[ 0 ];
+			$ty += $dir->[ 1 ];
+			if ( $tx >= 0 && $ty >= 0 && $tx < $width && $ty < $height && exists $fire_can_go_through{ substr $$temp_field, $ty * $width + $tx, 1 } ) {
+				substr( $$temp_field, $ty * $width + $tx, 1 ) = 'f';
+			} else {
+				last;
+			}
+		};
+	}
+
+	return $temp_field;
+}
+
+sub backtrack {
+	my ( $field, $x, $y ) = @_;
+
+	my @saved_positions = ();
+	for ( @turret_positions ) {
+		push @saved_positions, substr $$field, $_->{ y } * $width + $_->{ x }, 1;
+	}
+
+	# this was the last step to goal position
+	my $was = substr $$field, $y * $width + $x, 1;
+	return 0 if $was eq 'G';
+
+	# mark current position as visited
+	substr( $$field, $y * $width + $x, 1 ) = 'x';
+
+	$$field =~ tr/<>^v/^v></;	# turn turrets
+	my $temp_field = fire_turrets( $field );
+
+	my $steps_performed = 1;
+	
+	# try all directions if we can
+	my $minimal_way = undef;	# smallest possible step from this place
+	my $found_way = 0;		# we found some way, dancing is possible
+
+	for ( @directions ) {
+		my $new_x = $x + $_->[ 0 ];
+		my $new_y = $y + $_->[ 1 ];
+		if ( $new_x >= 0 && $new_y >= 0 && $new_x < $width && $new_y < $height ) {
+			my $testchar = substr $$temp_field, $new_y * $width + $new_x, 1;
+			if ( $testchar eq '.' || $testchar eq 'G' ) {
+				# no boundary, wall, turret or laser beam (fire)
+				# I found a way, I can investigate more further through backtracking
+
+				$found_way = 1;
+
+				my $steps = backtrack( $field, $new_x, $new_y );
+				if ( defined $steps ) {
+					if ( defined $minimal_way ) {
+						$minimal_way = ( $minimal_way < $steps ) ? $minimal_way : $steps;
+					} else {
+						$minimal_way = $steps;
+					}
+				}
+			}
+		}
+	}
+			
+	undef $temp_field;
+
+	# unmark my way because we backtrack
+	substr( $$field, $y * $width + $x, 1 ) = $was;
+
+	# only for cases if the whole way is not found but we can dance we try a little dance which is longer
+	if ( ! defined $minimal_way && $found_way ) {
+		# make step in previous position, turn turrets and fire
+		$$field =~ tr/<>^v/^v></;	# turn turrets
+		$temp_field = fire_turrets( $field );
+
+		# check if we survive
+		if ( substr( $$temp_field, $y * $width + $x, 1 ) ne 'f' ) {
+			undef $temp_field;
+
+			# make step to all new directions we can, turn turrets and fire
+			substr( $$field, $y * $width + $x, 1 ) = 'x';
+			$$field =~ tr/<>^v/^v></;	# turn turrets
+			$temp_field = fire_turrets( $field );
+	
+			# if we succeed, we perform 3 steps instead of 1 (dancing)
+			$steps_performed = 3;
+
+			my @can_be = ();
+			for ( @directions ) {
+				my $new_x = $x + $_->[ 0 ];
+				my $new_y = $y + $_->[ 1 ];
+				if ( $new_x >= 0 && $new_y >= 0 && $new_x < $width && $new_y < $height ) {
+					my $testchar = substr $$temp_field, $new_y * $width + $new_x, 1;
+					if ( $testchar eq '.' || $testchar eq 'G' ) {
+						# no boundary, wall, turret or laser beam (fire)
+						# I found a way, I can investigate more further through backtracking -- delayed backtracking (memory consumption)
+						push @can_be, [ $new_x, $new_y ];
+					}
+				}
+			}
+
+			undef $temp_field;
+
+			for ( @can_be ) {
+				my $steps = backtrack( $field, $_->[ 0 ], $_->[ 1 ] );
+
+				if ( defined $steps ) {
+					if ( defined $minimal_way ) {
+						$minimal_way = ( $minimal_way < $steps ) ? $minimal_way : $steps;
+					} else {
+						$minimal_way = $steps;
+					}
+				}
+			}
+		}
+
+		undef $temp_field;
+	}
+
+	for ( @turret_positions ) {
+		substr( $$field, $_->{ y } * $width + $_->{ x }, 1 ) = shift @saved_positions;
+	}
+
+	$minimal_way += $steps_performed if defined $minimal_way;	# my step
+	return $minimal_way;		# undef or smallest possible steps
+}
+
+## main code
+
+my $count = <>;
+chomp $count;
+
+if ( ! defined $count || $count !~ /^\d+$/ || $count < 1 || $count > 100 ) {
+	print "ERROR: Invalid input (violate constraints).\n";
+	exit;
+}
+
+my $counter = 0;
+while ( $count-- > 0 ) {
+
+	# inputs: required sizes
+	@turret_positions = ();
+
+	my $line = <>;
+	chomp $line;
+	if ( ! defined $line ) {
+		print "ERROR: Invalid input (violate constraints - M x N).\n";
+		exit;
+	}
+	my @sizes = split /\s+/, $line;
+	if ( @sizes != 2 ) {
+		print "ERROR: Invalid input (violate constraints - M x N).\n";
+		exit;
+	}
+	for ( @sizes ) {
+		if ( ! defined $_ || !/^\d+$/ || $_ < 1 || $_ > 100 ) {
+			print "ERROR: Invalid input (violate constraints - M x N).\n";
+			exit;
+		}
+	}
+	
+	# height and width
+	( $height, $width ) = @sizes;
+	my ( $start_y, $start_x ) = ( -1, -1 );
+	my $container = '';
+	my $field = \$container;
+
+	for my $y ( 0 .. $height-1 ) {
+		my $line = <>;
+		chomp $line;
+		if ( ! defined $line || $line !~ /^[SG.#^<>v]{$width}$/ ) {
+			print "ERROR: Invalid input (violate constraints - def).\n";
+			exit;
+		}
+		$$field .= $line;
+
+		for my $x ( 0 .. length( $line ) - 1 ) {
+			my $testchar = substr( $line, $x, 1 );
+			if ( $testchar eq 'S' ) {
+				$start_y = $y;  $start_x = $x;
+			} elsif ( exists $turret_direction{ $testchar } ) {
+				push @turret_positions, { y => $y, x => $x };
+			}
+		}
+	}
+
+	if ( $start_x == -1 ) {
+		print "ERROR: Invalid input (violate constraints - no start point).\n";
+		exit;
+	}
+
+	my $steps = backtrack( $field, $start_x, $start_y );
+	undef $field;
+	undef $container;
+	$steps = 'impossible' unless defined $steps;
+
+	print "Case #". ( ++$counter ). ": $steps\n";
+}

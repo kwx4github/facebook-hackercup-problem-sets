@@ -1,0 +1,178 @@
+/*
+ * Author:  xioumu
+ * Created Time:  2015/1/10 1:45:54
+ * File Name: C.cpp
+ * solve: C.cpp
+ */
+#include<cstdio>
+#include<cstring>
+#include<cstdlib>
+#include<cmath>
+#include<algorithm>
+#include<string>
+#include<map>
+#include<set>
+#include<iostream>
+#include<vector>
+#include<queue>
+
+using namespace std;
+#define sz(v) ((int)(v).size())
+#define rep(i, n) for (int i = 0; i < (n); ++i)
+#define repf(i, a, b) for (int i = (a); i <= (b); ++i)
+#define repd(i, a, b) for (int i = (a); i >= (b); --i)
+#define clr(x) memset(x,0,sizeof(x))
+#define clrs( x , y ) memset(x,y,sizeof(x))
+#define out(x) printf(#x" %d\n", x)
+#define sqr(x) ((x) * (x))
+typedef long long lint;
+
+const int maxint = -1u>>2;
+const double eps = 1e-8;
+const int maxn = 100 + 10;
+const int maxm = maxn * maxn * 4;
+
+int sgn(const double &x) {  return (x > eps) - (x < -eps); }
+
+int n, m;
+int sx, sy, ex, ey;
+int bx[] = {1, -1, 0, 0};
+int by[] = {0, 0, 1, -1};
+char s[maxn][maxn];
+char ss[5][maxn][maxn];
+
+bool ok(int x, int y) {
+    return 0 <= x && x < n && 0 <= y && y < m;
+}
+
+void build(int w, char s[maxn][maxn], char ss[5][maxn][maxn]) {
+    memcpy(ss[w], s, sizeof(char) * maxn * maxn);    
+    rep (i, n) rep (j, m) {
+        if (s[i][j] == '<' || s[i][j] == '>' || s[i][j] == '^' || s[i][j] == 'v') {
+            int bbx = 0, bby = 0;
+            if (s[i][j] == '<')
+                bby = -1;
+            else if (s[i][j] == '>')
+                bby = 1;
+            else if (s[i][j] == '^')
+                bbx = -1;
+            else if (s[i][j] == 'v')
+                bbx = 1;
+            int nx = i, ny = j;
+            nx += bbx;
+            ny += bby;
+            while (ok(nx, ny)  && (ss[w][nx][ny] == '.' || ss[w][nx][ny] == '1')){
+                ss[w][nx][ny] = '1';
+                nx += bbx;
+                ny += bby;
+            }
+        }
+    }
+}
+
+void turn(char s[maxn][maxn]) {
+    rep (i, n) rep (j, m) {
+        if (s[i][j] == '<') s[i][j] = '^';
+        else if (s[i][j] == '^') s[i][j] = '>';
+        else if (s[i][j] == '>') s[i][j] = 'v';
+        else if (s[i][j] == 'v') s[i][j] = '<';
+    }
+}
+
+void init() {
+    scanf("%d%d\n", &n, &m);
+    rep (i, n) {
+        scanf("%s", s[i]);
+        rep (j, m) {
+            if (s[i][j] == 'S')  {
+                sx = i, sy = j;
+                s[i][j] = '.';
+            } 
+            if (s[i][j] == 'G') {
+                ex = i, ey = j;
+                s[i][j] = '.';
+            }
+        }
+    }
+    
+    rep (i, 4) {
+        build(i, s, ss); 
+        //rep (j, n)
+            //printf("%s\n", ss[i][j]);
+        turn(s);
+        //puts("");
+    }
+}
+
+int dis[maxm];
+int v[maxm];
+queue<int> que;
+
+int getId(int x, int y, int z) {
+    return x * m * 4 + y * 4 + z;
+}
+
+void getXY(int w, int &x, int &y, int &z) {
+    z = w % 4;
+    w /= 4;
+    y = w % m;
+    w /= m;
+    x = w;
+}
+
+int spfa() {
+    rep (i, n * m * 4) {
+        dis[i] = maxint;
+        v[i] = 0;
+    }
+    int beginId = getId(sx, sy, 0);
+    dis[beginId] = 0;
+    v[beginId] = 1;
+    que.push(beginId);
+    int ans = maxint;
+    while (!que.empty()) {
+        int now = que.front();
+        int x, y, z;
+        que.pop();
+        v[now] = 0;
+        getXY(now, x, y, z);
+        if (x == ex && y == ey) {
+            ans = min(dis[now], ans);
+            continue;
+        }
+        rep (i, 4) {
+            int nx, ny, nz;
+            nx = x + bx[i];
+            ny = y + by[i];
+            nz = (z + 1) % 4;
+            int nid = getId(nx, ny, nz);
+            if (ok(nx, ny) && ss[nz][nx][ny] == '.') {
+                if (dis[nid] > dis[now] + 1) {
+                    dis[nid] = dis[now] + 1;
+                    if (v[nid] == 0) {
+                        que.push(nid);
+                        v[nid] = 1;
+                    }
+                }
+            }
+        }
+    }
+    if (ans != maxint) return ans;
+    else return -1;
+}
+
+int main() {
+    freopen("C.out", "w", stdout);
+    int T, ca = 1;
+    scanf("%d", &T);
+    while (T--) {
+        init();
+        int ans = spfa();
+        printf("Case #%d: ", ca++);
+        if (ans != -1)
+            printf("%d\n", ans);
+        else 
+            printf("impossible\n");
+    }
+    return 0;
+}

@@ -1,0 +1,390 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+// #define DEBUG
+#ifdef DEBUG
+#include <stdlib.h>
+#endif
+#include <time.h>
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <queue>
+
+using namespace std;
+
+typedef vector<string> Maze;
+
+struct Direction
+{
+    int dx, dy;
+    
+    Direction(int dx = 0, int dy = -1) :
+        dx(dx),
+        dy(dy)
+    {}
+};
+
+struct Position
+{
+    int x, y;
+
+    Position(int x = 0, int y = 0) :
+        x(x),
+        y(y)
+    {}
+
+    bool operator == (const Position &position)
+    {
+        return x == position.x && y == position.y;
+    }
+};
+
+enum VertexState
+{
+    NOT_VISITED,
+    VISITED
+};
+
+struct Vertex
+{
+    Position position;
+    VertexState state;
+
+    Vertex(const Position &position = Position(), VertexState state = NOT_VISITED) :
+        position(position),
+        state(state)
+    {}
+};
+
+Direction getLaserDirection(char laser, int turn)
+{
+    static vector<char> laserRotation(4);
+    static vector<Direction> laserDirection(4);
+    static bool initialized = false;
+
+    if (!initialized)
+    {
+        laserRotation[0] = '^';
+        laserRotation[1] = '>';
+        laserRotation[2] = 'v';
+        laserRotation[3] = '<';
+
+        laserDirection[0] = Direction(0, -1);
+        laserDirection[1] = Direction(1, 0);
+        laserDirection[2] = Direction(0, 1);
+        laserDirection[3] = Direction(-1, 0);
+
+        initialized = true;
+    }
+
+    size_t phase;
+    for (phase = 0; phase < laserRotation.size(); phase++)
+        if (laser == laserRotation[phase])
+            break;
+
+    phase += turn;
+    phase %= laserRotation.size();
+
+    return laserDirection[phase];
+}
+
+bool isLaser(char object)
+{
+    return object == '<'
+        || object == '>'
+        || object == '^'
+        || object == 'v';
+}
+
+#ifdef DEBUG
+void printMaze(const Maze& maze)
+{
+    for (int i = 0; i < maze.size(); ++i)
+    {
+        for (int j = 0; j < maze[i].size(); ++j)
+            cout << maze[i][j];
+        cout << endl;
+    }
+}
+#endif
+
+class Graf
+{
+    vector<Vertex> vertexes;
+    vector<vector<int> > edges;
+
+    int maze_width, maze_height;
+    static const int INF = 1000000009;
+
+    int getVertexIndexByCoordinate(const Position &position, int turn)
+    {
+        return turn * maze_width * maze_height + position.y * maze_width + position.x;
+    }
+
+    bool insideMase(const Position& position)
+    {
+        return position.x >= 0 && position.x < maze_width
+            && position.y >= 0 && position.y < maze_height;
+    }
+
+    vector<Maze> getMazeVariants(const Maze& maze)
+    {
+        vector<Maze> maze_variants(4, maze);
+        for (size_t turn = 0; turn < maze_variants.size(); turn++)
+        {
+            for (size_t i = 0; i < maze.size(); i++)
+                for (size_t j = 0; j < maze[i].size(); j++)
+                    if (isLaser(maze[i][j]))
+                    {
+                        Direction laserDirection = getLaserDirection(maze[i][j], turn);
+                        for (int x = j, y = i; insideMase(Position(x, y)) && maze[y][x] != '#';
+                            x += laserDirection.dx, y += laserDirection.dy)
+                        {
+                            maze_variants[turn][y][x] = '#';
+                        }
+                    }
+        }
+        return maze_variants;
+    }
+
+    vector<Position> getAdjacentCells(const Position &position)
+    {
+        vector<Position> adjacent;
+        adjacent.push_back(Position(position.x - 1, position.y));
+        adjacent.push_back(Position(position.x + 1, position.y));
+        adjacent.push_back(Position(position.x, position.y - 1));
+        adjacent.push_back(Position(position.x, position.y + 1));
+
+        for (int i = 0; i < adjacent.size(); ++i)
+            if (!insideMase(adjacent[i]))
+            {
+                adjacent[i] = adjacent.back();
+                adjacent.resize(adjacent.size() - 1);
+                --i;
+            }
+        return adjacent;
+    }
+
+    struct VertexPathPair
+    {
+        int vertex, pathLength;
+        VertexPathPair(int vertex, int pathLength = INF) :
+            vertex(vertex),
+            pathLength(pathLength)
+        {}
+    };
+#ifdef DEBUG
+    void printEdges() const
+    {
+        for (int v = 0; v < vertexes.size(); v++)
+        {
+            cout << v << ":";
+            for (int t : edges[v])
+                cout << ' ' << t;
+            cout << endl;
+        }
+    }
+#endif
+public:
+    Graf(const Maze& maze) :
+        maze_height(maze.size()),
+        maze_width(maze[0].size())
+    {
+        for (size_t turn = 0; turn < 4; ++turn)
+            for (size_t i = 0; i < maze.size(); ++i)
+                for (size_t j = 0; j < maze[i].size(); ++j)
+                    vertexes.push_back(Vertex(Position(j, i)));
+
+        for (size_t i = 0; i < maze.size(); ++i)
+            for (size_t j = 0; j < maze[i].size(); ++j)
+                if (maze[i][j] == 'S')
+                {
+                    vertexes.push_back(Vertex(Position(j, i)));
+                    break;
+                }
+
+        edges.resize(vertexes.size());
+        vector<Maze> maze_variants = getMazeVariants(maze);
+
+#ifdef DEBUG
+        /*
+        for (int turn = 0; turn < maze_variants.size(); ++turn)
+        {
+            cout << turn << ":" << endl;
+            printMaze(maze_variants[turn]);
+            cout << endl;
+        }
+        */
+#endif
+
+        for (const Position &position : getAdjacentCells(vertexes.back().position))
+            if (maze_variants[1][position.y][position.x] != '#')
+                edges.back().push_back(getVertexIndexByCoordinate(position, 1));        
+
+        for (int turn = 0; turn < 4; ++turn)
+            for (int i = 0; i < maze.size(); i++)
+                for (int j = 0; j < maze[i].size(); j++)            
+                {                    
+                    if (maze_variants[turn][i][j] == '#')
+                        continue;
+
+                    int v = turn * maze_height * maze_width + i * maze_width + j;
+
+                    for (const Position &position : getAdjacentCells(vertexes[v].position))
+                        if (maze_variants[(turn + 1) % 4][position.y][position.x] != '#')
+                            edges[v].push_back(getVertexIndexByCoordinate(position, (turn + 1) % 4));
+                }
+#ifdef DEBUG
+        // printEdges();
+#endif
+    }
+
+    int calculateTheShortestPathLength(const Position &target)
+    {
+        queue<VertexPathPair> bfs;
+        bfs.push(VertexPathPair(vertexes.size() - 1, 0));        
+
+        while (bfs.size())
+        {
+            VertexPathPair path = bfs.front();
+            bfs.pop();
+            if (vertexes[path.vertex].state == VISITED)
+                continue;
+            vertexes[path.vertex].state = VISITED;
+
+            if (vertexes[path.vertex].position == target)
+                return path.pathLength;
+
+            for (int vertexIndex : edges[path.vertex])
+                bfs.push(VertexPathPair(vertexIndex, path.pathLength + 1));
+        }
+        return -1;
+    }
+};
+
+int solve(const Maze &maze)
+{
+    Graf graf(maze);
+    
+    for (int i = 0; i < maze.size(); ++i)
+        for (int j = 0; j < maze[i].size(); ++j)
+            if (maze[i][j] == 'G')
+                return graf.calculateTheShortestPathLength(Position(j, i));
+}
+
+vector<string> readMaze()
+{
+    int m, n;
+    cin >> m >> n;
+    Maze maze(m);
+
+    for (size_t i = 0; i < maze.size(); i++)
+    {        
+        cin >> maze[i];
+    }
+    return maze;
+}
+
+void test();
+
+int main(int argc, char* argv[])
+{
+#ifdef DEBUG
+    test();
+    return 0;
+#endif
+    
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    ios_base::sync_with_stdio(false);
+
+    double begin = clock();
+    int T;
+    cin >> T;
+    for (int t = 1; t <= T; t++)
+    {
+        Maze maze = readMaze();
+        int ans = solve(maze);
+        cout << "Case #" << t << ": ";
+        if (ans >= 0)
+        {
+            cout << ans;
+        }
+        else
+        {
+            cout << "impossible";
+        }
+        cout << endl;
+    }
+
+    cerr << "Total time is " << (clock() - begin) / CLOCKS_PER_SEC << "sec" << endl;
+
+	return 0;
+}
+
+#ifdef DEBUG
+
+long double realRand()
+{
+    return rand() / (long double)RAND_MAX;
+}
+
+Maze geenrateRandomInput(int n, int m, 
+    long double p_space = 0.5, 
+    long double p_wall = 0.25,
+    long double p_laser = 0.25)
+{
+    Maze maze(n, string(m, '.'));
+    string laser("<>^v");
+
+    for (int i = 0; i < maze.size(); i++)
+        for (int j = 0; j < maze[i].size(); j++)
+        {
+            long double r = realRand();
+            if (r < p_space)
+            {
+                maze[i][j] = '.';
+            }
+            else if (r < p_space + p_wall)
+            {
+                maze[i][j] = '#';
+            } 
+            else
+            {
+                maze[i][j] = laser[rand() % 4];
+            }
+        }
+
+    return maze;
+}
+
+void test()
+{
+    double dp = 0.1;
+    double worst_time = 0;
+    for (int n = 100; n > 0; n--)
+        for (int m = 100; m > 0; m--)
+        {
+            cout << "\rn = " << n << ", m = " << m << "    \b\b\b\b";
+            for (long double p_space = 0; p_space <= 1; p_space += dp)
+                for (long double p_wall = 0; p_wall <= 1; p_wall += dp)
+                {
+                    long double p_laser = 1 - p_space - p_wall;
+
+                    Maze input = geenrateRandomInput(n, m, p_space, p_wall, p_laser);
+
+                    double begin = clock();
+                    int ans = solve(input);
+                    begin = (clock() - begin) / CLOCKS_PER_SEC;
+                    if (begin > worst_time)
+                    {
+                        worst_time = begin;
+                        cout << endl << "Worst time is " << worst_time << "sec" << endl;
+                    }
+                }
+        }
+}
+
+#endif

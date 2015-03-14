@@ -1,0 +1,262 @@
+//
+//  main.cpp
+//  ComptetitiveProgramming
+//
+//  Created by Dulguun Batmunkh on 11/27/14.
+//  Copyright (c) 2014 Dulguun Batmunkh. All rights reserved.
+//
+
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <cmath>
+#include <set>
+#include <algorithm>
+#include <cstring>
+#include <queue>
+
+#define cin std::cin
+#define cout std::cout
+#define endl std::endl
+#define vector std::vector
+#define string std::string
+#define pair std::pair
+#define mp std::make_pair
+#define queue std::queue
+
+#define MAX_N 100
+#define MAX_M 100
+#define TYPE 4
+
+int T, N, M;
+char arr[MAX_N + 1][MAX_M + 1];
+vector < pair<int, int> > Lasers;
+bool possible[MAX_N + 1][MAX_M + 1][TYPE + 1];
+int arrStep[MAX_N + 1][MAX_M +1][TYPE + 1];
+
+char changeDirection(int i, int j) {
+    switch (arr[i][j]) {
+        case '^':
+            return '>';
+        case '>':
+            return 'v';
+        case 'v':
+            return '<';
+        case '<':
+            return '^';
+        default:
+            return 'e';
+    }
+}
+
+void calculatePossible(int p_type) {
+    int l;
+    int posI, posJ;
+    
+    for (l = 0; l < Lasers.size(); l++) {
+        posI = Lasers[l].first;
+        posJ = Lasers[l].second;
+        switch (arr[posI][posJ]) {
+            case '^':
+                posI--;
+                while (posI >= 0) {
+                    if (arr[posI][posJ] == '#' || arr[posI][posJ] == '^' ||
+                        arr[posI][posJ] == '>' || arr[posI][posJ] == 'v' ||
+                        arr[posI][posJ] == '<') {
+                        break;
+                    }
+                    possible[posI][posJ][p_type] = 0;
+                    posI--;
+                }
+                break;
+            case '>':
+                posJ++;
+                while (posJ < M) {
+                    if (arr[posI][posJ] == '#' || arr[posI][posJ] == '^' ||
+                        arr[posI][posJ] == '>' || arr[posI][posJ] == 'v' ||
+                        arr[posI][posJ] == '<') {
+                        break;
+                    }
+                    possible[posI][posJ][p_type] = 0;
+                    posJ++;
+                }
+                break;
+            case 'v':
+                posI++;
+                while (posI < N) {
+                    if (arr[posI][posJ] == '#' || arr[posI][posJ] == '^' ||
+                        arr[posI][posJ] == '>' || arr[posI][posJ] == 'v' ||
+                        arr[posI][posJ] == '<') {
+                        break;
+                    }
+                    possible[posI][posJ][p_type] = 0;
+                    posI++;
+                }
+                break;
+            case '<':
+                posJ--;
+                while (posJ >= 0) {
+                    if (arr[posI][posJ] == '#' || arr[posI][posJ] == '^' ||
+                        arr[posI][posJ] == '>' || arr[posI][posJ] == 'v' ||
+                        arr[posI][posJ] == '<') {
+                        break;
+                    }
+                    possible[posI][posJ][p_type] = 0;
+                    posJ--;
+                }
+                break;
+                
+            default:
+                break;
+        }
+    }
+}
+
+int main() {
+    freopen("laser_maze.txt", "r", stdin);
+    freopen("answer.txt", "w", stdout);
+    cin >> T;
+    
+    int t_case = 1;
+    int k, i, j, l;
+    int si, sj, ei, ej;
+    
+    int t_step, t_i, t_j, ans;
+    bool isAns;
+    
+    while (T--) {
+        Lasers.clear();
+        
+        // Reading inputs
+        cin >> N >> M;
+        getchar();
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < M; j++) {
+                scanf("%c", &arr[i][j]);
+                if (arr[i][j] == '^' || arr[i][j] == '>' || arr[i][j] == 'v' || arr[i][j] == '<') {
+                    Lasers.push_back(mp(i, j));
+                }
+                if (arr[i][j] == 'S') {
+                    si = i; sj = j;
+                    arr[i][j] = '.';
+                }
+                if (arr[i][j] == 'G') {
+                    ei = i; ej = j;
+                    arr[i][j] = '.';
+                }
+            }
+            getchar();
+        }
+        
+        // Test
+        /*for (i = 0; i < N; i++) {
+            for (j = 0; j < M; j++) {
+                printf("%c", arr[i][j]);
+            }
+            printf("\n");
+        }*/
+        memset(possible, 1, sizeof(possible));
+        for (k = 0; k < TYPE; k++) {
+            if (k != 0) {
+                // Changing Lasers
+                for (l = 0; l < Lasers.size(); l++) {
+                    arr[Lasers[l].first][Lasers[l].second] =
+                        changeDirection(Lasers[l].first, Lasers[l].second);
+                }
+            }
+            
+            calculatePossible(k);
+        }
+        
+        // Test
+        /*for (k = 0; k < TYPE; k++) {
+            for (i = 0; i < N; i++) {
+                for (j = 0; j < M; j++) {
+                    printf("%d", possible[i][j][k]);
+                }
+                printf("\n");
+            }
+            printf("*********\n");
+        }*/
+        
+        queue <int> numStep;
+        queue < pair<int, int> > qPos;
+        
+        numStep.push(0);
+        qPos.push(mp(si, sj));
+        
+        isAns = false;
+        memset(arrStep, -1, sizeof(arrStep));
+        while (!numStep.empty()) {
+            t_step = numStep.front();
+            t_i = qPos.front().first;
+            t_j = qPos.front().second;
+            
+            numStep.pop();
+            qPos.pop();
+            
+            if (t_i == ei && t_j == ej) {
+                ans = t_step;
+                isAns = true;
+                break;
+            }
+            
+            t_step++;
+            // up
+            if (((t_i - 1) >= 0) && arr[t_i - 1][t_j] == '.') {
+                if (possible[t_i - 1][t_j][t_step % TYPE]){
+                    if (arrStep[t_i - 1][t_j][t_step % TYPE] == -1 ||
+                        arrStep[t_i - 1][t_j][t_step % TYPE] > t_step) {
+                        arrStep[t_i - 1][t_j][t_step % TYPE] = t_step;
+                        numStep.push(t_step);
+                        qPos.push(mp(t_i - 1, t_j));
+                    }
+                }
+            }
+            // down
+            if (((t_i + 1) < N) && arr[t_i + 1][t_j] == '.') {
+                if (possible[t_i + 1][t_j][t_step % TYPE]){
+                    if (arrStep[t_i + 1][t_j][t_step % TYPE] == -1 ||
+                        arrStep[t_i + 1][t_j][t_step % TYPE] > t_step) {
+                        arrStep[t_i + 1][t_j][t_step % TYPE] = t_step;
+                        numStep.push(t_step);
+                        qPos.push(mp(t_i + 1, t_j));
+                    }
+                }
+            }
+            // left
+            if (((t_j - 1) >= 0) && arr[t_i][t_j - 1] == '.') {
+                if (possible[t_i][t_j - 1][t_step % TYPE]){
+                    if (arrStep[t_i][t_j - 1][t_step % TYPE] == -1 ||
+                        arrStep[t_i][t_j - 1][t_step % TYPE] > t_step) {
+                        arrStep[t_i][t_j - 1][t_step % TYPE] = t_step;
+                        numStep.push(t_step);
+                        qPos.push(mp(t_i, t_j - 1));
+                        //printf("inserted left\n");
+                    }
+                }
+            }
+            // up
+            if (((t_j + 1) < M) && arr[t_i][t_j + 1] == '.') {
+                if (possible[t_i][t_j + 1][t_step % TYPE]){
+                    if (arrStep[t_i][t_j + 1][t_step % TYPE] == -1 ||
+                        arrStep[t_i][t_j + 1][t_step % TYPE] > t_step) {
+                        arrStep[t_i][t_j + 1][t_step % TYPE] = t_step;
+                        numStep.push(t_step);
+                        qPos.push(mp(t_i, t_j + 1));
+                        //printf("inserted right\n");
+                    }
+                }
+            }
+        }
+        
+        printf("Case #%d: ",t_case);
+        if (isAns == true) {
+            printf("%d\n", ans);
+        }
+        else printf("impossible\n");
+        t_case++;
+    }
+    //for(;;);
+    return 0;
+}

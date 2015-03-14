@@ -1,0 +1,181 @@
+import static java.lang.Integer.parseInt;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.StringTokenizer;
+
+
+public class LaserMaze {
+
+	static int MB = 1 << 20;
+	static BufferedReader br = new BufferedReader( new InputStreamReader(System.in, StandardCharsets.US_ASCII), 10*MB);
+	static StringTokenizer st;
+	
+	static void NL() throws Exception {
+		st = new StringTokenizer(br.readLine());
+	}
+	
+	static String NT() {
+		return st.nextToken();
+	}
+
+	public static void main(String[] args) throws Exception {
+		NL();
+		int T = parseInt(NT());
+		for (int ii = 1; ii <= T; ii++) {
+			NL();
+			int R, C;
+			R = parseInt(NT());
+			C = parseInt(NT());
+			char[][] b = new char[R][]; // board
+			for (int i = 0; i < R; i++) {
+				b[i] = br.readLine().toCharArray();
+			}
+			int res = solve(R, C, b);
+			System.out.printf("Case #%d: %s%n", ii, res == -1 ? "impossible" : Integer.toString(res));
+		}
+	}
+	
+	static int[] dr = { -1, 1,  0, 0 };
+	static int[] dc = {  0, 0, -1, 1};
+
+	static boolean av[][][] = new boolean[4][][];
+
+	public static int solve(int R, int C, char[][] b) {
+		for (int i = 0; i < 4; i++) {
+			av[i] = new boolean[R][C];
+			for (int j = 0; j < b.length; j++) {
+				Arrays.fill(av[i][j], true);
+			}
+		}
+		int gr = 0, gc = 0; // goal
+		int sr = 0, sc = 0; // start
+		for (int ri = 0; ri < R; ri++) {
+			for (int ci = 0; ci < C; ci++) {
+				if (b[ri][ci] == 'S' ) {
+					sr = ri;
+					sc = ci;
+					b[ri][ci] = '.';
+				}
+				if (b[ri][ci] == 'G') {
+					gr = ri;
+					gc = ci;
+					b[ri][ci] = '.';
+				}
+			}
+		}
+		LinkedList<State> q = new LinkedList<>();
+		add(q, R, C, 0, sr, sc, 0, b, false);
+		while ( q.isEmpty() == false ) {
+			State act = q.poll();
+			if (act.r == gr && act.c == gc) {
+				return act.w;
+			}
+			for (int i = 0; i < dr.length; i++) {
+				int nr = act.r + dr[i];
+				int nc = act.c + dc[i];
+				add(q, R, C, act.m+1, nr, nc, act.w + 1, b, true);
+			}
+		}
+		return -1;
+	}
+	
+	private static void add(LinkedList<State> q, int R, int C, int m, int r, int c, int w, char[][] b, boolean chck) {
+		m = m%4;
+		if (!isBetween(r, 0, R) || !isBetween(c, 0, C) || av[m][r][c] == false) {
+			return; // do not add
+		}
+		if (b[r][c] == '.' && !inLaserPath(R, C, m, r, c, b, chck)) {
+			q.add(new State(m, r, c, w));
+			av[m][r][c] = false;
+		}
+	}
+
+	private static boolean inLaserPath(int R, int C, int m, int r, int c, char[][] b, boolean chck) {
+		if (chck == false) return false;
+		for (int ri = r + 1; ri < R; ri++) { // down
+			if (b[ri][c] != '.') {
+				if (convert(b[ri][c], m) == '^') {
+					return true;
+				} else {
+					break;
+				}
+			}
+		}
+		for (int ri = r - 1; ri >= 0; --ri) { // up
+			if (b[ri][c] != '.') {
+				if (convert(b[ri][c], m) == 'v') {
+					return true;
+				} else {
+					break;
+				}
+			}
+		}
+		
+		for (int ci = c + 1; ci < C; ci++) { // right
+			if (b[r][ci] != '.') {
+				if (convert(b[r][ci], m) == '<') {
+					return true;
+				} else {
+					break;
+				}
+			}
+		}
+		for (int ci = c - 1; ci >= 0; --ci) { // left
+			if (b[r][ci] != '.') {
+				if (convert(b[r][ci], m) == '>') {
+					return true;
+				} else {
+					break;
+				}
+			}
+		}
+		
+		return false;
+	}
+
+	static char[] moves = { '>', 'v', '<', '^' };
+
+	private static char convert(char tc, int m) { // tc - To Convert
+		if (tc == '#') return tc; 
+		int oi = originalIndex(tc);
+		int ni = (oi + m) % 4;
+		return moves[ni];
+	}
+
+	private static int originalIndex(char c) {
+		switch (c) {
+		case '>':
+			return 0;
+		case 'v':
+			return 1;
+		case '<':
+			return 2;
+		case '^':
+			return 3;
+		}
+		throw new IllegalArgumentException();
+	}
+
+	private static boolean isBetween(int x, int fi, int te) {
+		return fi <= x && x < te;
+	}
+
+	static class State {
+		
+		int m, r, c, w;
+
+		public State(int m, int r, int c, int w) {
+			this.m = m;
+			this.r = r;
+			this.c = c;
+			this.w = w;
+		}
+		
+		
+	}
+
+}

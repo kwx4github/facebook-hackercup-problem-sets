@@ -1,0 +1,179 @@
+#include <algorithm>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <set>
+#include <map>
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
+using namespace std;
+
+typedef vector<int> VI;
+typedef vector<VI> VVI;
+typedef vector<string> VS;
+typedef pair<int, int> PII;
+#define FOR(i, f, t) for (int i = (f); i < (t); i++)
+#define REP(i, n) FOR(i,0,(n))
+#define SZ(v) ((int)(v).size())
+#define ALL(v) (v).begin(), (v).end()
+#define X first
+#define Y second
+#define pb push_back
+
+// BEGIN CUT HERE
+template<class T, class V>
+ostream& operator<<(ostream &out, const pair<T, V> &p) {
+    out << '(' << p.X << ',' << p.Y << ')';
+    return out;
+}
+
+template<class T>
+ostream& operator<<(ostream &out, const vector<T> &v) {
+    REP(i,SZ(v)) {
+        out << v[i] << ' ';
+    }
+    return out;
+}
+string getName(const char *&argument) {
+    const char *from = argument;
+    int d = 0;
+    while ((*argument != 0) && !(*argument == ',' && d == 0)) {
+        if (*argument == '(' || *argument == '[' || *argument == '<') {
+            d++;
+        }
+        if (*argument == ')' || *argument == ']' || *argument == '>') {
+            d--;
+        }
+        argument++;
+    }
+    string res(from, argument-from);
+    argument++;
+    return res;
+}
+void print(const char *arguments)
+{
+    cout << endl;
+}
+template<typename T, typename... Args>
+T print(const char *arguments, T t, Args... args)
+{
+    string name = getName(arguments);
+    cout << name << '=' << t << ' ';
+    print(arguments, args...);
+    return t;
+}
+#define SP(...) print(#__VA_ARGS__,__VA_ARGS__)
+// END CUT HERE
+
+string dirs = "^<v>";
+PII getDir(char ch, int move) {
+    int it = (int)dirs.find(ch);
+    if (it != -1) {
+        it = (it+move)%SZ(dirs);
+        ch = dirs[it];
+        if (ch == '^') {
+            return PII(-1, 0);
+        }
+        if (ch == '<') {
+            return PII(0, -1);
+        }
+        if (ch == 'v') {
+            return PII(1, 0);
+        }
+        if (ch == '>') {
+            return PII(0, 1);
+        }
+    }
+    return PII(0, 0);
+}
+string walls = "#"+dirs;
+bool isWall(char ch) {
+    return walls.find(ch) != -1;
+}
+bool inside(PII &p, int n, int m) {
+    return 0 <= p.X && p.X < n && 0 <= p.Y && p.Y < m;
+}
+typedef pair<int, PII> State;
+typedef vector<VVI> VVVI;
+const int INF = 1000000000;
+int main(int argc, char *argv[]) {
+    ifstream in("/Users/roman/Documents/topcoder/facebook/c.in");
+    ofstream out("/Users/roman/Documents/topcoder/facebook/c.out");
+    int t;
+    in >> t;
+    REP(caseId,t) {
+        int n, m;
+        in >> n >> m;
+        VS M(n);
+        REP(i, n) {
+            in >> M[i];
+        }
+        VVI W(n, VI(m, 0));
+        REP(move, 4) {
+            REP(i,n) REP(j,m) {
+                if (isWall(M[i][j])) {
+                    W[i][j] |= 1 << move;
+                }
+                PII dir = getDir(M[i][j], move);
+                if (dir != PII(0,0)) {
+                    PII point = PII(i, j);
+                    while (true) {
+                        point.X += dir.X;
+                        point.Y += dir.Y;
+                        if (!inside(point, n, m) || isWall(M[point.X][point.Y])) {
+                            break;
+                        }
+
+                        W[point.X][point.Y] |= 1 << move;
+                    }
+                }
+            }
+        }
+        PII from;
+        REP(i,n) REP(j,m) {
+            if (M[i][j] == 'S') {
+                from = PII(i, j);
+            }
+        }
+        priority_queue<State> queue;
+        queue.push(State(0, from));
+        VVVI mins(4, VVI(n, VI(m, INF)));
+        mins[0][from.X][from.Y] = 0;
+        bool found = false;
+        while (queue.size()) {
+            State ff = queue.top();
+            queue.pop();
+            if (mins[abs(ff.X)%4][ff.Y.X][ff.Y.Y] == abs(ff.X)) {
+                if (M[ff.Y.X][ff.Y.Y] == 'G') {
+                    out << "Case #" << caseId+1 << ": " << abs(ff.X) << endl;
+                    found = true;
+                    break;
+                }
+                
+                REP(d, SZ(dirs)) {
+                    PII point = ff.Y;
+                    PII dir = getDir(dirs[d], 0);
+                    point.X += dir.X;
+                    point.Y += dir.Y;
+                    if (inside(point, n, m) && (W[point.X][point.Y]&(1<<(abs(ff.X-1)%4))) == 0) {
+                        State newState(ff.X-1, point);
+                        if (mins[abs(newState.X)%4][newState.Y.X][newState.Y.Y] > abs(newState.X)) {
+                            mins[abs(newState.X)%4][newState.Y.X][newState.Y.Y] = abs(newState.X);
+                            queue.push(newState);
+                        }
+                    }
+                }
+            }
+        }
+        if (!found) {
+            out << "Case #" << caseId+1 << ": " << "impossible" << endl;
+        }
+    }
+    out.close();
+}
+// END CUT HERE

@@ -1,0 +1,134 @@
+//
+//  AppDelegate.m
+//  HackerCup2015ObjC
+//
+//  Created by James Webb on 1/10/15.
+//  Copyright (c) 2015 James Webb. All rights reserved.
+//
+
+#import "AppDelegate.h"
+
+@interface NSString (jw)
+
+-(int)digitAtIndex:(NSUInteger)index;
+-(NSString *)stringBySwappingValuesAtIndices:(NSUInteger)index1 and:(NSUInteger)index2;
+
+@end
+
+@implementation NSString (jw)
+
+-(int)digitAtIndex:(NSUInteger)index
+{
+    return [self substringWithRange:NSMakeRange(index, 1)].intValue;
+}
+
+-(NSString *)stringBySwappingValuesAtIndices:(NSUInteger)index1 and:(NSUInteger)index2
+{
+    NSRange range1 = NSMakeRange(index1, 1);
+    NSRange range2 = NSMakeRange(index2, 1);
+    
+    NSString *digit1 = [self substringWithRange:range1];
+    NSString *digit2 = [self substringWithRange:range2];
+    
+    NSString *result = [self stringByReplacingCharactersInRange:range1 withString:digit2];
+    result = [result stringByReplacingCharactersInRange:range2 withString:digit1];
+    
+    return result;
+}
+
+@end
+
+@interface AppDelegate ()
+
+@end
+
+@implementation AppDelegate
+
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    NSArray *lines = [[NSString stringWithContentsOfFile:@"/Users/james/Downloads/cooking_the_books.txt"  encoding:NSUTF8StringEncoding error:nil] componentsSeparatedByString:@"\n"];
+    
+    int count = [lines[0] intValue];
+    
+    for (NSUInteger i=1; i<=count; i++) {
+        printf("%s\n", [self handleCase:lines[i] numbered:i].UTF8String);
+    }
+
+    return YES;
+}
+
+-(NSString *)handleCase:(NSString *)line numbered:(NSUInteger)caseIndex
+{
+    int highestValueDestinationForDigit[10];
+    int highestValueOriginForDigit[10];
+    
+    int lowestValueDestinationForDigit[10];
+    int lowestValueOriginForDigit[10];
+    
+    BOOL foundDigit[10];
+    
+    int lineMaxIndex = (int)line.length - 1;
+    
+    for (int i=0; i<10; i++) {
+        highestValueOriginForDigit[i] = 0;
+        highestValueDestinationForDigit[i] = lineMaxIndex;
+        
+        lowestValueOriginForDigit[i] = INT_MAX;
+        lowestValueDestinationForDigit[i] = lineMaxIndex;
+        
+        foundDigit[i] = NO;
+    }
+    
+    for (int i=0; i<line.length; i++) {
+        int digit = [line digitAtIndex:i];
+        
+        foundDigit[digit] = YES;
+        
+        // To maximize the number, always take high values from the rightmost place you find them
+        highestValueOriginForDigit[digit] = i;
+        
+        // Consider all digits greater than the current digit. To maximize the result, their best destination is as far left as possible.
+        for (int j=digit + 1; j<10; j++) {
+            if (highestValueDestinationForDigit[j] > i) {
+                highestValueDestinationForDigit[j] = i;
+            }
+        }
+        
+        lowestValueOriginForDigit[digit] = i;
+        
+        // Consider all digits less than the current digit. To minimize the result, we want these low values as far left as possible.
+        for (int j=0; j<digit; j++) {
+            if (lowestValueDestinationForDigit[j] > i && (j || i)) {
+                lowestValueDestinationForDigit[j] = i;
+            }
+        }
+    }
+    
+    NSUInteger largest = 0;
+    NSUInteger smallest = line.integerValue;
+    
+    for (int i=0; i<10; i++) {
+        if (foundDigit[i]) {
+            NSUInteger testNum = [line stringBySwappingValuesAtIndices:highestValueDestinationForDigit[i] and:highestValueOriginForDigit[i]].integerValue;
+            
+            if (testNum > largest) {
+                largest = testNum;
+            }
+            
+            NSString *testString = [line stringBySwappingValuesAtIndices:lowestValueDestinationForDigit[i] and:lowestValueOriginForDigit[i]];
+            
+            if (![testString hasPrefix:@"0"]) {
+                testNum = testString.integerValue;
+                
+                if (testNum < smallest) {
+                    smallest = testNum;
+                }
+            }
+        }
+    }
+    
+    return [NSString stringWithFormat:@"Case #%lu: %lu %lu", caseIndex, smallest, largest];
+}
+
+@end

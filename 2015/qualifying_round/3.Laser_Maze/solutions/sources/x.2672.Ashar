@@ -1,0 +1,124 @@
+#include <bits/stdc++.h>
+
+#define REP(i,n) for (int i = 0; i < n; i++)
+
+using namespace std;
+
+const int MAX = 105;
+const string LASERS = ">v<^";
+const string OBSTACLES = "#>v<^";
+
+int T;
+int M, N;
+
+char grid[MAX][MAX];
+bool forbidden[MAX][MAX][4];
+
+int dist[MAX][MAX][4];
+
+int laser_type[256];
+bool is_obstacle[256];
+
+int dx[] = {0, 1, 0, -1};
+int dy[] = {1, 0, -1, 0};
+
+void init()
+{
+	memset(laser_type, -1, sizeof laser_type);
+
+	for (int i = 0; LASERS[i]; i++)
+		laser_type[LASERS[i]] = i;
+
+	for (char c : OBSTACLES)
+		is_obstacle[c] = true;
+}
+
+void generate_forbidden_cells()
+{
+	memset(is_obstacle, false, sizeof is_obstacle);
+	memset(forbidden, false, sizeof forbidden);
+	
+	REP(i, M) REP(j, N)
+	{
+		if (is_obstacle[grid[i][j]])
+			REP(mod, 4)
+				forbidden[i][j][mod] = true;
+
+		int type = laser_type[grid[i][j]];
+
+		if (type == -1)
+			continue;
+
+		REP(mod, 4) for (int step = 1;; step++)
+		{
+			int x = i + step * dx[(type + mod) % 4];
+			int y = j + step * dy[(type + mod) % 4];
+
+			if (x < 0 || x >= M || y < 0 || y >= N || is_obstacle[grid[x][y]])
+				break;
+
+			forbidden[x][y][mod] = true;
+		}
+	}	
+}
+
+int solve()
+{
+	memset(dist, -1, sizeof dist);
+
+	queue<tuple<int, int, int>> q;
+
+	REP(i, M) REP(j, N) if (grid[i][j] == 'S')
+	{
+		dist[i][j][0] = 0;
+		q.push(make_tuple(i, j, 0));
+	}
+
+	while (!q.empty())
+	{
+		int x, y, mod;
+		tie(x, y, mod) = q.front();
+		q.pop();
+
+		if (grid[x][y] == 'G')
+			return dist[x][y][mod];
+
+		REP(dir, 4)
+		{
+			int nx = x + dx[dir];
+			int ny = y + dy[dir];
+			int nmod = (mod + 1) % 4;
+
+			if (nx < 0 || nx >= M || ny < 0 || ny >= N || forbidden[nx][ny][nmod] || dist[nx][ny][nmod] != -1)
+				continue;
+
+			dist[nx][ny][nmod] = dist[x][y][mod] + 1;
+			q.push(make_tuple(nx, ny, nmod));
+		}
+	}
+
+	return -1;
+}
+
+int main()
+{
+	init();
+
+	scanf("%d", &T);
+	for (int tc = 1; tc <= T; tc++)
+	{
+		scanf("%d %d", &M, &N);
+		for (int i = 0; i < M; i++)
+			scanf("%s", grid[i]);
+
+		generate_forbidden_cells();
+
+		int ans = solve();
+
+		printf("Case #%d: ", tc);
+		if (ans == -1)
+			puts("impossible");
+		else
+			printf("%d\n", ans);
+	}
+}

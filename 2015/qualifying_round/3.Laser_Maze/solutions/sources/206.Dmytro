@@ -1,0 +1,147 @@
+#include <iostream>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <queue>
+#include <set>
+#include <map>
+#include <bitset>
+#include <cmath>
+#include <ctime>
+#pragma comment (linker, "/STACK:256000000")
+
+using namespace std;
+
+const int maxN = 110;
+const int inf = 1000000000;
+int n, m;
+string s[maxN];
+int sx, sy, fx, fy;
+
+int dx[] = {-1, 0, 1, 0};
+int dy[] = { 0, 1, 0,-1};
+
+int d[4][maxN][maxN];
+
+bool killed[4][maxN][maxN];
+
+bool valid(int x, int y) {
+	return 0 <= x && x < n && 0 <= y && y < m && (s[x][y] == '.' || s[x][y] == 'S' || s[x][y] == 'G');
+}
+
+void precalc() {
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < n; ++j) {
+			for (int k = 0; k < m; ++k) {
+				d[i][j][k] = inf;
+				killed[i][j][k] = false;
+			}
+		}
+	}
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j) {
+			int dir = -1;
+			if (s[i][j] == '^') {
+				dir = 0;
+			}
+			if (s[i][j] == 'v') {
+				dir = 2;
+			}
+			if (s[i][j] == '<') {
+				dir = 3;
+			}
+			if (s[i][j] == '>') {
+				dir = 1;
+			}
+			if (dir == -1) {
+				continue;
+			}
+
+			for (int shift = 0; shift < 4; ++shift) {
+				int cdir = (dir + shift) % 4;
+				int k = 1;
+				while (true) {
+					int x = i + dx[cdir] * k;
+					int y = j + dy[cdir] * k;
+					if (!valid(x, y)) {
+						break;
+					}
+					killed[shift][x][y] = true;
+					++k;
+				}
+			}
+		}
+	}
+}
+
+struct State {
+	int shift;
+	int x, y;
+	State() {}
+	State(int shift, int x, int y) : shift(shift), x(x), y(y) {}
+};
+
+void solve(int test) {
+	cin >> n >> m;
+	for (int i = 0; i < n; ++i) {
+		cin >> s[i];
+		for (int j = 0; j < m; ++j) {
+			if (s[i][j] == 'S') {
+				sx = i;
+				sy = j;
+			}
+			if (s[i][j] == 'G') {
+				fx = i;
+				fy = j;
+			}
+		}
+	}
+	precalc();
+
+	queue < State > q;
+	q.push(State(0, sx, sy));
+	d[0][sx][sy] = 0;
+	while (!q.empty()) {
+		State current = q.front();
+		q.pop();
+
+		int x = current.x;
+		int y = current.y;
+		int shift = current.shift;
+
+		for (int i = 0; i < 4; ++i) {
+			if (valid(x + dx[i], y + dy[i]) && !killed[(shift + 1) % 4][x + dx[i]][y + dy[i]]) {
+				if (d[(shift + 1) % 4][x + dx[i]][y + dy[i]] == inf) {
+					d[(shift + 1) % 4][x + dx[i]][y + dy[i]] = d[shift][x][y] + 1;
+					q.push(State((shift + 1) % 4, x + dx[i], y + dy[i]));
+				}
+			}
+		}
+	}
+
+	int res = inf;
+	for (int i = 0; i < 4; ++i) {
+		res = min(res, d[i][fx][fy]);
+	}
+
+	if (res == inf) {
+		printf("Case #%d: impossible\n", test);
+	} else {
+		printf("Case #%d: %d\n", test, res);
+	}
+}
+
+int main() {
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int t;
+	cin >> t;
+	for (int i = 1; i <= t; ++i) {
+		solve(i);
+	}
+
+	return 0;
+}

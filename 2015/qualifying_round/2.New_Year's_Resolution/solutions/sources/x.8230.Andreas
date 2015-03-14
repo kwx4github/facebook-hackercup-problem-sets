@@ -1,0 +1,171 @@
+fs = require('fs');
+
+var problemCallbacks = {
+	'cooking_the_books': cookingTheBooksHandler,
+	'new_years_resolution': newYearsResolutionHandler,
+	'laser_maze': function() {}
+}
+
+var name = process.argv[2]
+var problem = {
+	name: name,
+	callback: problemCallbacks[name],
+	testInput:  "files/" + name + "_example_input.txt",
+	testOutput: "files/" + name + "_example_output.txt",
+	realInput:  "files/" + name + ".txt",
+	realOutput: "files/" + name + "_output.txt",
+}
+
+var command = process.argv[3];
+
+switch (command) {
+	case 'test':
+		runProblem(problem, problem.testInput, null, null);
+		break;
+	case 'check':
+		runProblem(problem, problem.testInput, null, problem.testOutput);
+		break;
+	case 'run':
+	default:
+		runProblem(problem, problem.realInput, problem.realOutput, null);
+}
+
+function runProblem(problem, inputFile, outputFile, compareFile) {
+	fs.readFile(inputFile, 'utf8', function (err,rawData) {
+		if (err) { return console.log("Invalid input file", inputFile); }
+		
+		//console.log("------ INPUT ------");
+		//console.log(rawData);
+		
+		var rawDataParts = rawData.trim().split(/\n\r?/g);
+		output = problem.callback(rawDataParts);
+	
+		//console.log("\n------ OUTPUT ------");
+		console.log(output.join("\n"));
+		
+		if (!compareFile) return;
+		fs.readFile(compareFile, 'utf8', function (err,compareData) {
+			if (err) { return console.log("Invalid comparison file", inputFile); }
+			//var compareDataParts = compareData.trim().split(/\n\r?/g);
+			
+			console.log("\n------ EXPECTED ------");
+			console.log(compareData.trim("\n"));
+			
+			if (output.join("\n") == compareData.trim())
+			{
+				console.log("\nSUCCESS!!!");
+			}
+			else
+			{
+				console.log("\nfailure...");
+			}
+		});
+	});
+}
+
+// ------------------ Cooking the Books ---------------------
+
+function cookingTheBooksHandler(data) {
+	var dataLength = parseInt(data.shift());
+	if (data.length != dataLength) {
+		console.log("ERROR: The input said there were", dataLength, "problems.");
+		console.log("       Here there are", data.length);
+		return [];
+	}
+	
+	var output = [];
+	for (var i = 0; i < data.length; i++) {	
+		output.push("Case #" + (i+1) + ": " + cookingTheBooks(data[i]));
+	}
+	return output;
+}
+
+function cookingTheBooks(string)
+{
+	//if (string.length <= 2) return string + " " + string;
+	
+	var greatest = parseInt(string)
+	var smallest = parseInt(string)
+
+	// Bruteforce, bitches
+	var values = []
+	var strLen = string.length;
+	for (var i = 0; i < strLen - 1; i++) {
+		for (var j = i+1; j < strLen; j++) {
+			var num = string.substring(0, i) + string.substr(j, 1) + string.substring(i+1, j) + string.substr(i, 1) + string.substring(j+1);
+			num = parseInt(num);
+			if ((num < smallest) && (num.toString().length == strLen)) { smallest = num; }
+			if (num > greatest) { greatest = num; }
+		}
+	}
+	
+	return smallest.toString() + " " + greatest.toString();
+}
+
+// ------------------ New Year's Resolution ---------------------
+
+function newYearsResolutionHandler(data) {
+	var output = [];
+
+	var numTestCases = parseInt(data.shift());	
+	for (var t = 0; t < numTestCases; t++) {
+		var target = data.shift().split(" ");
+		var targetP = parseInt(target[0]);
+		var targetC = parseInt(target[1]);
+		var targetF = parseInt(target[2]);
+		
+		//console.log(t + "/" + numTestCases);
+		//console.log("\t", "GOAL:", targetP, targetC, targetF);
+	
+		var numFoods = parseInt(data.shift());
+		var foods = [];
+		for (var i = 0; i < numFoods; i++) {
+			var F = data.shift().split(" ");
+			var Fp = parseInt(F[0]);
+			var Fc = parseInt(F[1]);
+			var Ff = parseInt(F[2]);
+			foods.push({p:Fp, c:Fc, f:Ff});
+			//console.log(foods[i]);
+		}
+		
+		//solution = [];
+		var result = newYearsResolution(targetP, targetC, targetF, foods)
+		output.push("Case #" + (t+1) + ": " + (result?"yes":"no"));
+		//console.log("Case #" + (t+1) + ": " + (result?"yes":"no"));
+		//console.log(solution);
+	}
+	
+	if (data.length >= 1) {
+		console.log("WARNING: There is still data left that hasn't been parsed!");
+	}
+	
+	return output;
+}
+
+function newYearsResolution(targetP, targetC, targetF, foods) {
+	// I spit in the face of combinatorics majors. Bruteforce!!
+	return addFood(targetP, targetC, targetF, foods, 0);
+}
+
+function addFood(currentP, currentC, currentF, foods, index) {
+	if (index >= foods.length) return false;
+	
+	var food = foods[index];
+	if ( (food.p == currentP) && (food.c == currentC) && (food.f == currentF) ) {
+		//solution.push(food);
+		return true;
+	}
+	else if ( (food.p > currentP) || (food.c > currentC) || (food.f > currentF) ) {
+		// This is not strictly necessary, but will help "jump out" and save performance.
+		return addFood(currentP, currentC, currentF, foods, index+1);
+	}
+	else {
+		// This could branch out really far, really fast. :(
+		return addFood(currentP, currentC, currentF, foods, index+1) || addFood(currentP - food.p, currentC - food.c, currentF - food.f, foods, index+1)
+	}
+}
+
+
+
+
+

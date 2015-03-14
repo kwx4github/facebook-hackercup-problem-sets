@@ -1,0 +1,178 @@
+import java.io.*;
+import java.util.*;
+import java.awt.Point;
+
+class LaserMaze
+{
+	static final char EMPTY =	'.';
+	static final char WALL =		'#';
+	static final char START =	'S';
+	static final char END =		'G';
+	static final char LEFT_TURRET =		'<';
+	static final char RIGHT_TURRET =		'>';
+	static final char UP_TURRET =		'^';
+	static final char DOWN_TURRET =		'v';
+	
+	public static void main(String[] args) throws Exception
+	{
+		Scanner in = new Scanner(System.in);
+		int nData = in.nextInt();
+		
+		for (int asdf = 0; asdf < nData; asdf++)
+		{
+			int height = in.nextInt();
+			int width = in.nextInt();
+			in.nextLine();
+			
+			char[][] board = new char[height][width];
+			Point start = new Point(0, 0);
+			ArrayList<Turret> turrets = new ArrayList<Turret>();
+			
+			for (int i = 0; i < height; i++)
+			{
+				char[] line = in.nextLine().toCharArray();
+				
+				for (int j = 0; j < width; j++)
+				{
+					board[i][j] = line[j];
+					
+					switch (board[i][j])
+					{
+						case START:			start = new Point(i, j); break;
+						case LEFT_TURRET:	turrets.add(new Turret(i, j, 3)); break;
+						case RIGHT_TURRET:	turrets.add(new Turret(i, j, 1)); break;
+						case UP_TURRET:		turrets.add(new Turret(i, j, 0)); break;
+						case DOWN_TURRET:	turrets.add(new Turret(i, j, 2)); break;
+					}
+				}
+			}
+			
+			//-----------------------------------------------------------
+			//do the simulation
+			int[] cchange = {0, 1, 0, -1};
+			int[] rchange = {-1, 0, 1, 0};
+			
+			Path winner = null;
+			HashMap<Point, Path> allPaths;
+			PriorityQueue<Path> paths = new PriorityQueue<Path>();
+			paths.offer(new Path(start.x, start.y));
+			
+			for (int i = 0; (winner == null) && (paths.size() > 0); i++)
+			{
+				//step all the paths
+				allPaths = new HashMap<Point, Path>();
+				
+				while ((paths.size() > 0) && (paths.peek().dist == i))
+				{
+					Path path = paths.poll();
+					for (int j = 0; j < 4; j++)
+					{
+						int r = path.r + rchange[j];
+						int c = path.c + cchange[j];
+						Point loc = new Point(r, c);
+						
+						//make sure it yields a valid path not yet taken
+						if (inBounds(r, c, height, width) && moveable(board, r, c))
+						{
+							Path newPath = new Path(r, c);
+							newPath.dist = path.dist + 1;
+							allPaths.put(loc, newPath);
+						}
+					}
+				}
+				
+				//fire the lasers
+				for (Turret turret : turrets)
+				{
+					turret.update();
+					Point p = new Point(turret.r + turret.dr(), turret.c + turret.dc());
+					
+					while (inBounds(p.x, p.y, height, width) && moveable(board, p.x, p.y))
+					{
+						//kill paths in the way
+						allPaths.remove(p);
+						
+						//increment the turret laser
+						p.x += turret.dr();
+						p.y += turret.dc();
+					}
+				}
+				
+				//add the new paths
+				for (Point p : allPaths.keySet())
+				{
+					Path path = allPaths.get(p);
+					
+					if (board[path.r][path.c] == END)
+					{
+						winner = path;
+						break;
+					}
+					
+					paths.offer(path);
+				}
+			}
+			
+			System.out.println("Case #" + (asdf + 1) + ": " + ((winner != null) ? winner.dist : "impossible"));
+		}
+	}
+	
+	public static boolean inBounds(int r, int c, int h, int w)
+	{
+		return ((r >= 0) && (r < h) && (c >= 0) && (c < w));
+	}
+	
+	public static boolean moveable(char[][] board, int r, int c)
+	{
+		return (board[r][c] == EMPTY) || (board[r][c] == START) || (board[r][c] == END);
+	}
+}
+
+class Turret
+{
+	static final int[] cchange = {0, 1, 0, -1};
+	static final int[] rchange = {-1, 0, 1, 0};
+	int r, c;
+	int dir;
+	
+	public Turret(int r, int c, int dir)
+	{
+		this.r = r;
+		this.c = c;
+		this.dir = dir;
+	}
+	
+	public void update()
+	{
+		dir = (dir + 1) % 4;
+	}
+	
+	public int dr()
+	{
+		return rchange[dir];
+	}
+	
+	public int dc()
+	{
+		return cchange[dir];
+	}
+}
+
+class Path implements Comparable<Path>
+{
+	int r, c;
+	int dist;
+	
+	public Path(int r, int c)
+	{
+		this.r = r;
+		this.c = c;
+		dist = 0;
+	}
+	
+	public int compareTo(Path p)
+	{
+		return dist - p.dist;
+	}
+}
+

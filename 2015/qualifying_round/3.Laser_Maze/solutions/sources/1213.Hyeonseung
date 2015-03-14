@@ -1,0 +1,199 @@
+#include <iostream>
+#include <vector>
+#include <cstring>
+#include <queue>
+
+using namespace std;
+
+int maze[101][101];
+int cache[101][101][4];
+int visit[101][101][4];
+vector<vector<int> > adj;
+int maze_four[101][101][4];
+int row, col;
+
+void fillMaze (){
+	int temp_i;
+	int temp_j;
+
+	for (int i=0; i< row; i++){
+		for (int j=0; j< col ; j++){
+			maze_four[i][j][0] = maze[i][j];
+			maze_four[i][j][1] = maze[i][j];
+			maze_four[i][j][2] = maze[i][j];
+			maze_four[i][j][3] = maze[i][j];
+		}
+	}
+
+	for (int i= 0 ; i< row; i++){
+		for (int j=0 ; j< col ; j++){
+			
+		    if (maze[i][j] <= 3 && maze[i][j] >= 0 ){
+			temp_j = j+1;
+			while ( temp_j < col && maze[i][temp_j] >= 4  ){
+				maze_four[i][temp_j][(4-maze[i][j])%4] = -1;
+				temp_j++;
+			}
+
+			temp_j = j-1;
+			while ( temp_j >=0 && maze[i][temp_j] >= 4 ){
+
+				maze_four[i][temp_j][(6-maze[i][j])%4] = -1;
+				temp_j--;
+			}
+
+			temp_i = i+1;
+			while ( temp_i < row && maze[temp_i][j] >=4 ) {
+				maze_four[temp_i][j][(5-maze[i][j])%4] = -1;
+				temp_i++;
+			}
+
+			temp_i = i-1;
+			while (temp_i >=0 && maze[temp_i][j] >= 4){
+				maze_four[temp_i][j][(7-maze[i][j])%4] = -1;
+				temp_i --;
+			}
+
+	            }
+		}
+	}
+
+}
+
+void makeGraph(){
+
+	for(int k =0 ; k<4; k ++ ){
+		for (int i=0; i< row; i++){
+			for (int j=0; j< col; j++){
+				int v = k * 10000 + i*100 + j;
+			
+				int next_k = (k+1)%4;
+			
+			if ( i+1< row && maze_four[i+1][j][next_k] >= 4 )
+				adj[v].push_back( next_k*10000 + (i+1)*100 +j);
+
+			if ( i-1 >=0 && maze_four[i-1][j][next_k] >= 4)
+				adj[v].push_back( next_k*10000 + (i-1)*100 +j);
+	
+			if ( j+1<col&& maze_four[i][j+1][next_k] >= 4 )
+				adj[v].push_back( next_k*10000 + i*100 +j+1);
+			
+			if ( j-1>=0 && maze_four[i][j-1][next_k] >= 4 )
+				adj[v].push_back( next_k*10000 + i*100 +j-1);
+
+			}
+		}
+	}
+
+	return;
+}
+
+
+int dfs ( int row_ind , int col_ind , int target ){
+
+	int start = row_ind *100 +col_ind;
+
+	vector<int> distance(adj.size(), -1);
+		
+	queue<int> q;
+	distance[start] = 0;
+	q.push(start);
+	int found_dist = -1;
+	while(!q.empty()){
+
+		int here= q.front();
+		q.pop();
+	
+		bool found = false;	
+		for (int i=0; i< adj[here].size() ; i++){
+			int there = adj[here][i];
+			if( distance[there] == -1){
+				q.push(there);
+				distance[there] = distance[here]+1;
+
+				if ( there % 10000 == target ){
+					found_dist = distance[there];
+					found =true;
+				}
+					
+			}
+		}
+		if ( found)
+			break;
+	}	
+
+	return found_dist;
+	
+}
+int main(){
+
+	int cases;
+	cin >> cases;
+	for (int case_num = 1; case_num<= cases; case_num++ ){
+
+		memset( maze , -1 , sizeof(maze));
+		memset( cache, -1, sizeof(cache));
+		memset( maze_four , -1, sizeof(maze_four));
+		memset( visit , -1, sizeof(visit));
+		
+		adj = vector<vector<int> >(40000);
+		cin >> row;
+		cin >> col;
+
+		int source_row;
+		int source_col;
+		int dst_row;
+		int dst_col;
+		for (int i= 0 ; i< row; i++){
+			string str;
+			cin >> str;
+			for (int j=0; j < col ; j++ ){
+				
+				switch ( str[j] ){
+					case 'S':
+						source_row = i;
+						source_col = j;
+						maze[i][j] = 4; //open
+						break;
+					case '.':
+						maze[i][j] = 4;
+						break;
+					case 'G':
+						maze[i][j] = 5; // goal
+						dst_row = i;
+						dst_col = j;
+						break;
+					case '#':
+						maze[i][j] = -1;
+						break;
+					case '>':
+						maze[i][j] = 0;
+						break;
+					case 'v':
+						maze[i][j] = 1;
+						break;
+					case '<':
+						maze[i][j] = 2;
+						break;
+					case '^':
+						maze[i][j] = 3;
+						break;
+					default:
+						break;
+				}			
+			}			
+		}
+		
+		fillMaze();
+//		maze_four[source_row][source_col][0] = 4;
+		makeGraph();
+		int result = dfs( source_row, source_col , dst_row*100 + dst_col);
+
+		if( result == -1 )
+			cout << "Case #" << case_num << ": impossible"<< endl;
+		else
+			cout << "Case #" << case_num << ": "<< result << endl;
+		
+	}
+	return 0;
+}

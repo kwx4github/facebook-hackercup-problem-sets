@@ -1,0 +1,242 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+char orig_map[200][200], laser_map[200][200];
+int step_map[200][200];
+char buf[1000];
+int m, n;
+
+#define LIMIT 100000
+#define LEFT '<'
+#define RIGHT '>'
+#define UP '^'
+#define DOWN 'v'
+#define LASER 'L'
+#define WALL '#'
+
+char next_dir(char in) {
+	if(in == LEFT)
+		return UP;
+	else if(in == RIGHT)
+		return DOWN;
+	else if(in == UP)
+		return RIGHT;
+	else // DOWN
+		return LEFT;
+}
+
+int is_turret(char in) {
+	if(in == LEFT || in == RIGHT || in == UP || in == DOWN)
+		return 1;
+	else
+		return 0;
+}
+
+void fire(int r, int c, int type) {
+	int i;
+	if(type == LEFT) {
+		for(i = c-1; i >= 0; i--) {
+			if(laser_map[r][i] != WALL && !is_turret(laser_map[r][i]))
+				laser_map[r][i] = LASER;
+		}
+	}
+	if(type == RIGHT) {
+		for(i = c+1; i < n; i++) {
+			if(laser_map[r][i] != WALL && !is_turret(laser_map[r][i]))
+				laser_map[r][i] = LASER;
+		}
+	}
+	if(type == UP) {
+		for(i = r-1; i >= 0; i--) {
+			if(laser_map[i][c] != WALL && !is_turret(laser_map[i][c]))
+				laser_map[i][c] = LASER;
+		}
+	}
+	if(type == DOWN) {
+		for(i = r+1; i < m; i++) {
+			if(laser_map[i][c] != WALL && !is_turret(laser_map[i][c]))
+				laser_map[i][c] = LASER;
+		}
+	}
+}
+
+void turn_laser(char map[200][200]) {
+	int i, j;
+	for(i = 0; i < m; i++) {
+		for(j = 0; j < n; j++) {
+			if(is_turret(map[i][j])) {
+				map[i][j] = next_dir(map[i][j]);
+			}
+		}
+	}	
+}
+
+void set_laser(char map[200][200]) {
+	int i, j;
+	for(i = 0; i < m; i++) {
+		for(j = 0; j < n; j++) {
+			if(is_turret(map[i][j])) {
+				fire(i, j, map[i][j]);
+			}
+		}
+	}
+}
+
+void clear_laser(char map[200][200]) {
+	int i, j;
+	for(i = 0; i < m; i++) {
+		for(j = 0; j < n; j++) {
+			if(map[i][j] == LASER) {
+				map[i][j] = orig_map[i][j];
+			}
+		}
+	}
+}
+
+void copy_map(char dest[200][200], char src[200][200]) {
+	int i, j;
+	for(i = 0; i < m; i++)
+		for(j = 0; j < n; j++)
+			dest[i][j] = src[i][j];
+}
+
+void print_map() {
+	int i, j;
+	for(i = 0; i < m; i++) {
+		for(j = 0; j < n; j++) {
+			if(step_map[i][j] == 0)
+				printf("%c ", laser_map[i][j]);
+			else
+				printf("%d ", step_map[i][j]);
+		}
+		printf("\n");
+	}
+	printf("\n");
+}
+
+int within_bound(int r, int c) {
+	if(r < 0 || r >= m || c < 0 || c >= n)
+		return 0;
+	else
+		return 1;
+}
+
+int spread(int r, int c, int round) {
+	static int dir[4][2] = { {0,1}, {0,-1}, {1,0}, {-1,0} };
+	int i;
+	int new_r, new_c, change = 0;
+	for(i = 0; i < 4; i++) {
+		new_r = r+dir[i][0];
+		new_c = c+dir[i][1];
+		if(!within_bound(new_r, new_c))
+			continue;
+		if(laser_map[new_r][new_c] == LASER)
+			continue;
+		if(orig_map[new_r][new_c] == WALL)
+			continue;
+		if(is_turret(orig_map[new_r][new_c]))
+			continue;
+
+		step_map[new_r][new_c] = round;
+		change = 1;
+	}
+	return change;
+}
+
+int play(int round) {
+	int i, j;
+	int change = 0;
+	if(round == 1) {
+		for(i = 0; i < m; i++) {
+			for(j = 0; j < n; j++) {
+				if(orig_map[i][j] == 'S') {
+					change += spread(i, j, round);
+				}
+			}
+		}
+	}
+	else {
+		for(i = 0; i < m; i++) {
+			for(j = 0; j < n; j++) {
+				if(step_map[i][j] == round-1)
+					change += spread(i, j, round);
+			}
+		}
+	}
+
+	return (change > 0);
+}
+
+void find_cell(char target, int *r, int *c) {
+	int i, j;
+	for(i = 0; i < m; i++) {
+		for(j = 0; j < n; j++) {
+			if(orig_map[i][j] == target) {
+				*r = i;
+				*c = j;
+				return ;
+			}
+		}
+	}
+}
+
+int bfs() {
+	int round = 1;	
+	int start_row, start_column;
+	int goal_row, goal_column;
+
+	find_cell('S', &start_row, &start_column);
+	find_cell('G', &goal_row, &goal_column);
+	copy_map(laser_map, orig_map);
+	memset(step_map, 0, sizeof(step_map));
+
+	// set_laser(laser_map);
+	// if(laser_map[start_row][start_column] == LASER)
+	// 	return 0;
+
+	while(1) {
+		// printf("round = %d\n", round);
+		clear_laser(laser_map);
+		turn_laser(laser_map);
+		set_laser(laser_map);
+		if(play(round) == 0)
+			return 0;
+		// print_map();
+		if(step_map[goal_row][goal_column] != 0)
+			return round;
+		round++;
+		if(round >= LIMIT) {
+			// printf("Too many!\n");
+			return 0;
+		}
+		// sleep(1);
+	}
+
+	return 0;
+}
+
+void one_case(int t) {
+	int i, ans;
+	fgets(buf, 1000, stdin);
+	sscanf(buf, "%d%d", &m, &n);
+	for(i = 0; i < m; i++) {
+		fgets(orig_map[i], 200, stdin);
+	}
+
+	ans = bfs();
+	if(ans == 0)
+		printf("Case #%d: impossible\n", t+1);
+	else
+		printf("Case #%d: %d\n", t+1, ans);
+}
+
+int main(void) {
+	int i, t;
+	fgets(buf, 1000, stdin);
+	sscanf(buf, "%d", &t);
+	for(i = 0; i < t; i++)
+		one_case(i);
+	return 0;
+}

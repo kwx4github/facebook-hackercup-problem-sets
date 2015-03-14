@@ -1,0 +1,129 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+public class Main {
+
+    public static void main(String[] args) {
+        List<Integer> input = loadInput();
+        List<String> output = new ArrayList<>();
+
+        for (int i = 0; i < input.size(); i++) {
+            String number = "" + input.get(i);
+            output.add("Case #" + (i + 1) + ": " +
+                    Solver.MIN.solve(number) + " " + Solver.MAX.solve(number));
+        }
+
+        saveOutput(output);
+    }
+
+    private static List<Integer> loadInput() {
+        List<Integer> numbers = new ArrayList<>();
+
+        try {
+            Scanner in = new Scanner(new File("input.txt"));
+            int count = in.nextInt();
+            for (int i = 0; i < count; i++)
+                numbers.add(in.nextInt());
+            in.close();
+        } catch (FileNotFoundException ignored) {
+        }
+
+        return numbers;
+    }
+
+    private static void saveOutput(List<String> outputLines) {
+        try {
+            PrintWriter out = new PrintWriter(new File("output.txt"));
+            for (String line : outputLines)
+                out.println(line);
+            out.close();
+        } catch (FileNotFoundException ignored) {
+        }
+    }
+
+    private static abstract class Solver {
+
+        String solve(String number) {
+            return solve(number, indexOfBestNonZeroDigit(number));
+        }
+
+        String solve(String number, int indexOfBestDigit) {
+            if (indexOfBestDigit == -1)
+                return number;
+
+            if (number.charAt(indexOfBestDigit) != number.charAt(0))
+                return swapFirstDigitWith(number, indexOfBestDigit);
+
+            String rest = number.substring(1);
+            return number.charAt(0) + solve(rest, indexOfBestDigit(rest));
+        }
+
+        int indexOfBestNonZeroDigit(String number) {
+            return indexOfBestDigit(number, '0');
+        }
+
+        int indexOfBestDigit(String number) {
+            return indexOfBestDigit(number, '\0');
+        }
+
+        int indexOfBestDigit(String number, char rejected) {
+            if (number == null) return -1;
+
+            int index = -1;
+            char value = worst();
+
+            for (int i = number.length() - 1; i >= 0; i--) {
+                char c = number.charAt(i);
+                if (better(c, value) && c != rejected) {
+                    index = i;
+                    value = c;
+                }
+            }
+
+            return index;
+        }
+
+        String swapFirstDigitWith(String number, int index) {
+            if (number == null || index == 0 || number.length() < 2)
+                return number;
+
+            char[] digits = number.toCharArray();
+            digits[0] = digits[index];
+            digits[index] = number.charAt(0);
+
+            return new String(digits);
+        }
+
+        abstract char worst();
+
+        abstract boolean better(char c1, char c2);
+
+        static final Solver MIN = new Solver() {
+            @Override
+            char worst() {
+                return Character.MAX_VALUE;
+            }
+
+            @Override
+            boolean better(char c1, char c2) {
+                return c1 < c2;
+            }
+        };
+
+        static final Solver MAX = new Solver() {
+            @Override
+            char worst() {
+                return Character.MIN_VALUE;
+            }
+
+            @Override
+            boolean better(char c1, char c2) {
+                return c1 > c2;
+            }
+        };
+    }
+}

@@ -1,0 +1,102 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <queue>
+using namespace std;
+
+//Each state described by three numbers: i (row), j (column), t(timestamp mod 4).
+//For convenience, i and j begin at 1; index 0 would be off-board
+bool toast[102][102][4]; //Tells if this state is impossible to move to (wall or hit by laser)
+int dist[102][102][4]; //Min time to get here, or -1
+char grid[102][102];
+int goalI, goalJ;
+
+struct state {
+	int i,j,t;
+};
+
+int main() {
+	int T; cin >> T;
+	for (int t=1; t<=T; t++) {
+		int M,N; cin >> M >> N;
+		for (int i=0; i<=M+1; i++) {
+			if (i==0 || i==M+1) {
+				for (int j=0; j<=N+1; j++) grid[i][j] = '#';
+			} else {
+				string line; cin >> line;
+				for (int j=0; j<=N+1; j++) {
+					if (j==0 || j==N+1) grid[i][j] = '#';
+					else grid[i][j] = line[j-1];
+				}
+			}
+			for (int j=0; j<=N+1; j++) for (int t=0; t<4; t++) { //Initialize toast and dist
+				toast[i][j][t] = false;
+				dist[i][j][t] = -1;
+			}
+		}
+
+		queue<state> q;
+		for (int i=0; i<=M+1; i++) {
+			for (int j=0; j<=N+1; j++) {
+				char c = grid[i][j];
+				if (c == '#') {
+					for (int t=0; t<4; t++) toast[i][j][t] = true;
+				} else if (c == 'S') {
+					state begin;
+					begin.i = i;
+					begin.j = j;
+					begin.t = 0;
+					dist[i][j][0] = 0;
+					q.push(begin);
+				} else if (c == 'G') {
+					goalI = i;
+					goalJ = j;
+				} else if (c != '.') { //Turret
+					int di,dj;
+					if (c == '<' || c == '>') di = 0;
+					else di = (c == 'v')? 1 : -1;
+					if (c == 'v' || c == '^') dj = 0;
+					else dj = (c == '>')? 1 : -1;
+					for (int t=0; t<4; t++) {
+						int l = 0;
+						while (grid[i+l*di][j+l*dj] != '#') {
+							toast[i+l*di][j+l*dj][t] = true;
+							l++;
+						}
+						//Rotate the direction
+						int olddi = di;
+						di = dj;
+						dj = -olddi;
+					}
+				}
+			}
+		}
+	
+		bool won = false;
+		while (!q.empty()) {
+			state st = q.front(); q.pop();
+			if (st.i == goalI && st.j == goalJ) {
+				printf("Case #%d: %d\n",t,dist[st.i][st.j][st.t]);
+				won = true;
+				break;
+			}
+			int di = 1; int dj = 0;
+			for (int l=0; l<4; l++) {
+				state next;
+				next.i = st.i + di;
+				next.j = st.j + dj;
+				next.t = (st.t+1)%4;
+
+				//Rotate now, in case you hit the "continue"
+				int olddi = di;
+				di = dj;
+				dj = -olddi;
+
+				if (toast[next.i][next.j][next.t] || dist[next.i][next.j][next.t] != -1) continue;
+				dist[next.i][next.j][next.t] = dist[st.i][st.j][st.t]+1;
+				q.push(next);
+			}
+		}
+		if (!won) printf("Case #%d: impossible\n",t);
+	}
+}

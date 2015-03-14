@@ -1,0 +1,206 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.StreamTokenizer;
+import java.util.LinkedList;
+import java.util.Queue;
+
+public class LaserMaze {
+
+	public static void main(String[] args) throws Exception {
+		LaserMaze object = new LaserMaze();
+		String className = object.getClass().getSimpleName();
+
+		FileReader fileReader = new FileReader(new File(className.toLowerCase()
+				+ ".in"));
+		StreamTokenizer st = new StreamTokenizer(new BufferedReader(fileReader));
+
+		FileWriter wr = new FileWriter(className.toLowerCase() + ".out");
+
+		st.nextToken();
+		int testCases = (int) st.nval;
+
+		for (int tc = 1; tc <= testCases; tc++) {
+			st.resetSyntax();
+			st.wordChars(0, 256);
+			st.whitespaceChars(0, 32);
+			st.parseNumbers();
+
+			int M = nextInt(st);
+			int N = nextInt(st);
+
+			st.resetSyntax();
+			st.wordChars(0, 256);
+			st.whitespaceChars(0, 32);
+
+			String[] map = new String[M];
+
+			for (int i = 0; i < M; i++) {
+				st.nextToken();
+				map[i] = st.sval;
+			}
+
+			int result = object.solve(map);
+
+			if (result == -1)
+				wr.write("Case #" + tc + ": " + "impossible" + "\r\n");
+			else
+				wr.write("Case #" + tc + ": " + result + "\r\n");
+		}
+
+		wr.close();
+	}
+	
+	int dr[] = new int[] { -1, 1, 0, 0 };
+	int dc[] = new int[] { 0, 0, -1, 1 };
+
+	private int solve(String[] map) {
+
+		int R = map.length, C = map[0].length();
+
+		int[][][] distance = new int[R][C][4];
+
+		for (int i = 0; i < R; i++)
+			for (int j = 0; j < C; j++)
+				for (int k = 0; k < 4; k++)
+					distance[i][j][k] = 1000000000;
+
+		int sr = -1, sc = -1;
+		int gr = -1, gc = -1;
+
+		for (int i = 0; i < R; i++)
+			for (int j = 0; j < C; j++) {
+				if (map[i].charAt(j) == 'S') {
+					sr = i;
+					sc = j;
+				}
+
+				if (map[i].charAt(j) == 'G') {
+					gr = i;
+					gc = j;
+				}
+			}
+
+		if (gr == -1 || gc == -1 || sr == -1 || sc == -1)
+			return -1;
+
+		Queue<Integer[]> queue = new LinkedList<Integer[]>();
+		queue.add(new Integer[] { sr, sc, 0 });
+		distance[sr][sc][0] = 0;
+
+		
+
+		while (!queue.isEmpty()) {
+			Integer[] state = queue.poll();
+			int cr = state[0], cc = state[1], cm = state[2];
+			int dist = distance[cr][cc][cm];
+
+			if (dist != 0 && laserMatch(map, cr, cc, cm))
+				continue; // this isn't a solution - we're dead
+
+			if (cr == gr && cc == gc)
+				return dist; // we're done
+
+			// move from here
+			for (int move = 0; move < 4; move++) {
+				int nr = cr + dr[move];
+				int nc = cc + dc[move];
+				int nm = (cm + 1) % 4;
+
+				if (nr < 0 || nr >= R || nc < 0 || nc >= C)
+					continue;
+
+				char ch = map[nr].charAt(nc);
+
+				if (ch != '.' && ch != 'S' && ch != 'G') // blocked
+					continue;
+
+				// else, we can move there
+				if (distance[nr][nc][nm] > dist + 1) {
+					distance[nr][nc][nm] = dist + 1;
+					queue.add(new Integer[] { nr, nc, nm });
+				}
+
+			}
+
+		}
+
+		return -1;
+	}
+
+	private boolean laserMatch(String[] map, int cr, int cc, int cm) {
+		
+		int maxSteps = Math.max(map.length, map[0].length()) + 1;
+		
+		for (int move=0; move<4; move++) {
+			int mr = dr[move];
+			int mc = dc[move];
+			
+			//move in that direction until we find a wall or turret
+			for (int z=1; z<=maxSteps; z++) {
+				int nr = cr + mr * z;
+				int nc = cc + mc * z;
+				
+				if (nr < 0 || nr >= map.length || nc < 0 || nc >= map[0].length())
+					continue;
+				
+				if (z == maxSteps)
+					System.out.println("Why? This shouldn't happen.");
+								
+				char ch = map[nr].charAt(nc);
+				if (ch == '.' || ch == 'S' || ch == 'G')
+					continue;
+				
+				//else, it ends' here
+				
+				if (ch == '#')
+					break; // no problem
+				
+				//we have a turret
+				int initialDirection = getDirection(ch);
+				int currentDirection = (initialDirection + cm) % 4;
+				
+				//is it facing us?
+				if (mr == -1 && currentDirection == 2) //we're watching upwards
+					return true;
+				
+				if (mr == 1 && currentDirection == 0) //we're watching downwards
+					return true;
+				
+				if (mc == -1 && currentDirection == 1)
+					return true;
+				
+				if (mc == 1 && currentDirection == 3)
+					return true;
+				
+				break;
+			}
+		}
+		
+		return false;
+	}
+
+	private int getDirection(char ch) {
+		if (ch == '^')
+			return 0;
+		
+		if (ch == '>')
+			return 1;
+		
+		if (ch == 'v')
+			return 2;
+		
+		if (ch == '<')
+			return 3;
+		
+		System.out.println("Problem, not a turret");
+		return -1;
+	}
+
+	private static int nextInt(StreamTokenizer st) throws Exception {
+		st.nextToken();
+		return (int) st.nval;
+	}
+
+}

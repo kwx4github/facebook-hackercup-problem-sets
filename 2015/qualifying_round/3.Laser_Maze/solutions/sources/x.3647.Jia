@@ -1,0 +1,136 @@
+#!/usr/bin/env python
+#python 2.x
+import heapq
+CW_TABLE = ['' for i in xrange(256)]
+CW_TABLE[ord('<')] = '^'
+CW_TABLE[ord('^')] = '>'
+CW_TABLE[ord('>')] = 'v'
+CW_TABLE[ord('v')] = '<'
+
+def updateMaze(maze, i, j):
+    m = len(maze)
+    n = len(maze[0])
+    FILL = 'L'
+    if maze[i][j] == '<':
+        #update leftward
+        for k in xrange(j - 1, -1, -1):
+            if maze[i][k] in '#<^>v':
+                break
+            maze[i][k] = FILL #even if 'S' or 'G'
+    elif maze[i][j] == '^':
+        #update upward
+        for k in xrange(i - 1, -1, -1):
+            if maze[k][j] in '#<^>v':
+                break
+            maze[k][j] = FILL 
+    elif maze[i][j] == '>':
+        #update rightward
+        for k in xrange(j + 1, n):
+            if maze[i][k] in '#<^>v':
+                break
+            maze[i][k] = FILL 
+    else:
+        #update downward
+        for k in xrange(i + 1, m):
+            if maze[k][j] in '#<^>v':
+                break
+            maze[k][j] = FILL 
+    return
+
+#O((|V| + |E|)*log|V|) ~ O(5|V|*log|V|) ~ O(5m*n*log(m*n)) ~ O(5e4log(1e4))
+#~ 1e6
+def dijkstra(maze, S, G):
+    inf = float('inf')
+    cycle = len(maze)
+    m = len(maze[0])
+    n = len(maze[0][0])
+    dist = [[inf for x in xrange(n)] for y in xrange(m)]
+    dist[S[0]][S[1]] = 0 
+    Q = [(dist[i][j], i, j) for j in xrange(n) for i in xrange(m)] 
+    heapq.heapify(Q)
+
+    while len(Q) > 0:
+        #get node with minimal distance
+        uy = -1
+        while len(Q) > 0:
+            d, y, x = heapq.heappop(Q)
+            if d == dist[y][x]:
+                uy = y
+                ux = x
+                break
+        if uy == -1: #empty
+            return -1
+        
+        if d == inf: #no connection
+            return -1
+
+        if (uy, ux) == G:
+            return d 
+
+        #geometrical adjacency of u
+        adjList = []
+        if ux > 0: #left
+            adjList.append((uy, ux - 1))
+        if ux + 1 < n: #right
+            adjList.append((uy, ux + 1))
+        if uy > 0: #up
+            adjList.append((uy - 1, ux))
+        if uy + 1 < m: #down
+            adjList.append((uy + 1, ux))
+
+        #d + 1 adjacency of u
+        #oldD <= d, but oldD + 2 can > d + 1, so also check the adjacency with
+        #dist != inf
+        backAdj = 0
+        k = (d + 1) % cycle #check next step's adj matrix
+        for vy, vx in adjList:
+            if maze[k][vy][vx] in '.GS':
+                if dist[vy][vx] > d + 1:
+                    dist[vy][vx] = d + 1
+                    heapq.heappush(Q, (dist[vy][vx], vy, vx)) #decreaseKey
+                #any way, we can go here at t = d + 1
+                backAdj += 1
+        #back Path adjacency edge
+        #The cycle is 4, so there is only one back path : d + (1 + 1) + 1
+        ku = (d + 2)%cycle # when it return to u
+        ke = (d + 3)%cycle # extra adjacency via backPath
+        
+        #oldD <= d, dist[vy][vx] <= oldD + 3 <= d + 3
+        #so we can check adjacency with oldD == inf, otherwise d + 3 >=
+        #dist[vy][vx]
+        if (backAdj > 0) and (maze[ku][uy][ux] in '.GS') and (maze[ke][uy][ux] in '.GS'):
+            for vy, vx in adjList:
+                if dist[vy][vx] == inf:
+                    dist[vy][vx] = d + 3
+                    heapq.heappush(Q, (dist[vy][vx], vy, vx)) #decreaseKey
+    return -1
+
+T = input() #[1, 100]
+for _ in xrange(1, T + 1):
+    prefix = "Case #%s:"%_
+    M, N = map(int, raw_input().strip().split()) #[1, 100]
+    maze = [[] for k in xrange(4)]
+    for i in xrange(M):
+        row = list(raw_input())
+        maze[0].append(row)
+        for k in xrange(1, 4):
+            maze[k].append(row[:])
+    #adjust maze
+    #O(M*N*max(M,N)) ~ 1e6
+    for i in xrange(M):
+        for j in xrange(N):
+            if maze[0][i][j] in '<^>v':
+                updateMaze(maze[0], i, j)
+                for k in xrange(1, 4):
+                    maze[k][i][j] = CW_TABLE[ord(maze[k - 1][i][j])]
+                    updateMaze(maze[k], i, j)
+            elif maze[0][i][j] == 'S':
+                S = (i, j)
+            elif maze[0][i][j] == 'G':
+                G = (i, j)
+
+    res = dijkstra(maze, S, G)
+    if res >= 0:
+        print prefix, res
+    else:
+        print prefix, 'impossible'

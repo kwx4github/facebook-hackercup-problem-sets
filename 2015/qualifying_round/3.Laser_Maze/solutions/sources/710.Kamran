@@ -1,0 +1,187 @@
+package com.facebook.kamran;
+
+import java.io.*;
+import java.util.*;
+
+/**
+ * Hello world!
+ *
+ */
+public class App 
+{
+    public static enum Direction {
+        UP, RIGHT, DOWN, LEFT
+    }
+
+    public static class Pair {
+        int x;
+        int y;
+
+        public Pair(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    public static EnumMap<Direction, Direction> nextDir = new EnumMap<Direction, Direction>(Direction.class);
+    public static Direction[] charToDir = new Direction[200];
+    public static EnumMap<Direction, Pair> dirToMove = new EnumMap<Direction, Pair>(Direction.class);
+
+    static {
+        nextDir.put(Direction.UP, Direction.RIGHT);
+        nextDir.put(Direction.RIGHT, Direction.DOWN);
+        nextDir.put(Direction.DOWN, Direction.LEFT);
+        nextDir.put(Direction.LEFT, Direction.UP);
+        charToDir['^'] = Direction.UP;
+        charToDir['>'] = Direction.RIGHT;
+        charToDir['v'] = Direction.DOWN;
+        charToDir['<'] = Direction.LEFT;
+        dirToMove.put(Direction.UP, new Pair(-1, 0));
+        dirToMove.put(Direction.RIGHT, new Pair(0, 1));
+        dirToMove.put(Direction.DOWN, new Pair(1, 0));
+        dirToMove.put(Direction.LEFT, new Pair(0, -1));
+    }
+
+    void run(String f1, String f2) {
+
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(f1));
+            BufferedWriter bw = new BufferedWriter(new FileWriter(f2));
+
+            int T = Integer.parseInt(br.readLine());
+            for (int ts=1; ts<=T; ++ts) {
+
+                String[] line = br.readLine().split(" ");
+                List<String> maze = new ArrayList<String>();
+                int M = Integer.parseInt(line[0]);
+                int N = Integer.parseInt(line[1]);
+                boolean[][] blocked = new boolean[M][N];
+                List<Integer> ends = new ArrayList<Integer>();
+                int start = 0;
+                ArrayList<Integer>[] neighbors = new ArrayList[100000];
+
+                for (int i=0; i<M; ++i) {
+                    maze.add(br.readLine());
+                }
+
+                for (int step=1; step<=4; ++step) {
+                    for (boolean[] row : blocked) {
+                        Arrays.fill(row, false);
+                    }
+
+                    for (int i=0; i<M; ++i) {
+                        for (int j=0; j<N; ++j) {
+                            char ch = maze.get(i).charAt(j);
+                            if (ch == 'S' && step == 1) {
+                                start = locate(i, j, M, N, step - 1);
+                            } else if (ch == 'G') {
+                                ends.add(locate(i, j, M, N, step % 4));
+                            } else if (ch == '^' || ch == 'v' || ch == '<' || ch == '>') {
+                                Direction dir = charToDir[ch];
+                                for (int st = 1; st <= step; ++st) {
+                                    dir = nextDir.get(dir);
+                                }
+                                int dx = dirToMove.get(dir).x;
+                                int dy = dirToMove.get(dir).y;
+                                int x = i;
+                                int y = j;
+                                blocked[x][y] = true;
+                                x += dx;
+                                y += dy;
+                                while (x >= 0 && x < M && y >= 0 && y < N &&
+                                        (maze.get(x).charAt(y) == '.' ||
+                                         maze.get(x).charAt(y) == 'S' ||
+                                         maze.get(x).charAt(y) == 'G')) {
+                                    blocked[x][y] = true;
+                                    x += dx;
+                                    y += dy;
+                                }
+                            } else if (ch == '#') {
+                                blocked[i][j] = true;
+                            }
+                        }
+                    }
+
+                    for (int i=0; i<M; ++i) {
+                        for (int j=0; j<N; ++j) {
+                            //System.out.print(blocked[i][j] ? "#" : ".");
+                            if (blocked[i][j])
+                                continue;
+                            int loc = locate(i, j, M, N, step % 4);
+                            int loc1 = locate(i-1, j, M, N, (step - 1) % 4);
+                            int loc2 = locate(i+1, j, M, N, (step - 1) % 4);
+                            int loc3 = locate(i, j-1, M, N, (step - 1) % 4);
+                            int loc4 = locate(i, j+1, M, N, (step - 1) % 4);
+                            addInfo(neighbors, loc1, loc);
+                            addInfo(neighbors, loc2, loc);
+                            addInfo(neighbors, loc3, loc);
+                            addInfo(neighbors, loc4, loc);
+                        }
+                        //System.out.println();
+                    }
+                    //System.out.println("\n\n");
+                }
+
+                int index = 0;
+                int[] step_num = new int[100000];
+                boolean[] visited = new boolean[100000];
+                ArrayList<Integer> queue = new ArrayList<Integer>();
+                queue.add(start);
+                step_num[start] = 0;
+                visited[start] = true;
+                boolean possible = false;
+
+                while(index < queue.size()) {
+                    int loc = queue.get(index++);
+                    if (ends.contains(loc)) {
+                        possible = true;
+                        bw.write("Case #" + ts + ": " + step_num[loc] + "\n");
+                        break;
+                    }
+                    if (neighbors[loc] == null)
+                        continue;
+                    for (int nextloc : neighbors[loc]) {
+                        if (!visited[nextloc]) {
+                            visited[nextloc] = true;
+                            step_num[nextloc] = step_num[loc] + 1;
+                            queue.add(nextloc);
+                        }
+                    }
+                }
+
+                if (!possible) {
+                    bw.write("Case #" + ts + ": impossible\n");
+                }
+
+                bw.flush();
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    int locate(int x, int y, int m, int n, int step) {
+        if (x>=0 && x<m && y>=0 && y<n) {
+            return m * n * step + x * n + y;
+        } else {
+            return -1;
+        }
+    }
+
+    private void addInfo(ArrayList<Integer>[] n, int loci, int loc) {
+        if (loci == -1)
+            return;
+        if (n[loci] == null) {
+            n[loci] = new ArrayList<Integer>();
+        }
+        n[loci].add(loc);
+    }
+
+    public static void main( String[] args )
+    {
+        new App().run(args[0], args[1]);
+    }
+}

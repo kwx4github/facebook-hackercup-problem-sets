@@ -1,0 +1,187 @@
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <limits.h>
+#include <map>
+#include <utility>
+#include <queue>
+#include <sstream>
+
+using namespace std;
+
+char maze[100][100];
+int T, M, N;
+const int intMax = INT_MAX;
+int steps[100][100][4];
+map<char, int> turretMap;
+pair<int,int> dirs[4];
+
+struct Stage
+{
+    int mx, my, mSteps;
+    Stage(int x, int y, int numSteps): mx(x), my(y), mSteps(numSteps){}
+};
+
+
+int turretNum(char ch)
+{
+    if (ch == '<' || ch == '>' || ch == '^' || ch == 'v')
+    {
+        return turretMap[ch];
+    }else
+    {
+        return -1;
+    }
+}
+
+
+
+bool validStep(int mx, int my, int mSteps)
+{
+
+    //cout << endl << mx << " " << my << endl << endl;
+    if (mSteps == 0) return true;
+    if (mx < 0 || mx >= M || my < 0 || my >= N) return false;
+    char cur = maze[mx][my];
+    if (cur == '#' || turretNum(cur) != -1) return false;
+    if (steps[mx][my][mSteps % 4] != -1) return false;
+
+    //check if turret pointing in all directions
+    bool good = true;
+    for (int i = 0; i < 4; i++)
+    {
+        //cout << endl;
+        int dx = dirs[i].first;
+        int dy = dirs[i].second;
+
+        int curX = mx + dx;
+        int curY = my + dy;
+
+        while (good)
+        {
+            //cout << curX << " " << curY << endl;
+            if (curX < 0 || curY < 0 || curX >= M || curY >= N) break;
+            char curAt = maze[curX][curY];
+            if (curAt == '#') break;
+            int turretNumber = turretNum(curAt);
+            if (turretNumber != -1) //isTurret
+            {
+                int deadNumber = (i +2) % 4;
+                if ((turretNumber + mSteps)%4 == deadNumber)
+                {
+                    good = false; //shot, dead
+                }
+                break;
+            }else //not Turret
+            {
+                curX += dx;
+                curY += dy;
+            }
+
+        }
+
+    }
+
+    return good;
+
+}
+
+int computeMaze(int sx, int sy)
+{
+    //cout << "NEW MAZE STARTING WITH " << sx << " " << sy << endl;
+    queue<Stage> bfs;
+
+    bfs.push(Stage(sx,sy,0));
+
+    while (!bfs.empty())
+    {
+        Stage curStage = bfs.front();
+        //cout << curStage.mx <<" " << curStage.my << " " << curStage.mSteps << endl;
+        bfs.pop();
+        if (!validStep(curStage.mx, curStage.my, curStage.mSteps)) continue;
+        //cout << "valid" << endl;
+        steps[curStage.mx][curStage.my][curStage.mSteps % 4] = curStage.mSteps;
+        if (maze[curStage.mx][curStage.my] == 'G') return curStage.mSteps;
+
+        for (int i = 0; i < 4; i++)
+        {
+            int dx = dirs[i].first;
+            int dy = dirs[i].second;
+
+            bfs.push(Stage(curStage.mx + dx, curStage.my + dy, curStage.mSteps + 1));
+        }
+    }
+    return -1;
+
+}
+
+int main()
+{
+    turretMap['^'] = 0;
+    turretMap['>'] = 1;
+    turretMap['v'] = 2;
+    turretMap['<'] = 3;
+
+    dirs[0] = make_pair(-1,0);
+    dirs[1] = make_pair(0,1);
+    dirs[2] = make_pair(1,0);
+    dirs[3] = make_pair(0,-1);
+
+    ifstream in("input.txt");
+    ofstream out; out.open("output.txt");
+    in >> T;
+    for (int QQ = 1; QQ <= T; QQ++)
+    {
+        //char tmp; cin >> tmp;
+
+        //reset steps
+        in >> M >> N;
+        int sx, sy;
+        for (int i = 0; i < M; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                for (int k = 0; k < 4; k++)
+                {
+                    steps[i][j][k] = -1;
+                }
+            }
+        }
+
+        for (int i = 0; i < M; i++)
+        {
+            for (int j = 0; j < N; j++)
+            {
+                in >> maze[i][j];
+                if (maze[i][j] == 'S')
+                {
+                    sx = i;
+                    sy = j;
+                }
+
+            }
+        }
+        int ans = computeMaze(sx, sy);
+        stringstream ss;
+        ss << "Case #" << QQ << ": ";
+        if (ans == -1)
+        {
+            ss << "impossible";
+        }else
+        {
+            ss << ans;
+        }
+        out << ss.str() << endl;
+
+    }
+
+
+
+
+    in.close();
+    out.close();
+
+    return 0;
+}

@@ -1,0 +1,108 @@
+// first.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include <iostream>
+#include <fstream>
+#include <stdlib.h>
+#include <stdio.h>
+#include <vector>
+#include <time.h>
+
+#define MAXLENGTH 100000000
+
+using namespace std;
+
+int first_nonzero_digit;
+vector<int> max_digits(9); // На i-м месте - максимальная цифра от i-й до 8-й, i=0..8
+vector<int> min_digits(9); // На i-м месте - минимальная цифра от i-й до 8-й, i=0..8
+vector<int> min_digits_wo_zeros(9); // На i-м месте - минимальная цифра от i-й до 8-й, i=0..8, но нули не считаем
+
+vector<int> maximize (vector<int> v, int digit_to_start) {
+	vector<int> res(v);
+	if (digit_to_start >= 8)
+		return res;
+	if (v[digit_to_start] == max_digits[digit_to_start])
+		return maximize(v, digit_to_start + 1);
+	// Найдём самую правую из максимальных цифр и поставим её на первое место
+	int max_digit = max_digits[digit_to_start];
+	int i;
+	for (i = 8; max_digits[i] < max_digit; i--);
+	res[i] = res[digit_to_start];
+	res[digit_to_start] = max_digit;
+	return res;
+}
+
+vector<int> minimize (vector<int> v, int digit_to_start, int iz_zero_poss) {
+	vector<int> res(v);
+	if (digit_to_start >= 8)
+		return res;
+	int min_digit = (iz_zero_poss == 1) ? min_digits[digit_to_start] : min_digits_wo_zeros[digit_to_start];
+	if ((v[digit_to_start] == min_digit) || ((iz_zero_poss == 0) && (min_digits_wo_zeros[digit_to_start] == 0)))
+		return minimize(v, digit_to_start + 1, 1);
+	// Найдём самую правую из минимальных цифр и поставим её на первое место
+	int i;
+	for (i = 8;((iz_zero_poss == 1) ? min_digits[i] : min_digits_wo_zeros[i]) != min_digit; i--);
+	res[i] = res[digit_to_start];
+	res[digit_to_start] = min_digit;
+	return res;
+}
+
+vector<int> long2vect (long n) {
+	vector<int> res(9,0);
+	first_nonzero_digit = 9;
+	for (int i = 8; i >= 0; i--) {
+		res[i] = n % 10;
+		max_digits[i] = (i == 8) ? res[i] : max(res[i], max_digits[i+1]);
+		min_digits[i] = (i == 8) ? res[i] : min(res[i], min_digits[i+1]);
+		if ((i == 8) || ((i<8) && (min_digits_wo_zeros[i+1] == 0)))
+			min_digits_wo_zeros[i] = res[i];
+		else
+			min_digits_wo_zeros[i] = (res[i] == 0) ? min_digits_wo_zeros[i+1] : min(res[i], min_digits_wo_zeros[i+1]);
+		if (res[i] > 0)
+			first_nonzero_digit = i;
+		n = n / 10;
+	}
+	return res;
+}
+
+long vect2long (vector<int> v) {
+	long res = 0;
+	long deg10 = 1;
+	for (int i = 0; i < 9; i++) {
+		res += deg10 * v[8-i];
+		deg10 *= 10;
+	}
+	return res;
+}
+
+void p_v(vector<int> v) {
+	for (int i = 0; i <= 8; i++)
+		cout << v[i];
+}
+
+int _tmain(int argc, _TCHAR* argv[]) {
+	ifstream read("file.txt");
+	ofstream ofs;
+	ofs.open ("out.txt", std::ofstream::out | std::ofstream::app);
+	int nlines;
+	long numb;
+	read >> nlines; //number of lines
+	//cout << "nlines: " << nlines << endl;
+	for (int i=1; i<=nlines; i++) {
+		read >> numb;
+		vector<int> v = long2vect (numb);
+		int j;
+		for (j = 0;v[j]==0;j++);
+		ofs << "Case #" << i << ": " << vect2long(minimize(v,j,0)) << " " << vect2long(maximize(v,j)) << endl;
+		//cout << vect2long(min_digits) << " " << vect2long(min_digits_wo_zeros) << endl;
+		//p_v(min_digits);
+		//cout << " ";
+		//p_v(min_digits_wo_zeros);
+		//cout << endl;
+	}
+	ofs.close();
+	cout << "Done!" << endl;
+	cin >> nlines;
+	return 0;
+}

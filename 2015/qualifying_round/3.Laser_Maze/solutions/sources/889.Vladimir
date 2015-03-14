@@ -1,0 +1,76 @@
+DIR={'<'=>[-1, 0], '^'=>[0, -1], '>'=>[1, 0], 'v'=>[0, 1]}
+
+def rotate maze
+	maze.each_with_index do |row, y|
+		row.size.times do |x|
+			c = row[x]
+			ind = DIR.keys.index c
+			row[x] = DIR.keys[(ind + 1) % 4] if ind
+		end
+	end
+end
+
+def fire maze
+	m = maze.map do |row|
+		row.chars.map{|c| c == '.' ? 0 : -1}
+	end
+	maze.each_with_index do |row, y|
+		row.size.times do |x|
+			c = row[x]
+			if DIR.include? c
+				cx, cy = x + DIR[c][0], y + DIR[c][1]
+				while cx.between?(0, maze[0].size - 1) and cy.between?(0, maze.size - 1) and maze[cy][cx] == '.'
+					 m[cy][cx] = -1
+					 cx, cy = cx + DIR[c][0], cy + DIR[c][1]
+				end
+			end
+		end
+	end
+	m
+end
+
+def find maze, pc
+	maze.each_with_index do |row, y|
+		row.chars.each_with_index do |c, x|
+			return x, y if c == pc
+		end
+	end
+end
+
+def solve maze
+	sx, sy = find(maze, 'S')
+	ex, ey = find(maze, 'G')
+	maze[sy][sx] = maze[ey][ex] = '.'
+	maps = 4.times.map do |t|
+		#puts maze.join("\n")
+		f = fire(maze)
+		rotate(maze)
+		f
+	end
+	dirs = DIR.values
+	q = []
+	q << [sx, sy, 1]
+	maps[0][sy][sx] = 1
+	while !q.empty? do 
+		x, y, step = *q.shift
+		#puts "Step #{step} #{x} #{y} #{ex} #{ey}"
+		#puts maps.map{|m| m.map{|row| row.map{|v| "%3d" % v}.join}.join("\n")}.join "\n\n"
+		return step - 1 if x == ex and y == ey 
+		next_step = step + 1
+		cur_map = maps[step % 4]
+		dirs.each do |dir|
+			nx, ny = x + dir[0], y + dir[1]
+			if nx.between?(0, cur_map[0].size - 1) and ny.between?(0, cur_map.size - 1) and cur_map[ny][nx] == 0
+				q << [nx, ny, next_step]
+				cur_map[ny][nx] = next_step
+			end
+		end
+	end
+	nil
+end
+
+gets.to_i.times do |i|
+	maze = gets.split[0].to_i.times.map{gets.chomp}
+	path_size = solve(maze)
+	puts "Case ##{i + 1}: #{path_size ? path_size : "impossible"}"
+end

@@ -1,0 +1,214 @@
+//#pragma comment(linker,"/STACK:16777216") /*16Mb*/
+//#pragma comment(linker,"/STACK:33554432") /*32Mb*/
+#define _CRT_SECURE_NO_DEPRECATE
+#include<sstream>
+#include<iostream>
+#include<numeric>
+#include<sstream>
+#include<cstdio>
+#include<cstdlib>
+#include<cmath>
+#include<memory>
+#include<memory.h>
+#include<string>
+#include<vector>
+#include<cctype>
+#include<list>
+#include<queue>
+#include<deque>
+#include<stack>
+#include<map>
+#include<complex>
+#include<set>
+#include<algorithm>
+
+using namespace std;
+
+typedef unsigned long long      ui64;
+typedef long long               i64;
+typedef	vector<int>             VI;
+typedef	vector<bool>            VB;
+typedef	vector<VI>              VVI;
+typedef	vector<string>          VS;
+typedef	pair<int,int>           PII;
+typedef map<string,int>         MSI;
+typedef set<int>                SI;
+typedef set<string>             SS;
+typedef complex<double>         CD;
+typedef vector< CD >            VCD;
+typedef map<int,int>            MII;
+typedef	pair<double,double>     PDD;
+
+#define PB                      push_back
+#define MP                      make_pair
+#define X                       first
+#define Y                       second
+#define FOR(i, a, b)            for(int i = (a); i < (b); ++i)
+#define RFOR(i, a, b)           for(int i = (a) - 1; i >= (b); --i)
+#define CLEAR(a, b)             memset(a, b, sizeof(a))
+#define SZ(a)                   int((a).size())
+#define ALL(a)                  (a).begin(), (a).end()
+#define RALL(a)                 (a).rbegin(), (a).rend()
+#define INF                     (2000000000)
+
+#ifdef _DEBUG
+#define eprintf(...) fprintf (stderr, __VA_ARGS__)
+#else
+#define eprintf(...) assert (true)
+#endif
+
+const int dx[4] = {-1,0,1,0};
+const int dy[4] = {0,1,0,-1};
+class Solution {
+private:
+	VS s;
+	vector<VI> a;
+	int n, m;
+	PII START, FIN;
+
+	bool onField(int x, int y) {
+		return (x>=0 && y>=0 && x<n && y<m);
+	}
+
+	bool onField(PII a) {
+		return onField(a.X, a.Y);
+	}
+
+	bool isEmpty(int x, int y) {
+		return (s[x][y]=='.' || s[x][y]=='S' || s[x][y]=='G');
+	}
+
+	bool isEmpty(PII a) {
+		return isEmpty(a.X, a.Y);
+	}
+
+	void processShoot(PII direction, int val, PII start) {
+		while(true) {
+			start.X += direction.X;
+			start.Y += direction.Y;
+			if(onField(start) && isEmpty(start)) {
+				a[start.X][start.Y] |= 1<<val;
+			}
+			else {
+				break;
+			}
+		}
+	}
+
+	void processInput() {
+		cin >> n >> m;
+		s.resize(n);
+		a.resize(n, VI(m, 0));
+		FOR(i,0,n) {
+			cin >> s[i];
+		} 
+	}
+
+	void prepareMap() {
+		
+		FOR(i,0,n) {
+			FOR(j,0,m) {
+				if(s[i][j] == '^') {
+					int sh = 1;
+					FOR(it,0,4) {
+						processShoot(MP(dx[(sh + it)%4], dy[(sh + it)%4]), it, MP(i, j));
+					}
+				}
+				if(s[i][j] == '>') {
+					int sh = 2;
+					FOR(it,0,4) {
+						processShoot(MP(dx[(sh + it)%4], dy[(sh + it)%4]), it, MP(i, j));
+					}
+				}
+				if(s[i][j] == 'v') {
+					int sh = 3;
+					FOR(it,0,4) {
+						processShoot(MP(dx[(sh + it)%4], dy[(sh + it)%4]), it, MP(i, j));
+					}
+				}
+				if(s[i][j] == '<') {
+					int sh = 0;
+					FOR(it,0,4) {
+						processShoot(MP(dx[(sh + it)%4], dy[(sh + it)%4]), it, MP(i, j));
+					}
+				}
+				if(!isEmpty(i, j)) {
+					a[i][j] = (1<<4)-1;
+				}
+				if(s[i][j] == 'S') {
+					START = MP(i, j);
+				}
+				if(s[i][j] == 'G') {
+					FIN = MP(i, j);
+				}
+			}
+		}
+	}
+
+public:
+	void solve() {
+		
+		processInput();
+		prepareMap();
+
+		// TODO
+		vector< vector< vector<int> > > dp(n, vector<VI>(m, VI(4, INF)));
+		dp[START.X][START.Y][0] = 0;
+		queue<pair<PII, int> > q;
+		q.push(MP(START, 0));
+		while(!q.empty()) {
+			PII v = q.front().first;
+			int state = q.front().second;
+			q.pop();
+			int nextState = (state+1)%4;
+			FOR(i,0,4) {
+				if(onField(v.X + dx[i], v.Y + dy[i]) && !(a[v.X+dx[i]][v.Y+dy[i]]&(1<<state))) {
+					// can advance
+					if(dp[v.X][v.Y][state] + 1 < dp[v.X+dx[i]][v.Y+dy[i]][nextState]) {
+						dp[v.X+dx[i]][v.Y+dy[i]][nextState] = dp[v.X][v.Y][state] + 1;
+						q.push(MP(MP(v.X+dx[i], v.Y+dy[i]), nextState));
+					}
+				}
+			}
+		}
+
+		int res = INF;
+		FOR(i,0,4) {
+			res = min(res, dp[FIN.X][FIN.Y][i]);
+		}
+
+		if(res == INF) {
+			cout << "impossible";
+		}
+		else {
+			cout << res;
+		}
+		//printMap();
+	}
+
+	void printMap() {
+		printf("\n---MAP---\n");
+		FOR(i,0,n) {
+			FOR(j,0,m) {
+				printf("\t%d", a[i][j]);
+			}
+			printf("\n");
+		}
+	}
+};
+
+int main() {
+	freopen("in.txt", "r", stdin);
+	freopen("out.txt", "w", stdout);
+	int test;
+	scanf("%d",&test);
+	FOR(test_id,1,test+1) {
+		printf("Case #%d: ", test_id);
+		cerr << "case #" << test_id << "";
+		Solution s;
+		s.solve();
+		printf("\n");
+		cerr << ".\n";
+	}
+	return 0;
+}

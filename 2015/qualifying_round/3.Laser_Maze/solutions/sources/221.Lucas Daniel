@@ -1,0 +1,135 @@
+#include <iostream>
+#include <cmath>
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <utility>
+#include <string>
+#include <cstring>
+#include <queue>
+#include <sstream>
+
+using namespace std;
+
+#define FOR(i, a, b) for(int i = a; i < b; ++i)
+#define FORR(i, n) FOR(i, 0, n)
+#define sz(a) int((a).size())
+#define all(v) (v).begin(),(v).end()
+#define pb push_back
+
+typedef vector<int> vi;
+typedef pair<int, int> ii;
+typedef long long ll;
+
+bool visited[105][105][5];
+char maze[105][105];
+int dirx[] = {0, -1, 0, 1};
+int diry[] = {-1, 0, 1, 0};
+//pos: 0 = left, 1 = up, 2 = right, 3 = down
+struct laser {
+	int x, y, pos;
+};
+
+struct cell {
+	int x, y, steps;
+	cell(int x = 0, int y = 0, int steps = 0) : x(x), y(y), steps(steps) {}
+};
+
+laser lasers[10005];
+
+//Check if the laser at position lid hits the cell p
+bool get(cell p, int lid, int n, int m) {
+	//printf("verificando laser na posicao (%d,%d) no tempo %d, inicialmente virado para %d\n", lasers[lid].x, lasers[lid].y, p.steps, lasers[lid].pos);
+	int d = (lasers[lid].pos+p.steps)%4;
+	int x = lasers[lid].x+dirx[d], y = lasers[lid].y+diry[d];
+	while(x >= 0 && x < n && y >= 0 && y < m) {
+		if(maze[x][y] == '#' || maze[x][y] == '<' || maze[x][y] == '>' || maze[x][y] == '^' || maze[x][y] == 'v') return false;
+		if(x == p.x && y == p.y) {
+			//printf("foi pego na posicao (%d,%d), no tempo %d\n", p.x, p.y, p.steps);
+			return true;
+		}
+		x += dirx[d];
+		y += diry[d];
+	}
+	return false;
+}
+
+int bfs(int n, int m, int startx, int starty, int endx, int endy, int qtd) {
+	bool ok;
+	queue<cell> q;
+	int tempo = 0;
+	FORR(i, n) {
+		FORR(j, m) {
+			FORR(k, 4) {
+				visited[i][j][k] = false;
+			}
+		}
+	}
+	q.push(cell(startx, starty, 0));
+	visited[startx][starty][0] = true;
+	while(!q.empty()) {
+		//printf("entrou\n");
+		ok = false;
+		cell p = q.front(); q.pop();
+		//printf("analisando (%d,%d)\n", p.x, p.y);
+		//Check if any laser get this position, if yes, don't generate the neighbours
+		if(p.steps != 0) {
+			FORR(i, qtd) {
+				ok = ok || get(p, i, n, m);
+				if(ok) break;
+			}
+		}
+		if(ok) continue;
+		if(p.x == endx && p.y == endy) {
+			//printf("conseguiu\n");
+			return p.steps;
+		}
+		//generate the next pos
+		FORR(i, 4) {
+			int x = p.x+dirx[i], y = p.y+diry[i];
+			if(x < 0 || x >= n || y < 0 || y >= m) continue;
+			tempo = (p.steps+1)%4;
+			//printf("gerou o vizinho (%d,%d) no tempo %d\n", x, y, tempo);
+			if(visited[x][y][tempo]) {
+				//printf("ja esteve na posicao (%d,%d) no tempo %d\n", x, y, tempo);
+				continue;
+			}
+			if(maze[x][y] == '.' || maze[x][y] == 'S' || maze[x][y] == 'G') {
+				//printf("inseriu o vizinho (%d,%d) no tempo %d\n", x, y, tempo);
+				q.push(cell(x, y, p.steps+1));
+				visited[x][y][tempo] = true;
+			}
+		}
+	}
+	return -1;
+}
+
+int main() {
+	int t, n, m, startx, starty, endx, endy, qtd;
+	scanf(" %d", &t);
+	FOR(k, 1, t+1) {
+		qtd = 0;
+		scanf(" %d %d", &n, &m);
+		FORR(i, n) {
+			FORR(j, m) {
+				scanf(" %c", &maze[i][j]);
+				if(maze[i][j] == 'S') startx = i, starty = j;
+				else if(maze[i][j] == 'G') endx = i, endy = j;
+				else if(maze[i][j] != '.' && maze[i][j] != '#') {
+					lasers[qtd].x = i;
+					lasers[qtd].y = j;
+					int aux = 0;
+					if(maze[i][j] == '^') aux = 1;
+					else if(maze[i][j] == '>') aux = 2; 
+					else if(maze[i][j] == 'v') aux = 3;
+					lasers[qtd++].pos = aux;
+				}
+			}
+		}
+		//printf("start = (%d,%d), end = (%d,%d), qtd = %d\n", startx, starty, endx, endy, qtd);
+		int ok = bfs(n, m, startx, starty, endx, endy, qtd);
+		printf("Case #%d: ", k);
+		if(ok == -1) printf("impossible\n");
+		else printf("%d\n", ok);
+	}
+}

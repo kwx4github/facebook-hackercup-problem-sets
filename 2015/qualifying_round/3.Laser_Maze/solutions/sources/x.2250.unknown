@@ -1,0 +1,540 @@
+//============================================================================
+// Name        : Hacker-Cup-2015.cpp
+// Author      : Abdullah Khan Zehady
+// Version     :
+// Copyright   : Use to learn
+// Description : Hello World in C++, Ansi-style
+//============================================================================
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <utility>
+#include <cstring>
+
+using namespace std;
+
+#define tr(C,it) for(typeof (C).begin() it = (C).begin(); it != (C).end(); it++)
+#define FOR(i,s,e) for(int i = int(s); i <= int(e); i++)
+#define FIND(C, item) find((C).begin(), (C).end(), item) - (C).begin()
+#define EXISTS(C, item) find((C).begin(), (C).end(), item) != (C).end()
+#define INF 1e9
+#define NIL {-1,-1}
+#define pb push_back
+
+/*RED: Wall/Turret, WHITE: Still not seen, GRAY: Seen but not Discovered, BLACK: Discovered(All Child Seen), \\
+                                           GRAY_SAFE: GRAY and safe, GRAY_UNSAFE: GRAY but unsafe    ** GRAY, GRAY_SAFE, BLACK can be rediscovered
+*/
+enum {RED = -2, WHITE = -1, GRAY = 0, BLACK = 1, GRAY_SAFE = 2, GRAY_UNSAFE = 3};
+string color[6] = {"RED", "WHITE", "GRAY", "BLACK", "GRAY_SAFE", "GRAY_UNSAFE"};
+enum {LEFT = 0, RIGHT = 1, UP = 2, DOWN = 3, EMPTY = 4, WALL = 5, START = 6, GOAL = 7};
+
+int T,M,N;
+char tur_dir[4] = {'<', '>', '^', 'v'};
+vector<char > t_d(tur_dir, tur_dir + sizeof(tur_dir)/sizeof(char));
+char vert_type[8] = {tur_dir[LEFT], tur_dir[RIGHT], tur_dir[UP], tur_dir[DOWN], '.', '#', 'S', 'G', };
+vector<char > v_t(vert_type, vert_type + sizeof(vert_type)/sizeof(char));
+
+typedef struct pos {
+    int x;
+    int y;
+} Pos;
+
+typedef struct turret Turret;
+struct turret {
+    Pos pos;
+    int dir;
+};
+
+typedef struct vertex Vertex;
+struct vertex {
+	long int d;
+    Pos pos;
+    char type;
+	int color;
+	Pos pred_pos;
+	bool pred_pos_loop;
+	vector<Turret > TRS; //turret State for each Vertex
+};
+
+bool operator<(const Vertex& a, const Vertex& b) {
+  return a.d < b.d;
+}
+
+priority_queue<Vertex > Q;
+
+int dx[4] = {-1, 0, 1, 0};
+int dy[4] = {0, -1, 0, 1};
+
+bool success;
+Vertex start, goal;
+
+vector<Turret > TR;
+vector<vector <Vertex > > V;
+
+char getVertexType(Vertex v) {
+    char c_type = v.type;
+    int id = FIND(v_t, c_type);
+    return v_t[id];
+}
+
+bool isTurret(char type) {
+	return type == v_t[LEFT] || type == v_t[RIGHT] || type == v_t[UP] || type == v_t[DOWN];
+}
+
+bool isWall(char type) {
+    return type == v_t[WALL];
+}
+
+bool isStart(char type) {
+	return type == v_t[START];
+}
+
+bool isGoal(char type) {
+	return type == v_t[GOAL];
+}
+
+bool isSamePosition(Pos p1, Pos p2) {
+	return (p1.x == p2.x) && (p1.y == p2.y);
+}
+
+int getTurretDirection(char type) {
+
+	if (type == v_t[LEFT]) {
+		return LEFT;
+	}
+	else if (type == v_t[RIGHT]) {
+		return RIGHT;
+	}
+	else if (type == v_t[UP]) {
+		return UP;
+	}
+	else if (type == v_t[DOWN]) {
+		return DOWN;
+	}
+	else {
+        return -1;
+	}
+}
+
+bool checkInsideTheBound(Pos pos, int w, int h) {
+    if (pos.x >= 0 && pos.x <= w && pos.y >= 0 && pos.y <= h) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+int rotateTurretClockWise(Pos p, int tur_prev_dir) {
+   // int x = p.x;
+    //int y = p.y;
+    ////cout << "Rotation process" << endl;
+    if (tur_prev_dir == LEFT) {
+        //V[y][x].type = t_d[UP];
+        return UP;
+    } else if (tur_prev_dir == RIGHT) {
+        //V[y][x].type = t_d[DOWN];
+        return DOWN;
+    } else if (tur_prev_dir == UP) {
+        //V[y][x].type = t_d[RIGHT];
+        return RIGHT;
+    } else if (tur_prev_dir == DOWN) {
+        //V[y][x].type = t_d[LEFT];
+        return LEFT;
+    } else {
+    }
+
+    return -1;
+}
+int rotateTurretAntiClockWise(Pos p, int tur_prev_dir) {
+   // int x = p.x;
+    //int y = p.y;
+    ////cout << "Rotation process" << endl;
+    if (tur_prev_dir == LEFT) {
+        //V[y][x].type = t_d[DOWN];
+        return DOWN;
+    } else if (tur_prev_dir == RIGHT) {
+        //V[y][x].type = t_d[UP];
+        return UP;
+    } else if (tur_prev_dir == UP) {
+        //V[y][x].type = t_d[LEFT];
+        return LEFT;
+    } else if (tur_prev_dir == DOWN) {
+        //V[y][x].type = t_d[RIGHT];
+        return RIGHT;
+    } else {
+    }
+
+    return -1;
+}
+
+void rotateAllTurrets(Vertex *v, bool  clockWise, int times) {
+    tr(v->TRS, it){
+        Pos p = it->pos;
+        int d = it->dir;
+        if (clockWise){
+        	//cout << t_d[it->dir] << endl;
+            //cout << "ClockWise Rotation." << endl;
+            FOR(i,0,times-1)
+        		it->dir = rotateTurretClockWise(p, d);
+        	//cout << t_d[it->dir] << endl;
+        }
+        else {
+        	FOR(i,0,times-1)
+        	    it->dir = rotateTurretAntiClockWise(p,d);
+        }
+    }
+}
+
+void setAllTurrets(vector<Turret > TR) {
+	tr(TR, it) {
+		Pos tp;
+		tp.x = it->pos.x;
+		tp.y = it->pos.y;
+		V[tp.y][tp.x].type = t_d[it->dir];
+	}
+}
+
+
+Pos findNearestWallORTurret(Pos cur, int dx, int dy) {
+	////cout << cur.x << " " << cur.y << endl;
+    while (1) {
+    	Pos next;
+
+    	next.x = cur.x + dx;
+    	next.y = cur.y + dy;
+
+    	if(!checkInsideTheBound(next, N-1, M-1)) {
+    		return cur;
+    	}
+    	//cout << next.x << " " << next.y << endl;
+
+    	Vertex v = V[next.y][next.x];
+    	if ( v.type == v_t[WALL] || isTurret(v.type)) {
+    		return next;
+    	}
+    	cur.x = next.x;
+    	cur.y = next.y;
+    }
+}
+
+bool willBeDestroyedByLaserBeam(Vertex * u) {
+	Pos p = u->pos;
+    //find closest walls in all 4 directions
+    FOR(i, 0, 3) {
+    	//cout << "Current Position: "  << p.x << " " << p.y << endl;
+    	Pos wp = findNearestWallORTurret(p, dx[i], dy[i]);
+    	//cout << "Direction Over" << endl << endl;
+
+    	Vertex v = V[wp.y][wp.x];
+
+        if (isWall(v.type)) {// No laser beam from this direction
+            ////cout << v.pos.x << " " << v.pos.y << endl;
+        	//cout << "Wall" << endl;
+        	continue;
+        }
+
+        if(isTurret(v.type)) {
+        	//cout << "Turret" << endl;
+
+        	char type = '?';
+        	tr(u->TRS, it) {
+        		//cout << t_d[it->dir];
+        		if(it->pos.x == v.pos.x && it->pos.y == v.pos.y) {
+        			//cout << endl << "YES" << endl;
+        			type = t_d[it->dir];
+        			//cout << type << endl;
+        			break;
+        		}
+        	}
+        	//cout << endl;
+
+            if ((i == 0 && type == v_t[RIGHT]) ||
+            	(i == 1 && type == v_t[DOWN])  ||
+		        (i == 2 && type == v_t[LEFT])  ||
+			    (i == 3 && type == v_t[UP])
+		       ) {
+            	//cout << v.pos.x << " " << v.pos.y << endl;
+            	//cout << "Destroyed" << endl;
+            	return true;
+            }
+        }
+     }
+    return false;
+} 
+
+void printGraph(Vertex *v) {
+    cout << endl << "Printing Current Graph" << endl;
+    int i = 0;
+	FOR(j, 0, M-1) {
+		FOR(k, 0, N-1) {
+			if(isTurret(V[j][k].type)) {
+				int dir = v->TRS[i++].dir;
+				cout << t_d[dir];
+			}
+			else {
+				cout << V[j][k].type ;
+			}
+	    }
+	    cout << endl;
+	}
+}
+
+void printVertex (Vertex v) {
+	cout << "Print Vertex" << endl << endl;
+	cout << "Pos " << v.pos.x << " " << v.pos.y << endl;
+	cout << "Distance " << v.d << endl;
+    cout << "Pred " << v.pred_pos.x << " " << v.pred_pos.y << endl;
+    cout << "Color " << v.color << endl;
+    cout << endl;
+}
+
+//bool existsInQueue (Vertex u) {
+//	queue<Vertex>
+//	while(!) {
+//		if( it->pos.x == u.pos.x && it->pos.y == u.pos.y)
+//			return true;
+//	}
+//
+//	return false;
+//}
+
+bool VertexExists(vector<Vertex > V, Vertex v) {
+	bool exists = false;
+	tr(V, it) {
+		exists = (it->pos.x == v.pos.x && it->pos.y == v.pos.y);
+		if (exists)
+			break;
+	}
+
+	return exists;
+}
+
+bool VertexPositionExists(vector<Pos > P, Vertex v) {
+	bool exists = false;
+	tr(P, it) {
+		exists = (it->x == v.pos.x && it->y == v.pos.y);
+		if (exists)
+			break;
+	}
+
+	return exists;
+}
+
+void Djkstra(Vertex S) {
+    S.color = GRAY;
+    S.d = 0;
+    S.TRS = vector<Turret >(TR);
+
+    Q = priority_queue<Vertex> ();
+    Q.push(S);
+
+    while(!Q.empty())
+    {
+
+    	Vertex v = Q.top();
+    	//cout << endl << "---------------------------------------" << endl;
+    	//printVertex(v);
+    	Q.pop();
+    	//cout << "Size = " << Q.size() <<endl;
+
+        bool pushed = false;
+
+        int safe_nb_cnt = 0;
+        int unsafe_nb_cnt = 0;
+        vector<Pos > safe_nb;
+        safe_nb.clear();
+        vector<Pos > unsafe_nb;
+        unsafe_nb.clear();
+
+    	FOR(i, 0, 3) {
+                int x = v.pos.x + dx[i];
+                int y = v.pos.y + dy[i];
+                Pos v_p = {x, y};
+                if (!checkInsideTheBound(v_p, N-1, M-1))
+                    continue;
+
+    			//printGraph(&v);
+
+    			Vertex *u = &V[y][x];
+    			//cout << "Current vertex x = " << x << " y = " << y << endl;
+    			//cout << endl<< "color(Before) =" << color[u->color + 2]  << endl;
+
+    			if(u->color == WHITE || u->color == BLACK || u->color == GRAY_SAFE ) {
+    				safe_nb_cnt ++;
+    				safe_nb.pb(u->pos);
+    			} else if (u->color == GRAY_UNSAFE) {
+    				unsafe_nb_cnt++;
+    				unsafe_nb.pb(u->pos);
+    			}
+
+    			if(u->color == WHITE) {
+    				u->color = GRAY;
+
+    				if (isWall(u->type)) {
+                    	u->color = RED;
+                    	//cout << endl<< "color(After) =" << color[u->color + 2]  << endl;
+                    	//cout << "Wall" << endl;
+                    	continue;
+        			}
+
+        			if (isTurret(u->type)) {
+        				u->color = RED;
+        				//cout << endl<< "color(After) =" << color[u->color + 2]  << endl;
+        				//cout << "Turret" << endl;
+        				continue;
+        			}
+
+
+    				u->TRS = vector<Turret > (v.TRS);
+                    rotateAllTurrets(u, true, 1); //temporary clockwise rotation
+
+        			if (willBeDestroyedByLaserBeam(u)) {
+        				//cout << "Laser Beam" << endl;
+        				u->color = GRAY_UNSAFE; //recoloring
+
+        				if(!VertexPositionExists(unsafe_nb, *u)) {
+        					unsafe_nb_cnt++;
+        					unsafe_nb.pb(u->pos);
+        				}
+        				//cout << endl<< "color(After) =" << color[u->color + 2]  << endl;
+        				continue;
+        			} else {
+        				u->color = GRAY_SAFE; //recoloring
+        				if(!VertexPositionExists(safe_nb, *u)){
+        					safe_nb_cnt++;
+        				    safe_nb.pb(u->pos);
+        			    }
+        				//cout << "No Laser Beam." << endl;
+        				//cout << endl<< "color(After) =" << color[u->color + 2]  << endl;
+        			}
+
+                    if (u->d > v.d + (-1)) {
+                    	u->pred_pos = v.pos;
+                    	u->d = v.d + (-1);
+
+                    	//printGraph(u);
+                    	Q.push(*u);
+                    	pushed = true;
+                    	//cout << "Pushed" << endl;
+                    } else {
+                    	rotateAllTurrets(u, false, 1); //reverse rotation
+                    }
+
+                    if (isGoal(u->type) && u->type != GRAY_UNSAFE) {
+                    	//cout << "*************************************************************" << endl;
+                    	Pos gp = goal.pos;
+                    	//cout << V[gp.y][gp.x].d << endl;
+                    	success = true;
+                    	//cout << "*************************************************************" << endl;
+                    }
+    			}
+
+    	}
+
+    	if (safe_nb_cnt > 0 && unsafe_nb_cnt > 0) {
+    		//cout << endl << "Print safe neighbors." <<  "Num = " << safe_nb.size() << endl;
+    		tr (safe_nb, it) {
+    		    			//cout << it->x << " " << it->y << endl;
+    		}
+    		//cout << endl << "Print unsafe neighbors." <<  "Num = " << unsafe_nb.size() << endl;
+    		tr (unsafe_nb, it) {
+    			//cout << it->x << " " << it->y << endl;
+
+        		//if there are safe neighbors we can push the unsafe neighbor as we can go back to safe and let the turrets rotate.
+        		//Turrets will rotate 3 times
+    			Vertex *vs = &V[it->y][it->x];
+        		rotateAllTurrets(vs, true, 3);
+
+        		 if (vs->d > v.d + (-3)) {
+        			 vs->pred_pos = v.pos;
+        			 vs->pred_pos_loop = true;
+        		     vs->d = v.d + (-3);
+
+        		     //printGraph(vs);
+        		     Q.push(*vs);
+        		     pushed = true;
+        		     //cout << "Pushed Unsafe after Rotating Turrets 3 times to safe direction." << endl;
+        		 } else { //Shortest path to the unsafe vertex exists
+        		     rotateAllTurrets(vs, false, 3); //reverse rotation
+        		 }
+
+        		 if (isGoal(vs->type) && vs->color != GRAY_UNSAFE) {
+        			 //cout << "*************************************************************" << endl;
+        			 Pos gp = goal.pos;
+        			 //cout << V[gp.y][gp.x].d << endl;
+        		     success = true;
+        		     //cout << "*************************************************************" << endl;
+        		 }
+    		}
+    		//cout << endl;
+    	}
+
+    	//cout << "Discovered" << endl;
+
+    	v.color = BLACK;
+    	V[v.pos.y][v.pos.x].color = BLACK;
+
+    }
+}
+
+int main() {
+    cin >> T;
+    FOR(k, 0, T-1) {
+        cin >> M >> N;
+        V.clear();
+        TR.clear();
+        Q = priority_queue<Vertex> ();
+        success = false;
+        FOR(j, 0, M-1) {
+            vector<Vertex > vv;
+            FOR(i, 0, N-1) {
+                Vertex v;
+
+                Pos p = {i, j};
+                v.pos = p;
+
+                char c;
+                cin >> c;
+                v.type = c;
+
+                v.d = INF;
+                v.color = WHITE;
+
+                Pos n = {-1,-1};
+                v.pred_pos = n;
+                v.pred_pos_loop = false;
+
+                if(isStart(v.type)) {
+                	start = v;
+                } else if (isGoal(v.type)) {
+                	goal = v;
+                }else if(isTurret(c)) {
+                	Turret trt;
+                	trt.pos = v.pos;
+                	trt.dir = getTurretDirection(c);
+                	TR.pb(trt);
+                } else {
+
+                }
+
+                vv.pb(v);
+            } 
+            V.pb(vv);
+        }
+        cout << "Case #" << k+1 << ": ";
+
+//        //cout << endl;
+        //printGraph();
+
+        Djkstra(start);
+        if(success) {
+            Pos gp = goal.pos;
+        	cout << (-1) * V[gp.y][gp.x].d << endl;
+        } else {
+        	cout << "impossible" << endl;
+        }
+    }
+    
+	return 0;
+}

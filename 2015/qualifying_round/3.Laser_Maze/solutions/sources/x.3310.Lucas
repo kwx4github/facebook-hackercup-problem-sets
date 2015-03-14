@@ -1,0 +1,91 @@
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+
+using namespace std;
+
+char M[111][111];
+int H, W;
+int visited[111][111][4];
+
+int dr[] = {1, 0, -1, 0};
+int dc[] = {0, -1, 0, 1};
+
+bool is_laser(int row, int col) {
+  if (row < 0 || row >= H || col < 0 || col >= W) return false;
+  return M[row][col] == 'V' || M[row][col] == '<' || M[row][col] == '^' || M[row][col] == '>';
+}
+
+bool turret_pointing_to(int row, int col, int dir, int moves) {
+  int initial_dir;
+  if (M[row][col] == 'V') initial_dir = 0;
+  else if (M[row][col] == '<') initial_dir = 1;
+  else if (M[row][col] == '^') initial_dir = 2;
+  else initial_dir = 3;
+
+  int final_dir = (initial_dir + moves)%4;
+  return final_dir == dir;
+}
+
+bool safe(int row, int col, int moves) {
+  for (int i = 0; i < 4; i++) {
+    int nr, nc;
+    for (nr = row + dr[i], nc = col + dc[i];
+         nr >= 0 && nr < H && nc >= 0 && nc < W && M[nr][nc] == '.';
+         nr = nr + dr[i], nc = nc + dc[i]);
+    if (is_laser(nr, nc) && turret_pointing_to(nr, nc, (i + 2)%4, moves)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool valid(int r, int c, int moves) {
+  return r >= 0 && r < H && c >= 0 && c < W &&
+    M[r][c] == '.' && safe(r, c, moves) &&
+    (visited[r][c][moves%4] == -1 || moves < visited[r][c][moves%4]);
+}
+
+void solve(int r, int c, int moves) {
+  for (int i = 0; i < 4; ++i) {
+    int nr = r + dr[i], nc = c + dc[i];
+    if (valid(nr, nc, moves + 1)) {
+      visited[nr][nc][(moves + 1)%4] = moves + 1;
+      solve(nr, nc, moves + 1);
+    }
+  }
+}
+
+int main() {
+  int T;
+  scanf("%d", &T);
+  for (int t = 0; t < T; ++t) {
+    scanf("%d %d", &H, &W);
+    getc(stdin);
+    for (int i = 0; i < H; ++i) fgets(&M[i][0], 111, stdin);
+    int startr, startc, endr, endc;
+    for (int i = 0; i < H; i++) for (int j = 0; j < W; ++j) {
+      if (M[i][j] == 'S') {
+        startr = i;
+        startc = j;
+        M[i][j] = '.';
+      }
+      if (M[i][j] == 'G') {
+        endr = i;
+        endc = j;
+        M[i][j] = '.';
+      }
+    }
+    for (int i = 0; i < 111; ++i) for (int j = 0; j < 111; ++j) for (int k = 0; k < 4; ++k) visited[i][j][k] = -1;
+    visited[startr][startc][0] = 0;
+    solve(startr, startc, 0);
+    int min_moves = 111*111*4;
+    for (int i = 0; i < 4; i++) if (visited[endr][endc][i] != -1) min_moves = min(min_moves, visited[endr][endc][i]);
+    printf("Case #%d: ", t + 1);
+    if (min_moves < 1000000000) printf("%d\n", min_moves);
+    else printf("impossible\n");
+  }
+  return 0;
+}

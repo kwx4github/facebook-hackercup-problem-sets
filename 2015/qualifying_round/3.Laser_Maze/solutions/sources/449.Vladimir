@@ -1,0 +1,160 @@
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.*;
+
+public class C {
+
+    private static final String FILE_IN = C.class.getSimpleName() + ".in";
+    private static final String FILE_OUT = C.class.getSimpleName() + ".out";
+
+    private final void solveTest(final int testId, final Scanner in, final PrintWriter out) throws Exception {
+
+        int n = in.nextInt();
+        int m = in.nextInt();
+
+        int sx = -1;
+        int sy = -1;
+        int fx = -1;
+        int fy = -1;
+
+        char[][] map = new char[n][];
+        for (int i = 0; i < n; ++i) {
+            map[i] = in.next().toCharArray();
+
+            for (int j = 0; j < m; ++j) {
+                if (map[i][j] == 'S') {
+                    sx = i;
+                    sy = j;
+                }
+                if (map[i][j] == 'G') {
+                    fx = i;
+                    fy = j;
+                }
+            }
+        }
+
+        final int dirs[][] = new int[][]{{0, -1}, {-1, 0}, {0, 1}, {1, 0}};
+        final int[] revDirs = {2, 3, 0, 1};
+
+        int[][][] dist = new int[n][m][4];
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                Arrays.fill(dist[i][j], Integer.MAX_VALUE);
+            }
+        }
+
+        dist[sx][sy][0] = 0;
+
+        LinkedList<int[]> queue = new LinkedList<int[]>();
+        queue.add(new int[]{sx, sy, 0});
+
+        while (!queue.isEmpty()) {
+            final int[] pos = queue.removeFirst();
+
+            int x = pos[0];
+            int y = pos[1];
+
+            for (int dir = 0; dir < 4; ++dir) {
+                int nx = x + dirs[dir][0];
+                int ny = y + dirs[dir][1];
+
+                if (nx < 0 || nx >= n || ny < 0 || ny >= m) {
+                    continue;
+                }
+                if (map[nx][ny] != '.' && map[nx][ny] != 'S' && map[nx][ny] != 'G') {
+                    continue;
+                }
+
+                boolean canMove = true;
+
+                for (int outDir = 0; outDir < 4 && canMove; ++outDir) {
+                    int outx = nx + dirs[outDir][0];
+                    int outy = ny + dirs[outDir][1];
+
+                    while (outx >= 0 && outx < n && outy >= 0 && outy < m) {
+
+                        if (map[outx][outy] == '.' || map[outx][outy] == 'S' || map[outx][outy] == 'G') {
+                        } else if (map[outx][outy] == '#') {
+                            break;
+                        } else {
+                            int laserDir = (getDir(map[outx][outy]) + pos[2] + 1) % 4;
+                            canMove &= outDir != revDirs[laserDir];
+                            break;
+                        }
+
+                        outx += dirs[outDir][0];
+                        outy += dirs[outDir][1];
+                    }
+                }
+
+                if (canMove) {
+                    int step = (pos[2] + 1) % 4;
+                    if (dist[nx][ny][step] > pos[2] + 1) {
+                        dist[nx][ny][step] = pos[2] + 1;
+                        queue.add(new int[]{nx, ny, pos[2] + 1});
+                    }
+                }
+            }
+        }
+
+        int result = Integer.MAX_VALUE;
+        for (int i = 0; i < 4; ++i) {
+            result = Math.min(result, dist[fx][fy][i]);
+        }
+
+        if (result == Integer.MAX_VALUE) {
+            out.printf("Case #%d: impossible%n", testId);
+        } else {
+            out.printf("Case #%d: %d%n", testId, result);
+        }
+    }
+
+    private int getDir(char dir) {
+        switch (dir) {
+            case '<':
+                return 0;
+            case '^':
+                return 1;
+            case '>':
+                return 2;
+            case 'V':
+                return 3;
+            default:
+                return -1;
+        }
+    }
+
+    private final void solve(final Scanner in, final PrintWriter out) throws Exception {
+        for (int testId = 1, testCount = in.nextInt(); testId <= testCount; ++testId) {
+            solveTest(testId, in, out);
+        }
+    }
+
+    public static void main(String[] _args) {
+        final String[] args = _args;
+        Thread th = new Thread(null, new Runnable() {
+            @Override
+            public void run() {
+                runMain(args);
+            }
+        }, "test", 16 << 20);
+        th.setPriority(Thread.MAX_PRIORITY);
+        th.start();
+        try {
+            th.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static final void runMain(String[] args) {
+        try {
+            final Scanner in = new Scanner(new File(FILE_IN));
+            final PrintWriter out = new PrintWriter(new File(FILE_OUT));
+            new C().solve(in, out);
+            out.close();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+}

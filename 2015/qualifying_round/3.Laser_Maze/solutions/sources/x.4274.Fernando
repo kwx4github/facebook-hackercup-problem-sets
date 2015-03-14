@@ -1,0 +1,206 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <queue>
+
+#define VInt vector<int>
+#define MInt vector<VInt>
+#define M3Int vector<MInt>
+
+using namespace std;
+
+void completeMazes(M3Int& mazes);
+int BFS(M3Int& mazes, M3Int& done, int starti, int startj, int endi, int endj);
+
+int main()
+{
+	unsigned int T;
+	unsigned int M, N;
+	char slot;
+	cin >> T;
+	for(unsigned int iCase=1; iCase<=T; iCase++)
+	{
+		cin >> M >> N;
+		M3Int mazes(4, MInt(M, VInt(N, 0)));
+		M3Int repeat(4, MInt(M, VInt(N, 0)));
+		M3Int done(4, MInt(M, VInt(N, -1)));
+		M3Int arrive(4, MInt(M, VInt(N, -2)));
+		int starti, startj, endi, endj;
+		for(unsigned int i=0; i<M; i++)
+		{
+			for(unsigned int j=0; j<N; j++)
+			{
+				cin >> slot;
+				switch(slot)
+				{
+					case '#':
+						mazes[0][i][j] = -1;
+						mazes[1][i][j] = -1;
+						mazes[2][i][j] = -1;
+						mazes[3][i][j] = -1;
+						break;
+					case 'S':
+						starti = i;
+						startj = j;
+						break;
+					case 'G':
+						endi = i;
+						endj = j;
+						break;
+					case '^':
+						mazes[0][i][j] = 1;
+						mazes[1][i][j] = 2;
+						mazes[2][i][j] = 3;
+						mazes[3][i][j] = 4;
+						break;
+					case '>':
+						mazes[0][i][j] = 2;
+						mazes[1][i][j] = 3;
+						mazes[2][i][j] = 4;
+						mazes[3][i][j] = 1;
+						break;
+					case 'v':
+						mazes[0][i][j] = 3;
+						mazes[1][i][j] = 4;
+						mazes[2][i][j] = 1;
+						mazes[3][i][j] = 2;
+						break;
+					case '<':
+						mazes[0][i][j] = 4;
+						mazes[1][i][j] = 1;
+						mazes[2][i][j] = 2;
+						mazes[3][i][j] = 3;
+						break;
+				}
+			}
+		}
+		completeMazes(mazes);
+		int result;
+		int found = BFS(mazes, done, starti, startj, endi, endj);
+				result = 10001;
+		if(found)
+		{
+			for(unsigned int i=0; i<4; i++)
+				if(done[i][endi][endj] != -1 && done[i][endi][endj]<result)
+					result=done[i][endi][endj];
+		}
+		else
+			result = -1;
+		if(result > 0)
+			cout << "Case #" << iCase << ": " << result;
+		else
+			cout << "Case #" << iCase << ": impossible";
+		if(iCase != T)
+			cout << endl;
+	} 
+}
+void completeMazes(M3Int& mazes)
+{
+	int runi, runj;
+	for(unsigned int move=0; move<4; move++)
+	{
+		for(unsigned int i=0; i<mazes[0].size(); i++)
+			for(unsigned int j=0; j<mazes[0][0].size(); j++)
+				switch(mazes[move][i][j])
+				{
+					case 1:
+						runi = i-1;
+						while(runi != -1 && mazes[move][runi][j] == 0)
+						{
+							mazes[move][runi][j] = -1;
+							runi--;
+						}
+						mazes[move][i][j] = -1;
+						break;
+					case 3:
+						runi = i+1;
+						while(runi != (int)mazes[0].size() && mazes[move][runi][j] == 0)
+						{
+							mazes[move][runi][j] = -1;
+							runi++;
+						}
+						mazes[move][i][j] = -1;
+						break;
+					case 2:
+						runj = j+1;
+						while(runj != (int)mazes[0][0].size() && mazes[move][i][runj] == 0)
+						{
+							mazes[move][i][runj] = -1;
+							runj++;
+						}
+						mazes[move][i][j] = -1;
+						break;
+					case 4:
+						runj = j-1;
+						while(runj != -1 && mazes[move][i][runj] == 0)
+						{
+							mazes[move][i][runj] = -1;
+							runj--;
+						}
+						mazes[move][i][j] = -1;
+						break;
+				}
+	}
+}
+
+struct Node
+{
+	int i, j, move;
+	Node(int _i, int _j, int _move) : i(_i), j(_j), move(_move) {}
+	bool operator == (const Node& p) const
+	{
+		return ((i==p.i) && (j==p.j) && (move==p.move));
+	}
+};
+
+struct NodeHash
+{
+    size_t operator () (const Node& p) const
+    {
+        return (p.move*10000)+(p.i*100)+p.j;
+    }
+};
+
+int BFS(M3Int& mazes, M3Int& done, int starti, int startj, int endi, int endj)
+{
+	int found = 0;
+	queue<Node> fila;
+	M3Int visited(4, MInt(mazes[0].size(), VInt(mazes[0][0].size(), 0)));
+	fila.push(Node(starti,startj,0));
+	visited[0][starti][startj] = 1;
+	done[0][starti][startj] = 0;
+	int nextmove;
+	while(!fila.empty() && found<2)
+	{
+		Node t = fila.front();
+		fila.pop();
+		if(t.i == endi && t.j == endj)
+			found++;
+		nextmove = (t.move+1)%4;
+		if(t.i!=0 && mazes[nextmove][t.i-1][t.j] != -1 && !visited[nextmove][t.i-1][t.j])
+		{
+			visited[nextmove][t.i-1][t.j] = 1;
+			done[nextmove][t.i-1][t.j] = 1+done[t.move][t.i][t.j];
+			fila.push(Node(t.i-1,t.j,nextmove));
+		}
+		if(t.j!=0 && mazes[nextmove][t.i][t.j-1] != -1 && !visited[nextmove][t.i][t.j-1])
+		{
+			visited[nextmove][t.i][t.j-1] = 1;
+			done[nextmove][t.i][t.j-1] = 1+done[t.move][t.i][t.j];
+			fila.push(Node(t.i,t.j-1,nextmove));
+		}
+		if(t.i!=(int)mazes[0].size()-1 && mazes[nextmove][t.i+1][t.j] != -1 && !visited[nextmove][t.i+1][t.j])
+		{
+			visited[nextmove][t.i+1][t.j] = 1;
+			done[nextmove][t.i+1][t.j] = 1+done[t.move][t.i][t.j];
+			fila.push(Node(t.i+1,t.j,nextmove));
+		}
+		if(t.j!=(int)mazes[0][0].size()-1 && mazes[nextmove][t.i][t.j+1] != -1 && !visited[nextmove][t.i][t.j+1])
+		{
+			visited[nextmove][t.i][t.j+1] = 1;
+			done[nextmove][t.i][t.j+1] = 1+done[t.move][t.i][t.j];
+			fila.push(Node(t.i,t.j+1,nextmove));
+		}
+	}
+	return found;
+}

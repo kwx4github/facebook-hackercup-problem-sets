@@ -1,0 +1,81 @@
+import sys
+import copy
+import collections
+from _sqlite3 import Row
+
+def arr2d(row, col, v=0):
+    return [[copy.deepcopy(v) for _ in xrange(col)] for _ in xrange(row)]
+
+EMPTY = '.'
+START = 'S'
+GOAL = 'G'
+PATH = ''.join([EMPTY,START,GOAL])
+INF = 2<<30
+LASERS = [('>', (0,1)), ('v', (1,0)), ('<', (0,-1)), ('^', (-1,0))]
+
+def extract_start_goal(maze):
+    start = None
+    goal = None
+    for i in range(len(maze)):
+        for j in range(len(maze[0])):
+            if maze[i][j] == 'S':
+                start = i, j
+            if maze[i][j] == 'G':
+                goal = i, j
+    return start, goal
+
+def laser_expose_range(maze):
+    LL = [c for c,_ in LASERS]
+    lasers = []
+    for ll in range(0,4):
+        lasers.append(copy.deepcopy(maze))
+        for i in range(len(maze)):
+            for j in range(len(maze[0])):
+                if maze[i][j] in LL:
+                    ind = LL.index(maze[i][j])
+                    ind = (ind + ll) % 4
+                    ii,jj = i,j
+                    while True:
+                        ii,jj = ii+LASERS[ind][1][0],jj+LASERS[ind][1][1]
+                        if (not (0 <= ii < M and 0 <= jj < N) 
+                            or not (maze[ii][jj] in PATH)):
+                            break
+                        else:
+                            lasers[ll][ii][jj] = 'x'
+    return lasers
+
+def solve(M,N,maze):
+    delta = [(1,0), (-1,0), (0,1), (0,-1)]
+    
+    start, goal = extract_start_goal(maze)
+    lasers = laser_expose_range(maze)
+    
+    q = collections.deque()
+    d = arr2d(M, N, [INF,INF,INF,INF])
+    q.append((start[0],start[1],0))
+    d[start[0]][start[1]][0] = 0
+    
+    while len(q) > 0:
+        p = q.pop()
+        for dd in delta:
+            pp = (p[0] + dd[0], p[1] + dd[1], (p[2]+1)%4)
+            if (0 <= pp[0] < M and 0 <= pp[1] < N 
+                and maze[pp[0]][pp[1]] in PATH 
+                and d[pp[0]][pp[1]][pp[2]] > d[p[0]][p[1]][p[2]]+1 
+                and lasers[pp[2]][pp[0]][pp[1]] != 'x'):
+                q.append(pp)
+                d[pp[0]][pp[1]][pp[2]] = d[p[0]][p[1]][p[2]] + 1
+    if sum(d[goal[0]][goal[1]]) == 4*INF:
+        return 'impossible'
+    else:
+        return str(min(d[goal[0]][goal[1]]))
+
+if __name__ == '__main__':
+    with open(sys.argv[1]) as f:
+        num = int(f.readline())
+        for i in range(0,num):
+            M,N = (int(n) for n in f.readline().rstrip().split(' '))
+            maze = []
+            for j in range(0,M):
+                maze.append(list(f.readline().rstrip()))
+            print 'Case #%d: %s' % ((i+1), solve(M,N,maze))

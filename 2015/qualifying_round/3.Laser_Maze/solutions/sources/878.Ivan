@@ -1,0 +1,130 @@
+import std.algorithm;
+import std.conv;
+import std.range;
+import std.stdio;
+import std.string;
+
+immutable int DIRS = 4;
+immutable int AND_DIR = DIRS - 1;
+immutable int  D_ROW  [DIRS] = [ -1,   0,  +1,   0];
+immutable int  D_COL  [DIRS] = [  0,  +1,   0,  -1];
+immutable char D_NAME [DIRS] = ['^', '>', 'v', '<'];
+immutable int INF = int.max / 4;
+
+void main ()
+{
+	int tests = readln.strip.to!int;
+	foreach (test; 0..tests)
+	{
+		int m, n;
+		readf (" %s %s ", &m, &n);
+		char [] [] board;
+		int row_s, col_s, row_t, col_t;
+		foreach (row; 0..m)
+		{
+			board ~= readln.strip.dup;
+			foreach (col; 0..n)
+			{
+				if (board[row][col] == 'S')
+				{
+					board[row][col] = '.';
+					row_s = row;
+					col_s = col;
+				}
+				if (board[row][col] == 'G')
+				{
+					board[row][col] = '.';
+					row_t = row;
+					col_t = col;
+				}
+			}
+		}
+
+		bool is_valid (int row, int col)
+		{
+			return 0 <= row && row < m &&
+			       0 <= col && col < n;
+		}
+
+		auto blocked = new bool [] [] [] (m, n, DIRS);
+
+		foreach (row; 0..m)
+		{
+			foreach (col; 0..n)
+			{
+				int cur = DIRS - find (D_NAME[],
+				    board[row][col]).length;
+				if (cur == DIRS)
+				{
+					continue;
+				}
+				foreach (phase; 0..DIRS)
+				{
+					int dir = (cur + phase) & AND_DIR;
+					int c_row = row;
+					int c_col = col;
+					while (true)
+					{
+						c_row += D_ROW[dir];
+						c_col += D_COL[dir];
+						if (!is_valid (c_row, c_col) ||
+						    board[c_row][c_col] != '.')
+						{
+							break;
+						}
+						blocked[c_row][c_col][phase] =
+						    true;
+					}
+				}
+			}
+		}
+
+		auto f = new int [] [] [] (m, n, DIRS);
+		foreach (g; f)
+		{
+			foreach (h; g)
+			{
+				h[] = INF;
+			}
+		}
+		alias Coord = Tuple !(int, "row", int, "col", int, "phase");
+		Coord [] q;
+		f[row_s][col_s][0] = 0;
+		q ~= Coord (row_s, col_s, 0);
+		while (!q.empty)
+		{
+			auto row = q.front.row;
+			auto col = q.front.col;
+			auto phase = q.front.phase;
+			auto step = f[row][col][phase] + 1;
+			debug {writeln ('!', row, ' ', col, ' ', phase);}
+			q.popFront ();
+			foreach (dir; 0..DIRS)
+			{
+				auto n_row = row + D_ROW[dir];
+				auto n_col = col + D_COL[dir];
+				auto n_phase = step & AND_DIR;
+				if (!is_valid (n_row, n_col) ||
+				    board[n_row][n_col] != '.' ||
+				    blocked[n_row][n_col][n_phase])
+				{
+					continue;
+				}
+				debug {writeln (n_row, ' ', n_col, ' ', step);}
+				if (f[n_row][n_col][n_phase] == INF)
+				{
+					f[n_row][n_col][n_phase] = step;
+					q ~= Coord (n_row, n_col, n_phase);
+				}
+			}
+		}
+
+		int res = INF;
+		foreach (phase; 0..DIRS)
+		{
+			res = min (res, f[row_t][col_t][phase]);
+		}
+		writefln ("Case #%s: %s", test + 1,
+		    res == INF ? "impossible" : res.to!string);
+	}
+}

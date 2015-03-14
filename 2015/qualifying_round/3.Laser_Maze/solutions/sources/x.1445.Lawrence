@@ -1,0 +1,122 @@
+#include <fstream>
+#include <string>
+#include <vector>
+#include <list>
+#include <map>
+using namespace std;
+
+typedef pair<int,int> coords;
+typedef pair<coords,int> node;
+int X(node n) { return n.first.first; }
+int Y(node n) { return n.first.second; }
+int T(node n) { return n.second; }
+const string TURRETS = "v<^>";
+const int STEP[4][2] = {{0,1}, {-1,0},
+                       {0,-1}, {1,0}};
+int M,N,SX,SY,GX,GY;
+string A[5][100];
+map< node,vector<node> > adj;
+bool visited[5][100][100];
+
+void propagate(int t, int y, int x) {
+    switch(A[0][y][x]) {
+        case 'S':
+            SX = x, SY = y; break;
+        case 'G':
+            GX = x, GY = y; break;
+        case '.':
+        case '#':
+            break;
+        default:
+            int dir = 0;
+            for(int i = 0; i < 4; i++)
+                if(A[0][y][x] == TURRETS[i])
+                    dir = (i+t-1)%4;
+            do {
+                A[t][y][x] = '@';
+                x += STEP[dir][0];
+                y += STEP[dir][1];
+            } while(y>=0 && x>=0 && y<M &&
+              x<N && (A[0][y][x] == '.'
+              || A[0][y][x] == 'S' ||
+              A[0][y][x] == 'G'));
+            break;
+    }
+}
+
+void graph(int t, int y, int x) {
+    int ya, xa, ta = (t%4)+1;
+    for(int dir = 0; dir < 4; dir++) {
+        xa = x + STEP[dir][0];
+        ya = y + STEP[dir][1];
+        if (ya>=0 && xa>=0 && ya<M &&
+        xa<N && (A[ta][ya][xa] == '.'
+        || A[ta][ya][xa] == 'S' ||
+        A[ta][ya][xa] == 'G'))
+            adj[{{x,y},t}].push_back(
+                           {{xa,ya},ta});
+    }
+}
+
+int BFS() {
+    for(int i = 1; i < 5; i++)
+        for(int j = 0; j < M; j++)
+            for(int k = 0; k < N; k++)
+                visited[i][j][k] = false;
+    list< pair<node,int> > queue;
+    pair<node,int> s = {{{SX,SY},1},0};
+    queue.push_back(s);
+    visited[1][SY][SX] = true;
+    while(!queue.empty()) {
+        node cur = queue.front().first;
+        int dist = queue.front().second;
+        if(X(cur)==GX && Y(cur)==GY)
+            return dist;
+        queue.pop_front();
+        for(auto i : adj[cur]) {
+            if(!visited[T(i)][Y(i)][X(i)]) {
+                visited[T(i)][Y(i)][X(i)] =
+                        true;
+                queue.push_back({i,dist+1});
+            }
+        }
+    }
+    return -1;
+}
+
+int main() {
+    ifstream fin;
+    ofstream fout;
+    int T;
+    fin.open("laser_maze.in");
+    fin >> T;
+    fout.open("laser_maze.out");
+    for(int i = 1; i <= T; i++) {
+        fin >> M >> N;
+        for(int j = 0; j < M; j++) {
+            fin >> A[0][j];
+            A[1][j] = A[2][j] = A[3][j] \
+                    = A[4][j] = A[0][j];
+        }
+        for(int j = 1; j < 5; j++) {
+            for(int k = 0; k < M; k++)
+            for(int l = 0; l < N; l++) {
+                propagate(j,k,l);
+            }
+        }
+        for(int j = 1; j < 5; j++) {
+            for(int k = 0; k < M; k++)
+            for(int l = 0; l < N; l++) {
+                graph(j,k,l);
+            }
+        }
+        int sp = BFS();
+        fout << "Case #" << i << ": ";
+        if(sp == -1)
+            fout << "impossible\n";
+        else
+            fout << sp << '\n';
+    }
+    fout.close();
+    fin.close();
+}

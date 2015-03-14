@@ -1,0 +1,160 @@
+/**
+ * jerry
+ * C.cpp
+ */
+
+#include <assert.h>
+#include <ctype.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <algorithm>
+#include <bitset>
+#include <deque>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <stack>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+typedef long long int lli;
+typedef pair<int, int> pii;
+
+struct State {
+    int time;
+    int y;
+    int x;
+    State(int a, int b, int c) : time(a), y(b), x(c) {}
+};
+
+int gInt () {
+    int i;
+    scanf("%d", &i);
+    return i;
+}
+
+lli gLong () {
+    lli i;
+    scanf("%lld", &i);
+    return i;
+}
+
+double gDouble () {
+    double i;
+    scanf("%lf", &i);
+    return i;
+}
+
+void quit () {
+    fflush(stdout);
+    exit(0);
+}
+
+int dirmap[128];
+int addY[4] = {-1, 0, 1, 0};
+int addX[4] = {0, 1, 0, -1};
+bool grid[105][105];
+bool lasergrid[4][105][105];
+char buf[105];
+int h, w;
+int laserY[10005];
+int laserX[10005];
+int laserInitDir[10005];
+bool visited[4][105][105];
+int numLasers;
+int startY, startX;
+int endY, endX;
+
+void solve (int nC) {
+    memset(grid, 0, sizeof(grid));
+    memset(lasergrid, 0, sizeof(lasergrid));
+    memset(visited, 0, sizeof(visited));
+    h = gInt();
+    w = gInt();
+    numLasers = 0;
+    for (int i = 0; i < h; ++i) {
+        scanf("%s", buf);
+        for (int j = 0; j < w; ++j) {
+            for (int k = 0; k < 4; ++k) {
+                lasergrid[k][i][j] = true;
+            }
+            if (buf[j] == '#') {
+                grid[i][j] = false;
+            } else if (buf[j] == '.') {
+                grid[i][j] = true;
+            } else if (buf[j] == 'S') {
+                grid[i][j] = true;
+                startY = i;
+                startX = j;
+            } else if (buf[j] == 'G') {
+                grid[i][j] = true;
+                endY = i;
+                endX = j;
+            } else {
+                grid[i][j] = false;
+                laserY[numLasers] = i;
+                laserX[numLasers] = j;
+                laserInitDir[numLasers] = dirmap[buf[j]];
+                ++numLasers;
+            }
+        }
+    }
+    fprintf(stderr, "%d lasers\n", numLasers);
+    for (int t = 0; t < 4; ++t) {
+        for (int i = 0; i < numLasers; ++i) {
+            int dir = (laserInitDir[i] + t) % 4;
+            int y = laserY[i] + addY[dir];
+            int x = laserX[i] + addX[dir];
+            while (y >= 0 && y < h && x >= 0 && x < w && grid[y][x]) {
+                lasergrid[t][y][x] = false;
+                y += addY[dir];
+                x += addX[dir];
+            }
+        }
+    }
+    visited[0][startY][startX] = true;
+    std::queue<State> bfs;
+    bfs.push(State(0, startY, startX));
+    while (!bfs.empty()) {
+        State s = bfs.front();
+        bfs.pop();
+        for (int dir = 0; dir < 4; ++dir) {
+            State ns(s.time + 1, s.y + addY[dir], s.x + addX[dir]);
+            if (ns.y < 0 || ns.y >= h || ns.x < 0 || ns.x >= w) {
+                continue;
+            }
+            if (visited[ns.time % 4][ns.y][ns.x] || !grid[ns.y][ns.x] || !lasergrid[ns.time % 4][ns.y][ns.x]) {
+                continue;
+            }
+            if (ns.y == endY and ns.x == endX) {
+                printf("Case #%d: %d\n", nC, ns.time);
+                return;
+            }
+            bfs.push(ns);
+            visited[ns.time % 4][ns.y][ns.x] = true;
+        }
+    }
+    printf("Case #%d: impossible\n", nC);
+}
+
+int main (int argc, char ** argv) {
+    dirmap['^'] = 0;
+    dirmap['>'] = 1;
+    dirmap['v'] = 2;
+    dirmap['<'] = 3;
+    int t = gInt();
+    for (int i = 0; i < t; ++i) {
+        solve(i + 1);
+    }
+    quit();
+}

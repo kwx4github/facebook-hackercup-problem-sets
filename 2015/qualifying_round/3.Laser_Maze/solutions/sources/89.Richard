@@ -1,0 +1,122 @@
+import java.awt.Point;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Scanner;
+
+public class LaserMaze {
+
+	private static int m, n;
+	private static char[][] maze;
+	private static final int[][] dir = { { -1, 0, 1, 0 }, { 0, 1, 0, -1 } };
+
+	private static boolean inBounds(int x, int y) {
+		if (x >= 0 && y >= 0 && x < m && y < n)
+			return maze[x][y] != '#' && maze[x][y] != '^' && maze[x][y] != '>'
+					&& maze[x][y] != 'v' && maze[x][y] != '<';
+		return false;
+	}
+
+	private static boolean dies(Point laser, Point p, int direction) {
+		Point pt = new Point(laser);
+		pt.translate(dir[0][direction], dir[1][direction]);
+
+		for (; inBounds(pt.x, pt.y); pt.translate(dir[0][direction],
+				dir[1][direction]))
+			if (pt.equals(p))
+				return true;
+
+		return false;
+	}
+
+	private static boolean getShot(ArrayList<Point> lasers, Point p, int steps) {
+		for (Point laser : lasers) {
+			switch (maze[laser.x][laser.y]) {
+			case '^':
+				if (dies(laser, p, (0 + steps) % 4))
+					return true;
+				break;
+			case '>':
+				if (dies(laser, p, (1 + steps) % 4))
+					return true;
+				break;
+			case 'v':
+				if (dies(laser, p, (2 + steps) % 4))
+					return true;
+				break;
+			case '<':
+				if (dies(laser, p, (3 + steps) % 4))
+					return true;
+				break;
+			}
+		}
+
+		return false;
+	}
+
+	private static int floodFill(Point s, Point g, ArrayList<Point> laser) {
+		LinkedList<Point> bfs = new LinkedList<>();
+		LinkedList<Integer> steps = new LinkedList<>();
+		boolean[][][] visit = new boolean[m][n][4];
+
+		bfs.add(s);
+		steps.add(0);
+		while (!bfs.isEmpty()) {
+			Point p = bfs.poll();
+			int step = steps.poll();
+
+			for (int i = 0; i < 4; i++) {
+				int x = p.x + dir[0][i];
+				int y = p.y + dir[1][i];
+				Point adj = new Point(x, y);
+
+				if (x == g.x && y == g.y && !getShot(laser, adj, step + 1))
+					return step + 1;
+				if (inBounds(x, y) && !visit[x][y][(step + 1) % 4]
+						&& !getShot(laser, adj, step + 1)) {
+					bfs.add(adj);
+					steps.add(step + 1);
+					visit[x][y][(step + 1) % 4] = true;
+				}
+			}
+		}
+
+		return -1;
+	}
+
+	public static void main(String[] args) throws FileNotFoundException {
+		Scanner scan = new Scanner(new File("laser_maze.txt"));
+		PrintWriter out =new PrintWriter("laser_maze-out.txt");
+
+		int t = scan.nextInt();
+		for (int i = 1; i <= t; i++) {
+			m = scan.nextInt();
+			n = scan.nextInt();
+			maze = new char[m][n];
+
+			Point s = null, g = null;
+			ArrayList<Point> laser = new ArrayList<>();
+			for (int j = 0; j < m; j++) {
+				maze[j] = scan.next().toCharArray();
+				for (int k = 0; k < n; k++) {
+					if (maze[j][k] == 'S')
+						s = new Point(j, k);
+					else if (maze[j][k] == 'G')
+						g = new Point(j, k);
+					else if (maze[j][k] == '<' || maze[j][k] == '>'
+							|| maze[j][k] == '^' || maze[j][k] == 'v')
+						laser.add(new Point(j, k));
+				}
+			}
+
+			int steps = floodFill(s, g, laser);
+			out.println("Case #" + i + ": "
+					+ (steps == -1 ? "impossible" : steps));
+		}
+		
+		scan.close();
+		out.close();
+	}
+}

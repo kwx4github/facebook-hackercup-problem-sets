@@ -1,0 +1,331 @@
+#ifdef SHTRIX 
+#include "/Users/roman/Dev/SharedCpp/DebugOutput.h"
+#endif
+#include <thread>
+#include <mutex>
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <queue>
+#include <iostream>
+#include <cmath>
+#include <sstream>
+#include <map>
+#include <set>
+#include <stack>
+#include <cstring>
+#include <ctime>
+#include <cstdio>
+#include <memory>
+using namespace std;
+#define pb push_back
+#define INF 1000000000
+#define L(s) (int)((s).end()-(s).begin())
+#define FOR(i,a,b) for (int i = (a); i <= (b); i++)
+#define FORD(i,a,b) for(int i = (a); i >= (b); i--)
+#define rep(i,n) FOR(i,1,(n))
+#define rept(i,n) FOR(i,0,(n)-1)
+#define C(a) memset((a),0,sizeof(a))
+#define ll long long
+#define all(c) (c).begin(), (c).end()
+#define SORT(c) sort(all(c))
+#define VI vector<int>
+#define ppb pop_back
+#define mp make_pair
+#define pii pair<int,int>
+#define pdd pair<double,double>
+//#define x first
+//#define y second
+#define sqr(a) (a)*(a)
+#define D(a,b) sqrt(((a).x-(b).x)*((a).x-(b).x)+((a).y-(b).y)*((a).y-(b).y))
+#define pi 3.1415926535897932384626433832795028841971
+#define UN(v) sort((v).begin(),(v).end()),v.erase(unique(v.begin(),v.end()),v.end())
+
+std::mutex logging_mutex;
+const bool allow_logging = true;
+inline void LOG(string templ, int test_case) {
+    if (!allow_logging) return;
+    logging_mutex.lock();
+    char buffer[1024];
+    sprintf(buffer, templ.c_str(), test_case);
+    fprintf(stderr, "%s", buffer);
+    logging_mutex.unlock();
+}
+
+std::mutex output_mutex;
+int NumberWorkersActive = 0;
+int MaxThreadsInParallel = 4;
+
+const int dx[] = {0, 1, 0, -1};
+const int dy[] = {1, 0, -1, 0};
+
+
+class Solver {
+  private:
+    int test_case;
+    void read();
+    void solve();
+    void write();
+  public:
+    void setTestCase(int test_case) {this->test_case = test_case;}
+    string outputFilename() {
+        char buffer[100];
+        sprintf(buffer, ".outputs/%07d.out", test_case); // 7 digits is required
+        return buffer;        
+    }
+    void performReading() {
+        LOG("Performing reading on test case #%d\n", test_case);
+        read();
+        LOG("Done reading on test case #%d\n", test_case);
+    }
+    void performSolvingAndWriting() {
+        LOG("Performing solving on test case #%d\n", test_case);
+        solve();
+        LOG("Done solving on test case #%d\n", test_case);
+
+        output_mutex.lock();
+        LOG("Performing writing on test case #%d\n", test_case);
+        freopen(outputFilename().c_str(), "wt", stdout);
+        printf("Case #%d: ", test_case + 1);        
+        write();
+        fclose(stdout);
+        LOG("Done writing on test case #%d\n", test_case);
+        NumberWorkersActive--;
+        output_mutex.unlock();
+    }
+
+    /* All data should be created here */
+    /* ||||||||||||||||||||||||||||||| */
+    /* ||||||||||||||||||||||||||||||| */
+    /* ||||||||||||||||||||||||||||||| */
+    int n, m;
+    char s[4][111][111];
+    int sx, sy, gx, gy;
+    int res;
+};
+
+class ParallelRunner {
+  private:
+    void mergeOutput(vector<string> output_files) {
+        sort(output_files.begin(), output_files.end());
+        for (int i = 0; i < output_files.size(); i++) {
+            char cmd_line[1111];
+            sprintf(cmd_line, "cat %s >> output.txt", output_files[i].c_str());
+            system(cmd_line);
+        }
+    }
+  public:
+    void runParallel(int test_cases) {
+        vector<string> output_files;
+        vector<Solver> S(test_cases);
+        for (int i = 0; i < test_cases; i++) {
+            S[i].setTestCase(i);
+            output_files.push_back(S[i].outputFilename());
+            S[i].performReading();
+        }
+        vector<thread*> T(test_cases);
+        for (int i = 0; i < test_cases; i++) {
+            while (true) {
+                bool can_launch = false;
+                output_mutex.lock();
+                can_launch = (NumberWorkersActive < MaxThreadsInParallel);
+                output_mutex.unlock();
+                if (can_launch) {
+                    output_mutex.lock();
+                    NumberWorkersActive++;
+                    output_mutex.unlock();
+                    T[i] = new std::thread(&Solver::performSolvingAndWriting, S[i]);
+                    break;
+                }
+            }
+        }
+        for (int i = 0; i < test_cases; i++) {
+            T[i]->join();
+        }
+        for (int i = 0; i < test_cases; i++) {
+            delete(T[i]);
+        }
+        mergeOutput(output_files);
+    }
+    void runSingleThread(int test_cases, int test_case_id = -1) {
+        vector<string> output_files;
+        for (int i = 0; i < test_cases; i++) {
+            Solver *S = new Solver();
+            S->setTestCase(i);
+            output_files.push_back(S->outputFilename());
+            S->performReading();
+            if (test_case_id != -1 && i != test_case_id) continue;
+            S->performSolvingAndWriting();
+            delete S;
+        }
+        mergeOutput(output_files);
+    }
+} runner;
+
+void Solver::read() {
+    scanf("%d%d", &n, &m);
+    rept(i, n) {
+        scanf("%s", s[0][i]);
+    }
+}
+
+char rot(char c) {
+    char w[] = {'<', '^', '>', 'v'};
+    rept(i, 4)
+        if (w[i] == c) {
+            return w[(i + 1) % 4]; 
+        }
+    return 0;
+}
+
+void rotate(char s[111][111], int n, int m) {
+    rept(i, n)
+        rept(j, m) 
+            s[i][j] = rot(s[i][j])?rot(s[i][j]):s[i][j];
+}
+
+void fire(char s[111][111], int n, int m) {
+    rept(i, n) {
+        bool was_fire = false;
+        rept(j, m) {
+            if (s[i][j] == '.' && was_fire) {
+                s[i][j] = '#';
+            } else
+            if (s[i][j] != '.') {
+                was_fire = false;
+            }
+            if (s[i][j] == '>') {
+                was_fire = true;
+            }
+        }
+        was_fire = false;
+        for (int j = m - 1; j >= 0; j--) {
+            if (s[i][j] == '.' && was_fire) {
+                s[i][j] = '#';
+            } else
+            if (s[i][j] != '.') {
+                was_fire = false;
+            }
+            if (s[i][j] == '<') {
+                was_fire = true;
+            }
+        }
+    }
+    rept(j, m) {
+        bool was_fire = false;
+        rept(i, n) {
+            if (s[i][j] == '.' && was_fire) {
+                s[i][j] = '#';
+            } else
+            if (s[i][j] != '.') {
+                was_fire = false;
+            }
+            if (s[i][j] == 'v') {
+                was_fire = true;
+            }
+        }
+        was_fire = false;
+        for (int i = n - 1; i >= 0; i--) {
+            if (s[i][j] == '.' && was_fire) {
+                s[i][j] = '#';
+            } else
+            if (s[i][j] != '.') {
+                was_fire = false;
+            }
+            if (s[i][j] == '^') {
+                was_fire = true;
+            }
+        }
+    }
+}
+
+int dist[4][111][111];
+int go(char s[4][111][111], vector<pii> v, int gx, int gy, int n, int m) {
+    queue<pair<int, pii> > q;
+    memset(dist, 63, sizeof(dist));
+    rept(i, L(v)) {
+        int sx = v[i].first;
+        int sy = v[i].second;
+        if (s[1][sx][sy] != '.') continue;
+        q.push(mp(1, mp(sx, sy)));
+        dist[1][sx][sy] = 0;
+    }
+
+    while (!q.empty()) {
+        pair<int, pii> cur = q.front(); q.pop();
+        int nt = (cur.first + 1) % 4;
+        rept(k, 4) {
+            int nx = cur.second.first + dx[k];
+            int ny = cur.second.second + dy[k];
+            if (nx < 0 || nx >= n) continue;
+            if (ny < 0 || ny >= m) continue;
+            if (s[nt][nx][ny] != '.') continue;
+            if (dist[nt][nx][ny] >= INF) {
+                dist[nt][nx][ny] = dist[cur.first][cur.second.first][cur.second.second] + 1;
+                q.push(mp(nt, mp(nx, ny)));
+            }
+        }
+    }
+//    rept(k, 4) cerr << DEB(s[k], n, m) << endl;
+//    rept(k, 4) cerr << DEB(dist[k], n, m) << endl;
+
+    int res = INF - 1;
+    rept(i, 4)
+        res = min(res, dist[i][gx][gy]);
+    return res + 1;
+}
+
+void Solver::solve() {
+    rept(i, n)
+        rept(j, m) {
+            if (s[0][i][j] == 'S') {
+                sx = i;
+                sy = j;
+                s[0][i][j] = '.';
+            }
+            if (s[0][i][j] == 'G') {
+                gx = i;
+                gy = j;
+                s[0][i][j] = '.';
+            }
+        }
+
+    rep(t, 3) {
+        rept(i, n)
+            rept(j, m) {
+                s[t][i][j] = s[t - 1][i][j];
+            }
+        rotate(s[t], n, m);
+    }
+
+    rept(t, 4) {
+        fire(s[t], n, m);
+    }
+
+    res = INF;
+    vector<pii> v;
+    rept(k, 4) {
+        int nsx = sx + dx[k],
+            nsy = sy + dy[k];
+        if (nsx < 0 || nsx >= n) continue;
+        if (nsy < 0 || nsy >= m) continue;
+        v.pb(mp(nsx, nsy));
+    }
+    res = go(s, v, gx, gy, n, m);
+}
+
+void Solver::write() {
+    if (res == INF) cout << "impossible\n";
+    else            cout << res << endl;
+}
+
+
+int main() {
+    freopen("input.txt", "rt", stdin);
+    system("mkdir .outputs");
+    system("rm output.txt");
+    int TC;
+    cin >> TC;
+    runner.runSingleThread(TC);
+    return 0;
+}

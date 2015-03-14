@@ -1,0 +1,206 @@
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Diagnostics;
+
+namespace Problem3
+{
+	class MainClass
+	{
+		class Cell
+		{
+			public int StepCount = -1;
+			public char Type = '.';
+
+			public bool[] CanGo = new []{ false, false, false, false };
+
+			public Cell(char type)
+			{
+				Type = type;
+				if (type == '#')
+					CanGo = new []{ false, false, false, false };
+
+				if (type == '.' || type == 'G' || type == 'S')
+					CanGo = new []{ true, true, true, true };
+
+				if (type == 'S')
+					StepCount = 0;
+			}
+			// S..G<
+			public bool CanMove(int step)
+			{
+				return CanGo[step % 4];
+			}
+
+			public bool CanLaser {
+				get {
+					return Type == '.' || Type == 'S' || Type == 'G';
+				}
+			}
+
+			public void SetLaser(int step)
+			{
+				CanGo[step % 4] = false;
+			}
+
+			public override string ToString()
+			{
+				return Type.ToString();
+			}
+
+			public bool Visit(int step)
+			{
+				if (!CanMove(step))
+					return false;
+				CanGo[(step) % 4] = false;
+				StepCount = step;
+				return true;
+			}
+		}
+
+		public static void Main(string[] args)
+		{
+			var sr = new StreamReader("input3.txt");
+			var sw = new StreamWriter("output3.txt");
+
+			int T = Int32.Parse(sr.ReadLine()); // T
+
+			for (int i = 1; i <= T; i++) {
+				var st = new Stopwatch();
+				st.Start();
+
+				int[] dim = sr.ReadLine().Split(new []{ ' ' }).Select(s => Int32.Parse(s)).ToArray(); // M, N
+
+				Cell[,] maze = new Cell[dim[1] + 2, dim[0] + 2];
+
+				for (int M = 0; M < dim[0] + 2; M++) {
+					maze[0, M] = new Cell('#');
+					maze[dim[1] + 1, M] = new Cell('#');
+				}
+
+				for (int N = 0; N < dim[1] + 2; N++) {
+					maze[N, 0] = new Cell('#');
+					maze[N, dim[0] + 1] = new Cell('#');
+				}
+
+				for (int M = 1; M <= dim[0]; M++) {
+					var line = sr.ReadLine().ToCharArray();
+					for (int N = 1; N <= line.Length; N++) {
+						maze[N, M] = new Cell(line[N - 1]);
+					}
+				}
+
+				SetLasers(maze);
+				Simulate(maze);
+				int steps = GetSteps(maze);
+				string ans = steps > -1 ? steps.ToString() : "impossible";
+				st.Stop();
+
+				sw.WriteLine("Case #{0}: {1}", i, ans);
+				Console.WriteLine("Case #{0}: {1} ({2}ms)", i, ans, st.ElapsedMilliseconds);
+			}
+
+			sw.Close();
+			sr.Close();
+		}
+
+		static void SetLasers(Cell[,] maze)
+		{
+			for (int M = 1; M < maze.GetLength(1); M++) {
+				for (int N = 1; N < maze.GetLength(0); N++) {
+					if (maze[N, M].Type == '<' ||
+					    maze[N, M].Type == '^' ||
+					    maze[N, M].Type == '>' ||
+					    maze[N, M].Type == 'v') {
+		
+						int shift = 0;
+
+						if (maze[N, M].Type == 'v')
+							shift = 1;
+
+						if (maze[N, M].Type == '>')
+							shift = 2;
+
+						if (maze[N, M].Type == '^')
+							shift = 3;
+
+						for (int x = N - 1; x > 0; x--) {
+							if (maze[x, M].CanLaser)
+								maze[x, M].SetLaser(shift);
+							else
+								break;
+						}
+
+						for (int x = N + 1; x <= maze.GetLength(0); x++) {
+							if (maze[x, M].CanLaser)
+								maze[x, M].SetLaser(shift + 2);
+							else
+								break;
+						}
+
+						for (int y = M - 1; y > 0; y--) {
+							if (maze[N, y].CanLaser)
+								maze[N, y].SetLaser(shift + 1);
+							else
+								break;
+						}
+
+						for (int y = M + 1; y <= maze.GetLength(1); y++) {
+							if (maze[N, y].CanLaser)
+								maze[N, y].SetLaser(shift + 3);
+							else
+								break;
+						}
+					}
+				}
+			}
+		}
+
+		static void Simulate(Cell[,] maze)
+		{
+			bool changed = false;
+			int step = 0;
+			goal = null;
+			do {
+				changed = false;
+				for (int M = 1; M < maze.GetLength(1); M++) {
+					for (int N = 1; N < maze.GetLength(0); N++) {
+						if (maze[N, M].StepCount == step) {
+							changed = changed
+							| maze[N + 1, M].Visit(step + 1)
+							| maze[N - 1, M].Visit(step + 1)
+							| maze[N, M + 1].Visit(step + 1)
+							| maze[N, M - 1].Visit(step + 1);
+						}
+					}
+				}
+
+				if (GetSteps(maze) >= 0)
+					return;
+
+				step++;
+			} while(changed);
+		}
+
+
+		static int[] goal;
+
+		static int GetSteps(Cell[,] maze)
+		{
+			if (goal != null)
+				return maze[goal[0], goal[1]].StepCount;
+
+			for (int M = 1; M < maze.GetLength(1); M++) {
+				for (int N = 1; N < maze.GetLength(0); N++) {
+					if (maze[N, M].Type == 'G') {
+						goal = new []{ N, M };
+						return maze[N, M].StepCount;
+					}
+				}
+			}
+
+			return -1;
+		}
+	}
+}

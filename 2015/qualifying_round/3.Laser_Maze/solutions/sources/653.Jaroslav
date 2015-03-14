@@ -1,0 +1,106 @@
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#include <queue>
+#include <map>
+
+using namespace std;
+
+int dr[4] = {0,-1,0,1};
+int dc[4] = {-1,0,1,0};
+map <char, int> conversion;
+
+void beam(int r, int c, int dir, int time, vector <vector <vector <bool> > >& accessible, vector <vector <char> >& maze) {
+    while (true) {
+        accessible [r] [c] [time] = false;
+        if (maze [r] [c] == '#') return;
+        if (conversion.count(maze [r] [c])) return;
+        r += dr [dir];
+        c += dc [dir];
+    }
+}
+
+int main () {
+    int T;
+    scanf("%d", &T);
+    int m, n;
+    int r, c, t;
+    int endr, endc;
+    conversion ['<'] = 0; conversion ['^'] = 1;
+    conversion ['>'] = 2; conversion ['v'] = 3;
+    vector <vector <char> > maze;
+    vector <vector <vector <int> > > distance;
+    vector <vector <vector <bool> > > accessible;
+    queue <pair <pair <int, int>, int> > to_search;
+    for (int cases = 1; cases <= T; cases ++) {
+        scanf("%d %d", &n, &m);
+        maze.resize(n + 2, vector <char> (m + 2, '#'));
+        distance.resize(n + 2, vector <vector <int> > (m + 2, vector <int> (4, -1)));
+        accessible.resize(n + 2, vector <vector <bool> > (m + 2, vector <bool> (4, false)));
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                scanf(" %c", &maze [i] [j]);
+                if (maze [i] [j] == 'S') {
+                    r = i; c = j; t = 0;
+                    distance [i] [j] [0] = 0;
+                }
+                if (maze [i] [j] == 'G') {
+                    endr = i;
+                    endc = j;
+                }
+                if (maze [i] [j] == '.' || maze [i] [j] == 'S' || maze [i] [j] == 'G') {
+                    for (int k = 0; k < 4; k++) {
+                        accessible [i] [j] [k] = true;
+                    }
+                }
+            }
+        }
+
+        for (int i = 1; i <= n; i++) {
+            for (int j = 1; j <= m; j++) {
+                if (conversion.count(maze [i] [j]) != 0) {
+                    for (int k = 0; k < 4; k++) {
+                        int hlp = conversion [maze [i] [j]] + k;
+                        hlp %= 4;
+                        beam(i + dr[hlp], j + dc [hlp], hlp, k, accessible, maze);
+                    }
+                }
+            }
+        }
+
+        to_search.push(make_pair (make_pair (r, c), t));
+        int newt;
+
+        while (!to_search.empty()) {
+            r = to_search.front().first.first;
+            c = to_search.front().first.second;
+            t = to_search.front().second;
+            to_search.pop();
+            newt = (t + 1) % 4;
+            for (int i = 0; i < 4; i++) {
+                if (accessible [r + dr[i]] [c + dc [i]] [newt] && distance [r + dr [i]] [c + dc [i]] [newt] == -1) {
+                    distance [r + dr [i]] [c + dc [i]] [newt] = distance [r] [c] [t] + 1;
+                    to_search.push(make_pair (make_pair (r + dr [i], c + dc [i]), newt));
+                }
+            }
+        }
+        
+        int res = -1;
+        for (int i = 0; i < 4; i++) {
+            if (distance [endr] [endc] [i] != -1) {
+                if (res == -1) res = distance [endr] [endc] [i];
+                else res = min (res, distance [endr] [endc] [i]);
+            }
+        }
+        printf("Case %d: ", cases);
+        if (res == -1) printf("impossible\n");
+        else printf("%d\n", res);
+
+
+
+        maze.clear();
+        distance.clear();
+        accessible.clear();
+    }
+}

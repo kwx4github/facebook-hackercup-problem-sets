@@ -1,0 +1,275 @@
+#include <iostream>
+#include <cstdio>
+#include <cmath>
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <queue>
+#include <list>
+#include <map>
+#include <set>
+
+// #define VERBOSE 1
+
+using namespace std;
+// typedef long long ll;
+#define sz(a)  int((a).size())
+#define pb  push_back
+#define all(c)  (c).begin(),(c).end()
+#define tr(i,c)  for(typeof((c).begin()) i=(c).begin(); i!=(c).end(); i++)
+#define rep(var,n)  for(int var=0;var<(n);var++)
+#define found(s,e)  ((s).find(e)!=(s).end())
+
+char m[4][102][102];
+int _dx[4] = { 1, 0, -1, 0 }, _dy[4] = { 0, 1, 0, -1 };
+int _M, _N, _sx, _sy, _gx, _gy;
+map<int,int> h;
+
+const int infty = 200000; // INT_MAX;
+
+map<int,int> dijkstra(map<int,set<int> >& arcs, int start_v, int goal_v_base)
+{
+#ifdef VERBOSE
+  printf("dijkstra : %d -> [%d..%d]\n", start_v, goal_v_base, goal_v_base+3);
+#endif
+
+  set<int> A; // open lists
+  rep(i,4) A.insert(goal_v_base + i);
+
+#ifdef VERBOSE
+  cout << "arcs:" << endl;
+#endif
+  tr(it,arcs) {
+#ifdef VERBOSE
+    cout << it->first << " - " << it->second << endl;
+#endif
+    A.insert(it->first);
+    tr(jt,it->second) A.insert(*jt);
+  }
+#ifdef VERBOSE
+  cout << endl;
+  cout << "ALL:" << A << endl;
+#endif
+
+  set<int> D; // closed list
+  map<int,int> distance;
+  tr(it, A) {
+    distance[*it] = infty;
+  }
+
+  D.insert(start_v);
+  A.erase(start_v);
+  set<int> V;
+  distance[start_v] = 0;
+  V.insert(start_v);
+
+  tr(it, arcs[start_v]) {
+    int v = *it;
+    distance[v] = 1;
+    V.insert(v);
+  }
+
+  while (
+       !found(D, goal_v_base)
+    && !found(D, goal_v_base+1)
+    && !found(D, goal_v_base+2)
+    && !found(D, goal_v_base+3) ) {
+
+    int d_ = infty;
+    int v_ = -1;
+    tr(it, V) {
+      int v = *it;
+      if (found(D,v)) continue;
+      if (distance[v] + h[v] < d_) { d_ = distance[v] + h[v]; v_ = v; }
+    }
+
+    if (v_ == -1) break;
+    D.insert(v_);
+    A.erase(v_);
+
+#ifdef VERBOSE
+    printf("\r%6d %6d", D.size(), A.size());
+    fflush(stdout);
+#endif
+
+    tr(it, arcs[v_]) { // v_ と繋がってる場所
+      int v = *it;
+      if (found(D, v)) continue;
+
+      int d_ = distance[v_] + 1;
+      if (d_ < distance[v]) {
+        distance[v] = d_;
+        V.insert(v);
+      }
+    }
+  }
+
+  return distance;
+}
+
+inline int id(int l, int x, int y) {
+  return l + x*4 + y*4*(_N+2);
+}
+
+void show_map() {
+  rep(l,4) {
+    putchar('+'); rep(x,_N) putchar('-'); putchar('+'); putchar('\n');
+
+    for (int y=1; y<=_M; ++y) {
+      putchar('|');
+      for (int x=1; x<=_N; ++x) {
+        int c = m[l][x][y];
+        if (l==0 && x==_sx && y==_sy) putchar('S');
+        else if (!c) putchar('#');
+        else {
+          if (x==_gx && y==_gy) putchar('G');
+          else putchar('.');
+        }
+      }
+      putchar('|'); putchar('\n');
+    }
+    putchar('+'); rep(x,_N) putchar('-'); putchar('+'); putchar('\n');
+  }
+  putchar('\n');
+}
+
+int main(){
+  int T; cin >> T;
+
+  map<char, int> dir;
+  dir['>'] = 0; dir['v'] = 1; dir['<'] = 2; dir['^'] = 3;
+
+  for (int t=1; t<=T; ++t) {
+    cin >> _M >> _N; // 1-100 each
+    vector<string> src(_M);
+    rep(m,_M) cin >> src[m];
+
+    rep(l,4) rep(x,_N+2) rep(y,_M+2) m[l][x][y] = 0;
+
+    vector<pair<int,pair<int,int> > > lasers;
+
+    rep(y,_M) rep(x,_N) {
+      switch (src[y][x]) {
+        case '#':
+          break;
+        case '<': case '^': case '>': case 'v':
+          lasers.pb(make_pair(dir[src[y][x]], make_pair(1+x, 1+y)));
+          break;
+        case 'S':
+          rep(l,4) m[l][1+x][1+y] = 1;
+          _sx = 1+x; _sy = 1+y;
+          break;
+        case 'G':
+          rep(l,4) m[l][1+x][1+y] = 1;
+          _gx = 1+x; _gy = 1+y;
+          break;
+        case '.':
+          rep(l,4) m[l][1+x][1+y] = 1;
+          break;
+        default:
+          printf("invalid character (%c) at (%d, %d)\n", src[y][x], 1+x, 1+y);
+          // invalid
+          break;
+      }
+    }
+
+    rep(x,_N+2) rep(y,_M+2) {
+      int dx = x - _gx, dy = y - _gy;
+      rep(l,4) h[id(l,x,y)] = dx*dx + dy*dy;
+    }
+
+    int s = id(0,_sx,_sy), g = id(0,_gx,_gy);
+#ifdef VERBOSE
+    // printf("%d(%d,%d) -> %d(%d,%d)\n", s,_sx,_sy, g,_gx,_gy);
+#endif
+
+    tr(it,lasers) {
+      int d = it->first;
+      int lx = it->second.first, ly = it->second.second;
+#ifdef VERBOSE
+      printf("laser dir.%d on (%d, %d)...\n", d, lx, ly);
+#endif
+      rep(l,4) {
+        int di = (d+l) % 4;
+        int dx = _dx[di], dy = _dy[di];
+#ifdef VERBOSE
+        printf("l=%d... ", l);
+        printf(" di=%d, dx=%d, dy=%d, ", di, dx, dy);
+#endif
+        for (int x=lx+dx, y=ly+dy; ; x+=dx, y+=dy) {
+          if (m[l][x][y] == 0) break;
+          m[l][x][y] = 0;
+#ifdef VERBOSE
+          putchar('.');
+#endif
+        }
+#ifdef VERBOSE
+        cout << endl;
+#endif
+      }
+    }
+
+#ifdef VERBOSE
+    show_map();
+#endif
+
+    map<int, set<int> > arcs;
+
+    for (int x=1; x<=_N; ++x) {
+      for (int y=1; y<=_M; ++y) {
+        for (int l=0; l<4; ++l) {
+          if (x==_gx && y==_gy) continue; // needless
+          int now = id(l,x,y);
+          if (m[l][x][y] || now==s) {
+            if (m[(l+1)%4][x+1][y]) {
+              int next = id((l+1)%4, x+1, y);
+#ifdef VERBOSE
+              printf("%d:(%d %d).%d -> %d:(%d %d).%d\n", now,x,y,l, next,x+1,y,(l+1)%4);
+#endif
+              arcs[now].insert(next);
+            }
+            if (m[(l+1)%4][x][y+1]) {
+              int next = id((l+1)%4, x, y+1);
+#ifdef VERBOSE
+              printf("%d:(%d %d).%d -> %d:(%d %d).%d\n", now,x,y,l, next,x,y+1,(l+1)%4);
+#endif
+              arcs[now].insert(next);
+            }
+            if (m[(l+1)%4][x-1][y]) {
+              int next = id((l+1)%4, x-1, y);
+#ifdef VERBOSE
+              printf("%d:(%d %d).%d -> %d:(%d %d).%d\n", now,x,y,l, next,x-1,y,(l+1)%4);
+#endif
+              arcs[now].insert(next);
+            }
+            if (m[(l+1)%4][x][y-1]) {
+              int next = id((l+1)%4, x, y-1);
+#ifdef VERBOSE
+              printf("%d:(%d %d).%d -> %d:(%d %d).%d\n", now,x,y,l, next,x,y-1,(l+1)%4);
+#endif
+              arcs[now].insert(next);
+            }
+          }
+        }
+      }
+    }
+
+    map<int,int> distance = dijkstra(arcs, s, g);
+    int ans = infty;
+    rep(i, 4) {
+      int gi = g+i;
+      int di = distance[gi];
+#ifdef VERBOSE
+      printf("distance to %d: %d\n", gi, di);
+#endif
+      if (di < ans) ans = di;
+    }
+
+    printf("Case #%d: ", t);
+    if (ans == infty)
+      cout << "impossible" << endl;
+    else
+      cout << ans << endl;
+  }
+  return 0;
+}

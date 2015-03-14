@@ -1,0 +1,331 @@
+//jporcelli, competitive coding solution template
+
+#include <algorithm>
+#include <iostream>
+#include <iterator>
+#include <numeric>
+#include <sstream>
+#include <fstream>
+#include <cassert>
+#include <climits>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <cstdio>
+#include <vector>
+#include <bitset>
+#include <cmath>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <list>
+#include <map>
+#include <set>
+
+using namespace std;
+
+typedef unsigned long long ull;
+typedef long long ll;
+typedef pair<int,int> ii;
+typedef pair<string,int> si;
+typedef pair<int,ii> iii;
+typedef vector<si> vsi;
+typedef vector<int> vi;
+typedef vector<char> vc;
+typedef vector<string> vs;
+typedef vector<int> vi;
+typedef vector<ii> vii;
+typedef vector<vi> vvi;
+typedef vector<vii> vvii;
+typedef map<string,vs> msvs;
+typedef map<string,int> msi;
+typedef map<string,string> mss;
+typedef map<int,bool> mib;
+
+#define REP(i,n) for(int i = 0, _n = (n); i < _n; i++)
+#define REPD(i,n) for(int i = (n) - 1; i >= 0; i--)
+#define FOR(i,a,b) for (int i = (a), _b = (b); i <= _b; i++)
+#define FORD(i,a,b) for (int i = (a), _b = (b); i >= _b; i--)
+#define FORN(i,a,b) for(int i = (a), _b = (b); i < _b; i++)
+#define FOREACH(it,c) for (__typeof((c).begin()) it=(c).begin();it!=(c).end();it++)
+#define RESET(c,x) memset (c, x, sizeof (c))
+#define DEBUG1(s,c) cout << s << c << endl
+
+#define PI acos(-1)
+#define sqr(x) ((x) * (x))
+#define PB push_back
+#define MP make_pair
+#define F first
+#define S second
+#define ALL(c) (c).begin(), (c).end()
+#define SIZE(c) (int)(c).size()
+#define INF 1000000000L
+#define PROD //clocking off
+
+enum laser_pos{ lp_u, lp_d, lp_l, lp_r };
+
+typedef struct Turret{
+	laser_pos dir;
+	ii cord;
+
+	Turret(laser_pos lpos, ii pos){
+		dir=lpos;
+		cord=pos;
+	}
+
+}Turret;
+
+//glbls for convience__
+
+int m,n,min_d=INF,ct=0;
+vs maze(100), cols(100);
+vector<Turret> turrets;
+bool disc[4][100][100]={false};
+
+//Point(y,x), ii.F is y cord, ii.S is x cord
+
+//only checks if a proposed step is valid wtr to the matrix, not the additional constraints (lasers)
+inline bool valid(ii x){ 
+	if(x.S<0||x.F<0||x.S>=n||x.F>=m) return false;
+	else if(maze[x.F][x.S]!='.'&&!(maze[x.F][x.S]=='G'||maze[x.F][x.S]=='S')) return false;
+	return true; 
+}
+
+//checks if a propd step is valid wtr to lasers
+inline bool hitByLaser(ii p){
+	//all cordinates are valid, including substrings because they are derived from valid cordinates
+	int x=p.S, y=p.F;
+	
+	REP(i, SIZE(turrets)){
+		Turret laser=turrets[i];
+
+		int tx=laser.cord.S, ty=laser.cord.F;
+		laser_pos lpos=laser.dir;
+		
+		if(ty==y){
+		
+			string r=maze[y];
+			
+			if(tx<x){
+				r=r.substr(tx+1,x-tx); //turret is to the left
+				
+				bool obstacle=false;
+				REP(j,r.length()){
+					if(r[j]!='.'&&!(r[j]=='G'||r[j]=='S')){
+						obstacle=true;
+						break;
+					}
+				}
+
+				//turret is to the left
+				if(!obstacle){
+					if(lpos==lp_r)
+						return true;
+				}
+				
+				continue;
+
+			}else{
+				//tx>x
+				r=r.substr(x,tx-x); //turret is to the right
+
+				bool obstacle=false;
+				REP(j,r.length()){
+					if(r[j]!='.'&&!(r[j]=='G'||r[j]=='S')){
+						obstacle=true;
+						break;
+					}
+				}
+
+				//turret is to the right
+				if(!obstacle){
+					if(lpos==lp_l)
+						return true;
+				}
+				
+				continue;
+			}
+
+		}else if(tx==x){
+			string r=cols[x];
+
+			if(ty>y){
+				r=r.substr(y,ty-y); //turret is below
+
+				bool obstacle=false;
+				REP(j,r.length()){
+					if(r[j]!='.'&&!(r[j]=='G'||r[j]=='S')){
+						obstacle=true;
+						break;
+					}
+				}
+
+				//turret is to below
+				if(!obstacle){
+					if(lpos==lp_u)
+						return true;
+				}
+				
+				continue;
+
+			}else{
+				//ty<y
+				r=r.substr(ty+1,y-ty); //turret is above
+				
+				bool obstacle=false;
+				REP(j,r.length()){
+					if(r[j]!='.'&&!(r[j]=='G'||r[j]=='S')){
+						obstacle=true;
+						break;
+					}
+				}
+
+				//turret is above
+				if(!obstacle){
+					if(lpos==lp_d)
+						return true;
+				}
+				
+				continue;
+			}
+		}
+	}
+	return false; //no lasers gunna kill me at this spot
+}
+
+inline void tick(int& time){ time=(time+1)%4; }
+
+void dfs(ii v, ii t, int len){
+
+		disc[ct][v.F][v.S]=true;
+
+		REP(i, SIZE(turrets)){
+			laser_pos lpos=turrets[i].dir;
+
+			if(lpos==lp_u) 
+				turrets[i].dir=lp_r;
+			else if(lpos==lp_r) 
+				turrets[i].dir=lp_d;
+			else if(lpos==lp_d) 
+				turrets[i].dir=lp_l;
+			else 
+				turrets[i].dir=lp_u;
+		}
+		
+		tick(ct);
+
+		//DEBUG - current vertice
+		//cout << v.F << ", " << v.S << ", " << len << endl;
+
+		if(v==t){
+			//reached destination 
+			min_d=min(min_d,len);
+			return;
+		}
+
+		ii l,r,u,d;
+		u=ii(v.F-1,v.S), d=ii(v.F+1,v.S);
+		l=ii(v.F,v.S-1), r=ii(v.F,v.S+1);
+
+		if(valid(r) && !disc[ct][r.F][r.S] && !hitByLaser(r)){
+			dfs(r,t,len+1);
+		}
+
+		if(valid(d) && !disc[ct][d.F][d.S] && !hitByLaser(d)){
+			dfs(d,t,len+1);
+		}
+
+		if(valid(l) && !disc[ct][l.F][l.S] && !hitByLaser(l)){
+			dfs(l,t,len+1);
+		}
+
+		if(valid(u) && !disc[ct][u.F][u.S] && !hitByLaser(u)){
+			dfs(u,t,len+1);
+		}
+
+		if(hitByLaser(v)){ return; }
+}
+
+class Main{
+public:
+	void solve(){
+#ifndef PROD
+clock_t stop_s,start_s;
+start_s=clock();
+#endif
+		int t;
+		cin >> t;
+		FOR(k,1,t){
+			int m_, n_; //height, width
+
+			cin >> m_ >> n_;
+			
+			m=m_, n=n_;
+		
+			//Point(y,x), ii.F is y cord, ii.S is x cord
+
+			maze.clear(); turrets.clear(); cols.clear();
+
+			//init maze
+			ii sp, ep;
+			REP(i,m){
+				string r;
+				cin >> r;
+
+				//find turrets
+				REP(j,r.length()){
+					if(r[j]=='^'){
+						turrets.PB(Turret(lp_u,ii(i,j)));
+					}else if(r[j]=='>'){
+						turrets.PB(Turret(lp_r,ii(i,j)));
+					}else if(r[j]=='v'){
+						turrets.PB(Turret(lp_d,ii(i,j)));
+					}else if(r[j]=='<'){
+						turrets.PB(Turret(lp_l,ii(i,j)));
+					}else if(r[j]=='S'){
+						sp.F=i, sp.S=j;
+					}else if(r[j]=='G'){
+						ep.F=i, ep.S=j;
+					}
+				}
+				
+				maze[i]=r;
+			}
+
+			//init cols
+			REP(i,n)
+				REP(j,m)
+					cols[i]+=maze[j][i];
+
+			//init disc
+			REP(l,4)
+				REP(q,100)
+					REP(r,100)
+						disc[l][q][r]=false;
+
+			//init min distance to goal
+			min_d=INF;
+
+			//init clock
+			ct=0;
+
+			dfs(sp,ep,0);
+
+			if(min_d==INF)
+				cout << "Case #" << k << ": " << "impossible" << endl;
+			else
+				cout << "Case #" << k << ": " << min_d << endl;
+		}
+
+#ifndef PROD
+stop_s=clock();
+cout << "time: " << (stop_s-start_s)/double(CLOCKS_PER_SEC)*1000 << endl;
+#endif
+	}
+};
+
+int main(int argc, char *argv[]){
+	Main m;
+	m.solve();
+	return 0;
+}

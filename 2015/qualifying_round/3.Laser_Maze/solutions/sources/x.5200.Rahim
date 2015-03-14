@@ -1,0 +1,147 @@
+﻿using System;
+using System.Linq;
+using System.IO;
+
+namespace ProbC_LaserMaze
+{
+    class Program
+    {
+        static void SetBL(char ch, char[,] chIn, int iy, int ix, bool[,] bl1, bool[,] bl2, bool[,] bl3, bool[,] bl4)
+        {
+            for (int i = 0; i < iy; i++)
+            {
+                for (int j = 0; j < ix; j++)
+                {
+                    if (chIn[i, j] == ch)
+                    {
+                        int k = i - 1;
+                        while ((k > -1) && (chIn[k, j] == '.' || chIn[k, j] == 'G' || chIn[k, j] == 'S'))
+                        {
+                            bl1[k, j] = true; k--;
+                        }
+                        k = j + 1;
+                        while ((k < ix) && (chIn[i, k] == '.' || chIn[i, k] == 'G' || chIn[i, k] == 'S'))
+                        {
+                            bl2[i, k] = true; k++;
+                        }
+                        k = i + 1;
+                        while ((k < iy) && (chIn[k, j] == '.' || chIn[k, j] == 'G' || chIn[k, j] == 'S'))
+                        {
+                            bl3[k, j] = true; k++;
+                        }
+                        k = j - 1;
+                        while ((k > -1) && (chIn[i, k] == '.' || chIn[i, k] == 'G' || chIn[i, k] == 'S'))
+                        {
+                            bl4[i, k] = true; k--;
+                        }
+
+                    }
+                }
+            }
+
+
+        }
+        static void Main(string[] args)
+        {
+            string s_in = @"..\..\laser_maze.txt";
+            string s_out = @"..\..\out.txt";
+
+            TextReader tr = new StreamReader(new FileStream(s_in, FileMode.Open));
+            if (File.Exists(s_out)) File.Delete(s_out);
+            TextWriter tw = new StreamWriter(new FileStream(s_out, FileMode.Create));
+            int T = int.Parse(tr.ReadLine());
+
+            for (int t = 0; t < T; t++)
+            {
+                int[] iZZ = tr.ReadLine().Split(' ').Select(s => int.Parse(s)).ToArray();
+                int ix = iZZ[1]; int iy = iZZ[0];
+                char[,] chIn = new char[iy, ix];
+                for (int i = 0; i < iy; i++)
+                {
+                    string s = tr.ReadLine();
+                    for (int j = 0; j < ix; j++)
+                    {
+                        chIn[i, j] = s[j];
+                    }
+                }
+                bool[,] bl0 = new bool[iy, ix];
+                bool[,] bl1 = new bool[iy, ix];
+                bool[,] bl2 = new bool[iy, ix];
+                bool[,] bl3 = new bool[iy, ix];
+                bool[,] bl4 = new bool[iy, ix];
+              //  bool[,] blX = new bool[iy, ix];
+
+                int iDotCount = 0;
+                int iS = 0; int jS = 0; int iG = 0; int jG = 0;
+
+
+                for (int i = 0; i < iy; i++)
+                {
+                    for (int j = 0; j < ix; j++)
+                    {
+                        if (chIn[i, j] == 'S') { iS = i; jS = j; }
+                        if (chIn[i, j] == 'G') { iG = i; jG = j; }
+                        if (chIn[i, j] == '>' || chIn[i, j] == '^' || chIn[i, j] == '<' || chIn[i, j] == 'V' || chIn[i, j] == '#')
+                        {
+                            bl1[i, j] = bl2[i, j] = bl3[i, j] = bl4[i, j] = true;
+                            iDotCount++;
+                        }
+                    }
+                }
+                bl0[iS, jS] = true;
+                iDotCount = (iy * ix - iDotCount) * 2 + 5;
+                SetBL('<', chIn, iy, ix, bl1, bl2, bl3, bl4);
+                SetBL('^', chIn, iy, ix, bl4, bl1, bl2, bl3);
+                SetBL('>', chIn, iy, ix, bl3, bl4, bl1, bl2);
+                SetBL('V', chIn, iy, ix, bl2, bl3, bl4, bl1);
+                bool[,] blW = bl1;
+                int iStep = 0; int iElCount = ix * iy;
+                while (true)
+                {
+                    iStep++;
+                    if (iStep % 4 == 1) blW = bl1;
+                    if (iStep % 4 == 2) blW = bl2;
+                    if (iStep % 4 == 3) blW = bl3;
+                    if (iStep % 4 == 0) blW = bl4;
+
+                    //Array.Copy(bl0, blX, iElCount);
+                    int jj = 0;
+                    for (int i = iS; i < iS + iStep; i++)
+                    {
+                        int cc = i + 1;
+                        jj++;
+                        for (int j = jS - iStep + jj; j < jS + jj; j++)
+                        {
+                            cc--;
+                            if (cc > -1 && j > -1 && j < ix && cc < iy && bl0[cc, j])
+                            {
+                                bl0[cc, j] = false;
+                                if (cc > 0 && !blW[cc - 1, j]) bl0[cc - 1, j] = true;
+                                if (cc < iy - 1 && !blW[cc + 1, j]) bl0[cc + 1, j] = true;
+                                if (j > 0 && !blW[cc, j - 1]) bl0[cc, j - 1] = true;
+                                if (j < ix - 1 && !blW[cc, j + 1]) bl0[cc, j + 1] = true;
+                            }
+                        }
+                    }
+
+                    if (bl0[iG, jG])
+                    {
+                        tw.WriteLine(string.Format("Case #{0}: {1}", (t + 1), iStep.ToString()));
+                        break;
+                    }
+                    if (iStep > iDotCount)
+                    {
+                        tw.WriteLine(string.Format("Case #{0}: {1}", (t + 1), "impossible"));
+                        break;
+                    }                                    
+
+                }
+                
+            }
+
+            tw.Flush();
+            tw.Close();
+
+        }
+    }
+}

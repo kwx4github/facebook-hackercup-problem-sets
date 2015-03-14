@@ -1,0 +1,415 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+using System.Diagnostics;
+using System.Drawing;
+
+namespace LaserMaze
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Usage: Facebook-LaserMaze.exe <input file> <output file>");
+            if (args.Length != 2)
+            {
+                return;
+            }
+
+            System.Diagnostics.Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            LaserMaze(args[0], args[1]);
+            stopwatch.Stop();
+
+            Console.WriteLine("Execution took {0}", stopwatch.Elapsed.ToString());
+            Console.WriteLine("This is a console app.  Hit enter to exit");
+            Console.Read();
+        }
+
+        private static void LaserMaze(string inputFile, string outputFile)
+        {
+            if (File.Exists(inputFile))
+            {
+                using (StreamReader stream = File.OpenText(inputFile))
+                {
+                    using (StreamWriter outputStream = File.CreateText(outputFile))
+                    {
+                        string pszTests = stream.ReadLine();
+                        int cTests = Int32.Parse(pszTests);
+                        if ((cTests < 1) || (cTests > 20))
+                        {
+                            throw new Exception();
+                        }
+
+                        for (int i = 0; i < cTests; ++i)
+                        {
+                            int result = ProcessSingleTest(stream);
+                            String resultStr = (result == -1) ? "impossible" : result.ToString();
+
+                            Console.WriteLine("Case #{0}: {1}", (i + 1).ToString(), resultStr);
+                            outputStream.WriteLine("Case #{0}: {1}", (i + 1).ToString(), resultStr);
+                        }
+                    }
+                }
+            }
+        }
+
+        public enum SquareType
+        {
+            Empty,
+            Wall,
+            Start,
+            Goal,
+            Turret
+        };
+
+        class Maze
+        {
+            public Maze(int width, int height)
+            {
+                Width = width;
+                Height = height;
+                MazeData = new SquareType[width, height];
+            }
+
+            public void InitializeSquare(int x, int y, char data)
+            {
+                switch(data)
+                {
+                    case '.':
+                        MazeData[x, y] = SquareType.Empty;
+                        break;
+                    case '#':
+                        MazeData[x, y] = SquareType.Wall;
+                        break;
+                    case 'S':
+                        MazeData[x, y] = SquareType.Start;
+                        break;
+                    case 'G':
+                        MazeData[x, y] = SquareType.Goal;
+                        Point goal = new Point(x, y);
+                        Goal = goal;
+                        break;
+                    case '<':
+                        MazeData[x, y] = SquareType.Turret;
+                        break;
+                    case '>':
+                        MazeData[x, y] = SquareType.Turret;
+                        break;
+                    case '^':
+                        MazeData[x, y] = SquareType.Turret;
+                        break;
+                    case 'v':
+                        MazeData[x, y] = SquareType.Turret;
+                        break;
+                    default:
+                        throw new InvalidDataException("Unknown square type");
+                }
+            }
+
+            public bool CanMoveHere(int x, int y)
+            {
+                if ((x < 0) || (x >= Width) || (y < 0) || (y >= Height))
+                {
+                    return false;
+                }
+                SquareType targetSquare = MazeData[x,y];
+                if (targetSquare == SquareType.Turret || targetSquare == SquareType.Wall)
+                {
+                    return false;
+                }
+                return true;
+            }
+
+            public bool BlocksLaser(int x, int y)
+            {
+                SquareType targetSquare = MazeData[x, y];
+                if (targetSquare == SquareType.Turret || targetSquare == SquareType.Wall)
+                {
+                    return true;
+                }
+                return false;
+            }
+
+            public int Width { get; set; }
+            public int Height { get; set; }
+            public Point Goal { get; private set; }
+            SquareType[,] MazeData;
+        }
+
+        public enum Direction
+        {
+            Left,
+            Up,
+            Right,
+            Down,
+            Max
+        }
+
+        private static Direction DirectionFromEncoding(int input)
+        {
+            return (Direction)(input & 0x3); // bits 1 and 2
+        }
+
+        private static Point PointFromEncoding(int input)
+        {
+            int x = (input & 0xFC) >> 2; // bits 3 to 8
+            int y = (input & 0xFF00) >> 8; // bits 9 to 16
+            return new Point(x, y);
+        }
+
+        private static int EncodingFromData(Direction d, Point p)
+        {
+            return (int)d | (p.X << 2) | (p.Y << 8);
+        }
+
+        class Frame
+        {
+            public Frame(int depth)
+            {
+                Depth = depth;
+            }
+
+            public override bool Equals(object obj)
+            {
+                Frame other = (Frame)obj;
+                // Don't take the depth into account.  That way lower depths with identical turret positions will win for a big optimization.
+                bool trivialCheck = ((this.PlayerPosition == other.PlayerPosition));// &&
+                               //      (this.Depth == other.Depth));
+                if (!trivialCheck)
+                {
+                    return false;
+                }
+
+                for(int i = 0; i < Turrets.Count; ++i)
+                {
+                    if (Turrets[i] != other.Turrets[i])
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            public override int GetHashCode()
+            {
+                throw new Exception("Unhashable");
+            }
+
+            public bool IsVictoryCondition(ref Maze maze)
+            {
+                return ((PlayerPosition.X == maze.Goal.X) && (PlayerPosition.Y == maze.Goal.Y));
+            }
+
+            public void TryInitialize(int x, int y, char data)
+            {
+                Point turretPos = new Point(x, y);
+                Direction facing = Direction.Left;
+                bool isATurret = false;
+
+                switch (data)
+                {
+                    case 'S':
+                        PlayerPosition.X = x;
+                        PlayerPosition.Y = y;
+                        break;
+                    case '<':
+                        isATurret = true;
+                        facing = Direction.Left;
+                        break;
+                    case '>':
+                        isATurret = true;
+                        facing = Direction.Right;
+                        break;
+                    case '^':
+                        isATurret = true;
+                        facing = Direction.Up;
+                        break;
+                    case 'v':
+                        isATurret = true;
+                        facing = Direction.Down;
+                        break;
+                }
+
+                if (isATurret)
+                {
+                    Turrets.Add(EncodingFromData(facing, turretPos));
+                }
+            }
+
+            private void RotateAllTurrets()
+            {
+                for (int i = 0; i < Turrets.Count; ++i)
+                {
+                    Direction d = DirectionFromEncoding(Turrets[i]);
+                    Point pt = PointFromEncoding(Turrets[i]);
+
+                    d = (Direction)(((int)d + 1) % (int)Direction.Max);
+
+                    Turrets[i] = EncodingFromData(d, pt);
+                }
+            }
+
+            private bool ShotByLaser(ref Maze maze)
+            {
+                foreach(int turret in Turrets)
+                {
+                    Point pt = PointFromEncoding(turret);
+                    Direction d = DirectionFromEncoding(turret);
+
+                    Point delta = new Point();
+                    switch (d)
+                    {
+                        case Direction.Left:
+                            delta.X = -1;
+                            break;
+                        case Direction.Up:
+                            delta.Y = -1;
+                            break;
+                        case Direction.Right:
+                            delta.X = 1;
+                            break;
+                        case Direction.Down:
+                            delta.Y = 1;
+                            break;
+                    }
+
+                    pt.X += delta.X;
+                    pt.Y += delta.Y;
+                    while (pt.X >= 0 && pt.X < maze.Width && pt.Y >= 0 && pt.Y < maze.Height)
+                    {
+                        if (maze.BlocksLaser(pt.X, pt.Y))
+                        {
+                            break;
+                        }
+
+                        if (pt.X == PlayerPosition.X && pt.Y == PlayerPosition.Y)
+                        {
+                            return true;
+                        }
+
+                        pt.X += delta.X;
+                        pt.Y += delta.Y;
+                    }
+
+                }
+                return false;
+            }
+
+            private Frame TryMove(ref Maze maze, Point newPosition)
+            {
+                if (!maze.CanMoveHere(newPosition.X, newPosition.Y))
+                {
+                    return null;
+                }
+                Frame result = new Frame(Depth + 1);
+                result.PlayerPosition = newPosition;
+                result.Turrets = new List<int>(this.Turrets);
+
+                result.RotateAllTurrets();
+                if (result.ShotByLaser(ref maze))
+                {
+                    return null;
+                }
+                return result;
+            }
+
+            public Frame TryMoveLeft(ref Maze maze)
+            {
+                Point newPostition = new Point(PlayerPosition.X - 1, PlayerPosition.Y);
+                return TryMove(ref maze, newPostition);
+            }
+            public Frame TryMoveUp(ref Maze maze)
+            {
+                Point newPostition = new Point(PlayerPosition.X, PlayerPosition.Y - 1);
+                return TryMove(ref maze, newPostition);
+            }
+            public Frame TryMoveRight(ref Maze maze)
+            {
+                Point newPostition = new Point(PlayerPosition.X + 1, PlayerPosition.Y);
+                return TryMove(ref maze, newPostition);
+            }
+            public Frame TryMoveDown(ref Maze maze)
+            {
+                Point newPostition = new Point(PlayerPosition.X, PlayerPosition.Y + 1);
+                return TryMove(ref maze, newPostition);
+            }
+
+            // Class fields
+            public Point PlayerPosition;
+            public List<int> Turrets = new List<int>();
+            public int Depth { get; private set; }
+        }
+
+        private static int RunAlgorithm(ref Maze maze, Frame inputFrame)
+        {
+            Queue<Frame> allFrames = new Queue<Frame>();
+            List<Frame> frameHistory = new List<Frame>();
+            allFrames.Enqueue(inputFrame);
+            while (allFrames.Count != 0)
+            {
+                Frame currentFrame = allFrames.Dequeue();
+                frameHistory.Add(currentFrame);
+
+                if (currentFrame.Depth > 9999)
+                {
+                    return -1; // failsafe
+                }
+
+                Frame left = currentFrame.TryMoveLeft(ref maze);
+                if ((left != null) && !allFrames.Contains(left) && !frameHistory.Contains(left))
+                {
+                    allFrames.Enqueue(left);
+                }
+
+                Frame up = currentFrame.TryMoveUp(ref maze);
+                if ((up != null) && !allFrames.Contains(up) && !frameHistory.Contains(up))
+                {
+                    allFrames.Enqueue(up);
+                }
+
+                Frame right = currentFrame.TryMoveRight(ref maze);
+                if ((right != null) && !allFrames.Contains(right) && !frameHistory.Contains(right))
+                {
+                    allFrames.Enqueue(right);
+                }
+
+                Frame down = currentFrame.TryMoveDown(ref maze);
+                if ((down != null) && !allFrames.Contains(down) && !frameHistory.Contains(down))
+                {
+                    allFrames.Enqueue(down);
+                }
+
+                if (currentFrame.IsVictoryCondition(ref maze))
+                {
+                    return currentFrame.Depth;
+                }
+            }
+            return -1;
+        }
+
+        private static int ProcessSingleTest(StreamReader stream)
+        {
+            String[] tokens = stream.ReadLine().Split(' ');
+            int height = int.Parse(tokens[0]); // M
+            int width = int.Parse(tokens[1]); // N
+
+            Maze maze = new Maze(width, height);
+            Frame startingFrame = new Frame(0);
+            for (int i = 0; i < height; ++i)
+            {
+                String line = stream.ReadLine();
+                for (int j = 0; j < width; ++j)
+                {
+                    maze.InitializeSquare(j, i, line[j]);
+                    startingFrame.TryInitialize(j, i, line[j]);
+                }
+            }
+
+            int result = RunAlgorithm(ref maze, startingFrame);
+            return result;
+        }
+    }
+}

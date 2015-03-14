@@ -1,0 +1,274 @@
+//Laser Mazes
+#include <iostream>
+#include <cstdio>
+
+#define INF 9999999
+#define BLOCKED 'B'
+
+using namespace std;
+
+char mazestates[4][105][105];
+char maze[105][105];
+
+int dist[4][16][105][105];
+bool visited[4][16][105][105];
+
+void init_tables();
+void populatemazes();
+int minmoves(int r, int c, int dr, int dc, int step);
+int getconfig(int row, int col, int step);
+int minimum(int a, int b, int c, int d);
+
+int M, N;
+int srcrow, srccol, destrow, destcol;
+
+int main()
+{
+    int i, j;
+    int ans;
+    int T;
+    int cse=1;
+
+    FILE *fi=fopen("input.txt", "r");
+    FILE *fo=fopen("output.txt", "w");
+
+    fscanf(fi, "%d", &T);
+    while(T--)
+    {
+        fscanf(fi, "%d %d", &M, &N);
+        for(i=0; i<M; i++)
+        {
+            fscanf(fi, "%s", maze[i]);
+        }
+
+        init_tables();
+        populatemazes();
+
+        ans=minmoves(srcrow, srccol, destrow, destcol, 0);
+
+        if(ans<INF)
+            fprintf(fo, "Case #%d: %d\n", cse, ans);
+        else
+            fprintf(fo, "Case #%d: impossible\n", cse);
+
+        cse++;
+    }
+
+    fclose(fi);
+    fclose(fo);
+
+    return 0;
+}
+
+void populatemazes()
+{
+    int i, j, k, x;
+
+    for(i=0; i<M; i++)
+    {
+        for(j=0; j<N; j++)
+        {
+            mazestates[0][i][j]=maze[i][j];
+            mazestates[1][i][j]=maze[i][j];
+            mazestates[2][i][j]=maze[i][j];
+            mazestates[3][i][j]=maze[i][j];
+            if(maze[i][j]=='S')
+            {
+                srcrow=i;
+                srccol=j;
+            }
+            if(maze[i][j]=='G')
+            {
+                destrow=i;
+                destcol=j;
+            }
+            if(maze[i][j]=='<')
+            {
+                mazestates[0][i][j]='<';
+                mazestates[1][i][j]='^';
+                mazestates[2][i][j]='>';
+                mazestates[3][i][j]='v';
+            }
+            if(maze[i][j]=='^')
+            {
+                mazestates[0][i][j]='^';
+                mazestates[1][i][j]='>';
+                mazestates[2][i][j]='v';
+                mazestates[3][i][j]='<';
+            }
+            if(maze[i][j]=='>')
+            {
+                mazestates[0][i][j]='>';
+                mazestates[1][i][j]='v';
+                mazestates[2][i][j]='<';
+                mazestates[3][i][j]='^';
+            }
+            if(maze[i][j]=='v')
+            {
+                mazestates[0][i][j]='v';
+                mazestates[1][i][j]='<';
+                mazestates[2][i][j]='^';
+                mazestates[3][i][j]='>';
+            }
+        }
+    }
+
+    for(x=0; x<4; x++)
+    {
+        for(i=0; i<M; i++)
+        {
+            for(j=0; j<N; j++)
+            {
+                if(mazestates[x][i][j]=='<')
+                {
+                    k=j-1;
+                    while(k>=0 && mazestates[x][i][k]!='#' && mazestates[x][i][k]!='<' && mazestates[x][i][k]!='^' && mazestates[x][i][k]!='>' && mazestates[x][i][k]!='v')
+                    {
+                        mazestates[x][i][k]=BLOCKED;
+                        k--;
+                    }
+                }
+                if(mazestates[x][i][j]=='^')
+                {
+                    k=i-1;
+                    while(k>=0 && mazestates[x][k][j]!='#' && mazestates[x][k][j]!='<' && mazestates[x][k][j]!='^' && mazestates[x][k][j]!='>' && mazestates[x][k][j]!='v')
+                    {
+                        mazestates[x][k][j]=BLOCKED;
+                        k--;
+                    }
+                }
+                if(mazestates[x][i][j]=='>')
+                {
+                    k=j+1;
+                    while(k<N && mazestates[x][i][k]!='#' && mazestates[x][i][k]!='<' && mazestates[x][i][k]!='^' && mazestates[x][i][k]!='>' && mazestates[x][i][k]!='v')
+                    {
+                        mazestates[x][i][k]=BLOCKED;
+                        k++;
+                    }
+                }
+                if(mazestates[x][i][j]=='v')
+                {
+                    k=i+1;
+                    while(k<M && mazestates[x][k][j]!='#' && mazestates[x][k][j]!='<' && mazestates[x][k][j]!='^' && mazestates[x][k][j]!='>' && mazestates[x][k][j]!='v')
+                    {
+                        mazestates[x][k][j]=BLOCKED;
+                        k++;
+                    }
+                }
+            }
+        }
+    }
+
+    for(x=0; x<4; x++)
+    {
+        for(i=0; i<M; i++)
+        {
+            for(j=0; j<N; j++)
+            {
+                if(mazestates[x][i][j]=='<' || mazestates[x][i][j]=='^' || mazestates[x][i][j]=='>' || mazestates[x][i][j]=='v' || mazestates[x][i][j]=='#')
+                    mazestates[x][i][j]=BLOCKED;
+            }
+        }
+    }
+}
+
+void init_tables()
+{
+    for(int i=0; i<4; i++)
+    {
+        for(int j=0; j<16; j++)
+        {
+            for(int k=0; k<105; k++)
+            {
+                for(int l=0; l<105; l++)
+                {
+                    visited[i][j][k][l]=false;
+                    dist[i][j][k][l]=INF;
+                }
+            }
+        }
+    }
+}
+
+int minmoves(int r, int c, int dr, int dc, int step)
+{
+    if(r==dr && c==dc && mazestates[step%4][r][c]!=BLOCKED)
+        return 0;
+
+    if(r<0 || c<0 || r>=M || c>=N)
+        return INF;
+
+    if(step!=0 && mazestates[step%4][r][c]==BLOCKED)
+        return INF;
+
+    int config=getconfig(r, c, step);
+    int mindist;
+
+    if(visited[step%4][config][r][c]==true)
+    {
+        return dist[step%4][config][r][c];
+    }
+
+    visited[step%4][config][r][c]=true;
+
+    mindist=minimum(1+minmoves(r, c+1, dr, dc, step+1), 1+minmoves(r+1, c, dr, dc, step+1), 1+minmoves(r, c-1, dr, dc, step+1), 1+minmoves(r-1, c, dr, dc, step+1));
+    dist[step%4][config][r][c]=mindist;
+
+    return mindist;
+}
+
+int getconfig(int row, int col, int step)
+{
+    int config=0;
+    int multiplier=1;
+
+    int up, right, down, left;
+
+    up=right=down=left=0;
+
+    if(row==0)
+        up=1;
+
+    if(row==M-1)
+        down=1;
+
+    if(col==0)
+        left=1;
+
+    if(col==N-1)
+        right=1;
+
+    if(step!=0)
+    {
+        if(row-1>=0 && mazestates[step%4][row-1][col]==BLOCKED)
+            up=1;
+
+        if(col+1<N && mazestates[step%4][row][col+1]==BLOCKED)
+            right=1;
+
+        if(row+1<M && mazestates[step%4][row+1][col]==BLOCKED)
+            down=1;
+
+        if(col-1>=0 && mazestates[step%4][row][col-1]==BLOCKED)
+            left=1;
+    }
+
+
+    config+=multiplier*left;
+    multiplier*=2;
+
+    config+=multiplier*down;
+    multiplier*=2;
+
+    config+=multiplier*right;
+    multiplier*=2;
+
+    config+=multiplier*up;
+
+    return config;
+}
+
+int minimum(int a, int b, int c, int d)
+{
+    return min(a, min(b, min(c, d)));
+}

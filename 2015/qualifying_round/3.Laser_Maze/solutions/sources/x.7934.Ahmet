@@ -1,0 +1,320 @@
+
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.LinkedList;
+import java.util.Scanner;
+
+/**
+ *
+ * @author ahmet-celik
+ */
+public class LaserMaze
+{
+    enum BlockType{
+        Wall,Space,Laser,Start,End,Invalid
+    }
+    enum Dirs{
+        Up,Right,Down,Left
+    }
+    class Block{
+        boolean[] visited=new boolean[]{false,false,false,false};
+        boolean[] laser=new boolean[]{false,false,false,false};
+        int R,C;
+        char symbol;
+        BlockType type;
+    }
+    
+    Block[][] matrix;
+    LinkedList<Block> lasers;
+    Block start,end;
+    int M,N;
+    LinkedList<Dirs> dirs;
+    public void readMatrix(Scanner scanner)
+    {
+        String dims[] = scanner.nextLine().split(" ");
+        M = Integer.valueOf(dims[0]);
+        N = Integer.valueOf(dims[1]);
+        matrix = new Block[M][N];
+        lasers = new LinkedList<>();
+        for(int i=0;i<M;++i)
+        {
+            String line = scanner.nextLine();
+            for(int j=0;j<N;++j)
+            {
+                Block b = new Block();
+                b.symbol = line.charAt(j);
+                b.C = j;
+                b.R = i;
+                switch(b.symbol){
+                    case '#':
+                        b.type = BlockType.Wall;
+                        break;
+                    case '<':
+                    case '^':
+                    case '>':
+                    case 'v':
+                        b.type = BlockType.Laser;
+                        lasers.add(b);
+                        break;                       
+                    case 'S':
+                        b.type = BlockType.Start;
+                        start = b;
+                        break;
+                    case 'G':
+                        b.type = BlockType.End;
+                        end = b;
+                        break;
+                    case '.':
+                        b.type = BlockType.Space;
+                        break;
+                    default:
+                        b.type = BlockType.Invalid;
+                }
+                matrix[i][j] = b;
+            }
+        }
+    }
+    
+    public LinkedList<Dirs> determineDirs()
+    {
+        int CDir = end.C - start.C;
+        int RDir = end.R - start.R;
+        dirs = new LinkedList<>();
+        if(CDir > 0 && RDir > 0){
+            dirs.add(Dirs.Down);
+            dirs.add(Dirs.Right);
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Up);
+        }else if(CDir > 0 && RDir < 0){       
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Right);
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Down);          
+        }else if(CDir < 0 && RDir > 0){
+            dirs.add(Dirs.Down);
+            dirs.add(Dirs.Left);  
+            dirs.add(Dirs.Right);
+            dirs.add(Dirs.Up);            
+        }else if(CDir < 0 && RDir < 0){
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Down);
+            dirs.add(Dirs.Right);        
+        }else if(CDir < 0){
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Right);
+            dirs.add(Dirs.Down);       
+        }else if(CDir > 0){
+            dirs.add(Dirs.Right);  
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Down);
+        }else if(RDir < 0){
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Right);  
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Down);     
+        }else if(RDir >0){
+            dirs.add(Dirs.Down);   
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Right);  
+            dirs.add(Dirs.Left);
+        }else{
+            dirs.add(Dirs.Up);
+            dirs.add(Dirs.Down);
+            dirs.add(Dirs.Left);
+            dirs.add(Dirs.Right);       
+        }        
+        return dirs;
+            
+    }
+    
+    public void markLasers()
+    {
+        for(Block laser:lasers)
+        {
+            int LC = laser.C,LR = laser.R;
+            int time = 0;
+            char symbol = laser.symbol;
+            switch(symbol)
+            {
+                case '<':
+                    time = 0;
+                    break;
+                case 'v':
+                    time = 1;
+                    break;
+                case '>':
+                    time = 2;
+                    break;
+                case '^':
+                    time = 3;
+                    break;
+            }
+            for(int i=LC-1;i>=0;--i)
+            {
+                Block aux = matrix[LR][i];
+                if(aux.type == BlockType.Wall || aux.type == BlockType.Laser)
+                    break;
+                matrix[LR][i].laser[time] = true;
+            }
+
+            switch(symbol)
+            {
+                case '<':
+                    time = 2;
+                    break;
+                case 'v':
+                    time = 3;
+                    break;
+                case '>':
+                    time = 0;
+                    break;
+                case '^':
+                    time = 1;
+                    break;
+            }
+            for(int i=LC+1;i<N;++i)
+            {
+                Block aux = matrix[LR][i];
+                if(aux.type == BlockType.Wall || aux.type == BlockType.Laser)
+                    break;
+                matrix[LR][i].laser[time] = true;
+            }
+            
+            switch (symbol)
+            {
+                case '<':
+                    time = 1;
+                    break;
+                case 'v':
+                    time = 2;
+                    break;
+                case '>':
+                    time = 3;
+                    break;
+                case '^':
+                    time = 0;
+                    break;
+            }
+            for (int i = LR - 1; i>=0; --i)
+            {
+                Block aux = matrix[i][LC];
+                if (aux.type == BlockType.Wall || aux.type == BlockType.Laser)
+                {
+                    break;
+                }
+                matrix[i][LC].laser[time] = true;
+            }
+            
+            switch (symbol)
+            {
+                case '<':
+                    time = 3;
+                    break;
+                case 'v':
+                    time = 0;
+                    break;
+                case '>':
+                    time = 1;
+                    break;
+                case '^':
+                    time = 2;
+                    break;
+            }
+            for (int i = LR + 1; i<M; ++i)
+            {
+                Block aux = matrix[i][LC];
+                if (aux.type == BlockType.Wall || aux.type == BlockType.Laser)
+                {
+                    break;
+                }
+                matrix[i][LC].laser[time] = true;
+            }
+        }
+    }
+    
+    public void findGoal()
+    {
+        findNext(start,0);
+        if(!found)
+            System.out.print("impossible");
+    }
+    boolean found = false;
+    public void findNext(Block cur,int time)
+    {
+        cur.visited[(time%4)] = true;
+        if(cur.type == BlockType.End){
+            System.out.print(time);
+            found = true;
+            return;
+        }
+        ++time;
+        for(Dirs dir:dirs)
+        {
+            if(found)
+                break;
+            Block next = null;
+            switch(dir)
+            {
+                case Up:
+                    if(cur.R>0)
+                    {
+                        next = matrix[cur.R-1][cur.C];
+                    }
+                    break;
+                case Down:
+                    if(cur.R<M-1)
+                    {
+                        next = matrix[cur.R+1][cur.C];
+                    }
+                    break;
+                case Left:
+                    if(cur.C>0)
+                    {
+                        next = matrix[cur.R][cur.C-1];
+                    }
+                    break;
+                case Right:
+                    if(cur.C<N-1)
+                    {
+                        next = matrix[cur.R][cur.C+1];
+                    }
+                    break;
+            }
+            if (next != null)
+            {
+                int q = (time % 4);
+                if (!next.visited[q] && !next.laser[q]
+                        && next.type != BlockType.Laser && next.type != BlockType.Wall)
+                {
+                    findNext(next, time);
+                }
+            }
+        }
+    
+    }
+    
+    
+    
+    public static void main(String[] args) throws FileNotFoundException
+    {
+
+        File input = new File("laser_maze.txt");
+        Scanner scanner =  new Scanner(input);
+        int testCount = Integer.valueOf(scanner.nextLine());
+        for(int i=0;i<testCount;++i)
+        {
+            LaserMaze maze = new LaserMaze();
+            maze.readMatrix(scanner);
+            maze.markLasers();
+            maze.determineDirs();
+            System.out.print("Case #"+(i+1)+": ");
+            maze.findGoal();
+            System.out.println();
+        
+        }
+    }
+}

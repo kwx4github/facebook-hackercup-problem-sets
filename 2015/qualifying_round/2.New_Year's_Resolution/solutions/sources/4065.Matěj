@@ -1,0 +1,51 @@
+{-# OPTIONS_GHC -Wall #-}
+module Main where
+
+import Control.Applicative ((<$>))
+
+instance (Num a, Num b, Num c, Eq a, Eq b, Eq c) => Num (a, b, c) where
+        (a, b, c) + (a', b', c') = (a + a', b + b', c + c')
+        (a, b, c) - (a', b', c') = (a - a', b - b', c - c')
+        negate (a, b, c) = (-a, -b, -c)
+        abs (a, b, c)    = (abs a, abs b, abs c)
+        fromInteger i    = (fromInteger i, 0, 0)
+
+readTriple :: (Read a, Read b, Read c) => IO (a, b, c)
+readTriple = do
+        ws <- words <$> getLine
+        return (read $ ws !! 0, read $ ws !! 1, read $ ws !! 2)
+
+-- ^ A variation of the subset sum problem
+q :: (Eq a, Ord a, Num a) => Int -> a -> [a] -> Bool
+q _ _ []    = False
+q 0 s (x:_) = s == x
+q i s xs    = let sum' = sum xs
+                  xi   = xs !! i in
+    if s > sum'
+        then False
+        else q (i - 1) s xs || xi == s || q (i - 1) (s - xi) xs
+
+readCase :: IO ((Int, Int, Int), [(Int, Int, Int)])
+readCase = do
+        goal  <- readTriple
+        count <- read <$> getLine :: IO Int
+        items <- mapM (\_ -> readTriple) [1..count]
+
+        return (goal, items)
+
+compute :: ((Int, Int, Int), [(Int, Int, Int)]) -> IO Bool
+compute (goal, items) = let top = length items - 1 in
+    return $ q top goal items
+
+printResult :: Int -> Bool -> IO ()
+printResult casen result =
+        putStrLn $ "Case #" ++ show casen ++ ": " ++ if result
+                                                         then "yes"
+                                                         else "no"
+
+main :: IO ()
+main = do
+        cases <- read <$> getLine :: IO Int
+        mapM_ (\i -> readCase >>= compute >>= printResult i) [1..cases]
+        return ()
+

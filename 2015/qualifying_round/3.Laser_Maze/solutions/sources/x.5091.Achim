@@ -1,0 +1,256 @@
+package de.ateda.hackercup2015;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class Maze {
+
+	public static void main(String[] args) throws Exception {
+		try (BufferedReader in = new BufferedReader(new FileReader("src/de/ateda/hackercup2015/Maze.in"))) {
+			try (PrintWriter out = new PrintWriter(new FileWriter("src/de/ateda/hackercup2015/Maze.out"))) {
+				int T = readInt(in);
+				for (int t = 1; t <= T; t++) {
+					int[] h = readIntArray(in);
+					int m = h[0];
+					int n = h[1];
+					char[][] maze = new char[m][n];
+					for (int i = 0; i < m; i++) {
+						String s = in.readLine();
+						s.getChars(0, n, maze[i], 0);
+					}
+					String solution = solve(m, n, maze);
+					out.printf("Case #%s: %s\n", t, solution);
+				}
+			}
+		}
+	}
+
+	enum Direction {
+		N, E, S, W
+	};
+
+	static final Map<Character, Direction> TURRETS = new HashMap<>();
+	static {
+		TURRETS.put('^', Direction.N);
+		TURRETS.put('v', Direction.S);
+		TURRETS.put('<', Direction.W);
+		TURRETS.put('>', Direction.E);
+	}
+
+	static class Cell {
+
+		Map<Direction, Cell> neighbors = new HashMap<>();
+		List<Cell> possibleSteps = new LinkedList<Cell>();
+
+		final int mi;
+		final int ni;
+		final int variant;
+		char type;
+		boolean laser = false;
+		Direction turret = null;
+		boolean isGoal = false;
+		boolean visited = false;
+
+		@Override
+		public String toString() {
+			return String.format("(%s,%s,%s,%s)", mi, ni, variant, neighbors.keySet());
+		}
+
+		public Cell(int mi, int ni, int variant) {
+			this.mi = mi;
+			this.ni = ni;
+			this.variant = variant;
+		}
+
+		public Collection<Cell> getNeighbors() {
+			return neighbors.values();
+		}
+
+		public void setNextSteps(Collection<Cell> cells) {
+			possibleSteps.addAll(cells);
+		}
+
+		public void addNeighbor(Direction dir, Cell cell) {
+			neighbors.put(dir, cell);
+		}
+
+		public void removeNeighbor(Cell cell) {
+			neighbors.values().remove(cell);
+		}
+
+		public void setType(char type, int variant) {
+			this.type = type;
+			if (type == '.' || type == 'S' || type == 'G') {
+				// passable
+				if (type == 'G') {
+					isGoal = true;
+				}
+			} else {
+				if (TURRETS.containsKey(type)) {
+					Direction d = TURRETS.get(type);
+					turret = Direction.values()[(d.ordinal() + variant) % 4];
+				} else {
+					killThisCell();
+				}
+			}
+		}
+
+		private void killThisCell() {
+			for (Cell c : neighbors.values()) {
+				c.removeNeighbor(this);
+			}
+		}
+
+		public void fire() {
+			if (turret != null) {
+				fire(turret);
+			}
+		}
+
+		private void fire(Direction dir) {
+			laser = true;
+			Cell neighbor = neighbors.get(dir);
+			if (neighbor != null)
+				neighbor.fire(dir);
+		}
+
+		public void prune() {
+			for (Iterator<Cell> ii = possibleSteps.iterator(); ii.hasNext();) {
+				if (ii.next().laser) {
+					ii.remove();
+				}
+			}
+		}
+
+		public boolean gotoGoal(Set<Cell> next) {
+			for (Cell c : possibleSteps) {
+				if (!c.visited) {
+					next.add(c);
+				}
+			}
+			type = 'o';
+			visited = true;
+			return isGoal;
+		}
+	}
+
+	private static String solve(int m, int n, char[][] maze) {
+		Cell[][][] cells = new Cell[4][m][n];
+		Set<Cell> current = new LinkedHashSet<>();
+		for (int variant = 0; variant < 4; variant++) {
+			for (int mi = 0; mi < m; mi++) {
+				for (int ni = 0; ni < n; ni++) {
+					cells[variant][mi][ni] = new Cell(mi, ni, variant);
+				}
+			}
+		}
+		for (int variant = 0; variant < 4; variant++) {
+			for (int mi = 0; mi < m; mi++) {
+				for (int ni = 0; ni < n; ni++) {
+					if (mi > 0)
+						cells[variant][mi][ni].addNeighbor(Direction.N, cells[variant][mi - 1][ni]);
+					if (mi < m - 1)
+						cells[variant][mi][ni].addNeighbor(Direction.S, cells[variant][mi + 1][ni]);
+					if (ni > 0)
+						cells[variant][mi][ni].addNeighbor(Direction.W, cells[variant][mi][ni - 1]);
+					if (ni < n - 1)
+						cells[variant][mi][ni].addNeighbor(Direction.E, cells[variant][mi][ni + 1]);
+				}
+			}
+		}
+		for (int mi = 0; mi < m; mi++) {
+			for (int ni = 0; ni < n; ni++) {
+				char c = maze[mi][ni];
+				for (int variant = 0; variant < 4; variant++) {
+					cells[variant][mi][ni].setType(c, variant);
+				}
+				if (c == 'S') {
+					current.add(cells[0][mi][ni]);
+				}
+			}
+		}
+		for (int variant = 0; variant < 4; variant++) {
+			for (int mi = 0; mi < m; mi++) {
+				for (int ni = 0; ni < n; ni++) {
+					cells[variant][mi][ni].fire();
+				}
+			}
+		}
+		for (int variant = 0; variant < 4; variant++) {
+			for (int mi = 0; mi < m; mi++) {
+				for (int ni = 0; ni < n; ni++) {
+					cells[variant][mi][ni].setNextSteps(cells[(variant + 1) % 4][mi][ni].getNeighbors());
+				}
+			}
+		}
+		for (int variant = 0; variant < 4; variant++) {
+			for (int mi = 0; mi < m; mi++) {
+				for (int ni = 0; ni < n; ni++) {
+					cells[variant][mi][ni].prune();
+				}
+			}
+		}
+
+		int counter = 0;
+		Set<Cell> next = new LinkedHashSet<>();
+		while (!current.isEmpty()) {
+			for (Cell c : current) {
+				if (c.gotoGoal(next)) {
+					return "" + counter;
+				}
+				// dump(m, n, cells, c.variant);
+
+			}
+			current = next;
+			next = new LinkedHashSet<>();
+			counter++;
+		}
+
+		return "impossible";
+	}
+
+	private static void dump(int m, int n, Cell[][][] cells, int variant) {
+		System.out.println("var " + variant);
+		for (int mi = 0; mi < m; mi++) {
+			for (int ni = 0; ni < n; ni++) {
+				System.out.print(cells[variant][mi][ni].type);
+			}
+			System.out.println();
+		}
+	}
+
+	private static boolean update(int m, int n, char[][] maze, char[][] next) {
+		for (int mi = 0; mi < m; mi++) {
+			for (int ni = 0; ni < n; ni++) {
+
+			}
+		}
+		return false;
+	}
+
+	private static int readInt(BufferedReader in) throws NumberFormatException, IOException {
+		return Integer.parseInt(in.readLine());
+	}
+
+	private static int[] readIntArray(BufferedReader in) throws NumberFormatException, IOException {
+		String line = in.readLine();
+		String[] split = line.split(" ");
+		int[] result = new int[split.length];
+		for (int i = 0; i < split.length; i++) {
+			result[i] = Integer.parseInt(split[i]);
+		}
+		return result;
+	}
+
+}

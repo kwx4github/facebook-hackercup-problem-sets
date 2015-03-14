@@ -1,0 +1,201 @@
+import groovy.text.SimpleTemplateEngine
+import groovy.text.Template
+import groovy.transform.CompileStatic
+
+@CompileStatic
+class LazerMaze {
+  static char WALL = '#'
+  static char EMPTY = '.'
+  static char START = 'S'
+  static char GOAL = 'G'
+  static char UP = '^'
+  static char DOWN ='v'
+  static char LEFT = '<'
+  static char RIGHT = '>'
+  static char[] TURRETDIRS = [UP, RIGHT, DOWN, LEFT]
+  static char[] VISITABLE = [EMPTY, START, GOAL]
+  int height
+  int width
+  char[][] grid
+
+  LazerMaze(char[][] grid) {
+    this.grid = grid
+    height = grid.length
+    width = grid[0].size()
+  }
+
+  Position findStart() {
+    for (int i in 0..<height) {
+      int startCol = grid[i].findIndexOf { it == START }
+      if (startCol > -1) {
+        return new Position(i, startCol, 0)
+      }
+    }
+    return null
+  }
+
+  char gridAt(Position pos) {
+    return grid[pos.row][pos.col]
+  }
+
+  int solve(){
+    Set<Position> visited = [] as Set
+    Deque<Position> toVisit = new ArrayDeque<Position>([findStart()])
+    visited.add(toVisit.peek())
+    int min = Integer.MAX_VALUE
+    boolean found = false
+    while (!toVisit.isEmpty()){
+      Position pos = toVisit.poll()
+      if (pos.@t >= min){
+        continue
+      }
+      if (gridAt(pos) == GOAL) {
+        min = pos.@t
+        found = true
+        continue
+      }
+      List<Position> next = [pos.up(), pos.down(), pos.right(), pos.left()].findAll { canVisit(it, visited) } as List<Position>
+      visited.addAll(next)
+      toVisit.addAll(next)
+    }
+    return found ? min : 0
+  }
+
+  boolean canVisit(Position pos, Set<Position> visited) {
+    !(pos in visited) && canVisit(pos.row, pos.col, pos.t)
+  }
+
+  boolean canVisit(int row, int col, int t) {
+    if (row in (0..<height) && col in (0..<width) && grid[row][col] in VISITABLE){
+      return !underFire(row, col, t)
+    }
+    return false
+  }
+
+  boolean underFire(int row, int col, int t) {
+    return underFireDown(row, col, t) ||
+    underFireLeft(row, col, t) ||
+    underFireRight(row, col, t) ||
+    underFireUp(row, col, t)
+  }
+
+  boolean underFireLeft(int row, int col, int t) {
+    while (--col > -1) {
+      char c = grid[row][col]
+      if (c in VISITABLE) {
+        continue
+      } else {
+        return (c in TURRETDIRS && turretAtPos(c, t) == RIGHT)
+      }
+    }
+    return false
+  }
+
+  boolean underFireRight(int row, int col, int t) {
+    while (++col < width) {
+      char c = grid[row][col]
+      if (c in VISITABLE) {
+        continue
+      } else {
+        return (c in TURRETDIRS && turretAtPos(c, t) == LEFT)
+      }
+    }
+    return false
+  }
+
+  boolean underFireUp(int row, int col, int t) {
+    while (--row > -1) {
+      char c = grid[row][col]
+      if (c in VISITABLE) {
+        continue
+      } else {
+        return (c in TURRETDIRS && turretAtPos(c, t) == DOWN)
+      }
+    }
+    return false
+  }
+
+  boolean underFireDown(int row, int col, int t) {
+    while (++row > height) {
+      char c = grid[row][col]
+      if (c in VISITABLE) {
+        continue
+      } else {
+        return (c in TURRETDIRS && turretAtPos(c, t) == UP)
+      }
+    }
+    return false
+  }
+
+  static char turretAtPos(char init, int t){
+    TURRETDIRS[(TURRETDIRS.findIndexOf { it == init } + t) % 4]
+  }
+
+  static class Position {
+    int row
+    int col
+    int t
+
+    Position(int row, int col){
+      this.row = row
+      this.col = col
+    }
+    Position(int row, int col, int t){
+      this(row, col)
+      this.t = t
+    }
+
+    int getT() {
+      return t % 4
+    }
+
+    int hashCode() {
+      10000*getT() + 100*row + col
+    }
+
+    boolean equals(Object o) {
+      if (o instanceof Position) {
+        Position other = o as Position
+        return row == other.row && col == other.col && (other.t ? getT() == other.getT() : true)
+      }
+      return false
+    }
+
+    Position up() {
+      return new Position(row-1, col, t+1)
+    }
+
+    Position down() {
+      return new Position(row+1, col-1, t+1)
+    }
+
+    Position right(){
+      return new Position(row, col+1, t+1)
+    }
+
+    Position left(){
+      return new Position(row, col-1, t+1)
+    }
+  }
+
+  public static void main(String[] args){
+    Template template = new SimpleTemplateEngine().createTemplate('Case #$_case: $answer')
+    Scanner scanner = new Scanner(System.in)
+    int t = scanner.nextInt()
+    (1..t).each {
+      int m = scanner.nextInt()
+      int n = scanner.nextInt()
+      char[][] grid = new char[m][n]
+      int size = 0
+      while (size < m) {
+        char[] row = scanner.nextLine().trim().toCharArray()
+        if (row.length > 0) {
+          grid[size++] = row
+        }
+      }
+      LazerMaze maze = new LazerMaze(grid)
+      int result = maze.solve()
+      println template.make(_case: it, answer: result ?: "impossible")
+    }
+  }
+}

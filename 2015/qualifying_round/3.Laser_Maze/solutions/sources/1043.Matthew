@@ -1,0 +1,165 @@
+import java.io.*;
+import java.util.*;
+
+public class LaserMaze2
+{
+  public static void main (String[] args) throws Exception
+  {
+    Scanner in = new Scanner(new File("laser_maze.txt"));
+    PrintWriter out = new PrintWriter(new FileWriter("out.txt"));
+    
+    int test = in.nextInt();
+    for (int t = 0; t < test; t++)
+    {
+      int rows = in.nextInt();
+      int cols = in.nextInt();
+      
+      in.nextLine();
+      
+      int[] start = new int[2];
+      char[][][] grid = new char[rows][cols][4];
+      int[][][] visited = new int[rows][cols][4];
+      // 4 phases, 2 coords(rowcol)
+      ArrayList<int[]> lasers = new ArrayList<int[]>();
+      for (int x =0; x< rows; x++)
+      {
+        String take = in.nextLine();
+        for (int y =0; y < cols; y++)
+        {
+          int[] laser = new int[3];
+          laser[0] = -1;
+          char get = take.charAt(y);
+          if (get == 'S') {
+            start[0] = x;
+            start[1] = y;
+          } else if (get == '^') {
+            laser[0] = x;
+            laser[1] = y;
+            laser[2] = 0;
+          } else if (get == '>') {
+            laser[0] = x;
+            laser[1] = y;
+            laser[2] = 1;
+          } else if (get == 'v') {
+            laser[0] = x;
+            laser[1] = y;
+            laser[2] = 2;
+          } else if (get == '<') {
+            laser[0] = x;
+            laser[1] = y;
+            laser[2] = 3;
+          }
+          for (int z =0; z< 4; z++)
+          {
+            grid[x][y][z] = get;
+          }
+          if (laser[0] != -1) {
+            lasers.add(laser);
+          }
+        }
+      } // end reading
+      // now burning in lazers
+      for (int phase = 0; phase < 4; phase++)
+      {
+        for (int[] laser : lasers)
+        {
+          int point = (phase+laser[2])%4;
+          if (point == 0) {
+            for (int x = laser[0]-1; x >= 0 && !isWall(grid[x][laser[1]][phase]); x--)
+              grid[x][laser[1]][phase] = 'x';
+          } else if (point == 1) {
+            for (int x = laser[1]+1; x < cols && !isWall(grid[laser[0]][x][phase]); x++)
+              grid[laser[0]][x][phase] = 'x'; 
+          } else if (point == 2) {
+            for (int x = laser[0]+1; x < rows && !isWall(grid[x][laser[1]][phase]); x++)
+              grid[x][laser[1]][phase] = 'x';
+          } else if (point == 3) {
+            for (int x = laser[1]-1; x >= 0 && !isWall(grid[laser[0]][x][phase]); x--)
+              grid[laser[0]][x][phase] = 'x';
+          } else {
+            System.out.println("Oh shit!!!");
+          }
+        }
+      }
+      
+      // end set up
+      //drawGrids(grid);
+      //System.out.println("end");
+      
+      // bfs
+      Queue <Node> queue = new LinkedList<Node>();
+      queue.add(new Node(start[0],start[1],0,0));
+      
+      int ans = -1;
+      
+      outer:
+      while (queue.size()>0)
+      {
+        Node n = queue.remove();
+        
+        // Base cases: out of bounds, impassable, av, solved
+        if (n.row < 0 || n.row >= rows || n.col < 0 || n.col >= cols) continue;
+        if (!(n.depth == 0) && !isPassable(grid[n.row][n.col][n.phase])) continue;
+        if (grid[n.row][n.col][n.phase] == 'G') {
+          ans = n.depth;
+          break outer;
+        }
+        if (visited[n.row][n.col][n.phase] == 2)
+          continue;
+        // now recurse in the four directions
+        int newPhase = n.phase;
+        newPhase++;
+        if (newPhase >= 4) newPhase = 0;
+        visited[n.row][n.col][n.phase] ++; 
+        queue.add(new Node(n.row+1,n.col,n.depth+1,newPhase));
+        queue.add(new Node(n.row-1,n.col,n.depth+1,newPhase));
+        queue.add(new Node(n.row,n.col+1,n.depth+1,newPhase));
+        queue.add(new Node(n.row,n.col-1,n.depth+1,newPhase));
+      }
+      
+      System.out.println(ans);
+      String stringAns = ans+"";
+      if (ans == -1) stringAns = "impossible";
+      out.println("Case #" + (t+1) + ": " + stringAns);
+    }
+    
+    in.close();
+    out.close();
+  }
+  /*
+  public static void drawGrids(char[][][] grid) {
+    // draw
+    for (int p =0; p< 4; p++)
+    {
+      System.out.println();
+      for (int x = 0; x < grid.length; x++)
+      {
+        for (int y =0; y < grid[0].length;y++)
+        {
+          System.out.print(grid[x][y][p]);
+        }
+        System.out.println();
+      }
+    }
+  }
+  */
+  public static boolean isWall(char a)
+  {
+    return (a == '#' || a == '^' || a == '>' || a == 'v' || a == '<');
+  }
+  
+  public static boolean isPassable(char a)
+  {
+    return (!isWall(a)) && a != 'x';
+  }
+  
+  public static class Node {
+    int row, col, depth, phase;
+    public Node(int row, int col, int depth,int phase) {
+      this.row = row;
+      this.col = col;
+      this.depth = depth;
+      this.phase = phase;
+    }
+  }
+}

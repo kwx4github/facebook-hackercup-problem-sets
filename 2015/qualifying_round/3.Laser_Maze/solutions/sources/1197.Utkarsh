@@ -1,0 +1,230 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <limits>
+#include <string>
+#include <cstring>
+#include <cassert>
+
+using namespace std;
+
+typedef long long ll;
+typedef pair <int,int> pii;
+typedef vector <int> vi;
+typedef vector < vi > vvi;
+
+#define rep(i, n) for(int i = 0; i < (n); ++i)
+#define forn(i, a, b) for(int i = (a); i < (b); ++i)
+#define ford(i, a, b) for(int i = (a); i >= (b); --i)
+#define fore(i, a, b) forn(i, a, b + 1)
+
+#define pb push_back
+#define mp make_pair
+#define ff first
+#define ss second
+#define all(c) c.begin(), c.end()
+#define fill(a, v) memset(a, v, sizeof(a))
+#define sz(a) ((int)a.size())
+
+#define gl(x) cin >> x
+#define gi(x) scanf("%d", &x)
+#define pls(x) cout << x << " "
+#define pln(x) cout << x << "\n"
+#define pis(x) printf("%d ", x)
+#define pin(x) printf("%d\n", x)
+#define pnl printf("\n")
+#define dbn cerr << "\n"
+#define dbg(x) cerr << #x << " : " << x << " "
+#define dbs(x) cerr << x << " "
+
+#define foreach(c, it) for(__typeof(c.begin()) it = c.begin(); it != c.end(); ++it)
+
+#define imax numeric_limits<int>::max()
+#define imin numeric_limits<int>::min()
+#define lmax numeric_limits<ll>::max()
+#define lmin numeric_limits<ll>::min()
+
+struct State {
+	int row; int col; int level;
+	State(int row, int col, int level) : row(row), col(col), level(level) {}
+};
+
+struct Location {
+	int row; int col;
+	Location(int r, int c): row(r), col(c) {}
+};
+
+int dx[4] = { 0,-1, 0, 1};
+int dy[4] = {-1, 0, 1, 0};
+
+int hash[256];
+int turret_symbols[4] = { '<' , '^' , '>' , 'v'};
+int col_diff[256];
+int row_diff[256];
+
+int rotate(int turret, int level) {
+	return turret_symbols[ (hash[turret] + level) % 4 ];
+}
+
+void rotateTurrets( vvi &maze, vector < Location > &turrets , int level) {
+	foreach(turrets, it) {
+		maze[it->row][it->col] = rotate(maze[it->row][it->col], level);
+	}
+}
+
+void simulateTurrets( vvi &maze, vector< Location > &turrets) {
+	foreach(turrets, it) {
+		int r = it->row, c = it->col;
+		int dr = row_diff[maze[it->row][it->col]], dc = col_diff[maze[it->row][it->col]];
+		// Fire Gun
+		r += dr;
+		c += dc;
+		while( maze[r][c] == '.' or maze[r][c] == 'S' or maze[r][c] == 'G' or maze[r][c] == '*' ) {
+			maze[r][c] = '*';
+			// proceed
+			r += dr;
+			c += dc;
+		}
+	}
+}
+
+void printMaze(vvi &maze) {
+	foreach(maze, row) {
+		foreach( (*row) , col) {
+			printf("%c", (*col) );
+		}
+		printf("\n");
+	}
+}
+
+void constructMazes(vector< vvi > &mazes, vvi& maze, vector< Location > &turrets) {
+	rep(level, 4) {
+		mazes[level] = vvi( maze );
+		rotateTurrets(mazes[level], turrets, level);
+		simulateTurrets( mazes[level] , turrets);
+	}
+}
+
+int mazeBFS(vector < vvi > &mazes, int M, int N, int start_row, int start_col) {
+
+	vector< vector< vector < bool > >  > visited( 4, vector< vector < bool > > (M + 2 , vector < bool >( N + 2, false) ) );
+	
+	queue< State > q;
+	int d;
+	rep(i, 4) {
+		d = mazes[1][start_row + dy[i]][start_col + dx[i]];
+		if(d == '.' or d == 'S' or d == 'G') {
+			q.push( State( start_row + dy[i] , start_col + dx[i] , 1 ) );
+			visited[1][start_row + dy[i]][start_col + dx[i]] = true;
+		}
+	}
+
+	while(sz(q)) {
+		State t = q.front(); 
+		q.pop();
+
+		switch( mazes[t.level % 4][t.row][t.col] ) {
+			case 'S':
+			case '.':
+				rep (i, 4) {
+					if( !visited[ (t.level + 1) % 4][t.row + dy[i]][t.col + dx[i]] ) {
+						d = mazes[ (t.level + 1) % 4][t.row + dy[i]][t.col + dx[i]];
+						if(d == '.' or d == 'S' or d == 'G') {
+							q.push( State( t.row + dy[i] , t.col + dx[i] , t.level + 1 ) );
+							visited[ (t.level + 1) % 4][t.row + dy[i]][t.col + dx[i]] = true;
+						}
+
+					}
+				}
+				break;
+			case 'G':
+				// REACHED GOAL
+				return t.level;
+				break;
+			default:
+				break;
+		}
+	}
+
+	return -1;
+}
+
+int main() {
+	// set turret hash
+	hash['<'] = 0;
+	hash['^'] = 1;
+	hash['>'] = 2;
+	hash['v'] = 3;
+
+	// Setup col_diff row_diff
+	col_diff['<'] = -1;
+	row_diff['<'] = 0;
+
+	col_diff['^'] = 0;
+	row_diff['^'] = -1;
+
+	col_diff['>'] = +1;
+	row_diff['>'] = 0;
+
+	col_diff['v'] = 0;
+	row_diff['v'] = +1;
+
+	int T;
+	gi(T);
+
+	fore(t,1,T) {
+		int M, N, start_row, start_col;
+		scanf("%d %d", &M, &N);
+
+		vvi maze( M + 2, vi( N + 2, '#'));
+		vector< Location > turrets;
+
+		fore(i, 1, M) {
+			fore(j, 1, N) {
+				char t;
+				cin >> t;
+				maze[i][j] = (int) t;
+
+				if(t == 'S') {
+					start_row = i;
+					start_col = j;
+				}
+				else if ( t == '<' or t == '^' or t == '>' or t == 'v' ) {
+					turrets.pb( Location(i, j) );
+				}
+			}
+		}
+
+		vector< vvi > mazes(4);
+		constructMazes( mazes, maze, turrets );
+		int result = mazeBFS(mazes, M, N, start_row, start_col);
+
+		switch(result) {
+			case -1:
+				printf("Case #%d: impossible\n", t);
+				break;
+			default:
+				printf("Case #%d: %d\n", t, result); 
+				break;
+		}
+	}
+
+	return 0;
+}
+

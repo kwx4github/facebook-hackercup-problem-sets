@@ -1,0 +1,166 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <memory.h>
+#define MAX 100000000
+using namespace std;
+
+__int64 arr[4][101][101];
+char mm[4][101][101];
+char ori[101][101];
+int n,m;
+
+
+char change(char a,int t){
+	int count;
+	switch(a){
+		case '^':
+			count = 0;
+			break;
+		case '>':
+			count = 1;
+			break;
+		case 'v':
+			count = 2;
+			break;
+		case '<':
+			count = 3;
+			break;
+	}
+	count += t;
+	count = count%4;
+	
+	if(count == 0)
+		return '^';
+	if(count == 1)
+		return '>';
+	if(count == 2)
+		return 'v';
+	return '<';
+}
+
+void ch(int t,int i,int j){
+	if(mm[t][i][j] == '^'){
+		for(int z = i-1; z >=0 ;z--){
+			if(mm[t][z][j] != 0)
+				break;
+			mm[t][z][j] = '#';
+		}
+	}
+	if(mm[t][i][j] == '>'){
+		for(int z = j+1; z <m ;z++){
+			if(mm[t][i][z] != 0)
+				break;
+			mm[t][i][z] = '#';
+		}
+	}
+	if(mm[t][i][j] == 'v'){
+		for(int z = i+1; z < n ;z++){
+			if(mm[t][z][j] != 0)
+				break;
+			mm[t][z][j] = '#';
+		}
+	}
+	if(mm[t][i][j] == '<'){
+		for(int z = j-1; z >=0 ;z--){
+			if(mm[t][i][z] != 0)
+				break;
+			mm[t][i][z] = '#';
+		}
+	}
+}
+
+void pre(){
+	int t,i,j;
+
+	for(t=0;t<4;t++){
+		for(i=0;i<n;i++){
+			for(j=0;j<m;j++){
+				if(ori[i][j] == '#')
+					mm[t][i][j] = ori[i][j];
+				else if(ori[i][j] == '<' || ori[i][j] == '>' || ori[i][j] == '^' || ori[i][j] == 'v'){
+					mm[t][i][j] = change(ori[i][j],t);
+				}
+			}
+		}
+	}
+
+	for(t=0;t<4;t++){
+		for(i=0;i<n;i++){
+			for(j=0;j<m;j++){
+				if(mm[t][i][j] == '<' || mm[t][i][j] == '>' || mm[t][i][j] == '^' || mm[t][i][j] == 'v'){
+					ch(t,i,j);
+					mm[t][i][j] = 0;
+				}
+
+			}
+		}
+	}
+}
+
+__int64 check(int a,int b,int c){
+	if(arr[a][b][c] >= 0)
+		return arr[a][b][c];
+
+	if(ori[b][c] == 'G'){
+		arr[a][b][c] = 0;
+		return 0;
+	}
+	int next = (a+1)%4;
+	__int64& min = arr[a][b][c];
+	min = MAX;
+	__int64 temp;
+	if((b-1)>=0 && mm[next][b-1][c] == 0){
+		temp = 1 + check(next,b-1,c);
+		if(temp < min)
+			min = temp;
+	}
+	if((c+1)<m && mm[next][b][c+1] == 0){
+		temp = 1 + check(next,b,c+1);
+		if(temp < min)
+			min = temp;
+	}
+	if((b+1)<n && mm[next][b+1][c] == 0){
+		temp = 1 + check(next,b+1,c);
+		if(temp < min)
+			min = temp;
+	}
+	if((c-1)>=0 && mm[next][b][c-1] == 0){
+		temp = 1 + check(next,b,c-1);
+		if(temp < min)
+			min = temp;
+	}
+	return min;
+}
+
+int main(){
+	ifstream fin("laser_maze.txt");
+	ofstream fout("output.txt");
+	int T;
+	fin>>T;
+	for(int t=0;t<T;t++){
+		fin>>n>>m;
+		memset(arr,0xff,sizeof(arr));
+		memset(mm,0,sizeof(mm));
+		int i,j;
+		for(i=0;i<n;i++) for(j=0;j<m;j++) fin>>ori[i][j];
+
+		pre();
+		for(i=0;i<n;i++){
+			for(j=0;j<m;j++){
+				if(ori[i][j] == 'S')
+					break;
+			}
+			if(j!=m)
+				break;
+		}
+		__int64 result = check(0,i,j);
+		if(result >= MAX)
+			fout<<"Case	#"<<t+1<<": "<<"impossible"<<endl;
+		else
+			fout<<"Case	#"<<t+1<<": "<<result<<endl;
+	}
+	return 0;
+}

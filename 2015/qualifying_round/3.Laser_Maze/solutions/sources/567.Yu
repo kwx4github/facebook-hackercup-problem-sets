@@ -1,0 +1,132 @@
+package fhc2015q.c;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.concurrent.ArrayBlockingQueue;
+
+public class Main {
+
+	static final String FILENAME = "laser_maze.txt";
+	static final boolean LOCAL = false;
+
+	Scanner sc;
+
+	int R, C;
+	char[][] table;
+	int[][][] memo;
+	final int INF = 1001001001;
+	int[] dr = {0, 1, 0, -1};
+	int[] dc = {1, 0, -1, 0};
+
+	boolean isin(int r, int c) {
+		return 0 <= r && r < R && 0 <= c && c < C;
+	}
+	boolean can(int r, int c) {
+		return table[r][c] == '.' || table[r][c] == 'S' || table[r][c] == 'G';
+	}
+
+	void solve() {
+		R = sc.nextInt();
+		C = sc.nextInt();
+		table = new char[R][];
+		for (int i = 0; i < R; i++) table[i] = sc.next().toCharArray();
+
+		memo = new int[R][C][4];
+		for (int i = 0; i < R; i++) for (int j = 0; j < C; j++)
+			for (int k = 0; k < 4; k++) memo[i][j][k] = INF;
+		Queue<State> q = new ArrayBlockingQueue<State>(R * C * 4);
+		for (int r = 0; r < R; r++) for (int c = 0; c < C; c++) {
+			if (table[r][c] == 'S') {
+				State s = new State(r, c, 0);
+				s.set(0);
+				q.add(s);
+			}
+		}
+
+		boolean ok = false;
+		while (!q.isEmpty()) {
+			State cur = q.poll();
+			if (table[cur.r][cur.c] == 'G') {
+				ok = true;
+				System.out.println(cur.get());
+				break;
+			}
+			for (int k = 0; k < 4; k++) {
+				State next = new State(cur.r + dr[k], cur.c + dc[k], (cur.d + 1) & 3);
+				if (next.valid() && next.get() > cur.get() + 1) {
+					next.set(cur.get() + 1);
+					q.add(next);
+				}
+			}
+		}
+		if (!ok) {
+			System.out.println("impossible");
+		}
+	}
+
+	class State {
+		final int r, c, d;
+		public State(int r, int c, int d) {
+			this.r = r;
+			this.c = c;
+			this.d = d;
+		}
+		void set(int x) {
+			memo[r][c][d] = x;
+		}
+		int get() {
+			return memo[r][c][d];
+		}
+		boolean valid() {
+			if (!isin(r, c)) return false;
+			if (!can(r, c)) return false;
+
+			for (int k = 0; k < 4; k++) {
+				int r = this.r + dr[k];
+				int c = this.c + dc[k];
+				while (isin(r, c) && can(r, c)) {
+					r += dr[k];
+					c += dc[k];
+				}
+				if (isin(r,c) && table[r][c] != '#') {
+					int kk = (">v<^".indexOf(table[r][c]) + d) & 3;
+					if ((kk - k + 4 + 2) % 4 == 0) return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	void run() throws Exception {
+		String pkg = new Object(){}.getClass().getEnclosingClass().getPackage().getName().replace('.', '/');
+		String dir = "src/" + pkg;
+		if (LOCAL) {
+			sc = new Scanner(System.in);
+		} else {
+			sc = new Scanner(new File("/tmp/fhc/" + FILENAME));
+			System.setOut(new PrintStream(new FileOutputStream(dir + "/" + FILENAME + ".res")));
+		}
+		int T = sc.nextInt();
+
+		long start = System.currentTimeMillis();
+		for (int t = 1; t <= T; t++) {
+			System.out.printf("Case #%d: ", t);
+			solve();
+			System.out.flush();
+			System.err.flush();
+		}
+		long end = System.currentTimeMillis();
+		tr(end - start, "ms");
+	}
+
+	public static void tr(Object... o) {
+		System.err.println(Arrays.deepToString(o));
+	}
+	public static void main(String[] args) throws Exception {
+		new Main().run();
+	}
+}

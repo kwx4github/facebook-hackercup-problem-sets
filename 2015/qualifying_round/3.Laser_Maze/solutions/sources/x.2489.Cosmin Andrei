@@ -1,0 +1,152 @@
+#include <cstdio>
+#include <algorithm>
+#include <queue>
+#include <cstring>
+#define NMAX 105
+#define DIR 4
+#define INF 0x3f3f3f3f
+#define pii pair <int, int>
+#define mp make_pair
+#define x first
+#define y second
+#define NORTH 0
+#define EAST 1
+#define SOUTH 2
+#define WEST 3
+using namespace std;
+int tests, n, m, D[NMAX][NMAX][DIR], H[NMAX][NMAX];
+char A[NMAX][NMAX];
+
+struct node
+{
+	pii cell;
+	int dir;
+};
+
+pii src, dst;
+
+// N, E, S, W
+int dx[] = {-1, 0, 1, 0};
+int dy[] = {0, 1, 0, -1};
+// corresponding inverse directions
+int crsp[] = {SOUTH, WEST, NORTH, EAST};
+
+void read()
+{
+	scanf("%d%d\n", &n, &m);
+	memset(H, 0, sizeof(H));
+	for (int i = 1; i <= n; i++)
+	{
+		fgets(A[i] + 1, NMAX, stdin);
+		for (int j = 1; j <= m; j++)
+		{
+			if (A[i][j] == 'S')
+				src = mp(i, j);
+			if (A[i][j] == 'G')
+				dst = mp(i, j);
+			
+			if (A[i][j] == '<')
+				H[i][j] = WEST + 1;
+			if (A[i][j] == '>')
+				H[i][j] = EAST + 1;
+			if (A[i][j] == '^')
+				H[i][j] = NORTH + 1;
+			if (A[i][j] == 'v')
+				H[i][j] = SOUTH + 1;
+		}
+	}
+}
+
+inline int ok_coord(pii &curr)
+{
+	return 1 <= curr.x && curr.x <= n && 1 <= curr.y && curr.y <= m;
+}
+
+// can precompute closest on all directions
+int under_attack(pii &cell, int time)
+{
+	pii currCell;
+	for (int dir = 0; dir < 4; dir++)
+	{
+		currCell = cell;
+		while (ok_coord(currCell))
+		{
+			if (H[currCell.x][currCell.y])
+				break ;
+			
+			currCell.x += dx[dir], currCell.y += dy[dir];
+		}
+		
+		if (ok_coord(currCell))
+		{
+			int currDir = (H[currCell.x][currCell.y] - 1) - time;
+			if (currDir < 0) currDir += 4;
+			
+			if (crsp[currDir] == dir)
+				return 1;
+		}
+	}
+	
+	return 0;
+}
+
+void solve()
+{
+	queue <node> Q;
+	memset(D, 0x3f3f, sizeof(D));
+	
+	node start;
+	start.cell = src; start.dir = 0;
+	D[start.cell.x][start.cell.y][start.dir] = 0;
+	Q.push(start);
+	
+	while (!Q.empty())
+	{
+		node currNode = Q.front();
+		pii currCell = currNode.cell;
+		int currDir = currNode.dir;
+		Q.pop();
+		
+		pii newCell;
+		int newDir = (currDir + 1) == 4 ? 0 : currDir + 1;
+		
+		node newNode;
+		for (int step = 0; step < 4; step++)
+		{
+			newCell = mp(currCell.x + dx[step], currCell.y + dy[step]);
+			
+			if (ok_coord(newCell) && !under_attack(newCell, newDir) && 
+				D[newCell.x][newCell.y][newDir] > D[currCell.x][currCell.y][currDir] + 1)
+			{
+				D[newCell.x][newCell.y][newDir] = D[currCell.x][currCell.y][currDir] + 1;
+				newNode.cell = newCell; newNode.dir = newDir;
+				Q.push(newNode);
+			}
+		}
+	}
+	
+	int res = INF;
+	for (int dir = 0; dir < 4; dir++)
+		res = min(res, D[dst.x][dst.y][dir]);
+		
+	if (res != INF)
+		printf("%d\n", res);
+	else
+		printf("impossible\n");
+}
+
+int main()
+{
+	freopen("input", "r", stdin);
+	freopen("output_maze", "w", stdout);
+	
+	scanf("%d\n", &tests);
+	for (int test_no = 1; test_no <= tests; test_no++)
+	{
+		read();
+		
+		printf("Case #%d: ", test_no);
+		solve();
+	}
+	return 0;
+}

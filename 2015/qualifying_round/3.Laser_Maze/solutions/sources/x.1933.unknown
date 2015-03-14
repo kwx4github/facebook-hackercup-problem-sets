@@ -1,0 +1,86 @@
+#include <iostream>
+#include <string>
+#include <set>
+#include <algorithm>
+#include <memory.h>
+using namespace std;
+
+typedef pair<int,int> pii;
+typedef set<pii> spii;
+
+char maze[100][100];
+bool vis[4][100][100], laser_at_step[4][100][100];
+int T, t, r, c, i, M, N, step, ans, cur;
+pii S, G;
+
+inline void add_cell(spii &S, int r, int c) {
+  if (maze[r][c] == '.' && !vis[step&3][r][c] && !laser_at_step[step&3][r][c]) {
+    S.insert(make_pair(r, c));
+    vis[step&3][r][c] = true;
+    if (r == G.first && c == G.second) ans = step;
+  }
+}
+
+int main() {
+  cin >> T;
+  for (t=1; t<=T; t++) {
+    // initialize & read
+    cin >> M >> N;
+    memset(laser_at_step, 0, sizeof(laser_at_step));
+    memset(vis, 0, sizeof(vis));
+
+    for (r=0; r<M; r++) {
+      string s;
+      cin >> s;
+      for (c=0; c<N; c++) {
+        maze[r][c] = s[c];
+        if (maze[r][c] == 'S') S = make_pair(r,c), vis[0][r][c] = true, maze[r][c] = '.';
+        else if (maze[r][c] == 'G') G = make_pair(r,c), maze[r][c] = '.';
+      }
+    }
+
+    // mark cells where the lasers hit
+    for (r=0; r<M; r++)
+      for (c=0; c<N; c++) {
+        int left=-1, right=0, up=0, down=0;
+        if (maze[r][c] == '<') left = 0, up = 1, right = 2, down = 3;
+        else if (maze[r][c] == '^') left = 3, up = 0, right = 1, down = 2;
+        else if (maze[r][c] == '>') left = 2, up = 3, right = 0, down = 1;
+        else if (maze[r][c] == 'v') left = 1, up = 2, right = 3, down = 4;
+
+        if (left > -1) {
+          for (i=r-1; i>0 && maze[i][c]=='.'; i--) laser_at_step[up][i][c] = true;
+          for (i=c-1; i>0 && maze[r][i]=='.'; i--) laser_at_step[left][r][i] = true;
+          for (i=r+1; i<M && maze[i][c]=='.'; i++) laser_at_step[down][i][c] = true;
+          for (i=c+1; i<N && maze[r][i]=='.'; i++) laser_at_step[right][r][i] = true;
+        }
+      }
+    
+    // find a way
+    spii wave[2];
+    cur = 0;
+    wave[cur].insert(S);
+    ans = -1;
+    step = 1;
+    while (ans == -1 && wave[cur].size()) {
+      spii &next = wave[1-cur];
+      next.clear();
+      for (auto cell: wave[cur]) {
+        r = cell.first;
+        c = cell.second;
+        if (r > 0)   add_cell(next, r-1, c);
+        if (r < M-1) add_cell(next, r+1, c);
+        if (c > 0)   add_cell(next, r, c-1);
+        if (c < N-1) add_cell(next, r, c+1);
+      }
+      step++;
+      cur = 1-cur;
+    } 
+
+    cout << "Case #" << t << ": ";
+    if (ans > -1) 
+      cout << ans << endl;
+    else 
+      cout << "impossible" << endl;
+ }
+}

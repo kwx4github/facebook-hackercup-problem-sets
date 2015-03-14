@@ -1,0 +1,79 @@
+import time
+
+input_file = open('laser_maze.txt','r')
+output_file = open('lazer_maze_output.txt','w')
+
+T = int(input_file.readline())
+
+directions = [[0,-1],[1,0],[0,1],[-1,0]]  #corresponds to <^>v 
+
+items = '<^>v#.SG'
+impassable_flag = 8
+unreachable = -1
+
+for test_case in xrange(T):
+        ans = 'impossible'
+        [M,N] = [int(i) for i in input_file.readline().split()]
+        def in_maze(spot):
+                return 0 <= spot[0] and spot[0] < M and 0 <= spot[1] and spot[1] < N
+        start = (0,0)
+        goal  = (0,0)
+        
+        unvisited = M*N*4 + 2
+        min_moves = [[[unvisited for x in xrange(N)] for y in xrange(M)] for z in xrange(4)]
+        maze = [list(input_file.readline().strip('\n')) for i in xrange(M)]
+        maze.reverse()
+        
+        maze.reverse() #bottom left is 0,0
+        for row in xrange(M):
+            for col in xrange(N):
+                char = maze[row][col]
+                if(char == 'S'):
+                    start = (row,col)
+                if(char == 'G'):
+                    goal = (row,col)
+                index = items.index(char)
+                if(index < 5):
+                    maze[row][col] = impassable_flag + index
+                else:
+                    maze[row][col] = 0
+
+        
+        for row in xrange(M):
+            for col in xrange(N):
+                square = maze[row][col]
+                if(square & impassable_flag == impassable_flag ):
+                        for i in xrange(4):
+                                min_moves[i][row][col] = unreachable
+                        if(square ^ impassable_flag < 4):
+                                d_index = square ^ impassable_flag
+                                for j in xrange(4):
+                                        direction = directions[(j+d_index) % 4]
+                                        spot = [row+direction[0],col+direction[1]]
+                                        while(in_maze(spot) and maze[spot[0]][spot[1]] == 0):
+                                                min_moves[j][spot[0]][spot[1]] = unreachable
+                                                spot[0] += direction[0]
+                                                spot[1] += direction[1]
+                             
+        min_moves[0][start[0]][start[1]] = 0
+
+        BFS_q = [[0,start[0],start[1]]]
+        def neighbors(maze_node):
+                [x,y,z] = maze_node
+                return [[(x+1)%4,y+direction[0],z+direction[1]] for direction in directions]
+        for state in BFS_q:
+                moves = min_moves[state[0]][state[1]][state[2]]
+                for n in neighbors(state):
+                        if(in_maze([n[1],n[2]]) and min_moves[n[0]][n[1]][n[2]] == unvisited):
+                                min_moves[n[0]][n[1]][n[2]] = moves+1
+                                BFS_q.append(n+[])
+                                
+        goal_moves = [min_moves[i][goal[0]][goal[1]] for i in xrange(4) \
+                      if min_moves[i][goal[0]][goal[1]] != unvisited and min_moves[i][goal[0]][goal[1]] != unreachable]
+        if(len(goal_moves) > 0):
+                ans = min(goal_moves)
+        
+        output_file.write("Case #{}: {}\n".format(str(test_case+1),ans))
+
+input_file.close()
+output_file.close()

@@ -1,0 +1,101 @@
+def read_ints(file):
+    line = file.readline().strip().split()
+    result = tuple(map(int, line))
+    if len(result) == 1:
+        result = result[0]
+    return result
+
+
+def input():
+    filename = __file__.split('.')[0] + '.in'
+    with open(filename) as file:
+        tests_count = read_ints(file)
+
+        for test_index in xrange(tests_count):
+            desired = read_ints(file)
+            foods_count = read_ints(file)
+            foods = []
+            for food_index in xrange(foods_count):
+                foods.append(read_ints(file))
+
+            yield desired, foods
+
+
+def output():
+    filename = __file__.split('.')[0] + '.out'
+    with open(filename, 'w') as file:
+        i = 0
+        while True:
+            value = yield
+            if value is None:
+                return
+
+            i += 1
+            file.write('Case #%d: %s\n' % (i, value))
+
+
+class Food(object):
+    def __init__(self, protein, carbohydrates, fat):
+        self.protein = protein
+        self.carbohydrates = carbohydrates
+        self.fat = fat
+
+    def tuple(self):
+        return (self.protein, self.carbohydrates, self.fat)
+
+    def __add__(self, other):
+        return Food(self.protein + other.protein, self.carbohydrates + other.carbohydrates, self.fat + other.fat)
+
+    def __hash__(self):
+        return hash(self.tuple())
+
+    def __cmp__(self, other):
+        return cmp(self.tuple(), other.tuple())
+
+
+def combinations(foods):
+    result = {Food(0, 0, 0)}
+    for food in foods:
+        new_results = set(r + food for r in result)
+        result |= new_results
+
+    return result
+
+
+def solve(desired, foods):
+    if len(foods) == 1:
+        return desired == foods[0]
+
+    foods_1, foods_2 = foods[:len(foods) / 2], foods[len(foods) / 2:]
+    combinations_1 = sorted(combinations(foods_1))
+    combinations_2 = sorted(combinations(foods_2), reverse=True)
+
+    try:
+        i, j = 0, 0
+        while True:
+            combination = combinations_1[i] + combinations_2[j]
+            if combination == desired:
+                return True
+            elif combination > desired:
+                j += 1
+            else:
+                i += 1
+
+    except IndexError:
+        return False
+
+
+def main():
+    results = output()
+    results.next()
+
+    for desired, foods in input():
+        desired = Food(*desired)
+        foods = [Food(*f) for f in foods]
+        results.send('yes' if solve(desired, foods) else 'no')
+
+    results.close()
+
+
+if __name__ == '__main__':
+    main()

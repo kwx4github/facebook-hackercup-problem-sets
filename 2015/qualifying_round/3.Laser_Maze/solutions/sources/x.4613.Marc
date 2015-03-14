@@ -1,0 +1,265 @@
+package de.mprengemann.fb.hackercup15.problem3;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+public class Problem3 {
+    private String pathToFile;
+    private Queue<String> inputFileLines = new ArrayDeque<String>();
+
+    public Problem3(String pathToFile) {
+        this.pathToFile = pathToFile;
+    }
+
+    public void solve(String outputFile) {
+        PrintWriter out = null;
+        try {
+            inputFileLines = new ArrayDeque<String>(Files.readAllLines(Paths.get(pathToFile), UTF_8));
+            out = new PrintWriter(outputFile);
+            int testCases = Integer.parseInt(inputFileLines.poll());
+            for (int testCase = 1; testCase <= testCases; testCase++) {
+                solveTestCase(testCase, out);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+        }
+        System.out.println("Finished");
+    }
+
+    private void solveTestCase(int testCaseNumber, PrintWriter out) {
+        TestCase testCase = new TestCase();
+        testCase.setDimensions(inputFileLines.poll());
+        for (int i = 0; i < testCase.m; i++) {
+            testCase.addMazeRow(i, inputFileLines.poll());
+        }
+        testCase.calculateLazerTraps(0);
+        int result = testCase.calculate();
+        String resultString = String.format("Case #%d: %s",
+                                            testCaseNumber,
+                                            (result == Integer.MAX_VALUE ? "impossible" : String.valueOf(result)));
+        out.println(resultString);
+        System.out.println(resultString);
+    }
+
+    private class TestCase {
+
+        private int[][] maze;
+        private int[][] laserTraps;
+        private List<Laser> laserList;
+        private int m;
+        private int n;
+        private int startColumn;
+        private int startRow;
+        private int minlength = Integer.MAX_VALUE;
+        private int endColumn;
+        private int endRow;
+
+        public TestCase() {
+            laserList = new ArrayList<Laser>();
+        }
+
+        public void setDimensions(String input) {
+            String[] values = input.split(" ");
+            m = Integer.parseInt(values[0]);
+            n = Integer.parseInt(values[1]);
+            maze = new int[m][n];
+            laserTraps = new int[m][n];
+        }
+
+        public void addMazeRow(int row, String input) {
+            for (int i = 0; i < n; i++) {
+                maze[row][i] = parseField(input.charAt(i), row, i);
+            }
+        }
+
+        private int parseField(char value, int row, int column) {
+            switch (value) {
+                case 'G':
+                    endRow = row;
+                    endColumn = column;
+                    return 10;
+                case 'S':
+                    startRow = row;
+                    startColumn = column;
+                    return 10;
+                case '.':
+                    return 10;
+                case '#':
+                    return -1;
+                case '^':
+                    addLaser(row, column, Orientation.NORTH);
+                    return -1;
+                case '>':
+                    addLaser(row, column, Orientation.EAST);
+                    return -1;
+                case 'v':
+                    addLaser(row, column, Orientation.SOUTH);
+                    return -1;
+                case '<':
+                    addLaser(row, column, Orientation.WEST);
+                    return -1;
+                default:
+                    throw new RuntimeException("error in parsing row");
+            }
+        }
+
+        private void addLaser(int row, int column, Orientation orientation) {
+            laserList.add(new Laser(row, column, orientation));
+        }
+
+        public void calculateLazerTraps(int steps) {
+            laserTraps = new int[m][n];
+            for (Laser laser : laserList) {
+                laser.setSteps(steps);
+                switch (laser.orientation) {
+                    case NORTH:
+                        for (int row = laser.row - 1; row >= 0; row--) {
+                            if (maze[row][laser.column] <= -1) {
+                                break;
+                            }
+                            laserTraps[row][laser.column] = 1;
+                        }
+                        maze[laser.row][laser.column] = -2;
+                        break;
+                    case EAST:
+                        for (int column = laser.column + 1; column < n; column++) {
+                            if (maze[laser.row][column] <= -1) {
+                                break;
+                            }
+                            laserTraps[laser.row][column] = 1;
+                        }
+                        maze[laser.row][laser.column] = -3;
+                        break;
+                    case SOUTH:
+                        for (int row = laser.row + 1; row < m; row++) {
+                            if (maze[row][laser.column] <= -1) {
+                                break;
+                            }
+                            laserTraps[row][laser.column] = 1;
+                        }
+                        maze[laser.row][laser.column] = -4;
+                        break;
+                    case WEST:
+                        for (int column = laser.column - 1; column >= 0; column--) {
+                            if (maze[laser.row][column] <= -1) {
+                                break;
+                            }
+                            laserTraps[laser.row][column] = 1;
+                        }
+                        maze[laser.row][laser.column] = -5;
+                        break;
+                }
+            }
+        }
+
+        public int calculate() {
+            findPath(startRow, startColumn, 0);
+            return minlength;
+        }
+
+        void findPath(int row, int column, int length) {
+            if ((row < 0) || (column < 0) || (row >= m) || (column >= n))
+                return;
+
+            calculateLazerTraps(length);
+            if (laserTraps[row][column] == 1) { // Blocked by laser
+                return;
+            }
+
+            if (maze[row][column] == 0) { // visited often enough
+                return;
+            }
+
+            if (maze[row][column] < 0) { // Wall or laser
+                return;
+            }
+
+            if (row == endRow && column == endColumn) { // Goal
+                if (length < minlength) {
+                    minlength = length;
+                }
+                return;
+            }
+
+            maze[row][column] = maze[row][column] - 1; // Leave a mark to show I've been here
+            findPath(row + 1, column, length + 1);  // right
+            findPath(row, column + 1, length + 1);  // down
+            findPath(row, column - 1, length + 1);  // up
+            findPath(row - 1, column, length + 1);  // left
+        }
+
+        private void printMazeWithTraps(int y, int x, int steps) {
+            System.out.println(String.format("Maze after %d steps", steps));
+            for (int row = 0; row < m; row++) {
+                StringBuilder builder = new StringBuilder();
+                for (int column = 0; column < n; column++) {
+                    int position = maze[row][column];
+                    String s = ".";
+
+                    if (position == -1) {
+                        s = "#";
+                    } else if (position == -2) {
+                        s = "^";
+                    } else if (position == -3) {
+                        s = ">";
+                    } else if (position == -4) {
+                        s = "v";
+                    } else if (position == -5) {
+                        s = "<";
+                    }
+
+                    if (laserTraps[row][column] == 1) {
+                        s = "*";
+                    }
+
+                    if (row == startRow && column == startColumn) {
+                        s = "S";
+                    } else if (row == endRow && column == endColumn) {
+                        s = "G";
+                    }
+
+                    if (row == x && column == y) {
+                        s = "x";
+                    }
+
+                    builder.append(s);
+                }
+                System.out.println(builder.toString());
+            }
+        }
+    }
+
+    private class Laser {
+        public final int row;
+        public final int column;
+        public Orientation orientation;
+        private Orientation originalOrientation;
+
+        private Laser(int row, int column, Orientation orientation) {
+            this.row = row;
+            this.column = column;
+            this.orientation = orientation;
+            this.originalOrientation = orientation;
+        }
+
+        public void setSteps(int steps) {
+            orientation = Orientation.values()[((originalOrientation.ordinal() + steps) % 4)];
+        }
+    }
+
+    public enum Orientation {
+        NORTH, EAST, SOUTH, WEST
+    }
+}

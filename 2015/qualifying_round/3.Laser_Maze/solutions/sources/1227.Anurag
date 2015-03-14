@@ -1,0 +1,229 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Scanner;
+
+public class LaserMaze {
+	public static void main(String[] args) throws IOException {
+		Scanner s = null;
+		try {
+			s = new Scanner(new BufferedReader(new FileReader("C:/anurag/work/java/src/anu/src/input.txt")));
+	        int T = s.nextInt();
+	        int i = 1, j = 0, m = 0, M = 0, N = 0, r = 0, c = 0, dist = 0;
+	        int[] row = {-1, 0, 1, 0};
+	        int[] col = {0, 1, 0, -1};
+	        char[][] maze = null;
+	        ArrayList<Position> laserPosition = new ArrayList<Position>();
+	        HashSet<Position> currentLevel = new HashSet<Position>();
+	        HashSet<Position> nextLevel = new HashSet<Position>();
+	        HashSet<Position> tmp = null;
+	        HashMap<String, HashSet<Position>> hm = new HashMap<String, HashSet<Position>>();
+	        HashSet<Position> hs = null;
+	        Position start = null, goal = null, pos = null;
+	        boolean notDone = true;
+	        String currMazeStr = null, nextMazeStr = null;
+	        
+	        while (i <= T) {
+	        	System.out.print("Case #" + i + ": ");
+	        	dist = 0;
+	        	laserPosition.clear();
+    			hm.clear();
+	        	M = s.nextInt();
+	        	N = s.nextInt();
+	        	maze = new char[M][N];
+	        	m = 0;
+	        	while(m < M)
+	        	{
+	        		maze[m] = s.next().toCharArray();
+	        		for(j = 0; j < N; j++)
+	        		{
+	        			if(maze[m][j] == 'S')
+	        			{
+	        				start = new Position(m, j);
+	        				currentLevel.clear();
+	        				currentLevel.add(start);
+	        			}
+	        			else if(maze[m][j] == 'G')
+	        				goal = new Position(m, j);
+	        			else if(maze[m][j] == '^' || maze[m][j] == '>' || maze[m][j] == 'v' || maze[m][j] == '<')
+	        				laserPosition.add(new Position(m, j));
+	        		}
+	        		m++;
+	        	}
+	        	
+	        	notDone = true;
+	        	while(notDone)
+	            {
+	        		currMazeStr = arrayToString(maze);
+        			rotateLaser(maze, laserPosition);
+        			nextMazeStr = arrayToString(maze);
+        			
+        			dist++;
+        			nextLevel.clear();        			
+        			for(Position p : currentLevel)
+        			{
+        				if(hm.containsKey(currMazeStr))
+        				{
+        					hs = hm.get(currMazeStr);
+        					hs.add(p);
+        				}
+        				else
+        				{
+        					hs = new HashSet<Position>();
+        					hs.add(p);
+        				}
+    					hm.put(currMazeStr, hs);
+    					
+	        			for(j=0; j<4 && notDone; j++)
+	        			{
+	        				r = p.i + row[j];
+	        				c = p.j + col[j];
+	        				if(isSafePosition(maze, r, c))
+	        				{
+	        					if(r == goal.i && c == goal.j)
+	        					{
+	        						System.out.println(dist);
+	        						notDone = false;
+	        					}
+	        					else
+	        					{
+	        						pos = new Position(r, c);
+	        						hs = null;
+	        						if(hm.containsKey(nextMazeStr))
+	        							hs = hm.get(nextMazeStr);
+	        						if(hs == null || !hs.contains(pos))
+	        							nextLevel.add(pos);
+	        					}
+	        				}
+	        			}
+	        			if(notDone == false)
+	        				break;
+        			}
+	        		if(notDone && nextLevel.size() == 0)
+        			{
+        				System.out.println("impossible");
+						notDone = false;
+        			}
+	        		else
+	        		{
+	        			tmp = currentLevel;
+	        			currentLevel = nextLevel;
+	                    nextLevel = tmp;
+	        		}
+	            }
+	        	
+	        	i++;
+	        }
+	        
+	        
+		} finally {
+            if (s != null) {
+                s.close();
+            }
+        }
+	}
+	
+	static String arrayToString(char[][] maze)
+	{
+		StringBuilder builder = new StringBuilder();
+	    for(int i = 0; i < maze.length; i++)
+	    {
+	        for(int j = 0; j < maze[0].length; j++)
+	        {
+	            builder.append(maze[i][j]);
+	        }
+	    }    
+	    return builder.toString();
+	}
+	
+	static boolean isSafePosition(char[][] maze, int r, int c)
+	{
+		if(r >= 0 && r < maze.length && c >=0 && c < maze[0].length && (maze[r][c] == '.' || maze[r][c] == 'S' || maze[r][c] == 'G'))
+		{
+			int i = r-1 ;			
+			while(i >= 0)
+			{
+				if(maze[i][c] == 'v')
+					return false;
+				if(maze[i][c] == '#' || maze[i][c] == '<' || maze[i][c] == '>' || maze[i][c] == '^')
+					break;
+				i--;
+			}
+			
+			i = r+1;
+			while(i < maze.length)
+			{
+				if(maze[i][c] == '^')
+					return false;
+				if(maze[i][c] == '#' || maze[i][c] == '<' || maze[i][c] == '>' || maze[i][c] == 'v')
+					break;
+				i++;
+			}
+			
+			i = c-1;
+			while(i >= 0)
+			{
+				if(maze[r][i] == '>')
+					return false;
+				if(maze[r][i] == '#' || maze[r][i] == '<' || maze[r][i] == '^' || maze[r][i] == 'v')
+					break;
+				i--;
+			}
+			
+			i = c+1;
+			while(i < maze[0].length)
+			{
+				if(maze[r][i] == '<')
+					return false;
+				if(maze[r][i] == '#' || maze[r][i] == '>' || maze[r][i] == '^' || maze[r][i] == 'v')
+					break;
+				i++;
+			}
+			return true;
+		}
+		return false;
+	}
+	
+	static void rotateLaser(char[][] maze, ArrayList<Position> laserPosition)
+	{
+		for(Position laser : laserPosition)
+		{
+			if(maze[laser.i][laser.j] == '^')
+				maze[laser.i][laser.j] = '>';
+			else if(maze[laser.i][laser.j] == '>')
+				maze[laser.i][laser.j] = 'v';
+			else if(maze[laser.i][laser.j] == 'v')
+				maze[laser.i][laser.j] = '<';
+			else if(maze[laser.i][laser.j] == '<')
+				maze[laser.i][laser.j] = '^';
+		}
+	}
+}
+
+class Position
+{
+	int i;
+	int j;
+	public Position(int i, int j)
+	{
+		this.i = i;
+		this.j = j;
+	}
+	public String toString()
+	{
+		return "[" + i + ", " + j + "]";
+	}
+	public int hashCode() {
+        return i*1000 + j;
+    }
+	public boolean equals(Object o)
+	{
+		if((o == null) || (o.getClass() != this.getClass()))
+			return false;
+		Position p = (Position) o;
+		return this.i == p.i && this.j == p.j;
+	}
+}

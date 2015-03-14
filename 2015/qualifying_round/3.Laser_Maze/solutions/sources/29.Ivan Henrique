@@ -1,0 +1,166 @@
+#include <stdio.h>
+#include <algorithm>
+#include <queue>
+#define INF 0x3f3f3f3f
+
+using namespace std;
+
+struct state {
+    int x;
+    int y;
+    int k;
+
+    state(int x, int y, int k):x(x), y(y), k(k) {
+    }
+};
+
+char maze[105][105];
+int safe[105][105][4];
+int dis[105][105][4];
+int m, n;
+
+char op_mode[] = {'>', 'v', '<', '^'};
+int dx[] = {0, 1, 0, -1};
+int dy[] = {1, 0, -1, 0};
+
+int is_turret(char a) {
+    for (int i = 0; i < 4; i++) {
+        if (a == op_mode[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void make_unsafe(int x, int y, int k, int side) {
+    int nx, ny;
+
+    for (int i = 1;; i++) {
+        nx = x + i * dx[side];
+        ny = y + i * dy[side];
+
+        if (nx >= 0 && nx < m && ny >= 0 && ny < n) {
+            if (maze[nx][ny] == '.') {
+                safe[nx][ny][k] = 0;
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+    return;
+}
+
+void BFS(int sx, int sy) {
+    queue <struct state> fila;
+    int x, y, k;
+    int nx, ny, nk;
+
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            for (int p = 0; p < 4; p++) {
+                dis[i][j][p] = INF;
+            }
+        }
+    }
+    dis[sx][sy][0] = 0;
+
+    fila.push(state(sx, sy, 0));
+
+    while(!fila.empty()) {
+        x = fila.front().x;
+        y = fila.front().y;
+        k = fila.front().k;
+        fila.pop();
+
+        nk = (k + 1) % 4;
+        for (int i = 0; i < 4; i++) {
+            nx = x + dx[i];
+            ny = y + dy[i];
+
+            if (nx >= 0 && nx < m && ny >= 0 && ny < n) {
+                if (maze[nx][ny] == '.' && safe[nx][ny][nk] && dis[nx][ny][nk] > dis[x][y][k] + 1) {
+                    dis[nx][ny][nk] = dis[x][y][k] + 1;
+                    fila.push(state(nx, ny, nk));
+                }
+            }
+        }
+    }
+    return;
+}
+
+int main(void) {
+    int t;
+    int side;
+    int sx, sy, fx, fy;
+    int r;
+
+    scanf(" %d", &t);
+
+    for (int caso = 1; caso <= t; caso++) {
+        scanf(" %d %d", &m, &n);
+
+        sx = sy = fx = fy = 0;
+        for (int i = 0; i < m; i++) {
+            scanf(" %s", maze[i]);
+            for (int j = 0; j < n; j++) {
+                if (maze[i][j] == 'S') {
+                    sx = i;
+                    sy = j;
+                    maze[i][j] = '.';
+                }
+                if (maze[i][j] == 'G') {
+                    fx = i;
+                    fy = j;
+                    maze[i][j] = '.';
+                }
+            }
+        }
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                for (int k = 0; k < 4; k++) {
+                    safe[i][j][k] = 1;
+                }
+            }
+        }
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if ((side = is_turret(maze[i][j])) != -1) {
+                    for (int k = 0; k < 4; k++) {
+                        make_unsafe(i, j, k, (side + k) % 4);
+                    }
+                }
+            }
+        }
+
+        BFS(sx, sy);
+
+        /*printf("debug\n");
+        for (int k = 0; k < 4; k++) {
+            printf("k = %d\n", k);
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    printf("%d ", safe[i][j][k]);
+                    printf("%d ", dis[i][j][k]);
+                }
+                printf("\n");
+            }
+            printf("\n\n");
+        } */
+
+        r = INF;
+        for (int k = 0; k < 4; k++) {
+            r = min(r, dis[fx][fy][k]);
+        }
+
+        printf("Case #%d: ", caso);
+        if (r >= INF) {
+            printf("impossible\n");
+        } else {
+            printf("%d\n", r);
+        }
+    }
+    return 0;
+}

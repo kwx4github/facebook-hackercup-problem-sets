@@ -1,0 +1,230 @@
+#include <iostream>
+#include <iomanip>
+#include <algorithm>
+#include <vector>
+#include <map>
+#include <set>
+#include <cassert>
+#include <cstdlib>
+#include <cstdio>
+
+using namespace std;
+
+#define forall(i,n) for(int i=0; i<(int)(n); i++)
+
+typedef vector<int> IntVec;
+typedef vector<string> StringVec;
+
+template<class T, class T1, class T2> inline bool Within(T x, T1 xMin, T2 xMax)
+    {return (x >= xMin && x <= xMax);}
+template<class T, class T1> inline bool Within(T x, T1 xMax)
+    {return (x >= 0 && x < xMax);}
+
+template<class T> void PrintVec(const vector<T>& v, const char* s=NULL) {
+    if (s)
+	cout << s << ' ';
+    forall (i, v.size())
+	cout << v[i] << ' ';
+    cout << endl;
+}
+
+template<class T> void PrintVec(const char* s, const vector<T>& v) {
+    PrintVec(v, s);
+}
+
+char Hex(int x) {
+    if (x < 10)
+	return x + '0';
+    else if (x < 16)
+	return x - 10 + 'a';
+    else
+	return '?';
+}
+
+// x is directer rightwise, y is directed upside down
+// value is array[y][x]
+
+const string sCannons = "^>v<";
+const int adx[4] = { 0, 1, 0, -1};
+const int ady[4] = {-1, 0, 1,  0};
+
+struct Point {
+    size_t x, y, phase;
+    Point(size_t _x, size_t _y, size_t _phase) : x(_x), y(_y), phase(_phase) {}
+};
+
+inline bool operator<(const Point& a, const Point& b) {
+    if (a.x < b.x) return true;
+    if (a.x > b.x) return false;
+    if (a.y < b.y) return true;
+    if (a.y > b.y) return false;
+    return (a.phase < b.phase);
+}
+
+inline bool operator>(const Point& a, const Point& b) {
+    if (a.x < b.x) return false;
+    if (a.x > b.x) return true;
+    if (a.y < b.y) return false;
+    if (a.y > b.y) return true;
+    return (a.phase > b.phase);
+}
+
+inline bool operator==(const Point& a, const Point& b) {
+    return (a.x == b.x && a.y == b.y && a.phase == b.phase);
+}
+
+typedef set<Point> Area;
+
+ostream& operator<<(ostream& os, const Point& point) {
+    os << point.x << ' ' << point.y << ' ' << point.phase << '\n';
+    return os;
+}
+
+ostream& operator<<(ostream& os, const Area& area) {
+    int xMax = -1, yMax = -1;
+    for (Area::iterator it=area.begin(); it!=area.end(); it++) {
+	if ((int)it->x > xMax) xMax = it->x;
+	if ((int)it->y > yMax) yMax = it->y;
+    }
+    if (xMax < 0 || yMax < 0)
+	return os << '\n';
+    forall (y, yMax+1) {
+	forall(x, xMax+1) {
+	    int mode = 0;
+	    forall (dir, 4)
+		if (area.find(Point(x, y, dir)) != area.end())
+		    mode += (1 << dir);
+	    os << Hex(mode);
+	}
+	os << '\n';
+    }
+    return os;
+}
+
+
+int Lab(
+    const StringVec& lab, int M, int N,
+    int xStart, int yStart,
+    int xFinish, int yFinish
+) {
+    const int X=N, Y=M;
+
+    vector< vector<char> > pos(M);
+    forall (i, M) {
+	pos[i].resize(N, 0xf);
+	forall (j, N)
+	    if (lab[i][j] != '.')
+		pos[i][j] = 0;
+    }
+    forall (i, M) {
+	forall (j, N) {
+	    char c = lab[i][j];
+	    if (c == 'V')
+		c = 'v';
+	    size_t dirStart = sCannons.find(c);
+	    if (dirStart == string::npos)
+		continue;
+	    int dir = dirStart;
+	    forall (phase, 4) {
+		int dx = adx[dir], dy = ady[dir];
+		int x = j, y = i;
+		while(true) {
+		    x += dx, y += dy;
+		    if (!Within(x, X) || !Within(y, Y))
+			break;
+		    char& c = pos[y][x];
+		    if (c == 0)
+			break;
+		    c &= ~(1 << phase);
+		}
+		dir++;
+		if (dir == 4)
+		    dir = 0;
+	    }
+	}
+    }
+    
+    /*
+    // DEBUG
+    cout << "=================\n";
+    forall (i, M)
+	cout << lab[i] << '\n';
+    cout << '\n';
+    forall (y, Y) {
+	forall (x, X)
+	    cout << Hex(pos[y][x]);
+	cout << '\n';
+    }
+    cout << "=================\n\n";
+    */
+
+    Area area, areaCur;
+    size_t t=0, phase=0;
+    areaCur.insert(Point(xStart, yStart, phase));
+    area = areaCur;
+    while (true) {
+	t++;
+	phase = (phase + 1) % 4;
+	Area areaNext;
+	for (Area::iterator it=areaCur.begin(); it!=areaCur.end(); it++) {
+	    forall (iDir, 4) {
+		int x = it->x + adx[iDir], y = it->y + ady[iDir];
+		if (!Within(x, X) || !Within(y, Y))
+		    continue;
+		if ((pos[y][x] & (1 << phase)) == 0)
+		    continue;
+		if (x == xFinish && y == yFinish)
+		    return t;
+		Point point(x, y, phase);
+		if (area.find(point) == area.end())
+		    areaNext.insert(point);
+	    }
+	}
+	if (areaNext.empty())
+	    return -1;
+	areaCur = areaNext;
+	area.insert(areaNext.begin(), areaNext.end());
+    }
+
+    return 0;
+}
+
+int main() {
+    // cout << setprecision(10);
+    int nTasks;
+    cin >> nTasks;
+    for (int iTask=1; iTask<=nTasks; iTask++) {
+	int M, N;
+	cin >> M >> N;
+	assert(Within(M, 1, 100) && Within(N, 1, 100));
+	vector<string> lab(M);
+	int xs = -1, ys = -1, xf = -1, yf = -1;
+	forall (i, M) {
+	    string& s = lab[i];
+	    cin >> s;
+	    assert((int)s.size() == N);
+	    size_t is = s.find('S');
+	    if (is != string::npos) {
+		assert(xs == -1 && ys == -1);
+		xs = is, ys = i;
+		s[is] = '.';
+	    }
+	    is = s.find('G');
+	    if (is != string::npos) {
+		assert(xf == -1 && yf == -1);
+		xf = is, yf = i;
+		s[is] = '.';
+	    }
+	}
+	assert(Within(xs, N));
+	assert(Within(xf, N));
+	assert(Within(ys, M));
+	assert(Within(yf, M));
+	int nSteps = Lab(lab, M, N, xs, ys, xf, yf);
+	cout << "Case #" << iTask << ": ";
+	if (nSteps >= 0)
+	    cout << nSteps << '\n';
+	else
+	    cout << "impossible\n";
+    }
+}

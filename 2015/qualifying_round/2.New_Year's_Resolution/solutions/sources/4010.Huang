@@ -1,0 +1,115 @@
+function newYear()
+% obtain the location of test file
+[fileName,pathName] = uigetfile('*.txt','Select the test file');
+tic
+% open the test file
+try
+    fid = fopen([pathName,fileName],'r');
+catch ME
+    error('Error Opening Test File!');
+end
+
+% open the solution file
+try
+    sid = fopen(['Solution_',fileName],'w');
+catch ME
+    error('Error Opening Solution file!');
+end
+
+% obtain the number of test cases
+numTestCase = str2double(fgetl(fid));
+% loop through each test case
+for i = 1:numTestCase
+    % write the header of the soluton file
+    fprintf(sid,'Case #%d: ',i);
+    [maxNutrient,nutrients] = readTestCase(fid);
+    % some global variable
+    chosenNutrient = [];
+    isSolution = false;
+    solveNewYear(maxNutrient,nutrients,1);
+    if(isSolution)
+        answer = 'yes';
+    else
+        answer = 'no';
+    end
+    fprintf(sid,'%s',answer);
+    fprintf(sid,'\n');
+end
+% close the file
+fclose(fid);
+fclose(sid);
+toc
+
+%% Sub-Function goes here
+    function [maxNutrient,nutrients] = readTestCase(fid)
+       % get the values of the micronutrients
+       currRow = fgetl(fid);
+       maxNutrient = strread(currRow,'%d',3)';
+       % get the number of possible nutrients to choose from
+       nPos = str2double(fgetl(fid));
+       % create the matrix
+       nutrients = zeros(nPos,3);
+       insertRow = 0;
+       for ii=1:nPos
+           currRow = fgetl(fid);
+           currNutrient = strread(currRow,'%d',3)';
+           % check if should store this. discard any if above max nutrient
+           if(currNutrient(1,1)>maxNutrient(1,1) || currNutrient(1,2)>maxNutrient(1,2) ||...
+                   currNutrient(1,3)>maxNutrient(1,3))
+               continue;
+           else
+               % store the value
+               insertRow = insertRow + 1;
+               nutrients(insertRow,:) = currNutrient;
+           end
+       end
+       % remove the excess
+       if(insertRow~=nPos)
+           nutrients(insertRow+1,:) = [];
+       end
+       % do a sort for greed picking
+       [~,ix] = sort(nutrients(:,1),'descend');
+       nutrients = nutrients(ix,:);
+    end
+
+    function solveNewYear(maxNutrient,nutrients,depth)
+        nRow = size(nutrients,1);
+        for ii=1:nRow
+            % choose one
+            chosenNutrient(depth,:) = nutrients(ii,:);
+            % check whether it meets the requirement
+            isSolution = check(chosenNutrient(1:depth,:),maxNutrient);
+            if(isSolution)
+                return;
+            end
+            % else, choose the next possible record
+            if(ii~=nRow)
+                temp = nutrients(ii+1:end,:);
+                nutrient1 = maxNutrient(1,1)-sum(chosenNutrient(1:depth,1));
+                idx = temp(:,1)<=nutrient1;
+                newNutrientPool = temp(idx,:);
+                if(isempty(newNutrientPool))
+                    chosenNutrient(depth,:) = []; % remove
+                    return;
+                end
+                solveNewYear(maxNutrient,newNutrientPool,depth+1);
+                if(isSolution)
+                    return;
+                end
+            end
+        end
+        chosenNutrient(depth,:) = [];
+    end
+
+    function isSolution = check(currNutrient,maxNutrient)
+        nutrient1 = maxNutrient(1,1)-sum(currNutrient(:,1));
+        nutrient2 = maxNutrient(1,2)-sum(currNutrient(:,2));
+        nutrient3 = maxNutrient(1,3)-sum(currNutrient(:,3));
+        if(nutrient1==0 && nutrient2==0 && nutrient3==0)
+            isSolution = true;
+        else
+            isSolution = false;
+        end
+    end
+end
+

@@ -1,0 +1,130 @@
+#include <iostream>
+#include <cstdio>
+#include <memory.h>
+#include <queue>
+
+#define N 101
+using namespace std;
+
+int row, col;
+int sx, sy, ex, ey;
+vector<pair<int, int> > laser;
+vector<int> dir;
+char grid[N][N];
+
+bool isOk(int d, int x, int y) {
+	int n = laser.size();
+	for (int i = 0; i < n; ++i) {
+		int nd = (dir[i] + d) % 4;
+		if (nd == 0 && laser[i].first >= x && laser[i].second == y) {
+			return false;
+		} else if (nd == 1 && laser[i].first == x && laser[i].second <= y) {
+			return false;
+		} else if (nd == 2 && laser[i].first <= x && laser[i].second == y) {
+			return false;
+		} else if (nd == 3 && laser[i].first == x && laser[i].second >= y) {
+			return false;
+		}
+	}
+	return true;
+}
+
+int bfs() {
+	int step[4][N][N];
+	bool inq[4][N][N];
+	int dx[] = {1, -1, 0, 0};
+	int dy[] = {0, 0, 1, -1};
+	memset(step, -1, sizeof(step));
+	memset(inq, false, sizeof(inq));
+	step[0][sx][sy] = 0;
+	inq[0][sx][sy] = true;
+	//cout << "yes" << endl;
+	queue<pair<int, pair<int, int> > > q;
+	//cout << "no" << endl;
+	q.push(make_pair(0, make_pair(sx, sy)));
+	int ret = -1;
+	//cout << sx << ' ' << sy << endl;
+	while (!q.empty()) {
+		pair<int, pair<int, int> > stat = q.front();
+		q.pop();
+		int d = stat.first;
+		int x = stat.second.first;
+		int y = stat.second.second;
+		//cout << d << ' ' << x << ' ' << y << endl;
+		int s = step[d][x][y];
+		inq[d][x][y] = false;
+		if (x == ex && y == ey) {
+			if (ret == -1 || ret > s) {
+				ret = s;
+			}
+			continue;
+		}
+		int nd = (d + 1) % 4;
+		for (int i = 0; i < 4; ++i) {
+			int nx = x + dx[i];
+			int ny = y + dy[i];
+			if (nx < 0 || nx >= row || ny < 0 || ny >= col) {
+				continue;
+			}
+			if (grid[nx][ny] == '#') {
+				continue;
+			}
+			if (grid[nx][ny] == '.' && isOk(nd, nx, ny)) {
+				if (step[nd][nx][ny] == -1 || step[nd][nx][ny] > s + 1) {
+					step[nd][nx][ny] = s + 1;
+					if (!inq[nd][nx][ny]) {
+						q.push(make_pair(nd, make_pair(nx, ny)));
+						inq[nd][nx][ny] = true;
+					}
+				}
+			}
+		}
+	}
+	return ret;
+}
+
+int main() {
+	int kase = 0;
+	scanf("%d", &kase);
+	for (int k = 0; k < kase; ++k) {
+		scanf("%d %d", &row, &col);
+		laser.clear();
+		dir.clear();
+		for (int i = 0; i < row; ++i) {
+			scanf("%s", grid[i]);
+			for (int j = 0; j < col; ++j) {
+				if (grid[i][j] == 'S') {
+					sx = i;
+					sy = j;
+					grid[i][j] = '.'; 
+				} else if (grid[i][j] == 'G') {
+					ex = i;
+					ey = j;
+					grid[i][j] = '.';
+				} else if (grid[i][j] != '.' && grid[i][j] != '#') {
+					laser.push_back(make_pair(i, j));
+					int d;
+					if (grid[i][j] == '^') {
+						d = 0;
+					} else if (grid[i][j] == '>') {
+						d = 1;
+					} else if (grid[i][j] == 'v') {
+						d = 2;
+					} else if (grid[i][j] == '<') {
+						d = 3;
+					}
+					grid[i][j] = '#';
+					dir.push_back(d);
+				}
+			}
+		}
+		int ret = bfs();
+		printf("Case #%d: ", k + 1);
+		if (ret >= 0) {
+			printf("%d\n", ret);
+		} else {
+			printf("impossible\n");
+		}
+	}
+	return 0;
+}

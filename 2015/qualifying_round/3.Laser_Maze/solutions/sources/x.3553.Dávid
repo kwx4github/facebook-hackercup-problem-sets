@@ -1,0 +1,116 @@
+# Y (M) always goes first
+
+from collections import deque
+
+DIR = ("^", ">", "v", "<")
+RID = { direc:num for num, direc in enumerate(DIR) }
+change = { "^":(-1, 0), ">":(0, 1), "v":(1, 0), "<":(0, -1) }
+
+def equalLocation(loc1, loc2):
+    return (loc1[0] == loc2[0] and loc1[1] == loc2[1])
+
+def addLocation(loc, change, times=1):
+    toRet = []
+    for ind in range(len(loc)):
+        toRet.append( loc[ind] + change[ind]*times )
+    return toRet
+
+def isOutside(loc, maxM, maxN):
+    """True iff outside the box (border is False) 0,0 -> M, N"""
+    return (loc[0] < 0 or loc[0] >= maxM or loc[1] < 0 or loc[1] >= maxN)
+
+class Turret(object):
+    def __init__(self, m, n, dir_):
+        self.startLoc = (m, n)
+        self.initDir = dir_
+        
+    def getShot(self, timestamp, mazeBase):
+        """returns a list of all spots that are shot.
+        mazeBase -- true if wall / turrets, false is empty"""
+        dir_ = DIR[ (timestamp + RID[self.initDir]) % 4 ]
+        openList = []
+        index = 0
+        M = len(mazeBase)
+        N = len(mazeBase[0])
+        while True:
+            index += 1
+            curLoc = addLocation( self.startLoc, change[dir_], index ) 
+            if isOutside(curLoc, M, N) or mazeBase[curLoc[0]][curLoc[1]]:
+                return openList
+            else:
+                openList.append( curLoc )
+
+def printArray(array):
+    for line in array:
+        # print the line
+        toPrint = [ 'x' if v is True else '.' for v in line ]
+        print ("".join(toPrint))
+
+
+def solve(M, N, maze):
+    # first find the turrets ad build mazeBase
+    mazeBase = [ [False for n in range(N) ] for m in range(M) ] # mazeBase [][]
+    turrets = [] # just collects all turrets
+    start = None
+    goal = None
+    for m, mazeLine in enumerate(maze):
+        for n, char in enumerate(mazeLine):
+            if char in DIR:
+                turrets.append( Turret(m, n, char))
+                mazeBase[m][n] = True
+            elif char is '#':
+                mazeBase[m][n] = True
+            elif char is 'S':
+                start = [m, n]
+            elif char is 'G':
+                goal = [m, n]
+            elif char is '.':
+                pass
+            else:
+                assert False, "Read character '" + char + "', which should not happen."
+    # now use the turrets to find when and where we get shot
+    # dead[timestamp] [][] <-- maze
+#    printArray(mazeBase)
+    dead = [ [ [ False for n in range(N) ] for m in range(M) ]  for t in range(4) ]
+    for timestep in range(4):
+        for turret in turrets:
+            # next we iterate over all spots this turret shoots in given timestamp
+            for (m, n) in turret.getShot(timestep, mazeBase):
+                dead[timestep][m][n] = True
+#        print ("Timestep " + str(timestep) )
+#        printArray(dead[timestep])
+    
+    # note we start at time 0, first move is time 1!
+    open_ = deque( )
+    open_.append( (0, start) )
+    visited = [ [ [ False for n in range(N) ] for m in range(M) ]  for t in range(4) ]
+    visited[0][start[0]][start[1]]
+    while len(open_) > 0:
+        (time, loc) = open_.popleft()
+#        print "{0}: popped {1}".format(time, str(loc))
+        if equalLocation(loc, goal):
+            return time
+        for dir_ in change.itervalues():
+            # all children
+            nTime = time + 1
+            nTimeMod = nTime % 4
+            nLoc = addLocation(loc, dir_)
+#            print "trying to add t={0}, loc=({1}, {2}), it is outside? {3}".format(
+#                    nTimeMod, nLoc[0], nLoc[1], isOutside(nLoc, M, N))
+            if not (isOutside(nLoc, M, N) or 
+                    visited[nTimeMod][nLoc[0]][nLoc[1]] or 
+                    dead[nTimeMod][nLoc[0]][nLoc[1]]):
+                # we can add it!
+                open_.append( (nTime, nLoc) )
+                visited[nTimeMod][nLoc[0]][nLoc[1]] = True
+    return "impossible" # if we get this far
+        
+
+T = int(raw_input())
+for t in range(1, T+1):
+    (M, N) = map(int, raw_input().split())
+    maze = []
+    for m in range(M):
+        maze.append( list(raw_input()) )
+    print 'Case #{0}: {1}'.format(t, solve(M, N, maze) )
+

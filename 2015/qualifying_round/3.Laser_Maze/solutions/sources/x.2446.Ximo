@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+import copy
+import queue
+
+
+LASERS = {l:i for i, l in enumerate('^>v<')}
+DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+
+if __name__ == '__main__':
+    T = int(input())
+    assert 1 <= T <= 100
+
+    for t in range(1, T+1):
+        M, N = map(int, input().split())
+        assert 1 <= M <= 100
+        assert 1 <= N <= 100
+
+        grid = [list(input()) for _ in range(M)]
+        assert all(len(row) == N for row in grid)
+
+        # find the starting point
+        S = None
+        for i, row in enumerate(grid):
+            for j, cell in enumerate(row):
+                if cell == 'S':
+                    S = (i, j)
+                    break
+        assert S is not None
+
+        # Create for grids, one for each posible rotation
+        grid = [copy.deepcopy(grid) for _ in range(4)]
+
+        
+        # Mark the deadly positions from a given laser
+        def laser(grid, i, j, dify, difx):
+            i += dify
+            j += difx
+            while (0 <= i < len(grid) and
+                   0 <= j < len(grid[0]) and 
+                   grid[i][j] in '.SG'):
+                grid[i][j] = 'K'
+                i += dify
+                j += difx
+
+        # Mart the unreachable cells
+        for d, g in enumerate(grid):
+            for i, row in enumerate(g):
+                for j, cell in enumerate(row):
+                    if cell in '<>^v':
+                        dy, dx = DIRS[(LASERS[cell]+d)%4]
+                        laser(g, i, j, dy, dx)
+                        g[i][j] = '#'
+
+        # BFS
+        q = queue.Queue()
+        q.put((S[0], S[1], 0)); # (y, x, steps)
+
+        # We don't want to visit again a cell in the same steps%4
+        vis = {S[0], S[1], 0}
+
+        found = False
+        while not found and not q.empty():
+            y, x, steps = q.get()
+            g = grid[(steps+1)%4]
+
+            for dy, dx in DIRS:
+                ny = y + dy
+                nx = x + dx
+
+                if (ny < 0 or ny >= len(g) or nx < 0 or nx >= len(g[0]) or
+                    g[ny][nx] in '#K' or (ny, nx, (steps+1)%4) in vis):
+                    continue # not walkable or repeated
+                elif g[ny][nx] == 'G': # goal!
+                    found = True
+                    result = steps+1
+                    break
+                else: # new position
+                    q.put((ny, nx, steps+1))
+                    vis.add((ny, nx, (steps+1)%4))
+
+        print('Case #{}: {}'.format(t, result if found else 'impossible'))

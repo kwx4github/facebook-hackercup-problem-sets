@@ -1,0 +1,108 @@
+#include <cstdio>
+#include <vector>
+#include <queue>
+
+using namespace std;
+
+const int& MAX = 102;
+
+inline int wrap(int x, int y, int t = 0) {
+    return (t * MAX + x) * MAX + y;
+}
+inline void unwrap(int idx, int& x, int& y, int& t)
+{
+    y = idx % MAX;
+    idx /= MAX;
+    x = idx % MAX;
+    t = idx / MAX;
+}
+
+vector<bool> state(MAX * MAX * 4);
+vector<char> f(MAX * MAX);
+queue<int> moves;
+
+static void try_go(int x, int y, int t)
+{
+    static char turrets[] = { '<', 'v', '>', '^' };
+
+    if (x < 0 || y < 0 || x >= MAX || y >= MAX) return;
+    if (f[wrap(x, y)] != '.') return;
+    if (state[wrap(x, y, t % 4)]) return;
+
+    int xx = x, yy = y;
+    while (f[wrap(xx, yy)] == '.') ++xx;
+    if (f[wrap(xx, yy)] == turrets[t % 4]) return;
+
+    xx = x; yy = y;
+    while (f[wrap(xx, yy)] == '.') --yy;
+    if (f[wrap(xx, yy)] == turrets[(t + 1) % 4]) return;
+
+    xx = x; yy = y;
+    while (f[wrap(xx, yy)] == '.') --xx;
+    if (f[wrap(xx, yy)] == turrets[(t + 2) % 4]) return;
+
+    xx = x; yy = y;
+    while (f[wrap(xx, yy)] == '.') ++yy;
+    if (f[wrap(xx, yy)] == turrets[(t + 3) % 4]) return;
+
+    state[wrap(x, y, t % 4)] = true;
+    moves.push(wrap(x, y, t));
+}
+
+int main () {
+    int t;
+    auto ignore = scanf("%d", &t);
+    for (int q = 0; q < t; ++q) {
+        f.assign(f.size(), '#');
+        int m, n;
+        ignore = scanf("%d %d\n", &m, &n);
+        int sx = 0, sy = 0, gx = 0, gy = 0;
+        for (int y = 1; y <= m; ++y) {
+            for (int x = 1; x <= n; ++x)
+            {
+                char c;
+                ignore = scanf("%c", &c);
+                if (c == 'S') {
+                    c = '.';
+                    sx = x;
+                    sy = y;
+                }
+                if (c == 'G') {
+                    c = '.';
+                    gx = x;
+                    gy = y;
+                }
+
+                f[wrap(x, y)] = c;
+            }
+            ignore = scanf("\n");
+        }
+
+        state.assign(state.size(), false);
+        { queue<int> tmp; swap(tmp, moves); } // clean queue
+        moves.push(wrap(sx, sy, 0));
+        int r = 0;
+        while (!moves.empty() && r == 0) {
+            const int s = moves.front();
+            moves.pop();
+            int x, y, t;
+            unwrap(s, x, y, t);
+            // printf("move %d %d (%d)\n", x, y, t);
+            if (x == gx && y == gy) {
+                r = t;
+                break;
+            }
+
+            ++t;
+            try_go(x + 1, y, t);
+            try_go(x, y + 1, t);
+            try_go(x - 1, y, t);
+            try_go(x, y - 1, t);
+        }
+
+        printf("Case #%d: ", q + 1);
+        if (r) printf("%d\n", r); else printf("impossible\n");
+    }
+
+    return 0;
+}

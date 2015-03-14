@@ -1,0 +1,152 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <cstring>
+using namespace std;
+
+struct laser
+{
+	int r,c,dir;
+	
+	void turn()
+	{
+		dir++;
+		dir%=4;
+	}
+};//< ^ > v
+
+char map[100][100];
+bool hit[100][100][4];
+vector<laser> lasers;
+int dx[] = {-1,0,0,1};
+int dy[] = {0,-1,1,0};
+int N,M;
+
+bool inRange(int x,int y)
+{
+	return x>=0 && y>=0 && x<N && y<M;
+}
+
+bool laserCheck(int x, int y, int m)
+{
+	/*cout << "LaserCheck for:";
+	cout << x << ' ' << y << ' ' << m << ' ';
+	cout << ((map[x][y]=='.' || map[x][y]=='G' || map[x][y]=='S') && !hit[x][y][m]) << endl;
+	*/return (map[x][y]=='.' || map[x][y]=='G' || map[x][y]=='S') && !hit[x][y][m];
+}
+
+int bfs(int sr, int sc)
+{
+	bool visited[100][100][4];
+	memset(visited, 0, sizeof(visited));
+	queue<pair<pair<int,int>,int> > toVisit;
+	toVisit.push(make_pair(make_pair(sr, sc), 0));
+	while(!toVisit.empty())
+	{
+		pair<pair<int,int>,int> cur = toVisit.front();
+		toVisit.pop();
+		if(visited[cur.first.first][cur.first.second][cur.second%4])
+			continue;
+		visited[cur.first.first][cur.first.second][cur.second%4]=true;
+		
+		if(laserCheck(cur.first.first, cur.first.second, cur.second%4))
+		{
+			if(map[cur.first.first][cur.first.second]=='G')
+				return cur.second;
+			int r=cur.first.first,c=cur.first.second;
+			for(int i=0;i<4;i++)
+				if(inRange(r+dx[i], c+dy[i]) && !visited[r+dx[i]][c+dy[i]][(cur.second+1)%4])
+					toVisit.push(make_pair(make_pair(r+dx[i], c+dy[i]), cur.second+1));
+		}
+	}
+	return -1;
+}
+
+int main()
+{
+	int T;
+	cin >> T;
+	laser l;
+	int sr,sc,gr,gc,res;
+	for(int t=1;t<=T;t++)
+	{
+		lasers.clear();
+		cin >> N >> M;
+		for(int i=0;i<N;i++)
+			for(int j=0;j<M;j++)
+			{
+				cin >> map[i][j];
+				l.r=i,l.c=j;
+				if(map[i][j]=='<')
+				{
+					l.dir=0;
+					lasers.push_back(l);
+				}
+				else if(map[i][j]=='^')
+				{
+					l.dir=1;
+					lasers.push_back(l);
+				}
+				else if(map[i][j]=='>')
+				{
+					l.dir=2;
+					lasers.push_back(l);
+				}
+				else if(map[i][j]=='v')
+				{
+					l.dir=3;
+					lasers.push_back(l);
+				}
+				else if(map[i][j]=='S')
+					sr=i, sc=j;
+				else if(map[i][j]=='G')
+					gr=i, gc=j;
+			}
+		memset(hit, 0, sizeof(hit));
+		for(int i=0;i<N;i++)
+			for(int j=0;j<M;j++)
+				for(int k=0;k<4;k++)
+				{
+					for(int las=0;las<lasers.size();las++)
+					{
+						if(lasers[las].r==i && ((lasers[las].dir+k)%4==0 || (lasers[las].dir+k)%4==2))
+						{
+							bool flag=true;
+							for(int q=min(lasers[las].c, j)+1;q<max(lasers[las].c, j);q++)
+								if(map[i][q]!='.' && map[i][q]!='S' && map[i][q]!='G')
+								{
+									flag=false;
+									break;
+								}
+							if(flag && (((lasers[las].dir+k)%4==0 && lasers[las].c>j) ||((lasers[las].dir+k)%4==2 && lasers[las].c<j)))
+							{
+								hit[i][j][k]=true;
+								break;
+							}
+						}
+						if(lasers[las].c==j && ((lasers[las].dir+k)%4==1 || (lasers[las].dir+k)%4==3))
+						{
+							bool flag=true;
+							for(int q=min(lasers[las].r, i)+1;q<max(lasers[las].r, i);q++)
+								if(map[q][j]!='.' && map[q][j]!='S' && map[q][j]!='G')
+								{
+									flag=false;
+									break;
+								}
+							if(flag && (((lasers[las].dir+k)%4==1 && lasers[las].r>i) ||((lasers[las].dir+k)%4==3 && lasers[las].r<i)))
+							{
+								hit[i][j][k]=true;
+								break;
+							}
+						}
+					}
+				}
+		hit[sr][sc][0] = false;
+		cout << "Case #" << t << ": ";
+		res=bfs(sr,sc);
+		if(res!=-1)
+			cout << res << endl;
+		else
+			cout << "impossible" << endl;
+	}
+}

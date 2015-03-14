@@ -1,0 +1,80 @@
+#!/usr/bin/perl -w
+
+use strict;
+
+sub solve($$);
+sub dp_solve($$$);
+
+my $dp_lookup = {};
+
+my $filename = shift @ARGV;
+
+my @rows = split /\n/, `cat $filename`;
+
+my $num_cases = shift @rows;
+foreach my $case_number (1 .. $num_cases) {
+  my $top_row = shift @rows;
+  my $N = shift @rows;
+  my $foods = [];
+  foreach my $food (1 .. $N) {
+    my $row = shift @rows;
+    push @$foods, $row;
+  }
+  my $result = solve($top_row, $foods);
+  my $answer = $result ? 'yes' : 'no';
+  print "Case #$case_number: $answer\n";
+}
+
+sub solve($$) {
+  my $top_row = shift;
+  my $foods_ref = shift;
+
+  $dp_lookup = {};
+
+  return dp_solve($top_row, 0, $foods_ref);
+}
+
+sub dp_solve($$$) {
+  my $top_row = shift;
+  my $index = shift;
+  my $foods_ref = shift;
+
+  my $dp_index = $top_row.';'.$index;
+#  print "solve $dp_index\n";
+  if (exists($dp_lookup->{$dp_index})) {
+#    print "Already solved $dp_index...\n";
+    return $dp_lookup->{$dp_index};
+  }
+
+  if ($index >= scalar @$foods_ref) {
+#    print "hit the bottom of stack with index $index\n";
+    return 0;
+  }
+
+  my $recurse_down_skip = dp_solve($top_row, $index + 1, $foods_ref);
+  if ($recurse_down_skip) {
+    return 1;
+  }
+
+  my @foods_needed = split ' ', $top_row;
+  my $foods_to_eat = $foods_ref->[$index];
+  my @foods_eaten = split ' ', $foods_to_eat;
+  my $a = $foods_needed[0]-$foods_eaten[0];
+  my $b = $foods_needed[1]-$foods_eaten[1];
+  my $c = $foods_needed[2]-$foods_eaten[2];
+  if ($a < 0 || $b < 0 || $c < 0) {
+    $dp_lookup->{$dp_index} = 0;
+    return 0;
+  }
+  my $new_row = "$a $b $c";
+  if ($new_row eq '0 0 0') {
+#    print "Nailed it!\n";
+    return 1;
+  }
+  my $recurse_down_use = dp_solve($new_row, $index + 1, $foods_ref);
+  if ($recurse_down_use) {
+    return 1;
+  }
+  $dp_lookup->{$dp_index} = 0;
+  return 0;
+}

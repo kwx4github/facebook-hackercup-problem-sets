@@ -1,0 +1,215 @@
+/* problem1.c
+*  Omkar H. Ramachandran
+*  omkar13@iisertvm.ac.in
+*  Accept an integer, break it up into digits and allow one swap. Find the 
+*  highest and lowest value that you can get/
+*  File Format: 
+*  Line 1: N
+*  Line 2 -> N+2: I1 -> In 
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+#define NMAX 100
+
+int getsize(FILE *);
+int swap(long int,FILE *);
+int getcount(int);
+void populate(int *,long int,int);
+int* getindex(int *,int,int);
+
+int main(int argc, char ** argv){
+	char *a;
+	FILE *fp;
+	a = argv[1];
+	if(!(fp = fopen(a,"r"))){
+		printf("Input file does not exist\n");
+		exit(1);
+	}
+	int n = getsize(fp),res;
+	if(n>NMAX){
+		printf("maximum number of test cases is %d",NMAX);
+		exit(1);
+	}
+	int i;
+	FILE *fout = fopen("output.txt","w");
+	for(i=0;i<n;i++){
+		fseek(fp,SEEK_SET,sizeof(int)*(i+1));
+		long int num;	
+		fscanf(fp,"%ld",&num);
+		fprintf(fout,"Case #%d: ",i+1);
+		res = swap(num,fout);
+		fprintf(fout,"\n");
+	}
+	fclose(fp);
+	fclose(fout);
+	return res;
+}
+
+int* getindex(int *list,int flag,int count){
+	if(flag){
+		int large = *(list);
+		int i;
+		for(i=1;i<count;i++){
+			if(large<(*(list+i))){
+				large = *(list+i);
+			}
+		}
+		int num=0,flag1;
+		if(large == *(list)){
+			num++;
+			large = *(list+1);
+			for(i=2;i<count;i++){
+				if(large<(*(list + i))){
+					large = *(list+i);
+				}
+			}	
+			flag1=1;
+		}
+		for(i=0;i<count;i++){
+			if(large == *(list+i))
+				num++;
+		}
+		int *index = (int *) malloc ((num+1)*sizeof(int));
+		int flag=0;
+		if(flag1==1){
+			*(index+1) = 0;
+			flag++;
+		}
+		for(i=1;i<count;i++){
+			if(large == *(list+i)){
+				*(index+flag+1) = i; 
+				flag++;
+			}
+		}
+		*(index) = flag;
+		return index;
+	}else{
+		int small = *(list);
+		int i;
+		for(i=1;i<count;i++){
+			if(small>(*(list + i)) && (*(list+i))!=0){
+				small = *(list+i);
+			}
+		}
+		int num=0,flag1;
+		if(small == *(list)){
+			num++;
+			small = *(list+1);
+			for(i=2;i<count;i++){
+				if(small>(*(list + i))){
+					small = *(list+i);
+				}
+			}	
+			flag1=1;
+		}
+		for(i=0;i<count;i++){
+			if(small == *(list+i))
+				num++;
+		}
+		int *index =(int *) malloc ((num+1)*sizeof(int));
+		int flag=0;
+		if(flag1==1){
+			*(index+1) = 0;
+			flag++;
+		}
+		for(i=0;i<count;i++){
+			if(small == *(list+i)){
+				*(index + flag +1) = i;
+				flag++;
+			}
+		}
+		*(index) = flag;
+		return index;
+	}
+}
+
+int getsize(FILE *fp){
+	fseek(fp,SEEK_SET,0);
+	int size;
+	fscanf(fp,"%d",&size);
+	return size;
+}
+
+int getcount(int num){
+	int n=0;
+	if(num == 0){
+		n = 1;
+	}
+	while(num>0){
+		n++;
+		num /= 10;
+	}
+	return n;
+}
+
+void populate(int *list,long int num,int n){
+	int count = 0;
+	if(num == 0){
+		*(list) = 0;
+		return;
+	}
+	while(num>0){
+		*(list + (n-1-count)) = num%10;
+		num /= 10;
+		count++;
+	}
+}
+
+void print(int *list,int count){
+	int i;
+	for(i=0;i<count;i++)
+		printf("%d ",*(list+i));
+	printf("\n");
+}
+
+int getopt(int count,int *index,int flag){
+	int num=0;
+	int k=1;
+	do{
+		if(num!=(*(index+k)) || (num==0 && flag==1))
+			return num;
+		else
+			k++;
+		num++;
+	}while(num<count);
+	return -1;
+}
+
+int swap(long int num,FILE *fout){
+	int count = getcount(num);
+	int *list = (int *) malloc (count*sizeof(int));
+	int *listrev = (int *) malloc (count*sizeof(int));
+	populate(list,num,count);
+	int i=0,j;
+	int *index;
+	index = getindex(list,0,count);
+	int flag = *(index);
+	i = getopt(count,index,flag);
+	for(j=0;j<count;j++)
+		*(listrev+j)=*(list+j);
+	flag = *(index + flag);
+	*(listrev+i) = *(list+flag);
+	*(listrev+flag) = *(list+i);
+	for(j=0;j<count;j++)
+		fprintf(fout,"%d",*(listrev+j));
+	*(listrev+i) = *(list+i);
+	*(listrev+flag) = *(list+flag);
+	fprintf(fout," ");
+	i=0;
+	index = getindex(list,1,count);
+	flag = *(index);
+	i = getopt(count,index,flag);
+	if(i != -1){
+		flag = *(index + flag);
+		*(listrev+i) = *(list+flag);
+		*(listrev+flag) = *(list+i);
+	}	
+	for(j=0;j<count;j++)
+		fprintf(fout,"%d",*(listrev+j));	
+	free(list);
+	free(listrev);
+	return 0;	
+}

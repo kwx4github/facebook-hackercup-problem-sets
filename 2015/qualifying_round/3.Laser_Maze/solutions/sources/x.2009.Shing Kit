@@ -1,0 +1,141 @@
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+const char symbols[] = {'^', '>', 'v', '<'};
+const int mi[] = {-1, 0, 1, 0};
+const int mj[] = {0, 1, 0, -1};
+
+struct Point {
+	int i, j, k;
+};
+
+string grid[100];
+bool block[100][100][4];
+int dist[100][100][4];
+
+char rotate(char symbol, int turn) {
+	for (int i = 0; i < 4; i++)
+		if (symbols[i] == symbol)
+			return symbols[i+turn&3];
+	return 0;
+}
+
+void get_start_and_goal(int m, int n, int& si, int& sj, int& gi, int& gj) {
+	for (int i = 0; i < m; i++)
+		for (int j = 0; j < n; j++)
+			if (grid[i][j] == 'S') {
+				si = i;
+				sj = j;
+			}
+			else if (grid[i][j] == 'G') {
+				gi = i;
+				gj = j;
+			}
+}
+
+void set_wall_block(int m, int n) {
+	for (int i = 0; i < m; i++)
+		for (int j = 0; j < n; j++)
+			if (grid[i][j] == '#')
+				for (int k = 0; k < 4; k++)
+					block[i][j][k] = true;
+}
+
+void set_laser_block(int m, int n, int turn) {
+	char dir;
+
+	for (int i = 0; i < m; i++)
+		for (int j = 0; j < n; j++)
+			if (dir = rotate(grid[i][j], turn)) {
+				block[i][j][turn] = true;
+				if (dir == '^')
+					for (int ii = 0; ii < i; ii++)
+						block[ii][j][turn] = true;
+				else if (dir == '>')
+					for (int jj = j + 1; jj < n; jj++)
+						block[i][jj][turn] = true;
+				else if (dir == 'v')
+					for (int ii = i + 1; ii < m; ii++)
+						block[ii][j][turn] = true;
+				else if (dir == '<')
+					for (int jj = 0; jj < j; jj++)
+						block[i][jj][turn] = true;
+			}
+}
+
+bool valid_move(const Point& p, int m, int n) {
+	if (p.i < 0 || p.i >= m || p.j < 0 || p.j >= n)
+		return false;
+	return !block[p.i][p.j][p.k];
+}
+
+void bfs(int m, int n, int si, int sj, int gi, int gj) {
+	queue<Point> q;
+	Point cp, np;
+	int curr_dist;
+
+	memset(dist, 0xff, sizeof dist);
+	dist[si][sj][0] = 0;
+	q.push((Point) {si, sj, 0});
+
+	while (!q.empty()) {
+		cp = q.front();
+		q.pop();
+
+		curr_dist = dist[cp.i][cp.j][cp.k];
+		for (int id = 0; id < 4; id++) {
+			np = (Point) {cp.i + mi[id], cp.j + mj[id], cp.k + 1 & 3};
+			if (valid_move(np, m, n) && dist[np.i][np.j][np.k] == -1) {
+				dist[np.i][np.j][np.k] = curr_dist + 1;
+				q.push(np);
+			}
+		}
+	}
+}
+
+int get_answer(int gi, int gj) {
+	int ans = 0x7fffffff;
+	for (int k = 0; k < 4; k++)
+		ans = min(ans, dist[gi][gj][k] == -1 ? 0x7fffffff : dist[gi][gj][k]);
+	return ans;
+}
+
+void run(int case_no) {
+	int m, n, ans;
+	int si, sj, gi, gj;
+
+	cin >> m >> n;
+	for (int i = 0; i < m; i++)
+		cin >> grid[i];
+
+	get_start_and_goal(m, n, si, sj, gi, gj);
+
+	memset(block, 0, sizeof block);
+	set_wall_block(m, n);
+	for (int turn = 0; turn < 4; turn++)
+		set_laser_block(m, n, turn);
+
+	bfs(m, n, si, sj, gi, gj);
+	ans = get_answer(gi, gj);
+
+	if (ans == 0x7fffffff)
+		cout << "Case #" << case_no << ": impossible" << endl;
+	else
+		cout << "Case #" << case_no << ": " << ans << endl;
+}
+
+int main() {
+	int t;
+
+	ios::sync_with_stdio(0);
+	cin >> t;
+	for (int case_no = 1; case_no <= t; case_no++)
+		run(case_no);
+
+	return 0;
+}

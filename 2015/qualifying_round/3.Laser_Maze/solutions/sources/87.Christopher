@@ -1,0 +1,110 @@
+#ifdef DEBUG
+#define D(x...) fprintf(stderr,x);
+#else
+#define D(x...) 0
+#endif
+#include <cstdio>
+#include <cmath>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+using namespace std;
+
+int H, W;
+char grid[128][128];
+bool wall[128][128];
+int wallType[128][128];
+
+int dr[4] = {-1, 0, 1, 0};
+int dc[4] = {0, 1, 0, -1};
+
+struct state {
+  int r, c, time;
+  bool operator<(const state &s) const {
+    return
+        make_pair(make_pair(r, c), time) <
+        make_pair(make_pair(s.r, s.c), s.time);
+  }
+  state(int _r, int _c, int _time) {r = _r, c = _c, time = _time;}
+};
+
+bool isValid(state s) {
+  if (s.r < 0 || s.c < 0 || s.r >= H || s.c >= W) return 0;
+  if (wall[s.r][s.c]) return 0;
+  // fire lasers
+  for (int k = 0; k < 4; k++) {
+    int r = s.r, c = s.c;
+    while (r >= 0 && c >= 0 && r < H && c < W) {
+      if (wall[r][c]) {
+        if (wallType[r][c] != -1 && (wallType[r][c] + 2 + s.time) % 4 == k) {
+          return 0;
+        }
+        break;
+      }
+      r += dr[k]; c += dc[k];
+    }
+  }
+  return 1;
+}
+
+
+int main() {
+  int nTests;
+  scanf("%d ",&nTests);
+  for (int test=1;test<=nTests;test++) {
+    if (1) fprintf(stderr,"Case %d/%d\n",test,nTests);
+    scanf("%d%d ", &H, &W);
+    int startR, startC;
+    for (int i = 0; i < H; i++) {
+      scanf("%s ", grid[i]);
+      for (int j = 0; j < W; j++) {
+        if (grid[i][j] == 'S') {
+          startR = i, startC = j;
+        }
+        if (grid[i][j] == 'S' || grid[i][j] == '.' || grid[i][j] == 'G') {
+          wall[i][j] = 0;
+        } else {
+          wall[i][j] = 1;
+          switch (grid[i][j]) {
+            case '#': wallType[i][j] = -1; break;
+            case '^': wallType[i][j] = 0; break;
+            case '>': wallType[i][j] = 1; break;
+            case 'v': wallType[i][j] = 2; break;
+            case '<': wallType[i][j] = 3; break;
+            default: assert(0);
+          }
+        }
+      }
+    }
+    map<state, int> dist;
+    queue<state> q;
+    dist[state(startR, startC, 0)] = 0;
+    q.push(state(startR, startC, 0));
+    bool succ = 0;
+    int ans;
+    while (!q.empty()) {
+      state cur = q.front();
+      if (grid[cur.r][cur.c] == 'G') {
+        succ = 1;
+        ans = dist[cur];
+        break;
+      }
+      q.pop();
+      for (int k = 0; k < 4; k++) {
+        state next = state(cur.r + dr[k], cur.c + dc[k], (cur.time+1)%4);
+        if (!isValid(next)) continue;
+        if (dist.count(next)) continue;
+        dist[next] = dist[cur]+1;
+        q.push(next);
+      }
+    }
+    if (succ) {
+      printf("Case #%d: %d\n", test, ans);
+    } else {
+      printf("Case #%d: %s\n", test, "impossible");
+    }
+  }
+}

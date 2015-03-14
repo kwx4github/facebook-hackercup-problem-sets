@@ -1,0 +1,170 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+using System.Threading.Tasks;
+
+namespace C
+{
+    struct XYA
+    {
+        public int x, y, a;
+        public override string ToString()
+        {
+            return string.Format("{0} {1} {2}", x, y, a);
+        }
+    }
+
+    class Program
+    {
+        static bool isSafe(int i, int j, int k, string[] map)
+        {
+            string wall = "#v>^<";
+
+            for (int ii = i - 1; ii >= 0; ii--)
+            {
+                string danger = "v>^<";
+                if (map[ii][j] == danger[k])
+                    return false;
+                if (wall.Contains(map[ii][j]))
+                    break;
+            }
+
+            for (int ii = i + 1; ii < map.Length; ii++)
+            {
+                string danger = "^<v>";
+                if (map[ii][j] == danger[k])
+                    return false;
+                if (wall.Contains(map[ii][j]))
+                    break;
+            }
+
+            for (int jj = j - 1; jj >= 0; jj--)
+            {
+                string danger = ">^<v";
+                if (map[i][jj] == danger[k])
+                    return false;
+                if (wall.Contains(map[i][jj]))
+                    break;
+            }
+
+            for (int jj = j + 1; jj < map[0].Length; jj++)
+            {
+                string danger = "<v>^";
+                if (map[i][jj] == danger[k])
+                    return false;
+                if (wall.Contains(map[i][jj]))
+                    break;
+            }
+
+            return true;
+        }
+
+        static int Solve(string[] map)
+        {
+            int n = map.Length;
+            int m = map[0].Length;
+
+            bool[, ,] safe = new bool[n, m, 4];
+            for(int i = 0; i < n; i++)
+                for(int j = 0; j < m; j++)
+                    for(int k = 0; k < 4; k++)
+                        safe[i, j, k] = isSafe(i, j, k, map);
+
+            int Sy = -1;
+            int Sx = -1;
+            for(int i = 0; i < n && Sy == -1; i++)
+                for (int j = 0; j < m && Sx == -1; j++)
+                {
+                    if(map[i][j] == 'S')
+                    {
+                        Sy = i; Sx = j;
+                    }
+                }
+
+            int Gy = -1;
+            int Gx = -1;
+            for (int i = 0; i < n && Gy == -1; i++)
+                for (int j = 0; j < m && Gx == -1; j++)
+                {
+                    if (map[i][j] == 'G')
+                    {
+                        Gy = i; Gx = j;
+                    }
+                }
+
+            safe[Sy, Sx, 0] = true;
+
+            int[, ,] way = new int[n, m, 4];
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < m; j++)
+                    for (int k = 0; k < 4; k++)
+                        way[i, j, k] = int.MaxValue;
+
+            way[Sy, Sx, 0] = 0;
+
+            var q = new Queue<XYA>();
+            q.Enqueue(new XYA { x = Sx, y = Sy, a = 0 });
+
+            Func<XYA, bool> may = (xia) => {
+
+                if (xia.y < 0 || xia.y >= map.Length || xia.x < 0 || xia.x >= map[0].Length)
+                    return false;
+
+                string wall = "#v>^<";
+                if (wall.Contains(map[xia.y][xia.x]))
+                    return false;
+
+                if (!safe[xia.y, xia.x, xia.a] || way[xia.y, xia.x, xia.a] < int.MaxValue)
+                    return false;
+
+                return true;
+            };
+
+            while(q.Any())
+            {
+                var xia = q.Dequeue();
+
+                var up = new XYA { y = xia.y - 1, x = xia.x, a = (xia.a + 1) % 4 };
+                var dn = new XYA { y = xia.y + 1, x = xia.x, a = (xia.a + 1) % 4 };
+                var lt = new XYA { y = xia.y, x = xia.x - 1, a = (xia.a + 1) % 4 };
+                var rt = new XYA { y = xia.y, x = xia.x + 1, a = (xia.a + 1) % 4 };
+
+                var all = new List<XYA> { up, dn, lt, rt };
+                foreach(var dir in all)
+                {
+                    if(may(dir))
+                    {
+                        way[dir.y, dir.x, dir.a] = way[xia.y, xia.x, xia.a] + 1;
+                        q.Enqueue(dir);
+                    }
+                }
+            }
+
+            int best = int.MaxValue;
+            for (int k = 0; k < 4; k++)
+                best = Math.Min(best, way[Gy, Gx, k]);
+
+            return best;
+        }
+
+        static void Main(string[] args)
+        {
+            int T = int.Parse(Console.ReadLine());
+            for (int t = 1; t <= T; t++)
+            {
+                string[] line = Console.ReadLine().Split();
+                int n = int.Parse(line[0]);
+                int m = int.Parse(line[1]);
+
+                string[] map = new string[n];
+                for (int i = 0; i < n; i++)
+                    map[i] = Console.ReadLine();
+
+                int r = Solve(map);
+                Console.WriteLine("Case #{0}: {1}", t, r == int.MaxValue ? "impossible" : r.ToString());
+            }
+        }
+    }
+}

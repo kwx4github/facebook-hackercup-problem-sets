@@ -1,0 +1,153 @@
+#include <bits/stdc++.h>
+
+typedef long long ll;
+using namespace std;
+
+struct Counter
+{
+	static int k;
+	Counter() {k++;}
+	~Counter() {k--;}
+};
+
+int Counter::k = 0;
+
+template<typename T>
+void pr(const string& name, T t)
+{
+    cout << name << " = " << t << endl;
+}
+
+template<typename T, typename ... Types>
+void pr(const string& names, T t, Types ... rest)
+{
+    auto comma_pos = names.find(',');
+    cout << names.substr(0, comma_pos) << " = " << t << ", ";
+
+    auto next_name_pos = names.find_first_not_of(" \t\n", comma_pos + 1);
+    pr(string(names, next_name_pos), rest ...);
+}
+
+void mod(ll &a, ll b)
+{
+    a %= b;
+    if(a < 0) a += b;
+}
+
+#define all(x) x.begin(), x.end()
+#define f(i,a,b) for(int i = (a); i <= (b); i++)
+#define fd(i,a,b) for(int i = (a); i >= (b); i--)
+#define mp make_pair
+#define faster_io() ios_base::sync_with_stdio(false)
+#define pb push_back
+#define pii pair<int,int>
+#define SZ(x) ((int)x.size())
+#define trace(...) pr(#__VA_ARGS__, __VA_ARGS__);
+#define tracea(x) {string s = #x; Counter c##x; cout<<s.substr(0,1+s.find('['))<<Counter::k<<"]="<<x<<'\n';}
+#define vii vector<pair<int,int>>
+
+const ll MOD = 1000000007;
+
+// ----------------------------------------------------------------------------------------------------------
+
+ifstream fin("in.txt");
+ofstream fout("out.txt");
+
+struct State
+{
+    int i, j, d;
+    State(int p1, int p2, int p3) : i(p1), j(p2), d(p3) {};
+};
+
+const int INF = 999999;
+bool Danger[105][105][5];
+int D[105][105][5], H, W, T;
+queue<State> Q;
+string B[105];
+vector<int> di = {0,1,0,-1};
+vector<int> dj = {1,0,-1,0};
+
+int solve()
+{
+    int si, sj;
+    f(i,0,H-1) f(j,0,W-1) if(B[i][j] == 'S') si = i, sj = j;
+
+    f(i,0,H-1) f(j,0,W-1) f(k,0,3) D[i][j][k] = INF;
+
+    D[si][sj][0] = 0;
+    Q.push(State(si,sj,0));
+
+    while(!Q.empty())
+    {
+        State st = Q.front();
+        Q.pop();
+
+        int i = st.i;
+        int j = st.j;
+        int d = st.d;
+
+        if(Danger[i][j][d%4] && d>0) continue;
+        if(B[i][j] == 'G') return d;
+        if(B[i][j] != '.' && B[i][j] != 'S') continue;
+
+        f(p,0,3)
+        {
+            int ni = i + di[p];
+            int nj = j + dj[p];
+            int nd = d + 1;
+
+            if(ni >= 0 && ni < H && nj >= 0 && nj < W && D[ni][nj][nd%4] > nd)
+            {
+                D[ni][nj][nd%4] = nd;
+                Q.push(State(ni,nj,nd));
+            }
+        }
+    }
+
+    return -1;
+}
+
+void processTurret(int x, int y, int dir)
+{
+    f(t,0,3)
+    {
+        int p = (dir + t) % 4;
+
+        int i = x + di[p], j = y + dj[p];
+
+        while(i >= 0 && i < H && j >= 0 && j < W)
+        {
+            if(B[i][j] != 'G' && B[i][j] != '.' && B[i][j] != 'S') break;
+            Danger[i][j][t] = true;
+            i += di[p];
+            j += dj[p];
+        }
+    }
+}
+
+void calcDanger()
+{
+    f(i,0,H-1) f(j,0,W-1) f(k,0,3) Danger[i][j][k] = false;
+    f(i,0,H-1) f(j,0,W-1)
+    {
+        if(B[i][j] == '>') processTurret(i,j,0);
+        if(B[i][j] == 'v') processTurret(i,j,1);
+        if(B[i][j] == '<') processTurret(i,j,2);
+        if(B[i][j] == '^') processTurret(i,j,3);
+    }
+}
+
+int main()
+{
+    fin >> T;
+
+    f(t,1,T)
+    {
+        fin >> H >> W;
+        f(i,0,H-1) fin >> B[i];
+        calcDanger();
+        int m = solve();
+        if(m >= 0) fout << "Case #" << t << ": " << m << "\n";
+        else fout << "Case #" << t << ": impossible\n";
+    }
+}

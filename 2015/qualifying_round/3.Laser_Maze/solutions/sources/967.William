@@ -1,0 +1,115 @@
+import java.util.*;
+import java.io.*;
+
+class C {
+	public static void main (String [] args) throws IOException{
+		Scanner sc = new Scanner(System.in);
+		PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter("C.out")));
+		int numTests = sc.nextInt();
+		TESTS:
+		for (int test = 1; test <= numTests; test++) {
+			pw.print("Case #" + test + ": ");
+			int numRows = sc.nextInt();
+			int numCols = sc.nextInt();
+			char[][] maze = new char[numRows][numCols];
+			for (int r = 0; r < numRows; r++) {
+				String s = sc.next();
+				for (int c = 0; c < numCols; c++) {
+					maze[r][c] = s.charAt(c);
+				}
+			}
+			// end input
+			LinkedList<State> q = new LinkedList<State>();
+			int startRow, startCol;
+			startRow = startCol = -1;
+			for (int r = 0; r < numRows; r++) {
+				for (int c = 0; c < numCols; c++) {
+					if (maze[r][c] == 'S') {
+						startRow = r;
+						startCol = c;
+					}
+				}
+			}
+			boolean[][][] visited = new boolean[numRows][numCols][4];
+			q.add(new State(0, startRow, startCol));
+			visited[startRow][startCol][0] = true;
+			//UP, RIGHT, DOWN, LEFT
+			int[] rDs = {-1, 0, 1, 0};
+			int[] cDs = {0, 1, 0, -1};
+			while (!q.isEmpty()) {
+				State s = q.poll();
+				if (maze[s.r][s.c] == 'G') {
+					pw.println(s.n);
+					continue TESTS;
+				}
+				DIRECTIONS:
+				for (int d = 0; d < 4; d++) {
+					int dr = s.r + rDs[d];
+					int dc = s.c + cDs[d];
+					// check for collisions
+					if (dr < 0 || dc < 0 || dr == numRows || dc == numCols)
+						continue;
+					char ch = maze[dr][dc];
+					if (ch == '#' || getTurrId(ch) != -1)
+						continue;
+					// check our mementos
+					if (visited[dr][dc][(s.n + 1) % 4])
+						continue;
+					// check for lazer beams
+					for (int lr = 0; lr < numRows; lr++) {
+						for (int lc = 0; lc < numCols; lc++) {
+							int lazerType = getTurrId(maze[lr][lc]);
+							if (lazerType == -1)
+								continue;
+							lazerType += s.n + 1;
+							lazerType = lazerType % 4;
+							int r = lr;
+							int c = lc;
+							while (true) {
+								r += rDs[lazerType];
+								c += cDs[lazerType];
+								if (r < 0 || c < 0 || r == numRows || c == numCols)
+									break;
+								ch = maze[r][c];
+								if (ch == '#' || getTurrId(ch) != -1)
+									break;
+								if (dr == r && dc == c) {
+									continue DIRECTIONS; // bzzzzz
+								}
+							}
+						}
+					}
+					// safe from lazer beams
+					q.add(new State(s.n + 1, dr, dc));
+					visited[dr][dc][(s.n + 1) % 4] = true;
+				}
+			}
+
+
+			pw.println("impossible");
+		}
+		pw.close();
+	}
+	static int getTurrId(char c) {
+		switch (c) {
+			case '^':
+				return 0;
+			case '>':
+				return 1;
+			case 'v':
+				return 2;
+			case '<':
+				return 3;
+			default:
+				return -1;
+		}
+	}
+}
+class State {
+	int n, r, c;
+	State (int n, int r, int c) {
+		this.n = n;
+		this.r = r;
+		this.c = c;
+	}
+}

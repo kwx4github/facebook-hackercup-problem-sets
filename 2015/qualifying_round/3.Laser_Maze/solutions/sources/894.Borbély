@@ -1,0 +1,176 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Timers;
+
+namespace LaserMaze
+{
+	class Program
+	{
+		static void Main(string[] args)
+		{
+			using (var reader = new StreamReader(args[0]))
+			using (var writer = new StreamWriter(args.Length > 1 ? args[1] : args[0].Replace(".in", ".out")))
+			{
+				var t = reader.Next<int>();
+				for (int i = 1; i <= t; i++)
+				{
+					var m = reader.Next<int>();
+					var n = reader.Next<int>();
+					var maze = new char[m, n];
+					int s1, s2, g1, g2;
+					s1 = s2 = g1 = g2 = 0;
+					for (int j = 0; j < m; j++)
+					{
+						var row = reader.Next<string>();
+						for (int k = 0; k < n; k++)
+						{
+							maze[j, k] = row[k];
+							if (maze[j, k] == 'S')
+							{
+								s1 = j;
+								s2 = k;
+								maze[j, k] = '.';
+							}
+							if (maze[j, k] == 'G')
+							{
+								g1 = j;
+								g2 = k;
+								maze[j, k] = '.';
+							}
+						}
+					}
+
+					var multiMaze = Initialize(maze);
+					var minStep = Solve(s1, s2, g1, g2, multiMaze);
+
+					writer.WriteLine("Case #{0}: {1}", i, minStep > 0 ? minStep.ToString() : "impossible");
+				}
+			}
+		}
+
+		private static char[,,] Initialize(char[,] maze)
+		{
+			var m = maze.GetLength(0);
+			var n = maze.GetLength(1);
+
+			var result = new char[m, n, 4];
+			for (int i = 0; i < m; i++)
+			{
+				for (int j = 0; j < n; j++)
+				{
+					if (maze[i, j] == '.' || maze[i, j] == '#' )
+					{
+						for (int k = 0; k < 4; k++) result[i, j, k] = maze[i, j];
+					}
+				}
+			}
+
+			for (int i = 0; i < m; i++)
+			{
+				for (int j = 0; j < n; j++)
+				{
+					if (maze[i, j] == '.' || maze[i, j] == '#') continue;
+
+					int id = 0;
+					int jd = 0;
+					if (maze[i, j] == '<') { id = 0; jd = -1; }
+					if (maze[i, j] == '>') { id = 0; jd = 1; }
+					if (maze[i, j] == '^') { id = -1; jd = 0; }
+					if (maze[i, j] == 'v') { id = 1; jd = 0; }
+					Debug.Assert(id != 0 || jd != 0);
+
+					for (int k = 0; k < 4; k++)
+					{
+						var ii = i;
+						var jj = j;
+						while ((ii >= 0 && ii < m && jj >= 0 && jj < n) && maze[ii, jj] == '.' || (ii == i && jj == j))
+						{
+							result[ii, jj, k] = '#';
+							ii += id;
+							jj += jd;
+						}
+						var tid = id;
+						id = id == 0 ? jd : 0;
+						jd = jd == 0 ? (-tid) : 0;
+					}
+				}
+			}
+
+			return result;
+		}
+
+		private static int Solve(int s1, int s2, int g1, int g2, char[,,] maze)
+		{
+			var m = maze.GetLength(0);
+			var n = maze.GetLength(1);
+			
+			var c1 = new List<int>();
+			var c2 = new List<int>();
+			c1.Add(s1);
+			c2.Add(s2);
+			var l = 0;
+			var steps = 0;
+
+			while (c1.Count > 0)
+			{
+				l = (l + 1) % 4;
+				steps++;
+
+				var cc1 = new List<int>();
+				var cc2 = new List<int>();
+
+				for (int i = 0; i < c1.Count; i++)
+				{
+					var d = new int[4, 2] {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+					for (int j = 0; j < 4; j++)
+					{
+						var x1 = c1[i] + d[j, 0];
+						var x2 = c2[i] + d[j, 1];
+						if (x1 < 0 || x1 >= m || x2 < 0 || x2 >= n) continue;
+						var f = maze[x1, x2, l];
+						
+						if (x1 == g1 && x2 == g2 && f == '.') return steps;
+						if (f == '.')
+						{
+							cc1.Add(x1);
+							cc2.Add(x2);
+							maze[x1, x2, l] = '#';
+						}
+					}
+				}
+
+				c1 = cc1;
+				c2 = cc2;
+			}
+
+			return 0;
+		}
+	}
+
+	public static class StreamReaderExtensions
+	{
+		private static List<string> currLine;
+
+		public static T Next<T>(this StreamReader reader)
+		{
+			if (currLine == null || !currLine.Any()) currLine = reader.ReadLine().Split(' ').ToList();
+			var res = (T)Convert.ChangeType(currLine[0], typeof(T), CultureInfo.InvariantCulture);
+			currLine.RemoveAt(0);
+			return res;
+		}
+
+		public static T[] Next<T>(this StreamReader reader, int count)
+		{
+			if (currLine == null || !currLine.Any()) currLine = reader.ReadLine().Split(' ').ToList();
+			if (count == 0) count = currLine.Count;
+			var res = currLine.Take(count).Select(i => (T)Convert.ChangeType(i, typeof(T), CultureInfo.InvariantCulture)).ToArray();
+			currLine.RemoveRange(0, count);
+			return res;
+		}
+	}
+}

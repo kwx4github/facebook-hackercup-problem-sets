@@ -1,0 +1,162 @@
+// Dark Side of Elephant
+// Askar
+
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
+#include <cstring>
+#include <algorithm>
+#include <utility>
+#include <tuple>
+#include <complex>
+#include <cmath>
+#include <sys/types.h>
+#include <unistd.h>
+#include <cassert>
+
+using namespace std;
+
+#define FOR(i, N) for(auto i=(N)-(N); i<(N); i++)
+#define FOR1(i, N) for(auto i=(N)-(N)+1; i<=(N); i++)
+#define FOREACH(it, a) for(auto it=(a).begin(); it!=(a).end(); it++)
+#define MAXIM(a,b) a=max(a, static_cast<__typeof__(a)>(b))
+#define MINIM(a,b) a=min(a, static_cast<__typeof__(a)>(b))
+#define beginend(a) (a).begin(), (a).end()
+#define pf printf
+#define sf scanf
+#define mp make_pair
+#define mt make_tuple
+#define pass
+#define sqr(x) ((x)*(x))
+typedef long long ll;
+typedef pair<long long, long long> pll;
+typedef pair<int, int> pii;
+const long long INF = 1e9;
+const double EPS = 1e-9;
+
+#define dbg if(false)
+#ifdef EBUG
+    #undef dbg
+    #define dbg if(true)
+#endif
+
+#define epf(...) fprintf(stderr, __VA_ARGS__)
+#define dpf(...) dbg epf(__VA_ARGS__)
+#define db(x) dbg cerr << #x << ":\t" << (x) << endl 
+
+const int FREE = 0;
+const int WALL = 1;
+
+const int dr[4] = {-1, 0, +1, 0};
+const int dc[4] = {0, +1, 0, -1};
+
+inline void ans(const int t, const int steps){
+    pf("Case #%i: ", t);
+    if(steps != INF) pf("%i", steps);
+    else pf("impossible");
+    pf("\n");
+}
+
+int main(){
+    int T;
+    sf(" %i", &T);
+    FOR1(t, T){
+        db(t);
+        int R, C;
+        sf(" %i %i", &R, &C);
+        vector<vector<int> > maze(R+2, vector<int>(C+2, WALL));
+        pii start, goal;
+        vector<pair<pii, int> > towers;
+
+        FOR1(i, R) FOR1(j, C){
+            char c;
+            sf(" %c", &c);
+            switch(c){
+                case '.': maze[i][j] = FREE; 
+                          break;
+                case '#': maze[i][j] = WALL; 
+                          break;
+                case 'S': maze[i][j] = FREE;
+                          start = mp(i, j);
+                          break;
+                case 'G': maze[i][j] = FREE;
+                          goal = mp(i, j);
+                          break;
+                case '^': maze[i][j] = WALL;
+                          towers.push_back(mp(mp(i, j), 0));
+                          break;
+                case '>': maze[i][j] = WALL;
+                          towers.push_back(mp(mp(i, j), 1));
+                          break;
+                case 'v': maze[i][j] = WALL;
+                          towers.push_back(mp(mp(i, j), 2));
+                          break;
+                case '<': maze[i][j] = WALL;
+                          towers.push_back(mp(mp(i, j), 3));
+                          break;
+            }
+        }
+        db("finished reading the input");
+
+        vector<vector<vector<int> > > impassable(4, vector<vector<int> >(R+2, vector<int>(C+2, 0)));
+        FOR(rotation, 4){
+            impassable[rotation] = maze;
+            FOREACH(tower, towers){
+                int i, j;
+                tie(i, j) = tower->first;
+                const int k = tower->second;
+                i += dr[k]; j += dc[k];
+                while(maze[i][j] == FREE){
+                    impassable[rotation][i][j] = 1;
+                    i += dr[k]; j += dc[k];
+                }
+                tower->second = (k+1)%4;
+            }
+        }
+        db("finished computing the safe place");
+
+        const int NONVISITED = -47;
+        vector<vector<vector<int> > > bfs(4, vector<vector<int> > (R+2, vector<int>(C+2, NONVISITED)));
+
+        queue<pair<pii, int> > Q;
+        Q.push(mp(start, 0));
+        bfs[0][start.first][start.second] = 0;
+
+        while(!Q.empty()){
+            int x, y;
+            tie(x, y) = Q.front().first;
+            int rot = Q.front().second;
+            Q.pop();
+            
+            db(x);
+            db(y);
+            db(rot);
+
+            const int d = bfs[rot][x][y];
+
+            FOR(k, 4){
+                const int nx = x + dr[k];
+                const int ny = y + dc[k];
+                const int nrot = (rot+1) % 4;
+                if(impassable[nrot][nx][ny] == 1) continue;
+                if(bfs[nrot][nx][ny] == NONVISITED){
+                    Q.push(mp(mp(nx, ny), nrot));
+                    bfs[nrot][nx][ny] = d+1;
+                }
+            }
+        }
+        
+        int res = INF;
+        FOR(k, 4) if(bfs[k][goal.first][goal.second] >= 0) MINIM(res, bfs[k][goal.first][goal.second]);
+    
+        ans(t, res);
+    }
+}

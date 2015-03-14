@@ -1,0 +1,151 @@
+import sys
+import Queue
+
+class state:
+    def turret_affected(self, num_steps):
+        result = []
+        for i in range(self.m):
+            row = []
+            for j in range(self.n):
+                row.append(False)
+            result.append(row)
+        for turret in self.turrets:
+            new_dir = (turret[2] + num_steps) % 4
+            if new_dir == 0: #up
+                for i in range(turret[0]-1, -1, -1):
+                    if self.state_mat[i][turret[1]] == 1:
+                        break
+                    else:
+                        result[i][turret[1]] = True
+            elif new_dir == 1:  #right
+                for j in range(turret[1]+1, self.n, 1):
+                    if self.state_mat[turret[0]][j] == 1:
+                        break
+                    else:
+                        result[turret[0]][j] = True
+            elif new_dir == 2: #down
+                for i in range(turret[0]+1, self.m, 1):
+                    if self.state_mat[i][turret[1]] == 1:
+                        break
+                    else:
+                        result[i][turret[1]] = True
+            elif new_dir == 3: #left
+                for j in range(turret[1]-1, -1, -1):
+                    if self.state_mat[turret[0]][j] == 1:
+                        break
+                    else:
+                        result[turret[0]][j] = True
+        return result
+    def __init__(self):
+        m_n = sys.stdin.readline().split()
+        self.m = int(m_n[0])
+        self.n = int(m_n[1])
+        self.state_mat = []
+        self.turrets = []
+        #self.num_steps = 0
+        for i in range(self.m):
+            row = sys.stdin.readline()
+            row_arr = []
+            for j in range(self.n):
+                spot = row[j]
+                if (spot == '.'):
+                    row_arr.append(0)
+                elif (spot == '#'):
+                    row_arr.append(1)
+                elif (spot == 'S'):
+                    row_arr.append(0)
+                    self.start = (i,j)
+                elif (spot == 'G'):
+                    row_arr.append(0)
+                    self.goal = (i,j)
+                elif (spot == '^'):
+                    self.turrets.append((i,j,0))
+                    row_arr.append(1)
+                elif (spot == '>'):
+                    self.turrets.append((i,j,1))
+                    row_arr.append(1)
+                elif (spot == 'v'):
+                    self.turrets.append((i,j,2))
+                    row_arr.append(1)
+                elif (spot == '<'):
+                    self.turrets.append((i,j,3))
+                    row_arr.append(1)
+            self.state_mat.append(row_arr)
+        self.is_turret_affected = []
+        for i in range(4):
+            self.is_turret_affected.append(self.turret_affected(i))
+
+
+def solve_test_case(i):
+    curr_state = state()
+    q = Queue.PriorityQueue()
+    visited = []
+    goal_found = False
+    if (curr_state.start[0] == curr_state.goal[0] and curr_state.start[1] == curr_state.goal[1]):
+        print "Case #" + str(i) + ": 0"
+        return
+    #if not curr_state.is_turret_affected[0][curr_state.start[0]][curr_state.start[1]]:
+    q.put((abs(curr_state.goal[0] - curr_state.start[0]) + abs(curr_state.goal[1] - curr_state.start[1]), curr_state.start[0], curr_state.start[1], 0))
+    visited.append(str((curr_state.start[0], curr_state.start[1], 0)))
+    while (not q.empty()):
+        curr_node = q.get()
+        steps = (curr_node[3] + 1)
+        visited.append(str((curr_node[1], curr_node[2], curr_node[3]%4)))
+        #children
+        #up
+        if (curr_node[1] != 0):
+            next_node = (abs(curr_state.goal[0]-curr_node[1]+1) + abs(curr_state.goal[1]-curr_node[2]) + steps, curr_node[1]-1, curr_node[2], steps)
+            #goal found
+            if (next_node[1] == curr_state.goal[0] and next_node[2] == curr_state.goal[1] and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]]):
+                goal_found = True
+                print "Case #" + str(i) + ": " + str(steps)
+                break
+            if (curr_state.state_mat[next_node[1]][next_node[2]] == 0 and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]] and not str((next_node[1],next_node[2],next_node[3]%4)) in visited):
+                q.put(next_node)
+                visited.append(str((next_node[1],next_node[2],next_node[3]%4)))
+        #down
+        if (curr_node[1] != curr_state.m-1):
+            next_node = (abs(curr_state.goal[0]-curr_node[1]-1) + abs(curr_state.goal[1]-curr_node[2]) + steps, curr_node[1]+1, curr_node[2], steps)
+            #goal found
+            if (next_node[1] == curr_state.goal[0] and next_node[2] == curr_state.goal[1] and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]]):
+                goal_found = True
+                print "Case #" + str(i) + ": " + str(steps)
+                break
+            if (curr_state.state_mat[next_node[1]][next_node[2]] == 0 and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]] and not str((next_node[1],next_node[2],next_node[3]%4)) in visited):
+                q.put(next_node)
+                visited.append(str((next_node[1],next_node[2],next_node[3]%4)))
+        #left
+        if (curr_node[2] != 0):
+            next_node = (abs(curr_state.goal[0] - curr_node[1]) + abs(curr_state.goal[1] - curr_node[2] + 1) + steps, curr_node[1], curr_node[2]-1, steps)
+            #goal found
+            if (next_node[1] == curr_state.goal[0] and next_node[2] == curr_state.goal[1] and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]]):
+                goal_found = True
+                print "Case #" + str(i) + ": " + str(steps)
+                break
+            if (curr_state.state_mat[next_node[1]][next_node[2]] == 0 and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]] and not str((next_node[1],next_node[2],next_node[3]%4)) in visited):
+                q.put(next_node)
+                visited.append(str((next_node[1],next_node[2],next_node[3]%4)))
+        #right
+        if (curr_node[2] != curr_state.n-1):
+            next_node = (abs(curr_state.goal[0] - curr_node[1]) + abs(curr_state.goal[1] - curr_node[2] - 1) + steps, curr_node[1], curr_node[2]+1, steps)
+            #goal found
+            if (next_node[1] == curr_state.goal[0] and next_node[2] == curr_state.goal[1] and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]]):
+                goal_found = True
+                print "Case #" + str(i) + ": " + str(steps)
+                break
+            if (curr_state.state_mat[next_node[1]][next_node[2]] == 0 and not curr_state.is_turret_affected[next_node[3]%4][next_node[1]][next_node[2]] and not str((next_node[1],next_node[2],next_node[3]%4)) in visited):
+                q.put(next_node)
+                visited.append(str((next_node[1],next_node[2],next_node[3]%4)))
+        
+                    
+    if not goal_found:
+        print "Case #" + str(i) + ": impossible"
+
+
+test_cases = int(sys.stdin.readline())
+for i in range(test_cases):
+    solve_test_case(i+1)
+            
+
+
+                

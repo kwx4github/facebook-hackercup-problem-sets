@@ -1,0 +1,97 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Globalization;
+
+public class C
+{
+	const string lasers = ">v<^";
+	static int[] dc = { 1, 0, -1, 0 };
+	static int[] dr = { 0, 1, 0, -1 };
+
+	public static void Main(string[] args)
+	{
+		Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+		int CASES = int.Parse(Console.ReadLine());
+		for (int CASE = 1; CASE <= CASES; CASE++)
+		{
+			Console.Error.WriteLine("Case #{0}", CASE);
+			string[] ps = Console.ReadLine().Split();
+			int M = int.Parse(ps[0]);
+			int N = int.Parse(ps[1]);
+			string[] maze = new string[M];
+			for (int i = 0; i < M; i++)
+				maze[i] = Console.ReadLine();
+
+			bool[, ,] dead = new bool[M, N, 4];
+			int sr = -1, sc = -1;
+			for (int r = 0; r < M; r++)
+			{
+				for (int c = 0; c < N; c++)
+				{
+					if (maze[r][c] == 'S')
+					{
+						sr = r;
+						sc = c;
+					}
+					int idx = lasers.IndexOf(maze[r][c]);
+					if (idx > -1)
+					{
+						for (int d = 0; d < 4; d++)
+						{
+							int cr = r + dr[(idx + d) % 4];
+							int cc = c + dc[(idx + d) % 4];
+							while (0 <= cr && cr < M && 0 <= cc && cc < N && !isWall(maze[cr][cc]))
+							{
+								dead[cr, cc, d] = true;
+								cr += dr[(idx + d) % 4];
+								cc += dc[(idx + d) % 4];
+							}
+						}
+					}
+				}
+			}
+
+			bool[, ,] done = new bool[M, N, 4];
+			Queue<State> Q = new Queue<State>();
+			Q.Enqueue(new State(sr, sc, 0));
+			int ret = -1;
+			while (Q.Count > 0)
+			{
+				State top = Q.Dequeue();
+				if (top.r < 0 || top.r >= M || top.c < 0 || top.c >= N) continue;
+				if (done[top.r, top.c, top.steps % 4]) continue;
+				done[top.r, top.c, top.steps % 4] = true;
+				if (dead[top.r, top.c, top.steps % 4] && top.steps != 0) continue;
+
+				if (maze[top.r][top.c] == 'G')
+				{
+					ret = top.steps;
+					break;
+				}
+				for (int d = 0; d < 4; d++)
+					Q.Enqueue(new State(top.r + dr[d], top.c + dc[d], top.steps + 1));
+			}
+			
+			Console.WriteLine("Case #{0}: {1}", CASE, ret == -1 ? "impossible" : ret.ToString());
+		}
+	}
+
+	class State
+	{
+		public int r, c, steps;
+
+		public State(int r, int c, int s)
+		{
+			this.r = r;
+			this.c = c;
+			this.steps = s;
+		}
+	}
+
+	static bool isWall(char c)
+	{
+		return c == '#' || lasers.IndexOf(c) > -1;
+	}
+}

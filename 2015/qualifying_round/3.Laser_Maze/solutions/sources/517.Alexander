@@ -1,0 +1,195 @@
+# idea:
+# state = (location, orientation)
+# num states is at most 100 * 100 * 4
+# from here we can just do dijkstra's
+# run time over 100 test cases - 
+# number verts = 100 * 100 *4
+# number edges <= 4 * # verts
+# so < 16 million total over all cases, doable
+
+def read_maze(m, n):
+    return [ raw_input() for _ in range(m) ]
+
+def rotate(t, r):
+    tur = ["^", ">", "v", "<"]
+    return tur[(tur.index(t) + r) % 4]
+
+class State:
+    def __init__(self, maze, pos, ori):
+        self.maze = maze
+        self.pos = pos
+        self.ori = ori
+        self.m = len(self.maze)
+        self.n = len(self.maze[0])
+
+    def safe(self):
+        x, y = self.pos
+        # check turrets in 4 cardinal
+        tur = ["^", ">", "v", "<"]
+        # turret locs
+        north, south, east, west = None, None, None, None
+        # west
+        for ny in range(y, -1, -1):
+            if self.maze[x][ny] == '#':
+                break
+            if self.maze[x][ny] in tur:
+                west = (x, ny)
+                break
+        # east 
+        for ny in range(y, n):
+            if self.maze[x][ny] == '#':
+                break
+            if self.maze[x][ny] in tur:
+                east = (x, ny)
+                break
+        # north
+        for nx in range(x, -1, -1):
+            if self.maze[nx][y] == '#':
+                break
+            if self.maze[nx][y] in tur:
+                north = (nx, y)
+                break
+        # souch
+        for nx in range(x, m):
+            if self.maze[nx][y] == '#':
+                break
+            if self.maze[nx][y] in tur:
+                south = (nx, y)
+                break
+        # check safety
+        if north:
+            if rotate(self.maze[north[0]][north[1]], self.ori) == 'v':
+                return False
+        if south:
+            if rotate(self.maze[south[0]][south[1]], self.ori) == '^':
+                return False
+        if east:
+            if rotate(self.maze[east[0]][east[1]], self.ori) == '<':
+                return False
+        if west:
+            if rotate(self.maze[west[0]][west[1]], self.ori) == '>':
+                return False
+        return True
+
+    def __eq__(self, other):
+        return self.pos == other.pos and self.ori == other.ori
+
+    def __hash__(self):
+        return hash( (self.pos, self.ori) )
+
+    def nei(self):
+        x, y = self.pos
+        states = []
+        valid = (".", "S", "G")
+        if x > 0 and self.maze[x-1][y] in valid:
+            s = State(self.maze, (x-1, y), (self.ori + 1) % 4)
+            if s.safe():
+                states.append(s)
+        if y > 0 and self.maze[x][y-1] in valid:
+            s = State(self.maze, (x, y-1), (self.ori + 1) % 4)
+            if s.safe():
+                states.append(s)
+        if x < m-1 and self.maze[x+1][y] in valid:
+            s = State(self.maze, (x+1, y), (self.ori + 1) % 4)
+            if s.safe():
+                states.append(s)
+        if y < n-1 and self.maze[x][y+1] in valid:
+            s = State(self.maze, (x, y+1), (self.ori + 1) % 4)
+            if s.safe():
+                states.append(s)
+        return states
+
+    def rev(self):
+        x, y = self.pos
+        states = []
+        valid = (".", "S", "G")
+        if x > 0 and self.maze[x-1][y] in valid:
+            s = State(self.maze, (x-1, y), (self.ori + 3) % 4)
+            if s.safe():
+                states.append(s)
+        if y > 0 and self.maze[x][y-1] in valid:
+            s = State(self.maze, (x, y-1), (self.ori + 3) % 4)
+            if s.safe():
+                states.append(s)
+        if x < m-1 and self.maze[x+1][y] in valid:
+            s = State(self.maze, (x+1, y), (self.ori + 3) % 4)
+            if s.safe():
+                states.append(s)
+        if y < n-1 and self.maze[x][y+1] in valid:
+            s = State(self.maze, (x, y+1), (self.ori + 3) % 4)
+            if s.safe():
+                states.append(s)
+        return states
+
+from collections import deque
+
+t = input()
+for case in range(1, t+1):
+    m,n = map(int, raw_input().split())
+    maze = [raw_input() for _ in range(m)]
+    # find start and end
+    for i, row in enumerate(maze):
+        if 'S' in row:
+            start = (i, row.index('S'))
+            break
+    for i, row in enumerate(maze):
+        if 'G' in row:
+            end = (i, row.index('G'))
+            break
+    goalstates = [State(maze, end, ori) for ori in range(4)]
+    goalstates = set(s for s in goalstates if s.safe())
+    startstate = State(maze, start, 0)
+
+    if len(goalstates) == 0:
+        print "Case #%d: impossible" % (case)
+        continue
+
+    dist = 0
+    # some large number, too lazy to make visited set
+    # may be possible to exceed but would be very suprised
+    to_check = set( [startstate] )
+    visited = set()
+    to_check_back = set( goalstates )
+    visited_back = set()
+    while dist < 100 * 100 * 4:
+        if len(to_check) == 0:
+            # cannot find goal state, stop
+            print "Case #%d: impossible" % (case)
+            break
+        if len(to_check_back) == 0:
+            # cannot find goal state, stop
+            print "Case #%d: impossible" % (case)
+            break
+        next = set()
+        found = False
+        if dist % 2 == 0:
+            for state in to_check:
+                visited.add(state)
+                if state in to_check_back:
+                    print "Case #%d: %d" % (case, dist)
+                    found = True
+                    break
+                # since it's a set duplicates are auto removed
+                for st in state.nei():
+                    if st not in visited:
+                        next.add(st)
+            to_check = next
+            if found:
+                break
+        else:
+            for state in to_check_back:
+                visited_back.add(state)
+                if state in to_check:
+                    print "Case #%d: %d" % (case, dist)
+                    found = True
+                    break
+                # since it's a set duplicates are auto removed
+                for st in state.rev():
+                    if st not in visited_back:
+                        next.add(st)
+            to_check_back = next
+            if found:
+                break
+        dist += 1
+    if dist == 100 * 100 * 4:
+        print "Case #%d: impossible" % (case)

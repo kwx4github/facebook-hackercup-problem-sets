@@ -1,0 +1,113 @@
+#include <cmath>
+#include <cstdio>
+#include <vector>
+#include <climits>
+#include <queue>
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+const int MAXN = 101;
+const int dx[] = {-1, 0, 1, 0};
+const int dy[] = {0, 1, 0, -1};
+int n, m;
+char mat[MAXN][MAXN];
+int dp[MAXN][MAXN][4];
+
+bool isvalid(int x, int y) {
+  return x >= 0 && x < n && y >= 0 && y < m;
+}
+
+int bfs(int sx, int sy, int tx, int ty, vector<pair<int, int> >& lasers) {
+  queue<int> q;
+  q.push(sx);
+  q.push(sy);
+  q.push(0);
+  dp[sx][sy][0] = 0;
+  while (!q.empty()) {
+    int now_x = q.front(); q.pop();
+    int now_y = q.front(); q.pop();
+    int step = q.front(); q.pop();
+    if (now_x == tx && now_y == ty) {
+      return step;
+    }
+    for (int d = 0; d < 4; ++d) {
+      int next_x = now_x + dx[d];
+      int next_y = now_y + dy[d];
+      if (!isvalid(next_x, next_y)) continue;
+      if (mat[next_x][next_y] == '#' || mat[next_x][next_y] < 4) continue;
+      int next_step = step + 1;
+      if (dp[next_x][next_y][next_step % 4] != -1) {
+        continue;
+      }
+      bool die = false;
+      for (int k = 0; k < lasers.size(); ++k) {
+        int lx = lasers[k].first, ly = lasers[k].second;
+        int dd = (mat[lx][ly] + next_step) % 4;
+        while (true) {
+          int next_lx = lx + dx[dd], next_ly = ly + dy[dd];
+          if (!isvalid(next_lx, next_ly)) break;
+          if (next_lx == next_x && next_ly == next_y) {
+            die = true;
+            break;
+          }
+          if (mat[next_lx][next_ly] == '#' || mat[next_lx][next_ly] < 4) break;
+          lx = next_lx, ly = next_ly;
+        }
+        if (die) break;
+      }
+      if (!die) {
+        dp[next_x][next_y][next_step % 4] = next_step;
+        q.push(next_x);
+        q.push(next_y);
+        q.push(next_step);
+      }
+    }
+  }
+  return -1;
+}
+
+int main() {
+  int cases;
+  scanf("%d", &cases);
+  getchar();
+  for (int T = 0; T < cases; ++T) {
+    scanf("%d %d", &n, &m);
+    int sx = -1, sy = -1, tx = -1, ty = -1;
+    vector<pair<int, int> > lasers;
+    for (int i = 0; i < n; ++i) {
+      getchar();
+      for (int j = 0; j < m; ++j) {
+        mat[i][j] = getchar();
+        if (mat[i][j] == '^') {
+          mat[i][j] = 0;
+          lasers.push_back(make_pair(i, j));
+        } else if (mat[i][j] == '>') {
+          mat[i][j] = 1;
+          lasers.push_back(make_pair(i, j));
+        } else if (mat[i][j] == 'v') {
+          mat[i][j] = 2;
+          lasers.push_back(make_pair(i, j));
+        } else if (mat[i][j] == '<') {
+          mat[i][j] = 3;
+          lasers.push_back(make_pair(i, j));
+        }
+        if (mat[i][j] == 'S') {
+          sx = i, sy = j;
+          mat[i][j] = '.';
+        } else if (mat[i][j] == 'G') {
+          tx = i, ty = j;
+          mat[i][j] = '.';
+        }
+      }
+    }
+    memset(dp, -1, sizeof(dp));
+    int ans = bfs(sx, sy, tx, ty, lasers);
+    if (ans == -1) {
+      printf("Case #%d: impossible\n", T + 1);
+    } else {
+      printf("Case #%d: %d\n", T + 1, ans);
+    }
+  }
+  return 0;
+}

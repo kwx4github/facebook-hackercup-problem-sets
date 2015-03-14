@@ -1,0 +1,188 @@
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <set>
+using namespace std;
+
+int t;
+int m, n;
+char maze[102][102];
+int b[102][102];
+int result;
+
+typedef pair<int, int> Coordinate;
+typedef pair<Coordinate, int> State;       // Int is 0,1,2,3
+typedef pair<Coordinate, int> QueueEntry;  // Int is distance
+
+void solve() {
+    // Mark walls, find start and end coords.
+    Coordinate s, g;
+    vector<Coordinate> turrets;
+
+    for (int row = 0; row <= m+1; row++) for (int col = 0; col <= n+1; col++) {
+        switch(maze[row][col]) {
+        case '.':
+            b[row][col] = 0;
+            break;
+        case 'S':
+            b[row][col] = 0;
+            s = Coordinate(row, col);
+            break;
+        case 'G':
+            b[row][col] = 0;
+            g = Coordinate(row, col);
+            break;
+        case '#':
+            b[row][col] = 0xff;
+            break;
+        case '<':
+        case '>':
+        case '^':
+        case 'v':
+            b[row][col] = 0xff;
+            turrets.push_back(Coordinate(row, col));
+            break;
+        }
+    }
+
+    for (int i = 0; i < turrets.size(); i++) {
+        int row = turrets[i].first, col = turrets[i].second;
+        char ch = maze[row][col];
+        int type = (ch == '<') ? 0 : (ch == 'v') ? 1 : (ch == '>') ? 2 : 3;
+
+        int dc = -1, dr = 0;            // Left shoot
+        int r = row + dr, c = col + dc;
+        while (b[r][c] != 0xff) {
+            b[r][c] |= (1 << type);
+            r += dr; c += dc;
+        }
+
+        type = (type + 1) % 4;
+        dc = 0, dr = -1;            // Top shoot
+        r = row + dr, c = col + dc;
+        while (b[r][c] != 0xff) {
+            b[r][c] |= (1 << type);
+            r += dr; c += dc;
+        }
+
+        type = (type + 1) % 4;
+        dc = 1, dr = 0;            // Right shoot
+        r = row + dr, c = col + dc;
+        while (b[r][c] != 0xff) {
+            b[r][c] |= (1 << type);
+            r += dr; c += dc;
+        }
+
+        type = (type + 1) % 4;
+        dc = 0, dr = 1;            // Bottom shoot
+        r = row + dr, c = col + dc;
+        while (b[r][c] != 0xff) {
+            b[r][c] |= (1 << type);
+            r += dr; c += dc;
+        }
+    }
+
+   /* cout << "-----" << endl;
+            for (int row = 0; row <= m+1; row++) {
+                    for (int col = 0; col <= n+1; col++)
+                        cout << b[row][col];
+                    cout << endl;
+            }
+    cout << "-----" << endl;*/
+
+    deque<QueueEntry> q;
+    set<State> visited;
+    q.push_back(QueueEntry(s, 0));
+    result = -1;
+
+    while (q.size() != 0) {
+        QueueEntry cur = q.front();
+        q.pop_front();
+        //cout << "<-- Popped from queue: (" << cur.first.first << "," << cur.first.second << ") " << cur.second << endl;
+        //cout << "Queue size: " << q.size() << endl;
+
+        Coordinate cur_coord = cur.first;
+        int cur_dist = cur.second;
+        State cur_state(cur_coord, cur_dist % 4);
+        if (visited.find(cur_state) != visited.end()) continue;
+        visited.insert(cur_state);
+        if (cur_coord == g)  {
+            result = cur_dist;
+            break;
+        }
+
+        int next_dist = cur_dist + 1;
+        int next_phase = next_dist % 4;
+        int next_mask = 1 << next_phase;
+
+        int dr = 1, dc = 0;
+        Coordinate next_coord(cur_coord.first + dr, cur_coord.second + dc);
+        if ((b[next_coord.first][next_coord.second] & next_mask) == 0) {
+            if (visited.find(State(next_coord, next_phase)) == visited.end()) {
+                q.push_back(QueueEntry(next_coord, next_dist));
+                //cout << "--> Pushed to queue: (" << next_coord.first << "," << next_coord.second << ") " << next_dist << endl;
+            }
+        }
+
+        dr = -1, dc = 0;
+        next_coord = Coordinate(cur_coord.first + dr, cur_coord.second + dc);
+        if ((b[next_coord.first][next_coord.second] & next_mask) == 0) {
+            if (visited.find(State(next_coord, next_phase)) == visited.end()) {
+                q.push_back(QueueEntry(next_coord, next_dist));
+                //cout << "--> Pushed to queue: (" << next_coord.first << "," << next_coord.second << ") " << next_dist << endl;
+            }
+        }
+
+        dr = 0, dc = 1;
+        next_coord = Coordinate(cur_coord.first + dr, cur_coord.second + dc);
+        if ((b[next_coord.first][next_coord.second] & next_mask) == 0) {
+            if (visited.find(State(next_coord, next_phase)) == visited.end()) {
+                q.push_back(QueueEntry(next_coord, next_dist));
+                //cout << "--> Pushed to queue: (" << next_coord.first << "," << next_coord.second << ") " << next_dist << endl;
+            }
+        } else {
+            //cout << "cannot move to (" << next_coord.first << "," << next_coord.second << ") because " << next_mask << " " << (int)(b[next_coord.first][next_coord.second] & next_mask) << endl;
+        }
+
+        dr = 0, dc = -1;
+        next_coord = Coordinate(cur_coord.first + dr, cur_coord.second + dc);
+        if ((b[next_coord.first][next_coord.second] & next_mask) == 0) {
+            if (visited.find(State(next_coord, next_phase)) == visited.end()) {
+                q.push_back(QueueEntry(next_coord, next_dist));
+                //cout << "--> Pushed to queue: (" << next_coord.first << "," << next_coord.second << ") " << next_dist << endl;
+            }
+        }
+
+    }
+
+}
+
+
+int main() {
+    //ostream& fout = cout;
+    ofstream fout ("test.out");
+    ifstream fin ("laser_maze.txt");
+
+    fin >> t;
+    for (int i = 0; i < t; i++) {
+        fin >> m >> n;
+
+        for (int row = 0; row <= m+1; row++) for (int col = 0; col <= n+1; col++) {
+            maze[row][col] = '#';
+        }
+
+        for (int row = 0; row < m; row++) for (int col = 0; col < n; col++)
+            fin >> maze[row+1][col+1];
+
+        solve();
+
+        fout << "Case #" << (i+1) << ": ";
+        if (result == -1) fout << "impossible";
+        else fout << result;
+        fout << "\n";
+    }
+    return 0;
+}

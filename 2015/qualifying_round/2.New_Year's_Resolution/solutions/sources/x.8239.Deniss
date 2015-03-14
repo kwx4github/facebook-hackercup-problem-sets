@@ -1,0 +1,239 @@
+// node example.js input.io > output.io
+
+var fs = require('fs');
+var log = console.log;
+
+function Resolution(data) {
+
+    /**
+     * @type {Array}
+     */
+    this.data = data;
+
+    /**
+     * Current test
+     * @type {number}
+     */
+    this.test = 0;
+
+    /**
+     * Current foods for check
+     * @type {Array.<Array>}
+     */
+    this.foods = [];
+
+    /**
+     * Current calories for check
+     * @type {Array.<number>}
+     */
+    this.calories = [];
+
+    this.init = function () {
+
+        var tests = Number(this.data[0]);
+        var row = 1;
+        var num = 0;
+        var found = false;
+
+        // Read data
+        for (var i = 0; i < tests; i++) {
+
+            this.calories = this.data[row].split(' ').map(Number);
+            this.foods = [];
+
+            row++;
+
+            num = Number(this.data[row]);
+
+            // Read foods
+            for (var j = 0; j < num; j++) {
+
+                row++;
+
+                this.foods.push(
+                    this.data[row].split(' ').map(Number)
+                );
+
+            }
+
+            row++;
+
+            found = this.check();
+
+            log('Case #' + (i + 1) + ': ' + (found ? 'yes' : 'no'));
+
+        }
+
+    };
+
+
+    this.check = function () {
+
+        if (!this.removeInvalidFood()) {
+            return false;
+        }
+
+        var range;
+
+        // Find sum
+        for (var i = 0; i < this.foods.length; i++) {
+
+            for (var j = i; j < this.foods.length; j++) {
+
+                range = this.foods.slice(j);
+
+                if (this.checkInRange(range)) {
+                    return true;
+                }
+
+            }
+        }
+
+        return false;
+    };
+
+
+    /**
+     * Check in range
+     * @param {Array.<number>} range
+     * @return {boolean}
+     */
+    this.checkInRange = function (range) {
+
+        var amount = [];
+        var r = 0;
+        var n = 0;
+
+        for (var i = 1; i < range.length; i++) {
+            if (range[0][0] + range[i][0] <= this.calories[0]) {
+                r = i;
+                break;
+            }
+        }
+
+        // already found
+        if (this.isEqual(range[0])) {
+            return true;
+        }
+
+        for (i = r; i < range.length; i++) {
+
+            amount[0] = range[0][0];
+            amount[1] = range[0][1];
+            amount[2] = range[0][2];
+
+            n = i;
+
+            for (var j = i; j < range.length; j++) {
+
+                amount[0] += range[j][0];
+                amount[1] += range[j][1];
+                amount[2] += range[j][2];
+
+                if (this.isEqual(amount)) {
+                    return true;
+                }
+
+                if (this.isOverload(amount)) {
+                    amount[0] -= range[j][0];
+                    amount[1] -= range[j][1];
+                    amount[2] -= range[j][2];
+                    continue;
+                }
+
+                n++;
+            }
+
+            // no need to check, result is not enough
+            if (amount[0] < this.calories[0] && n === range.length) {
+                break;
+            }
+
+        }
+
+        return false;
+
+    };
+
+    /**
+     * Check is amount equal
+     * @param {Array.<number>} amount
+     */
+    this.isEqual = function (amount) {
+        return amount[0] == this.calories[0]
+            && amount[1] == this.calories[1]
+            && amount[2] == this.calories[2];
+    };
+
+    /**
+     * Check is amount overload
+     * @param {Array.<number>} amount
+     */
+    this.isOverload = function (amount) {
+        return amount[0] > this.calories[0]
+            || amount[1] > this.calories[1]
+            || amount[2] > this.calories[2];
+    };
+
+
+    /**
+     * Remove invalid food
+     * @return {boolean}
+     */
+    this.removeInvalidFood = function () {
+
+        var amount = [0, 0, 0];
+
+        // remove invalid foods
+        this.foods = this.foods.filter(function (food) {
+
+            if (this.calories[0] < food[0]
+                || this.calories[1] < food[1]
+                || this.calories[2] < food[2]
+            ) {
+                return false;
+            }
+
+            amount[0] += food[0];
+            amount[1] += food[1];
+            amount[2] += food[2];
+
+            return true;
+
+        }, this);
+
+        // not enough sum for groups
+        if (amount[0] < this.calories[0]
+            || amount[1] < this.calories[1]
+            || amount[2] < this.calories[2]
+        ) {
+            return false;
+        }
+
+        // sort by minimum group
+        this.foods.sort(function (a, b) {
+            return a[0] > b[0] ? -1 : 1;
+        });
+
+        return true;
+
+    };
+
+    this.init();
+
+}
+
+
+// Read file
+fs.readFile(process.argv[2], 'utf8', function (error, data) {
+
+    if (error) {
+        throw (error);
+    }
+
+    new Resolution(data.split("\n"));
+
+});
+
+
+

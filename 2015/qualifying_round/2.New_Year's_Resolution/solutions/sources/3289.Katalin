@@ -1,0 +1,65 @@
+import string
+
+testIndex=1
+
+problemRoot="d:/prog/versenyek/hackercup"
+problemDir="2015/quali"
+problemName="new_years_resolution"
+inputEnds= ["_example_input.txt",  ".txt"]
+outputEnds=["_test_output.txt",    "_output.txt"]
+
+fileName=string.strip(problemRoot)+"/"+problemDir+"/"+problemName+inputEnds[testIndex]
+inputData=[map(int, line.split()) for line in open(fileName,'r') if line.strip()]
+fileName=string.strip(problemRoot)+"/"+problemDir+"/"+problemName+outputEnds[testIndex]
+fileToWrite=open(fileName,'wb')
+iLineIdx=1
+for iCase in range(inputData[0][0]):
+  print iCase+1
+  goal=inputData[iLineIdx]
+  numFoods=inputData[iLineIdx+1][0]
+  iLineIdx+=2
+  foods=[]
+  possibles=[set([0])]*3
+  for i in range(numFoods):
+    isOK=True
+    for j in range(3):
+      value=inputData[iLineIdx+i][j]
+      if value<=goal[j]: # ami tul nagy, azt be se vesszuk az inputba
+        for k in possibles[j].copy():
+          if k+value<=goal[j]:
+            possibles[j].add(k+value)
+      else:
+        isOK=False
+    if isOK:
+      foods.append(inputData[iLineIdx+i])
+  iLineIdx+=numFoods
+  maxRemainder=[[0,0,0] for _ in range(len(foods))]
+  for i in reversed(range(len(foods)-1)):
+    for j in range(3):
+      maxRemainder[i][j]=maxRemainder[i+1][j]+foods[i+1][j]
+  if goal[0] not in possibles[0] or goal[1] not in possibles[1] or goal[2] not in possibles[2]:
+    fileToWrite.write("Case #"+str(iCase+1)+": no\n")
+  else:
+    # azt is meg kell nezni, hogy kombinacioban is osszerakhato-e
+    # szelteben kereses elagazas-korlatozassal
+    combs={}
+    combs[0]=[0,0,0,-1]
+    found=False
+    for i in range(1,len(foods)+1): # darabszam
+      if not found:
+        for bits in combs.copy():
+          if not found:
+            for j in range(combs[bits][3]+1,len(foods)): # lehetseges uj elemek
+              if not found:
+                diffs=[goal[k]-combs[bits][k]-foods[j][k] for k in range(3)]
+                if diffs==[0,0,0]:
+                  found=True
+                  fileToWrite.write("Case #"+str(iCase+1)+": yes\n")
+                elif diffs[0] in possibles[0] and diffs[0]<=maxRemainder[j][0] and \
+                      diffs[1] in possibles[1] and diffs[1]<=maxRemainder[j][1] and \
+                      diffs[2] in possibles[2] and diffs[2]<=maxRemainder[j][2]: # maradek van es eloall, meghozza nagysag alapjan a maradekokbol is lehet
+                  combs[bits+(2**j)]=[combs[bits][0]+foods[j][0],combs[bits][1]+foods[j][1],combs[bits][2]+foods[j][2],j]
+            combs.pop(bits) # ettol szelteben kerese
+    if not found:
+      fileToWrite.write("Case #"+str(iCase+1)+": no\n")
+fileToWrite.close()

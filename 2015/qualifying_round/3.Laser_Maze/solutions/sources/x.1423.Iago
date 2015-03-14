@@ -1,0 +1,212 @@
+//
+//  main.cpp
+//  c
+//
+//  Created by Iago Almeida Neves on 1/8/15.
+//  Copyright (c) 2015 Iago Almeida Neves. All rights reserved.
+//
+
+#include <bits/stdc++.h>
+using namespace std;
+#define INF 0x3f3f3f3f
+#define MOD 1000000007
+#define _ ios_base::sync_with_stdio(false); cin.tie(NULL);
+typedef long long ll;
+#define REP(i,n) for (int i = 0; i < n; i++)
+#define REPI(i,n) for (int i = 1; i <= n; i++)
+#define REPN(i,n) for (int i = n-1; i >= 0; i--)
+#define REPF(j,i,n) for (int j = i + 1; j < n; j++)
+
+#define MAXN 110
+#define MAXNN 10010
+char m[MAXN][MAXN];
+int danger[MAXNN][4];
+int color[MAXNN];
+int dist[MAXNN];
+int retreat_spot;
+vector<vector<int> > g;
+
+void bfs (int v) {
+  queue<int> bfsQueue;
+  bfsQueue.push(v);
+  while (!bfsQueue.empty()) {
+    int u = bfsQueue.front();
+    bfsQueue.pop();
+    REP(i, g[u].size()) {
+      if (color [g[u][i]] == 0 && !danger[g[u][i]][(dist[u])%4]) {  // if next spot won't be in danger in 1 move
+        if (!danger[u][(dist[u]+1)%4]) {  // if current spot won't be in danger in 2 moves
+          retreat_spot = u;  // mark most advanced spot to which you can retreat
+        }
+        color[g[u][i]]=1;
+        dist[g[u][i]]=dist[u]+1;
+        bfsQueue.push(g[u][i]);
+      }
+    }
+    color[v] = 2;
+  }
+}
+
+int main(int argc, const char * argv[]) { _
+  ofstream f("ans.out");
+  int nt;
+  cin >> nt;
+  REPI(t, nt) {
+    int a, b;
+    cin >> a >> b;
+    vector<pair<pair<int, int>, int> > turrets;
+    int start = -1;
+    int goal = -1;
+    REP(i, a) {
+      REP(j, b) {
+        cin >> m[i][j];
+        if (m[i][j] == 'S') {
+          start = b*i + j;
+          m[i][j] = '.';
+        }
+        else if (m[i][j] == 'G') {
+          goal = b*i + j;
+          m[i][j] = '.';
+        }
+        else if (m[i][j] == '<') {
+          turrets.push_back({{i,j},0});
+          m[i][j] = '#';
+        }
+        else if (m[i][j] == '^') {
+          turrets.push_back({{i,j},1});
+          m[i][j] = '#';
+        }
+        else if (m[i][j] == '>') {
+          turrets.push_back({{i,j},2});
+          m[i][j] = '#';
+        }
+        else if (m[i][j] == 'v') {
+          turrets.push_back({{i,j},3});
+          m[i][j] = '#';
+        }
+      }
+    }
+    
+    //creates graph
+    g.clear();
+    REP(i, a) {
+      REP(j, b) {
+        g.push_back({});
+        if (i != 0 && m[i-1][j] == '.') {
+          g[b*i + j].push_back(b*(i-1)+j);
+        }
+        if (j != 0 && m[i][j-1] == '.') {
+          g[b*i + j].push_back(b*i + j-1);
+        }
+        if (i != a-1 && m[i+1][j] == '.') {
+          g[b*i + j].push_back(b*(i+1)+j);
+        }
+        if (j != b-1 && m[i][j+1] == '.') {
+          g[b*i + j].push_back(b*i + j+1);
+        }
+      }
+    }
+    
+    //identifies dangerous spots in time
+    memset(danger, 0, sizeof(danger));
+    REP(i, turrets.size()) {
+      pair<int, int> &p = turrets[i].first;
+      int &d = turrets[i].second;
+      REP(k, 4) {
+        int ii = p.first;
+        int jj = p.second;
+        while (true) {
+          if ((d == 0 && k == 3) || (d == 1 && k==2) || (d == 2 && k == 1) || (d == 3 && k == 0)) {
+            jj--;
+          }
+          else if ((d == 0 && k == 0) || (d == 1 && k==3) || (d == 2 && k == 2) || (d == 3 && k == 1)) {
+            ii--;
+          }
+          else if ((d == 0 && k == 1) || (d == 1 && k==0) || (d == 2 && k == 3) || (d == 3 && k == 2)) {
+            jj++;
+          }
+          else if ((d == 0 && k == 2) || (d == 1 && k==1) || (d == 2 && k == 0) || (d == 3 && k == 3)) {
+            ii++;
+          }
+          if (ii > -1 && ii < a && jj > -1 && jj < b && m[ii][jj] == '.') {
+            danger[b*ii + jj][k] = 1;
+          }
+          else {
+            break;
+          }
+        }
+      }
+    }
+    
+    //traverses the graph in two possible ways
+    memset(dist, 0, sizeof(dist));
+    memset(color, 0, sizeof(color));
+    retreat_spot = -1;
+    bfs(start);
+    if (dist[goal] == 0) {  // if you can't reach the goal
+      if (retreat_spot != -1) {  // if you can retreat, and thus delay turrets in 2 seconds
+        int aux = dist[retreat_spot];
+        memset(dist, 0, sizeof(dist));
+        memset(color, 0, sizeof(color));
+        dist[retreat_spot] = aux+2;
+        bfs(retreat_spot);
+      }
+    }
+    
+    //prints
+    f << "Case #" << t << ": ";
+    if (dist[goal] == 0 || start == -1 || goal == -1) {
+      f << "impossible\n";
+    }
+    else {
+      f << dist[goal] << "\n";
+    }
+  }
+  f.close();
+  return 0;
+}
+
+
+/*
+
+ 6
+ 
+ 5 5
+ ##<##
+ vS..<
+ #v^.<
+ ###.^
+ ###G.
+ 
+ 5 5
+ ##<##
+ vS..<
+ #v^.<
+ ###.<
+ ###G.
+
+ 5 5
+ ##<##
+ vS..#
+ #v#.<
+ ###.<
+ ###G.
+ 
+ 1 1
+ S
+ 
+ 1 1
+ G
+ 
+ 2 2
+ .S
+ G>
+ 
+ 
+ 5
+ impossible
+ 7
+ impossible
+ impossible
+ 4
+
+*/

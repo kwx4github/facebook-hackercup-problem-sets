@@ -1,0 +1,203 @@
+//
+//  D.cpp
+//  CODE
+//
+//  Created by Vikas Yadav on 29/10/14.
+//  Copyright (c) 2014 Vikas Yadav. All rights reserved.
+//
+
+#include <cstring>
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <memory.h>
+#include <cassert>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define F first
+#define S second
+#define gc getchar_unlocked
+
+#define MOD 10000007
+#define INF 99999999
+#define N 51234
+#define LN 20
+
+string turrets = "<^>v";
+int n,m,ans;
+int home,target;
+vector < vector <int> > graph(N);
+vector < vector <string> > states(4);
+bool safe[N];
+
+int encode(int ind,int r,int c){
+	if(r<0 || r>=n || c<0 || c>=m)		return -1;
+	return ((n*m)*ind) + r*max(n,m) + c;
+}
+
+bool isBlocker(char ch){
+	if(ch=='#' || ch=='^' || ch=='<' || ch=='>' || ch=='v')		return true;
+	return false;
+}
+
+char conv(char ch){
+	for(int a=0;a<4;a++){
+		if(turrets[a]==ch)		return turrets[(a+1)%4];
+	}
+	return ch;
+}
+
+int doDijkstra(){
+	//we need to reach n starting from 1
+	vector <int> dist(N,INF);
+	set < pair<int,int> > vertex_q;
+	vertex_q.insert(make_pair(0,home));
+	dist[home] = 0;
+	//now main algo
+	int u,wt,v,wt2;
+	while(!vertex_q.empty()){
+		//find the edge with the min dist
+		wt = vertex_q.begin()->first;
+		u = vertex_q.begin()->second;
+		vertex_q.erase(vertex_q.begin());
+		//now procced from that edge
+		for(int a = 0;a<graph[u].size();a++){
+			v = graph[u][a];
+			wt2 = 1;
+			if(wt + wt2 < dist[v]){
+				//cout<<"-- "<<u<<" "<<v<<endl;
+				vertex_q.erase(make_pair(dist[v],v));
+				dist[v] = wt+wt2;
+				vertex_q.insert(make_pair(dist[v],v));
+			}
+		}
+	}
+	//here tell which to return
+	return min(min(dist[target],dist[target+(n*m)]),min(dist[target+(2*n*m)],dist[target+(3*n*m)]));
+}
+
+string modify(int ind,int r,string str){
+	string temp = str;
+	for(int a=0;a<m;a++){
+		if(str[a]=='.' || str[a]=='#')		continue;
+		if(str[a]=='S' && ind==0){
+			home = encode(ind,r,a);
+		} else if (str[a]=='G' && ind==0){
+			target = encode(ind, r, a);
+		} else {
+			temp[a] = conv(str[a]);
+		}
+	}
+	return temp;
+}
+
+void find_safe_points(){
+	for(int x=0;x<4;x++){
+		for(int a=0;a<n;a++){
+			for(int b=0;b<m;b++){
+				if(states[x][a][b]=='.' || states[x][a][b]=='S' || states[x][a][b]=='G'){
+					continue;
+				}
+				safe[encode(x, a, b)] = false;
+				if(states[x][a][b]=='#')		continue;
+				if(states[x][a][b]=='<'){
+					for(int c=b-1;c>=0;c--){
+						safe[encode(x, a, c)] = false;
+						if(isBlocker(states[x][a][c]))		break;
+					}
+				} else if (states[x][a][b]=='^'){
+					for(int c=a-1;c>=0;c--){
+						safe[encode(x, c, b)] = false;
+						if(isBlocker(states[x][c][b]))		break;
+					}
+				} else if (states[x][a][b]=='>'){
+					for(int c=b+1;c<m;c++){
+						safe[encode(x, a, c)] = false;
+						if(isBlocker(states[x][a][c]))		break;
+					}
+				} else {
+					for(int c=a+1;c<n;c++){
+						safe[encode(x, c, b)] = false;
+						if(isBlocker(states[x][c][b]))		break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void build_graph(){
+	find_safe_points();
+	safe[home] = true;
+	int hm,hu,hd,hl,hr;
+	for(int x=0;x<4;x++){
+		for(int a=0;a<n;a++){
+			for(int b=0;b<m;b++){
+				hm = encode(x, a, b);
+				if(!safe[hm])	continue;
+				hu = encode((x+1)%4,a-1,b);
+				hd = encode((x+1)%4,a+1,b);
+				hl = encode((x+1)%4,a,b-1);
+				hr = encode((x+1)%4,a,b+1);
+				if(hu!=-1)		if(safe[hu])	graph[hm].pb(hu);
+				if(hd!=-1)		if(safe[hd])	graph[hm].pb(hd);
+				if(hl!=-1)		if(safe[hl])	graph[hm].pb(hl);
+				if(hr!=-1)		if(safe[hr])	graph[hm].pb(hr);
+			}
+		}
+	}
+}
+
+void init(){
+	ans = 0;
+	states[0].clear(),states[1].clear(),states[2].clear(),states[3].clear();
+	for(int a=0;a<N;a++){
+		graph[a].clear();
+		safe[a] = true;
+	}
+}
+
+int main(){
+	int t,q = 0;
+	scanf("%d", &t);
+	while(t--){
+		init();
+		cin>>n>>m;
+		string str;
+		for(int a=0;a<n;a++){
+			cin>>str;
+			states[0].pb(str);
+			str = modify(0,a,str);
+			states[1].pb(str);
+			str = modify(1,a,str);
+			states[2].pb(str);
+			str = modify(2,a,str);
+			states[3].pb(str);
+		}
+		build_graph();
+		ans = doDijkstra();
+		printf("Case #%d: ", (++q));
+		if(ans!=INF)	printf("%d\n", ans);
+		else			printf("impossible\n");
+	}
+	return 0;
+}

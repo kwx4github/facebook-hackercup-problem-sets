@@ -1,0 +1,135 @@
+from collections import deque
+
+f = open('laser_maze.txt', 'r')
+lns = map(lambda x: x.strip('\n'), f.readlines())
+
+
+def gen_maze(maze, g, s, ts, k):
+    m = len(maze)
+    n = len(maze[0])
+    base_maze = [i[:] for i in maze]
+
+    for i in range(4):
+        dir_i = ts[(i -  k) % 4]
+        for tower in dir_i:
+            if i == 0:
+                new_n = tower[1] + 1
+                while new_n < n and maze[tower[0]][new_n] != 1:
+                    base_maze[tower[0]][new_n] = 1
+                    new_n += 1
+            if i == 1:
+                new_m = tower[0] + 1
+                while new_m < m and maze[new_m][tower[1]] != 1:
+                    base_maze[new_m][tower[1]] = 1
+                    new_m += 1
+            if i == 2:
+                new_n = tower[1] - 1
+                while new_n >= 0 and maze[tower[0]][new_n] != 1:
+                    base_maze[tower[0]][new_n] = 1
+                    new_n -= 1
+            if i == 3:
+                new_m = tower[0] - 1
+                while new_m >= 0 and maze[new_m][tower[1]] != 1:
+                    base_maze[new_m][tower[1]] = 1
+                    new_m -= 1
+    return base_maze
+            
+
+
+def find_neighbors(mazes, pos):
+    neighbors = []
+
+    x = pos[0]
+    y = pos[1]
+    rot = pos[2]
+
+    new_rot = (rot + 1) % 4
+
+    for xi in range(pos[0] - 1, pos[0] + 2):
+        for yi in range(pos[1] - 1, pos[1] + 2):
+            if xi >= 0 and xi < m and yi >= 0 and yi < n and (xi != x or yi != y) and (xi == x or yi == y):
+                if mazes[new_rot][xi][yi] != 1:
+                    neighbors.append((xi, yi, new_rot))
+    return neighbors
+
+
+
+i = 1
+it = 1
+for j in range(int(lns[0])):
+    [m, n] = map(int, lns[i].split(' '))
+    i += 1
+
+    s = (0,0)
+    g = (0,0)
+
+    ts = [[] for k in range(4)]
+
+    maze = [[0] * n for z in range(m)]
+
+    for k in range(m):
+        ln = lns[i]
+        for l in range(len(ln)):
+            if ln[l] == '#':
+                maze[k][l] = 1
+            elif ln[l] == 'S':
+                s = (k,l)
+            elif ln[l] == 'G':
+                g = (k,l)
+            elif ln[l] == '<':
+                ts[2].append((k,l))
+                maze[k][l] = 1
+            elif ln[l] == '>':
+                ts[0].append((k,l))
+                maze[k][l] = 1
+            elif ln[l] == '^':
+                ts[3].append((k,l))
+                maze[k][l] = 1
+            elif ln[l] == 'v':
+                ts[1].append((k,l))
+                maze[k][l] = 1
+        i += 1
+
+    mazes = []
+    for k in range(4):
+        mazes.append(gen_maze(maze, g, s, ts, k))
+
+
+    visited = set()
+    queue = deque()
+
+    start = ((s[0], s[1], 0), 0)
+    
+    visited.add(start[0])
+    queue.append(start)
+
+    found = False
+    dist = -1
+    while len(queue) > 0:
+        pos = queue.popleft()
+        if pos[0][0] == g[0] and pos[0][1] == g[1]:
+            found = True
+            dist = pos[1]
+            break
+
+        neighbors = find_neighbors(mazes, pos[0])
+        for neighbor in neighbors:
+            if not (neighbor in visited):
+                visited.add(neighbor)
+                queue.append((neighbor, pos[1] + 1))
+            
+    res = "Case #" + str(it) + ':' + ' '
+    if found:
+        res = res + str(dist)
+    else:
+        res = res + 'impossible'
+
+    it += 1
+
+    print res
+                
+
+
+        
+
+    

@@ -1,0 +1,145 @@
+#include<cstdio>
+#include<iostream>
+#include<queue>
+#include<stack>
+#include<vector>
+#include<string>
+#include<algorithm>
+#include<map>
+#include<sstream>
+#include<cmath>
+#include<cctype>
+#include<cassert>
+#include<cstring>
+#include<cstdlib>
+
+using namespace std;
+
+const int inf = 1000000000;
+int n, m;
+vector<string> grid;
+bool safe[100][100][4];
+int move[][2] = {
+	0, -1,
+	-1, 0,
+	0, 1,
+	1, 0
+};
+
+int findLaserDir(char c) {
+	if (c == '<') return 0;
+	if (c == '^') return 1;
+	if (c == '>') return 2;
+	if (c == 'v') return 3;
+	return -1;
+}
+
+bool valid(int r, int c) {
+	return r >= 0 && c >= 0 && r < n && c < m;
+}
+
+void populateSafe() {
+	for (int i = 0; i < n; i++)
+		for (int j = 0; j < m; j++) {
+			int d = findLaserDir(grid[i][j]);
+			if (d == -1) continue;
+			for (int k = 0; k < 4; k++) {
+				int r = i, c = j;
+				while(true) {
+					r = r + move[(d + k)%4][0];
+					c = c + move[(d + k)%4][1];
+					if (valid(r, c)) {
+						if (grid[r][c] == '.' || grid[r][c] == 'S' || grid[r][c] == 'G') {
+							safe[r][c][k] = false;
+						} else {
+							break;
+						}
+					} else {
+						break;
+					}
+				}
+			}
+		}
+}
+
+struct Node {
+	int r, c;
+	int md;
+};
+
+int dis[100][100][4];
+
+int bfs() {
+	int sr, sc, er, ec;
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < m; j++) {
+			if (grid[i][j] == 'S') {
+				sr = i, sc = j;
+				grid[i][j] = '.';
+			}
+			if (grid[i][j] == 'G') {
+				er = i, ec = j;
+				grid[i][j] = '.';
+			}
+		}
+	}
+	for (int i = 0; i < n; i++) for(int j = 0; j < m; j++)
+		for (int k = 0; k < 4; k++) dis[i][j][k] = inf;
+	dis[sr][sc][0] = 0;
+	Node node;
+	node.r = sr, node.c = sc; node.md = 0;
+	queue<Node> Q;
+	Q.push(node);
+	while(!Q.empty()) {
+		Node nd = Q.front();
+		Q.pop();
+		//if (nd.r == er && nd.c == ec) continue;
+		int curDis = dis[nd.r][nd.c][nd.md];
+		for (int i = 0; i < 4; i++) {
+			int rr = nd.r + move[i][0];
+			int cc = nd.c + move[i][1];
+			if (valid(rr, cc)) {
+				if (grid[rr][cc] == '.') {
+					int md = nd.md + 1; md %= 4;
+					if (safe[rr][cc][md]) {
+						Node newNode;
+						newNode.r = rr;
+						newNode.c = cc;
+						newNode.md = md;
+						if (dis[rr][cc][md] > curDis + 1) {
+							dis[rr][cc][md] = curDis + 1;
+							Q.push(newNode);
+						}
+					}
+				}
+			}
+		}
+
+	}
+	int res = inf;
+	for (int i = 0; i < 4; i++)
+		res = min(res, dis[er][ec][i]);
+	return res;
+}
+
+int main() {
+	int test, cases = 1;
+	cin >> test;
+	for (cases = 1; cases <= test; cases++) {
+		cin >> n >> m;
+		grid.clear();
+		for (int i = 0; i < n; i++) {
+			string s; cin >> s;
+			grid.push_back(s);
+		}
+		for (int i = 0; i < n; i++) for (int j = 0; j < m; j++)
+			for (int k = 0; k < 4; k++) safe[i][j][k] = true;
+		populateSafe();
+
+		int res = bfs();
+		cout << "Case #" << cases << ": ";
+		if (res == inf) cout << "impossible" << endl;
+		else cout << res << endl;
+	}
+	return 0;
+}

@@ -1,0 +1,110 @@
+__author__ = 'grdshch'
+
+import networkx as nx
+
+TURRET = {'^': 0, '>': 1, 'v': 2, '<': 3}
+DIFF = ((-1, 0), (0, 1), (1, 0), (0, -1))
+
+
+def create_mazes(lines, M, N):
+    mazes = []
+    S = None
+    G = None
+    for i in range(4):
+        maze = [list(l) for l in lines]
+        for r in range(M):
+            for c in range(N):
+                s = maze[r][c]
+                if s in TURRET:
+                    t = TURRET[s]
+                    diff = DIFF[(t + i) % 4]
+                    r1 = r + diff[0]
+                    c1 = c + diff[1]
+                    while 0 <= r1 < M and 0 <= c1 < N and maze[r1][c1] != '#' and maze[r1][c1] not in TURRET:
+                        maze[r1][c1] = '*'
+                        r1 += diff[0]
+                        c1 += diff[1]
+        for r in range(M):
+            for c in range(N):
+                s = maze[r][c]
+                if s.lower() == 's':
+                    S = (r, c)
+                    maze[r][c] = '.'
+                elif s.lower() == 'g':
+                    G = (r, c)
+                    maze[r][c] = '.'
+                elif s != '.':
+                    maze[r][c] = '#'
+        mazes.append(maze)
+    maze = [list(l) for l in lines]
+    r, c = S[0], S[1]
+    start = []
+    if r > 0:
+        u = maze[r - 1][c]
+        if u != '#':
+            start.append((r - 1, c))
+    if c > 0:
+        u = maze[r][c - 1]
+        if u != '#':
+            start.append((r, c - 1))
+    if r < len(maze) - 1:
+        u = maze[r + 1][c]
+        if u != '#':
+            start.append((r + 1, c))
+    if c < len(maze[0]) - 1:
+        u = maze[r][c + 1]
+        if u != '#':
+            start.append((r, c + 1))
+    return mazes, start, G
+
+
+def graph(mazes):
+    g = nx.DiGraph()
+    for i, m in enumerate(mazes):
+        j = (i + 1) % 4
+        for r in range(len(m)):
+            for c in range(len(m[0])):
+                g.add_node((i, r, c))
+                v = m[r][c]
+                if v != '#':
+                    if r > 0:
+                        u = mazes[j][r - 1][c]
+                        if u != '#':
+                            g.add_edge((i, r, c), (j, r - 1, c))
+                    if c > 0:
+                        u = mazes[j][r][c - 1]
+                        if u != '#':
+                            g.add_edge((i, r, c), (j, r, c - 1))
+                    if r < len(m) - 1:
+                        u = mazes[j][r + 1][c]
+                        if u != '#':
+                            g.add_edge((i, r, c), (j, r + 1, c))
+                    if c < len(m[0]) - 1:
+                        u = mazes[j][r][c + 1]
+                        if u != '#':
+                            g.add_edge((i, r, c), (j, r, c + 1))
+    return g
+
+
+if __name__ == '__main__':
+    T = int(input())
+    for t in range(T):
+        size = input().split()
+        M = int(size[0])
+        N = int(size[1])
+        lines = []
+        for r in range(M):
+            lines.append(input().strip())
+        mazes, s, goal = create_mazes(lines, M, N)
+
+        g = graph(mazes)
+        results = []
+        for v in s:
+            path = nx.shortest_path(g, (1, v[0], v[1]))
+            for i in range(4):
+                if (i, goal[0], goal[1]) in path:
+                    results.append(len(path[(i, goal[0], goal[1])]))
+        if results:
+            print('Case #{}: {}'.format(t + 1, min(results)))
+        else:
+            print('Case #{}: impossible'.format(t + 1))

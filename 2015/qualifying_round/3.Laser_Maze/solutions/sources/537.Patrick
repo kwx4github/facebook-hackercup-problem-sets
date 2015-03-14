@@ -1,0 +1,81 @@
+#!/usr/bin/python2.7
+import copy
+import heapq
+import sys
+
+
+ROTATIONS = {
+    '^': '>',
+    '>': 'v',
+    'v': '<',
+    '<': '^',
+}
+LASER_VECTORS = {
+    '^': (-1, 0),
+    '>': (0, 1),
+    'v': (1, 0),
+    '<': (0, -1)
+}
+
+
+def extract(grid, char):
+    """Returns the position of the requested character and empties the corresponding cell."""
+    si, sj = -1, -1
+    for i, row in enumerate(grid):
+        if char in row:
+            j = row.index(char)
+            row[j] = '.'
+            return (i, j)
+
+
+def lase(grid, k):
+    """Returns a new grid representing the state of the grid after k rotations.
+
+    Additionally, laser-occupied spaces will have a value of 'L'.
+    """
+    grid = copy.deepcopy(grid)
+    for i in range(k):
+        rotate_turrets(grid)
+    for i, row in enumerate(grid):
+        for j, char in enumerate(row):
+            if char in ROTATIONS:
+                y, x = i, j
+                while True:
+                    y, x = (sum(vs) for vs in zip((y, x), LASER_VECTORS[char]))
+                    if y < 0 or y >= len(grid) or x < 0 or x >= len(grid[0]) or grid[y][x] not in ('.', 'L'):
+                        break
+                    else:
+                        grid[y][x] = 'L'
+    return grid
+
+
+def rotate_turret(grid, i, j): grid[i][j] = ROTATIONS.get(grid[i][j], grid[i][j])
+def rotate_turrets(grid): [rotate_turret(grid, i, j) for i in range(len(grid)) for j in range(len(grid[0]))]
+def h(p, g, k): return sum((abs(v1 - v2) for v1, v2 in zip(p, g))) + k
+def successors(y, x): return [(y + i, x + j) for i, j in LASER_VECTORS.itervalues()]
+
+
+if __name__ == '__main__':
+    for z in range(int(sys.stdin.readline().strip())):
+        height = [int(x) for x in sys.stdin.readline().strip().split()][0]
+        grid = [list(sys.stdin.readline().strip()) for i in range(height)]
+        start, goal = extract(grid, 'S'), extract(grid, 'G')
+        grids = [lase(grid, i) for i in range(4)]
+        q = []
+        heapq.heappush(q, (h(start, goal, 0), start[0], start[1], 0))
+        bestv = None
+        seen = {}
+        while q:
+            hv, y, x, k = heapq.heappop(q)
+            if (y, x, k % 4) in seen and k >= seen[(y, x, k % 4)]:
+                continue
+            else:
+                seen[(y, x, k % 4)] = k
+            if (y, x) == goal:
+                if not bestv or bestv > k:
+                    bestv = k
+            else:
+                for cy, cx in successors(y, x):
+                    if cy >= 0 and cy < len(grid) and cx >= 0 and cx < len(grid[0]) and grids[(k + 1) % 4][cy][cx] == '.':
+                        heapq.heappush(q, (h((cy, cx), goal, k + 1), cy, cx, k + 1))
+        print('Case #%d: %s' % (z + 1, str(bestv) if bestv else 'impossible'))

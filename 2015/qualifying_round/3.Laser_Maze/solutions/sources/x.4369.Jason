@@ -1,0 +1,400 @@
+package com.jasonandmary.fhc.qualification3;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.stream.IntStream;
+
+/**
+ * Application for Facebook Hacker Cup 2015
+ * Name: ${name}
+ * &copy;2015 Jason W. Thompson
+ * @author Jason W. Thompson
+ */
+public class App
+{
+    private final PrintStream printStream;
+    private final List<Problem> problems = new ArrayList<>();
+    private int count;
+
+    /**
+     * Executes the application.
+     * @param args not used.
+     * @throws IOException if there is problem reading the input file or writing the PrintStream.
+     */
+    public static void main(String[] args) throws IOException
+    {
+        final App app = new App(System.out);
+        app.printSolution();
+    }
+
+    /**
+     * Allocates a new instance of {@link App}
+     * @param printStream The PrintStream to use
+     * @throws IOException If the input cannot be processed
+     */
+    public App(PrintStream printStream) throws IOException
+    {
+        this.printStream = printStream;
+    }
+
+    /**
+     * The problem.
+     */
+    public static class Problem
+    {
+        int height;
+        int width;
+        char[][] maze;
+    }
+
+    public static class Location
+    {
+        int x;
+        int y;
+        int rotation;
+
+        @Override
+        public int hashCode()
+        {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + rotation;
+            result = prime * result + x;
+            result = prime * result + y;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj)
+            {
+                return true;
+            }
+            if (obj == null)
+            {
+                return false;
+            }
+            if (getClass() != obj.getClass())
+            {
+                return false;
+            }
+            final Location other = (Location) obj;
+            if (rotation != other.rotation)
+            {
+                return false;
+            }
+            if (x != other.x)
+            {
+                return false;
+            }
+            if (y != other.y)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public String toString()
+        {
+            return "Location [x=" + x + ", y=" + y + ", rotation=" + rotation + "]";
+        }
+    }
+
+    public static class MazeSolver
+    {
+        private static final char WALL = '#';
+        private static final char UP_TURRET = '^';
+        private static final char DOWN_TURRET = 'V';
+        private static final char LEFT_TURRET = '<';
+        private static final char RIGHT_TURRET = '>';
+        private static final char DEATH = 'X';
+        private static final char START = 'S';
+        private static final char GOAL = 'G';
+        private static final char SPACE = '.';
+        private static final int DEADEND = Integer.MAX_VALUE;
+
+        private final char[][][] mazes = new char[4][][];
+        private final Map<Location, Integer> recordToLocationMap = new HashMap<>();
+        private final Location startLocation;
+        private final Location goalLocation;
+        private int recordToGoal = Integer.MAX_VALUE;
+
+        /**
+         * Allocates a new instance of {@link App.MazeSolver}
+         */
+        public MazeSolver(char[][] maze)
+        {
+            startLocation = findLocation(maze, START);
+            startLocation.rotation = 0;
+            goalLocation = findLocation(maze, GOAL);
+            mazes[1] = rotateMaze(maze);
+            mazes[2] = rotateMaze(mazes[1]);
+            mazes[3] = rotateMaze(mazes[2]);
+            mazes[0] = rotateMaze(mazes[3]);
+        }
+
+        /**
+         * @param maze
+         * @return
+         */
+        private char[][] rotateMaze(char[][] maze)
+        {
+            // Copy maze
+            final char[][] newMaze = new char[maze.length][maze[0].length];
+            for (int y = 0; y < newMaze.length; y++)
+            {
+                for (int x = 0; x < newMaze[y].length; x++)
+                {
+                    if (maze[y][x] == DEATH || maze[y][x] == START || maze[y][x] == GOAL)
+                    {
+                        newMaze[y][x] = SPACE;
+                    }
+                    else
+                    {
+                        newMaze[y][x] = maze[y][x];
+                    }
+                }
+            }
+
+            // Rotate turrets and mark death points
+            for (int y = 0; y < newMaze.length; y++)
+            {
+                for (int x = 0; x < newMaze[y].length; x++)
+                {
+                    if (newMaze[y][x] == UP_TURRET)
+                    {
+                        newMaze[y][x] = RIGHT_TURRET;
+                        for (int dx = x + 1; dx < newMaze[y].length; dx++)
+                        {
+                            if (newMaze[y][dx] == SPACE || newMaze[y][dx] == DEATH)
+                            {
+                                newMaze[y][dx] = DEATH;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    else if (newMaze[y][x] == DOWN_TURRET)
+                    {
+                        newMaze[y][x] = LEFT_TURRET;
+                        for (int dx = x - 1; dx >= 0; dx--)
+                        {
+                            if (newMaze[y][dx] == SPACE || newMaze[y][dx] == DEATH)
+                            {
+                                newMaze[y][dx] = DEATH;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    else if (newMaze[y][x] == LEFT_TURRET)
+                    {
+                        newMaze[y][x] = UP_TURRET;
+                        for (int dy = y - 1; dy >= 0; dy--)
+                        {
+                            if (newMaze[dy][x] == SPACE || newMaze[dy][x] == DEATH)
+                            {
+                                newMaze[dy][x] = DEATH;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+                    else if (newMaze[y][x] == RIGHT_TURRET)
+                    {
+                        newMaze[y][x] = DOWN_TURRET;
+                        for (int dy = y + 1; dy < newMaze.length; dy--)
+                        {
+                            if (newMaze[dy][x] == SPACE || newMaze[dy][x] == DEATH)
+                            {
+                                newMaze[dy][x] = DEATH;
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return newMaze;
+        }
+
+        private static Location findLocation(char[][] maze, char type)
+        {
+            for (int y = 0; y < maze.length; y++)
+            {
+                for (int x = 0; x < maze[y].length; x++)
+                {
+                    if (maze[y][x] == type)
+                    {
+                        final Location location = new Location();
+                        location.x = x;
+                        location.y = y;
+                        location.rotation = -1;
+                        return location;
+                    }
+                }
+            }
+            throw new IllegalStateException("Maze does not have a [" + type + "]!");
+        }
+
+        /**
+         * Gets the fewest number of steps through the laser maze.
+         * @return The fewest number of steps.
+         */
+        public int getFewestStepsToGoal()
+        {
+            return numberOfStepsToGoal(0, startLocation);
+        }
+
+        int numberOfStepsToGoal(int stepsTaken, Location location)
+        {
+            if (stepsTaken == DEADEND)
+            {
+                return DEADEND;
+            }
+            final char[][] maze = mazes[location.rotation];
+            if (stepsTaken > recordToGoal)
+            {
+                return DEADEND;
+            }
+            if (location.x < 0 || location.x >= maze[0].length)
+            {
+                return DEADEND;
+            }
+            if (location.y < 0 || location.y >= maze.length)
+            {
+                return DEADEND;
+            }
+            final char type = maze[location.y][location.x];
+            // The laser doesn't kill the person at start.
+            if (stepsTaken != 0 && type != SPACE)
+            {
+                return DEADEND;
+            }
+            final int recordToLocation = recordToLocationMap.getOrDefault(location, Integer.MAX_VALUE);
+            if (stepsTaken >= recordToLocation)
+            {
+                return DEADEND;
+            }
+
+            recordToLocationMap.put(location, stepsTaken);
+
+            if (location.x == goalLocation.x && location.y == goalLocation.y)
+            {
+                recordToGoal = stepsTaken;
+                return stepsTaken;
+            }
+
+            final int newRotation = (location.rotation + 1) % 4;
+            final Location upLocation = new Location();
+            upLocation.x = location.x;
+            upLocation.y = location.y - 1;
+            upLocation.rotation = newRotation;
+            final Location downLocation = new Location();
+            downLocation.x = location.x;
+            downLocation.y = location.y + 1;
+            downLocation.rotation = newRotation;
+            final Location leftLocation = new Location();
+            leftLocation.x = location.x - 1;
+            leftLocation.y = location.y;
+            leftLocation.rotation = newRotation;
+            final Location rightLocation = new Location();
+            rightLocation.x = location.x + 1;
+            rightLocation.y = location.y;
+            rightLocation.rotation = newRotation;
+            final int newStepsTaken = stepsTaken + 1;
+            return IntStream.builder()
+                     .add(numberOfStepsToGoal(newStepsTaken, upLocation))
+                     .add(numberOfStepsToGoal(newStepsTaken, downLocation))
+                     .add(numberOfStepsToGoal(newStepsTaken, leftLocation))
+                     .add(numberOfStepsToGoal(newStepsTaken, rightLocation))
+                     .build()
+                     .min()
+                     .getAsInt();
+
+        }
+
+    }
+
+
+    /**
+     * Solves the problem
+     * @param problem The problem
+     * @return The solution.
+     */
+    private String solve(Problem problem)
+    {
+        final MazeSolver solver = new MazeSolver(problem.maze);
+        final int minimumStep = solver.getFewestStepsToGoal();
+        if (minimumStep == Integer.MAX_VALUE)
+        {
+            return "impossible";
+        }
+        return Integer.toString(minimumStep);
+    }
+
+    /**
+     * Parses the input into a problem
+     * @param str The input
+     * @param reader The reader.
+     * @return The parsed object
+     * @throws IOException
+     */
+    private static Problem parseProblem(String str, BufferedReader reader) throws IOException
+    {
+        final Problem problem = new Problem();
+        try (final Scanner scanner = new Scanner(str).useDelimiter(" "))
+        {
+            problem.height = scanner.nextInt();
+            problem.width = scanner.nextInt();
+        }
+        final char[][] maze = new char[problem.height][];
+        for (int i = 0; i < problem.height; i++)
+        {
+            maze[i] = reader.readLine().toCharArray();
+        }
+        problem.maze = maze;
+        return problem;
+    }
+
+    /**
+     * Prints the solution to the input file.
+     * @throws IOException if there is problem reading the input file or writing the PrintStream.
+     */
+    public void printSolution() throws IOException
+    {
+        processInput();
+        for (int i = 0; i < count; i++)
+        {
+            printStream.println("Case #" + (i + 1) + ": " + solve(problems.get(i)));
+        }
+    }
+
+    private void processInput() throws IOException
+    {
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(App.class.getClassLoader().getResourceAsStream("input.txt")));
+        count = Integer.parseInt(reader.readLine());
+        for (int i = 0; i < count; i++)
+        {
+            problems.add(parseProblem(reader.readLine(), reader));
+        }
+    }
+}

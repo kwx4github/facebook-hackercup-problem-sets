@@ -1,0 +1,64 @@
+import sys
+from collections import deque
+
+sys.stdin = open('input.txt')
+sys.stdout = open('output.txt', 'w')
+
+def solve(start, goal, maze):
+
+    lazers = ['^', '>', 'v', '<']
+    directions = (1, 0), (0, -1), (-1, 0), (0, 1)
+    forbidden = dict(zip(directions, lazers))
+
+    def possible(pos):
+
+        def rotate(lazer, r):
+            i = lazers.index(lazer)
+            return lazers[(i + r)%4]
+
+        within = lambda x, y: 0 <= x < len(maze) and  0 <= y < len(maze[x])
+
+        (x, y), r = pos
+        if not within(x, y) or maze[x][y] != '.':
+            return False
+        for dx, dy in directions:
+            x1, y1 = x, y
+            while within(x1, y1) and maze[x1][y1] == '.':
+                x1 += dx
+                y1 += dy
+            if within(x1, y1) and maze[x1][y1] in lazers and rotate(maze[x1][y1], r) == forbidden[dx, dy]:
+                return False
+        return True
+
+    dist = {(start, 0): 0}
+    D = deque()
+    D.append((start, 0))
+    while D:
+        pos = D.popleft()
+        (x, y), r = pos
+        for dx, dy in directions:
+            new_pos = (x + dx, y + dy), (r + 1)%4
+            if new_pos not in dist and possible(new_pos):
+                dist[new_pos] = dist[pos] + 1
+                D.append(new_pos)
+    res = [dist[goal, r] for r in range(4) if (goal, r) in dist]
+    if res:
+        return min(res)
+    return 'impossible'
+        
+t = int(input())
+for i in range(t):
+    m, n = map(int, input().split())
+    maze = []
+    for j in range(m):
+        l = list(input())
+        if 'S' in l:
+            k = l.index('S')
+            l[k] = '.'
+            start = (j, k)
+        if 'G' in l:
+            k = l.index('G')
+            l[k] = '.'
+            goal = (j, k)
+        maze.append(l)
+    print('Case #{}: {}'.format(i + 1, solve(start, goal, maze)))

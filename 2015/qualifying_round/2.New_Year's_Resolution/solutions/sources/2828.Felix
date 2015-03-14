@@ -1,0 +1,69 @@
+// Facebook Hacker Cup 2015 qualification round
+// Problem 30: New Year's Resolution
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+
+using namespace std;
+
+// back trace the table to search possible answers
+bool search(int** table_p, vector<int> &protein, vector<int> &carb,
+            vector<int> &fat, int GP, int GC, int GF, int pos) {
+  if (GP == 0 && GC == 0 && GF == 0) { return true; }
+  if ( GP < 0 || GC < 0 || GF < 0) { return false; }
+  if ( pos <= 0 || table_p[pos][GP] != GP) { return false; }
+  if (protein[pos-1] > GP) {
+    // too much protein, skip this food
+    return search(table_p, protein, carb, fat, GP, GC, GF, pos-1);
+  } else {
+    if ( (table_p[pos-1][GP] == GP) &&
+      search(table_p, protein, carb, fat, GP, GC, GF, pos-1) ) {
+      return true;
+    }
+    return search(table_p, protein, carb, fat, GP-protein[pos-1],
+                  GC-carb[pos-1], GF-fat[pos-1], pos-1);
+  }
+}
+
+int main(void) {
+  int T;
+  scanf("%d", &T);
+  for (int t = 1; t <= T; ++t) {
+    // get the input
+    int GP, GC, GF;
+    scanf("%d %d %d", &GP, &GC, &GF);
+    int N;
+    scanf("%d", &N);
+    vector<int> protein, carb, fat;
+    for (int i = 0; i < N; ++i) {
+      int p, c, f;
+      scanf("%d %d %d", &p, &c, &f);
+      protein.push_back(p);
+      carb.push_back(c);
+      fat.push_back(f);
+    }
+    // build table for protein
+    int** table_p = new int*[N+1];
+    for (int i = 0; i <= N; ++i) { table_p[i] = new int[GP+1]; }
+    // initialise the table for boundary entries
+    for (int i = 0; i <= N; ++i) { table_p[i][0] = 0; }
+    for (int i = 0; i <= GP; ++i) { table_p[0][i] = 0; }
+    // compute the table with dynamic programming
+    for (int i = 1; i <= N; ++i) {
+      for (int j = 1; j <= GP; ++j) {
+        if (protein[i-1] > j) { table_p[i][j] = table_p[i-1][j]; }
+        else {
+          table_p[i][j] = max(table_p[i-1][j],
+                              protein[i-1] + table_p[i-1][j-protein[i-1]]);
+        }
+      }
+    }
+    // output
+    bool res = search(table_p, protein, carb, fat, GP, GC, GF, N);
+    if (res) { printf("Case #%d: yes\n", t); }
+    else { printf("Case #%d: no\n", t); }
+    // free memory
+    for (int i = 0; i <= N; ++i) { delete table_p[i]; }
+    delete table_p;
+  }
+}

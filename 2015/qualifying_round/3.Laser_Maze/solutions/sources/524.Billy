@@ -1,0 +1,154 @@
+#include <stdio.h>
+#include <string.h>
+#include <algorithm>
+#include <math.h>
+#include <vector>
+#include <string>
+#include <queue>
+#include <iostream>
+using namespace std;
+
+bool fless(double a,double b){ return b-a>1e-6; }
+bool fequal(double a,double b){ return fabs(b-a)<=1e-6; }
+
+struct State {
+    int x, y, time;
+
+    State(){}
+    State(int x, int y, int time):x(x),y(y),time(time){}
+};
+
+#define DEBUG 0
+#define N 100
+#define MAX_STATE 50000
+State Q[MAX_STATE];
+
+char s[N][N+1];
+int dis[N][N][4];
+int n, m; 
+
+
+int dx[4] = {0, -1, 0, 1};
+int dy[4] = {-1, 0, 1, 0};
+
+int getDir(char c, int time) {
+    int value = -1;
+    if (c == '<') value = 0;
+    if (c == '^') value = 1;
+    if (c == '>') value = 2;
+    if (c == 'v') value = 3;
+
+    if (value == -1) return -1;
+
+    value = (value + time) % 4;
+    return value;
+}
+
+int validState(int x, int y, int time) {
+    if (time == 0) return true;
+    bool valid = true;
+
+    for (int i=0;i<n;i++) {
+        for (int j=0;j<m;j++) {
+            int laserDir = getDir(s[i][j], time);
+            if (laserDir == -1) {
+                // not a laser
+            } else {
+                int tx = i, ty = j;
+                if (DEBUG) printf("- laser (%d, %d) %d\n", tx, ty, laserDir);
+                while (true) {
+                    tx += dx[laserDir];
+                    ty += dy[laserDir];
+
+                    if (tx < 0 || ty < 0 || tx >= n || ty >= m) break;
+                    if (s[tx][ty] != '.') {
+                        if (DEBUG) printf("  - break %c\n", s[tx][ty]);
+                        break;
+                    }
+                    if (tx == x && ty == y) {
+                        valid = false;
+                        if (DEBUG) printf("  - hit\n");
+                    }
+                }
+            }
+        } 
+    }
+
+    return valid;
+}
+
+
+
+int main(){
+    int tt; scanf("%d",&tt);
+    for (int ti=1;ti<=tt;ti++){
+        scanf("%d%d", &n, &m);
+
+        int sx, sy;
+        int ex, ey;
+
+        for (int i=0;i<n;i++) {
+            scanf("%s", s[i]);
+            for (int j=0;j<m;j++) {
+                for (int k=0;k<4;k++) dis[i][j][k] = -1;
+
+
+                if (s[i][j] == 'S') {
+                    sx = i; sy = j;
+                    s[i][j] = '.';
+                } else if (s[i][j] == 'G') {
+                    ex = i; ey = j;
+                    s[i][j] = '.';
+                }
+            }
+        }
+
+        //printf("S (%d %d) G (%d %d)\n", sx, sy, ex, ey);
+
+        int head = 0, tail = 0;
+        Q[0] = State(sx, sy, 0);
+        bool done = false;
+        int ans = 0;
+        while (head <= tail && !done) {
+            State node = Q[head];
+            int x = node.x;
+            int y = node.y;
+            int time = node.time;
+            if (validState(x, y, time)) {
+                //printf("State %d %d: %d\n", x, y, time);
+                if (x == ex && y == ey) {
+                    // done
+                    ans = time;
+                    done = true;
+
+                    continue;
+                }
+
+
+                int nextTime = time+1;
+                for (int i=0;i<4;i++) {
+                    int tx = x + dx[i];
+                    int ty = y + dy[i];
+                    if (tx < 0 || ty < 0 || tx >= n || ty >= m) continue;
+
+                    if (dis[tx][ty][nextTime % 4] > -1) continue;
+                    dis[tx][ty][nextTime % 4] = nextTime;
+
+                    if (s[tx][ty] == '.') {
+                        Q[++tail] = State(tx, ty, nextTime);
+                    }
+                }
+            }
+            head++;
+        }
+    
+        if (done) {
+            printf("Case #%d: %d\n",ti,ans);
+        } else {
+            printf("Case #%d: impossible\n",ti);
+        }
+
+
+    }
+    return 0;
+}

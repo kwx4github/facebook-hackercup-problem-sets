@@ -1,0 +1,273 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int M,N;
+
+char maze[110][110]; // [M][N]
+
+int dp[110][110][4];
+int rep[110][110][4];
+
+char laser[4] = {'<','^','>','v'};
+
+int found_G;
+
+#define INFINI 100000000
+
+int best_step;
+
+void show_maze(int x, int y) {
+    int m,n;
+    printf("\n");
+    for (m=0;m<M;m++) {
+        for (n=0;n<N;n++) {
+            if ((x == m) && (y == n)) printf("x ");
+            else printf("%c ",maze[m][n]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void move_lasers() {
+    int m,n;
+    for (m=0;m<M;m++) {
+        for (n=0;n<N;n++) {
+            int k;
+            for (k=0;k<4;k++) {
+                if (maze[m][n] == laser[k]) {
+                    maze[m][n] = laser[(k+1)%4];
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void remove_lasers() {
+    int m,n;
+    for (m=0;m<M;m++) {
+        for (n=0;n<N;n++) {
+            int k;
+            for (k=0;k<4;k++) {
+                if (maze[m][n] == laser[k]) {
+                    maze[m][n] = laser[(k+3)%4];
+                    break;
+                }
+            }
+        }
+    }
+}
+
+int is_blocking( char c ) {
+    if (c == '#') return 1;
+    if (c == '<') return 1;
+    if (c == '>') return 1;
+    if (c == '^') return 1;
+    if (c == 'v') return 1;
+    return 0;
+}
+
+int vertical_laser(int x, int y) {
+    int res = 0;
+
+    int m=x;
+    int n=y;
+    while (m>=0) {
+        if (maze[m][n] == 'v') return 1;
+        if (is_blocking(maze[m][n])) break;
+        m--;
+    }
+
+    m=x;
+    n=y;
+    while (m<M) {
+        if (maze[m][n] == '^') return 1;
+        if (is_blocking(maze[m][n])) break;
+        m++;
+    }
+
+    return res;
+}
+
+int horizontal_laser(int x, int y) {
+    int res = 0;
+
+    int m=x;
+    int n=y;
+    while (n>=0) {
+        if (maze[m][n] == '>') return 1;
+        if (is_blocking(maze[m][n])) break;
+        n--;
+    }
+
+    m=x;
+    n=y;
+    while (n<N) {
+        if (maze[m][n] == '<') return 1;
+        if (is_blocking(maze[m][n])) break;
+        n++;
+    }
+
+    return res;
+}
+
+int m_search(int m, int n, int step) {
+    int x,y;
+    int v=step%4;
+
+    if (dp[m][n][v]>=0)  {
+        //printf("prunung with value=%d\n",dp[m][n][v]);
+        return dp[m][n][v];
+    }
+
+    if (rep[m][n][v]>=0) {
+        //printf("repetition\n");
+        if (step >= rep[m][n][v]) {
+            //printf("useless rep\n");
+            return +INFINI;
+        }
+    }
+    rep[m][n][v] = step;
+
+    //show_maze(m,n);
+    //printf("m=%d n=%d step=%d\n",m,n,step);
+
+    if (maze[m][n] == 'G') {
+        found_G = 1;
+        best_step = step;
+        return 0;
+    }
+
+    int st=0;
+    int st_min=+INFINI;
+
+    x=m;
+    y=n+1;
+    if (y<N) {
+        if (!is_blocking(maze[x][y]))
+        //if (!vertical_laser(x,y))
+        {
+            move_lasers();
+
+            if ( (!vertical_laser(x,y)) && (!horizontal_laser(x,y)) ) {
+                //printf("searching for x=%d y=%d\n",x,y);
+                st=m_search(x,y,step+1);
+                if (st<st_min) st_min=st;
+            } else {
+                //printf("laser at x=%d y=%d\n",x,y);
+            }
+
+            remove_lasers();
+        }
+    }
+
+
+    x=m;
+    y=n-1;
+    if (y>=0) {
+        if (!is_blocking(maze[x][y]))
+        //if (!vertical_laser(x,y))
+        {
+            move_lasers();
+
+            if ( (!vertical_laser(x,y)) && (!horizontal_laser(x,y)) ) {
+                //printf("searching for x=%d y=%d\n",x,y);
+                st=m_search(x,y,step+1);
+                if (st<st_min) st_min=st;
+            } else {
+                //printf("laser at x=%d y=%d\n",x,y);
+            }
+
+            remove_lasers();
+        }
+    }
+
+
+    x=m+1;
+    y=n;
+    if (x<M) {
+        if (!is_blocking(maze[x][y]))
+        //if (!horizontal_laser(x,y))
+        {
+            move_lasers();
+
+            if ( (!vertical_laser(x,y)) && (!horizontal_laser(x,y)) ) {
+                //printf("searching for x=%d y=%d\n",x,y);
+                st=m_search(x,y,step+1);
+                if (st<st_min) st_min=st;
+            } else {
+                //printf("laser at x=%d y=%d\n",x,y);
+            }
+
+            remove_lasers();
+        }
+    }
+
+    x=m-1;
+    y=n;
+    if (x>=0) {
+        if (!is_blocking(maze[x][y]))
+        //if (!horizontal_laser(x,y))
+        {
+            move_lasers();
+
+            if ( (!vertical_laser(x,y)) && (!horizontal_laser(x,y)) ) {
+                //printf("searching for x=%d y=%d\n",x,y);
+                st=m_search(x,y,step+1);
+                if (st<st_min) st_min=st;
+            } else {
+                //printf("laser at x=%d y=%d\n",x,y);
+            }
+
+            remove_lasers();
+        }
+    }
+
+    dp[m][n][v] = 1+st_min;
+    return 1+st_min;
+
+}
+
+int main() {
+    FILE * fi = fopen("laser_maze.txt","r");
+    FILE * fo = fopen("output.txt","w");
+    int T;
+    int i;
+    fscanf(fi,"%d\n",&T);
+    for (i=1;i<=T;i++) {
+        int res;
+        int m,n;
+        int m_s=-1, n_s=-1;
+        fscanf(fi,"%d %d\n",&M,&N);
+        for (m=0;m<M;m++) {
+            for (n=0;n<N;n++) {
+                fscanf(fi,"%c",&maze[m][n]);
+                if (maze[m][n] == 'S') {
+                    m_s = m;
+                    n_s = n;
+                }
+                int v;
+                for (v=0;v<4;v++) {
+                    dp[m][n][v] = -1;
+                    rep[m][n][v] = -1;
+                }
+            }
+            fscanf(fi,"\n");
+        }
+        // solve
+        found_G = 0;
+        best_step = +INFINI;
+        res = m_search(m_s,n_s,0);
+        // output
+        if (found_G) fprintf(fo,"Case #%d: %d\n",i,res);
+        else fprintf(fo,"Case #%d: impossible\n",i);
+
+        //if (found_G) printf("Case #%d: %d\n",i,res);
+        //else printf("Case #%d: impossible\n",i);
+    }
+    fclose(fi);
+    fclose(fo);
+    return 0;
+}

@@ -1,0 +1,173 @@
+// cookBook.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include <string>
+#include <fstream>
+#include <iostream>
+#include <cmath>
+
+int readInput(std::string filename, int numbers[])
+{
+	int T,i;
+	std::ifstream inpFile(filename, std::ios_base::in);
+	if (!inpFile.is_open())
+		return 0;
+	inpFile >> T;
+	for (i = 0; i < T; i++)
+	{
+		inpFile >> numbers[i];
+	}
+	inpFile.close();
+	return T;
+}
+
+int findDigits(int number, int digits[])
+{
+	int nDigits, i;
+	if (!number)
+	{
+		digits[0] = 0;
+		return 0;
+	}
+	nDigits = static_cast<int>(log10(number)) + 1;
+	for (i = 0; i < nDigits; i++)
+	{
+		digits[nDigits - 1 - i] = number % 10;
+		number /= 10;
+	}
+	return nDigits;
+}
+
+int findLargest(int nDigits, int digits[],int number)
+{
+	int i, largestPos=0,largestNumber,j;
+	for (i = 1; i < nDigits; i++)
+	{
+		if (digits[i]>digits[i - 1])
+		{
+			largestPos = i;
+			break;
+		}
+	}
+	if (!largestPos)
+		return number;
+	for (i = largestPos + 1; i < nDigits; i++)
+	{
+		if (digits[i]>=digits[largestPos])
+		{
+			largestPos = i;
+		}
+	}
+	for (i = 0; digits[i] >= digits[largestPos]; i++);
+	digits[i] ^= digits[largestPos];
+	digits[largestPos] ^= digits[i];
+	digits[i] ^= digits[largestPos];
+	for (j = 0, largestNumber = 0; j < nDigits; j++)
+	{
+		largestNumber = largestNumber * 10 + digits[j];
+	}
+	// reconstruct the digits
+	digits[i] ^= digits[largestPos];
+	digits[largestPos] ^= digits[i];
+	digits[i] ^= digits[largestPos];
+	return largestNumber;
+}
+
+int findSmallest(int nDigits, int digits[], int number)
+{
+	int i,j, smallestPos=0,smallestNumber;
+	for (i = 1; i < nDigits; i++)
+	{
+		if (digits[i])
+		{
+			if (digits[i] < digits[i - 1])
+			{
+				smallestPos = i;
+				break;
+			}
+		}
+	}
+	if (smallestPos)
+	{
+		for (i = smallestPos + 1; i < nDigits; i++)
+		{
+			if (digits[i])
+			{
+				if (digits[i] <= digits[smallestPos])
+				{
+					smallestPos = i;
+				}
+			}
+		}
+	}
+	if (!smallestPos || digits[smallestPos] >= digits[0])
+	{
+		// find the last zero
+		for (i = nDigits - 1; i > 0; i--)
+		{
+			if (!digits[i])
+			{
+				smallestPos = i;
+				break;
+			}
+		}
+	}
+	if (!smallestPos)
+		return number;
+	for (i = 0; digits[i] <= digits[smallestPos]; i++);
+	if (!digits[smallestPos])
+	{
+		for (i = 1; i<nDigits && digits[i] <= digits[smallestPos]; i++);
+	}
+	if (i == nDigits)
+		return number;
+	digits[i] ^= digits[smallestPos];
+	digits[smallestPos] ^= digits[i];
+	digits[i] ^= digits[smallestPos];
+	for (j = 0, smallestNumber = 0; j < nDigits; j++)
+	{
+		smallestNumber = smallestNumber * 10 + digits[j];
+	}
+	// reconstruct the digits
+	digits[i] ^= digits[smallestPos];
+	digits[smallestPos] ^= digits[i];
+	digits[i] ^= digits[smallestPos];
+	return smallestNumber;
+
+}
+
+void calculate(int number,int &smallest,int &largest)
+{
+	int nDigits,digits[9];
+	smallest = largest = number;
+	nDigits = findDigits(number, digits);
+	if (nDigits == 1)
+		return;
+	largest = findLargest(nDigits, digits, number);
+	smallest = findSmallest(nDigits, digits, number);
+}
+
+void outputtoFile(std::ofstream &outF, int iter,int smallest, int largest)
+{
+	outF << "Case #" << iter << ": " << smallest << " " << largest<<std::endl;
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	int numbers[100],T,i,smallest=0,largest=99999999;
+	std::string filename = "cooking_the_books.txt";
+	std::string outfilename = "cooking_the_books_out.txt";
+	T = readInput(filename, numbers);
+	if (!T)
+		return 0;
+	std::ofstream outF(outfilename, std::ios_base::out);
+	for (i = 0; i < T; i++)
+	{
+		calculate(numbers[i], smallest, largest);
+		outputtoFile(outF, i + 1, smallest, largest);
+	}
+	outF.close();
+	return 0;
+}
+

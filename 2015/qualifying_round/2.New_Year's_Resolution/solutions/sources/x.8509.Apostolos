@@ -1,0 +1,156 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+class Pair
+{
+public:
+	bool fromPrev;
+	int fromEating;
+
+	Pair() : fromPrev(false), fromEating(-1){}	
+};
+
+void getPath(vector<vector<bool>> b, vector<Pair>& path, const vector<unsigned int>& foods, const unsigned int i, const unsigned int j)
+{
+	if (i == 0 || j == 0) return;
+
+	if (b[i][j-1])
+	{
+		path[j - 1].fromPrev = true;
+		getPath(b, path, foods, i, j - 1);
+	}
+	if (i >= foods[j - 1] && b[i - foods[j - 1]][j - 1])
+	{
+		path[j - 1].fromEating = i - foods[j - 1];
+		getPath(b, path, foods, i - foods[j - 1], j - 1);
+	}
+}
+
+bool checkPaths(vector<Pair>& a, vector<Pair>& b)
+{
+	unsigned int i = a.size();
+
+	while (i--)
+	{
+		if ((a[i].fromEating != -1 && b[i].fromEating == -1) || (a[i].fromEating == -1 && b[i].fromEating != -1))
+		{
+			if (!(a[i].fromPrev == b[i].fromPrev)) return false;
+		}
+	}
+	return true;
+}
+
+bool singleFoodCheck(const unsigned int target, const vector<unsigned int>& foods, vector<Pair>& path)
+{
+	const unsigned int size = foods.size();
+	vector<vector<bool>> checkSumTable = vector<vector<bool>>(target + 1, vector<bool>(size + 1, false));
+
+	for (unsigned int i = 0; i <= size; ++i)
+	{
+		checkSumTable[0][i] = true;
+	}
+
+	for (unsigned int i = 1; i <= target; ++i)
+	{
+		for (unsigned int j = 1; j <= size; ++j)
+		{
+			checkSumTable[i][j] = checkSumTable[i][j - 1];
+			if (i >= foods[j - 1] && !checkSumTable[i][j])
+			{
+				checkSumTable[i][j] = checkSumTable[i - foods[j - 1]][j - 1];
+			}
+		}
+	}
+
+	getPath(checkSumTable, path, foods, target, size);
+
+	return checkSumTable[target][size];
+}
+
+inline string work(unsigned long gp, unsigned long gc, unsigned long gf, vector<vector<unsigned int>>& foods, unsigned int size)
+{
+	vector<Pair>
+		pathp = vector<Pair>(size, Pair()),
+		pathc = vector<Pair>(size, Pair()),
+		pathf = vector<Pair>(size, Pair());
+	bool isPossible;
+	
+	isPossible = singleFoodCheck(gp, foods[0], pathp);
+	if (!isPossible) return "no";
+
+	isPossible = singleFoodCheck(gc, foods[1], pathc);
+	if (!isPossible || !checkPaths(pathp, pathc)) return "no";
+
+	isPossible = singleFoodCheck(gf, foods[2], pathf);
+	if (!isPossible || !checkPaths(pathc, pathf) || !checkPaths(pathp, pathf)) return "no";
+
+	return  "yes";
+}
+
+int main()
+{
+	std::ifstream in_file;
+	std::ofstream out_file;
+	string in_name = "new_years_resolution.txt",
+		out_name = in_name.substr(0, in_name.length() - 3) + "out";
+	cout << in_name << ", " << out_name << "\n\n";
+
+	in_file.open(in_name, ifstream::in);
+	if (!in_file.is_open())
+	{
+		cerr << "Problem opening input file" << endl;
+		getchar();
+		return 1;
+	}
+	out_file.open(out_name, ifstream::out);
+	if (!in_file.is_open())
+	{
+		cerr << "Problem opening output file" << endl;
+		getchar();
+		return 1;
+	}
+
+	/*
+	* Main Part starts here  
+	**/
+	unsigned long lines;
+	in_file >> lines;
+
+	for (unsigned long i = 0; i < lines; ++i)
+	{
+		//Get variables for the case
+		unsigned long gp, gc, gf, n;
+		in_file >> gp >> gc >> gf;
+		in_file >> n;
+		vector<vector<unsigned int>> foods = vector <vector<unsigned int>>(3, vector<unsigned int>(n));
+
+		for (unsigned int j = 0; j < n; ++j)
+		{
+			in_file >> foods[0][j] >> foods[1][j] >> foods[2][j];
+		}
+
+		//Actual Work
+		string c = work(gp, gc, gf, foods, n);
+
+		//Write result to file
+		if (1)
+		{
+			out_file << "Case #" << i + 1 << ": " << c << "\n";
+		}
+		else
+		{
+			cout << "Case #" << i + 1 << ": " << c << "\n";
+		}
+	}
+
+
+	in_file.close();
+	out_file.close();
+	cout << "\n\n-------------\nDone..." << endl;
+	getchar();
+	return 0;
+}

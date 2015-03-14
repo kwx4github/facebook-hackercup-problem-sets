@@ -1,0 +1,198 @@
+/**
+ * Created by edoardo on 09/01/2015.
+ */
+
+var fs = require('fs');
+var fileInput = '';
+var outputResult = '';
+
+
+fs.readFile('input.txt', 'utf8', function (err, data) {
+    if (err) throw err;
+    fileInput = data;
+    console.log('OK file read');
+
+    var lines = fileInput.split('\n');
+    var numOfTestCase = parseInt(lines[0]);
+
+    console.log('Total lines: ' + lines.length);
+    console.log('Number of test case: ' + numOfTestCase);
+
+    var lineCounter = 1;
+
+    for (var i = 0; i < numOfTestCase; i++) {
+
+        var line = lines[lineCounter];
+        var pcfArray = line.split(' ');
+        var pTarget = parseInt(pcfArray[0]); // proteine da acquisire
+        var cTarget = parseInt(pcfArray[1]); // carboidrati da acqusiire
+        var fTarget = parseInt(pcfArray[2]); // grassi da acquisire
+
+        lineCounter++;
+
+        var numOfFood = parseInt(lines[lineCounter]); // numero totale di cibi acquisiti
+
+        lineCounter++;
+
+        var arrayOfProtein = [];
+        var arrayOfCarboidrat = [];
+        var arrayOfFat = [];
+
+        // creo gli array con tutti valori per ogni cibo
+        for (var j = 0; j < numOfFood; j++) {
+
+            var line = lines[lineCounter];
+            var lineFoodArray = line.split(' ');
+            var pAcc = parseInt(lineFoodArray[0]);
+            var cAcc = parseInt(lineFoodArray[1]);
+            var fAcc = parseInt(lineFoodArray[2]);
+
+            arrayOfProtein.push(pAcc);
+            arrayOfCarboidrat.push(cAcc);
+            arrayOfFat.push(fAcc);
+
+            lineCounter++;
+        }
+
+        var allCombinationsProtein = getAllCombinations(arrayOfProtein);
+        var allCombinationsCarboidrat = getAllCombinations(arrayOfCarboidrat);
+        var allCombinationsFat = getAllCombinations(arrayOfFat);
+
+        var allSumProtein = getAllSumOfArrayOfCombinations(allCombinationsProtein);
+        var allSumCarboidrat = getAllSumOfArrayOfCombinations(allCombinationsCarboidrat);
+        var allSumFat = getAllSumOfArrayOfCombinations(allCombinationsFat);
+
+        var indexsProtein = getEqualsIndex(allSumProtein, pTarget);
+        var indexsCarboidrat = getEqualsIndex(allSumCarboidrat, cTarget);
+        var indexsFat = getEqualsIndex(allSumFat, fTarget);
+
+        var intersectionIndexs_Protein_Carboidrat = getIntersectionFromArray(indexsProtein, indexsCarboidrat);
+        var intersectionIndexs_Fat_Protein_Carboidrat = getIntersectionFromArray(intersectionIndexs_Protein_Carboidrat, indexsFat);
+
+        if (intersectionIndexs_Fat_Protein_Carboidrat.length > 0) {
+            outputResult += ['Case #', i+1, ': yes\n'].join('');
+        } else {
+            outputResult += ['Case #', i+1, ': no\n'].join('');
+        }
+    }
+
+    console.log(outputResult);
+
+    fs.writeFile('output.txt', outputResult);
+});
+
+/**
+ * Ritorna tutte le combinazioni possibili dato un array di numeri
+ * @param arrayOfNumber l'array di numeri da cui tornare tutte le combinazioni
+ * @returns {Array}
+ */
+function getAllCombinations(arrayOfNumber) {
+    if (arrayOfNumber.length == 1) {
+        return [arrayOfNumber];
+    }
+    var risArray = [];
+    var array = arrayOfNumber;
+
+    function combinations(numArr, choose) {
+        var n = numArr.length;
+        var c = [];
+        var ris = [];
+        var inner = function (start, choose_) {
+            if (choose_ == 0) {
+                if (c.length > 0) {
+                    ris.push(c.slice());
+                }
+            } else {
+                for (var i = start; i <= n - choose_; ++i) {
+                    c.push(numArr[i]);
+                    inner(i + 1, choose_ - 1);
+                    c.pop();
+                }
+            }
+        }
+        inner(0, choose);
+        return ris;
+    }
+
+    for (var i = 0; i < array.length; i++) {
+        var c = combinations(array, i);
+        for (var j = 0; j < c.length; j++) {
+            risArray.push(c[j]);
+        }
+    }
+
+    return risArray;
+}
+
+/**
+ * Ritorna un array di somme
+ * Le somme sono ottenute sommando gli elementi(array) dell'array passato
+ * @param arrayOfCombinations Array di array
+ * @returns {Array}
+ */
+function getAllSumOfArrayOfCombinations(arrayOfCombinations) {
+    var ris = [];
+    for (var i = 0; i < arrayOfCombinations.length; i++) {
+        var sum = 0;
+        var a = arrayOfCombinations[i];
+        for (var j = 0; j < a.length; j++) {
+            sum += a[j];
+        }
+
+        ris.push(sum);
+    }
+    return ris;
+}
+
+/**
+ * ritorna le posizioni del valore "value" nell'array passato "arrayOfSum"
+ * @param arrayOfSum l'array di somme in cui cercare le posizioni del valore "value"
+ * @param value il valore da trovare
+ * @returns {Array}
+ */
+function getEqualsIndex(arrayOfSum, value) {
+    var indexs = [];
+    var v = value;
+    for (var i = 0; i < arrayOfSum.length; i++) {
+        if (arrayOfSum[i] == value) {
+            indexs.push(i);
+        }
+    }
+    return indexs;
+}
+
+/**
+ * http://stackoverflow.com/a/1885660/2287788
+ * destructively finds the intersection of
+ * two arrays in a simple fashion.
+ *
+ * PARAMS
+ *  a - first array, must already be sorted
+ *  b - second array, must already be sorted
+ *
+ * NOTES
+ *  State of input arrays is undefined when
+ *  the function returns.  They should be
+ *  (prolly) be dumped.
+ *
+ *  Should have O(n) operations, where n is
+ *    n = MIN(a.length, b.length)
+ */
+function getIntersectionFromArray(a, b) {
+    var result = new Array();
+    while (a.length > 0 && b.length > 0) {
+        if (a[0] < b[0]) {
+            a.shift();
+        }
+        else if (a[0] > b[0]) {
+            b.shift();
+        }
+        else /* they're equal */
+        {
+            result.push(a.shift());
+            b.shift();
+        }
+    }
+
+    return result;
+}

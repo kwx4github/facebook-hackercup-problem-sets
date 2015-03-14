@@ -1,0 +1,100 @@
+#include <cstdio>
+#include <iostream>
+#include <queue>
+#include <string>
+using namespace std;
+
+const int N = 100;
+struct Point {
+	int r, c;
+	Point(int R=0, int C=0) : r(R), c(C) {}
+};
+struct Loc {
+	Point p; int dir;
+	Loc(Point P, int D) : p(P), dir(D) {}
+};
+
+int main(){
+	int run, ht, wid, poss[N][N][4], moves; char grid[N][N]; string line; Point s, g; queue<Loc> q;
+	FILE * fin, * fout;
+	freopen_s(&fin, "maze.test", "r", stdin);
+	freopen_s(&fout, "maze.out", "w", stdout);
+	cin >> run;
+	for (int a = 1; a <= run; ++a){
+		cin >> ht >> wid;
+		for (int y = 0; y < ht; ++y){
+			cin >> line;
+			for (int x = 0; x < wid; ++x){
+				if ((grid[y][x] = line[x]) == 'S'){
+					s = Point(y, x); grid[y][x] = '.';
+				}
+				else if (grid[y][x] == 'G'){
+					g = Point(y, x); grid[y][x] = '.';
+				}
+				else if (grid[y][x] == '<') grid[y][x] = 0;
+				else if (grid[y][x] == '^') grid[y][x] = 1;
+				else if (grid[y][x] == '>') grid[y][x] = 2;
+				else if (grid[y][x] == 'v') grid[y][x] = 3;
+			}
+		}
+		memset(poss, -1, sizeof(poss));
+
+		//cancel out any states dead by turret fire
+		for (int y = 0; y < ht; ++y){
+			for (int x = 0; x < wid; ++x){
+				if (grid[y][x] < 4){
+					for (int w = 0; w < 4; ++w){
+						switch ((grid[y][x] + w) % 4){
+						case 0:
+							for (int r = y, c = x-1; c >= 0 && grid[r][c] == '.'; --c) poss[r][c][w] = -2;
+							break;
+						case 1:
+							for (int r = y-1, c = x; r >= 0 && grid[r][c] == '.'; --r) poss[r][c][w] = -2;
+							break;
+						case 2:
+							for (int r = y, c = x+1; c < wid && grid[r][c] == '.'; ++c) poss[r][c][w] = -2;
+							break;
+						case 3:
+							for (int r = y+1, c = x; r < ht && grid[r][c] == '.'; ++r) poss[r][c][w] = -2;
+							break;
+						default: break;
+						}
+					}
+				}
+			}
+		}
+
+		//iterate maze
+		moves = -1;
+		while (!q.empty()) q.pop();
+		poss[s.r][s.c][0] = 0;
+		q.push(Loc(s, 0));
+		while (!q.empty()){
+			Loc loc = q.front(); q.pop();
+			if (loc.p.r == g.r && loc.p.c == g.c){
+				moves = poss[loc.p.r][loc.p.c][loc.dir]; break;
+			}
+			int st = (loc.dir+1) % 4;
+			if (loc.p.c > 0 && poss[loc.p.r][loc.p.c-1][st] == -1){
+				poss[loc.p.r][loc.p.c-1][st] = poss[loc.p.r][loc.p.c][loc.dir] + 1;
+				q.push(Loc(Point(loc.p.r, loc.p.c-1), st));
+			}
+			if (loc.p.r > 0 && poss[loc.p.r-1][loc.p.c][st] == -1){
+				poss[loc.p.r-1][loc.p.c][st] = poss[loc.p.r][loc.p.c][loc.dir] + 1;
+				q.push(Loc(Point(loc.p.r-1, loc.p.c), st));
+			}
+			if (loc.p.c < wid-1 && poss[loc.p.r][loc.p.c+1][st] == -1){
+				poss[loc.p.r][loc.p.c+1][st] = poss[loc.p.r][loc.p.c][loc.dir] + 1;
+				q.push(Loc(Point(loc.p.r, loc.p.c+1), st));
+			}
+			if (loc.p.r < ht-1 && poss[loc.p.r+1][loc.p.c][st] == -1){
+				poss[loc.p.r+1][loc.p.c][st] = poss[loc.p.r][loc.p.c][loc.dir] + 1;
+				q.push(Loc(Point(loc.p.r+1, loc.p.c), st));
+			}
+		}
+		cout << "Case #" << a << ": ";
+		if (moves < 0) cout << "impossible" << endl;
+		else cout << moves << endl;
+	}
+	return 0;
+}

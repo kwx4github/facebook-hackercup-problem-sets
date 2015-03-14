@@ -1,0 +1,163 @@
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Problem2 {
+
+	public int n;
+	public List<FoodProblem> subProblems;
+
+	public Problem2() {}
+
+	public void setProblem2FromFile (String fileName) {
+		BufferedReader in = null;
+		try {
+			in = new BufferedReader(new FileReader(fileName));
+			if (in.ready()) {
+				//Get the number of problems
+				n = Integer.parseInt(in.readLine());
+				subProblems = new ArrayList<FoodProblem>();
+
+				for (int i=0; i<n; i++) {
+					FoodProblem subProblem = getSubProblemFromBuffer(in);
+					subProblems.add(subProblem);
+				}
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			assert in != null;
+			try {
+				in.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private FoodProblem getSubProblemFromBuffer(BufferedReader in) throws IOException {
+		//First line is the targets
+		String s = in.readLine();
+		String[] split = s.split(" ");
+		FoodProblem foodProblem = new FoodProblem();
+
+		int targetProts = Integer.parseInt(split[0]);
+		int targetCarbs = Integer.parseInt(split[1]);
+		int targetFats = Integer.parseInt(split[2]);
+		foodProblem.targetProts = targetProts;
+		foodProblem.targetCarbs = targetCarbs;
+		foodProblem.targetFats = targetFats;
+
+		//Second line is the number of available foods, i.e. the size of the subProblem's availableXXX lists.
+		int size = Integer.parseInt(in.readLine());
+		for (int i=0; i<size; i++) {
+			//For each line, we retrieve the food amounts
+			String foods = in.readLine();
+			String[] splitFoods = foods.split(" ");
+			int candidateProts = Integer.parseInt(splitFoods[0]);
+			int candidateCarbs = Integer.parseInt(splitFoods[1]);
+			int candidateFats = Integer.parseInt(splitFoods[2]);
+			if (candidateProts <= targetProts && candidateCarbs <= targetCarbs && candidateFats <= targetFats) {
+				List<Integer> triplet = new ArrayList<Integer>();
+				triplet.add(candidateProts);
+				triplet.add(candidateCarbs);
+				triplet.add(candidateFats);
+				foodProblem.foodItems.add(triplet);
+			}
+		}
+		return foodProblem;
+	}
+
+	public static void main(String[] args) {
+		Problem2 problem2 = new Problem2();
+		problem2.setProblem2FromFile("D:\\Downloads\\new_years_resolution.txt");
+		int counter = 1;
+		for (FoodProblem foodProblems : problem2.subProblems) {
+			boolean solution = foodProblems.solveFood();
+			System.out.println("Case #" + counter + ": " + (solution ? "yes" : "no"));
+			counter++;
+		}
+	}
+
+	private class FoodProblem {
+			public List<List<Integer>> foodItems = new ArrayList<List<Integer>>();
+
+			public int targetCarbs;
+			public int targetProts;
+			public int targetFats;
+
+			public FoodProblem() {}
+
+			public boolean solveFood() {
+
+				List<Integer> trivial = new ArrayList<Integer>();
+				trivial.add(targetProts);
+				trivial.add(targetCarbs);
+				trivial.add(targetFats);
+
+				//1. Find trivial solution, i.e. a triplet in foodItems that exactly matches the target triplet
+				if (foodItems.contains(trivial)) {
+					return true;
+				}
+				//2. Go through list in order to check for an existing solution
+				List<Integer> targets = new ArrayList<Integer>();
+				targets.add(targetProts);
+				targets.add(targetCarbs);
+				targets.add(targetFats);
+
+				return solutionExists(targets, foodItems);
+			}
+
+			public boolean solutionExists(List<Integer> targets, List<List<Integer>> items) {
+
+				for (int i=0; i<items.size(); i++) {
+					List<Integer> triplet = items.get(i);
+					List<Integer> remainingTargets = new ArrayList<Integer>();
+					remainingTargets.add(targets.get(0) - triplet.get(0));
+					remainingTargets.add(targets.get(1) - triplet.get(1));
+					remainingTargets.add(targets.get(2) - triplet.get(2));
+
+					List<List<Integer>> remainingItems = getPotentialItems(remainingTargets, items.subList(i+1, items.size()));
+					if (remainingItems != null) {
+						if (remainingItems.contains(remainingTargets)) {
+							return true;
+						}
+						if (solutionExists(remainingTargets, remainingItems)) {
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+
+			public List<List<Integer>> getPotentialItems(List<Integer> conditions, List<List<Integer>> initialList) {
+				List<List<Integer>> subList = new ArrayList<List<Integer>>();
+				int[] sums = {0, 0, 0};
+
+				for (int i = 0; i < initialList.size(); i++) {
+					List<Integer> tripletItem = initialList.get(i);
+					if (tripletItem.get(0) <= conditions.get(0) && tripletItem.get(1) <= conditions.get(1) && tripletItem.get(2) <= conditions.get(2)) {
+						List<Integer> triplet = new ArrayList<Integer>();
+						triplet.add(tripletItem.get(0));
+						triplet.add(tripletItem.get(1));
+						triplet.add(tripletItem.get(2));
+						subList.add(triplet);
+
+						sums[0] += tripletItem.get(0);
+						sums[1] += tripletItem.get(1);
+						sums[2] += tripletItem.get(2);
+					}
+				}
+				if (sums[0] >= conditions.get(0) && sums[1] >= conditions.get(1) && sums[2] >= conditions.get(2)) {
+					return subList;
+				} else {
+					return null;
+				}
+			}
+		}
+}

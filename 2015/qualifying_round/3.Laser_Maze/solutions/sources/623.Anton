@@ -1,0 +1,175 @@
+#define _CRT_SECURE_NO_DEPRECATE
+#include <iostream>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <string>
+#include <algorithm>
+#include <memory.h>
+
+using namespace std;
+
+#define forn(i, n) for(int i = 0; i < (n); ++i)
+#define forv(i, a) forn(i, (int)a.size())
+
+int n, m;
+char maze[105][105];
+bool canGo[4][105][105];
+
+char ord[] = "^>v<";
+const int c = 4;
+int dx[] = { -1, 0, 1, 0 };
+int dy[] = { 0, 1, 0, -1 };
+
+void fillLaser(int id, int i, int j) {
+    int pos = find(ord, ord + c, maze[i][j]) - ord;
+
+    if (pos == c) {
+        return;
+    }
+
+    i += dx[pos];
+    j += dy[pos];
+    while (i < n && i >= 0 && j < m && j >= 0 && maze[i][j] == '.') {
+        canGo[id][i][j] = false;
+        i += dx[pos];
+        j += dy[pos];
+    }
+}
+
+void fillMask(int id) {
+    forn(i, n) {
+        forn(j, m) {
+            canGo[id][i][j] = (maze[i][j] == '.');
+        }
+    }
+
+    forn(i, n) {
+        forn(j, m) {
+            fillLaser(id, i, j);
+        }
+    }
+}
+
+char rotateOne(char ch) {
+    int pos = find(ord, ord + c, ch) - ord;
+    if (pos == c) {
+        return ch;
+    }
+    else {
+        return ord[(pos + 1) % c];
+    }
+}
+
+void rotateMaze() {
+    forn(i, n) {
+        forn(j, m) {
+            maze[i][j] = rotateOne(maze[i][j]);
+        }
+    }
+}
+
+void init() {
+    forn(i, c) {
+        fillMask(i);
+        rotateMaze();
+    }
+}
+
+typedef pair<int, int> pii;
+
+int dist[4][105][105];
+int bfs(pii start, pii finish) {
+    queue<pair<int, pii>> q;
+
+    memset(dist, -1, sizeof(dist));
+    q.emplace(0, start);
+    dist[0][start.first][start.second] = 0;
+    
+    int step = 0;
+    while (!q.empty()) {
+        auto cur = q.front();
+        q.pop();
+
+        int rot = cur.first;
+        pii pos = cur.second;
+
+        if (pos == finish) {
+            return dist[rot][pos.first][pos.second];
+        }
+
+        forn(t, c) {
+            int tx = pos.first + dx[t];
+            int ty = pos.second + dy[t];
+            int trot = (rot + 1) % c;
+
+            if (tx < n && tx >= 0 && ty < m && ty >= 0 &&
+                dist[trot][tx][ty] == -1 && canGo[trot][tx][ty]) {
+
+                dist[trot][tx][ty] = dist[rot][pos.first][pos.second] + 1;
+                q.emplace(trot, pii(tx, ty));
+            }
+        }
+    }
+
+    return -1;
+}
+
+int solve() {
+    cin >> n >> m;
+    forn(i, n) {
+        cin >> maze[i];
+    }
+    
+    pii start, finish;
+    forn(i, n) {
+        forn(j, m) {
+            char& cur = maze[i][j];
+
+            if (cur == 'S') {
+                start = { i, j };
+                cur = '.';
+            }
+
+            if (cur == 'G') {
+                finish = { i, j };
+                cur = '.';
+            }
+        }
+    }
+
+    init();
+    
+    return bfs(start, finish);
+}
+
+int main() {
+#ifdef __ASD__
+	freopen("input.txt", "rt", stdin);
+	freopen("output.txt", "wt", stdout);
+#endif
+    ios_base::sync_with_stdio(false);
+    cin.tie(0);
+
+
+    int T;
+    cin >> T;
+
+    forn(i, T) {
+        int res = solve();
+
+        cout << "Case #" << i + 1 << ": ";
+
+        if (res < 0) {
+            cout << "impossible";
+        }
+        else {
+            cout << res;
+        }
+
+        cout << endl;
+    }
+
+	return 0;
+}

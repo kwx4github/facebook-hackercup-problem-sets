@@ -1,0 +1,111 @@
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <iostream>
+#include <queue>
+#include <vector>
+using namespace std;
+using ll = long long;
+
+class range {private: struct I{int x;int operator*(){return x;}bool operator!=(I& lhs){return x<lhs.x;}void operator++(){++x;}};I i,n;
+public:range(int n):i({0}),n({n}){}range(int i,int n):i({i}),n({n}){}I& begin(){return i;}I& end(){return n;}};
+
+void solve();
+int main() {
+  int test_case; cin >> test_case;
+  for (int t : range(test_case)) {
+    cout << "Case #" << (t + 1) << ": ";
+    solve();
+  }
+}
+
+// ...........#...............#..........
+// ...........###..........####..........
+// ...........#####.......####...........
+// ............###############...........
+// ............###############...........
+// ............##############............
+// .............#############............
+// ............###############...........
+// ...........#################..........
+// .......#...#################...#......
+// .......##.##################..##......
+// ........####################.##.......
+// ..........####################........
+// .........#####..########..#####.......
+// .......######....#####....######......
+// ......########...#####..########.#....
+// ....#######..#...#####..#..########...
+// ..#########.....#######......#######..
+// ...#######......#######........###....
+// ..####.........#########........###...
+// ...............#########..............
+// ..............##########..............
+// ..............##########..............
+// ...............########...............
+// ...............########...............
+
+int vis[120][120][4];
+
+void solve() {
+  int H, W; cin >> H >> W;
+  string f[H];
+  for (int i : range(H)) cin >> f[i];
+
+  struct P { int y, x, t; };
+  queue<P> q;
+  for (int y : range(H))
+  for (int x : range(H)) if (f[y][x] == 'S') q.push(P{y, x, 0});
+
+  memset(vis, 0, sizeof(vis));
+
+  while (!q.empty()) {
+    P p = q.front();
+    q.pop();
+    if (f[p.y][p.x] == 'G') {
+      cout << p.t << endl;
+      return;
+    }
+
+    if (vis[p.y][p.x][p.t % 4]) continue;
+    vis[p.y][p.x][p.t % 4] = 1;
+
+    const int dy[] = {-1, 0, 1, 0};
+    const int dx[] = {0, 1, 0, -1};
+    for (int r : range(4)) {
+      P pn{p.y + dy[r], p.x + dx[r], p.t + 1};
+
+      const string walls = "#<>^v";
+      auto outside = [&](int y, int x) -> bool {
+        return y < 0 || y >= H || x < 0 || x >= W;
+      };
+      if (outside(pn.y, pn.x)
+          || walls.find_first_of(f[pn.y][pn.x]) != string::npos) continue;
+      const string lasers = "^>v<";
+
+      auto check_laser = [&](int mr) -> bool {
+        for (int y0 = pn.y, x0 = pn.x; ; y0 += dy[mr], x0 += dx[mr]) {
+          if (outside(y0, x0)) break;
+          if (f[y0][x0] == '#') break;
+
+          int pos = lasers.find_first_of(f[y0][x0]);
+          if (pos != string::npos) {
+            if ((pos + pn.t) % 4 == (mr + 2) % 4) return false;
+          }
+        }
+        return true;
+      };
+
+      if (!check_laser(0)) continue;
+      if (!check_laser(1)) continue;
+      if (!check_laser(2)) continue;
+      if (!check_laser(3)) continue;
+
+      q.push(pn);
+    }
+  }
+
+  cout << "impossible" << endl;
+}

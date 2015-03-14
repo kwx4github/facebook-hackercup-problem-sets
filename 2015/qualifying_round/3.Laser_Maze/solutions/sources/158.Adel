@@ -1,0 +1,174 @@
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstring>
+
+using namespace std;
+
+typedef pair<int, int> pi;
+typedef unsigned long long ll;
+
+#define pb push_back
+
+const int MAXR = 102;
+const int MAXC = 102;
+const int INF = 1e9;
+
+
+int vis[4][MAXR][MAXC];
+char G[4][MAXR][MAXC];
+char curConfig[MAXR][MAXC];
+int dirR[4] = {-1, 0, 1, 0};
+int dirC[4] = {0, 1, 0, -1};
+int R, C;
+
+typedef struct{
+    int r, c, cost;
+}node;
+
+inline int getMapping(char c){
+    if(c == '^') return 0;
+    if(c == '>') return 1;
+    if(c == 'v') return 2;
+    if(c == '<') return 3;
+    return -1;
+}
+
+inline bool insideGrid(const int& r, const int& c){
+    return r >= 0 && r < R && c >= 0 && c < C;
+}
+
+void initBlocked(int dim){
+    for(int r = 0; r < R; r++){
+        for(int c = 0; c < C; c++){
+            if(G[dim][r][c] < 4){
+                int dir = G[dim][r][c];
+                G[dim][r][c] = '#';
+                int curR = r + dirR[dir], curC = c + dirC[dir];
+
+                while( insideGrid(curR, curC)
+                      && (G[dim][curR][curC] == '.' || G[dim][curR][curC] == '*')){
+
+                    G[dim][curR][curC] = '*';
+                    curR += dirR[dir], curC += dirC[dir];
+                }
+            }
+        }
+    }
+}
+
+void updateConfig(){
+    for(int r = 0; r < R; r++){
+        for(int c = 0; c < C; c++){
+            if(curConfig[r][c] < 4){
+                curConfig[r][c]++;
+                if(curConfig[r][c] == 4) curConfig[r][c] = 0;
+            }
+        }
+    }
+}
+
+void printGrid(char G[][MAXC]){
+    for(int i = 0; i < R; i++){
+        for(int j = 0; j < C; j++){
+            char c = G[i][j];
+            if(c < 4) c += '0';
+            putchar(c);
+        }
+        cout << endl;
+    }
+}
+
+int bfs(const pi& start, const pi& end){
+    memset(vis, 63, sizeof vis);
+    queue < node > q;
+    for(int i = 0; i < 4; i++){
+        int r = start.first + dirR[i], c = start.second + dirC[i];
+        if(insideGrid(r, c) && G[1][r][c] == '.'){
+            vis[1][r][c] = 1;
+            q.push({r, c, 1});
+        }
+    }
+    while(!q.empty()){
+        node cur = q.front(); q.pop();
+        if(cur.r == end.first && cur.c == end.second) return cur.cost;
+        for(int i = 0; i < 4; i++){
+            int nR = dirR[i] + cur.r;
+            int nC = dirC[i] + cur.c;
+            int nCost = cur.cost + 1;
+            if(insideGrid(nR, nC) && G[nCost % 4][nR][nC] == '.'
+               && vis[nCost % 4][nR][nC] > nCost){
+                vis[nCost % 4][nR][nC] = nCost;
+                q.push({nR, nC, nCost});
+            }
+        }
+    }
+    return INF;
+}
+
+int main(){
+#ifndef ONLINE_JUDGE
+    freopen("in.in", "r", stdin);
+    freopen("out.out", "w", stdout);
+#endif
+
+    string S;
+    int T;
+    cin >> T;
+    for(int tt = 1; tt <= T; tt++){
+        pi start, end;
+        cin >> R >> C;
+        for(int i = 0; i < R; i++){
+            cin >> G[0][i];
+            for(int j = 0; j < C; j++){
+                int m = getMapping(G[0][i][j]);
+                if(m != -1){
+                    G[0][i][j] = m;
+                }
+                if(G[0][i][j] == 'S') {
+                    start = pi(i, j);
+                    G[0][i][j] = '.';
+                }
+                if(G[0][i][j] == 'G') {
+                    end = pi(i, j);
+                    G[0][i][j] = '.';
+                }
+            }
+        }
+        memcpy(curConfig, G[0], sizeof curConfig);
+        initBlocked(0);
+        for(int dim = 1; dim < 4; dim++){
+            updateConfig();
+            memcpy(G[dim], curConfig, sizeof curConfig);
+            initBlocked(dim);
+            //printGrid(curConfig);
+            //cout << endl;
+            //printGrid(G[dim]);
+            //cout << endl << endl;
+        }
+        int res = bfs(start, end);
+        cout << "Case #" << tt << ": ";
+        if(res == INF) cout << "impossible";
+        else cout << res;
+        cout << endl;
+    }
+
+
+    return 0;
+}

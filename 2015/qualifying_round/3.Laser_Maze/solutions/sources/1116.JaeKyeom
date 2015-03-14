@@ -1,0 +1,183 @@
+#include <algorithm>
+#include <bitset>
+#include <iostream>
+#include <queue>
+#include <string>
+#include <vector>
+
+using std::cin;
+using std::cout;
+using std::endl;
+
+typedef std::vector<std::string> Map;
+typedef std::vector<std::bitset<4> > FourBitsRow;
+typedef std::vector<FourBitsRow> FourBitsMap;
+
+struct Direction {
+  int y;
+  int x;
+};
+
+const Direction kDirections[4] = {
+  {-1, 0},  // Up
+  {0, 1},  // Right
+  {1, 0},  // Down
+  {0, -1}  // Left
+};
+
+inline const Direction& GetLaserDirection(char c, int step_mod_4) {
+  int base_num = 0;
+  switch (c) {
+    case '^':
+      base_num = 0;
+      break;
+    case '>':
+      base_num = 1;
+      break;
+    case 'v':
+      base_num = 2;
+      break;
+    case '<':
+      base_num = 3;
+      break;
+  }
+  return kDirections[(base_num + step_mod_4) % 4];
+}
+
+inline bool IsLaserTurret(char c) {
+  switch (c) {
+    case '^':
+    case '>':
+    case 'v':
+    case '<':
+      return true;
+  }
+  return false;
+}
+
+inline bool IsBlocking(char c) {
+  return (c == '#' || IsLaserTurret(c));
+}
+
+inline bool IsInvalidPos(int height, int width, int y, int x) {
+  return (y < 0 || x < 0 || y >= height || x >= width);
+}
+
+struct ExploreState {
+  ExploreState(int oy, int ox, int osteps) : y(oy), x(ox), steps(osteps) {}
+  int y;
+  int x;
+  int steps;
+};
+typedef std::queue<ExploreState> ExploreQueue;
+
+void PushIfStateIsUnique(ExploreQueue& explore_queue,
+                         FourBitsMap& state_check_map,
+                         const ExploreState& state) {
+  if (state_check_map[state.y][state.x][state.steps % 4]) {
+    return;
+  }
+  state_check_map[state.y][state.x][state.steps % 4] = true;
+  explore_queue.push(state);
+}
+
+int main() {
+  int T = 0;
+  cin >> T;
+  for (int t = 1; t <= T; ++t) {
+    int height = 0, width = 0;
+    cin >> height >> width;
+
+    Map map(height);
+
+    for (int i = 0; i < height; ++i) {
+      cin >> map[i];
+    }
+
+    FourBitsMap laser_map(height, FourBitsRow(width));
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; ++j) {
+        if (!IsLaserTurret(map[i][j])) {
+          continue;
+        }
+
+        for (int s = 0; s < 4; ++s) {
+          const Direction& direction = GetLaserDirection(map[i][j], s);
+
+          int y = i;
+          int x = j;
+          while (true) {
+            y += direction.y;
+            x += direction.x;
+            if (IsInvalidPos(height, width, y, x) || IsBlocking(map[y][x])) {
+              break;
+            }
+
+            laser_map[y][x][s] = true;
+          }
+        }
+      }
+    }
+
+    int sy = 0, sx = 0;
+    int gy = 0, gx = 0;
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; ++j) {
+        if (map[i][j] == 'S') {
+          sy = i;
+          sx = j;
+        } else if (map[i][j] == 'G') {
+          gy = i;
+          gx = j;
+        }
+      }
+    }
+
+    FourBitsMap state_check_map(height, FourBitsRow(width));
+    ExploreQueue explore_queue;
+    PushIfStateIsUnique(
+        explore_queue, state_check_map, ExploreState(sy, sx, 0));
+
+    bool success = false;
+    int min_steps = 0;
+
+    while (!explore_queue.empty()) {
+      {
+        const ExploreState& curr_state = explore_queue.front();
+        if (curr_state.steps == 0 ||
+            !laser_map[curr_state.y][curr_state.x][curr_state.steps % 4]) {
+          if (curr_state.y == gy && curr_state.x == gx) {
+            success = true;
+            min_steps = curr_state.steps;
+            break;
+          }
+
+          for (int dir = 0; dir < 4; ++dir) {
+            ExploreState new_state = curr_state;
+            new_state.y += kDirections[dir].y;
+            new_state.x += kDirections[dir].x;
+            ++new_state.steps;
+
+            if (IsInvalidPos(height, width, new_state.y, new_state.x) ||
+                IsBlocking(map[new_state.y][new_state.x])) {
+              continue;
+            }
+
+            PushIfStateIsUnique(explore_queue, state_check_map, new_state);
+          }
+        }
+      }
+      explore_queue.pop();
+    }
+
+    cout << "Case #" << t << ": ";
+    if (success) {
+      cout << min_steps;
+    } else {
+      cout << "impossible";
+    }
+    cout << endl;
+  }
+
+  return 0;
+}

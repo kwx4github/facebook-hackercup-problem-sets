@@ -1,0 +1,218 @@
+package qualification2015;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.StringTokenizer;
+import java.util.PriorityQueue;
+
+public class LaserMaze {
+	static String up = "up";
+	static String down = "down";
+	static String right = "right";
+	static String left = "left";
+	public static void main(String[] args) throws NumberFormatException, IOException {
+		FileWriter writer = new FileWriter(
+				"C:\\Users\\mchang\\workspace\\Facebook Hacker Cup\\src\\output.txt");
+		String filename = "C:\\Users\\mchang\\workspace\\Facebook Hacker Cup\\src\\input.txt";
+		
+		long startTime = System.currentTimeMillis();
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(filename));
+			int numCases = Integer.parseInt(br.readLine());
+			for (int caseNum = 1; caseNum <= numCases; caseNum++) {
+				System.out.println("Processing Case: " + caseNum);
+				String line = br.readLine();
+				StringTokenizer st = new StringTokenizer(line);
+				int M = Integer.parseInt(st.nextToken());
+				int N = Integer.parseInt(st.nextToken());
+				char[][] map = new char[M][N];
+				int startX = 0;
+				int startY = 0;
+				int endX = 0;
+				int endY = 0;
+				HashSet<Integer> deadSpots = new HashSet<Integer>();
+				for(int row = 0; row < M; row++){
+					line = br.readLine();
+					for(int col = 0; col < N; col++){
+						map[row][col] = line.charAt(col);
+						if(map[row][col] == 'S'){
+							startX = row;
+							startY = col;
+						} else if(map[row][col] == 'G'){
+							endX = row;
+							endY = col;
+						}
+					}					
+				}
+				for(int i = 0; i < M; i++){
+					for(int j = 0; j < N; j++){
+						addToDeadspots(deadSpots, map, i, j);
+					}
+				}
+				HashSet<Integer> visited = new HashSet<Integer>();
+				HashSet<Integer> lastLevel = new HashSet<Integer>();
+				int steps = 0;
+				lastLevel.add(generateHash(startX, startY, 0));
+				visited.add(generateHash(startX, startY, 0));
+				boolean solved = false;
+				while(true){
+					if(lastLevel.contains(generateHash(endX, endY, 0)) || 
+							lastLevel.contains(generateHash(endX, endY, 1)) ||
+							lastLevel.contains(generateHash(endX, endY, 2)) ||
+							lastLevel.contains(generateHash(endX, endY, 3))){
+						printAnswer(steps + "", caseNum, writer);
+						solved = true;
+						break;
+					}
+					steps++;
+					Iterator<Integer> listOfLastLevel = lastLevel.iterator();
+					HashSet<Integer> nextLevel = new HashSet<Integer>();
+					while(listOfLastLevel.hasNext()){
+						int location = listOfLastLevel.next();
+						int x = extractX(location);
+						int y = extractY(location);
+						int direction = extractDirection(location);
+						int newDirection = (direction + 1) % 4;
+						if(x - 1 >= 0){
+							int upPosition = generateHash(x - 1, y, newDirection);
+							if(!visited.contains(upPosition) && !deadSpots.contains(upPosition)){
+								nextLevel.add(upPosition);
+								visited.add(upPosition);
+							}
+						} 
+						if(x + 1 < M){
+							int downPosition = generateHash(x + 1, y, newDirection);
+							if(!visited.contains(downPosition) && !deadSpots.contains(downPosition)){
+								nextLevel.add(downPosition);
+								visited.add(downPosition);
+							}
+						}
+						if(y - 1 >= 0){
+							int leftPosition = generateHash(x, y - 1, newDirection);
+							if(!visited.contains(leftPosition) && !deadSpots.contains(leftPosition)){
+								nextLevel.add(leftPosition);
+								visited.add(leftPosition);
+							}
+						}
+						if(y + 1 < N){
+							int rightPosition = generateHash(x, y + 1, newDirection);
+							if(!visited.contains(rightPosition) && !deadSpots.contains(rightPosition)){
+								nextLevel.add(rightPosition);
+								visited.add(rightPosition);
+							}
+						}
+					}
+					if(nextLevel.size() == 0) break;
+					lastLevel = nextLevel;
+				}
+				if(!solved){
+					printAnswer("impossible", caseNum, writer);	
+				}
+			}
+			br.close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		writer.close();
+		System.out.println(System.currentTimeMillis() - startTime);
+	}
+
+	public static int extractX(int location){
+		return location / 10000;
+	}
+	public static int extractY(int location){
+		return (location / 10) % 1000;
+	}
+	public static int extractDirection(int location){
+		return location % 10;
+	}
+	public static void addToDeadspots(HashSet<Integer> deadSpots, char[][] map, int i , int j){
+		if(map[i][j] == '#'){
+			alwaysDeadspot(deadSpots, i, j);
+		} else if(map[i][j] == '<'){
+			alwaysDeadspot(deadSpots, i, j);
+			laserShot(deadSpots, i, j, 1, "up", map);
+			laserShot(deadSpots, i, j, 2, "right", map);
+			laserShot(deadSpots, i, j, 3, "down", map);
+			laserShot(deadSpots, i, j, 0, "left", map);	
+		} else if(map[i][j] == '^'){
+			alwaysDeadspot(deadSpots, i, j);
+			laserShot(deadSpots, i, j, 0, "up", map);
+			laserShot(deadSpots, i, j, 1, "right", map);
+			laserShot(deadSpots, i, j, 2, "down", map);
+			laserShot(deadSpots, i, j, 3, "left", map);	
+		} else if(map[i][j] == '>'){
+			alwaysDeadspot(deadSpots, i, j);
+			laserShot(deadSpots, i, j, 3, "up", map);
+			laserShot(deadSpots, i, j, 0, "right", map);
+			laserShot(deadSpots, i, j, 1, "down", map);
+			laserShot(deadSpots, i, j, 2, "left", map);	
+		} else if(map[i][j] == 'v'){
+			alwaysDeadspot(deadSpots, i, j);
+			laserShot(deadSpots, i, j, 2, "up", map);
+			laserShot(deadSpots, i, j, 3, "right", map);
+			laserShot(deadSpots, i, j, 0, "down", map);
+			laserShot(deadSpots, i, j, 1, "left", map);	
+		}
+	}
+	
+	public static void laserShot(HashSet<Integer> deadSpots, int i, int j, int rotation, String direction, char[][] map){
+		if(direction.equals(up)){
+			int newX = i - 1;
+			while(newX >= 0 && (map[newX][j] == '.' || map[newX][j] == 'S' || map[newX][j] == 'G')){
+				deadSpots.add(generateHash(newX, j, rotation));
+				newX--;
+			}
+		} else if(direction.equals(right)){
+			int newY = j + 1;
+			while(newY < map[0].length && (map[i][newY] == '.' || map[i][newY] == 'S' || map[i][newY] == 'G')){
+				deadSpots.add(generateHash(i, newY, rotation));
+				newY++;
+			}
+		} else if(direction.equals(down)){
+			int newX = i + 1;
+			while(newX < map.length && (map[newX][j] == '.' || map[newX][j] == 'S' || map[newX][j] == 'G')){
+				deadSpots.add(generateHash(newX, j, rotation));
+				newX++;
+			}
+		} else if(direction.equals(left)){
+			int newY = j - 1;
+			while(newY >= 0 && (map[i][newY] == '.' || map[i][newY] == 'S' || map[i][newY] == 'G')){
+				deadSpots.add(generateHash(i, newY, rotation));
+				newY--;
+			}
+		} else {
+			System.out.println("FAIL");
+		}
+	}
+	public static void alwaysDeadspot(HashSet<Integer> deadSpots, int i, int j){
+		deadSpots.add(generateHash(i, j, 0));
+		deadSpots.add(generateHash(i, j, 1));
+		deadSpots.add(generateHash(i, j, 2));
+		deadSpots.add(generateHash(i, j, 3));
+	}
+	public static int generateHash(int x, int y, int rotation){
+		return x*10000 + y*10 + rotation;
+	}
+	public static void printAnswer(String answer, int caseNumber,
+			FileWriter writer) throws IOException {
+		writer.write("Case #" + caseNumber + ": " + answer + "\n");
+	}
+	public static void printDeadspots(HashSet<Integer> deadSpots){
+		Iterator<Integer> it = deadSpots.iterator();
+		while(it.hasNext()){
+			int deadspot = it.next();
+			System.out.println("	X:" + extractX(deadspot) + " Y:" + extractY(deadspot) + " Rotation:" + extractDirection(deadspot)); 
+		}
+	}
+}

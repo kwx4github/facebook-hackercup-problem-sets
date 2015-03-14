@@ -1,0 +1,123 @@
+#include <queue>
+#include <iostream>
+#include <cstdio>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
+const int dx[] = { 0, -1, 0, +1 };
+const int dy[] = {-1,  0,+1,  0 };
+
+int N, M;
+
+bool is_in (int x, int y) {
+    return (0 <= x && x < N && 0 <= y && y < M);
+}
+
+int get_dir (char ch) {
+    switch (ch) {
+        case '<': return 0;
+                  break;
+        case '^': return 1;
+                  break;
+        case '>': return 2;
+                  break;
+        case 'v': return 3;
+                  break;
+        default: return -1;
+    }
+}
+
+void solve () {
+    scanf ( "%d%d", &N, &M );
+
+    string maze[5][128];
+    for (int i=0; i<N; ++i) cin >> maze[0][i];
+
+    int sx, sy;
+    int gx, gy;
+    for (int i=0; i<N; ++i)
+        for (int j=0; j<M; ++j) {
+            if (maze[0][i][j] == 'S') {
+                maze[0][i][j] = '.';
+                sx = i;
+                sy = j;
+            }
+            if (maze[0][i][j] == 'G') {
+                maze[0][i][j] = '.';
+                gx = i;
+                gy = j;
+            }
+        }
+
+    // copy the maze over all 4
+    for (int k=1; k<4; ++k)
+        for (int i=0; i<N; ++i)
+            maze[k][i] = maze[0][i];
+
+    // fill the maze with blocked paths depending on the lasers' direction
+    for (int k=0; k<4; ++k) {
+        for (int i=0; i<N; ++i) {
+            for (int j=0; j<M; ++j) {
+                int dir = get_dir(maze[k][i][j]);
+                if (dir != -1) {
+                    int x = i;
+                    int y = j;
+                    dir = (dir + k) % 4;
+                    do {
+                        maze[k][x][y] = '#';
+                        x += dx[dir];
+                        y += dy[dir];
+                    } while (is_in(x, y) && maze[k][x][y] == '.');
+                }
+            }
+        }
+    }
+
+    // print the 4 mazes
+    //for (int k=0; k<4; ++k) {
+        //printf ("Maze %d\n", k);
+        //for (int i=0; i<N; ++i ) cout << maze[k][i] << endl;
+        //printf ("~~~\n");
+    //}
+    
+    int f[4][128][128];
+    memset (f, 30, sizeof f);
+    int inf = f[0][0][0];
+
+    f[0][sx][sy] = 0;
+
+    queue <int> q;
+    q.push(0); q.push(sx); q.push(sy);
+    while (!q.empty()) {
+        int dir = q.front(); q.pop();
+        int x = q.front(); q.pop();
+        int y = q.front(); q.pop();
+
+        for (int k=0; k<4; ++k) {
+            int ndir = (dir + 1) % 4;
+            int nx = x + dx[k];
+            int ny = y + dy[k];
+            if (is_in(nx, ny) && maze[ndir][nx][ny] == '.' && f[ndir][nx][ny] == inf) {
+                f[ndir][nx][ny] = f[dir][x][y] + 1;
+                q.push(ndir); q.push(nx); q.push(ny);
+            }
+        }
+    }
+
+    int ans = min ( min (f[0][gx][gy], f[1][gx][gy]), min (f[2][gx][gy], f[3][gx][gy]) );
+    if (ans == inf) printf ("impossible");
+    else printf ("%d", ans);
+}
+
+int main (void) {
+    int T;
+    scanf ("%d", &T);
+    for (int i=1; i<=T; ++i) {
+        printf ("Case #%d: ", i);
+        solve ();
+        printf ("\n");
+    }
+    return 0;
+}

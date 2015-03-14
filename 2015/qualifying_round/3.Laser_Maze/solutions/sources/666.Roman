@@ -1,0 +1,152 @@
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.PrintWriter;
+import java.util.*;
+
+public class LazerMaze {
+    private static final String inFile = "laser_maze.txt";
+    private static final String outFile = "3-out.txt";
+    private static final int[] sx = {1, 0, -1, 0};
+    private static final int[] sy = {0, 1, 0, -1};
+
+    private static class Pos {
+        public int i, j, time;
+
+        public Pos(int i, int j, int time) {
+            this.i = i;
+            this.j = j;
+            this.time = time;
+        }
+
+        public String hash() {
+            return i + " " + j + " " + (time % 4);
+        }
+    }
+
+    private final String[] maze;
+    private final int n, m;
+
+    public LazerMaze(String[] maze) {
+        this.maze = maze;
+        n = maze.length;
+        m = maze[0].length();
+    }
+
+    public int solve() {
+        char[][][] states = new char[4][][];
+        for (int i = 1; i < 5; ++i) {
+            states[i % 4] = shoot(i);
+        }
+        Pos start = null, end = null;
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                switch (maze[i].charAt(j)) {
+                    case 'S': start = new Pos(i, j, 0); break;
+                    case 'G': end = new Pos(i, j, -1); break;
+                }
+            }
+        }
+        Queue<Pos> q = new LinkedList<Pos>();
+        q.add(start);
+        Set<String> visited = new HashSet<String>();
+        visited.add(start.hash());
+        while (!q.isEmpty()) {
+            Pos curr = q.remove();
+            if (curr.i == end.i && curr.j == end.j) {
+                return curr.time;
+            }
+            int time = curr.time + 1;
+            char[][] state = states[time % 4];
+            for (int k = 0; k < 4; ++k) {
+                int i = curr.i + sx[k];
+                int j = curr.j + sy[k];
+                if (i < 0 || j < 0 || i >= n || j >= m || !isPenetrable(state[i][j])) {
+                    continue;
+                }
+                Pos next = new Pos(i, j, time);
+                String hash = next.hash();
+                if (!visited.contains(hash)) {
+                    visited.add(hash);
+                    q.add(next);
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private char[][] shoot(int time) {
+        char[][] c = new char[n][m];
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                c[i][j] = maze[i].charAt(j);
+            }
+        }
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                char t = c[i][j];
+                if (isTurret(t)) {
+                    t = rotateTurret(t, time);
+                    int di = 0, dj = 0;
+                    switch (t) {
+                        case '^': di = -1; break;
+                        case '>': dj = 1; break;
+                        case 'v': di = 1; break;
+                        case '<': dj = -1; break;
+                    }
+                    int ii = i + di;
+                    int jj = j + dj;
+                    while (ii >= 0 && jj >= 0 && ii < n && jj < m && isPenetrable(maze[ii].charAt(jj))) {
+                        c[ii][jj] = '#';
+                        ii += di;
+                        jj += dj;
+                    }
+                }
+            }
+        }
+        return c;
+    }
+
+    private static boolean isPenetrable(char c) { // =)
+        return !isTurret(c) && c != '#';
+    }
+
+    private static boolean isTurret(char c) {
+        return c == '^' || c == '>' || c == 'v' || c == '<';
+    }
+
+    private static char rotateTurret(char c, int time) {
+        for (int i = 0; i < time; ++i) {
+            switch (c) {
+                case '^': c = '>'; break;
+                case '>': c = 'v'; break;
+                case 'v': c = '<'; break;
+                case '<': c = '^'; break;
+            }
+        }
+        return c;
+    }
+
+    public static void main(String[] args) {
+        try {
+            FileReader reader = new FileReader(inFile);
+            PrintWriter writer = new PrintWriter(outFile);
+            Scanner scanner = new Scanner(reader);
+            String input = scanner.nextLine();
+            int t = Integer.parseInt(input);
+            for (int i = 1; i <= t; ++i) {
+                input = scanner.nextLine();
+                int n = Integer.parseInt(input.split(" ")[0]);
+                String[] maze = new String[n];
+                for (int j = 0; j < n; ++j) {
+                    maze[j] = scanner.nextLine();
+                }
+                LazerMaze solver = new LazerMaze(maze);
+                Integer res = solver.solve();
+                writer.println("Case #" + i + ": " + (res == -1 ? "impossible" : res));
+            }
+            writer.close();
+        } catch (FileNotFoundException ignored) {
+        }
+    }
+}

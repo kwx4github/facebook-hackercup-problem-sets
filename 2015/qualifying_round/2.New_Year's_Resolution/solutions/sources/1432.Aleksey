@@ -1,0 +1,146 @@
+package main
+
+import (
+	"fmt"
+	//"strings"
+	"time"
+)
+
+func yo(err error) {
+	if err != nil {
+		fmt.Println(err)
+		panic(42)
+	}
+}
+
+type Result struct {
+	test int
+	ans  string
+}
+
+type Solver interface {
+	add(i int, t Task)
+	run()
+}
+
+func create(parallel bool, count int) Solver {
+	if !parallel {
+		return CSolver{}
+	}
+	results := make([]string, count, count)
+	resp := make(chan Result)
+	return PSolver{count, results, resp}
+}
+
+// Consequetive
+type CSolver struct{}
+
+func (s CSolver) add(i int, t Task) {
+	ans := solve(t)
+	fmt.Printf("Case #%d: %s\n", i+1, ans)
+}
+
+func (s CSolver) run() {
+}
+
+// Parallel solver
+type PSolver struct {
+	count   int
+	results []string
+	resp    chan Result
+}
+
+func (s PSolver) add(i int, t Task) {
+	go func(ch chan Result, test int, t Task) {
+		ch <- Result{test, solve(t)}
+	}(s.resp, i, t)
+}
+
+func (s PSolver) run() {
+	for s.count > 0 {
+		select {
+		case res := <-s.resp:
+			s.results[res.test] = res.ans
+			s.count--
+		}
+	}
+	for i, ans := range s.results {
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}
+
+type Food [3]int
+type Task struct {
+	goal Food
+	food []Food
+}
+
+func (f Food) add(o Food) Food {
+	return Food{f[0] + o[0], f[1] + o[1], f[2] + o[2]}
+}
+
+func (f Food) less(o Food) bool {
+	return f[0] <= o[0] && f[1] <= o[1] && f[2] <= o[2]
+}
+
+func solve(pr Task) string {
+	goal := pr.goal
+	food := pr.food
+
+	diets := make([]Food, 1)
+	//diets = append(diets, Food{})
+	for _, f := range food {
+		for i := len(diets) - 1; i >= 0; i-- {
+			newd := diets[i].add(f)
+			if newd == goal {
+				return "yes"
+			} else if newd.less(goal) {
+				diets = append(diets, newd)
+			}
+		}
+	}
+	return "no"
+}
+
+func read_food(f *Food) {
+	var err error
+	_, err = fmt.Scan(&f[0])
+	yo(err)
+	_, err = fmt.Scan(&f[1])
+	yo(err)
+	_, err = fmt.Scanln(&f[2])
+	yo(err)
+}
+func next_task() Task {
+	var err error
+
+	var goal Food
+	var n int
+	var food []Food
+	read_food(&goal)
+	_, err = fmt.Scanln(&n)
+	yo(err)
+	food = make([]Food, n)
+	for i := 0; i < n; i++ {
+		read_food(&food[i])
+	}
+	return Task{goal, food}
+}
+
+func main() {
+	perf, parallel := false, !false
+	start := time.Now()
+
+	var tests_count int
+	_, err := fmt.Scanln(&tests_count)
+	yo(err)
+
+	solver := create(parallel, tests_count)
+	for i := 0; i < tests_count; i++ {
+		solver.add(i, next_task())
+	}
+	solver.run()
+	if perf {
+		fmt.Printf("%2fs total\n", time.Since(start).Seconds())
+	}
+}

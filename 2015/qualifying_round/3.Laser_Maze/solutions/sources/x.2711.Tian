@@ -1,0 +1,130 @@
+#include <cstdio>
+#include <map>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+struct Data{
+	int x,y;
+	Data( int a=0, int b=0 ){
+		x=a; y=b;
+	}
+	bool operator ==(const Data &b) const{
+		return x==b.x && y==b.y;
+	}
+};
+
+struct DD{
+	int x,y,state;
+	DD( int a=0, int b=0, int c=0 ){
+		x=a;y=b;state=c;
+	}
+	bool operator <( const DD &b ) const{
+		return x<b.x || x==b.x && y<b.y || x==b.x && y==b.y && state<b.state;
+	}
+};
+
+const int dx[4]={0,0,1,-1};
+const int dy[4]={1,-1,0,0};
+const int cc[4]={2,3,1,0};
+int m,n;
+char M[110][110];
+int MM[110][110];
+Data laser[1010];
+int Nlaser,sstate;
+Data St,En;
+map<DD,int> app;
+queue<DD> qq;
+
+void insertLaser(int direct, int a, int b){
+	sstate=sstate*4+direct;
+	laser[Nlaser].x=a;
+	laser[Nlaser].y=b;
+	++Nlaser;
+}
+
+void insert( int x, int y, int state, int len ){
+	DD nd(x,y,state);
+	if (app[nd]==0){
+		qq.push(nd);
+		app[nd]=len+1;
+	}
+}
+
+void genMap(int state){
+	memset(MM,0,sizeof(MM));
+	for (int i=0; i<n; ++i)
+		for (int j=0; j<m; ++j)
+			if (M[i][j]=='.')
+				MM[i][j]=1;
+	for (int i=0; i<Nlaser; ++i){
+		int d=state>>(i*2)&3;
+		int sx=laser[i].x+dx[d], sy=laser[i].y+dy[d];
+		while (sx>=0 && sx<n && sy>=0 && sy<m && M[sx][sy]=='.'){
+			MM[sx][sy]=0; sx+=dx[d]; sy+=dy[d];
+		}
+	}
+}
+
+int change(int state){
+	int ret=0;
+	for (int i=0; i<Nlaser; ++i){
+		int a=state>>(i*2)&3;
+		ret|=cc[a]<<(i*2);
+	}
+	return ret;
+}
+
+int main(){
+	int test;
+	scanf("%d\n", &test);
+	for (int T=1; T<=test; ++T){
+		scanf("%d%d\n", &n,&m);
+		sstate=0;
+		Nlaser=0;
+		for (int i=0; i<n; ++i){
+			for (int j=0; j<m; ++j){
+				scanf("%c", &M[i][j]);
+//				printf("%c", M[i][j]);
+				if (M[i][j]=='>') insertLaser(2,i,j);
+				if (M[i][j]=='<') insertLaser(3,i,j);
+				if (M[i][j]=='v') insertLaser(1,i,j);
+				if (M[i][j]=='^') insertLaser(0,i,j);
+				if (M[i][j]=='S'){
+					St.x=i; St.y=j; M[i][j]='.';
+				}
+				if (M[i][j]=='G'){
+					En.x=i; En.y=j; M[i][j]='.';
+				}
+			}
+			char junk;
+			scanf("%c",&junk);
+//			printf("\n");
+		}
+		app.clear();
+		while (!qq.empty()) qq.pop();
+		insert(St.x,St.y,sstate,0);
+		//printf("!!!\n");
+		int ans=-1;
+		while (! qq.empty()){
+			DD td = qq.front();
+			genMap(td.state);
+			int len = app[td];
+			for (int i=0; i<4; ++i){
+				int tx=td.x+dx[i], ty=td.y+dy[i];
+				if (tx>=0 && tx<n && ty>=0 && ty<m && MM[tx][ty]==1){
+					if (tx==En.x && ty==En.y){
+						ans=len; break;
+					}
+					insert(tx,ty,change(td.state),len);
+				}
+			}
+			if (ans!=-1) break;
+			qq.pop();
+		}
+		printf("Case #%d: ",T);
+		if (ans!=-1) printf("%d\n", ans); else printf("impossible\n");
+	}
+}
+

@@ -1,0 +1,153 @@
+#include <iostream>
+#include <string>
+#include <cstdio>
+#include <algorithm>
+#include <math.h> 
+#include <vector>
+#include <set>
+#include <map> 
+#include <string.h>
+#include <cstdlib> 
+#include <limits.h> 
+#include <tr1/unordered_map>
+#include <tr1/unordered_set>
+#include <functional>
+#include <stack>
+#include <queue>
+using namespace std;
+
+typedef long long LL;
+typedef vector<int> VI;
+typedef pair<int, int> II;
+typedef vector<II> VII;
+
+#define PB push_back
+#define MP make_pair
+#define ALL(a) a.begin(), a.end()
+#define MSET(a, b) memset((a), b, sizeof(a))
+#define REP(I, N) for(int I = 0; I < N; I++)
+#define EPS 0.0000000001
+#define IN(a, b) (find((a).begin(), (a).end(), b) != (a).end())
+#define FS first
+#define SC second
+#define TCASE(T) int T; for (cin >> T; T--; )
+
+char grid[110][110];
+
+bool cant[110][110][4], visited[110][110][4];
+int n, m, sx, sy, ex, ey, tim[110][110][4];
+
+void mark_dir(int x, int y, bool lr, int plus, int t) {
+    while (x >= 0 && y >= 0 && x < n && y < m) {
+        if (grid[x][y] == '#' || grid[x][y] == '<' || grid[x][y] == '^'
+                || grid[x][y] == '>' || grid[x][y] == 'v') {
+            break;
+        }
+        cant[x][y][t] = true;
+        (lr ? y : x) += plus;
+    }
+}
+
+void mark_turret(int x, int y) {
+    int left_t;
+    switch(grid[x][y]) {
+        case '<':
+            left_t = 0;
+            break;
+        case 'v':
+            left_t = 1;
+            break;
+        case '>':
+            left_t = 2;
+            break;
+        case '^':
+            left_t = 3;
+            break;
+    }
+    for (int i = 0; i < 4; i++) {
+        cant[x][y][i] = true;
+    }
+    //mark left
+    mark_dir(x, y - 1, true, -1, left_t);
+    //mark up
+    mark_dir(x - 1, y, false, -1, (left_t + 1) % 4);
+    //mark right
+    mark_dir(x, y + 1, true, 1, (left_t + 2) % 4);
+    //mark down
+    mark_dir(x + 1, y, false, 1, (left_t + 3) % 4);
+}
+
+int main()
+{
+    int c = 0;
+    TCASE(t) {
+        c++;
+        memset(cant, 0, sizeof(cant));
+        memset(visited, 0, sizeof(visited));
+        cin >> n >> m;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                do {
+                    cin >> grid[i][j];
+                } while (grid[i][j] <= 32);
+                if (grid[i][j] == 'S') {
+                    sx = i;
+                    sy = j;
+                }
+                if (grid[i][j] == 'G') {
+                    ex = i;
+                    ey = j;
+                }
+            }
+        }
+        //mark unreachable points
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (grid[i][j] == '#') {
+                    for (int k = 0; k < 4; k++) {
+                        cant[i][j][k] = true;
+                    }
+                }
+                if (grid[i][j] == '<' || grid[i][j] == '^'
+                        || grid[i][j] == '^' || grid[i][j] == 'v') {
+                    mark_turret(i, j);
+                }
+            }
+        }
+        //start bfs
+        queue<pair<II, int> > q;
+        q.push(MP(MP(sx, sy), 0));
+        tim[sx][sy][0] = 0;
+        visited[sx][sy][0] = true;
+        while (!q.empty()) {
+            pair<II, int> pr = q.front();
+            q.pop();
+            int x = pr.first.first, y = pr.first.second, t = pr.second;
+            int dx[] = {0, 0, 1, -1}, dy[] = {1, -1, 0, 0};
+            for (int k = 0; k < 4; k++) {
+                int nx = x + dx[k], ny = y + dy[k], nt = (t + 1) % 4;
+                if (nx >= 0 && ny >= 0 && nx < n && ny < m
+                        && !cant[nx][ny][nt] && !visited[nx][ny][nt]) {
+                    tim[nx][ny][nt] = tim[x][y][t] + 1;
+                    q.push(MP(MP(nx, ny), nt));
+                    visited[nx][ny][nt] = true;
+                }
+            }
+        }
+        bool poss = false;
+        int tt = 1000000000;
+        for (int i = 0; i < 4; i++) {
+            if (visited[ex][ey][i]) {
+                tt = min(tt, tim[ex][ey][i]);
+                poss = true;
+            }
+        }
+        cout << "Case #" << c << ": ";
+        if (poss) {
+            cout << tt << endl;
+        } else {
+            cout << "impossible" << endl;
+        }
+    }
+	return 0;
+}

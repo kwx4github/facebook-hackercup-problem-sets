@@ -1,0 +1,284 @@
+#include <iostream>
+using namespace std;
+
+struct Position { int x; int y; 
+	bool operator==(const Position& K){ 
+		return this->x==K.x && this->y==K.y; 
+	} 
+	bool operator!=(const Position& K){ 
+		return this->x!=K.x || this->y!=K.y;  
+	}
+};
+enum type{ type_empty, type_wall, type_laser };
+enum direction { dir_null=-1, dir_left=0, dir_right=2, dir_up=1, dir_down=3 };
+	
+struct opis{
+	int counter=0;
+	int firstHitTurn;
+	//Position pos;
+	direction d;
+};
+
+
+class Object{
+public:
+	Object() {}
+	Object(char ch){ 
+		if (ch=='S' || ch=='G' || ch=='.') t=type_empty;
+		else if (ch=='#') t=type_wall;
+		else if (ch=='^' || ch=='>' || ch=='v' || ch=='<'){ t=type_laser; dir=getDirFromChar(ch); }
+	}
+	char show(){
+		if (t==type_empty) return '.';
+		if (t==type_wall)  return '#';
+		if (t==type_laser) return getCharFromDir(dir);
+	}
+	void rotate() { 
+		     if(dir==dir_down)  { dir=dir_left;  return; }
+		else if(dir==dir_left)  { dir=dir_up;    return;}
+		else if(dir==dir_up)    { dir=dir_right;    return;}
+		else if(dir==dir_right) { dir=dir_down;   return;}
+	}
+
+	type t; direction dir=dir_null;
+private:
+	direction getDirFromChar(char in){
+		direction out;
+		     if (in=='^') out=dir_up;
+		else if (in=='v') out=dir_down;
+		else if (in=='<') out=dir_left;
+		else if (in=='>') out=dir_right;
+		else out=dir_null;
+		return out;
+	}
+	char getCharFromDir(direction in){
+		char out;
+		     if (in==dir_up)    out='^';
+		else if (in==dir_down)  out='v';
+		else if (in==dir_left)  out='<';
+		else if (in==dir_right) out='>';
+		else out='?';
+		return out;
+	}
+};
+
+class Maze{
+public:
+	Maze(int height, int width) { 
+		this->width=width; this->height=height;
+		cont = new Object*[height]; 
+		for (int i=0; i<height; i++) 
+			cont[i]=new Object[width];
+	}
+	void setObject(int x, int y, char type){
+		cont[y][x]=Object(type);
+		if (type=='S') { start.x=x; start.y=y; }
+		if (type=='G') { goal.x=x;  goal.y=y;  }
+	}
+	void dumpAtTime(int time){
+		Object tmp;
+		for (int i=0; i<height; i++){
+			for (int j=0; j<width; j++){
+				tmp = cont[i][j];
+				if (time==0) cout<<tmp.show();
+				else if (time==1){
+
+				}
+			}
+			cout<<endl;
+		}
+
+	}
+
+	bool** safety(int time){
+		bool **b = new bool*[height]; for (int i=0;i<height;i++){ b[i]=new bool[width]; for (int j=0;j<width;j++) b[i][j]=true;}
+
+
+
+
+
+
+		for (int i=0;i<height;i++) for (int j=0;j<width;j++){
+			if (cont[i][j].t==type_wall) b[i][j]=false;
+			else if(cont[i][j].t==type_laser){
+				Object o = cont[i][j];
+				for (int i=0;i<time;i++) o.rotate();
+
+				if (o.dir==dir_up) 
+					for(int z=i;z>=0;z--)
+						if (cont[z][j].t!=type_wall)
+							b[z][j]=false;
+						else
+							break;
+				else if (o.dir==dir_down) 
+					for(int z=i;z<height;z++)
+						if (cont[z][j].t!=type_wall)
+							b[z][j]=false;
+						else
+							break;
+				else if (o.dir==dir_left) 
+					for(int z=j;z>=0;z--)
+						if (cont[i][z].t!=type_wall)
+							b[i][z]=false;
+						else
+							break;
+				else if (o.dir==dir_right) 
+					for(int z=j;z<width;z++)
+						if (cont[i][z].t!=type_wall)
+							b[i][z]=false;
+						else
+							break;
+			}
+		}
+
+		return b;
+	}
+	Position start, goal;
+private:
+	
+	int height, width;
+	Object** cont;
+
+};
+
+direction neguj(direction d){
+	if (d==dir_left) return dir_right;
+	if (d==dir_right)return dir_left;
+	if (d==dir_up)   return dir_down;
+	if (d==dir_down) return dir_up;
+}
+
+int main(){ int MC=1;
+	int mazeCount; cin>>mazeCount;
+	while (mazeCount-- > 0){ 
+		int width, height; char obj;
+		cin>>height>>width;	Maze m = Maze(height,width);
+		for (int i=0; i<height; i++){
+			for (int j=0; j<width; j++){
+				cin>>obj; m.setObject(j,i,obj);
+			}
+		}
+		Position p = m.start; int i;
+		opis **o = new opis*[height]; for (int i=0;i<height;i++) o[i]=new opis[width];
+
+	/*	cout<<"Gx="<<m.goal.x<<" Gy="<<m.goal.y<<endl;
+		cout<<"Px="<<p.x<<" Py="<<p.y<<endl;
+		if (p==m.goal) cout<<"p==m\n"; else cout<<"p!=m\n";
+		*/
+		int C=0;
+		bool zmianaOsi=false;
+		for (i=0;p!=m.goal;i++){
+			if (++C>=25) break;
+			//cout<<"\n";
+			bool **b = m.safety(i+1);
+			bool owerwriten=false;
+			direction d;
+
+			if (o[p.y][p.x].counter%4==3){
+				i=o[p.y][p.x].firstHitTurn-1;
+				zmianaOsi=owerwriten=true;
+				d=neguj(o[p.y][p.x].d);
+				//cout<<"!!!\n";
+			}
+
+
+			//bool czyPreferowanyLewo = p.x>0 && p.x<width-1  && o[p.y][p.x-1].counter < o[p.y][p.x+1].counter;
+			//bool czyPreferowanyPrawo= p.x>0 && p.x<width-1  && o[p.y][p.x-1].counter > o[p.y][p.x+1].counter;
+			//bool czyPreferowanyGora = p.y>0 && p.y<height-1 && o[p.y-1][p.x].counter < o[p.y+1][p.x].counter;
+			//bool czyPreferowanyDol  = p.y>0 && p.y<height-1 && o[p.y-1][p.x].counter > o[p.y+1][p.x].counter;
+
+			bool czyPreferowanyLewo =false;
+			bool czyPreferowanyPrawo=false;
+			bool czyPreferowanyGora =false;
+			bool czyPreferowanyDol  =false;
+		
+			bool czyMoznaLewo = p.x>0        && b[p.y]  [p.x-1];
+			bool czyMoznaPrawo= p.x<width-1  && b[p.y]  [p.x+1];
+			bool czyMoznaGora = p.y>0        && b[p.y-1][p.x];
+			bool czyMoznaDol  = p.y<height-1 && b[p.y+1][p.x];
+
+			int wLewa;  if(!czyMoznaLewo) wLewa=1000; else if (p.x==0)        wLewa=1000; else wLewa=o[p.y][p.x-1].counter;
+			int wPraw;  if(!czyMoznaPrawo)wPraw=1000; else if (p.x==width-1)  wPraw=1000; else wPraw=o[p.y][p.x+1].counter;
+			int wGory;  if(!czyMoznaGora) wGory=1000; else if (p.y==0)        wGory=1000; else wGory=o[p.y-1][p.x].counter;
+			int wDolu;  if(!czyMoznaDol)  wDolu=1000; else if (p.y==height-1) wDolu=1000; else wDolu=o[p.y+1][p.x].counter;
+			//cout<<"wLewa="<<wLewa<<" wPrawa="<<wPraw<<" wGory"<<wGory<<" wDolu="<<wDolu<<endl;
+		//	cout<<"i="<<i<<endl;
+
+			     if (wLewa<wPraw && wLewa<wGory && wLewa<wDolu) czyPreferowanyLewo=true;
+			else if (wPraw<wLewa && wPraw<wGory && wPraw<wDolu) czyPreferowanyPrawo=true;
+			else if (wGory<wLewa && wGory<wPraw && wGory<wDolu) czyPreferowanyGora=true;
+			else if (wDolu<wLewa && wDolu<wPraw && wDolu<wGory) czyPreferowanyDol=true;
+
+			bool czyTrzebaLewo = m.goal.x<p.x, czyTrzebaPrawo = !czyTrzebaLewo;
+			bool czyTrzebaGora = m.goal.y<p.y, czyTrzebaDol   = !czyTrzebaGora;
+
+
+			//zmianaOsi=false;//!
+			if (!owerwriten){
+				//if (!zmianaOsi){
+					if (false) ;
+					else if (czyPreferowanyLewo   && czyMoznaLewo)  d=dir_left;
+					else if (czyPreferowanyPrawo  && czyMoznaPrawo) d=dir_right;
+					else if (czyPreferowanyGora   && czyMoznaGora)  d=dir_up;
+					else if (czyPreferowanyDol    && czyMoznaDol)   d=dir_down;
+					else if (czyTrzebaLewo  && czyMoznaLewo)  d=dir_left;
+					else if (czyTrzebaPrawo && czyMoznaPrawo) d=dir_right;
+					else if (czyTrzebaGora  && czyMoznaGora)  d=dir_up;
+					else if (czyTrzebaDol   && czyMoznaDol)   d=dir_down;
+					else if (czyMoznaLewo)  d=dir_left; 
+					else if (czyMoznaPrawo) d=dir_right;
+					else if (czyMoznaGora)  d=dir_up;
+					else if (czyMoznaDol)   d=dir_down;
+					else { i=-100; break;/*cout<<"DUPA\n"; break;*/	}
+				/*}
+				else if(zmianaOsi){
+					if (false);
+					else if (czyPreferowanyDol    && czyMoznaDol)   d=dir_down;
+					else if (czyPreferowanyGora   && czyMoznaGora)  d=dir_up;
+					else if (czyPreferowanyPrawo  && czyMoznaPrawo) d=dir_right;
+					else if (czyPreferowanyLewo   && czyMoznaLewo)  d=dir_left;
+					else if (czyTrzebaDol   && czyMoznaDol)   d=dir_down;
+					else if (czyTrzebaGora  && czyMoznaGora)  d=dir_up;
+					else if (czyTrzebaPrawo && czyMoznaPrawo) d=dir_right;
+					else if (czyTrzebaLewo  && czyMoznaLewo)  d=dir_left;
+					else if (czyMoznaDol)   d=dir_down;
+					else if (czyMoznaGora)  d=dir_up;
+					else if (czyMoznaPrawo) d=dir_right;
+					else if (czyMoznaLewo)  d=dir_left; 
+					else { cout<<"DUPA\n"; break;	}	
+				}*/
+			}
+			     if (d==dir_left)  p.x--; 
+			else if (d==dir_right) p.x++;
+			else if (d==dir_up)    p.y--;
+			else if (d==dir_down)  p.y++;
+
+			if (++(o[p.y][p.x].counter)==1){
+				o[p.y][p.x].firstHitTurn=i;
+				o[p.y][p.x].d=d;
+			}
+/*
+
+			for (int i=0;i<height;i++){
+				for (int j=0;j<width;j++){
+					if (i==p.y && j==p.x) cout<<"O";
+					else if (i==m.goal.y && j==m.goal.x) cout<<"*";
+					else if(b[i][j]) cout<<".";
+					else cout<<"X";
+				}
+				cout<<endl;
+			}
+*/
+
+
+		}
+
+		//cout<<"ODPOWIEDZ="<<i<<endl;
+		cout<<"Case #"<<MC++<<": ";
+		if (i!=-100) cout<<i;else cout<<"impossible";
+		cout<<endl;
+	}
+
+	return 0;
+
+}

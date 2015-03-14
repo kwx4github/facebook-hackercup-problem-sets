@@ -1,0 +1,205 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ConsoleApplication6
+{
+    class Program
+    {
+        static char[,] maze;
+        static int mazeX;
+        static int mazeY;
+
+        static List<int>[,] lasers;
+
+        static int[][] directions = new int[][] { new int[] { 0, -1 }, new int[] { 1, 0 }, new int[] { 0, 1 }, new int[] { -1, 0 } };
+
+        static void Main(string[] args)
+        {
+            var sr = new StreamReader("input.txt");
+            var sw = new StreamWriter("output.txt");
+
+            //Get num problems
+            var numProblems = int.Parse(sr.ReadLine());
+            for (int iProblem = 0; iProblem < numProblems; iProblem++)
+            {
+
+                sw.Write("Case #" + (iProblem + 1) + ": ");
+
+                //Get size
+                var size = sr.ReadLine().Split(' ');
+                mazeY = int.Parse(size[0]);
+                mazeX = int.Parse(size[1]);
+
+                var meX = -1;
+                var meY = -1;
+
+                //Get maze
+                maze = new char[mazeX, mazeY];
+                for (int i = 0; i < mazeY; i++)
+                {
+                    var row = sr.ReadLine();
+                    for (int j = 0; j < mazeX; j++)
+                    {
+                        maze[j, i] = row[j];
+
+                        //find me in the maze
+                        if(row[j] == 'S')
+                        {
+                            meX = j;
+                            meY = i;
+                        }
+                    }
+                }
+
+                //Create lasers
+                CreateLasers();
+
+                //BFS search
+                var queue = new Queue<Visit>();
+                var visited = new Dictionary<string, bool>();
+
+                visited.Add(meX + " " + meY + " " + 0, true);
+                queue.Enqueue(new Visit(meX, meY, 0));
+
+                var flag = false;
+
+                while (queue.Count > 0)
+                {
+                    var v = queue.Dequeue();
+
+                    //If goal
+                    if (maze[v.x, v.y] == 'G')
+                    {
+                        sw.WriteLine(v.n);
+                        flag = true;
+                        break;
+                    }
+
+                    foreach (var dir in directions)
+                    {
+                        var x = v.x + dir[0];
+                        var y = v.y + dir[1];
+                        var n = v.n + 1;
+
+                        if (MoveOk(x, y, n))
+                        {
+                            var key = x + " " + y + " " + n % 4;
+                            if (!visited.ContainsKey(key))
+                            {
+                                    visited.Add(key, true);
+                                    queue.Enqueue(new Visit(x, y, n));
+                            }
+                        }
+                    }
+                }
+
+                if (!flag)
+                {
+                    sw.WriteLine("impossible");
+                }
+            }
+            sw.Close();
+        }
+
+        private static void CreateLasers()
+        {
+            lasers = new List<int>[mazeX, mazeY];
+            for (int i = 0; i < mazeY; i++)
+            {
+                for (int j = 0; j < mazeX; j++)
+                {
+                    lasers[j ,i] = new List<int>();
+                }
+            }
+
+            for (int i = 0; i < mazeY; i++)
+            {
+                for (int j = 0; j < mazeX; j++)
+                {
+                    switch (maze[j, i])
+                    {
+                        case '^':
+                            CreateLaser(j, i, 0);
+                            break;
+                        case '>':
+                            CreateLaser(j, i, 1);
+                            break;
+                        case 'v':
+                            CreateLaser(j, i, 2);
+                            break;
+                        case '<':
+                            CreateLaser(j, i, 3);
+                            break;
+                    }
+                }
+            }
+        }
+
+        private static void CreateLaser(int x, int y, int p)
+        {
+            var origX = x;
+            var origY = y;
+
+            for(int d = 0; d < 4; d++){
+                for (x = origX + directions[(d + p) % 4][0], y = origY + directions[(d + p) % 4][1]; x >= 0 && x < mazeX && y >= 0 && y < mazeY; x += directions[(d + p) % 4][0], y += directions[(d + p) % 4][1])
+                {
+                    if (maze[x, y] == '.' || maze[x, y] == 'S' || maze[x, y] == 'G')
+                    {
+                        lasers[x, y].Add(d);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        private static bool LasersOk(int x, int y, int p)
+        {
+            if (lasers[x, y].Contains(p))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private static bool MoveOk(int x, int y, int n)
+        {
+            //In Maze Boundaris
+            if (x >= 0 && x < mazeX && y >= 0 && y < mazeY)
+            {
+                //Not a wall
+                if (maze[x, y] != '#')
+                {
+                    //Lasers ok
+                    if(LasersOk(x, y, n % 4))
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        class Visit
+        {
+            public int x;
+            public int y;
+            public int n;
+
+            public Visit(int x, int y, int n)
+            {
+                this.x = x;
+                this.y = y;
+                this.n = n;
+            }
+        }
+    }
+}

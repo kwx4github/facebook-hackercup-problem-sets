@@ -1,0 +1,195 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace ConsoleApplication3
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string[] alllines = System.IO.File.ReadAllLines(@"E:\new_years_resolution_example_input.txt");
+            for (int x = 0; x < alllines.Length; x++)
+            { alllines[x] += " "; }
+            
+            Int32 numbers = Convert.ToInt32(alllines[0]);
+
+            if (numbers < 1 || numbers > 20)
+            {
+                System.IO.File.WriteAllText(@"E:\new_years_resolution_example_output.txt", "Invalid No of TestCases");
+                return;
+            }
+            int temp = 0, total =0;
+            List<string> subs = new List<string>();
+            newYear[] obj = new newYear[numbers];
+            for (int i = 1; i < alllines.Length; )
+            {
+
+                subs.Add(alllines[i]);
+                i++;
+                temp = Convert.ToInt32(alllines[i]);
+                i++;
+                for (int j = 1; j <= temp; j++)
+                {
+                    subs.Add(alllines[i]);
+                    i++;
+                }
+                obj[total] = new newYear(subs);
+                total++;
+                subs.Clear();
+            }
+
+            string[] writeablelines = new string[numbers];
+            for (int x = 0; x < numbers; x++)
+            {
+                obj[x].extractdata();
+                obj[x].consistency();
+
+                if (!obj[x].error)
+                {
+                    obj[x].check();
+                    writeablelines[x] = "Case #" + (x + 1) + ": " + (obj[x].flag ? "Yes" : "No");
+                }
+                else
+                {
+                    writeablelines[x] = "Case #" + (x + 1) + ": " + "Invalid Data";
+                }
+
+                Console.WriteLine(writeablelines[x]);
+            }
+            System.IO.File.WriteAllLines(@"E:\new_years_resolution_example_output.txt",writeablelines);
+        }
+
+  
+    }
+
+    class newYear {
+        int Gp, Gc, Gf;
+        List<int> P, C, F;
+        List<string> subsme;
+        public Boolean flag = false, error = false;
+        public newYear(List<string> subs)
+        {
+            // TODO: Complete member initialization
+            subsme = new List<string>();
+            foreach(string a in subs)
+            subsme.Add(a);
+        }
+
+        public void consistency()
+        {
+            if (Gp < 10 || Gp > 1000 || Gc < 10 || Gc > 1000 || Gf < 10 || Gf > 1000)
+            {
+                error = true;
+            }
+
+            for (int x = 0; x < P.Count; x++)
+            {
+                if (P[x] < 10 || P[x] > 1000 || C[x] < 10 || C[x] > 1000 || F[x] < 10 || F[x] > 1000) { error = true; }
+            }
+        }
+
+
+        public void extractdata()
+        {
+            Gp = returnvalue(subsme[0], 1);
+            Gc = returnvalue(subsme[0], 2);
+            Gf = returnvalue(subsme[0], 3);
+            P = new List<int>();
+            C = new List<int>();
+            F = new List<int>();
+            for (int i = 1; i < subsme.Count; i++)
+            {
+                P.Add(returnvalue(subsme[i], 1));
+                C.Add(returnvalue(subsme[i], 2));
+                F.Add(returnvalue(subsme[i], 3));
+            }
+        }
+        static int returnvalue(String s, int pos)
+        {
+
+            string temp = null;
+            int word = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (s[i] == ' ')
+                {
+                    word++;
+                    if (word == pos)
+                    {
+                        return Convert.ToInt32(temp);
+                    }
+                    else
+                    { temp = null; }
+                }
+                else { temp += s[i]; }
+
+
+
+            }
+            return 0;
+        }
+
+        public void check()
+        {
+            sumcheck(P, Gp);
+        }
+        private void sumcheck(List<int> myList, int requiredValue)
+        {
+            List<int> indices = new List<int>();
+            for (int i = 0; i < myList.Count; i++)
+            { indices.Add(i); }
+            sum_up_recursive(myList, new List<int>(), indices, new List<int>(), requiredValue);
+        }
+
+        private void sum_up_recursive(List<int> myList, List<int> semiList, List<int> indices, List<int> indexed, int requiredValue)
+        {
+            int s = 0, ij = 0;
+            foreach (int x in semiList) s += x;
+
+            if (s == requiredValue)
+            {
+                int sumc = 0, sumf = 0;
+                foreach (int val in semiList)
+                {
+                    sumc += C[indexed[ij]];
+                    sumf += F[indexed[ij]];
+                    ij++;
+                }
+
+                if (sumc == Gc && sumf == Gf)
+                {
+                    flag = true;
+                    return;
+                }
+                //string[] the_array = semiList.Select(i => i.ToString()).ToArray();
+                //Console.WriteLine("sum(" + string.Join(",", the_array) + ")=" + requiredValue);
+            }
+
+            if (s >= requiredValue)
+            {
+                return;
+            }
+            for (int i = 0; i < myList.Count; i++)
+            {
+                List<int> remaining = new List<int>();
+                List<int> remaining_ind = new List<int>();
+                int n = myList[i];
+                int m = indices[i];
+                for (int j = i + 1; j < myList.Count; j++) 
+                {
+                    remaining.Add(myList[j]);
+                    remaining_ind.Add(indices[j]);
+                }
+
+                List<int> semiList_rec = new List<int>(semiList);
+                List<int> semiList_ind = new List<int>(indexed);
+                semiList_rec.Add(n);
+                semiList_ind.Add(m);
+                sum_up_recursive(remaining, semiList_rec, remaining_ind, semiList_ind, requiredValue);
+            }
+        }
+    }
+}

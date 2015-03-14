@@ -1,0 +1,112 @@
+#include <cstdio>
+#include <iostream>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+int T;
+int M, N;
+int startM, startN;
+bool reached[100][100][2];
+char maze[100][101];
+char turret[4] = {'^', '>', 'v', '<'};
+
+bool isDeadByTurret(int m, int n, int step, char expectedState) {
+	for(int i = 0; i < 4; i++) {
+		if(turret[i] == maze[m][n]) {
+			return turret[(i + step) % 4] == expectedState;
+		}
+	}
+	return false;
+}
+
+bool isTurret(int m, int n) {
+	for(int i = 0; i < 4; i++) {
+		if(turret[i] == maze[m][n]) return true;
+	}
+	return false;
+}
+
+bool isBlock(int m, int n) {
+	return maze[m][n] == '#';
+}
+
+bool canReached(int m, int n, int step) {
+	if(step == 0) return true;
+	if(m < 0 || m >= M) return false;
+	if(n < 0 || n >= N) return false;
+	if(isTurret(m, n) || isBlock(m, n)) return false;
+
+	int t = (step - abs(startM - m) - abs(startN - n)) / 2 % 2;
+	if(reached[m][n][t]) return false;
+	reached[m][n][t] = true;
+
+	for(int i = m - 1; i >= 0; i--) if(isTurret(i, n)){ if(isDeadByTurret(i, n, step, 'v')) return false; break;} else if(isBlock(m, n)) break;
+	for(int i = n - 1; i >= 0; i--) if(isTurret(m, i)){ if(isDeadByTurret(m, i, step, '>')) return false; break;} else if(isBlock(m, n)) break;
+	for(int i = m + 1; i <  M; i++) if(isTurret(i, n)){ if(isDeadByTurret(i, n, step, '^')) return false; break;} else if(isBlock(m, n)) break;
+	for(int i = n + 1; i <  N; i++) if(isTurret(m, i)){ if(isDeadByTurret(m, i, step, '<')) return false; break;} else if(isBlock(m, n)) break;
+
+	return true;
+}
+
+int solve(int m, int n, int step) {
+
+	queue<tuple<int, int, int>> position;
+
+	position.push(make_tuple(m, n, step));
+
+	while(position.empty() == false) {
+		int nowM = get<0>(position.front());
+		int nowN = get<1>(position.front());
+		int nowS = get<2>(position.front());
+		position.pop();
+
+		static int diffM[] = {1, -1, 0, 0};
+		static int diffN[] = {0, 0, 1, -1};
+
+		for(int i = 0; i < 4; i++) {
+			int nextM = nowM + diffM[i];
+			int nextN = nowN + diffN[i];
+			int nextS = nowS + 1;
+
+			if(canReached(nextM, nextN, nextS) == false) continue;
+			if(maze[nextM][nextN] == 'G') return nextS;
+			position.push(make_tuple(nextM, nextN, nextS));
+		}
+	}
+
+	return INT_MAX;
+}
+
+void inputAndInit() {
+	scanf("%d %d", &M, &N);
+	for(int r = 0; r < M; r++) {
+		scanf("%s", maze[r]);
+		for(int c = 0; maze[r][c]; c++) {
+			if(maze[r][c] == 'S') {
+				startM = r;
+				startN = c;
+			}
+			reached[r][c][0] = false;
+			reached[r][c][1] = false;
+		}
+	}
+}
+
+int main() {
+	scanf("%d", &T);
+
+	for(int C = 1; C <= T; C++) {
+		inputAndInit();
+
+		printf("Case #%d: ", C);
+
+		int result = solve(startM, startN, 0);
+		if(result == INT_MAX) puts("impossible");
+		else printf("%d\n", result);
+	}
+
+	return 0;
+}
+

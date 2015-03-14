@@ -1,0 +1,193 @@
+Wall = 16
+
+def ProcessMaze():
+    global CurrentLine
+    global StartX
+    global StartY
+    global EndX
+    global EndY
+    global Height
+    global Width
+    global Maze
+    global Laser
+    global LaserCount
+
+    LaserCount = 0
+    Laser = []
+    Maze = []
+    mazeDimensions = input_rows[CurrentLine].split(" ")
+    Height = int(mazeDimensions[0])
+    Width = int(mazeDimensions[1])
+    CurrentLine += 1
+
+    for i in range(0, Height):
+        Maze.append(i)
+        Maze[i] = []
+        MazeRow = input_rows[CurrentLine]
+        for j in range(0, Width):
+            Maze[i].append(j)
+            Maze[i][j] = 0
+            if MazeRow[j]=='S':
+                StartX = j
+                StartY = i
+            elif MazeRow[j]=='G':
+                EndX = j
+                EndY = i
+            elif MazeRow[j]=='#':
+                Maze[i][j] = Wall
+            elif MazeRow[j]=='^':
+                Laser.append(LaserCount)
+                Laser[LaserCount] = [i,j,0]
+                LaserCount += 1
+                Maze[i][j] = Wall
+            elif MazeRow[j]=='>':
+                Laser.append(LaserCount)
+                Laser[LaserCount] = [i,j,1]
+                LaserCount += 1
+                Maze[i][j] = Wall
+            elif MazeRow[j]=='v':
+                Laser.append(LaserCount)
+                Laser[LaserCount] = [i,j,2]
+                LaserCount += 1
+                Maze[i][j] = Wall
+            elif MazeRow[j]=='<':
+                Laser.append(LaserCount)
+                Laser[LaserCount] = [i,j,3]
+                LaserCount += 1
+                Maze[i][j] = Wall
+        CurrentLine += 1
+    return
+
+def SolveMaze():
+    global Positions
+    Positions = []
+    Positions.append(0)
+    Positions[0] = [StartX, StartY, 1, 1]
+    StepCount = IterateMaze()
+    if StepCount == 0:
+        return "Impossible"
+    return str(StepCount)
+
+def IterateMaze():
+    Finished = 0
+    global CurrentX
+    global CurrentY
+    global NextPhase
+    
+    while (Finished == 0 and len(Positions) > 0):
+        CurrentX = Positions[0][0]
+        CurrentY = Positions[0][1]
+        NextPhase = Positions[0][2]
+        TotalSteps = Positions[0][3]
+        NextPhase *= 2
+        if NextPhase == 16:
+            NextPhase = 1
+        if CurrentY != 0 and (Maze[CurrentY-1][CurrentX] & (NextPhase | Wall) == 0):  #step up
+            if CheckLasers(CurrentX,CurrentY-1,NextPhase) == 0:
+                if CurrentX == EndX and (CurrentY-1) == EndY:
+                    return TotalSteps
+                Maze[CurrentY-1][CurrentX] |= NextPhase
+                TotalPositions = len(Positions)
+                Positions.append(TotalPositions)
+                Positions[TotalPositions] = [CurrentX, CurrentY - 1, NextPhase, TotalSteps+1]
+
+        if CurrentX != Width-1 and (Maze[CurrentY][CurrentX+1] & (NextPhase | Wall) == 0):  #step right
+            if CheckLasers(CurrentX+1,CurrentY,NextPhase) == 0:
+                if (CurrentX+1) == EndX and CurrentY == EndY:
+                    return TotalSteps
+                Maze[CurrentY][CurrentX+1] |= NextPhase
+                TotalPositions = len(Positions)
+                Positions.append(TotalPositions)
+                Positions[TotalPositions] = [CurrentX+1, CurrentY, NextPhase, TotalSteps+1]
+            
+        if CurrentY != Height-1 and (Maze[CurrentY+1][CurrentX] & (NextPhase | Wall) == 0):  #step down
+            if CheckLasers(CurrentX,CurrentY+1,NextPhase) == 0:
+                if CurrentX == EndX and (CurrentY+1) == EndY:
+                    return TotalSteps
+                Maze[CurrentY+1][CurrentX] |= NextPhase
+                TotalPositions = len(Positions)
+                Positions.append(TotalPositions)
+                Positions[TotalPositions] = [CurrentX, CurrentY + 1, NextPhase, TotalSteps+1]
+            
+        if CurrentX != 0 and (Maze[CurrentY][CurrentX-1] & (NextPhase | Wall) == 0):  #step left
+            if CheckLasers(CurrentX-1,CurrentY,NextPhase) == 0:
+                if (CurrentX-1) == EndX and CurrentY == EndY:
+                    return TotalSteps
+                Maze[CurrentY][CurrentX-1] |= NextPhase
+                TotalPositions = len(Positions)
+                Positions.append(TotalPositions)
+                Positions[TotalPositions] = [CurrentX-1, CurrentY, NextPhase, TotalSteps+1]
+        Positions.pop(0)
+    return 0
+
+def CheckLasers(NewX, NewY, NewPhase):
+    for laser in Laser:
+        LaserY = laser[0]
+        LaserX = laser[1]
+        LaserDirection = laser[2]
+        while (LaserDirection != 0):
+            NewPhase *= 2
+            if NewPhase == 16:
+                NewPhase = 1
+            LaserDirection -= 1
+
+        if NewPhase == 1:
+            HitWall = 0
+            if LaserX == NewX and LaserY > NewY:
+                for k in range(LaserY-1,NewY,-1):
+                    if Maze[k][NewX] & Wall != 0:
+                        HitWall = 1
+                        break
+                if HitWall == 0:
+                    return 1
+
+        if NewPhase == 2:
+            HitWall = 0
+            if LaserY == NewY and LaserX < NewX:
+                for k in range(LaserX+1,NewX):
+                    if Maze[NewY][k] & Wall != 0:
+                        HitWall = 1
+                        break
+                if HitWall == 0:
+                    return 1
+
+        if NewPhase == 4:
+            HitWall = 0
+            if LaserX == NewX and LaserY < NewY:
+                for k in range(LaserY+1,NewY):
+                    if Maze[k][NewX] & Wall != 0:
+                        HitWall = 1
+                        break
+                if HitWall == 0:
+                    return 1
+
+        if NewPhase == 8:
+            HitWall = 0
+            if LaserY == NewY and LaserX > NewX:
+                for k in range(LaserX-1,NewX,-1):
+                    if Maze[NewY][k] & Wall != 0:
+                        HitWall = 1
+                        break
+                if HitWall == 0:
+                    return 1
+    return 0
+
+input_file = open("laser_maze.txt", "r")
+# break file into rows
+input_rows = input_file.read().split("\n")
+output = ""
+
+# scan first row to find number of cases
+TotalMazes = int(input_rows[0])
+CurrentMaze = 1
+CurrentLine = 1
+while CurrentMaze <= TotalMazes:
+    ProcessMaze()
+    output += "Case #" + str(CurrentMaze) + ": " + SolveMaze() + "\n"
+    CurrentMaze = CurrentMaze + 1
+
+print output
+
+outputFile = open("mazeoutput.txt", "w")
+outputFile.write(output)
+outputFile.close()

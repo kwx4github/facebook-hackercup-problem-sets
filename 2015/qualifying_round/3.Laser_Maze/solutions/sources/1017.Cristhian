@@ -1,0 +1,118 @@
+#include <stdio.h>
+#include <string.h>
+#include <vector>
+#include <queue>
+using namespace std;
+const int dir[4][2] = {
+	{0, -1}, {-1, 0}, {0, 1}, {1, 0}
+};
+
+typedef struct trio {
+	int first, second, third;
+	trio() {}
+	trio(int a, int b, int c) {
+		first = a; second = b; third = c;
+	}
+} trio;
+
+int n, m;
+char mapa[128][128];
+pair<int, int> start, goal;
+vector<trio> laser;
+int get_dir[256];
+
+bool visi[128][128][4];
+
+int main() {
+	int t;
+	scanf("%d", &t);
+	
+	get_dir[ '<' ] = 0;
+	get_dir[ '^' ] = 1;
+	get_dir[ '>' ] = 2;
+	get_dir[ 'v' ] = 3;
+	
+	int case_count = 1;
+	while(t--) {
+		laser.clear();
+		
+		scanf("%d %d", &n, &m);
+		for(int i=0; i<n; i++) {
+			scanf("%s", mapa[i]);
+			
+			for(int j=0; j<m; j++) {
+				if(mapa[i][j] == 'S') {
+					start.first = i;
+					start.second = j;
+				} else if(mapa[i][j] == 'G') {
+					goal.first = i;
+					goal.second = j;
+				} else if(mapa[i][j] == '<' or mapa[i][j] == '^'
+				or mapa[i][j] == '>' or mapa[i][j] == 'v') {
+					laser.push_back( trio(i, j, get_dir[ (int)mapa[i][j] ]) );
+				}
+			}
+		}
+		
+		queue<trio> q;
+		while(!q.empty()) q.pop();
+		memset(visi, false, sizeof(visi));
+		
+		int ok = -1;
+		q.push( trio(start.first, start.second, 0) );
+		while(!q.empty()) {
+			trio u = q.front(); q.pop();
+			if(visi[u.first][u.second][u.third%4]) continue;
+			visi[u.first][u.second][u.third%4] = true;
+			
+			if(u.first == goal.first and u.second == goal.second) {
+				ok = u.third;
+				break;
+			}
+			
+			pair<int, int> pos;
+			for(int i=0; i<4; i++) {
+				pos.first = u.first+dir[i][0];
+				pos.second = u.second+dir[i][1];
+				
+				if(pos.first < 0 or pos.first >= n
+				or pos.second < 0 or pos.second >= m
+				or mapa[pos.first][pos.second] == '#'
+				or mapa[pos.first][pos.second] == '<'
+				or mapa[pos.first][pos.second] == '^'
+				or mapa[pos.first][pos.second] == '>'
+				or mapa[pos.first][pos.second] == 'v') continue;
+				
+				bool aux = true;
+				for(int j=0; j<(int)laser.size(); j++) {
+					pair<int, int> laser_pos = pair<int, int>(laser[j].first, laser[j].second);
+					while(1) {
+						laser_pos.first  += dir[ (laser[j].third+(u.third%4)+1)%4 ][0];
+						laser_pos.second += dir[ (laser[j].third+(u.third%4)+1)%4 ][1];
+						
+						if(laser_pos.first < 0 or laser_pos.first >= n
+						or laser_pos.second < 0 or laser_pos.second >= m
+						or mapa[laser_pos.first][laser_pos.second] == '#'
+						or mapa[laser_pos.first][laser_pos.second] == '<'
+						or mapa[laser_pos.first][laser_pos.second] == '^'
+						or mapa[laser_pos.first][laser_pos.second] == '>'
+						or mapa[laser_pos.first][laser_pos.second] == 'v') break;
+						
+						if(laser_pos.first == pos.first and laser_pos.second == pos.second) {
+							aux = false;
+							break;
+						}
+					}
+				}
+				
+				if(aux) {
+					q.push( trio(pos.first, pos.second, u.third+1) );
+				}
+			}
+		}
+		
+		printf("Case #%d: ", case_count++);
+		if(ok != -1) printf("%d\n", ok);
+		else printf("impossible\n");
+	}
+}

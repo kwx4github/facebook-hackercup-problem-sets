@@ -1,0 +1,96 @@
+// @betaveros :: generated with cpp2.hs
+#include <algorithm>
+#include <cstdio>
+#include <deque>
+using namespace std;
+char maze[108][108];
+int dist[108][108][4];
+struct Pos { int row, col, step; };
+
+int nRows, nCols;
+
+bool isFree(int r, int c) {
+	if (0 <= r && r < nCols && 0 <= c && c < nCols){
+		switch (maze[r][c]){
+			case '.':
+			case 'S':
+			case 'G':
+				return true;
+			default:
+				return false;
+		}
+	}
+	return false;
+}
+void block(int r, int c, int rd, int cd) {
+	for (int s = 0; s < 4; ++s){
+		int rr = r, cc = c;
+		rr += rd; cc += cd;
+		while (isFree(rr, cc)){
+			dist[rr][cc][s] = 2000000000;
+			rr += rd; cc += cd;
+		}
+		swap(rd, cd);
+		cd = -cd;
+	}
+}
+deque<Pos> q;
+
+void check(const Pos & p, int dr, int dc) {
+	int rr = p.row + dr;
+	int cc = p.col + dc;
+	int ss = (p.step + 1) % 4;
+	if (isFree(rr, cc) && dist[rr][cc][ss] == 1000000000){
+		dist[rr][cc][ss] = dist[p.row][p.col][p.step] + 1;
+		q.push_back(((Pos) { .row = rr, .col = cc, .step = ss }));
+	}
+}
+
+int main() {
+	int tcn; scanf("%d", &tcn);
+	for (int tci = 1; tci <= tcn; ++tci){
+		scanf("%d%d ", &nRows, &nCols);
+		for (int i = 0; i < nRows; ++i){
+			fgets(maze[i], 108, stdin);
+		}
+		int sr = -1, sc = -1;
+		int gr = -1, gc = -1;
+		for (int i = 0; i < nRows; ++i){
+			for (int j = 0; j < nCols; ++j){
+				for (int t = 0; t < 4; ++t){ dist[i][j][t] = 1000000000; }
+				if (maze[i][j] == 'S'){
+					sr = i; sc = j;
+				} else if (maze[i][j] == 'G'){
+					gr = i; gc = j;
+				}
+			}
+		}
+		for (int i = 0; i < nRows; ++i){
+			for (int j = 0; j < nCols; ++j){
+				switch (maze[i][j]){
+					case '^': block(i, j, -1, 0); break;
+					case 'v': block(i, j, 1, 0); break;
+					case '<': block(i, j, 0, -1); break;
+					case '>': block(i, j, 0, 1); break;
+				}
+			}
+		}
+		q.clear();
+		dist[sr][sc][0] = 0;
+		q.push_back(((Pos) { .row = sr, .col = sc, .step = 0 }));
+		int ans = -1;
+		while (!q.empty()){
+			Pos cur = q.front(); q.pop_front();
+			if (cur.row == gr && cur.col == gc){
+				ans = dist[cur.row][cur.col][cur.step];
+				break;
+			}
+			check(cur, 1, 0);
+			check(cur, 0, 1);
+			check(cur, -1, 0);
+			check(cur, 0, -1);
+		}
+		printf("Case #%d: ", tci);
+		if (ans == -1){ printf("impossible\n"); } else printf("%d\n", ans);
+	}
+}

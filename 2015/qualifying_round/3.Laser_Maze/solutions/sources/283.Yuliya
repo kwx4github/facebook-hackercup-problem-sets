@@ -1,0 +1,102 @@
+import java.io._
+import java.util.StringTokenizer
+
+import scala.collection.mutable
+
+object Main {
+
+  var out: PrintWriter = new PrintWriter("output.txt")
+  var br: BufferedReader = new BufferedReader(new FileReader("input.txt"))
+  var st: StringTokenizer = null
+
+  def next: String = {
+    while (st == null || !st.hasMoreTokens)
+      st = new StringTokenizer(br.readLine)
+    st.nextToken
+  }
+
+  def nextInt: Int = next.toInt
+
+  def nextLong: Long = next.toLong
+
+  case class State(pos: (Int, Int), shift: Int) {
+    def next(dir: (Int, Int)) = State((pos._1 + dir._1, pos._2 + dir._2), (shift + 1) % 4)
+  }
+
+  val turretNb = Map('>' -> 0, 'v' -> 1, '<' -> 2, '^' -> 3)
+  val dirs = List((0, 1), (1, 0), (0, -1), (-1, 0))
+
+  def alive(maze: Array[Array[Char]], s: State): Boolean = {
+
+    for (i <- 1 to maze.length - 2) {
+      for (j <- 1 to maze(i).length - 2) {
+        if (turretNb contains maze(i)(j)) {
+          val dir = dirs((turretNb(maze(i)(j)) + s.shift) % 4)
+          var next = State((i,j), 0).next(dir)
+          while (maze(next.pos._1)(next.pos._2) == '.') {
+            if (next.pos == s.pos)
+              return false
+            next = next.next(dir) // :)
+          }
+        }
+      }
+    }
+
+    true
+  }
+
+  def bfs(maze: Array[Array[Char]], s: (Int, Int), g: (Int, Int)) = {
+
+    val dist = mutable.Map[State, Int](State(s, 0) -> 0)
+    val q = mutable.Queue(State(s, 0))
+
+    var ret: Option[Int] = None
+
+    while (q nonEmpty) {
+      val cur = q dequeue()
+
+      for (dir <- dirs) {
+        val next = cur.next(dir)
+        if (dist.get(next).isEmpty && maze(next.pos._1)(next.pos._2) == '.' && alive(maze, next)) {
+          dist += next -> (dist(cur) + 1)
+          q enqueue next
+          if (ret.isEmpty && next.pos == g)
+            ret = dist.get(next)
+        }
+      }
+    }
+
+    ret
+  }
+
+  def main(args: Array[String]): Unit = {
+    val T = nextInt
+    for (t <- 1 to T) {
+      val (m, n) = (nextInt, nextInt)
+      val maze = Array.fill[Char](m + 2, n + 2)('#')
+      var s = (-1, -1)
+      var g = (-1, -1)
+
+      for (i <- 1 to m) {
+        val row = next
+        for (j <- 1 to n) {
+          maze(i)(j) = row(j - 1)
+          if (maze(i)(j) == 'S') {
+            maze(i)(j) = '.'
+            s = (i, j)
+          }
+          if (maze(i)(j) == 'G') {
+            maze(i)(j) = '.'
+            g = (i, j)
+          }
+        }
+      }
+
+      val ans = bfs(maze, s, g).getOrElse("impossible")
+      out.println(s"Case #$t: $ans")
+    }
+
+    out close
+  }
+
+}

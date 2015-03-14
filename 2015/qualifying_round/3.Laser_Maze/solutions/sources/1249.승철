@@ -1,0 +1,232 @@
+#include <iostream>
+#include <fstream>
+#include <queue>
+#include <string>
+#include <cstring>
+using namespace std;
+
+ofstream myfile;
+const int MAX_M = 100;
+const int MAX_N = 100;
+int maze[MAX_M][MAX_N];
+bool attack[MAX_M][MAX_N][4];//1 turret attack 0^ 1> 2v 3< 
+bool already[MAX_M][MAX_N][4];//1 already been there
+int M, N;
+
+bool isWall(char a)
+{
+    if(a=='.' || a=='S' || a=='G') return false;
+    return true;
+}
+
+bool isWall(int r, int c)
+{
+    return isWall(maze[r][c]);
+}
+
+bool inrange(int r, int c)
+{
+    if(0<=r && r<M && 0<=c && c<N) return true;
+    return false;
+}
+
+void solve(int T)
+{
+    memset(attack, 0, sizeof(attack));
+    memset(already, 0, sizeof(already));
+
+    int startM, startN;
+    int goalM, goalN;
+    cin >> M >> N;
+    for(int i=0;i<M;i++)
+    {
+        string tmp;
+        cin >> tmp;
+        for(int j=0;j<N;j++)
+        {
+            if(tmp[j]=='S')
+            {
+                startM = i;
+                startN = j;
+            }
+            if(tmp[j]=='G')
+            {
+                goalM = i;
+                goalN = j;
+            }
+            maze[i][j] = tmp[j];
+        }
+    }
+
+    for(int i=0;i<M;i++)
+    {
+        for(int j=0;j<N;j++)
+        {
+            if(maze[i][j]=='^')
+            {
+                for(int k=i-1;k>=0 && !isWall(maze[k][j]);k--)
+                {
+                    attack[k][j][0] = true;
+                }
+                for(int k=j+1;k<N && !isWall(maze[i][k]);k++)
+                {
+                    attack[i][k][1] = true;
+                }
+                for(int k=i+1;k<M && !isWall(maze[k][j]);k++)
+                {
+                    attack[k][j][2] = true;
+                }
+                for(int k=j-1;k>=0 && !isWall(maze[i][k]);k--)
+                {
+                    attack[i][k][3] = true;
+                }
+            }
+            if(maze[i][j]=='>')
+            {
+                for(int k=i-1;k>=0 && !isWall(maze[k][j]);k--)
+                {
+                    attack[k][j][3] = true;
+                }
+                for(int k=j+1;k<N && !isWall(maze[i][k]);k++)
+                {
+                    attack[i][k][0] = true;
+                }
+                for(int k=i+1;k<M && !isWall(maze[k][j]);k++)
+                {
+                    attack[k][j][1] = true;
+                }
+                for(int k=j-1;k>=0 && !isWall(maze[i][k]);k--)
+                {
+                    attack[i][k][2] = true;
+                }
+            }
+            if(maze[i][j]=='v')
+            {
+                for(int k=i-1;k>=0 && !isWall(maze[k][j]);k--)
+                {
+                    attack[k][j][2] = true;
+                }
+                for(int k=j+1;k<N && !isWall(maze[i][k]);k++)
+                {
+                    attack[i][k][3] = true;
+                }
+                for(int k=i+1;k<M && !isWall(maze[k][j]);k++)
+                {
+                    attack[k][j][0] = true;
+                }
+                for(int k=j-1;k>=0 && !isWall(maze[i][k]);k--)
+                {
+                    attack[i][k][1] = true;
+                }
+            }
+            if(maze[i][j]=='<')
+            {
+                for(int k=i-1;k>=0 && !isWall(maze[k][j]);k--)
+                {
+                    attack[k][j][1] = true;
+                }
+                for(int k=j+1;k<N && !isWall(maze[i][k]);k++)
+                {
+                    attack[i][k][2] = true;
+                }
+                for(int k=i+1;k<M && !isWall(maze[k][j]);k++)
+                {
+                    attack[k][j][3] = true;
+                }
+                for(int k=j-1;k>=0 && !isWall(maze[i][k]);k--)
+                {
+                    attack[i][k][0] = true;
+                }
+            }
+        }
+    }
+    attack[startM][startN][0] = false;
+
+    queue<int> row;
+    queue<int> col;
+    queue<int> state;
+    queue<int> cnt;
+
+    row.push(startM);
+    col.push(startN);
+    state.push(0);
+    cnt.push(0);
+
+    while(!row.empty())
+    {
+        int crow = row.front(); row.pop();
+        int ccol = col.front(); col.pop();
+        int cstate = state.front(); state.pop();
+        int ccnt = cnt.front(); cnt.pop();
+
+        int nextstate = (cstate+1)%4;
+
+        //moving debugg
+        //myfile << "I'm here (" << crow << ", " << ccol << ", " << cstate << ", " << ccnt << ")" << endl;
+
+        already[crow][ccol][cstate] = true;
+
+        if(attack[crow][ccol][cstate]==true) continue;
+
+        if(crow == goalM && ccol == goalN)
+        {
+            myfile << "Case #" << T << ": " << ccnt << endl;
+            return;
+        }
+
+        //move u
+        if(inrange(crow-1, ccol) && !already[crow-1][ccol][nextstate] && !isWall(crow-1, ccol))
+        {
+            row.push(crow-1);
+            col.push(ccol);
+            state.push(nextstate);
+            cnt.push(ccnt+1);
+            already[crow-1][ccol][nextstate] = true;
+        }
+
+        //move r
+        if(inrange(crow, ccol+1) && !already[crow][ccol+1][nextstate] && !isWall(crow, ccol+1))
+        {
+            row.push(crow);
+            col.push(ccol+1);
+            state.push(nextstate);
+            cnt.push(ccnt+1);
+            already[crow][ccol+1][nextstate] = true;         
+        }
+
+        //move d
+        if(inrange(crow+1, ccol) && !already[crow+1][ccol][nextstate] && !isWall(crow+1, ccol))
+        {
+            row.push(crow+1);
+            col.push(ccol);
+            state.push(nextstate);
+            cnt.push(ccnt+1);
+            already[crow+1][ccol][nextstate] = true;         
+        }
+
+        //move l
+        if(inrange(crow, ccol-1) && !already[crow][ccol-1][nextstate] && !isWall(crow, ccol-1))
+        {
+            row.push(crow);
+            col.push(ccol-1);
+            state.push(nextstate);
+            cnt.push(ccnt+1);
+            already[crow][ccol-1][nextstate] = true;         
+        }
+    }
+
+    myfile << "Case #" << T << ": impossible" << endl;
+    return;
+}
+
+int main()
+{
+    myfile.open("output.txt");
+    int T;
+    cin >> T;
+    for(int i=1;i<=T;i++)
+    {
+        solve(i);
+    }
+    myfile.close();
+}

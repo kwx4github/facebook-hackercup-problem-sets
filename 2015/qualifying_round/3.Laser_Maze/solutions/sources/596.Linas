@@ -1,0 +1,93 @@
+import scala.collection._
+
+object C extends App {
+
+  @inline def tokenizeLine = new java.util.StringTokenizer(readLine)
+  def readInts(n: Int) = { val tl = tokenizeLine; Array.fill(n)(tl.nextToken.toInt) }
+
+  val blocked = Set('#', '<', '>',  '^', 'v')
+
+  def solve(test: Int): Unit = {
+
+    val Array(m, n) = readInts(2)
+    val map = Array.fill(m)(readLine)
+    
+    val allowed = Array.fill(m, n, 4)(true)
+    var startI, startJ, goalI, goalJ = -1
+    
+    def fillLaser(i0: Int, j0: Int, d0: Int) = {
+      for (k <- 0 to 3) allowed(i0)(j0)(k) = false
+      var i = i0 - 1
+      var d = (4 - d0) % 4
+      while (i >= 0 && !blocked(map(i)(j0))) {
+        allowed(i)(j0)(d) = false
+        i -= 1
+      }
+      var j = j0 + 1
+      d = (4 - d0 + 1) % 4
+      while (j < n && !blocked(map(i0)(j))) {
+        allowed(i0)(j)(d) = false
+        j += 1
+      }
+      i = i0 + 1
+      d = (4 - d0 + 2) % 4
+      while (i < m && !blocked(map(i)(j0))) {
+        allowed(i)(j0)(d) = false
+        i += 1
+      }
+      j = j0 - 1
+      d = (4 - d0 + 3) % 4
+      while (j >= 0 && !blocked(map(i0)(j))) {
+        allowed(i0)(j)(d) = false
+        j -= 1
+      }
+    }
+    
+    for (i <- 0 until m) {
+      for (j <- 0 until n) map(i)(j) match {
+        case '#' => for (k <- 0 to 3) allowed(i)(j)(k) = false
+        case 'S' => startI = i; startJ = j
+        case 'G' => goalI = i; goalJ = j
+        case '^' => fillLaser(i, j, 0)
+        case '>' => fillLaser(i, j, 1)
+        case 'v' => fillLaser(i, j, 2)
+        case '<' => fillLaser(i, j, 3)
+        case '.' =>
+      }
+    }
+    
+    val steps1, steps2 = Array.fill(m, n)(Int.MaxValue)
+    val q = mutable.Queue((startI, startJ, 0))
+    
+    def tryGo(i: Int, j: Int, step: Int) = {
+      if (allowed(i)(j)(step % 4)) {
+        if (step < steps1(i)(j)) {
+          steps1(i)(j) = step
+          q.enqueue((i, j, step))
+        } else if (step < steps2(i)(j) && step % 4 != steps1(i)(j) % 4) {
+          steps2(i)(j) = step
+          q.enqueue((i, j, step))
+        }
+      }
+    }
+    
+    while (!q.isEmpty) {
+      val (i, j, step) = q.dequeue()
+      if (i > 0) tryGo(i - 1, j, step + 1)
+      if (i < m - 1) tryGo(i + 1, j, step + 1)
+      if (j > 0) tryGo(i, j - 1, step + 1)
+      if (j < n - 1) tryGo(i, j + 1, step + 1)
+    }
+    
+    val min = steps1(goalI)(goalJ) min steps2(goalI)(goalJ)
+    val res = if (min < Int.MaxValue) min.toString else "impossible"
+    println(s"Case #$test: $res")
+  }
+
+  Console.setIn(new java.io.BufferedInputStream(new java.io.FileInputStream("src/C/C.in")))
+  Console.setOut(new java.io.BufferedOutputStream(new java.io.FileOutputStream("src/C/C.out")))
+  for (test <- 1 to readInt) {
+    solve(test)
+    Console.flush
+  }
+}

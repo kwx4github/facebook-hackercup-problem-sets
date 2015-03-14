@@ -1,0 +1,91 @@
+#include <algorithm>
+#include <iostream>
+#include <set>
+#include <string>
+#include <tuple>
+#include <vector>
+using namespace std;
+
+int solve(int m, int n, vector<string> const& f)
+{
+    set<tuple<int, int, int>> states;
+    set<pair<int, int>> wave, nwave;
+    vector<vector<vector<char>>> laser(4, vector<vector<char>>(m, vector<char>(n)));
+    int sh[][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+    string turrets = "^>v<";
+    int sr, sc, gr, gc;
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < n; ++j) {
+            if (f[i][j] == 'S') {
+                sr = i; sc = j;
+            } else if (f[i][j] == 'G') {
+                gr = i; gc = j;
+            } else if (f[i][j] == '^' || f[i][j] == '>' || f[i][j] == 'v' || f[i][j] == '<') {
+                int or = turrets.find(f[i][j]);
+                for (int time = 0; time < 4; ++time) {
+                    int r = i, c = j;
+                    while (true) {
+                        r += sh[(or + time) % 4][0]; c += sh[(or + time) % 4][1];
+                        if (r >= m || c >= n || r < 0 || c < 0) {
+                            break;
+                        } else if (f[r][c] == '.' || f[r][c] == 'G' || f[r][c] == 'S') {
+                            laser[time][r][c] = 1;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    int turn = 0;
+    wave.insert(make_pair(sr, sc));
+    bool was;
+    do {
+        was = false;
+        for (auto&& ij : wave) {
+            int i = ij.first, j = ij.second;
+            for (int or = 0; or < 4; ++or) {
+                int nr = i + sh[or][0], nc = j + sh[or][1];
+                if (nr >= 0 && nr < m && nc >= 0 && nc < n) {
+                    if ((f[nr][nc] == '.' || f[nr][nc] == 'S' || f[nr][nc] == 'G') &&
+                        !laser[(turn + 1) % 4][nr][nc] &&
+                        states.find(make_tuple(nr, nc, (turn + 1) % 4)) == states.end()
+                    ) {
+                        nwave.insert(make_pair(nr, nc));
+                        states.insert(make_tuple(nr, nc, (turn + 1) % 4));
+                        was = true;
+                        if (nr == gr && nc == gc) {
+                            return turn + 1;
+                        }
+                    }
+                }
+            }
+        }
+        ++turn;
+        wave.swap(nwave);
+        nwave.clear();
+    } while (was);
+    return -1;
+}
+
+int main()
+{
+    int tests;
+    cin >> tests;
+    for (int test = 1; test <= tests; ++test) {
+        int m, n;
+        cin >> m >> n;
+        vector<string> f(m);
+        for (int i = 0; i < m; ++i) {
+            cin >> f[i];
+        }
+        int result = solve(m, n, f);
+        cout << "Case #" << test << ": ";
+        if (result == -1) {
+            cout << "impossible" << endl;
+        } else {
+            cout << result << endl;
+        }
+    }
+}

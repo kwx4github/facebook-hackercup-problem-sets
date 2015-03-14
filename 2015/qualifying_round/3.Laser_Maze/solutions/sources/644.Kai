@@ -1,0 +1,137 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <math.h>
+
+#include <vector>
+#include <utility>
+#include <set>
+#include <map>
+#include <queue>
+#include <functional>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+using namespace std;
+
+template<typename T>inline string to_str(const T& v) {
+    ostringstream os; os << v; return os.str();
+}
+template<typename T>inline T to_obj(const string& v) {
+    istringstream is(v); T r; is>>r; return r;
+}
+template<class T>inline int cMin(T& a, T b) {return b<a ? a=b,1 : 0;}
+template<class T>inline int cMax(T& a, T b) {return a<b ? a=b,1 : 0;}
+
+#define CLR(A,v) memset(A, v, sizeof(A))
+#define MP(a,b)  make_pair(a, b)
+#define F0(i, n) for(int i=0; i<(n); ++i)
+#define F1(i, n) for(int i=1; i<=(n); ++i)
+
+const int NN = 128;
+
+int  N, M;
+char Mask[NN][NN];
+
+int Src, Dst;
+int Dist[1<<16];
+int Q[1<<16], Qs, Qe;
+int dx[4] = {1, -1, 0, 0};
+int dy[4] = {0, 0, 1, -1};
+int dc[4] = {'^', 'v', '<', '>'};
+int dn[4] = {0, 2, 3, 1};
+const char* TS = "^>v<";
+int SP[256];
+
+bool inside(int x, int y) {
+    return x>=0 && x<N && y>=0 && y<M;
+}
+
+int encode(int t, int x, int y) {
+    return ((x<<9) | (y<<2) | (t&3));
+}
+
+void decode(int s, int& t, int& x, int &y) {
+    t = s & 3;
+    y = (s>>2) & 127;
+    x = (s>>9) & 127;
+}
+
+bool isDanger(int t, int x, int y) {
+    t &= 3;
+    F0(k, 4) {
+        int nx = x;
+        int ny = y;
+        F0(i, 100) {
+            nx += dx[k];
+            ny += dy[k];
+            if (!inside(nx, ny) || Mask[nx][ny]=='#') break;
+            if (Mask[nx][ny] == '.') continue;
+            int st = SP[Mask[nx][ny]];
+            if (((st + t) & 3) == dn[k]) {
+                // printf("pos:(%d,%d) danger at time: %d\n", x, y, t);
+                return true;
+            }
+            else break;
+        }
+    }
+    return false;
+}
+
+int calc() {
+    F0(i, (1<<16)) Dist[i] = -1;
+    Qs = Qe = 0;
+    Q[Qe++] = Src;
+    Dist[Src] = 0;
+    while(Qs != Qe) {
+        int cs = Q[Qs++];
+        int ct, cx, cy;
+        decode(cs, ct, cx, cy);
+        F0(k, 4) {
+            int nt=ct+1, nx=cx+dx[k], ny=cy + dy[k];
+            if (!inside(nx, ny) || Mask[nx][ny]!='.') continue;
+            int ns = encode(nt, nx, ny);
+            if (Dist[ns] != -1) continue;
+            if (isDanger(nt, nx, ny)) {
+                Dist[ns] = -2;
+                continue;
+            }
+            if (encode(0,nx, ny) == Dst) return Dist[cs] + 1;
+            Dist[ns] = Dist[cs] + 1;
+            Q[Qe++] = ns;
+        }
+    }
+    return -1;
+}
+
+int main(int argc, char *argv[]) {
+    F0(i, 256) SP[i] = -1;
+    F0(i, 4) SP[TS[i]] = i;
+    int caseNum=0;
+    scanf("%d", &caseNum);
+    F1(caseIdx, caseNum) {
+        scanf("%d%d", &N, &M);
+        F0(i, N) {
+            scanf("%s", Mask[i]);
+            F0(j, M) {
+                if (Mask[i][j] == 'S') {
+                    Src = encode(0, i, j);
+                    Mask[i][j] = '.';
+                } else if(Mask[i][j] == 'G') {
+                    Dst = encode(0, i, j);
+                    Mask[i][j] = '.';
+                }
+            }
+        }
+        int dist = calc();
+        if (dist < 0) {
+            printf("Case #%d: %s\n", caseIdx, "impossible");
+        } else {
+            printf("Case #%d: %d\n", caseIdx, dist);
+        }
+    }
+    return 0;
+}

@@ -1,0 +1,161 @@
+// Console.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+
+#pragma warning(disable:4996)
+
+#include <cstdio>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <cstring>
+#include <stack>
+#include <string>
+#include <map>
+#include <queue>
+#include <set>
+#include <list>
+
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+#include "..\NeuralNetwork\NeuralNetwork.h"
+
+using namespace std;
+using namespace Artificial_Inteligence;
+
+char mat[105][105];
+int lamat[105][105];
+int dist[105][105];
+FILE *out, *in;
+int t, n, m;
+queue<pair<int,int> > q, tq, sp;
+queue<int> spdis;
+vector<pair<int, int> > laser;
+vector<int> state;
+int bio[105][105];
+int smy [] = {1,0,-1,0};
+int smx [] = {0,1,0,-1};
+int gx, gy;
+int lascalc(int time) {
+	int x, y, s;
+	memset(lamat, 0, sizeof lamat);
+	for (int i = 0; i < laser.size(); i++) {
+		x = laser[i].first;
+		y = laser[i].second;
+		s = (state[i]+time) % 4;
+		while (1) {
+			if ( x+smx[s] < 0 || x+smx[s] >= n || y +smy[s] < 0 || y+smy[s] >= m ) break;
+			if (mat[x + smx[s]][y + smy[s]] != '.' && mat[x + smx[s]][y + smy[s]] != 'S' && mat[x + smx[s]][y + smy[s]] != 'G')
+				break;
+			x += smx[s];
+			y += smy[s];
+			lamat[x][y] = 1;
+		}
+	}
+	/*for (int i = 0; i < n; i++) {
+		for (int j = 0; j < m; j++)
+			putchar('0' + lamat[i][j]);
+		putchar('\n');
+	}
+	putchar('\n');*/
+	return 0;
+}
+void bfs(int ssx, int ssy) {
+	while (!q.empty())
+		q.pop();
+	while (!tq.empty())
+		tq.pop();
+	memset(dist, 0x7f, sizeof dist);
+	memset(bio, 0, sizeof bio);
+	tq.push(make_pair(ssx,ssy));
+	dist[ssx][ssy] = 0;
+	bio[ssx][ssy] = 1;
+	int tx, ty, time = 1, ttt = 0;
+	while (!tq.empty()) {
+		if (ttt > 10000)
+			return;
+		ttt++; 
+		lascalc(time);
+		while (!tq.empty())
+			q.push(tq.front()), tq.pop();
+		while (!q.empty()) {
+			tx = q.front().first, ty = q.front().second;
+			q.pop();
+			for (int g = 0; g < 4; g++) {
+				if (tx + smx[g] < 0 || tx + smx[g] >= n ||
+				    ty + smy[g] < 0 || ty + smy[g] >= m) continue;
+				if (mat[tx + smx[g]][ty + smy[g]] != '.' &&
+				    mat[tx + smx[g]][ty + smy[g]] != 'G' &&
+					mat[tx + smx[g]][ty + smy[g]] != 'S') continue;
+				if (bio[tx + smx[g]][ty + smy[g]])continue;
+				if (lamat[tx + smx[g]][ty + smy[g]]) continue;
+				//if (dist[tx + smx[g]][ty + smy[g]] > dist[tx][ty] + 1) 
+					dist[tx + smx[g]][ty + smy[g]] = dist[tx][ty] + 1;
+				bio[tx + smx[g]][ty + smy[g]] = 1;
+				if (tx + smx[g] == gx && ty + smy[g] == gy)
+					return;
+				tq.push(make_pair(tx + smx[g], ty + smy[g]));
+			}
+		}
+		memset(bio, 0, sizeof bio);
+		time++;
+		/*for (int i = 0; i < n; i++) {
+			for ( int j = 0; j < m; j++ )
+				putchar('0' + bio[i][j]);
+			putchar('\n');
+		}*/
+		/*for (int i = 0; i < n; i++) {
+			for ( int j = 0; j < m; j++ )
+				printf("%d ",dist[i][j]);
+			putchar('\n');
+		}
+		putchar('\n');
+		system("PAUSE");
+		system("CLS");*/
+	}
+}
+int las(char a) {
+	if (a == '>')
+		return 1;
+	if (a == 'v')
+		return 2;
+	if (a == '<')
+		return 3;
+	if (a == '^')
+		return 4;
+	return 0;
+}
+int _tmain(int argc, _TCHAR* argv[])
+{
+	in = fopen("laser_maze.txt", "r");
+	out = fopen("out.txt", "w");
+	
+	int sx, sy;
+	fscanf(in, "%d", &t); 
+	for( int k = 0; k < t; k++ ){
+		laser.clear();
+		state.clear();
+		fscanf(in,"%d %d", &n, &m);
+		for (int i = 0; i < n; i++) {
+			fscanf(in,"%s", mat[i]);
+			for ( int j = 0; j < m; j++ )
+				if (mat[i][j] == 'S' )
+					sx = i, sy = j;
+				else if (mat[i][j] == 'G')
+					gx = i, gy = j;
+				else if (las(mat[i][j])) {
+					laser.push_back(make_pair(i,j));
+					state.push_back(las(mat[i][j])-1);
+				}
+		}
+		bfs(sx,sy);
+		if (bio[gx][gy])
+			fprintf(out,"Case #%d: %d\n", k+1, dist[gx][gy]);
+		else
+			fprintf(out,"Case #%d: impossible\n", k+1);
+	}
+	//system("pause");
+}
+

@@ -1,0 +1,141 @@
+#include <stdio.h>
+#include <string.h>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <iostream>
+#include <cmath>
+#include <queue>
+using namespace std;
+
+/*
+ * Author: Veselin Georgiev
+ * Problem: "Laser Maze" (C)
+ * Contest: Facebook Hacker Cup 2015
+ */
+
+#define FOR(i,n) for (int i = 0; i < n; i++)
+#define abs(x) ((x)<0?(-(x)):(x))
+#define REP(i,v) for (unsigned i = 0; i < v.size(); i++)
+#define RL(i,v) for (unsigned i = 0; i < v.length(); i++)
+typedef long long ll;
+
+enum {
+	EMPTY,
+	WALL,
+	TURRET_UP,
+	TURRET_RIGHT,
+	TURRET_DOWN,
+	TURRET_LEFT,
+};
+
+const int MAXX = 102;
+
+int W, H;
+int ex, ey, sx, sy;
+int maze[MAXX][MAXX];
+int dangerous[4][MAXX][MAXX];
+int seen[4][MAXX][MAXX];
+const int dir[4][2] = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } };
+
+void shoot_laser(int x, int y, int dx, int dy, int when)
+{
+	x += dx;
+	y += dy;
+	while (maze[y][x] == EMPTY) {
+		dangerous[when][y][x] = 1;
+		x += dx;
+		y += dy;
+	}
+}
+
+struct State { int time, x, y; };
+
+int solve(void)
+{
+	FOR(i, MAXX) FOR(j, MAXX) maze[i][j] = WALL;
+	memset(dangerous, 0, sizeof(dangerous));
+
+	// read maze
+	scanf("%d%d", &H, &W);
+	for (int y = 1; y <= H; y++) {
+		char t[MAXX + 1];
+		scanf("%s", t);
+		for (int x = 1; x <= W; x++) {
+			int& cell = maze[y][x];
+			switch (t[x - 1]) {
+				case '.': cell = EMPTY; break;
+				case '#': cell = WALL; break;
+				case 'S': {
+					sx = x;
+					sy = y;
+					cell = EMPTY;
+					break;
+				}
+				case 'G': {
+					ex = x;
+					ey = y;
+					cell = EMPTY;
+					break;
+				}
+				case '^': cell = TURRET_UP; break;
+				case '>': cell = TURRET_RIGHT; break;
+				case 'v': cell = TURRET_DOWN; break;
+				case '<': cell = TURRET_LEFT; break;
+			}
+		}
+	}
+	
+	// fill in dangerous[] array; when in time each cell is dangerous, mod 4
+	for (int y = 1; y <= H; y++) for (int x = 1; x <= W; x++) if (maze[y][x] > WALL) {
+		int offset = maze[y][x] - TURRET_UP;
+		shoot_laser(x, y,  0, -1, (4 - offset) % 4);
+		shoot_laser(x, y, +1,  0, (5 - offset) % 4);
+		shoot_laser(x, y,  0, +1, (6 - offset) % 4);
+		shoot_laser(x, y, -1,  0, (7 - offset) % 4);
+	}
+	
+	// find a way out:
+	State init = { 0, sx, sy };
+	queue<State> Q;
+	memset(seen, 0, sizeof(seen));
+	seen[0][sy][sx] = true;
+	Q.push(init);
+	
+	while (!Q.empty()) {
+		State s = Q.front();
+		Q.pop();
+		
+		if (s.x == ex && s.y == ey) return s.time;
+		
+		FOR(d, 4) {
+			State ns = s;
+			ns.time++;
+			ns.x = s.x + dir[d][0];
+			ns.y = s.y + dir[d][1];
+			
+			if (maze[ns.y][ns.x] != EMPTY) continue;
+			if (dangerous[ns.time % 4][ns.y][ns.x]) continue;
+			if (seen[ns.time % 4][ns.y][ns.x]) continue;
+			seen[ns.time % 4][ns.y][ns.x] = true;
+			
+			Q.push(ns);
+		}
+	}
+	return -1;
+}
+
+int main(void)
+{
+	//freopen("/home/vesko/hackercup/c.in", "rt", stdin);
+	int T;
+	scanf("%d", &T);
+	for (int tc = 1; tc <= T; tc++) {
+		printf("Case #%d: ", tc);
+		int ret = solve();
+		if (ret == -1) printf("impossible\n");
+		else printf("%d\n", ret);
+	}
+	return 0;
+}

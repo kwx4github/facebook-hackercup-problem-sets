@@ -1,0 +1,132 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Sockets;
+using NUnit.Framework;
+
+namespace Problem2
+{
+    internal class Program
+    {
+        public static void RunTestCases(string[] rawTestCases,
+            int numTestCases,
+            Action<String> outputAction,
+            Action<String> debugAction)
+        {
+            int currentLine = 0;
+            for (int i = 0; i < numTestCases; i++)
+            {
+                int[] targets = rawTestCases.GetSettings(currentLine++);
+                int numFoods = rawTestCases.GetSettings(currentLine++)[0];
+                List<int[]> foods = new List<int[]>();
+                for (int j = 0; j < numFoods; j++)
+                {
+                    foods.Add(rawTestCases.GetSettings(currentLine++));
+                }
+                Debug.WriteLine("Case "+(i+1));
+                var orderedFoods = foods.OrderByDescending(x => x[0] + x[1] + x[2]).ToList();
+                var counter = 0;
+                var foodsTotaled = foods.Select(x =>
+                {
+                    return Tuple.Create(x, foods.Skip(counter++).Sum(y => y.Sum()));
+                }).ToList();
+
+                bool canSatisfy = CanSatisfy(targets,foodsTotaled);
+                string outcome = canSatisfy ? "yes" : "no";
+                outputAction("Case #" + (i + 1) + ": " + outcome);
+            }
+        }
+
+        
+
+        private static bool CanSatisfy(int[] targets, IEnumerable<Tuple<int[],int>> foods)
+        {
+            Debug.WriteLine(targets[0]+":"+targets[1]+":"+targets[2]);
+            if (targets[0] < 0 ||
+                targets[1] < 0 ||
+                targets[2] < 0) return false;
+
+            if (targets[0] == 0 &&
+                targets[1] == 0 &&
+                targets[2] == 0) return true;
+
+            if (!foods.Any()) return false;
+
+            var totalRemaining = targets.Sum();
+            if (totalRemaining > foods.First().Item2) return false;
+
+            if (totalRemaining < foods.First().Item1.Sum()) return CanSatisfy(targets, foods.Skip(1)); ;
+
+            var food = foods.First();
+            var newTarget = new int[] { targets[0] - food.Item1[0], targets[1] - food.Item1[1], targets[2] - food.Item1[2] };
+            if (CanSatisfy(newTarget, foods.Skip(1)))
+            {
+                return true;
+            }
+
+            return CanSatisfy(targets, foods.Skip(1));
+        }
+
+        private static int solve(Dictionary<int, char> endsByCar, Dictionary<char, HashSet<int>> fronts, int numCars, HashSet<int> train,int lastCar)
+        {
+            if (train.Count == numCars) return 1;
+            int total = 0;
+            if (!fronts.ContainsKey(endsByCar[lastCar])) return 0;
+            var nextCars = fronts[endsByCar[lastCar]].Where(x => !train.Contains(x));
+            foreach (var nextCar in nextCars)
+            {
+                HashSet<int> newTrain = new HashSet<int>(train);
+                newTrain.Add(nextCar);
+                total += solve(endsByCar, fronts, numCars, newTrain, nextCar);
+                total = total % 1000000007;
+            }
+
+            return total;
+        }
+
+        private static void Main(string[] args)
+        {
+            string filename = args.Length == 0 ? "" : args[0];
+            if (filename == "")
+            {
+                var filenames = Directory.GetFiles(Environment.CurrentDirectory).Where(x => x.EndsWith(".in")).ToArray();
+                Console.WriteLine("Test file?");
+                int n = 0;
+                foreach (var f in filenames)
+                {
+                    Console.WriteLine(n++ + ":" + f);
+                }
+                var i = int.Parse(Console.ReadLine());
+                filename = filenames[i];
+            }
+            if (filename == "")
+            {
+                filename = Directory.GetFiles(Environment.CurrentDirectory).First(x => x.EndsWith(".in"));
+            }
+
+            string[] testFile = File.ReadAllLines(filename);
+            int NumberOfTestCases = int.Parse(testFile.First().Trim());
+
+            List<string> output = new List<string>();
+            RunTestCases(testFile.Skip(1).ToArray(),
+                NumberOfTestCases,
+                output.Add,
+                Console.WriteLine);
+            File.WriteAllLines("output.out", output);
+            Console.WriteLine("Finished " + filename);
+            Console.WriteLine("-- press any key --");
+            Console.ReadKey();
+        }
+    }
+
+    internal static class Helpers
+    {
+        public static int[] GetSettings(this string[] rawFile, int line)
+        {
+            return rawFile[line].Split(' ')
+                .Select(x => int.Parse(x.Trim())).ToArray();
+        }
+    }
+}

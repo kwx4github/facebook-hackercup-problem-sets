@@ -1,0 +1,130 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+#define CLR(a,x) memset(a,x,sizeof(a))
+#define PB push_back
+#define INF 1000000000
+#define MOD 1000000007
+#define MP make_pair
+#define tr(container , it) for(typeof(container.begin()) it=container.begin() ; it!=container.end() ; it++)
+#define FOR(i,a,b) for(i=a;i<b;i++)
+#define REP(i,a) FOR(i,0,a)
+#define LL long long
+#define VI vector < int >
+#define PII pair < int , int >
+#define MAXN 128
+
+struct Position {
+  int x;
+  int y;
+  int steps;
+  Position(int x_, int y_, int steps_):x(x_), y(y_), steps(steps_) {
+  }
+};
+queue < Position > valid_states;
+
+int dirx[] = {-1, 0, 1, 0};
+int diry[] = {0, 1, 0, -1};
+string maze[MAXN];
+int laser_dir[MAXN][MAXN], n, m;
+
+bool isLaser(int p, int q) {
+  return maze[p][q] == '^' || maze[p][q] == '>' || maze[p][q] == '<' || maze[p][q] == 'v';
+}
+
+bool isWithin(int p, int q) {
+  return (p >= 0 && q >= 0 && p < n && q < m);
+}
+
+bool isSafe(Position top) {
+  int p = top.x;
+  int q = top.y;
+  int step = top.steps;
+  for(int i=0;i<4;i++) {
+    int curx = p;
+    int cury = q;
+    while(isWithin(curx, cury)) {
+      if(isLaser(curx, cury) && (laser_dir[curx][cury]+step)%4 == (i+2)%4) {
+        return false;
+      }
+      if(isLaser(curx, cury) || maze[curx][cury] == '#') {
+        break;
+      }
+      curx += dirx[i];
+      cury += diry[i];
+    }
+  }
+  return true;
+}
+
+int getLaserDir(char ch) {
+  static map < char, int > mapp;
+  if((int)mapp.size() == 0) {
+    mapp['^'] = 0;
+    mapp['>'] = 1;
+    mapp['v'] = 2;
+    mapp['<'] = 3;
+  }
+  return mapp[ch];
+}
+
+int vis[128][128][4];
+int main() {
+  int T;
+  cin>>T;
+  int kase = 1;
+  while(T--) {
+    cin>>n>>m;
+    while(!valid_states.empty()) {
+      valid_states.pop();
+    }
+    for(int i=0;i<n;i++) {
+      cin>>maze[i];
+      for(int j=0;j<m;j++) {
+        for(int k=0;k<4;k++) {
+          vis[i][j][k] = 0;
+        }
+        if(maze[i][j] == 'S') {
+          Position state = Position(i, j, 0);
+          valid_states.push(state);
+          vis[i][j][0] = 1;
+        }
+        laser_dir[i][j] = getLaserDir(maze[i][j]);
+      }
+    }
+    Position answer = Position(-1, -1, -1);
+    while(!valid_states.empty()) {
+      Position top = valid_states.front();
+      int p = top.x;
+      int q = top.y;
+      int cur_step = top.steps;
+      valid_states.pop();
+      if(maze[p][q] == 'G') {
+        answer = top;
+        break;
+      }
+      for(int i=0;i<4;i++) {
+        int np = p + dirx[i];
+        int nq = q + diry[i];
+        if(isWithin(np, nq)) {
+          Position nx_state = Position(np, nq, cur_step + 1);
+          if(isLaser(np, nq) || maze[np][nq] == '#')
+            continue;
+          if(!isSafe(nx_state))
+            continue;
+          if(vis[np][nq][(cur_step+1)%4] == 1) {
+            continue;
+          }
+          vis[np][nq][(cur_step+1)%4] = 1;
+          valid_states.push(nx_state);
+        }
+      }
+    }
+    if(answer.steps == -1) {
+      printf("Case #%d: impossible\n", kase++);
+    } else {
+      printf("Case #%d: %d\n", kase++, answer.steps);
+    }
+  }
+  return 0;
+}

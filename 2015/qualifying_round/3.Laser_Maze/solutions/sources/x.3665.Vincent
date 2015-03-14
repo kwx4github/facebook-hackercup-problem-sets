@@ -1,0 +1,122 @@
+#include <iostream>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+typedef pair<int, int> pii;
+template <typename T,typename U>
+pair<T,U> operator+(const pair<T,U> &l,const pair<T,U> &r) {   
+    return pair<T, U>(l.first+r.first,l.second+r.second);
+} 
+
+void rotate(vector<vector<char> > &maze)
+{
+    char mapping[256];
+    for (int i = 0; i < 256; i++)
+        mapping[i] = i;
+    mapping['^'] = '<';
+    mapping['<'] = 'v';
+    mapping['v'] = '>';
+    mapping['>'] = '^';
+    for (int i = 0; i < maze.size(); i++) {
+        for (int j = 0; j < maze[i].size(); j++) {
+            maze[i][j] = mapping[maze[i][j]];
+        }
+    }
+}
+
+vector<vector<char> > extend(vector<vector<char> > &maze)
+{
+    vector<vector<char> > cur = maze;
+    for (int i = 0; i < cur.size(); i++) {
+        for (int j = 0; j < cur[0].size(); j++) {
+            int dr = 0, dc = 0;
+            dr -= cur[i][j] == '^';
+            dc -= cur[i][j] == '<';
+            dr += cur[i][j] == 'v';
+            dc += cur[i][j] == '>';
+            if (dr || dc) {
+                cur[i][j] = '#';
+                int r = i+dr, c = j+dc;
+                while (r >= 0 && c >= 0 && r < cur.size() && c < cur[0].size()) {
+                    if (cur[r][c] == '.' || cur[r][c] == 'S' || cur[r][c] == 'G')
+                        cur[r][c] = '#';
+                    else {
+                        break;
+                    }
+                    r += dr; c += dc;
+                }
+            }
+        }
+    }
+    return cur;
+}
+
+void insert_valid(set<pii> &next, vector<vector<char> > &maze, pii loc)
+{
+    pii dir[4];
+    dir[0].first = -1;
+    dir[1].first = 1;
+    dir[2].second = -1;
+    dir[3].second = 1;
+    for (int i = 0; i < 4; i++) {
+        pii nloc = loc + dir[i];
+        if (nloc.first >= 0 && nloc.second >= 0 &&
+            nloc.first < maze.size() && nloc.second < maze[0].size()) {
+            char obj = maze[nloc.first][nloc.second];
+            if (obj == '.' || obj == 'G' || obj == 'S') {
+                next.insert(nloc);
+            }
+        }
+    }
+}
+
+int main()
+{
+    int T;
+    cin >> T;
+    for (int t = 1; t <= T; t++) {
+        cout << "Case #" << t << ": ";
+        int m, n;
+        cin >> m >> n;
+        vector<vector<char> > maze;
+        for (int i = 0; i < m; i++) {
+            string row;
+            cin >> row;
+            maze.push_back(vector<char>(row.begin(), row.end()));
+        }
+        pii S, G;
+        for (int i = 0; i < maze.size(); i++) {
+            for (int j = 0; j < maze[0].size(); j++) {
+                if (maze[i][j] == 'S')
+                    S = pii(i, j);
+                if (maze[i][j] == 'G')
+                    G = pii(i, j);
+            }
+        }
+        vector<vector<char> > configs[4];
+        for (int i = 0; i < 4; i++) {
+            rotate(maze);
+            configs[i] = extend(maze);
+        }
+        set<pii> loc[4];
+        loc[3].insert(S);
+        for (int steps = 0;; steps++) {
+            set<pii> &ploc = loc[(steps+3) % 4];
+            set<pii> &cloc = loc[steps % 4];
+            int size = cloc.size();
+            for (set<pii>::iterator iter = ploc.begin(); iter != ploc.end(); iter++) {
+                insert_valid(cloc, configs[steps % 4], *iter);
+            }
+            if (cloc.find(G) != cloc.end()) {
+                cout << (steps+1) << "\n";
+                break;
+            }
+            if (size == cloc.size()) {
+                cout << "impossible" << "\n";
+                break;
+            }
+        }
+    }
+}

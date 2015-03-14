@@ -1,0 +1,250 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+class Program
+{
+    public class Dijkstra
+    {
+        public int N1; // 1부터 시작
+        public List<Edge> E = new List<Edge>();
+
+        public class Edge
+        {
+            public int v1;
+            public int v2;
+            public string desc;
+            public override string ToString()
+            {
+                return desc;
+            }
+        }
+
+        public class PrioQueue
+        {
+            private int total_size;
+            private SortedDictionary<int, Queue<int>> storage;
+
+            public PrioQueue()
+            {
+                this.storage = new SortedDictionary<int, Queue<int>>();
+                this.total_size = 0;
+            }
+
+            public bool IsEmpty()
+            {
+                return (total_size == 0);
+            }
+
+            public int Dequeue()
+            {
+                if (IsEmpty())
+                {
+                    throw new Exception("Please check that priorityQueue is not empty before dequeing");
+                }
+                else
+                    foreach (var q in storage.Values)
+                    {
+                        if (q.Count > 0)
+                        {
+                            total_size--;
+                            return q.Dequeue();
+                        }
+                    }
+                return 0; // not supposed to reach here.
+            }
+
+            public int Peek()
+            {
+                if (IsEmpty())
+                    throw new Exception("Please check that priorityQueue is not empty before peeking");
+                else
+                    foreach (var q in storage.Values)
+                    {
+                        if (q.Count > 0)
+                            return q.Peek();
+                    }
+                return 0; // not supposed to reach here.
+            }
+
+            public int Dequeue(int prio)
+            {
+                total_size--;
+                return storage[prio].Dequeue();
+            }
+
+            public void Enqueue(int item, int prio)
+            {
+                if (!storage.ContainsKey(prio))
+                {
+                    storage.Add(prio, new Queue<int>());
+                }
+                storage[prio].Enqueue(item);
+                total_size++;
+            }
+        }
+
+        public const int MAX = 1000000000;
+
+        public int[] solve(int from)
+        {
+            PrioQueue pq = new PrioQueue();
+            int[] dist = new int[N1 + 1];
+            bool[] check = new bool[N1 + 1];
+
+            dist[from] = 0;
+            for (int i = 0; i < N1 + 1; i++)
+            {
+                if (i != from)
+                {
+                    dist[i] = MAX;
+                }
+                pq.Enqueue(i, dist[i]);
+            }
+
+            while (!pq.IsEmpty())
+            {
+                int u = pq.Dequeue();
+                foreach (var e in E.Where(e => e.v1 == u))
+                {
+                    int alt = dist[u] + 1;
+                    if (alt < dist[e.v2])
+                    {
+                        dist[e.v2] = alt;
+                        pq.Enqueue(e.v2, alt); // 기존의 것을 업데이트 하지 않고, 무시
+                    }
+                }
+            }
+            return dist;
+        }
+    }
+
+    class XY
+    {
+        public int i, j;
+    }
+    static void Main(string[] args)
+    {
+        var dirList = new int[4, 2] { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+
+        var T = int.Parse(Console.ReadLine());
+        for (var t = 0; t < T; t++)
+        {
+            var r1 = Console.ReadLine().Trim().Split().Select(int.Parse).ToArray();
+            var M = r1[0];
+            var N = r1[1];
+            var maze1 = new string[M];
+            var maze2 = new char[M + 2, N + 2, 4];
+
+            var laserList = new List<XY>();
+            var start = new XY();
+            var goal = new XY();
+
+            for (var m = 0; m < M; m++)
+            {
+                maze1[m] = Console.ReadLine();
+            }
+            for (var d = 0; d < 4; d++)
+            {
+                for (var m = 0; m < M + 2; m++)
+                {
+                    maze2[m, 0, d] = '#';
+                    maze2[m, N + 1, d] = '#';
+                }
+                for (var n = 0; n < N + 2; n++)
+                {
+                    maze2[0, n, d] = '#';
+                    maze2[M + 1, n, d] = '#';
+                }
+                for (var m = 0; m < M; m++)
+                {
+                    for (var n = 0; n < N; n++)
+                    {
+                        char curr = maze1[m][n];
+                        if (curr == 'S')
+                        {
+                            start = new XY() { i = m, j = n };
+                        }
+                        else if (curr == 'G')
+                        {
+                            goal = new XY() { i = m, j = n };
+                        }
+                        else if (curr == '#')
+                        {
+                            maze2[m + 1, n + 1, d] = '#';
+                        }
+                        else if (curr == '.')
+                        {
+                        }
+                        else
+                        {
+                            var currD = 0;
+                            if (curr == '^') currD = 0;
+                            else if (curr == '>') currD = 1;
+                            else if (curr == 'v') currD = 2;
+                            else if (curr == '<') currD = 3;
+                            currD = (currD + d) % 4;
+
+                            int shotI = m, shotJ = n;
+                            maze2[shotI + 1, shotJ + 1, d] = '#';
+                            shotI += dirList[currD, 0];
+                            shotJ += dirList[currD, 1];
+                            while (shotI >= 0 && shotI < M && shotJ >= 0 && shotJ < N)
+                            {
+                                if (maze1[shotI][shotJ] == '#' || maze1[shotI][shotJ] == '^' || maze1[shotI][shotJ] == '>' || maze1[shotI][shotJ] == 'v' || maze1[shotI][shotJ] == '<') break;
+                                maze2[shotI + 1, shotJ + 1, d] = '#';
+                                shotI += dirList[currD, 0];
+                                shotJ += dirList[currD, 1];
+                            }
+                        }
+                    }
+                }
+            }
+
+            var solver = new Dijkstra() { N1 = 4 * M * N };
+
+            for (var currD = 0; currD < 4; currD++)
+            {
+                var nextD = (currD + 1) % 4;
+                for (var m = 0; m < M; m++)
+                {
+                    for (var n = 0; n < N; n++)
+                    {
+                        if (!(start.i == m && start.j == n && currD == 0) && maze2[m + 1, n + 1, currD] == '#') continue;
+                        for (var dd = 0; dd < 4; dd++)
+                        {
+                            var newM = m + dirList[dd, 0];
+                            var newN = n + dirList[dd, 1];
+                            if (maze2[newM + 1, newN + 1, nextD] == '#') continue;
+
+                            solver.E.Add(new Dijkstra.Edge
+                            {
+                                v1 = 4 * ((m * N) + n) + currD,
+                                v2 = 4 * ((newM * N) + newN) + nextD,
+                                desc = string.Format("{0} {1} -> {3} {4} ({2}->{5}) [{6}->{7}]", m, n, currD, m + dirList[dd, 0], n + dirList[dd, 1], nextD, 4 * ((m * N) + n) + currD, 4 * ((newM * N) + newN) + nextD)
+                            });
+                        }
+                    }
+                }
+            }
+            // solver.E = solver.E.OrderBy(ee => ee.desc).ToList();
+
+            int[] cost = solver.solve(4 * ((start.i * N) + start.j));
+
+            int min = Dijkstra.MAX;
+            for (var dd = 0; dd < 4; dd++)
+            {
+                int val = cost[4 * ((goal.i * N) + goal.j) + dd];
+                if (val < min) min = val;
+            }
+            if (min != Dijkstra.MAX)
+            {
+                Console.WriteLine("Case #{0}: {1}", t + 1, min);
+            }
+            else
+            {
+                Console.WriteLine("Case #{0}: impossible", t + 1);
+            }
+        }
+    }
+}

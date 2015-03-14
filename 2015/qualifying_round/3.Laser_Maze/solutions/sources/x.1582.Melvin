@@ -1,0 +1,187 @@
+#include <stdio.h>
+#include <vector>
+#include <deque>
+#include <set>
+using std::set;
+using std::vector;
+using std::deque;
+
+struct data_t
+{
+	unsigned int	r;
+	unsigned int	c;
+	unsigned int	t;
+	unsigned int	dis;
+public:
+	data_t():r(0),c(0),t(0),dis(0) { ; }
+public:
+	bool operator==(const data_t& rhs)const { return (r == rhs.r && c == rhs.c && t == rhs.t); }
+	bool operator<(const data_t& rhs)const
+	{
+		if(r < rhs.r) return true;
+		if(r > rhs.r) return false;
+
+		if(c < rhs.c) return true;
+		if(c > rhs.c) return false;
+
+		if(t < rhs.t) return true;
+		return false;
+	}
+};
+
+int main()
+{
+	static const unsigned int dirnum = 4;
+	static const int dx[dirnum] = { 1,-1,0,0 };
+	static const int dy[dirnum] = { 0,0,1,-1 };
+
+	static const size_t maxsize = 100;
+	static const size_t tmax = 4;
+
+	unsigned int nCases = 0;scanf("%d",&nCases);
+	for(unsigned int iCases = 1;iCases <= nCases;++iCases)
+	{
+		unsigned int m = 0,n = 0;scanf("%d%d",&m,&n);
+
+		vector< vector<char> > maze[tmax];
+		for(unsigned int i = 0;i < tmax;++i) maze[i].resize(m,vector<char>(n,0));
+	
+		data_t startv,endv;
+		for(unsigned int i = 0;i < m;++i)
+		{
+			char buff[maxsize+1] = { 0 };scanf("%s",buff);
+			for(unsigned int k = 0;k < n;++k)
+			{
+				for(unsigned int t = 0;t < tmax;++t)
+				{
+					maze[t][i][k] = buff[k];
+				}
+				if(maze[0][i][k] == 'S')
+				{
+					startv.r = i;startv.c = k;
+					startv.t = 0;startv.dis = 0;
+				}
+				else if(maze[0][i][k] == 'G')
+				{
+					endv.r = i;endv.c = k;
+					endv.t = 0;endv.dis = (unsigned int)(-1);
+				}
+				else if(maze[0][i][k] == '<')
+				{
+					maze[1][i][k] = '^';
+					maze[2][i][k] = '>';
+					maze[3][i][k] = 'v';
+				}
+				else if(maze[0][i][k] == '>')
+				{
+					maze[1][i][k] = 'v';
+					maze[2][i][k] = '<';
+					maze[3][i][k] = '^';
+
+				}
+				else if(maze[0][i][k] == '^')
+				{
+					maze[1][i][k] = '>';
+					maze[2][i][k] = 'v';
+					maze[3][i][k] = '<';
+				}
+				else if(maze[0][i][k] == 'v')
+				{
+					maze[1][i][k] = '<';
+					maze[2][i][k] = '^';
+					maze[3][i][k] = '>';
+				}
+			}
+		}
+
+		for(unsigned int t = 0;t < tmax;++t)
+		{
+			for(unsigned int i = 0;i < m;++i)
+			{
+				for(unsigned int k = 0;k < n;++k)
+				{
+					if(maze[t][i][k] == '<')
+					{
+						for(unsigned int j = k - 1;j != (unsigned int)(-1);--j)
+						{
+							char c = maze[t][i][j];
+							if('S' != c && 'G' != c && '.' != c) continue;
+							maze[t][i][j] = '#';
+						}
+						maze[t][i][k] = '#';
+					}
+					else if(maze[t][i][k] == '>')
+					{
+						for(unsigned int j = k + 1;j < n;++j)
+						{
+							char c = maze[t][i][j];
+							if('S' != c && 'G' != c && '.' != c) continue;
+							maze[t][i][j] = '#';
+						}
+						maze[t][i][k] = '#';
+					}
+					else if(maze[t][i][k] == '^')
+					{
+						for(unsigned int j = i - 1;j != (unsigned int)(-1);--j)
+						{
+							char c = maze[t][j][k];
+							if('S' != c && 'G' != c && '.' != c) continue;
+							maze[t][j][k] = '#';
+						}
+						maze[t][i][k] = '#';
+					}
+					else if(maze[t][i][k] == 'v')
+					{
+						for(unsigned int j = i + 1;j < m;++j)
+						{
+							char c = maze[t][j][k];
+							if('S' != c && 'G' != c && '.' != c) continue;
+							maze[t][j][k] = '#';
+						}
+						maze[t][i][k] = '#';
+					}
+				}
+			}
+		}
+
+		//for(unsigned int t = 0;t < tmax;++t)
+		//{
+		//	for(unsigned int i = 0;i < m;++i)
+		//	{
+		//		for(unsigned int k = 0;k < n;++k)
+		//		{
+		//			printf("%c",maze[t][i][k]);
+		//		}
+		//		printf("\n");
+		//	}
+		//	printf("\n\n");
+		//}
+
+		set<data_t> table;table.insert(startv);
+		deque<data_t> que;que.push_back(startv);
+		for(;!que.empty();que.pop_front())
+		{
+			const data_t& u = que.front();
+			if(u.r == endv.r && u.c == endv.c) { endv.dis = u.dis;break;	}							// 
+			for(unsigned int id = 0;id < dirnum;++id)
+			{
+				int x = u.r + dx[id],y = u.c + dy[id];
+				if(x < 0 || x >= m) continue;
+				if(y < 0 || y >= n) continue;
+
+				data_t v;
+				v.r = x;v.c = y;
+				v.t = (u.t + 1)%4;v.dis = u.dis + 1;
+				if(maze[v.t][x][y] == '#') continue;
+				if(table.find(v) != table.end()) continue;
+				table.insert(v);
+				que.push_back(v);
+			}
+		}
+
+		unsigned int ans = endv.dis;
+		if(ans == (unsigned int)(-1)) printf("Case #%u: impossible\n",iCases);
+		else printf("Case #%u: %u\n",iCases,ans);
+	}
+	return 0;
+}

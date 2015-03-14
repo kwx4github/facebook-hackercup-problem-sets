@@ -1,0 +1,61 @@
+import string
+from collections import deque
+
+import numpy as np
+
+direcs = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+directions = dict(zip('^>v<', direcs))
+
+def fire(maze):
+    maze = np.copy(maze)
+    M, N = maze.shape
+
+    for r in range(M):
+        for c in range(N):
+            if maze[r, c] in directions:
+                a, b = directions[maze[r, c]]
+                i, j = r + a, c + b
+                while 0 <= i < M and 0 <= j < N and maze[i, j] in '.*SG':
+                    maze[i, j] = '*'
+                    i += a
+                    j += b
+    return maze
+
+def rotate(s):
+    rot_turret = string.maketrans('^>v<', '>v<^')
+    return string.translate(s, rot_turret)
+
+def solve(maze):
+    M, N = maze.shape
+    level = np.empty((4, M, N), dtype='S1')
+    for i in range(4):
+        level[i] = fire(maze)
+        maze = np.vectorize(rotate)(maze)
+
+    start = tuple(np.transpose(np.where(maze == 'S'))[0]) + (0, 0)
+    queue = deque([start])
+    while queue:
+        r, c, state, steps = queue.popleft()
+        new_state = (state + 1) % 4
+        for a, b in direcs:
+            i = r + a
+            j = c + b
+            if 0 <= i < M and 0 <= j < N and level[new_state, i, j] in '.SG':
+                if level[new_state, i, j] == 'G':
+                    return steps + 1
+                level[new_state, i, j] = '_'
+                queue.append((i, j, new_state, steps + 1))
+    return -1
+
+T = input()
+
+for k in range(T):
+    M, N = map(int, raw_input().split())
+
+    maze = np.empty((M, N), dtype='S1')
+    for i in range(M):
+        maze[i] = list(raw_input())
+    
+    steps = solve(maze)
+    answer = 'impossible' if steps == -1 else str(steps)
+    print 'Case #%d: %s' % (k + 1, answer)

@@ -1,0 +1,120 @@
+#include <iostream>
+#include <tuple>
+#include <algorithm>
+#include <string>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <deque>
+#include <vector>
+#include <memory.h>
+#include <cstdio>
+#include <cmath>
+
+using namespace std;
+
+const int N = 222;
+typedef pair<int, int> pii;
+char mp[N][N];
+bool can[4][N][N];
+int d[4][N][N];
+map<char, char> nxt;
+map<char, pii> dir;
+int dx[] = {1, -1, 0, 0};
+int dy[] = {0, 0, 1, -1};
+
+pii operator+(const pii& A, const pii& B) {
+    return {A.first + B.first, A.second + B.second};
+}
+
+int main() {
+    int T;
+
+    nxt['>'] = 'v';
+    nxt['v'] = '<';
+    nxt['<'] = '^';
+    nxt['^'] = '>';
+    dir['>'] = {0, 1};
+    dir['v'] = {1, 0};
+    dir['<'] = {0, -1};
+    dir['^'] = {-1, 0};
+
+    scanf("%d\n", &T);
+
+    for (int _t = 1; _t <= T; _t++) {
+        printf("Case #%d: ", _t);
+
+        int n, m;
+        pii start, finish;
+        scanf("%d%d\n", &n, &m);
+        memset(mp, '#', sizeof(mp));
+        memset(can, true, sizeof(can));
+        memset(d, 63, sizeof(d));
+        for (int i = 1; i <= n; ++i) {
+            gets(mp[i] + 1);
+            mp[i][m + 1] = '#';
+
+            for (int j = 1; j <= m; ++j)
+                if (mp[i][j] == 'S') {
+                    start = {i, j};
+                    mp[i][j] = '.';
+                } else if (mp[i][j] == 'G') {
+                    finish = {i, j};
+                    mp[i][j] = '.';
+                }
+        }
+        for (int i = 0; i <= n + 1; ++i)
+            for (int j = 0; j <= m + 1; ++j)
+                if (mp[i][j] != '.') {
+                    for (int shift = 0; shift < 4; ++shift) can[shift][i][j] = false;
+                }
+
+        for (int i = 1; i <= n; ++i)
+            for (int j = 1; j <= m; ++j)
+                if (nxt.find( mp[i][j] ) != nxt.end()) {
+                    char current = mp[i][j];
+                    for (int shift = 0; shift < 4; ++shift) {
+                        pii direction = dir[current];
+                        pii pos = pii(i, j) + direction;
+
+                        while (mp[pos.first][pos.second] == '.') {
+                            can[shift][pos.first][pos.second] = false;
+                            pos = pos + direction;
+                        }
+
+                        current = nxt[current];
+                    }
+                }
+
+        typedef tuple<int, int, int> cell;
+        queue<cell> q;
+        q.push(cell{0, start.first, start.second});
+        d[0][start.first][start.second] = 0;
+        while (!q.empty()) {
+            int shift;
+            pii pos;
+            tie(shift, pos.first, pos.second) = q.front(); q.pop();
+            int cost = d[shift][pos.first][pos.second] + 1;
+            shift = (shift + 1) & 3;
+
+            for (int i = 0; i < 4; ++i) {
+                pii npos = pos + make_pair(dx[i], dy[i]);
+                if (can[shift][npos.first][npos.second] && d[shift][npos.first][npos.second] > cost) {
+                    d[shift][npos.first][npos.second] = cost;
+                    q.push(make_tuple(shift, npos.first, npos.second));
+                }
+            }
+        }
+
+        int result = d[0][finish.first][finish.second];
+        for (int i = 1; i < 4; ++i)
+            result = min(result, d[i][finish.first][finish.second]);
+
+        if (result > 1e8) puts("impossible");
+        else printf("%d\n", result);
+    }
+
+    return 0;
+}
+

@@ -1,0 +1,175 @@
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+
+namespace Problem2
+{
+	class MainClass
+	{
+		public static void Main (string[] args)
+		{
+			var sr = new StreamReader ("input2.txt");
+			var sw = new StreamWriter ("output2.txt");
+
+			int T = Int32.Parse (sr.ReadLine ()); // T
+
+			for (int i = 1; i <= T; i++) {
+				List<Food> foods = new List<Food> ();
+				int[] goal = sr.ReadLine ().Split (new []{ ' ' }).Select (s => Int32.Parse (s)).ToArray ();
+				int N = Int32.Parse (sr.ReadLine ());
+
+				for (int n = 0; n < N; n++) {
+					int[] nut = sr.ReadLine ().Split (new []{ ' ' }).Select (s => Int32.Parse (s)).ToArray ();
+					foods.Add (new Food (nut, n));
+				}
+
+				Stopwatch st = new Stopwatch ();
+				st.Start ();
+				string ans = Solve (goal, foods);
+				st.Stop ();
+				sw.WriteLine ("Case #{0}: {1}", i, ans);
+				Console.WriteLine ("Case #{0}: {1} ({2}ms)", i, ans, st.ElapsedMilliseconds);
+			}
+
+			sw.Close ();
+			sr.Close ();
+		}
+
+		static string Solve (int[] goal, List<Food> foods)
+		{
+			var totals = new []{ 0, 0, 0 };
+			memoize = new Dictionary<string, string> ();
+
+			if (foods.Aggregate (0, (a, f) => a + f.n[0]) < goal[0])
+				return "no";
+
+			if (foods.Aggregate (0, (a, f) => a + f.n[1]) < goal[1])
+				return "no";
+
+			if (foods.Aggregate (0, (a, f) => a + f.n[2]) < goal[2])
+				return "no";
+
+
+			foods = foods.OrderBy (f => f.n[0] + f.n[1] + f.n[2]).ToList ();
+			for (int n1 = 0; n1 < foods.Count; n1++) {
+
+				Add (totals, foods[n1]);
+				int r = Test (goal, totals);
+
+				if (r == 0)
+					return "yes";
+
+				if (r > 0) {
+					Remove (totals, foods[n1]);
+				}
+
+				if (r < 1) {
+					if (SolveRec (goal, totals, foods) == "yes")
+						return "yes";
+
+					Remove (totals, foods[n1]);
+				}
+			}
+
+			return "no";
+		}
+
+		static Dictionary<string, string> memoize;
+
+		static void AddMemo (List<Food> foods, string ans)
+		{
+
+			string key = GenKey (foods);
+
+			if (memoize.ContainsKey (key))
+				return;
+
+			memoize.Add (GenKey (foods), ans);
+		}
+
+		static string GenKey (List<Food> foods)
+		{
+			return foods.OrderBy (f => f.id).Where (f => f.eaten).Aggregate ("", (a, f) => a + f.id);
+		}
+
+		static string SolveRec (int[] goal, int[] totals, List<Food> foods)
+		{
+			int r = Test (goal, totals);
+
+			if (r == 0)
+				return "yes";
+
+			if (r > 0) {
+				return "no";
+			}
+				
+			string ans = "";
+			memoize.TryGetValue (GenKey (foods), out ans);
+			if (!String.IsNullOrEmpty (ans))
+				return ans;
+
+			for (int i = 0; i < foods.Count; i++) {
+
+				if (foods[i].eaten)
+					continue;
+
+				Add (totals, foods[i]);
+
+				if (SolveRec (goal, totals, foods) == "yes")
+					return "yes";
+
+				Remove (totals, foods[i]);
+
+			}
+
+			AddMemo (foods, "no");
+			return "no";
+		}
+
+
+		static int[] Add (int[] totals, Food add)
+		{
+			totals[0] += add.n[0];
+			totals[1] += add.n[1];
+			totals[2] += add.n[2];
+			add.eaten = true;
+			return totals;
+		}
+
+		static int[] Remove (int[] totals, Food add)
+		{
+			totals[0] -= add.n[0];
+			totals[1] -= add.n[1];
+			totals[2] -= add.n[2];
+			add.eaten = false;
+			return totals;
+		}
+
+		static int Test (int[] goal, int[] totals)
+		{
+			if (goal[0] == totals[0] && goal[1] == totals[1] && goal[2] == totals[2])
+				return 0;
+
+			if (goal[0] < totals[0] || goal[1] < totals[1] || goal[2] < totals[2])
+				return 1;
+
+			return -1;
+		}
+
+		class Food
+		{
+			public int id;
+			public int[] n;
+			public bool eaten = false;
+
+			public Food (int[] n, int id)
+			{
+				this.id = id;
+				this.n = n;
+			}
+		}
+	}
+}

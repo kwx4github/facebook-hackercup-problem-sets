@@ -1,0 +1,164 @@
+from collections import deque
+
+PROBLEM_NAME = 'p3'
+INPUT_FILENAME = PROBLEM_NAME + '.in'
+OUTPUT_FILENAME = PROBLEM_NAME + '.out'
+IMPOSSIBLE = 'impossible'
+WALL = '#'
+START = 'S'
+GOAL = 'G'
+EMPTY = '.'
+TURRET_LEFT = '<'
+TURRET_UP = '^'
+TURRET_RIGHT = '>'
+TURRET_DOWN = 'v'
+LASER = '*'
+STEP_CELL_VALUE = {
+    TURRET_LEFT: TURRET_UP,
+    TURRET_UP: TURRET_RIGHT,
+    TURRET_RIGHT: TURRET_DOWN,
+    TURRET_DOWN: TURRET_LEFT,
+}
+
+
+def solve(m, n, maze):
+    def find_in_maze(maze, cell_value):
+        for row in xrange(m):
+            for column in xrange(n):
+                if maze[row][column] == cell_value:
+                    return row, column
+        return None, None
+
+    (start_row, start_column) = find_in_maze(maze, START)
+    (goal_row, goal_column) = find_in_maze(maze, GOAL)
+
+    maze[start_row][start_column] = EMPTY
+    maze[goal_row][goal_column] = EMPTY
+
+    def is_good_coordinate(row, column):
+        if row is None or column is None:
+            return False
+        if row < 0 or row >= m or column < 0 or column >= n:
+            return False
+        return True
+
+    def shoot_laser(maze, row, column, delta_row, delta_column, target_cell_value):
+        current_row = row
+        current_column = column
+        while True:
+            current_row += delta_row
+            current_column += delta_column
+            if not is_good_coordinate(current_row, current_column):
+                return False
+            if maze[current_row][current_column] == target_cell_value:
+                return True
+            if maze[current_row][current_column] != EMPTY:
+                return False
+
+    def fire_laser(maze):
+        maze_after_fire = list()
+        for row in xrange(m):
+            row_after_fire = list()
+            for column in xrange(n):
+                cell_value = maze[row][column]
+                if cell_value != EMPTY:
+                    row_after_fire.append(cell_value)
+                else:
+                    shoot_targets = [
+                        (0, -1, TURRET_RIGHT),
+                        (0, 1, TURRET_LEFT),
+                        (1, 0, TURRET_UP),
+                        (-1, 0, TURRET_DOWN),
+                    ]
+                    target_found = False
+                    for delta_row, delta_column, target_cell_value in shoot_targets:
+                        target_found = shoot_laser(maze, row, column, delta_row, delta_column, target_cell_value)
+                        if target_found:
+                            break
+                    if target_found:
+                        row_after_fire.append(LASER)
+                    else:
+                        row_after_fire.append(EMPTY)
+            maze_after_fire.append(row_after_fire)
+        return maze_after_fire
+
+    def step_cell_value(cell_value):
+        return STEP_CELL_VALUE.get(cell_value, cell_value)
+
+    def step_maze(maze):
+        maze_after_step = list()
+        for row in xrange(m):
+            row_after_step = list()
+            for column in xrange(n):
+                row_after_step.append(step_cell_value(maze[row][column]))
+            maze_after_step.append(row_after_step)
+        return maze_after_step
+
+    possible_mazes = list()
+    current_maze = maze
+    for _ in xrange(4):
+        current_maze = step_maze(current_maze)
+        possible_mazes.append(fire_laser(current_maze))
+
+    def get_cell_value_at_step(row, column, step):
+        if step <= 0:
+            return maze[row][column]
+        return possible_mazes[(step - 1) % 4][row][column]
+
+    DIRECTIONS = [
+        (1, 0),
+        (-1, 0),
+        (0, 1),
+        (0, -1),
+    ]
+
+    visited = dict()
+    distances = dict()
+    queue = deque()
+
+    start_vertex = (0, start_row, start_column)
+    visited[start_vertex] = True
+    distances[start_vertex] = 0
+    queue.append(start_vertex)
+    while len(queue) > 0:
+        vertex = queue.popleft()
+        distance = distances[vertex]
+        layer, row, column = vertex
+        if row == goal_row and column == goal_column:
+            return "%d" % distance
+        for delta_row, delta_column in DIRECTIONS:
+            next_row = row + delta_row
+            next_column = column + delta_column
+            if not is_good_coordinate(next_row, next_column):
+                continue
+            next_layer = layer + 1
+            if next_layer > 4:
+                next_layer = 1
+            next_vertex = (next_layer, next_row, next_column)
+            if visited.get(next_vertex, False):
+                continue
+            safe = get_cell_value_at_step(next_row, next_column, next_layer) == EMPTY
+            if not safe:
+                continue
+            visited[next_vertex] = True
+            distances[next_vertex] = distance + 1
+            queue.append(next_vertex)
+
+    return IMPOSSIBLE
+
+def main():
+    input_file = open(INPUT_FILENAME, 'rt')
+    output_file = open(OUTPUT_FILENAME, 'wt')
+    t = int(input_file.readline().strip())
+    for ti in xrange(t):
+        m, n = map(int, input_file.readline().strip().split())
+        maze = list()
+        for mi in xrange(m):
+            maze.append(list(input_file.readline().strip()))
+        result = solve(m, n, maze)
+        print >>output_file, 'Case #%d: %s' % (ti + 1, result)
+    input_file.close()
+    output_file.close()
+
+if __name__ == '__main__':
+    main()

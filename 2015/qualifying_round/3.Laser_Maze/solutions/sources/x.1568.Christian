@@ -1,0 +1,214 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
+using System.Windows.Shapes;
+using System.IO;
+
+namespace FHC2015 {
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : Window {
+        public MainWindow() {
+            InitializeComponent();
+        }
+
+        private uint NewSwap(byte[] ori, int n0, int n1) {
+            byte[] newb = new byte[ori.Length];
+            ori.CopyTo(newb, 0);
+            byte b = newb[n0];
+            newb[n0] = newb[n1];
+            newb[n1] = b;
+            uint sum = 0;
+            for (int i = 0; i < newb.Length; i++)
+                sum = sum*10 + newb[i];
+            return sum;
+        }
+
+        private void btCook_Click(object sender, RoutedEventArgs e) {
+            string[] lines = File.ReadAllLines("C:\\FHC\\cooking_the_books.txt");
+            StringBuilder sbInput = new StringBuilder();
+            StringBuilder sbOutput = new StringBuilder();
+            for(int i=1; i<lines.Length; i++) {
+                string s = lines[i];
+                sbInput.AppendLine(s);
+
+                uint n = Convert.ToUInt32(s);
+                int exp = (int)Math.Floor(Math.Log10(n));
+                uint nmin = (uint)Math.Pow(10, exp);
+
+                byte[] digits = Encoding.UTF8.GetBytes(s);
+                for (int j = 0; j < digits.Length; j++) digits[j] = (byte)(digits[j] - 48);
+
+                uint n_small = n;
+                uint n_large = n;
+
+                for (int k = 0; k < digits.Length-1; k++) 
+                    for(int l=k+1; l < digits.Length; l++){
+                        uint nn = NewSwap(digits, k, l);
+                        if (nn >= nmin && nn < n_small) n_small = nn;
+                        if (nn >= nmin && nn > n_large) n_large = nn;
+                }
+
+                sbOutput.AppendLine(String.Format("Case#{0}: {1} {2}", i, n_small, n_large));
+
+            }
+
+            txInput.Text = sbInput.ToString();
+            txOutput.Text = sbOutput.ToString();
+        }
+
+        private void btResolution_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        //LASER MAZE
+        static int min_steps;
+        static byte maze_width, maze_height;
+
+        
+        private void Step(int cur_step, int pos_x, int pos_y, byte[,] maze) {
+            byte val = maze[pos_y, pos_x];
+            if (val > 1) return;//bump into pillars
+            byte[,] clone = (byte[,]) maze.Clone();
+            
+            //got hit by laser
+            for (byte i = 0; i < maze_height; i++)
+                for (byte j = 0; j < maze_width; j++) {
+                    bool isturret = true;
+                    switch (clone[i, j]) {
+                        case 10: //UP
+                            if (pos_x == j && pos_y < i) {
+                                for (byte k = (byte)(pos_y + 1); k < i; k++) 
+                                    if (clone[k, j] > 1) break;//protected by pillar, safe
+                                return;//got hit
+                            }
+                            break;
+                        case 11: //RIGHT
+                            if (pos_y == i && pos_x > j) {
+                                for (byte k = (byte)(j + 1); k < pos_x; k++)
+                                    if (clone[i, k] > 1) break;//protected by pillar, safe
+                                return;//got hit
+                            }
+                            break;
+                        case 12: //DOWN
+                            if (pos_x == j && pos_y > i) {
+                                for (byte k = (byte)(i + 1); k < pos_y; k++)
+                                    if (clone[k, j] > 1) break;//protected by pillar, safe
+                                return;//got hit
+                            }
+                            break;
+                        case 13: //LEFT
+                            if (pos_y == i && pos_x < j) {
+                                for (byte k = (byte)(pos_x + 1); k < j; k++)
+                                    if (clone[i, k] > 1) break;//protected by pillar, safe
+                                return;//got hit
+                            }
+                            break;
+                        default:
+                            isturret = false;
+                            break;
+                    }
+                    if(isturret) clone[i, j] = NextDirection(clone[i, j]);
+            }//for i,j
+
+            //if reached the goal
+            if (val == 1) {
+                if (cur_step < min_steps) min_steps = cur_step;
+                return;
+            }
+            int next_cur_step = cur_step + 1;
+            if (next_cur_step >= min_steps) return; //useless to continue
+
+            if (pos_x + 1 < maze_width) Step(next_cur_step, pos_x + 1, pos_y, clone);
+            if (pos_x > 0) Step(next_cur_step, pos_x - 1, pos_y, clone);
+            if (pos_y + 1 < maze_height) Step(next_cur_step, pos_x, pos_y+1, clone);
+            if (pos_y > 0) Step(next_cur_step, pos_x, pos_y-1, clone);
+        }
+
+
+        private byte NextDirection(byte current) {
+            byte next = (byte)(current + 1);
+            if (next > 13) next = 10;
+            return next;
+        }
+
+        private void btMaze_Click(object sender, RoutedEventArgs e) {
+            string[] lines = File.ReadAllLines("C:\\FHC\\laser_maze.txt");
+            StringBuilder sbInput = new StringBuilder();
+            StringBuilder sbOutput = new StringBuilder();
+
+            int ndx = 0;
+            int nmazes = Convert.ToInt32(lines[ndx++]);
+         
+            for (int n = 1; n <= nmazes; n++) {
+                //dim[0] Height, dim[1] Width
+                byte[] dim = lines[ndx++].Split(' ').Select(d => Convert.ToByte(d)).ToArray();
+                maze_height = dim[0];
+                maze_width = dim[1];
+                byte[,] maze = new byte[maze_height, maze_width];
+                byte start_x = 0;
+                byte start_y = 0;
+                min_steps = 10;
+                //0: empty space; 1: Goal; 2: wall; 10: up_turret; 11: right_turret; 12: down_turret; 13: left_turret
+                for (byte i = 0; i < maze_height; i++) {
+                    char[] chars = lines[ndx++].ToCharArray();
+                    for (byte j = 0; j < chars.Length; j++) 
+                        switch (chars[j]) {
+                            case 'S':
+                                maze[i, j] = 0;
+                                start_x = j;
+                                start_y = i;
+                                break;
+                            case 'G':
+                                maze[i, j] = 1;
+                                break;
+                            case '.':
+                                maze[i, j] = 0;
+                                break;
+                            case '#':
+                                maze[i, j] = 2;
+                                break;
+                            case '^':
+                                maze[i, j] = 11; //all turret has been initially turned 90 deg
+                                break;
+                            case '>':
+                                maze[i, j] = 12;
+                                break;
+                            case 'v':
+                                maze[i, j] = 13;
+                                break;
+                            case '<':
+                                maze[i, j] = 10;
+                                break;
+                            default:
+                                MessageBox.Show("invalid char");
+                                break;
+                        }
+                    
+                }//for i
+
+                if (start_x + 1 < maze_width)  Step(1, start_x + 1, start_y, maze);
+                if (start_y + 1 < maze_height) Step(1, start_x, start_y + 1, maze);
+                if (start_x > 0) Step(1, start_x - 1, start_y, maze);
+                if (start_y < 0) Step(1, start_x, start_y - 1, maze);
+
+                sbOutput.AppendLine(String.Format("Case #{0}: {1}", n, min_steps < 10? min_steps.ToString() : "impossible"));
+
+            }//for n
+
+            txOutput.Text = sbOutput.ToString();
+        }// btMaze_Click
+
+
+    }
+}

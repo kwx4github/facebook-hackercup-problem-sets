@@ -1,0 +1,131 @@
+#include <iostream>
+#include <cstdio>
+#include <map>
+#include <vector>
+#include <queue>
+using namespace std;
+const char turret[4] = {'^', '>', 'v', '<'};
+const int dx[4] = {-1 , 0, 1,  0};
+const int dy[4] = {0,  1,  0, -1};
+struct State
+{
+  int x, y, t;
+  State(int _x, int _y, int _t) : x(_x), y(_y), t(_t) {}
+};
+
+bool operator<(const State& a, const State& b)
+{
+  if (a.x != b.x)
+    return a.x < b.x;
+  if (a.y != b.y)
+    return a.y < b.y;
+  return a.t < b.t;
+}
+
+bool isPassable(char x)
+{
+  return x == '.' || x == 'S' || x == 'G';
+}
+
+bool isValidPossition(int x, int y, const vector< string >& maze)
+{
+  return x >= 0 && x < maze.size() && y >= 0 && y < maze[0].size() && isPassable(maze[x][y]);
+}
+
+bool isDeath(const State& state, const vector< string >& maze)
+{
+  if (!isValidPossition(state.x, state.y, maze))
+    return true;
+  const int width = maze[0].size();
+  const int height = maze.size();
+  for (int i = 0; i < height; i++) 
+  {
+    for (int j = 0; j < width; j++) 
+    {
+      for (int g = 0; g < 4; g++)
+      {
+	if (maze[i][j] == turret[g])
+	{
+	  int bulletDirection = (g + state.t) % 4;
+	  int bulletX = i, bulletY = j;
+	  do 
+	  {
+	    bulletX += dx[bulletDirection];
+	    bulletY += dy[bulletDirection];
+	    if ( bulletX == state.x && bulletY == state.y)
+	    {
+	      return true;	    	    
+	    }
+	  }
+	  while (isValidPossition(bulletX, bulletY, maze));
+	}
+      }
+    }
+  }
+  return false;
+}
+int main () {
+  int testNum;
+  cin >> testNum;
+  for ( int testId = 1; testId <= testNum; ++testId)
+  {
+    printf("Case #%d: ", testId);
+    cerr << testId << endl;
+    int width, height;
+    cin >> height >> width;
+    vector<string> maze(height);
+    for (int i = 0; i < height; ++i)
+    {
+      cin >> maze[i];
+    }
+    
+    map<State, int> answer;
+    queue<State> bfs;
+    int finishX, finishY, finishAnswer = -1;
+    for (int i = 0; i < height; ++i)
+    {
+      for (int j = 0; j < width; ++j)
+      {
+	if (maze[i][j] == 'S')
+	{
+	  State start(i, j, 0);
+	  answer[start] = 0;
+	  bfs.push(start);
+	}
+	if (maze[i][j] == 'G')
+	{
+	  finishX = i;
+	  finishY = j;
+	}
+      }
+    }
+    while (bfs.size())
+    {
+      const State current = bfs.front();
+      bfs.pop();
+      const int distance = answer[current];
+      if ( current.x == finishX && current.y == finishY)
+      {
+	finishAnswer = distance;
+	break;
+      }
+	
+      for (int i = 0; i < 4; ++i)
+      {
+	const State step(current.x + dx[i], current.y + dy[i], (distance + 1) % 4);
+	if (answer.count(step) == 0 && !isDeath(step, maze))
+	{
+	  answer[step] = distance + 1;
+	  bfs.push(step);
+	}      
+      }
+    }
+    if( finishAnswer == -1)
+      printf("impossible");
+    else
+      printf("%d", finishAnswer);
+    
+    printf("\n");
+  }
+  return 0;
+}

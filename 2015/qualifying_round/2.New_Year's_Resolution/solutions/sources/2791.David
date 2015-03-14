@@ -1,0 +1,126 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+using System.Diagnostics;
+
+namespace NewYears
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Usage: Facebook-NewYears.exe <input file> <output file>");
+            if (args.Length != 2)
+            {
+                return;
+            }
+
+            System.Diagnostics.Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            NewYears(args[0], args[1]);
+            stopwatch.Stop();
+
+            Console.WriteLine("Execution took {0}", stopwatch.Elapsed.ToString());
+            Console.WriteLine("This is a console app.  Hit enter to exit");
+            Console.Read();
+        }
+
+        private static void NewYears(string inputFile, string outputFile)
+        {
+            if (File.Exists(inputFile))
+            {
+                using (StreamReader stream = File.OpenText(inputFile))
+                {
+                    using (StreamWriter outputStream = File.CreateText(outputFile))
+                    {
+                        string pszTests = stream.ReadLine();
+                        int cTests = Int32.Parse(pszTests);
+                        if ((cTests < 1) || (cTests > 20))
+                        {
+                            throw new Exception();
+                        }
+
+                        for (int i = 0; i < cTests; ++i)
+                        {
+                            bool result = ProcessSingleTest(stream);
+                            String resultStr = (result) ? "yes" : "no";
+
+                            Console.WriteLine("Case #{0}: {1}", (i + 1).ToString(), resultStr);
+                            outputStream.WriteLine("Case #{0}: {1}", (i + 1).ToString(), resultStr);
+                        }
+                    }
+                }
+            }
+        }
+
+        struct Food
+        {
+            public int P { get; set; }
+            public int C { get; set; }
+            public int F { get; set; }
+            public override string ToString()
+            {
+                return "P:" + P + " C:" + C + " F:" + F;
+            }
+
+            public bool GreaterThan(Food other)
+            {
+                return (this.P > other.P) || (this.C > other.C) || (this.F > other.F);
+            }
+        }
+
+        private static bool ProcessSingleTest(StreamReader stream)
+        {
+            String[] firstLineTokens = stream.ReadLine().Split(' ');
+            Food goalFood = new Food();
+            goalFood.P = int.Parse(firstLineTokens[0]);
+            goalFood.C = int.Parse(firstLineTokens[1]);
+            goalFood.F = int.Parse(firstLineTokens[2]);
+
+            int N = int.Parse(stream.ReadLine());
+            List<Food> foods = new List<Food>();
+            for (int i = 0; i < N; ++i)
+            {
+                String[] foodTokens = stream.ReadLine().Split(' ');
+                Food food = new Food();
+                food.P = int.Parse(foodTokens[0]);
+                food.C = int.Parse(foodTokens[1]);
+                food.F = int.Parse(foodTokens[2]);
+                foods.Add(food);
+            }
+
+            int bitFieldMax = 0;
+            for (int i = 0; i < N; ++i)
+            {
+                bitFieldMax += 1 << i;
+            }
+
+            HashSet<Food> allCombinations = new HashSet<Food>();
+            for (int i = 1; i <= bitFieldMax; ++i)
+            {
+                Food thisCombination = new Food();
+                for (int iFood = 0; iFood < N; ++iFood)
+                {
+                    if (thisCombination.GreaterThan(goalFood)) // exceeded max.  quit now.
+                    {
+                        break;
+                    }
+
+                    int foodBit = (1 << iFood);
+                    if ((i & foodBit) != 0)
+                    {
+                        thisCombination.P += foods[iFood].P;
+                        thisCombination.C += foods[iFood].C;
+                        thisCombination.F += foods[iFood].F;
+                    }
+                }
+
+                allCombinations.Add(thisCombination);
+            }
+
+            return allCombinations.Contains(goalFood); ;
+        }
+    }
+}

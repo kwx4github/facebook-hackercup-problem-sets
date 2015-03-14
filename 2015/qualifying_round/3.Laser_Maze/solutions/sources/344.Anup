@@ -1,0 +1,178 @@
+#include<cstring>
+#include<vector>
+#include<queue>
+#include<fstream>
+#include<iostream>
+using namespace std;
+
+vector<string>maze;
+int T,N,M;
+bool danger[4][101][101];
+int dist[4][101][101];
+bool wall[101][101];
+
+int getDirection(char ch)
+{
+    if(ch=='^')
+        return 0;
+    if(ch=='>')
+        return 1;
+    if(ch=='v')
+        return 2;
+    if(ch=='<')
+        return 3;
+}
+void updateDanger(int i,int j,int add)
+{
+    int dir=getDirection(maze[i][j]);
+    dir=(dir+add)%4;
+    if(dir==0)
+    {
+        danger[add][i][j]=true;
+        i--;
+        while(i>=0&&wall[i][j]==false)
+        {
+            danger[add][i][j]=true;
+            i--;
+        }
+    }
+    else if(dir == 1)
+    {
+        danger[add][i][j]=true;
+        j++;
+        while(j<M&&wall[i][j]==false)
+        {
+            danger[add][i][j]=true;
+            j++;
+        }
+    }
+    else if(dir==2)
+    {
+        danger[add][i][j]=true;
+        i++;
+        while(i<N&&wall[i][j]==false)
+        {
+            danger[add][i][j]=true;
+            i++;
+        }
+    }
+    else if(dir==3)
+    {
+        danger[add][i][j]=true;
+        j--;
+        while(j>=0&&wall[i][j]==false)
+        {
+            danger[add][i][j]=true;
+            j--;
+        }
+    }
+
+}
+void pre()
+{
+    for(int i=0; i<4; i++)
+    {
+        for(int j=0; j<N; j++)
+            for(int k=0; k<M; k++)
+            {
+                if(maze[j][k]=='^'||maze[j][k]=='>'||maze[j][k]=='v'||maze[j][k]=='<')
+                    updateDanger(j,k,i);
+            }
+    }
+}
+int r[]= {0,1,0,-1};
+int c[]= {1,0,-1,0};
+bool valid(int step,int x,int y)
+{
+    //cout<<"step="<<step<<" x="<<x<<" y="<<y;
+    if(x<0||y<0||x>=N||y>=M)
+        return false;
+    if(wall[x][y]||danger[step][x][y])
+        return false;
+
+    //cout<<" true"<<endl;
+    return true;
+}
+int bfs()
+{
+    queue<pair<int,pair<int,int> > > Q;
+    bool out=true;
+    for(int i=0; i<N&&out; i++)
+        for(int j=0; j<M; j++)
+            if(maze[i][j]=='S')
+            {
+                //if(danger[0][i][j])
+                //   return -1;
+                Q.push(make_pair(0,make_pair(i,j)));
+                out=false;
+                dist[0][i][j]=0;
+                break;
+            }
+    while(!Q.empty())
+    {
+        pair<int,pair<int,int> >pp=Q.front();
+        Q.pop();
+        int step=pp.first;
+        int p=pp.second.first;
+        int q=pp.second.second;
+        //cout<<"p="<<p<<" q="<<q<<endl;
+        if(maze[p][q]=='G')
+            return dist[step][p][q];
+        //  cout<<"distance="<<dist[step][p][q]<<endl;
+        for(int i=0; i<4; i++)
+        {
+            int x=p+r[i];
+            int y=q+c[i];
+            int newStep = (step+1)%4;
+            // cout<<"newStep="<<newStep<<" x="<<x<<" y = "<<y<<" "<<valid(newStep,x,y)<<" "<<dist[newStep][x][y]<<endl;
+            if(valid(newStep,x,y)&&(dist[newStep][x][y]>(1+dist[step][p][q])))
+            {
+                //   cout<<"entered"<<endl;
+                dist[newStep][x][y]=1+dist[step][p][q];
+                Q.push(make_pair(newStep,make_pair(x,y)));
+            }
+        }
+    }
+
+    return -1;
+}
+void init()
+{
+    for(int i=0; i<4; i++)
+        for(int j=0; j<101; j++)
+            for(int k=0; k<101; k++)
+                dist[i][j][k]=1000000,danger[i][j][k]=false;
+    memset(wall,false,sizeof(wall));
+    maze.clear();
+
+}
+int main()
+{
+    ifstream fin("/Users/anupsing/Desktop/MyWorld/fbhcp/laser_maze.txt");
+    ofstream fout("/Users/anupsing/Desktop/MyWorld/fbhcp/laser_maze_output.txt");
+    fin>>T;
+    int cases=1;
+    while(T--)
+    {
+        init();
+        fin>>N>>M;
+        string str;
+        for(int i=0; i<N; i++)
+        {
+            fin>>str;
+            maze.push_back(str);
+        }
+        for(int i=0; i<N; i++)
+            for(int j=0; j<M; j++)
+                if(maze[i][j]=='#'||maze[i][j]=='^'||maze[i][j]=='>'||maze[i][j]=='v'||maze[i][j]=='<')
+                    wall[i][j]=true;
+        pre();
+        int ans=bfs();
+        if(ans==-1)
+            fout<<"Case #"<<cases++<<": "<<"impossible"<<endl;
+        else
+            fout<<"Case #"<<cases++<<": "<<ans<<endl;
+    }
+    return 0;
+}
+

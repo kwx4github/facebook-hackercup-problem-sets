@@ -1,0 +1,429 @@
+//	Facebook Hacker Cup 2015
+//	Qualification Round
+//	Problem C
+//	Laser Maze (55 points / 100)
+
+const bool debug=false;
+
+#include <iostream>
+#include <cstdio>
+#include <iomanip>
+#include <sstream>
+#include <cmath>
+#include <numeric>
+#include <algorithm>
+#include <functional>
+#include <cstring>
+#include <cstdlib>
+#include <cstdarg>
+#include <utility>
+#include <cassert>
+#include <ctime>
+#include <string>
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <bitset>
+#include <deque>
+#include <queue>
+#include <stack>
+
+#define TIMES(n) for (int i=0; i<(n); ++i)
+#define FOR(i,s,t) for (int (i)=(s); (i)<=(t); ++(i))
+#define RESET(a) memset((a), 0, sizeof((a)))
+#define P(x, ...) printf((x), ##__VA_ARGS__)
+#define D(x, ...) if (debug) printf((x), ##__VA_ARGS__)
+#define MP(x, y) make_pair((x), (y))
+
+const int INF = 0x7F7F7F7F; // or (unsigned)(-1)>>1
+int caseI = 0, caseD = -1;
+
+using namespace std;
+
+//void P(char *f, ...) {va_list v; va_start(v, f); vprintf(f, v); va_end(v);}
+//void D(char *f, ...) {if (!debug) return; va_list v; va_start(v, f); vprintf(f, v); va_end(v);}
+
+
+/*
+
+Sample Input:
+
+
+
+Sample Output:
+
+
+*/
+
+const int maxN = 1005, maxM = 10250;
+
+typedef pair<int, int> ii;
+typedef vector<vector<ii> > graph;
+
+
+template <typename T> int sgn(T v) { return (T(0) < v) - (v < T(0)); }
+
+int inline manhDist(int sr, int sc, int tr, int tc) {
+	return abs(sr - tr) + abs(sc - tc);
+}
+
+
+int dir[256];	// "^>v<" => 0 ~ 3
+int dyx[][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+
+const int nDir = 4;
+int n, m;	// rows (n) * cols (m)
+
+int inline toId(int r, int c) {
+	return r*m+c;
+}
+
+ii inline toCor(int x) {
+	return MP(x / m, x % m);
+}
+
+template<class T> const T inline *at(const T s[], int r, int c) {
+	return &s[toId(r, c)];
+}
+
+template<class T> T inline *at(T s[], int r, int c) {
+	return &s[toId(r, c)];
+}
+
+bool inline inRange(int r, int c) {
+	return (r >= 0 && c >= 0 && r < n && c < m);
+}
+
+/*typedef struct Laser {
+private:
+	int _posId, _initDir;
+
+public:
+	int r, c;
+
+	Laser() {}
+	Laser(int r_, int c_, int initDir_) : r(r_), c(c_), _initDir(initDir_), _posId(toId(r_, c_)) {}
+
+	int direction(int step) {
+		return (_initDir + step) % nDir;
+	}
+
+	int posId() { return _posId; }
+
+	bool canHitPos(const bool s[], int step, int pr, int pc) {
+		int rDiff = pr - r, cDiff = pc - c, dir = direction(step);
+		if (sgn(rDiff) != dyx[dir][0] || sgn(cDiff) != dyx[dir][1])
+			return false;
+		for (int ir = pr, ic = pc; ir != r || ic != c; ir -= dyx[dir][0], ic -= dyx[dir][1])
+			if (!*at(s, ir, ic))
+				return false;
+			// else //if (r == 4 && c == 96 && pr == 99)
+				// D(">>>>>> pentrate %d, %d %c\n", ir, ic, *at(s, ir, ic));
+		// D(">>>> laser (%d, %d) dir%d hits %d, %d (%d)\n", r, c, dir, pr, pc, *at(s, pr, pc));
+		return true;
+	}
+};*/
+
+typedef struct State {
+	int r, c, step;
+};
+
+class Qs {
+	char board[maxM];
+	int laser[maxM];
+	ii s, g;
+
+	set<ii> visitedStates;
+	char stateSteps[maxM];
+	bool laserCanHitPos[nDir][maxM];
+
+public:
+	Qs() {
+		RESET(board);
+	}
+
+	bool input() {
+
+		if (scanf("%d%d", &n, &m) != 2)
+			return false;
+		
+		FOR(i, 0, n-1) {
+			FOR(j, 0, m-1) {
+				char c;
+				scanf(" %c", &c);
+				if (c == 'S') {
+					s = MP(i, j);
+					c = '.';
+				} else if (c == 'G') {
+					g = MP(i, j);
+					c = '.';
+				} else if (c != '#' && c != '.') {
+					*at(laser, i, j) = dir[c];
+					c = 'L';
+				}
+				*at(board, i, j) = c;
+			}
+		}
+
+		D(">> S = %d, %d\n", s.first, s.second);
+		D(">> G = %d, %d\n", g.first, g.second);
+
+		return true;
+	}
+
+bool inline walkable(int r, int c) {
+	return (inRange(r, c) && *at(board, r, c) == '.');
+}
+
+	int aStar(int sr, int sc, int tr, int tc) {  // A* Search
+		priority_queue<ii, vector<ii>, greater<ii> > q;
+		int dist[maxM];
+		int ti = -1, si = toId(sr, sc);
+
+		memset(dist, INF, sizeof dist);
+
+		q.push(MP(0, si));
+		dist[si] = 0;
+
+		while (!q.empty()) {
+			ii e = q.top();
+			q.pop();
+			int ei = e.second;
+			pair<int, int> eyx = toCor(ei);
+			int ey = eyx.first, ex = eyx.second;
+
+			if (ey == tr && ex == tc) {
+				ti = ei;
+				break;
+			}
+
+			TIMES(nDir) {
+				int ny = ey + dyx[i][0], nx = ex + dyx[i][1];
+				int ni = toId(ny, nx);
+				int cg = dist[ei] + 1;
+				if (walkable(ny, nx) && cg < dist[ni]) {
+					dist[ni] = cg;
+					int ch = manhDist(ny, nx, tr, tc);
+					q.push(MP(cg + ch, ni));
+				}
+			}
+		}
+
+		if (ti == -1)
+			return INF;
+
+		return dist[ti];
+	}
+
+	int inline h(const State &s) {
+		// return shortestDist(s.r, s.c, g.first, g.second);
+		return shortestDist[toId(s.r, s.c)];
+	}
+
+	State performMove(const State &s, int dir) {
+		State ns;
+		ns.r = s.r + dyx[dir][0];
+		ns.c = s.c + dyx[dir][1];
+		ns.step = s.step + 1;
+		stateSteps[s.step] = "^>v<"[dir];
+		return ns;
+	}
+
+	bool inline isValidState(const State &s) {
+		return (walkable(s.r, s.c) && (s.step == 0 || !laserCanHitPos[s.step % nDir][toId(s.r, s.c)]));
+	}
+
+	bool isVisitedState(const State &s) {
+		return (visitedStates.count(MP(toId(s.r, s.c), s.step % nDir)) > 0);
+	}
+
+	pair<bool, int> IDAStar(State s, int limit) {
+		int hCost = h(s);
+		int gCost = s.step;
+		int fCost = gCost + hCost;
+
+		if (!isValidState(s))
+			return MP(false, INF);
+
+		if (hCost == 0)
+			return MP(true, fCost);
+		else if (fCost > limit)
+			return MP(false, fCost);
+
+		if (isVisitedState(s))
+			return MP(false, INF);
+		
+		visitedStates.insert(MP(toId(s.r, s.c), s.step % nDir));
+
+		int nextLimit = INF;
+
+		TIMES(nDir) {
+			State ns = performMove(s, i);
+			pair<bool, int> r = IDAStar(ns, limit);
+			if (r.first)
+				return r;
+			stateSteps[ns.step] = '\0';
+			nextLimit = min(nextLimit, r.second);
+		}
+
+		return MP(false, nextLimit);
+	}
+
+	int shortestDist[maxM];
+
+	bool _laserCanHitPos(int d, int r, int c) {
+		TIMES(nDir) {
+			for (int ir = r, ic = c; inRange(ir, ic) && *at(board, ir, ic) != '#'; ir -= dyx[i][0], ic -= dyx[i][1])
+				if (*at(board, ir, ic) == 'L') {
+					if ((*at(laser, ir, ic) + d) % nDir == i)
+						return true;
+					break;
+				}
+		}
+		return false;
+	}
+
+	void preprocessData() {
+		// 1. mark grids that are reachable from S
+		bool visited[maxM] = {0};
+		queue<ii> q;
+		q.push(s);
+		while (!q.empty()) {
+			ii p = q.front();
+			q.pop();
+			int id = toId(p.first, p.second);
+			if (!walkable(p.first, p.second) || visited[id])
+				continue;
+			visited[id] = true;
+			TIMES(nDir)
+				q.push(MP(p.first + dyx[i][0], p.second + dyx[i][1]));
+		}
+
+		// 2. filter all lasers that are reachable from S
+		// TIMES(laser.size())
+		// 	if (visited[laser[i].posId()]) {
+		// 		activeLaser.push_back(laser[i]);
+		// 		// D("> laser active at %d, %d\n", laser[i].r, laser[i].c);
+		// 	}
+		// laser.clear();
+
+		// 3. preprocess shortest distance
+		memset(shortestDist, INF, sizeof shortestDist);
+		FOR(i, 0, n-1) FOR(j, 0, m-1) {
+			int id = toId(i, j);
+			if (visited[id])
+				shortestDist[id] = aStar(i, j, g.first, g.second);
+		}
+
+		// 4. preprocess whether laser can hit that grid
+		RESET(laserCanHitPos);
+		FOR(r, 0, n-1) FOR(c, 0, m-1) FOR(d, 0, nDir - 1)
+			laserCanHitPos[d][toId(r, c)] = _laserCanHitPos(d, r, c);
+
+		// FOR(r, 0, n-1) {
+		// 	P(">> [%d] =", r);
+		// 	FOR(c, 0, m-1) {
+		// 		P(" [");
+		// 		FOR(d, 0, nDir - 1)
+		// 			P("%d", laserCanHitPos[d][toId(r, c)]);
+		// 		P("]");
+		// 	}
+		// 	P("\n");
+		// }
+
+	}
+
+	// below for simulation
+	/*State simState;
+	int laserAt[maxM];
+	void printBoard() {
+		P("\n\n");
+		FOR(i, 0, n-1) {
+			FOR(j, 0, m-1)
+				if (toId(i, j) == toId(simState.r, simState.c))
+					P("*");
+				else if (laserAt[toId(i, j)] == -1)
+					P("%c", board[toId(i, j)] ? '.' : '#');
+				else
+					P("%c", "^>v<"[activeLaser[laserAt[toId(i, j)]].direction(simState.step)]);
+			P("\n");
+		}
+	}
+
+	void simulation() {
+		memset(laserAt, -1, sizeof laserAt);
+		TIMES(activeLaser.size())
+			laserAt[activeLaser[i].posId()] = i;
+
+		int c;
+		while (true) {
+			printBoard();
+			while (((c = getchar()) <= 0) || dir[c] == -1);
+			// P("[%d]\n", c);
+			simState = performMove(simState, dir[c]);
+		}
+	}*/
+
+	void solve() {
+		// FOR(i, 0, n-1) {
+		// 	FOR(j, 0, m-1)
+		// 		P("%c", walkable(i, j) ? '.' : '#');
+		// 	P("\n");
+		// }
+
+		preprocessData();
+
+		State initialState;
+		initialState.r = s.first;
+		initialState.c = s.second;
+		initialState.step = 0;
+
+		// simState = initialState;
+		// simulation();
+
+		pair<bool, int> r = MP(false, h(initialState));
+		int hardLimit = n*m+5;
+
+		while (!r.first && r.second < hardLimit) {
+			visitedStates.clear();
+			RESET(stateSteps);
+			r = IDAStar(initialState, r.second);
+		}
+
+		P("Case #%d: ", caseI);
+
+		if (!r.first)
+			P("impossible\n");
+		else
+			P("%d\n", r.second, stateSteps);
+
+
+
+	}
+};
+
+void pre_process() {
+	//freopen("A.in", "r", stdin);
+	//freopen("A.out", "w", stdout);
+	scanf("%d%*c", &caseD);
+	
+	memset(dir, -1, sizeof dir);
+	int i = 0;
+	dir['^'] = i++;
+	dir['>'] = i++;
+	dir['v'] = i++;
+	dir['<'] = i++;
+}
+
+int main() {
+	Qs *p = new Qs;
+	pre_process();
+	while ((++caseI|1) && caseD-- && p->input()) {
+		p->solve();
+		delete p;
+		p = new Qs;
+	}
+	delete p;
+	return 0;
+}

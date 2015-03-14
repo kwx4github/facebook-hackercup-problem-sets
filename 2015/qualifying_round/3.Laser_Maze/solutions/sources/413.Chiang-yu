@@ -1,0 +1,182 @@
+
+import sys
+
+'''
+5
+2 5
+##^##
+S...G
+2 5
+##v##
+S...G
+1 5
+S..G<
+1 6
+S...G<
+5 5
+S....
+.....
+.>v..
+.^<..
+....G
+'''
+
+'''
+Case #1: 6
+Case #2: 4
+Case #3: 3
+Case #4: impossible
+Case #5: 8
+'''
+
+def copyBoard():
+    tempBoard = [[0] * cols for r in xrange(rows)]
+    for r in xrange(rows):
+    	for c in xrange(cols):
+    		tempBoard[r][c] = board[r][c]
+    return tempBoard
+
+def getBoardExt():
+	global boardExt 
+	boardExt = [copyBoard(), copyBoard(), copyBoard(), copyBoard()]
+	for (tr, tc, direction) in turrets:
+		if direction == '^':
+			laserUp(tr, tc, 0);
+			laserRight(tr, tc, 1);
+			laserDown(tr, tc, 2);
+			laserLeft(tr, tc, 3);
+		elif direction == '>':
+			laserUp(tr, tc, 3);
+			laserRight(tr, tc, 0);
+			laserDown(tr, tc, 1);
+			laserLeft(tr, tc, 2);
+		elif direction == 'v':
+			laserUp(tr, tc, 2);
+			laserRight(tr, tc, 3);
+			laserDown(tr, tc, 0);
+			laserLeft(tr, tc, 1);
+		elif direction == '<':
+			laserUp(tr, tc, 1);
+			laserRight(tr, tc, 2);
+			laserDown(tr, tc, 3);
+			laserLeft(tr, tc, 0);
+		else:
+			print "Invalid laser direction!!!"
+
+def laserUp(tr, tc, boardIndex):
+	for r in xrange(tr-1, -1, -1):
+		#print "boardIndex = %d, r = %d, tc = %d, content = %s" %(boardIndex, r, tc, boardExt[boardIndex][r][tc])
+		if boardExt[boardIndex][r][tc] != 'T' and boardExt[boardIndex][r][tc] != '#':
+			boardExt[boardIndex][r][tc] = 'x'
+		else:
+			return
+
+def laserDown(tr, tc, boardIndex):
+	for r in xrange(tr+1, rows):
+		#print "boardIndex = %d, r = %d, tc = %d, content = %s" %(boardIndex, r, tc, boardExt[boardIndex][r][tc])
+		if boardExt[boardIndex][r][tc] != 'T' and boardExt[boardIndex][r][tc] != '#':
+			boardExt[boardIndex][r][tc] = 'x'
+		else:
+			return
+
+def laserLeft(tr, tc, boardIndex):
+	for c in xrange(tc-1, -1, -1):
+		if boardExt[boardIndex][tr][c] != 'T' and boardExt[boardIndex][tr][c] != '#':
+			boardExt[boardIndex][tr][c] = 'x'
+		else:
+			return
+
+def laserRight(tr, tc, boardIndex):
+	for c in xrange(tc+1, cols):
+		if boardExt[boardIndex][tr][c] != 'T' and boardExt[boardIndex][tr][c] != '#':
+			boardExt[boardIndex][tr][c] = 'x'
+		else:
+			return
+
+def solve(r, c, time):
+	#print "r = %d, c = %d, time = %d, goal = %s" %(r, c, time, goal)
+	if (r,c,time%4) in memorize:
+		memorize[(r,c,time%4)] = min(memorize[(r,c,time%4)], time)
+	else:
+		memorize[(r,c,time%4)] = time
+
+	if r == goal[0] and c == goal[1]:
+		#print "goal is reached!"
+		return time
+
+	minSteps = -1
+	if r < rows-1 and boardExt[(time+1)%4][r+1][c] == '.' and ((r+1, c, (time+1)%4) not in memorize or memorize[(r+1, c, (time+1)%4)] > time+1):
+		steps = solve(r+1, c, time+1)
+		if steps != -1 and (minSteps == -1 or steps < minSteps):
+			minSteps = steps
+	if r > 0 and boardExt[(time+1)%4][r-1][c] == '.' and ((r-1, c, (time+1)%4) not in memorize or memorize[(r-1, c, (time+1)%4)] > time+1):
+		steps = solve(r-1, c, time+1)
+		if steps != -1 and (minSteps == -1 or steps < minSteps):
+			minSteps = steps
+	if c < cols-1 and boardExt[(time+1)%4][r][c+1] == '.' and ((r, c+1, (time+1)%4) not in memorize or memorize[(r, c+1, (time+1)%4)] > time+1):
+		steps = solve(r, c+1, time+1)
+		if steps != -1 and (minSteps == -1 or steps < minSteps):
+			minSteps = steps
+	if c > 0 and boardExt[(time+1)%4][r][c-1] == '.' and ((r, c-1, (time+1)%4) not in memorize or memorize[(r, c-1, (time+1)%4)] > time+1):
+		steps = solve(r, c-1, time+1)
+		if steps != -1 and (minSteps == -1 or steps < minSteps):
+			minSteps = steps
+
+	#print "r = %d, c = %d, time = %d, return = %d" %(r, c, time, minSteps)
+	return minSteps
+
+#######################################################################################################
+sys.setrecursionlimit(10000) 
+f = open(sys.argv[1], 'r')
+lines = f.readlines()
+i = 0
+nums = int(lines[i])
+i += 1
+
+outFile = open("C_out.txt","w")
+
+global board, start, goal, turrets, boardExt, rows, cols, memorize
+
+for t in xrange(nums):
+    (rows, cols) = lines[i].split()
+    i += 1
+    rows = int(rows)
+    cols = int(cols)
+    board = [[0] * cols for r in xrange(rows)]
+    turrets = list()
+    memorize = dict()
+    for r in xrange(rows):
+    	line = lines[i]
+    	i += 1
+        for c in xrange(cols):
+        	if line[c] == 'S':
+        		start = (r,c)
+    	   		board[r][c] = '.'
+        	elif line[c] == 'G':
+        		goal = (r,c)
+    	   		board[r][c] = '.'
+    	   	elif line[c] == '^' or line[c] == 'v' or line[c] == '>' or line[c] == '<':
+    	   		turrets.append((r, c, line[c]))
+    			board[r][c] = 'T'
+    	   	else:
+    			board[r][c] = line[c]
+    
+    getBoardExt()
+
+    #print board
+    #print turrets
+    #print start
+    #print goal
+    #print boardExt
+    steps = solve(start[0], start[1], 0)
+    if steps == -1:
+    	outFile.write("Case #%d: impossible\n" %(t+1))
+    	print "Case #%d: impossible" %(t+1)
+    else:
+    	outFile.write("Case #%d: %d\n" %(t+1, steps))
+    	print "Case #%d: %d" %(t+1, steps)
+
+outFile.close() 
+
+
+

@@ -1,0 +1,334 @@
+// topcoder.cpp : コンソール アプリケーションのエントリ ポイントを定義します。
+//
+
+#include <stdio.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <climits>
+#include <cfloat>
+#include <map>
+#include <utility>
+#include <set>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <functional>
+#include <sstream>
+#include <complex>
+#include <stack>
+#include <queue>
+#include <numeric>
+#include "assert.h"
+
+using namespace std;
+static const double EPS = 1e-9;
+int ROUND(double x) { return (int)(x+0.5); }
+bool ISINT(double x) { return fabs(ROUND(x)-x)<=EPS; }
+bool ISEQUAL(double x,double y) { return fabs(x-y)<=EPS*max(1.0,max(fabs(x),fabs(y))); }
+double SQSUM(double x,double y) { return x*x+y*y; }
+template<class T> bool INRANGE(T x,T a,T b) { return a<=x&&x<=b; }
+#define PI	(3.14159265358979323846)
+#define ARRAY_NUM(a) (sizeof(a)/sizeof(a[0])) 
+#define NG (-1)
+#define BIG (987654321)
+#define SZ(a) ((int)a.size())
+typedef long long ll;
+
+#define FOR(v,i) for(__typeof((v).begin())i=(v).begin();i!=(v).end();++i)
+// BEGIN CUT HERE
+#undef FOR
+#define FOR(v,i) for(auto i=(v).begin();i!=(v).end();++i)
+// END CUT HERE
+
+#define PRINTF(fmt,...) fprintf(stderr,fmt,__VA_ARGS__); printf(fmt,__VA_ARGS__);
+
+#if 1
+int main(){
+
+	freopen("_google_code_jam_input.txt","r",stdin);
+	freopen("_google_code_jam_output.txt","w",stdout);
+
+	int T;
+	cin >> T;
+
+	for (int testcase = 0; testcase < T; testcase++)
+	{
+		int H,W;
+		cin >> H >> W;
+		vector <string> originalField(H);
+		for (int i = 0; i < H; ++i)
+		{
+			cin >> originalField[i];
+		}
+
+		int sy = 0;
+		int sx = 0;
+		for (int y = 0; y < H; ++y)
+		{
+			for (int x = 0; x < W; ++x)
+			{
+				if(originalField[y][x]=='S')
+				{
+					sy = y;
+					sx = x;
+				}
+			}
+		}
+
+		const static int NUM_DIR = 4;
+		const static int dy[NUM_DIR] = {-1, 0, 1, 0};
+		const static int dx[NUM_DIR] = { 0, 1, 0,-1};
+
+		vector <vector <string> > fields;
+		for (int d = 0; d < NUM_DIR; ++d)
+		{
+			vector <string> field(originalField);
+			for (int y = 0; y < H; ++y)
+			{
+				for (int x = 0; x < W; ++x)
+				{
+					int dir = NG;
+					switch(field[y][x])
+					{
+					case '^':
+						dir = 0;
+						break;
+					case '>':
+						dir = 1;
+						break;
+					case 'v':
+						dir = 2;
+						break;
+					case '<':
+						dir = 3;
+						break;
+					default:
+						break;
+					}
+
+					if(dir!=NG)
+					{
+						dir = (dir+d)%NUM_DIR;
+
+						switch(dir)
+						{
+						case 0:
+							field[y][x] = '^';
+							break;
+						case 1:
+							field[y][x] = '>';
+							break;
+						case 2:
+							field[y][x] = 'v';
+							break;
+						case 3:
+							field[y][x] = '<';
+							break;
+						default:
+							break;
+						}
+
+						for(int k=1;;++k)
+						{
+							const int ny = y+dy[dir]*k; 
+							const int nx = x+dx[dir]*k;
+							if(INRANGE(nx,0,W-1)&&INRANGE(ny,0,H-1))
+							{
+								const char now = field[ny][nx];
+								if(now=='.' || now=='*' || now=='S' || now=='G')
+								{
+									field[ny][nx]='*';
+								}
+								else
+								{
+									break;
+								}
+							}
+							else
+							{
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			fields.push_back(field);
+
+/*
+			for (int i = 0; i < SZ(field); ++i)
+			{
+				cout << field[i] << endl;
+			}
+			cout << endl;
+*/
+		}
+
+		queue < pair < pair <int, int >, int > > q;
+		q.push(make_pair(make_pair(sy,sx),0));
+		vector < vector < vector <bool> > > visited(NUM_DIR, vector < vector <bool> > (H, vector <bool>(W,false)));
+		visited[0][sy][sx] = true;
+
+		int answer = NG;
+		while(1)
+		{
+			pair < pair <int, int >, int > pr = q.front();
+
+			{
+				const int y = pr.first.first;
+				const int x = pr.first.second;
+				const int turn = pr.second;
+				// BEGIN CUT HERE
+//				cout << " y=" << y << " x=" << x << " turn=" << turn << endl;
+				// END CUT HERE
+
+				if(turn>=100*100*100*2)
+				{
+					break;
+				}
+
+				const int fieldID = (turn+1)%NUM_DIR;
+
+				for(int d=0;d<NUM_DIR;d++)
+				{
+					const int ny = y+dy[d]; 
+					const int nx = x+dx[d];
+
+					if(INRANGE(nx,0,W-1)&&INRANGE(ny,0,H-1))
+					{
+						const char now = fields[fieldID][ny][nx];
+						if(( now=='.' || now=='S' || now=='G') && !visited[fieldID][ny][nx])
+						{
+							if(now=='G')
+							{
+								answer = turn+1;
+								goto NUKE;
+							}
+							visited[fieldID][ny][nx] = true;
+							q.push(make_pair(make_pair(ny,nx),turn+1));
+						}
+					}
+				}
+			}
+
+			q.pop();
+			if(q.empty())
+			{
+				break;
+			}
+
+		}
+
+		NUKE:;
+
+		if(answer!=NG)
+		{
+			PRINTF("Case #%d: %d\n",testcase+1, answer );
+		}
+		else
+		{
+			PRINTF("Case #%d: impossible\n",testcase+1 );
+		}
+	}
+
+	return 0;
+}
+
+
+
+#elif 1
+
+int main(){
+
+	freopen("_google_code_jam_input.txt","r",stdin);
+	freopen("_google_code_jam_output.txt","w",stdout);
+
+	int T;
+	cin >> T;
+
+	for (int testcase = 0; testcase < T; testcase++)
+	{
+		bool ok = false;
+
+		int gp, gc, gf;
+		cin >> gp >> gc >> gf;
+
+		int n;
+		cin >> n;
+
+		vector <int> vp(n),vc(n),vf(n);
+
+		for (int i = 0; i < n; ++i)
+		{
+			cin >> vp[i] >> vc[i] >> vf[i];
+		}
+
+		for (int i = 0; i < (1<<(n)); ++i)
+		{
+			int tp=0,tc=0,tf=0;
+			for (int k = 0; k < n; ++k)
+			{
+				if(i&(1<<(k)))
+				{
+					tp += vp[k];
+					tc += vc[k];
+					tf += vf[k];
+				}
+			}
+
+			if(tp==gp && tc==gc && tf==gf)
+			{
+				ok = true;
+				break;
+			}
+		}
+
+		if(ok)
+		{
+			PRINTF("Case #%d: yes\n",testcase+1 );
+		}
+		else
+		{
+			PRINTF("Case #%d: no\n",testcase+1 );
+		}
+	}
+}
+
+#else
+
+int main(){
+
+	freopen("_google_code_jam_input.txt","r",stdin);
+	freopen("_google_code_jam_output.txt","w",stdout);
+
+	int T;
+	cin >> T;
+
+	for (int testcase = 0; testcase < T; testcase++)
+	{
+		string s;
+		cin >> s;
+
+		vector <string> vs;
+		vs.push_back(s);
+		for (int i = 0; i < SZ(s); ++i)
+		{
+			for (int k = i+1; k < SZ(s); ++k)
+			{
+				string tmp(s);
+				if(i==0 && tmp[k]=='0') continue;
+
+				swap(tmp[i],tmp[k]);
+
+				vs.push_back(tmp);
+			}
+		}
+
+		PRINTF("Case #%d: %s %s\n",testcase+1, min_element(vs.begin(),vs.end())->c_str(), max_element(vs.begin(),vs.end())->c_str());
+	}
+}
+
+#endif

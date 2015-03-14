@@ -1,0 +1,207 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <deque>
+#include <bitset>
+
+using std::cin;
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::string;
+using std::vector;
+using std::deque;
+using std::bitset;
+
+enum class Direction : size_t {UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3};
+
+struct Turret{
+	const size_t row, col;
+	const Direction initDir;
+
+	Turret(size_t pos, size_t W, Direction initDir): row(pos/W), col(pos%W), initDir(initDir) {};
+
+	Direction directionAfter(size_t steps)
+		{return static_cast<Direction>((static_cast<size_t>(initDir) + steps) & 0b11);};
+};
+
+class Case{
+public:
+	const size_t H,W, size;
+	vector<char> data;
+
+	vector<Turret> turrets;
+	size_t sRow, sCol, gRow, gCol;
+
+	Case(size_t H, size_t W):
+		H(H), W(W), size(H*W), data(size+20),
+		turrets(), sRow(101), sCol(101), gRow(105), gCol(105) {};
+
+	char &at(size_t row, size_t col)
+		{return data[row*W+col];};
+
+	void prepare();
+};
+
+Case readCase();
+string solve(Case &cass);
+
+int main(int argc, char **argv) {
+	size_t T; cin >> T; // number of test cases
+	vector<Case> cases;
+	cases.reserve(T);
+
+	// read cases
+	for (size_t i=0; i<T; ++i)
+		cases.push_back(readCase());
+
+	// solve and print
+	for (size_t i=0; i<T; ++i)
+		cout << "Case #" << (i+1) << ": "<< solve(cases[i]) << endl;
+}
+
+struct State{
+	size_t row, col, steps;
+	State(size_t row, size_t col, size_t steps): row(row), col(col), steps(steps) {};
+
+	State next(int dRow, int dCol) {return State(row+dRow, col+dCol, steps+1);};
+	bool inBounds(size_t H, size_t W) {return row>=0 && row<H && col>=0 && col<W;};
+	size_t id() {return (row << 9) | (col << 2) | (steps & 3);};
+
+	bool turretHits(Case &cass, Turret &turret){
+		const string test[] = {"up", "right", "down", "left"};
+		string facing = test[static_cast<int>(turret.directionAfter(steps))];
+
+		switch(turret.directionAfter(steps)){
+		case Direction::DOWN:
+			if (turret.col != this->col) return false;
+			if (turret.row >= this->row) return false;
+
+			for (size_t row = turret.row + 1; row<(this->row); ++row)
+				if (cass.at(row, turret.col) != '.') return false;
+			return true;
+
+		case Direction::UP:
+			if (turret.col != this->col) return false;
+			if (turret.row <= this->row) return false;
+
+
+			for (size_t row = turret.row - 1; row>(this->row); --row)
+				if (cass.at(row, turret.col) != '.') return false;
+			return true;
+
+		case Direction::LEFT:
+			if (turret.row != this->row) return false;
+			if (turret.col <= this->col) return false;
+
+			for (size_t col = turret.col - 1; col>(this->col); --col)
+				if (cass.at(turret.row, col) != '.') return false;
+			return true;
+		case Direction::RIGHT:
+			if (turret.row != this->row) return false;
+			if (turret.col >= this->col) return false;
+
+			for (size_t col = turret.col + 1; col<(this->col); ++col)
+				if (cass.at(turret.row, col) != '.') return false;
+
+			return true;
+		}
+
+		cerr << "this should not happen!" << endl;
+		return false;
+	}
+};
+
+static inline bool anyHit(Case &cass, State &state){
+	for (Turret &turret : cass.turrets)
+		if (state.turretHits(cass, turret)) return true;
+	return false;
+}
+
+string solve(Case &cass){
+	cass.prepare();
+
+	bitset<65536> visited;
+	deque<State> queue;
+
+	queue.push_back(State(cass.sRow, cass.sCol, 0));
+
+	while (!queue.empty()){
+		State current = queue.front();
+		queue.pop_front();
+		size_t id = current.id();
+
+		// generate new possible states
+		State possible[] {
+			current.next(-1, 0), // go up
+			current.next(0, 1), // go right
+			current.next(1, 0), // go down
+			current.next(0, -1), // go left
+		};
+
+		for (size_t i = 0; i<4; ++i){
+			if (!possible[i].inBounds(cass.H, cass.W)) continue; // out of bounds
+			if (visited[possible[i].id()]) continue; // avoid infinite loop
+
+			char &c = cass.at(possible[i].row, possible[i].col);
+			if (c != '.') continue; // cell occupied
+
+			// check if any turrets will hit
+			if (anyHit(cass, possible[i])) continue;
+
+			if (possible[i].row == cass.gRow && possible[i].col == cass.gCol)
+				return std::to_string(possible[i].steps);
+
+			visited.set(possible[i].id());
+			queue.push_back(possible[i]);
+		}
+
+	}
+
+	return "impossible";
+}
+
+Case readCase(){
+	size_t H=0, W=0;
+	cin >> H >> W; // height and width
+	cin.ignore(10, '\n'); // read past newline
+
+	Case result(H, W);
+
+	for (size_t i=0, dest=0; i<H; ++i, dest+=W)
+		cin.getline(&result.data[dest], W+20);
+
+	return result;
+}
+
+void Case::prepare(){
+	// get start, goal and turret positions
+	for (size_t pos=0; pos<size; ++pos)
+		switch(data[pos]){
+		case 's':
+		case 'S':
+			sRow = pos/W;
+			sCol = pos%W;
+			data[pos] = '.';
+			break;
+		case 'g':
+		case 'G':
+			gRow = pos/W;
+			gCol = pos%W;
+			data[pos] = '.';
+			break;
+		case '^':
+			turrets.push_back(Turret(pos, W, Direction::UP));
+			break;
+		case '>':
+			turrets.push_back(Turret(pos, W, Direction::RIGHT));
+			break;
+		case 'v':
+		case 'V':
+			turrets.push_back(Turret(pos, W, Direction::DOWN));
+			break;
+		case '<':
+			turrets.push_back(Turret(pos, W, Direction::LEFT));
+			break;
+		}
+}

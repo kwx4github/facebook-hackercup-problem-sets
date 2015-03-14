@@ -1,0 +1,245 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.StringTokenizer;
+
+
+/**
+ * C. Laser Maze
+ * @author Albert Choi
+ */
+public class C {
+	static BufferedReader _reader = new BufferedReader(new InputStreamReader(System.in));
+	static String _s;
+	static StringTokenizer _st;
+	static int _l;
+	static String nline() throws IOException { _s = _reader.readLine(); ++_l; _st = new StringTokenizer(_s); return _s; }
+	static String nword() 	{ return _st.nextToken(); }
+	static int nint() 		{ return Integer.parseInt(nword()); }
+	static long nlong() 	{ return Long.parseLong(nword()); }
+	static double ndouble() { return Double.parseDouble(nword()); }
+	static BigInteger nbig(){ return new BigInteger(nword()); }
+	static PrintStream sout = System.out, serr = System.err;
+	
+	public static void main(String[] args) throws IOException {
+		try {
+			nline();
+			int T = nint();
+			for (int t=1; t<=T; t++) {
+				String sans = doProblem();
+				sout.println("Case #" + t + ": " + sans);
+			}
+		} catch (Throwable t) {
+			System.err.println("At input line " + _l + ": " + _s); throw t;
+		}
+	}
+	
+	static final char L='<', U='^', R='>', D='v';
+	static final char START='S', WALL='#', EMPTY='.', GOAL='G', LASER='L'; // laser blocked
+
+	static int M,N;
+	static char[][] grid;
+	
+	static boolean canGo(char c) {
+		switch (c) {
+		case WALL:
+		case LASER:
+		case L:
+		case U:
+		case R:
+		case D:
+			return false;
+		default:
+			return true;
+		}
+	}
+
+	static boolean canLaserGo(char c) {
+		switch (c) {
+		case WALL:
+		case L:
+		case U:
+		case R:
+		case D:
+			return false;
+		default:
+			return true;
+		}
+	}
+
+	static void setLasers(int t) {
+		List<P> turrets = new ArrayList<>();
+		for (int i=0; i<M; i++) {
+			for (int j=0; j<N; j++) {
+				char c = grid[i][j];
+				if (c==LASER) grid[i][j]=EMPTY;
+				else if (c==L || c==U || c==R || c==D) 
+					turrets.add(new P(i,j));
+			}
+		}
+		for (P p : turrets) {
+			char dir = grid[p.x][p.y];
+			for (int i=0; i<t;i++) {
+				dir = nextDir(dir);
+			}
+			
+			switch (dir) {
+			case L:
+				fill(p, new P(0,-1));
+				break;
+			case U:
+				fill(p, new P(-1,0));
+				break;
+			case R:
+				fill(p, new P(0,1));
+				break;
+			case D:
+				fill(p, new P(1,0));
+				break;
+			default:
+				throw new IllegalArgumentException("Not a turret : " + dir);
+			}
+		}
+	}
+	static void fill(P p, P move) {
+		while (true) {
+			p.x += move.x;
+			p.y += move.y;
+//			if (canLaserGo(grid[p.x][p.y])) {
+			if (p.isValid() && p.isLaserable())
+				grid[p.x][p.y] = LASER;
+			else break;
+		}
+	}
+	
+	static char nextDir(char c) {
+		switch (c) {
+		case L:
+			return U;
+		case U:
+			return R;
+		case R:
+			return D;
+		case D:
+			return L;
+		}
+		throw new IllegalArgumentException("Not a turret : " + c);
+	}
+
+	static String doProblem() throws IOException {
+		nline();
+		M=nint(); N=nint();
+		int startx = -1, starty=-1, goalx=-1, goaly=-1;
+		grid = new char[M][N];
+		for (int i=0; i<M; i++) {
+			String line = nline();
+			char[] row = grid[i] = new char[N];
+			for (int j=0; j<N; j++) {
+				char c=line.charAt(j);
+				if (c==START) {
+					startx = i;
+					starty = j;
+				}
+				else if (c==GOAL) {
+					goalx = i;
+					goaly = j;
+				}
+				row[j]=c;
+			}
+		}
+		int result = bfs(startx, starty, goalx, goaly);
+		return result < 0 ? "impossible" : ""+result;
+	}
+
+	static class P {
+		int x,y;
+		P(int x, int y) {this.x=x; this.y=y;}
+		boolean isValid() {
+			return x>=0 && x<M && y>=0 && y<N;
+		}
+		boolean isWalkable() {
+			return canGo(grid[x][y]);
+		}
+		boolean isLaserable() {
+			return canLaserGo(grid[x][y]);
+		}
+
+	}
+	static class State extends P {
+		int t,d=0;
+		State(int x, int y, int t) {super(x,y); this.t=t;}
+		State(int x, int y, int t, int d) {this(x,y,t); this.d=d;}
+	}	
+
+	static int bfs(int startx, int starty, int goalx, int goaly) {
+		boolean[][][] visited = new boolean[M][N][4];
+		
+		PriorityQueue<State> queue = new PriorityQueue<>(16, new Comparator<State>() {
+			@Override
+			public int compare(State s1, State s2) {
+				return s1.d - s2.d;
+			}
+		});
+		
+		queue.add(new State(startx,starty,0));
+		visited[startx][starty][0] = true;
+		
+		final P[] moves = new P[] {
+				new P(0,1),
+				new P(0,-1),
+				new P(1,0),
+				new P(-1,0)
+		};
+		
+		while (!queue.isEmpty()) {
+			State curr = queue.remove();
+			
+			int t = (curr.t + 1) % 4;
+			int d = curr.d + 1;
+			setLasers(t);
+//			print(curr);
+//			System.out.print("d=" + d + ": (" + curr.x + "," +curr.y + ") moves: ");
+			
+			for (P move : moves) {
+				State next = new State(curr.x + move.x, curr.y + move.y, t, d);
+				if (next.isValid() && next.isWalkable() && !visited[next.x][next.y][next.t]) {
+
+//					System.out.print(move.x + "," +move.y + " : ");
+					
+					if (next.x == goalx && next.y == goaly) return d;
+
+					visited[next.x][next.y][next.t] = true;
+					queue.add(next);
+				}
+			}
+//			System.out.println();
+	
+		}
+		
+		return -1;
+	}
+	
+	static void print(P curr) {
+		sout.println();
+
+		for (int i=0; i<M; i++) {
+			for (int j=0; j<N; j++) {
+				if (i==curr.x && j==curr.y) {
+					if (grid[i][j] == LASER) sout.print('X');
+
+					else					sout.print('o');
+				}
+				else sout.print(grid[i][j]);
+			}
+			sout.println();
+		}
+		sout.println();
+	}
+
+}

@@ -1,0 +1,161 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+const string INPUTFILE = "new_years_resolution.txt";
+
+// struct that holds each type of nutrient
+struct Nutrients
+{
+    Nutrients() { }
+    Nutrients(int p, int c, int f) : proteins(p), carbs(c), fats(f) { }
+    int proteins;
+    int carbs;
+    int fats;
+};
+// struct of foods. It holds one struct with the desired values and a vector for
+// each of the values in each meal.
+struct Foods
+{
+    Nutrients wanted;
+    vector<Nutrients> calories;
+};
+
+bool sortByFats (const Nutrients &i, const Nutrients &j)
+{return i.fats < j.fats;}
+bool sortByCarbs (const Nutrients &i, const Nutrients &j)
+{return i.carbs < j.carbs;}
+bool sortByProteins (const Nutrients &i, const Nutrients &j)
+{return i.proteins < j.proteins;}
+
+bool operator>(const Nutrients& a, const Nutrients& b)
+{
+    if (a.carbs > b.carbs || a.proteins > b.proteins || a.fats > b.fats) return true;
+    return false;
+}
+bool operator!=(const Nutrients& a, int number)
+{
+    if (a.carbs != number || a.proteins != number || a.fats != number) return true;
+    return false;
+}
+bool operator==(const Nutrients& a, int number)
+{
+    if (a.carbs == number && a.proteins == number && a.fats == number) return true;
+    return false;
+}
+Nutrients operator-(const Nutrients& a, const Nutrients& b)
+{
+    return Nutrients(a.proteins - b.proteins, a.carbs - b.carbs, a.fats - b.fats);
+}
+
+
+bool testNutrientsSingle(Foods& meal, int i);
+bool isSubsetSum(Foods& meal, int n, Nutrients& sum);
+
+void pruneInput(Foods& meal)
+{
+    sort(meal.calories.begin(), meal.calories.end(), sortByFats);
+    int counter = 0;
+    for (int i = meal.calories.size() - 1; i >= 0; --i)
+    {
+        if (meal.calories[i].fats > meal.wanted.fats) ++ counter;
+    }
+    meal.calories.erase(meal.calories.end() - counter, meal.calories.end());
+    counter = 0;
+    sort(meal.calories.begin(), meal.calories.end(), sortByCarbs);
+    for (int i = meal.calories.size() - 1; i >= 0; --i)
+    {
+        if (meal.calories[i].carbs > meal.wanted.carbs) ++ counter;
+    }
+    meal.calories.erase(meal.calories.end() - counter, meal.calories.end());
+    counter = 0;
+    sort(meal.calories.begin(), meal.calories.end(), sortByProteins);
+    for (int i = meal.calories.size() - 1; i >= 0; --i)
+    {
+        if (meal.calories[i].proteins > meal.wanted.proteins) ++ counter;
+    }
+    meal.calories.erase(meal.calories.end() - counter, meal.calories.end());
+}
+
+void readInput(ifstream& myfile, Foods& meal)
+{
+    myfile >> meal.wanted.proteins >> meal.wanted.carbs >> meal.wanted.fats;
+    int mealsNum;
+    myfile >> mealsNum;
+    for (int i = 0; i < mealsNum; ++i)
+    {
+        Nutrients menu;
+        myfile >> menu.proteins >> menu.carbs >> menu.fats;
+        meal.calories.push_back(menu);
+    }
+    pruneInput(meal);
+
+}
+
+bool findSum(Foods& meal)
+{
+
+    // first check if any single individual meal is equal to the total wanted. If it is, check for fats and carbs
+    for (int i = 0; i < meal.calories.size(); ++i)
+    {
+        if (meal.calories[i].proteins == meal.wanted.proteins)
+        {
+            if(testNutrientsSingle(meal, i))
+            {
+                return true;
+            }
+        }
+    }
+  //  vector<int>indexes;
+    if (isSubsetSum(meal, meal.calories.size(), meal.wanted)) return true;
+    else return false;
+}
+
+bool isSubsetSum(Foods& meal, int n, Nutrients& sum)
+{
+   // Base Cases
+   if (sum == 0)
+     return true;
+   if (n == 0 && sum != 0)
+     return false;
+
+   // If last element is greater than sum, then ignore it
+   if (meal.calories[n-1] > sum)
+     return isSubsetSum(meal, n-1, sum);
+
+   /* else, check if sum can be obtained by any of the following
+      (a) including the last element
+      (b) excluding the last element   */
+   Nutrients temp = sum-meal.calories[n-1];
+
+   return isSubsetSum(meal, n-1, sum) || isSubsetSum(meal, n-1, temp);
+}
+
+
+bool testNutrientsSingle(Foods& meal, int i)
+{
+    if (meal.calories[i].carbs == meal.wanted.carbs && meal.calories[i].fats == meal.wanted.fats) return true;
+    return false;
+}
+
+int main()
+{
+    ifstream ifs(INPUTFILE.c_str());
+    int cases;
+    ifs >> cases;
+    ofstream ofs("output.txt");
+
+    for (int i = 0; i < cases; ++i)
+    {
+        Foods meal;
+        readInput(ifs, meal);
+
+        if (findSum(meal)) ofs << "Case #" << i + 1 << ": yes" << endl;
+        else ofs << "Case #" << i + 1 << ": no" << endl;
+    }
+}
+

@@ -1,0 +1,207 @@
+package hackerCup;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class newYear {
+
+	public static void main(String[] args) throws IOException {
+		ArrayList<String> lines = (ArrayList<String>) Files.readAllLines(Paths.get(args[0]));
+		int numCases = Integer.parseInt(lines.get(0));
+		int index = 1;
+		int caseNum = 1;
+		for (int j = 0; j < numCases; j++) {
+			int[] nutrientsNeeded = parseNutrientsNeeded(lines.get(index));
+			int numPossibleFoods = Integer.parseInt(lines.get(index + 1));
+			Food[] possibleFoods = new Food[numPossibleFoods];
+			for (int i = index + 2; i <= index + 1 + numPossibleFoods; i++) {
+				possibleFoods[i - index - 2] = new Food(parseNutrientsNeeded(lines.get(i)));
+			}
+			boolean isPossible = checkForPossibleMatches(nutrientsNeeded, possibleFoods);
+			System.out.println("Case #" + caseNum + ": " + (isPossible ? "possible" : "impossible"));
+			caseNum++;
+			index += numPossibleFoods + 2;
+		}
+	}
+
+	private static boolean checkForPossibleMatches(int[] nutrientsNeeded, Food[] possibleFoods) {
+		Set<String> foodsWithEnoughFat = getListOfSubsets(nutrientsNeeded[0], possibleFoods, 0);
+		Set<String> foodsWithEnoughCarbs = getListOfSubsets(nutrientsNeeded[1], possibleFoods, 1);
+		Set<String> foodsWithEnoughProtein = getListOfSubsets(nutrientsNeeded[2], possibleFoods, 2);
+		if (foodsWithEnoughFat.size() == 0 || foodsWithEnoughProtein.size() == 0
+				|| foodsWithEnoughCarbs.size() == 0) return false;
+		Set<String> matches = checkForMatches(foodsWithEnoughFat, foodsWithEnoughCarbs);
+		if (matches.size() == 0) return false;
+		Set<String> secondMatches = checkForMatches(matches, foodsWithEnoughProtein);
+		return secondMatches.size() > 0;
+	}
+
+	private static Set<String> getListOfSubsets(int sum, Food[] possibleFoods, int partOfFood) {
+		int[] potentialNutrients = extractNutrients(possibleFoods, partOfFood);
+		return getWorkingSubsets(potentialNutrients, potentialNutrients.length, sum);
+	}
+
+	private static Set<String> getWorkingSubsets(int[] set, int n, int sum) {
+		TableEntry[][] table = new TableEntry[sum + 1][n + 1];
+
+		for (int i = 0; i <= n; i++) {
+			ArrayList<Integer> toAdd = new ArrayList<Integer>();
+			table[0][i] = new TableEntry(true, toAdd);
+		}
+
+		for (int i = 1; i <= sum; i++) {
+			ArrayList<Integer> toAdd = new ArrayList<Integer>();
+			table[i][0] = new TableEntry(false, toAdd);
+		}
+
+		for (int i = 1; i <= sum; i++) {
+			for (int j = 1; j <= n; j++) {
+				table[i][j] = new TableEntry(table[i][j-1].possible, table[i][j-1].pathsSoFar);
+				if (i >= set[j-1]) {
+					if (table[i - set[j-1]][j-1].getPossible()) {
+						TableEntry entry = table[i][j];
+						entry.setPossible(true);
+						entry.addToPaths(j-1);
+						table[i][j] = entry;
+					}
+				}
+			}
+		}
+		return convertPathsToStrings(table, set, table[sum][n].pathsSoFar, sum, n);
+	}
+
+	private static Set<String> convertPathsToStrings(TableEntry[][] table, int[] set,
+			ArrayList<Integer> paths, int sum, int n) {
+		ArrayList<ArrayList<Integer>> listOfPaths = new ArrayList<ArrayList<Integer>>();
+		ArrayList<ArrayList<Integer>> copy = new ArrayList<ArrayList<Integer>>();
+		for (Integer el : paths) {
+			ArrayList<Integer> newPath = new ArrayList<Integer>();
+			newPath.add(el);
+			listOfPaths.add(newPath);
+			copy.add(newPath);
+		}
+		for (ArrayList<Integer> path : copy) {
+			traceBackPath(path, listOfPaths, table, set, sum, n);
+		}
+		return convertToFinalOutput(listOfPaths);
+	}
+
+	private static Set<String> convertToFinalOutput(ArrayList<ArrayList<Integer>> paths) {
+		HashSet<String> toReturn = new HashSet<String>();
+		for (ArrayList<Integer> path : paths) {
+			Collections.sort(path);
+			toReturn.add(path.toString());
+		}
+		return toReturn;
+	}
+
+	private static void traceBackPath(ArrayList<Integer> path, ArrayList<ArrayList<Integer>> allPaths,
+			TableEntry[][] table, int[] set, int sum, int n) {
+		ArrayList<ArrayList<Integer>> pathsToAdd = new ArrayList<ArrayList<Integer>>();
+		int el = path.get(path.size() - 1);
+		int val = set[el];
+		sum -= val;
+		if (sum <= 0 || allPaths.size() == 0) return;
+		TableEntry newEntry = table[sum][n];
+		ArrayList<Integer> pathToInspect = newEntry.pathsSoFar;
+		for (Integer nextMove : pathToInspect) {
+			if (!path.contains(nextMove)) {
+				ArrayList<Integer> newPath = new ArrayList<Integer>();
+				newPath.addAll(path);
+				newPath.add(nextMove);
+				pathsToAdd.add(newPath);
+			}
+		}
+		allPaths.remove(path);
+		for (ArrayList<Integer> newPath : pathsToAdd) {
+			allPaths.add(newPath);
+		}
+		for (ArrayList<Integer> newPath : pathsToAdd) {
+			traceBackPath(newPath, allPaths, table, set, sum, n);
+		}
+	}
+
+	private static class TableEntry {
+		boolean possible;
+		ArrayList<Integer> pathsSoFar;
+
+		TableEntry(boolean possible, ArrayList<Integer> pathsSoFar) {
+			this.possible = possible;
+			this.pathsSoFar = pathsSoFar;
+		}
+
+		private boolean getPossible() {
+			return possible;
+		}
+
+		private void setPossible(boolean val) { possible = val; }
+
+		private void addToPaths(int val) {
+			pathsSoFar.add(val);
+		}
+
+		public String toString() {
+			return "Possible: " + possible + " Paths: " + pathsSoFar.toString();
+		}
+	}
+
+	private static int[] extractNutrients(Food[] foods, int partOfFood) {
+		int[] toReturn = new int[foods.length];
+		for (int i = 0; i < foods.length; i++) {
+			toReturn[i] = foods[i].getNutrients()[partOfFood];
+		}
+		return toReturn;
+	}
+
+	private static Set<String> checkForMatches(Set<String> set1, Set<String> set2) {
+		List<String> toRemove = new ArrayList<String>();
+		for (String food : set1) {
+			if (!set2.contains(food)) toRemove.add(food);
+		}
+		for (String remove : toRemove) {
+			set1.remove(remove);
+		}
+		return set1;
+	}
+
+	private static int[] parseNutrientsNeeded(String input) {
+		int[] toReturn = new int[3];
+		String[] nutrients = input.split(" ");
+		for (int i = 0; i <= 2; i++) {
+			toReturn[i] = Integer.parseInt(nutrients[i]);
+		}
+		return toReturn;
+	}
+
+	private static class Food {
+		private int fat;
+		private int carbs;
+		private int protein;
+
+		private Food(int fat, int carbs, int protein) {
+			this.fat = fat;
+			this.carbs = carbs;
+			this.protein = protein;
+		}
+
+		private Food(int[] nutrients) {
+			this.fat = nutrients[0];
+			this.carbs = nutrients[1];
+			this.protein = nutrients[2];
+		}
+
+		private int[] getNutrients() {
+			return new int[]{fat, carbs, protein};
+		}
+
+		public String toString() {
+			return "Fat: " + fat + ", Carbs: " + carbs + ", Protein: " + protein + ";";
+		}
+	}
+}

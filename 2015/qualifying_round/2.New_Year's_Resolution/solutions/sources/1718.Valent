@@ -1,0 +1,141 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace CookingTheBooks
+{
+    public partial class Form1 : Form
+    {
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        internal class Case
+        {
+            internal List<int> WantsToEat = new List<int>();
+            internal List<List<int>> Foods = new List<List<int>>();
+        }
+
+        private List<int> stringToList(string input)
+        {
+            List<string> split = input.Split(' ').ToList();
+            return new List<int>
+                {
+                    Convert.ToInt32(split[0]),
+                    Convert.ToInt32(split[1]),
+                    Convert.ToInt32(split[2]),
+                };
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.ShowDialog();
+
+            List<string> lines = System.IO.File.ReadAllLines(ofd.FileName).ToList();
+
+            List<Case> cases = new List<Case>();
+
+            for(int i = 1 ; i < lines.Count ; i++)
+            {
+                Case toAdd = new Case();
+                toAdd.WantsToEat = stringToList(lines[i]);
+                i++;
+                int noOfFodds = Convert.ToInt32(lines[i]);
+                i++;
+                for (int j = i; j < i + noOfFodds; j++)
+                    toAdd.Foods.Add(stringToList(lines[j]));
+                i += noOfFodds -1 ;
+                cases.Add(toAdd);
+            }
+            
+            List<string> output = new List<string>();
+            for(int i = 0 ; i < cases.Count ; i++)
+            {
+                bool result = test(cases[i]);
+                if(result == true)
+                    output.Add("Case #" + (i+ 1).ToString() + ": yes" );
+                else
+                    output.Add("Case #" + (i + 1).ToString() + ": no");
+            }
+
+            System.IO.File.WriteAllLines(@"D:\output.txt", output);
+        }   
+
+        private bool testIfEqual(List<int> first, List<int> second)
+        {
+            if (first[0] != second[0])
+                return false;
+            if (first[1] != second[1])
+                return false;
+            if(first[2] != second[2])
+                return false;
+            return true;
+        }
+
+        private int testSolution(List<int> list)
+        {
+            if (list[0] == 0 && list[1] == 0 && list[2] == 0)
+                return 1;
+
+            for (int i = 0; i < list.Count; i++)
+                if (list[i] < 10)
+                    return -1;
+            
+            return 0;
+        }
+
+        private bool test(Case testCase)
+        {
+            if(testCase.Foods.Count == 1)
+            {
+                if (testIfEqual(testCase.Foods[0], testCase.WantsToEat))
+                    return true;
+                return false;
+            }
+
+            for(int i = 0 ; i < testCase.Foods.Count ; i++)
+            {
+                Case newCase = new Case();
+                newCase.WantsToEat = new List<int>
+                {
+                    testCase.WantsToEat[0] - testCase.Foods[i][0],
+                    testCase.WantsToEat[1] - testCase.Foods[i][1],
+                    testCase.WantsToEat[2] - testCase.Foods[i][2],
+                };
+
+                int solution = testSolution(newCase.WantsToEat);
+                if (solution == 1)
+                    return true;
+                if (solution == -1)
+                    continue;
+
+                for(int j = 0 ; j < testCase.Foods.Count ; j++)
+                {
+                    if(j != i)
+                    {
+                        newCase.Foods.Add(new List<int>
+                            {
+                                testCase.Foods[j][0],
+                                testCase.Foods[j][1],
+                                testCase.Foods[j][2],
+                            });
+                    }
+                }
+
+                if (test(newCase))
+                    return true;
+                
+            }
+
+            return false;
+        }
+    }
+}

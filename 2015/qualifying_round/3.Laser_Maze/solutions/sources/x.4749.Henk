@@ -1,0 +1,391 @@
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using System.Collections.Concurrent;
+
+namespace Hackercup
+{
+	/// <summary>
+	/// TODO: Give preference to directions that point to the goal
+	/// </summary>
+
+	class Problem3
+	{
+		static void Main(string[] args)
+		{
+			List<TestCase> testCases = ParseTestCases(File.ReadAllLines("input3.txt"));
+			foreach (TestCase testCase in testCases)
+				testCase.MovesNeeded = PlayOut(testCase);
+
+			using (FileStream stream = File.OpenWrite("output3.txt"))
+			using (StreamWriter writer = new StreamWriter(stream))
+			{
+				for (int i = 1; i <= testCases.Count; i++)
+				{
+					string output = String.Format(
+						"Case #{0}: {1}",
+						i,
+						testCases[i - 1].MovesNeeded == -1
+							? "impossible"
+							: testCases[i - 1].MovesNeeded.ToString()
+					);
+					writer.WriteLine(output);
+					writer.Flush();
+				}
+			}
+		}
+
+		static List<TestCase> ParseTestCases(string[] input)
+		{
+			List<TestCase> testCases = new List<TestCase>();
+			int numTestCases = Int32.Parse(input[0]);
+			int currentCaseOffset = 1;
+
+			while (numTestCases-- > 0)
+			{
+				string[] caseDimensionParts = input[currentCaseOffset].Split(' ');
+				int caseLength = Int32.Parse(caseDimensionParts[0]) + 1;
+
+				string[] caseInput = new string[caseLength];
+				Array.Copy(input, currentCaseOffset, caseInput, 0, caseLength);
+				testCases.Add(TestCase.FromInput(caseInput));
+				currentCaseOffset += caseLength;
+			}
+
+			return testCases;
+		}
+
+		static int PlayOut(TestCase testCase)
+		{
+			int movesMade = 0;
+			ConcurrentDictionary<Point, int> visited = new ConcurrentDictionary<Point, int>();
+
+			GameField game = testCase.GameField;
+			visited.GetOrAdd(game.Player.Position, 0);
+
+			try
+			{
+				while (movesMade++ < 10000)
+				{
+					Dictionary<Direction, int> movementOptions = new Dictionary<Direction, int>();
+					foreach (Direction direction in Enum.GetValues(typeof(Direction)))
+					{
+						if (game.CanMovePlayer(direction))
+						{
+							movementOptions.Add(
+								direction,
+								visited.GetOrAdd(game.GetDirectionTarget(direction), 0)
+							);
+						}
+					}
+
+					if (movementOptions.Count == 0)
+						return -1;
+
+					Direction preferedDirection = GetPreferedDirection(game);
+					if (movementOptions.ContainsKey(preferedDirection))
+					{
+						game.MovePlayer(preferedDirection);
+					}
+					else
+					{
+						Direction selectedDirection = movementOptions
+							.Where(kv => kv.Value == movementOptions.Values.Min())
+							.Select(kv => kv.Key)
+							.First()
+						;
+						game.MovePlayer(selectedDirection);
+					}
+					visited.AddOrUpdate(game.Player.Position, 1, (p, v) => v + 1);
+				}
+				return -1;
+			}
+			catch (WinException)
+			{
+				return movesMade;
+			}
+		}
+
+		static Direction GetPreferedDirection(GameField gameField)
+		{
+			int diffX = gameField.Goal.Position.X - gameField.Player.Position.X;
+			int diffY = gameField.Goal.Position.Y - gameField.Player.Position.Y;
+
+			if (Math.Abs(diffX) >= Math.Abs(diffY))
+				return diffX > 0 ? Direction.Right : Direction.Left;
+
+			return diffY > 0 ? Direction.Down : Direction.Up;
+		}
+
+		class TestCase
+		{
+			public GameField GameField { get; set; }
+
+			public int MovesNeeded { get; set; }
+
+			public static TestCase FromInput(string[] input)
+			{
+				string[] dimensionParts = input[0].Split(' ');
+				GameField gameField = new GameField(Int32.Parse(dimensionParts[1]), Int32.Parse(dimensionParts[0]));
+				for (int x = 0; x < gameField.Width; x++)
+				{
+					for (int y = 0; y < gameField.Height; y++)
+					{
+						switch (input[y + 1][x])
+						{
+							case '#': new Wall(gameField, new Point(x, y)); break;
+							case 'S': new Player(gameField, new Point(x, y)); break;
+							case 'G': new Goal(gameField, new Point(x, y)); break;
+							case '^': new Turret(gameField, new Point(x, y), Direction.Up); break;
+							case '>': new Turret(gameField, new Point(x, y), Direction.Right); break;
+							case 'v': new Turret(gameField, new Point(x, y), Direction.Down); break;
+							case '<': new Turret(gameField, new Point(x, y), Direction.Left); break;
+						}
+					}
+				}
+				return new TestCase { GameField = gameField };
+			}
+		}
+
+		class GameField
+		{
+			private Entity[,] field;
+			public int Width { get; private set; }
+			public int Height { get; private set; }
+
+			public Player Player { get; set; }
+			public Goal Goal { get; set; }
+			public List<Turret> Turrets { get; private set; }
+
+			public GameField(int width, int height)
+			{
+				this.Width = width;
+				this.Height = height;
+				this.field = new Entity[width, height];
+
+				this.Turrets = new List<Turret>();
+			}
+
+			public Entity this[int x, int y]
+			{
+				get { return this.field[x, y]; }
+				set { this.field[x, y] = value; }
+			}
+
+			public Entity this[Point point]
+			{
+				get { return this.field[point.X, point.Y]; }
+				set { this.field[point.X, point.Y] = value; }
+			}
+
+			public bool Contains(Point point)
+			{
+				return point.X >= 0 && point.Y >= 0 && point.X < this.Width && point.Y < this.Height;
+			}
+
+			public Point GetDirectionTarget(Direction direction)
+			{
+				return this.Player.Position.ApplyDirection(direction);
+			}
+
+			public bool CanMovePlayer(Direction direction)
+			{
+				Point target = this.GetDirectionTarget(direction);
+
+				if (!this.Contains(target))
+					return false;
+
+				// Intersection with other entities only allowed for the goal
+				if (this[target] != null && !(this[target] is Goal))
+					return false;
+
+				if (this.Turrets.Any(turret => turret.WillBeInFov(target)))
+					return false;
+
+				return true;
+			}
+
+			public bool MovePlayer(Direction direction)
+			{
+				Point target = this.GetDirectionTarget(direction);
+
+				if (!this.CanMovePlayer(direction))
+					return false;
+
+				foreach (Turret turret in this.Turrets)
+					turret.Direction = turret.GetNextTurretDirection();
+
+				if (this[target] is Goal)
+					throw new WinException();
+
+				this[this.Player.Position] = null;
+				this[target] = this.Player;
+				this.Player.Position = target;
+				return true;
+			}
+		}
+
+		class Player : Entity
+		{
+			public Player(GameField gameField, Point initialPosition)
+				: base(gameField, initialPosition)
+			{
+				this.GameField.Player = this;
+			}
+		}
+
+		class Goal : Entity
+		{
+			public Goal(GameField gameField, Point initialPosition)
+				: base(gameField, initialPosition)
+			{
+				this.GameField.Goal = this;
+			}
+		}
+
+		class Wall : Entity
+		{
+			public Wall(GameField gameField, Point initialPosition)
+				: base(gameField, initialPosition)
+			{
+			}
+		}
+
+		class Turret : Entity
+		{
+			public Direction Direction { get; set; }
+
+			public Turret(GameField gameField, Point initialPosition, Direction initialDirection)
+				: base(gameField, initialPosition)
+			{
+				this.Direction = initialDirection;
+				gameField.Turrets.Add(this);
+			}
+
+			public Direction GetNextTurretDirection()
+			{
+				return (Direction)(
+					((int)this.Direction + 1) % Enum.GetValues(typeof(Direction)).Length
+				);
+			}
+
+			public bool WillBeInFov(Point position)
+			{
+				switch (this.GetNextTurretDirection())
+				{
+					case Direction.Up:
+						if (position.X == this.Position.X && position.Y < this.Position.Y)
+						{
+							for (int y = this.Position.Y - 1; y > position.Y; y--)
+							{
+								if (this.GameField[position.X, y] is Wall
+								|| this.GameField[position.X, y] is Turret)
+									return false;
+							}
+							return true;
+						}
+						return false;
+					case Direction.Down:
+						if (position.X == this.Position.X && position.Y > this.Position.Y)
+						{
+							for (int y = this.Position.Y + 1; y < position.Y; y++)
+							{
+								if (this.GameField[position.X, y] is Wall
+								|| this.GameField[position.X, y] is Turret)
+									return false;
+							}
+							return true;
+						}
+						return false;
+					case Direction.Left:
+						if (position.Y == this.Position.Y && position.X < this.Position.X)
+						{
+							for (int x = this.Position.X - 1; x > position.X; x--)
+							{
+								if (this.GameField[x, position.Y] is Wall
+								|| this.GameField[x, position.Y] is Turret)
+									return false;
+							}
+							return true;
+						}
+						return false;
+					case Direction.Right:
+						if (position.Y == this.Position.Y && position.X > this.Position.X)
+						{
+							for (int x = this.Position.X + 1; x < position.X; x++)
+							{
+								if (this.GameField[x, position.Y] is Wall
+								|| this.GameField[x, position.Y] is Turret)
+									return false;
+							}
+							return true;
+						}
+						return false;
+				}
+				return false;
+			}
+		}
+
+		class Entity
+		{
+			public GameField GameField { get; set; }
+
+			public Point Position { get; set; }
+
+			public Entity(GameField gameField, Point initialPosition)
+			{
+				this.GameField = gameField;
+				this.Position = initialPosition;
+				this.GameField[initialPosition] = this;
+			}
+		}
+
+		class Point
+		{
+			public int X { get; set; }
+			public int Y { get; set; }
+
+			public Point(int x, int y)
+			{
+				this.X = x;
+				this.Y = y;
+			}
+
+			public override bool Equals(object obj)
+			{
+				Point other = obj as Point;
+				return other != null && this.X == other.X && this.Y == other.Y;
+			}
+
+			public override int GetHashCode()
+			{
+				return this.X.GetHashCode() * this.Y.GetHashCode();
+			}
+
+			public Point ApplyDirection(Direction direction)
+			{
+				switch (direction)
+				{
+					case Direction.Up: return new Point(this.X, this.Y - 1);
+					case Direction.Down: return new Point(this.X, this.Y + 1);
+					case Direction.Left: return new Point(this.X - 1, this.Y);
+					case Direction.Right: return new Point(this.X + 1, this.Y);
+				}
+				return this;
+			}
+		}
+
+		enum Direction
+		{
+			Up,
+			Right,
+			Down,
+			Left
+		}
+
+		public class WinException : Exception
+		{
+		}
+	}
+}

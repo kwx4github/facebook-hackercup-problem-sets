@@ -1,0 +1,101 @@
+import com.google.common.collect.ImmutableMap;
+import com.google.common.staticresource.StaticFileResource;
+import com.google.common.staticresource.StaticResource;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.StringTokenizer;
+
+public class LaserMaze {
+  private static final StaticResource INPUT_FILE = StaticFileResource.find(LaserMaze.class, "lasermaze_input.txt");
+
+  public static void main(String[] args) throws Exception {
+    try (BufferedReader input = new BufferedReader(new InputStreamReader(INPUT_FILE.getInput()))) {
+      int numCases = Integer.parseInt(input.readLine());
+      for (int i = 1; i <= numCases; i++) {
+        System.out.print("Case #" + i + ": ");
+        solve(input);
+      }
+    }
+  }
+
+  public static int[] di = {-1, 0, 1, 0};
+  public static int[] dj = {0, 1, 0, -1};
+
+  public static void solve (BufferedReader input) throws Exception {
+    StringTokenizer st = new StringTokenizer(input.readLine());
+    int n = Integer.parseInt(st.nextToken());
+    int m = Integer.parseInt(st.nextToken());
+    char[][] originalGrid = new char[n][];
+    int si = -1, sj = -1, ei = -1, ej = -1;
+
+    for (int i = 0; i < n; i++) {
+      originalGrid[i] = input.readLine().toCharArray();
+      for (int j = 0; j < m; j++) {
+        if (originalGrid[i][j] == 'S') {
+          si = i;
+          sj = j;
+          originalGrid[i][j] = '.';
+        } else if (originalGrid[i][j] == 'G') {
+          ei = i;
+          ej = j;
+          originalGrid[i][j] = '.';
+        }
+      }
+    }
+
+    ImmutableMap<Character, Integer> orientations = ImmutableMap.of('^', 0, '>', 1, 'v', 2, '<', 3);
+    boolean[][][] isWall = new boolean[4][n][m];
+
+    for (int i = 0; i < n; i++) { // Precompute all 'walls' for any time (mod 4)
+      for (int j = 0; j < m; j++) {
+        if (originalGrid[i][j] == '#') { // Walls are constant
+          for (int t = 0; t < 4; t++) {
+            isWall[t][i][j] = true;
+          }
+        } else if (orientations.containsKey(originalGrid[i][j])) { // Turrets are dynamic walls
+          int offset = orientations.get(originalGrid[i][j]);
+          for (int t = 0; t < 4; t++) {
+            int ci = i, cj = j;
+            do {
+              isWall[t][ci][cj] = true;
+              ci += di[(t + offset) % 4];
+              cj += dj[(t + offset) % 4];
+            } while (ci >= 0 && ci < n && cj >= 0 && cj < m && originalGrid[ci][cj] == '.');
+          }
+        }
+      }
+    }
+
+    Queue<State> q = new LinkedList<State>(); // BFS
+    q.offer(new State(si, sj, 0));
+    isWall[0][si][sj] = true;
+
+    while (!q.isEmpty()) {
+      State cur = q.poll();
+      for (int k = 0; k < 4; k++) {
+        int ni = cur.ci + di[k], nj = cur.cj + dj[k];
+        if (ni >= 0 && ni < n && nj >= 0 && nj < m && !isWall[(cur.steps + 1) % 4][ni][nj]) {
+          if (ni == ei && nj == ej) {
+            System.out.println(cur.steps + 1);
+            return;
+          }
+          q.offer(new State(ni, nj, cur.steps + 1));
+          isWall[(cur.steps + 1) % 4][ni][nj] = true;
+        }
+      }
+    }
+    System.out.println("impossible");
+  }
+
+  static class State {
+    int ci, cj, steps;
+    State(int i, int j, int s) {
+      ci = i;
+      cj = j;
+      steps = s;
+    }
+  }
+}

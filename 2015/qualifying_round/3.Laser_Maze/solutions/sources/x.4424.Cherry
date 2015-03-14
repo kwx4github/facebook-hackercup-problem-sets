@@ -1,0 +1,150 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <queue>
+
+using namespace std;
+
+int T, t;
+
+int M, N;
+char map[128][128];
+
+char m[4][128][128];
+int vis[4][128][128];
+
+int sx, sy;
+
+struct state {
+    int step, y, x, laser;
+    state(int step, int y, int x, int laser): step(step), x(x), y(y), laser(laser) {}
+};
+
+int dy[] = { -1, 0, 1, 0 };
+int dx[] = { 0, 1, 0, -1 };
+
+void premap(int laser, const char urdl[4]) {
+    for (int y = 0; y < M; y++) {
+        for (int x = 0; x < N; x++) {
+
+            for (int k = 0; k < 4; k++) {
+                if (map[y][x] == urdl[k]) {
+                    // beam!
+                    for (int dis = 1; ; dis++) {
+                        int X = x + dx[k] * dis;
+                        int Y = y + dy[k] * dis;
+
+                        if (Y < 0 || Y >= M || X < 0 || X >= N) {
+                            break;
+                        }
+
+                        char o = map[Y][X];
+
+                        if (o == '#' || o == '^' || o == '>' || o == 'v' || o == '<') {
+                            break;
+                        }
+
+                        m[laser][Y][X] = '*';
+                    }
+                    m[laser][y][x] = '*';
+                }
+            }
+        }
+    }
+}
+
+int solve() {
+
+    queue<state> Q;
+
+    memset(vis, 0, sizeof(vis));
+
+    for (int k = 0; k < 4; k++) {
+        int y = sy + dy[k];
+        int x = sx + dx[k];
+
+        if (y < 0 || y >= M || x < 0 || x >= N) {
+            continue;
+        }
+
+        if (m[1][y][x] != '#') {
+            Q.push(state(1, y, x, 1));
+        }
+    }
+
+    while (!Q.empty()) {
+        state s = Q.front(); Q.pop();
+
+        int cl = s.laser;
+        int nl = (cl + 1) % 4;
+
+        if (map[s.y][s.x] == 'G') {
+            return s.step;
+        }
+        vis[cl][s.y][s.x] = 1;
+
+        for (int k = 0; k < 4; k++) {
+            int y = s.y + dy[k];
+            int x = s.x + dx[k];
+
+            if (y < 0 || y >= M || x < 0 || x >= N) {
+                continue;
+            }
+
+            if (m[nl][y][x] == '.' && !vis[nl][y][x]) {
+                vis[nl][y][x] = s.step + 1;
+                Q.push(state(s.step + 1, y, x, nl));
+            }
+        }
+    }
+
+    return -1;
+}
+
+int main() {
+    scanf("%d", &T);
+
+    for (int t = 1; t <= T; t++) {
+        scanf("%d%d", &M, &N);
+
+        for (int i = 0; i < M; i++) {
+            scanf("%s", map[i]);
+
+            for (int j = 0; j < N; j++) {
+                if (map[i][j] == 'S') {
+                    sy = i;
+                    sx = j;
+                    map[i][j] = '.';
+                }
+            }
+
+            for (int j = 0; j < 4; j++) {
+                strcpy(m[j][i], map[i]);
+            }
+
+            for (int j = 0; j < N; j++) {
+                if (map[i][j] == 'G') {
+                    m[0][i][j] = '.';
+                    m[1][i][j] = '.';
+                    m[2][i][j] = '.';
+                    m[3][i][j] = '.';
+                }
+            }
+        }
+
+        premap(0, "^>v<");
+        premap(1, "<^>v");
+        premap(2, "v<^>");
+        premap(3, ">v<^");
+
+        int ans = solve();
+
+        if (ans == -1) {
+            printf("Case #%d: impossible\n", t);
+        } else {
+            printf("Case #%d: %d\n", t, ans);
+        }
+    }
+
+    return 0;
+}

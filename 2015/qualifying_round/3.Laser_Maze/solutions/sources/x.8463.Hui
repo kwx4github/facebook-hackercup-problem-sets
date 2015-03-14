@@ -1,0 +1,186 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.Scanner;
+
+public class LaserMaze {
+
+  private static char[][] copyMaze(char[][] maze, int M, int N) {
+    char[][] ret = new char[M][N];
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) {
+        ret[i][j] = maze[i][j];
+      }
+    }
+    return ret;
+  }
+
+  private static void changeLazerToWall(char[][] maze, int M, int N) {
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) {
+        if (maze[i][j] == '^') {
+          for (int k = i - 1; k >= 0 && maze[k][j] == '.'; k--) {
+            maze[k][j] = '#';
+          }
+        }
+        if (maze[i][j] == '>') {
+          for (int k = j + 1; k < N && maze[i][k] == '.'; k++) {
+            maze[i][k] = '#';
+          }
+        }
+        if (maze[i][j] == 'v') {
+          for (int k = i + 1; k < M && maze[k][j] == '.'; k++) {
+            maze[k][j] = '#';
+          }
+        }
+        if (maze[i][j] == '<') {
+          for (int k = j - 1; k >= 0 && maze[i][k] == '.'; k--) {
+            maze[i][k] = '#';
+          }
+        }
+      }
+    }
+  }
+
+  private static void rotateLazer(char[][] maze, int M, int N) {
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) {
+        if (maze[i][j] == '^') {
+          maze[i][j] = '>';
+        } else if (maze[i][j] == '>') {
+          maze[i][j] = 'v';
+        } else if (maze[i][j] == 'v') {
+          maze[i][j] = '<';
+        } else if (maze[i][j] == '<') {
+          maze[i][j] = '^';
+        }
+      }
+    }
+  }
+
+  private static int[][] createDp(int M, int N) {
+    int[][] ret = new int[M][N];
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) {
+        ret[i][j] = -1;
+      }
+    }
+    return ret;
+  }
+
+  private static int solve(char[][] maze, int M, int N) {
+    int Gm = 0, Gn = 0, Sm = 0, Sn = 0;
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) {
+        if (maze[i][j] == 'G') {
+          Gm = i;
+          Gn = j;
+          maze[i][j] = '.';
+        }
+        if (maze[i][j] == 'S') {
+          Sm = i;
+          Sn = j;
+          maze[i][j] = '.';
+        }
+      }
+    }
+    // map
+    char map[][][] = new char[4][M][N];
+
+    map[0] = copyMaze(maze, M, N);
+    map[1] = copyMaze(map[0], M, N);
+    rotateLazer(map[1], M, N);
+    map[2] = copyMaze(map[1], M, N);
+    rotateLazer(map[2], M, N);
+    map[3] = copyMaze(map[2], M, N);
+    rotateLazer(map[3], M, N);
+
+    changeLazerToWall(map[0], M, N);
+    changeLazerToWall(map[1], M, N);
+    changeLazerToWall(map[2], M, N);
+    changeLazerToWall(map[3], M, N);
+    // dp
+    int dp[][][] = new int[4][M][N];
+    for (int i = 0; i < 4; i++) {
+      dp[i] = createDp(M, N);
+    }
+    dp[0][Gm][Gn] = 0;
+    boolean b = true;
+    for (int step = 1; b; step++) {
+      b = false;
+      // step
+      for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+          if (dp[(step - 1) % 4][i][j] >= 0) {
+            if (i - 1 >= 0 && map[step % 4][i - 1][j] == '.') {
+              if (dp[step % 4][i - 1][j] > dp[(step - 1) % 4][i][j] + 1) {
+                dp[step % 4][i - 1][j] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+              if (dp[step % 4][i - 1][j] == -1) {
+                dp[step % 4][i - 1][j] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+            }
+            if (i + 1 < M && map[step % 4][i + 1][j] == '.') {
+              if (dp[step % 4][i + 1][j] > dp[(step - 1) % 4][i][j] + 1) {
+                dp[step % 4][i + 1][j] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+              if (dp[step % 4][i + 1][j] == -1) {
+                dp[step % 4][i + 1][j] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+            }
+            if (j - 1 >= 0 && map[step % 4][i][j - 1] == '.') {
+              if (dp[step % 4][i][j - 1] > dp[(step - 1) % 4][i][j] + 1) {
+                dp[step % 4][i][j - 1] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+              if (dp[step % 4][i][j - 1] == -1) {
+                dp[step % 4][i][j - 1] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+            }
+            if (j + 1 < N && map[step % 4][i][j + 1] == '.') {
+              if (dp[step % 4][i][j + 1] > dp[(step - 1) % 4][i][j] + 1) {
+                dp[step % 4][i][j + 1] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+              if (dp[step % 4][i][j + 1] == -1) {
+                dp[step % 4][i][j + 1] = dp[(step - 1) % 4][i][j] + 1;
+                b = true;
+              }
+            }
+          }
+        }
+      }
+      // validate
+      if (dp[step % 4][Sm][Sn] >= 0) {
+        return dp[step % 4][Sm][Sn];
+      }
+    }
+    return -1;
+  }
+
+  public static void main(String[] args) throws FileNotFoundException {
+    // TODO Auto-generated method stub
+    Scanner in = new Scanner(new File("laser_maze.txt"));
+    int T = in.nextInt();
+    for (int i = 0; i < T; i++) {
+      int M = in.nextInt();
+      int N = in.nextInt();
+      char maze[][] = new char[M][N];
+      for (int m = 0; m < M; m++) {
+        maze[m] = in.next().toCharArray();
+      }
+      int ret = solve(maze, M, N);
+      if (ret < 0) {
+        System.out.println("Case #" + (i + 1) + ": " + "impossible");
+      } else {
+        System.out.println("Case #" + (i + 1) + ": " + ret);
+      }
+    }
+    in.close();
+  }
+
+}

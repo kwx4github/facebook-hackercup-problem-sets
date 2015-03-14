@@ -1,0 +1,185 @@
+/*
+ * c.cpp
+ *
+ *  Created on: Jan 10, 2015
+ *      Author: istrandjev
+ */
+
+#define _CRT_SECURE_NO_DEPRECATE
+#include <iostream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <queue>
+#include <algorithm>
+#include <iomanip>
+#include <map>
+#include <set>
+#include <math.h>
+#include <stack>
+#include <deque>
+#include <numeric>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <bitset>
+#include <functional>
+#define all(x) x.begin(),x.end()
+#define mpair make_pair
+using namespace std;
+typedef long long ll;
+typedef long double ld;
+const ld epsylon = 1e-9;
+
+int moves[4][2] = { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+const char lasers[5] = "^>v<";
+
+bool is_laser(char c) {
+  for (int l = 0; l < 4; ++l) {
+    if (c == lasers[l]) {
+      return true;
+    }
+  }
+  return false;
+}
+vector<string> get_map(const vector<string>& a) {
+  int n = (int)a.size();
+  int m = (int)a[0].size();
+
+  vector<string> res = a;
+
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (a[i][j] == 'S' || a[i][j] == 'G') {
+        res[i][j] = '.';
+      }
+      int dir = -1;
+      for (int l = 0; l < 4; ++l) {
+        if (a[i][j] == lasers[l]) {
+          dir = l;
+          break;
+        }
+      }
+      if (dir == -1) {
+        continue;
+      }
+      int x = i + moves[dir][0], y = j + moves[dir][1];
+      while (x >= 0 && x < n && y >= 0 && y < m && a[x][y] != '#' && !is_laser(a[x][y])) {
+        res[x][y] = '@';
+        x += moves[dir][0];
+        y += moves[dir][1];
+      }
+    }
+  }
+
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (res[i][j] != '.') {
+        res[i][j] = '#';
+      }
+    }
+  }
+  return res;
+}
+
+
+int solve(const vector<string>& a) {
+  int n = (int)a.size();
+  int m = (int)a[0].size();
+
+  vector<string> maps[4];
+  maps[0] = get_map(a);
+  for (int it = 1; it < 4; ++it) {
+    vector<string> rotated_map = a;
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        int dir = -1;
+        for (int l = 0; l < 4; ++l) {
+          if (a[i][j] == lasers[l]) {
+            dir = l;
+            break;
+          }
+        }
+        if (dir == -1) {
+          continue;
+        }
+        rotated_map[i][j] = lasers[(dir + it) % 4];
+      }
+    }
+    maps[it] = get_map(rotated_map);
+  }
+
+  int sx, sy;
+  int ex, ey;
+
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (a[i][j] == 'S') {
+        sx = i;
+        sy = j;
+      }
+      if (a[i][j] == 'G') {
+        ex = i;
+        ey = j;
+      }
+    }
+  }
+
+  vector<vector<int> > vis[4];
+  for (int l = 0; l < 4; ++l) {
+    vis[l].resize(n, vector<int>(m, -1));
+  }
+  queue<tuple<int, int , int> > q;
+  q.push(make_tuple(sx, sy, 0));
+  vis[0][sx][sy] = 0;
+  int result = -1;
+  while (result == -1 && !q.empty()) {
+    int cx = get<0>(q.front());
+    int cy = get<1>(q.front());
+    int dir = get<2>(q.front());
+    int dist = vis[dir][cx][cy];
+    q.pop();
+    dir = (dir + 1) % 4;
+    for (int l = 0; l < 4; ++l) {
+      int tx = cx + moves[l][0];
+      int ty = cy + moves[l][1];
+      if (tx < 0 || tx >= n || ty < 0 || ty >= m) {
+        continue;
+      }
+      if (vis[dir][tx][ty] != -1 || maps[dir][tx][ty] != '.') {
+        continue;
+      }
+      if (tx == ex && ty == ey) {
+        result = dist + 1;
+        break;
+      }
+      q.push(make_tuple(tx, ty, dir));
+      vis[dir][tx][ty] = dist + 1;
+    }
+  }
+  return result;
+}
+int main() {
+  freopen("facebook.in", "r", stdin);
+  freopen("facebook.out", "w", stdout);
+  int nt;
+  cin >> nt;
+  for (int it = 1; it <= nt; it++) {
+    int n, m;
+    cin >> n >> m;
+    vector<string> a(n);
+    for (int i = 0; i < (int)a.size(); ++i) {
+      cin >> a[i];
+    }
+    int res = solve(a);
+    if (res != -1) {
+      cout << "Case #" << it << ": " << res << endl;
+    } else {
+      cout << "Case #" << it << ": " << "impossible" << endl;
+    }
+  }
+  return 0;
+}
+
+
+

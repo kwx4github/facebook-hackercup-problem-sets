@@ -1,0 +1,153 @@
+#include <cstdio>
+#include <queue>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+
+const int MAX = 128;
+const int INF = 100000000;
+
+char grid[MAX][MAX];
+
+int laser_type[MAX][MAX][4];
+
+bool seen[MAX][MAX][4];
+int steps[MAX][MAX][4];
+
+int m, n;
+
+int get_laser_type(char c) {
+    if (c == '<') return 0;
+    if (c == '^') return 1;
+    if (c == '>') return 2;
+    if (c == 'v') return 3;
+    return -1;
+}
+
+bool is_ok(int row, int col, int steps) {
+    if (row < 0 || row >= m) return false;
+    if (col < 0 || col >= n) return false;
+    if (get_laser_type(grid[row][col]) != -1 ||
+        grid[row][col] == '#')
+        return false;
+
+    int ltype;
+    for (int d = 0; d < 4; ++d) {
+        ltype = laser_type[row][col][d];
+        if (ltype != -1) {
+            if ((ltype + steps) % 4 == d % 4)
+                return false;
+        }
+    }
+    return true;
+}
+
+int main() {
+    int cases;
+    freopen("c_big.in", "r", stdin);
+    freopen("c_big.out", "w", stdout);
+
+
+    scanf("%d", &cases);
+
+    for (int case_no = 1; case_no <= cases; ++case_no) {
+        scanf("%d %d", &m, &n);
+
+        for (int i = 0; i < m; ++i) {
+            scanf("%s", grid[i]);
+        }
+
+        int ti, tj, ltype, cr, cc, sr, sc, gr, gc;
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (grid[i][j] == 'S') {
+                    sr = i;
+                    sc = j;
+                }
+                if (grid[i][j] == 'G') {
+                    gr = i;
+                    gc = j;
+                }
+                if (grid[i][j] == '#')
+                    continue;
+                int dr = 0, dc = 1, tdr;
+                for (int d = 0; d < 4; ++d) {
+                    cr = i, cc = j;
+                    laser_type[i][j][d] = -1;
+                    while ( (0 <= cr && cr < m) &&
+                             (0 <= cc && cc < n)
+                           ) {
+                        if (grid[cr][cc] == '#')
+                            break;
+                        ltype = get_laser_type(grid[cr][cc]);
+                        if (ltype != -1) {
+                            laser_type[i][j][d] = ltype;
+                            break;
+                        }
+                        cr += dr;
+                        cc += dc;
+                    }
+
+                    tdr = dr;
+                    dr = dc;
+                    dc = -tdr;
+                }
+            }
+        }
+
+        queue <int> q;
+
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                for (int d = 0; d < 4; ++d) {
+                    seen[i][j][d] = false;
+                    steps[i][j][d] = INF;
+                }
+            }
+        }
+
+        q.push(sr);
+        q.push(sc);
+        q.push(0);
+        seen[sr][sc][0] = true;
+        steps[sr][sc][0] = 0;
+
+        int cp, ct, dr, dc, tdr;
+
+        while (!q.empty()) {
+            cr = q.front(); q.pop();
+            cc = q.front(); q.pop();
+            cp = q.front(); q.pop();
+            ct = steps[cr][cc][cp];
+            //printf("%d %d %d %d\n", cr, cc, cp, ct);
+            dr = 0, dc = 1;
+            for (int d = 0; d < 4; ++d) {
+                if (is_ok(cr + dr, cc + dc, ct + 1) &&
+                    !seen[cr + dr][cc + dc][(cp + 1) % 4]) {
+                    q.push(cr + dr);
+                    q.push(cc + dc);
+                    q.push((cp + 1) % 4);
+                    //printf("->%d %d %d %d\n", cr+dr, cc+dc, (cp+1)%4, ct+1);
+                    seen[cr + dr][cc + dc][(cp + 1) % 4] = true;
+                    steps[cr + dr][cc + dc][(cp + 1) % 4] = ct + 1;
+                }
+
+                tdr = dr;
+                dr = dc;
+                dc = -tdr;
+            }
+        }
+
+        int answer = INF;
+        for (int i = 0; i < 4; ++i)
+            answer = min(answer, steps[gr][gc][i]);
+
+        printf("Case #%d: ", case_no);
+
+        if (answer != INF)
+            printf("%d\n", answer);
+        else
+            printf("impossible\n");
+    }
+    return 0;
+}

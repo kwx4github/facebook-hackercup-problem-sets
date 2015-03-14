@@ -1,0 +1,126 @@
+#include <cstdio>
+#include <vector>
+#include <cstring>
+
+#define QN 50000
+#define MN 110
+
+inline int sgn(int a) {
+	if(a == 0) return 0;
+	else if(a > 0) return +1;
+	else return -1;
+}
+
+int qx[QN], qy[QN], qt[QN];
+int qft, qrr;
+int dst[MN][MN][4];
+char map[MN][MN];
+int dx[4] = {-1,  0, +1,  0};
+int dy[4] = { 0, +1,  0, -1};
+
+struct Laser {
+	int x, y, d;
+	bool hit(int _x, int _y, int _t) {
+		int nt = (_t+d)%4;
+		return (sgn(_x-x)==dx[nt]) && (sgn(_y-y)==dy[nt]);
+	}
+	Laser(int _x, int _y, char _d) {
+		x = _x;
+		y = _y;
+		switch(_d) {
+			case'^':
+				d = 0;
+				break;
+			case'>':
+				d = 1;
+				break;
+			case'v':
+				d = 2;
+				break;
+			case'<':
+				d = 3;
+				break;
+		}
+	}
+} ;
+
+std::vector<Laser> LaserLst;
+int T, N, M;
+
+bool valid(int x, int y, int t) {
+	if(map[x][y] == '#') return false;
+	for(std::vector<Laser>::iterator it=LaserLst.begin(); it!=LaserLst.end(); ++it) {
+		if(it->hit(x,y,t)) {
+			//fprintf(stderr, "(%d,%d) hit (%d,%d,%d)\n", it->x, it->y, x, y, t);
+			return false;
+		}
+	}
+	return (dst[x][y][t] == -1);
+}
+
+int main() {
+	freopen("q1_3.in", "r", stdin);
+	freopen("q1_3.out", "w", stdout);
+	scanf("%d", &T);
+	for(int tc=1; tc<=T; tc++) {
+		scanf("%d%d", &N, &M);
+		for(int i=0; i<=N+1; i++)
+			for(int j=0; j<=M+1; j++)
+				map[i][j] = '#';
+		memset(dst, -1, sizeof(dst));
+		qft = 0;
+		qrr = 1;
+		LaserLst = std::vector<Laser>();
+		int ex, ey;
+		for(int i=1; i<=N; i++) {
+			scanf("%s", map[i]+1);
+			for(int j=1; j<=M; j++) {
+				if(map[i][j] == 'S') {
+					qx[0] = i;
+					qy[0] = j;
+					qt[0] = 0;
+					dst[i][j][0] = 0;
+				}
+				else if(map[i][j] == 'G') {
+					ex = i;
+					ey = j;
+				}
+				else if(map[i][j] != '#' && map[i][j] != '.') {
+					LaserLst.push_back( Laser(i,j,map[i][j]) );
+					map[i][j] = '#';
+				}
+			}
+		}
+		int ans = -1;
+		while(qft < qrr) {
+			int nx, ny, nt, ndst;
+			nx = qx[qft];
+			ny = qy[qft];
+			nt = qt[qft];
+			ndst = dst[nx][ny][nt];
+			//fprintf(stderr, "now at %d %d %d, dst=%d\n", nx, ny, nt, ndst);
+			qft ++;
+			if( map[nx][ny] == 'G' ) {
+				ans = ndst;
+				break;
+			}
+			for(int d=0; d<4; d++) {
+				int nnx, nny, nnt;
+				nnx = nx + dx[d];
+				nny = ny + dy[d];
+				nnt = (nt+1) % 4;
+				if( valid(nnx,nny,nnt) ) {
+					dst[nnx][nny][nnt] = ndst + 1;
+					qx[qrr] = nnx;
+					qy[qrr] = nny;
+					qt[qrr] = nnt;
+					qrr ++;
+				}
+			}
+		}
+		if( ans == -1 ) printf("Case #%d: impossible\n", tc);
+		else printf("Case #%d: %d\n", tc, ans);
+		fprintf(stderr, "==== %d\n", ans);
+	}
+	return 0;
+}

@@ -1,0 +1,178 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.StringTokenizer;
+
+public class Main
+{
+
+	public static void main(String[] args) throws IOException
+	{
+		Main main = new Main();
+		main.begin();
+	}
+
+	// IO
+	private BufferedReader in;
+	private BufferedWriter out;
+	private StringBuilder ans;
+	private StringTokenizer tok;
+
+	// Fields
+	private int n;
+	private int m;
+	private char[][] g;
+	private boolean[][][] laserThreats;
+	private Node srcNode;
+	private int dx[] = new int[]
+	{ 1, 0, -1, 0 };
+	private int dy[] = new int[]
+	{ 0, 1, 0, -1 };
+	private Node destNode;
+	private boolean[][][] visited;
+
+	private void begin() throws IOException
+	{
+		// IO streams
+		String inputFileName = "C:\\Users\\ahmed\\Desktop\\IO files\\laser_maze.txt";
+		String outputFileName = "C:\\Users\\ahmed\\Desktop\\IO files\\out.txt";
+		in = new BufferedReader(new FileReader(inputFileName));
+		out = new BufferedWriter(new FileWriter(outputFileName));
+		ans = new StringBuilder();
+		tok = new StringTokenizer("");
+
+		// read input
+		int nCases = Integer.parseInt(in.readLine());
+		for (int cas = 1; cas <= nCases; cas++)
+		{
+			// read grid
+			tok = new StringTokenizer(in.readLine());
+			n = Integer.parseInt(tok.nextToken());
+			m = Integer.parseInt(tok.nextToken());
+			g = new char[n][m];
+			for (int i = 0; i < n; i++)
+			{
+				String str = in.readLine();
+				for (int j = 0; j < m; j++)
+					g[i][j] = str.charAt(j);
+			}
+
+			// solve
+			ans.append("Case #" + cas + ": " + solve() + "\n");
+		}
+
+		// output
+		System.out.print(ans.toString());
+		out.write(ans.toString());
+		out.close();
+	}
+
+	private String solve()
+	{
+		// find start and end node and laser blocks
+		laserThreats = new boolean[n][m][4];
+		for (int r = 0; r < n; r++)
+			for (int c = 0; c < m; c++)
+				if (g[r][c] == 'S')
+					srcNode = new Node(r, c, 0, 0);
+				else if (g[r][c] == 'G')
+					destNode = new Node(r, c, 0, 0);
+				else if (g[r][c] == '>')
+					threatLaser(r, c, 0);
+				else if (g[r][c] == 'v')
+					threatLaser(r, c, 1);
+				else if (g[r][c] == '<')
+					threatLaser(r, c, 2);
+				else if (g[r][c] == '^')
+					threatLaser(r, c, 3);
+
+		// add source node's neighbors
+		Queue<Node> q = new LinkedList<>();
+		for (int i = 0; i < 4; i++)
+		{
+			Node node = new Node(srcNode.r + dy[i], srcNode.c + dx[i], 1, 1);
+			if (valid(node))
+				q.add(node);
+		}
+
+		// bfs
+		int minDist = Integer.MAX_VALUE;
+		visited = new boolean[n][m][4];
+		visited[srcNode.r][srcNode.c][0] = true;
+		while (!q.isEmpty())
+		{
+			// take a node if not threatened by laser
+			Node node = q.poll();
+			if (laserThreats[node.r][node.c][node.direction] || visited[node.r][node.c][node.direction])
+				continue;
+			visited[node.r][node.c][node.direction] = true;
+			if (node.r == destNode.r && node.c == destNode.c)
+				minDist = Math.min(minDist, node.steps);
+
+			// add neighbors
+			for (int i = 0; i < 4; i++)
+			{
+				Node next = new Node(node.r + dy[i], node.c + dx[i], node.steps + 1,
+						(node.direction + 1) % 4);
+				if (valid(next) && !visited[next.r][next.c][next.direction])
+					q.add(next);
+			}
+		}
+
+		if (minDist == Integer.MAX_VALUE)
+			return "impossible";
+		else
+			return minDist + "";
+	}
+
+	private void threatLaser(int srcR, int srcC, int i)
+	{
+		// i is the direction for the laser
+		for (int direction = 0; direction < 4; direction++)
+		{
+			int newDirection = (i + direction) % 4;
+			int r = srcR + dy[newDirection];
+			int c = srcC + dx[newDirection];
+			while (valid(new Node(r, c, 0, 0)))
+			{
+				laserThreats[r][c][direction] = true;
+				c += dx[newDirection];
+				r += dy[newDirection];
+			}
+		}
+
+	}
+
+	private boolean valid(Node node)
+	{
+		boolean inBounds = node.r >= 0 && node.r < n && node.c >= 0 && node.c < m;
+		if (!inBounds)
+			return false;
+
+		boolean canPass = g[node.r][node.c] == '.' || g[node.r][node.c] == 'S'
+				|| g[node.r][node.c] == 'G';
+		return inBounds && canPass;
+	}
+
+}
+
+class Node
+{
+	int r;
+	int c;
+	int steps;
+	int direction;
+
+	public Node(int r, int c, int steps, int direction)
+	{
+		this.r = r;
+		this.c = c;
+		this.steps = steps;
+		this.direction = direction;
+	}
+}

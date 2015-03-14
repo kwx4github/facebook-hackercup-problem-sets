@@ -1,0 +1,334 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace LaserMaze
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var mazes = GetMazez(args);
+            int i = 1;
+            foreach (var item in mazes)
+            {
+                int res = RunMaze(item);
+                string print = res == -1 ? "impossible" : res.ToString();
+                Console.WriteLine(string.Format("Case #{0}: {1}", i, print));
+                i++;
+            }
+        }
+
+        private static int RunMaze(Maze maze)
+        {
+            var q = new Queue<Move>();
+            q.Enqueue(new Move { Steps = 0, M = maze });
+            int i = 0;
+            while (q.Count != 0)
+            {
+                var move = q.Dequeue();
+
+                if (move.M.Location.Equals(move.M.SMaze.End))
+                {
+                    return move.Steps;
+                }
+
+                var possibleMoves = move.M.GetNextLocations();
+
+                // removing moves to obstacles
+                possibleMoves = possibleMoves.Where(t => !InObstacle(t, move.M)).ToList();
+
+                move.M.RotateLazers();
+                possibleMoves = possibleMoves.Where(t => !move.M.IsLocationHitByLazer(t)).ToList();
+
+                foreach (var newLocation in possibleMoves)
+                {
+                    var newMaze = new Maze { SMaze = move.M.SMaze, Location = newLocation };
+                    newMaze.Lazers = new List<Lazer>();
+                    foreach (var lazer in move.M.Lazers)
+                    {
+                        newMaze.Lazers.Add(new Lazer { Location = lazer.Location, Direction = lazer.Direction });
+                    }
+                    var newMove = new Move { M = newMaze, Steps = move.Steps + 1 };
+                    q.Enqueue(newMove);
+                }
+                i++;
+
+                if (i > 10000)
+                {
+                    return -1;
+                }
+            }
+            
+            return -1;
+        }
+
+        public class Move
+        {
+            public Maze M { get; set; }
+            public int Steps { get; set; }
+        }
+
+        private static bool InObstacle(Tuple<int,int> location, Maze maze)
+        {
+            return  maze.SMaze.Lazers.Any(t => t.Equals(location)) ||
+                    maze.SMaze.Walls.Any(t => t.Equals(location));
+        }
+
+        public static List<Maze> GetMazez(string[] args)
+        {
+            var result = new List<Maze>();
+            var s = File.ReadAllText(args[0]);
+            var rows = s.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            int cases = int.Parse(rows[0]);
+            int row = 1;
+            for (int i = 1; i <= cases; i++)
+            {
+                var maze = new Maze();
+                var entry = new StaticMaze();
+                maze.SMaze = entry;
+                string[] size = rows[row].Split(' ');
+                int m = int.Parse(size[0]);
+                int n = int.Parse(size[1]);
+                entry.M = m-1;
+                entry.N = n-1;
+                entry.Cells = new List<List<Cell>>();
+                row++;
+                for (int j = 0; j < m; j++)
+                {
+                    string r = rows[row];
+                    entry.Cells.Add(new List<Cell>());
+                    for (int k = 0; k < n; k++)
+                    {
+                        entry.AddCell(j, k, r[k], maze);
+                    }
+                    row++;
+                }
+
+                maze.Location = new Tuple<int, int>(entry.Start.Item1, entry.Start.Item2);
+                result.Add(maze);
+            }
+
+            return result;
+        }
+
+        public class Lazer
+        {
+            public LazerDirection Direction { get; set; }
+            public Tuple<int,int> Location { get; set; }
+        }
+
+        public class Maze
+        {
+            public StaticMaze SMaze { get; set; }
+            public Tuple<int,int> Location { get; set; }
+            public List<Lazer> Lazers { get; set; }
+
+            public Maze()
+            {
+                Lazers = new List<Lazer>();
+            }
+
+            public void RotateLazers()
+            {
+                foreach (var lazer in Lazers)
+                {
+                    switch (lazer.Direction)
+                    {
+                        case LazerDirection.Up:
+                            lazer.Direction = LazerDirection.Right;
+                            break;
+                        case LazerDirection.Right:
+                            lazer.Direction = LazerDirection.Down;
+                            break;
+                        case LazerDirection.Down:
+                            lazer.Direction = LazerDirection.Left;
+                            break;
+                        case LazerDirection.Left:
+                            lazer.Direction = LazerDirection.Up;
+                            break;
+                    }
+                }
+            }
+
+            internal List<Tuple<int, int>> GetNextLocations()
+            {
+                var locations = new List<Tuple<int, int>>();
+                if (Location.Item1 < SMaze.M)
+                {
+                    locations.Add(new Tuple<int, int>(Location.Item1 + 1, Location.Item2));
+                }
+                if (Location.Item2 < SMaze.N)
+                {
+                    locations.Add(new Tuple<int, int>(Location.Item1, Location.Item2 + 1));
+                }
+                if (Location.Item1 > 0)
+                {
+                    locations.Add(new Tuple<int, int>(Location.Item1 - 1, Location.Item2));
+                }
+                if (Location.Item2 > 0)
+                {
+                    locations.Add(new Tuple<int, int>(Location.Item1, Location.Item2 - 1));
+                }
+                return locations;
+            }
+
+            internal bool IsLocationHitByLazer(Tuple<int, int> location)
+            {
+                var possibleLazers = Lazers.Where(t => t.Location.Item1 == location.Item1 || t.Location.Item2 == location.Item2).ToList();
+
+                if (!possibleLazers.Any())
+                {
+                    return false;
+                }
+
+                foreach (var lazer in possibleLazers)
+                {
+                    if (lazer.Direction == LazerDirection.Up && lazer.Location.Item2 == location.Item2 && lazer.Location.Item1 > location.Item1)
+                    {
+                        int i = lazer.Location.Item1 - 1;
+                        while (SMaze.Cells[i][lazer.Location.Item2].Content == CellContent.Empty && i > location.Item1)
+                        {
+                            i--;
+                        }
+                        if (i == location.Item1)
+                        {
+                            return true;
+                        }
+                    }
+
+                    if (lazer.Direction == LazerDirection.Down && lazer.Location.Item2 == location.Item2 && lazer.Location.Item1 < location.Item1)
+                    {
+                        int i = lazer.Location.Item1 + 1;
+                        while (SMaze.Cells[i][lazer.Location.Item2].Content == CellContent.Empty && i < location.Item1)
+                        {
+                            i++;
+                        }
+                        if (i == location.Item1)
+                        {
+                            return true;
+                        }
+                    }
+
+                    if (lazer.Direction == LazerDirection.Right && lazer.Location.Item1 == location.Item1 && lazer.Location.Item2 < location.Item2)
+                    {
+                        int i = lazer.Location.Item2 + 1;
+                        while (SMaze.Cells[lazer.Location.Item1][i].Content == CellContent.Empty && i < location.Item2)
+                        {
+                            i++;
+                        }
+                        if (i == location.Item2)
+                        {
+                            return true;
+                        }
+                    }
+
+
+                    if (lazer.Direction == LazerDirection.Left && lazer.Location.Item1 == location.Item1 && lazer.Location.Item2 > location.Item2)
+                    {
+                        int i = lazer.Location.Item2 - 1;
+                        while (SMaze.Cells[lazer.Location.Item1][i].Content == CellContent.Empty && i > location.Item2)
+                        {
+                            i--;
+                        }
+                        if (i == location.Item2)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+        }
+
+        public class StaticMaze
+        {
+            public StaticMaze()
+            {
+                Walls = new List<Tuple<int, int>>();
+                Lazers = new List<Tuple<int, int>>();
+            }
+
+            public List<List<Cell>> Cells { get; set; }
+            public List<Tuple<int, int>> Walls { get; set; }
+            public List<Tuple<int, int>> Lazers { get; set; }
+
+            public Tuple<int, int> Start { get; set; }
+            public Tuple<int, int> End { get; set; }
+
+            internal void AddCell(int j, int k, char p, Maze maze)
+            {
+                if (p == '.')
+                {
+                    Cells[j].Add(new Cell() { Content = CellContent.Empty });
+                }
+                if (p == '#')
+                {
+                    Cells[j].Add( new Cell() { Content = CellContent.Wall });
+                    Walls.Add(new Tuple<int, int>(j, k));
+                }
+                if (p == 'S')
+                {
+                    Cells[j].Add(  new Cell() { Content = CellContent.Empty });
+                    Start = new Tuple<int, int>(j, k);
+                }
+                if (p == 'G')
+                {
+                    Cells[j].Add(new Cell() { Content = CellContent.Empty });
+                    End = new Tuple<int, int>(j, k);
+                }
+                if (p == '^')
+                {
+                    Cells[j].Add( new Cell() { Content = CellContent.Lazer });
+                    Lazers.Add(new Tuple<int, int>(j, k));
+                    maze.Lazers.Add(new Lazer() { Location = new Tuple<int, int>(j, k), Direction = LazerDirection.Up });
+                }
+                if (p == 'v')
+                {
+                    Cells[j].Add(  new Cell() { Content = CellContent.Lazer });
+                    Lazers.Add(new Tuple<int, int>(j, k));
+                    maze.Lazers.Add(new Lazer() { Location = new Tuple<int, int>(j, k), Direction = LazerDirection.Down });
+                }
+                if (p == '>')
+                {
+                    Cells[j].Add(  new Cell() { Content = CellContent.Lazer });
+                    Lazers.Add(new Tuple<int, int>(j, k));
+                    maze.Lazers.Add(new Lazer() { Location = new Tuple<int, int>(j, k), Direction = LazerDirection.Right});
+                }
+                if (p == '<')
+                {
+                    Cells[j].Add(  new Cell() { Content = CellContent.Lazer });
+                    Lazers.Add(new Tuple<int, int>(j, k));
+                    maze.Lazers.Add(new Lazer() { Location = new Tuple<int, int>(j, k), Direction = LazerDirection.Left});
+                }
+            }
+
+            public int N { get; set; }
+            public int M { get; set; }
+        }
+
+        public class Cell
+        {
+            public CellContent Content { get; set; }
+        }
+
+        public enum LazerDirection
+        {
+            Up,
+            Down,
+            Left,
+            Right
+        }
+
+        public enum CellContent
+        {
+            Empty,
+            Wall,
+            Lazer
+        }
+    }
+}

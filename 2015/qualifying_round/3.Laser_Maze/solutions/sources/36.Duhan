@@ -1,0 +1,120 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+char rotate(char c) {
+  if (c == '<') return '^';
+  if (c == '^') return '>';
+  if (c == '>') return 'v';
+  if (c == 'v') return '<';
+  assert(false);
+}
+
+bool is_turnet(char c) {
+  return c == '>' || c == '<' || c == '^' || c == 'v';
+}
+
+int get_dir(char c) {
+  if (c == '>') return 0;
+  if (c == '<') return 1;
+  if (c == 'v') return 2;
+  if (c == '^') return 3;
+  assert(false);
+}
+
+bool is_free(char c) {
+  return c == '.' || c == 'S' || c == 'G' || c == 'x';
+}
+
+bool can_pass(char c) {
+  return c == '.' || c == 'S' || c == 'G';
+}
+
+int rows, cols;
+char grid[5][105][105];
+tuple<int,int,int> fila[10005];
+int dist[5][105][105], mark[5][105][105];
+int dr[4] = {0,0,1,-1};
+int dc[4] = {1,-1,0,0};
+
+inline bool valid(int r, int c) {
+  return 0 <= r && r < rows && 0 <= c && c < cols;
+}
+
+void update(int who) {
+  for (int i = 0; i < rows; ++i) {
+    for (int j = 0; j < cols; ++j) {
+      if (is_turnet(grid[who][i][j])) {
+        int dir = get_dir(grid[who][i][j]);
+        int ni = i + dr[dir], nj = j + dc[dir];
+        while (valid(ni,nj) && is_free(grid[who][ni][nj])) {
+          grid[who][ni][nj] = 'x';
+          ni += dr[dir]; nj += dc[dir];
+        }
+      }
+    }
+  }
+}
+
+int main() {
+  int nt; scanf("%d", &nt);
+  for (int _ = 1; _ <= nt; ++_) {
+    scanf("%d %d", &rows, &cols);
+    
+    int start_r = -1, start_c = -1;
+
+    for (int i = 0; i < rows; ++i) {
+      scanf("%s", grid[4][i]);
+      for (int j = 0; j < cols && start_r == -1; ++j) {
+        if (grid[4][i][j] == 'S') start_r = i, start_c = j;
+      }
+      for (int k = 0; k < 4; ++k) {
+        for (int j = 0; j < cols; ++j) {
+          grid[k][i][j] = grid[4][i][j];
+        }
+        grid[k][i][cols] = 0;
+      }
+    }
+    
+    for (int k = 1; k < 4; ++k) {
+      for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+          if (is_turnet(grid[k][i][j])) {
+            for (int times = 0; times < k; ++times) {
+              grid[k][i][j] = rotate(grid[k][i][j]);
+            }
+          }
+        }
+      }
+    }
+
+    for (int i = 0; i < 4; ++i) update(i);
+
+    int ini = 0, fim = 0, answer = -1;
+    fila[fim++] = make_tuple(0,start_r, start_c);
+    dist[0][start_r][start_c] = 0;
+    mark[0][start_r][start_c] = _;
+    while (ini < fim) {
+      auto u = fila[ini++];
+      int r = get<1>(u), c = get<2>(u), who = get<0>(u);
+      if (grid[4][r][c] == 'G') {
+        answer = dist[who][r][c]; break;
+      }
+      int new_who = who+1; if (new_who == 4) new_who = 0;
+      for (int k = 0; k < 4; ++k) {
+        int nr = r + dr[k], nc = c + dc[k];
+        if (valid(nr,nc) && mark[new_who][nr][nc] != _) {
+          if (can_pass(grid[new_who][nr][nc])) {
+            mark[new_who][nr][nc] = _;
+            dist[new_who][nr][nc] = dist[who][r][c] + 1;
+            fila[fim++] = make_tuple(new_who, nr, nc);
+          }
+        }
+      }
+    }
+
+    if (answer != -1) printf("Case #%d: %d\n", _, answer);
+    else printf("Case #%d: impossible\n", _);
+  }
+  return 0;
+}

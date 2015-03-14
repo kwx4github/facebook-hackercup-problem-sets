@@ -1,0 +1,200 @@
+package com.jasonandmary.fhc.qualification2;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+/**
+ * Application for Facebook Hacker Cup 2015
+ * Name: ${name}
+ * &copy;2015 Jason W. Thompson
+ * @author Jason W. Thompson
+ */
+public class App
+{
+    private final PrintStream printStream;
+    private final List<Problem> problems = new ArrayList<>();
+    private int count;
+
+    /**
+     * Executes the application.
+     * @param args not used.
+     * @throws IOException if there is problem reading the input file or writing the PrintStream.
+     */
+    public static void main(String[] args) throws IOException
+    {
+        final App app = new App(System.out);
+        app.printSolution();
+    }
+
+    /**
+     * Allocates a new instance of {@link App}
+     * @param printStream The PrintStream to use
+     * @throws IOException If the input cannot be processed
+     */
+    public App(PrintStream printStream) throws IOException
+    {
+        this.printStream = printStream;
+    }
+
+    private enum Rating
+    {
+        LOW, PERFECT, HIGH
+    }
+
+    /**
+     * The problem.
+     */
+    public static class Problem
+    {
+        int protiens;
+        int carbohydrates;
+        int fats;
+        int numberOfFoods;
+        List<Food> foods;
+    }
+
+    public static class Food
+    {
+        int protiens;
+        int carbohydrates;
+        int fats;
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public String toString()
+        {
+            return "Food [protiens=" + protiens + ", carbohydrates=" + carbohydrates + ", fats=" + fats + "]";
+        }
+    }
+
+    /**
+     * Solves the problem
+     * @param problem The problem
+     * @return The solution.
+     */
+    private String solve(Problem problem)
+    {
+        final List<Food> foods = problem.foods;
+        final int foodCount = foods.size();
+        for (int i = 0; i < foodCount; i++)
+        {
+            if (isSolution(problem, foods.subList(i, foodCount)))
+            {
+                return "yes";
+            }
+        }
+        return "no";
+    }
+
+    private boolean isSolution(Problem problem, List<Food> foods)
+    {
+        final Rating foodRating = rateFood(problem, foods.get(0));
+        if (foodRating == Rating.PERFECT)
+        {
+            return true;
+        }
+        final int foodCount = foods.size();
+        if (foodCount == 1 || foodRating == Rating.HIGH)
+        {
+            return false;
+        }
+        for (int i = 1; i < foodCount; i++)
+        {
+            final List<Food> newFoods = new ArrayList<>(foodCount - 1);
+            newFoods.add(combineFood(foods.get(0), foods.get(i)));
+            newFoods.addAll(foods.subList(i + 1, foodCount));
+            if (isSolution(problem, newFoods))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Rating rateFood(Problem problem, Food food)
+    {
+        if (food.protiens == problem.protiens && food.carbohydrates == problem.carbohydrates && food.fats == problem.fats)
+        {
+            return Rating.PERFECT;
+        }
+
+        if (food.protiens <= problem.protiens && food.carbohydrates <= problem.carbohydrates && food.fats <= problem.fats)
+        {
+            return Rating.LOW;
+        }
+
+        return Rating.HIGH;
+    }
+
+    private Food combineFood(Food food1, Food food2)
+    {
+        final Food newFood = new Food();
+        newFood.protiens = food1.protiens + food2.protiens;
+        newFood.carbohydrates = food1.carbohydrates + food2.carbohydrates;
+        newFood.fats = food1.fats + food2.fats;
+        return newFood;
+    }
+
+    /**
+     * Parses the input into a problem
+     * @param str The input
+     * @param reader The reader.
+     * @return The parsed object
+     * @throws IOException
+     * @throws NumberFormatException
+     */
+    private static Problem parseProblem(String str, BufferedReader reader) throws NumberFormatException, IOException
+    {
+        final Problem problem = new Problem();
+        try (final Scanner nutrientScanner = new Scanner(str).useDelimiter(" "))
+        {
+            problem.protiens = nutrientScanner.nextInt();
+            problem.carbohydrates = nutrientScanner.nextInt();
+            problem.fats = nutrientScanner.nextInt();
+        }
+        problem.numberOfFoods = Integer.parseInt(reader.readLine());
+        problem.foods = new ArrayList<>();
+        for (int i = 0; i < problem.numberOfFoods; i++)
+        {
+            final Food food = new Food();
+            try (final Scanner foodScanner = new Scanner(reader.readLine()).useDelimiter(" "))
+            {
+                food.protiens = foodScanner.nextInt();
+                food.carbohydrates = foodScanner.nextInt();
+                food.fats = foodScanner.nextInt();
+                problem.foods.add(food);
+            }
+        }
+        return problem;
+    }
+
+    /**
+     * Prints the solution to the input file.
+     * @throws IOException if there is problem reading the input file or writing the PrintStream.
+     */
+    public void printSolution() throws IOException
+    {
+        processInput();
+        for (int i = 0; i < count; i++)
+        {
+            printStream.println("Case #" + (i + 1) + ": " + solve(problems.get(i)));
+        }
+    }
+
+    private void processInput() throws IOException
+    {
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(App.class.getClassLoader().getResourceAsStream("input.txt")));
+        count = Integer.parseInt(reader.readLine());
+        for (int i = 0; i < count; i++)
+        {
+            problems.add(parseProblem(reader.readLine(), reader));
+        }
+    }
+}

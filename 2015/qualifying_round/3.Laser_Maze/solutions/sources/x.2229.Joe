@@ -1,0 +1,203 @@
+import java.util.*;
+
+class Maze {
+
+  static class Pair {
+
+    public Pair(int i, int j) {
+      this.i = i;
+      this.j = j;
+    }
+
+    public boolean equals(Object o) {
+      if(o instanceof Pair) {
+        Pair q = (Pair) o;
+        return this.i == q.i && this.j == q.j;
+      } else {
+        return false;
+      }
+    }
+
+    int i, j;
+  }
+
+  static Pair S;
+  static Pair G;
+
+  static class Grid {
+    
+    boolean grid[][][];
+ 
+    public Grid(int n, int m, int states) {
+      grid = new boolean[states][n][m];
+    }
+
+  }
+
+  static Grid visited;
+  static Grid safe;
+
+  static class Turn implements Comparable<Turn> {
+
+    Pair p;
+    int steps;
+    int state;
+    int score;
+    
+    public Turn(int i, int j, int steps, int state) {
+      p = new Pair(i, j);
+      this.steps = steps;
+      this.state = state;
+
+      this.score = state + (Math.abs(i - G.i) + Math.abs(j - G.j));
+    }
+
+    public int compareTo(Turn that) {
+      return this.score - that.score;
+    }
+
+  }
+
+  static int n, m;
+  static String[][] grid;
+
+
+  public static void main(String[] args) {
+
+    Scanner in = new Scanner(System.in);
+
+    int T = Integer.parseInt(in.nextLine());
+
+    for(int t = 1; t <= T; t++) {
+      System.out.printf("Case #%d: ", t);
+
+      String s[] = in.nextLine().split(" ");
+      n = Integer.parseInt(s[0]);
+      m = Integer.parseInt(s[1]);
+
+      visited = new Grid(n, m, 4);
+      safe = new Grid(n, m, 4);
+
+      grid = new String[n][m];
+
+      for(int i = 0; i < n; i++) {
+        s = in.nextLine().split("");
+        for(int j = 0; j < m; j++) {
+          grid[i][j] = s[j];
+
+          visited.grid[0][i][j] = false;
+          visited.grid[1][i][j] = false;
+          visited.grid[2][i][j] = false;
+          visited.grid[3][i][j] = false;
+
+          safe.grid[0][i][j] = true;
+          safe.grid[1][i][j] = true;
+          safe.grid[2][i][j] = true;
+          safe.grid[3][i][j] = true;
+        }
+      }
+
+      int dx[] = new int[] { -1, 0, 1,  0 };
+      int dy[] = new int[] { 0, 1,  0, -1 };
+
+      for(int i = 0; i < n; i++) {
+        for(int j = 0; j < m; j++) {
+
+          if(grid[i][j].equals("#")) {
+
+            safe.grid[0][i][j] = false;
+            safe.grid[1][i][j] = false;
+            safe.grid[2][i][j] = false;
+            safe.grid[3][i][j] = false;
+
+          } else if(grid[i][j].equals("S")) {
+
+            S = new Pair(i, j);
+
+          } else if(grid[i][j].equals("G")) {
+
+            G = new Pair(i, j);
+
+          } else if(grid[i][j].equals(".")) {
+  
+          } else {
+
+            int start = ("^>v<").indexOf(grid[i][j]); 
+
+            //System.out.println(i + ", " + j + ": " + grid[i][j]);
+
+            for(int x = 0; x < 4; x++) {
+              
+              //System.out.println("State: " + x);
+
+              int v = i;
+              int w = j;
+
+              do {
+                //System.out.println(v + ", " + w);
+                safe.grid[x][v][w] = false;
+                v += dx[start];
+                w += dy[start];
+              } while(v >= 0 && w >= 0 && v < n && w < m && 
+	      (grid[v][w].equals(".") || 
+	       grid[v][w].equals("S") || 
+	       grid[v][w].equals("G")   ));
+
+              start = (start + 1) % 4;
+           
+            }
+
+          }
+        }
+      } // End setup
+/*
+      System.out.println();
+      for(int x = 0; x < 4; x++) {
+      for(int i = 0; i < n; i++) {
+      for(int j = 0; j < m; j++) {
+      
+        System.out.print((safe.grid[x][i][j] ? "." : "x"));
+  
+      }
+      System.out.println();
+      }
+      System.out.println();
+      }
+*/
+
+      //Main A* search
+      PriorityQueue<Turn> queue = new PriorityQueue<Turn>();
+      Turn current = new Turn(S.i, S.j, 0, 0);
+
+      queue.add(current);
+
+      boolean found = false;
+
+      while(queue.size() > 0) {
+        current = queue.poll();
+
+        if(current.p.equals(G)) {
+          found = true;
+          break;
+        }
+
+        for(int x = 0; x < 4; x++) {
+          int v = current.p.i + dx[x];
+          int w = current.p.j + dy[x];
+          int nextState = (current.state + 1) % 4;
+          if(v >= 0 && w >= 0 && v < n && w < m && 
+	     safe.grid[nextState][v][w] && !visited.grid[nextState][v][w]) {
+            visited.grid[nextState][v][w] = true;
+            queue.add(new Turn(v, w, current.steps + 1, nextState));
+          }
+        }
+      }
+
+      System.out.println(found ? (current.steps + "") : "impossible");
+      
+
+    } //End for loop T
+
+  } //End main
+
+}

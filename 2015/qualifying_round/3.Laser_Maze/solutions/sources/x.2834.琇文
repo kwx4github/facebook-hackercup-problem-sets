@@ -1,0 +1,161 @@
+#include<cstdio>
+#include<cstdlib>
+#include<cstring>
+#include<vector>
+using namespace std;
+
+char maze[4][100][101];
+int steps[4][100][101];
+
+void printmaze(int M, int N){
+    for(int i=0; i<4; ++i){
+	for(int j=0; j<M; ++j){
+	    printf("%s\n", maze[i][j]);
+	}
+    }
+    return;
+}
+
+void printstep(int M, int N){
+    for(int i=0; i<4; ++i){
+	for(int j=0; j<M; ++j){
+	    for(int k=0; k<N; ++k){
+		printf("%d", maze[i][j][k]);
+	    }
+	    printf("\n");
+	}
+    }
+    return;
+}
+
+void shoot(int m, int &M, int &N, int r, int c){
+    if(maze[m][r][c] == '<'){
+	for(int i=c-1; i>=0; --i){
+	    if(maze[m][r][i] == '.' || maze[m][r][i] == '$') maze[m][r][i] = '$';
+	    else break;
+	}
+    }else if(maze[m][r][c] == '>'){
+	for(int i=c+1; i<N; ++i){
+	    if(maze[m][r][i] == '.' || maze[m][r][i] == '$') maze[m][r][i] = '$';
+	    else break;
+	}
+    }else if(maze[m][r][c] == '^'){
+	for(int i=r-1; i>=0; --i){
+	    if(maze[m][i][c] == '.' || maze[m][i][c] == '$') maze[m][i][c] = '$';
+	    else break;
+	}
+    }else if(maze[m][r][c] == 'v'){
+	for(int i=r+1; i<M; ++i){
+	    if(maze[m][i][c] == '.' || maze[m][i][c] == '$') maze[m][i][c] = '$';
+	    else break;
+	}
+    }
+    return;
+}
+
+int main(){
+    int T, M, N;
+    scanf(" %d ", &T);
+    for(int t=1; t<=T; ++t){
+	scanf(" %d %d ", &M, &N);
+	for(int i=0; i<M; ++i) scanf("%s", maze[0][i]);
+	for(int j=1; j<4; ++j)
+	    for(int i=0; i<M; ++i)
+		strcpy(maze[j][i], maze[0][i]);
+	int sr, sc, gr, gc;
+	for(int i=0; i<M; ++i){
+	    for(int j=0; j<N; ++j){
+		if(maze[0][i][j] == 'S'){
+		    sr = i;
+		    sc = j;
+		    for(int m=0; m<4; ++m) maze[m][i][j] = '.';
+		    continue;
+		}else if(maze[0][i][j] == 'G'){
+		    gr = i;
+		    gc = j;
+		    for(int m=0; m<4; ++m) maze[m][i][j] = '.';
+		    continue;
+		}else if(maze[0][i][j] == '<'){
+		    maze[1][i][j] = '^';
+		    maze[2][i][j] = '>';
+		    maze[3][i][j] = 'v';
+		}else if(maze[0][i][j] == '>'){
+		    maze[1][i][j] = 'v';
+		    maze[2][i][j] = '<';
+		    maze[3][i][j] = '^';
+		}else if(maze[0][i][j] == '^'){
+		    maze[1][i][j] = '>';
+		    maze[2][i][j] = 'v';
+		    maze[3][i][j] = '<';
+		}else if(maze[0][i][j] == 'v'){
+		    maze[1][i][j] = '<';
+		    maze[2][i][j] = '^';
+		    maze[3][i][j] = '>';
+		}
+		shoot(0, M, N, i, j);
+		shoot(1, M, N, i, j);
+		shoot(2, M, N, i, j);
+		shoot(3, M, N, i, j);
+	    }
+	}
+	// BFS
+	vector<int> *curr = new vector<int>();
+	vector<int> *curc = new vector<int>();
+	vector<int> *nextr;
+	vector<int> *nextc;
+	curr->push_back(sr);
+	curc->push_back(sc);
+	int step = 0;
+	int nextm = 0;
+	bool reached = false;
+	while(!curr->empty()){
+	    //printmaze(M, N);
+	    //printstep(M, N);
+	    ++step;
+	    nextm = (nextm+1) % 4;
+	    nextr = new vector<int>();
+	    nextc = new vector<int>();
+	    int ncand = curr->size();
+	    for(int i=0; i<ncand; ++i){
+		if(curr->at(i) == gr && curc->at(i) == gc){
+		    printf("Case #%d: %d\n", t, steps[((nextm-1)+4)%4][curr->at(i)][curc->at(i)]);
+		    reached = true;
+		    break;
+		}
+		if(curr->at(i) > 0 && maze[nextm][curr->at(i)-1][curc->at(i)] == '.'){
+		    maze[nextm][curr->at(i)-1][curc->at(i)] = '*';
+		    steps[nextm][curr->at(i)-1][curc->at(i)] = step;
+		    nextr->push_back(curr->at(i)-1);
+		    nextc->push_back(curc->at(i));
+		}
+		if(curr->at(i) < M-1 && maze[nextm][curr->at(i)+1][curc->at(i)] == '.'){
+		    maze[nextm][curr->at(i)+1][curc->at(i)] = '*';
+		    steps[nextm][curr->at(i)+1][curc->at(i)] = step;
+		    nextr->push_back(curr->at(i)+1);
+		    nextc->push_back(curc->at(i));
+		}
+		if(curc->at(i) > 0 && maze[nextm][curr->at(i)][curc->at(i)-1] == '.'){
+		    maze[nextm][curr->at(i)][curc->at(i)-1] = '*';
+		    steps[nextm][curr->at(i)][curc->at(i)-1] = step;
+		    nextr->push_back(curr->at(i));
+		    nextc->push_back(curc->at(i)-1);
+		}
+		if(curc->at(i) < N-1 && maze[nextm][curr->at(i)][curc->at(i)+1] == '.'){
+		    maze[nextm][curr->at(i)][curc->at(i)+1] = '*';
+		    steps[nextm][curr->at(i)][curc->at(i)+1] = step;
+		    nextr->push_back(curr->at(i));
+		    nextc->push_back(curc->at(i)+1);
+		}
+	    }
+	    delete curr;
+	    delete curc;
+	    curr = nextr;
+	    curc = nextc;
+	    if(reached) break;
+	}
+	if(!reached) printf("Case #%d: impossible\n", t);
+	delete curr;
+	delete curc;
+    }
+    return 0;
+}

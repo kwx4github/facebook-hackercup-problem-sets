@@ -1,0 +1,202 @@
+#include<iostream>
+#include<map>
+#include<queue>
+#include<stdio.h>
+#include<vector>
+using namespace std;
+
+#define fori(a, b) for(i = a; i <= b; i++)
+#define forj(a, b) for(j = a; j <= b; j++)
+#define fork(a, b) for(k = a; k <= b; k++)
+#define scani(n) scanf("%d", &n);
+
+int danger[4][102][102], visited[4][102][102];
+char maze[102][102];
+int m, n, srow, scol, erow, ecol;
+
+struct cell
+{
+	int pos;
+	int r;
+	int c;
+	int cnt;
+};
+
+void makeDangerZero()
+{
+	int i, j, k;
+	fori(0, 3)
+		forj(0, m-1)
+			fork(0, n-1)
+				danger[i][j][k] = visited[i][j][k] = 0;
+}
+
+void markDanger(int pos)
+{
+	int i, j, k;
+	fori(0, m-1)
+	{
+		forj(0, n-1)
+		{
+			switch(maze[i][j])
+			{
+				case '<' : danger[pos][i][j] = 1;
+					   for(k = j-1; k >= 0; k--)
+					   {
+						if(maze[i][k] != '.')
+							break;
+						danger[pos][i][k] = 1;
+					   }
+					   break;
+				case '>' : danger[pos][i][j] = 1;
+                                           for(k = j+1; k < n; k++)
+                                           {
+                                                if(maze[i][k] != '.')
+                                                        break;
+                                                danger[pos][i][k] = 1;
+                                           }
+					   break;
+				case '^' : danger[pos][i][j] = 1;
+                                           for(k = i-1; k >= 0; k--)
+                                           {
+                                                if(maze[k][j] != '.')
+                                                        break;
+                                                danger[pos][k][j] = 1;
+                                           }
+					   break;
+				case 'v' : danger[pos][i][j] = 1;
+                                           for(k = i+1; k < m; k++)
+                                           {
+                                                if(maze[k][j] != '.')
+                                                        break;
+                                                danger[pos][k][j] = 1;
+                                           }
+					   break;
+				case '#' : danger[pos][i][j] = 1;
+					   break;
+			}
+		}
+	}
+}
+
+void printDanger()
+{
+	int i, j, k;
+	fori(0, 3)
+	{
+		printf("Position : %d\n", i);
+		forj(0, m-1)
+		{
+			fork(0, n-1)
+				printf("%d ", danger[i][j][k]);
+			printf("\n");
+		}
+	}
+}
+
+void printMaze()
+{
+	int i, j;
+	fori(0, m-1)
+	{
+		forj(0, n-1)
+			printf("%c", maze[i][j]);
+		printf("\n");
+	}
+}
+void rotateClockwise()
+{
+	int i, j;
+	map<char, char> mp;
+	mp['#'] = '#';
+	mp['.'] = '.';
+	mp['<'] = '^';
+	mp['^'] = '>';
+	mp['>'] = 'v';
+	mp['v'] = '<';
+	fori(0, m-1)
+		forj(0, n-1)
+			maze[i][j] = mp[maze[i][j]];
+}
+
+struct cell getCell(int pos, int r, int c, int cnt)
+{
+	struct cell ce;
+	ce.pos = pos;
+	ce.r = r;
+	ce.c = c;
+	ce.cnt = cnt;
+	visited[pos][r][c] = 1;
+	return ce;
+}
+
+int main()
+{
+	int t, tn, i, j, count;
+	string str;
+	scani(t)
+	for(tn = 1; tn <= t; tn++)
+	{
+		makeDangerZero();
+		scani(m)
+		scani(n)
+		count = -1;
+		fori(0, m-1)
+		{
+			cin >> str;
+			forj(0, str.length()-1)
+			{
+				maze[i][j] = str[j];
+				if(str[j] == 'S')
+				{
+					srow = i;
+					scol = j;
+					maze[i][j] = '.';
+				}
+				if(str[j] == 'G')
+                                {
+                                        erow = i;
+                                        ecol = j;
+                                        maze[i][j] = '.';
+                                }
+			}
+		}
+		fori(0, 3)
+		{
+			markDanger(i);
+			rotateClockwise();
+		}
+	//	printDanger();
+		queue<struct cell> q;
+		q.push(getCell(0, srow, scol, 0));		
+		while(!q.empty())
+		{
+			struct cell curr = q.front();
+			q.pop();
+			int curpos = curr.pos;
+			int currow = curr.r;
+			int curcol = curr.c;
+			int curcnt = curr.cnt;
+	//		printf(" %d %d %d %d\n", curpos, currow, curcol, curcnt);
+			//visited[curpos][currow][curcol] = 1;
+			if(currow == erow && curcol == ecol)
+			{
+				count = curcnt;
+				break;
+			}
+			if(currow > 0 && danger[(curpos+1) % 4][currow-1][curcol] == 0 && visited[(curpos+1) % 4][currow-1][curcol] == 0)
+				q.push(getCell((curpos+1) % 4, currow-1, curcol, curcnt+1));
+			if(currow < m-1 && danger[(curpos+1) % 4][currow+1][curcol] == 0 && visited[(curpos+1) % 4][currow+1][curcol] == 0)
+                                q.push(getCell((curpos+1) % 4, currow+1, curcol, curcnt+1));
+			if(curcol > 0 && danger[(curpos+1) % 4][currow][curcol-1] == 0 && visited[(curpos+1) % 4][currow][curcol-1] == 0)
+                                q.push(getCell((curpos+1) % 4, currow, curcol-1, curcnt+1));
+			if(curcol < n-1 && danger[(curpos+1) % 4][currow][curcol+1] == 0 && visited[(curpos+1) % 4][currow][curcol+1] == 0)
+                                q.push(getCell((curpos+1) % 4, currow, curcol+1, curcnt+1));
+		}
+		if(count == -1)
+			printf("Case #%d: impossible\n", tn);
+		else
+			printf("Case #%d: %d\n", tn, count);
+	}
+	return 0;
+}

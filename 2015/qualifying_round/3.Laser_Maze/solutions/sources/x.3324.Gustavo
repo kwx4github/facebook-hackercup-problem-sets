@@ -1,0 +1,132 @@
+import collections
+import heapq
+import sys
+
+STARTING = 'S'
+GOAL = 'G'
+WALL = '#'
+LEFT, RIGHT, UP, DOWN = '<', '>', '^', 'v'
+
+def dijkstra(G, source):
+  """ Dijkstra's Shortest Paths -> O(E + V log V) """
+  Inf = float("inf")
+  N = len(G)
+  dist = collections.defaultdict(lambda: Inf) # Distance from source
+  prev = collections.defaultdict(lambda: None) # Previous node
+  visited = collections.defaultdict(lambda: False)
+  dist[source, 0] = 0
+
+  visit_count = collections.defaultdict(int)
+
+  Q = [(0, source, 0)] # (dist, node)
+  while Q:
+    _, node, turn = heapq.heappop(Q)
+    next_turn = (turn + 1) % 4
+
+    if not visited[(node, turn)]:
+      visited[node, turn] = True
+      visit_count[node] += 1
+
+      for nex in G[node]:
+        if not is_reachable_at_turn(nex, next_turn):
+          continue
+
+        if dist[node, turn] + 1 < dist[nex, next_turn]:
+          dist[nex, next_turn] = dist[node, turn] + 1
+          heapq.heappush(Q, (dist[nex], nex, next_turn)) # Update next's distance in Q
+          prev[nex] = node
+
+  # Find the minimum goal node.
+  min_steps = None
+  for (node, turn), distance in dist.iteritems():
+    if node == goal and (min_steps is None or distance < min_steps):
+      min_steps = distance
+
+  return min_steps
+
+def is_reachable_at_turn(position, turn):
+  for clock in laser_clock[position]:
+    if turn % 4 == clock:
+      return False
+  return True
+
+def get_laser_clock(direction_from_turret, turret_dir):
+  laser_table = dict()
+  laser_table[LEFT]  = [LEFT, UP, RIGHT, DOWN]
+  laser_table[UP]    = [UP, RIGHT, DOWN, LEFT]
+  laser_table[RIGHT] = [RIGHT, DOWN, LEFT, UP]
+  laser_table[DOWN]  = [DOWN, LEFT, UP, RIGHT]
+
+  return laser_table[turret_dir].index(direction_from_turret)
+
+
+if __name__ == '__main__':
+  for case in xrange(1, int(sys.stdin.readline()) + 1):
+    m, n = map(int, sys.stdin.readline().strip().split())
+    board = []
+
+    start, goal = None, None
+    turrets, walls = [], []
+    for i in xrange(m):
+      board.append(sys.stdin.readline().strip())
+      for j in xrange(n):
+        if board[i][j] == STARTING:
+          start = (i, j)
+        elif board[i][j] == GOAL:
+          goal = (i, j)
+        elif board[i][j] in (LEFT, RIGHT, UP, DOWN):
+          turrets.append((i, j))
+        elif board[i][j] == WALL:
+          walls.append((i, j))
+
+    # Laser clock is a table that tells all the lasers pointing to any cell and
+    # at which turn that laser will be pointing there.
+    laser_clock = collections.defaultdict(list)
+    for i, j in turrets:
+      # Left.
+      for y in xrange(j - 1, -1, -1):
+        if (i, y) in walls or (i, y) in turrets:
+          break
+
+        laser_clock[i, y].append(get_laser_clock(LEFT, board[i][j]))
+
+      # Right.
+      for y in xrange(j + 1, n):
+        if (i, y) in walls or (i, y) in turrets:
+          break
+
+        laser_clock[i, y].append(get_laser_clock(RIGHT, board[i][j]))
+
+      # Up.
+      for x in xrange(i - 1, -1, -1):
+        if (x, j) in walls or (x, j) in turrets:
+          break
+
+        laser_clock[x, j].append(get_laser_clock(UP, board[i][j]))
+
+      # Down.
+      for x in xrange(i + 1, m):
+        if (x, j) in walls or (x, j) in turrets:
+          break
+
+        laser_clock[x, j].append(get_laser_clock(DOWN, board[i][j]))
+
+    # Build the graph.
+    graph = collections.defaultdict(list)
+    for i in xrange(m):
+      for j in xrange(n):
+        if board[i][j] in [WALL, LEFT, RIGHT, UP, DOWN]:
+          continue
+
+        for x, y in [(i - 1, j), (i + 1, j), (i, j - 1), (i, j + 1)]:
+          if x >= 0 and y >= 0 and x < m and y < n:
+            if board[x][y] not in [WALL, LEFT, RIGHT, UP, DOWN]:
+              graph[i, j].append((x, y))
+
+
+    # Use dijsktra.
+    dist = dijkstra(graph, start)
+    if dist is None:
+      print "Case #%d: impossible" % case
+    else:
+      print "Case #%d: %d" % (case, dist)

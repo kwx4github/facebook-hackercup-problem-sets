@@ -1,0 +1,178 @@
+#include "assert.h"
+#include <algorithm>
+#include <bitset>
+#include <cctype>
+#include <cmath>
+#include <cstdio>
+#include <deque>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <string.h>
+#include <time.h>
+#include <vector>
+
+#if LOCAL
+	#define DO_NOT_SEND
+#endif
+
+typedef long long LL;
+
+int IntMaxVal = (int) 1e20;
+int IntMinVal = (int) -1e20;
+LL LongMaxVal = (LL) 1e20;
+LL LongMinVal = (LL) -1e20;
+
+#define FOR(i, a, b) for(int i = a; i < b ; ++i)
+#define FORD(i, a, b) for(int i = a; i >= b; --i)
+
+template<typename T> inline void minimize(T &a, T b) { a = std::min(a, b); }
+template<typename T> inline void maximize(T &a, T b) { a = std::max(a, b); }
+
+#define all(v) v.begin(),v.end()
+
+using namespace std;
+
+#define endl '\n'
+template<typename T> struct argument_type;
+template<typename T, typename U> struct argument_type<T(U)> { typedef U type; };
+#define next(t, i) argument_type<void(t)>::type i; cin >> i;
+#define nextVector(t, v, size) vector< argument_type<void(t)>::type > v(size); { for (int i = 0 ; i < size ; i++) cin >> v[i]; }
+
+#define range(name, start, count) vector<int> name(count); { for (int i = 0 ; i < count ; i++) name[i] = i + start; }
+
+template <typename T1, typename T2> istream& operator >>(istream& is, pair<T1, T2>& s) { is >> s.first >> s.second; return is; }
+template <typename T> ostream& operator << (ostream& os, const vector<T> &v) { for (int i = 0 ; i < v.size() ; i++) os << v[i] << ' '; os << endl; return os; }
+template <typename T1, typename T2> ostream& operator <<(ostream& s, pair<T1, T2> t) { s << t.first << ' ' << t.second; return s; }
+template <typename T> vector<T> readVector(int n) { vector<T> res(n); for (int i = 0 ; i < n ; i++) cin >> res[i]; return res; }
+
+string tostr(int x) {
+	ostringstream oss;
+	oss << x;
+	return oss.str();
+}
+
+struct pos {
+	int y , x , rem;
+	vector<pos> edges;
+};
+
+void find(vector<string> &f, int &res_y, int &res_x, char c) {
+	bool found = false;
+	FOR (y, 0, f.size()) FOR (x, 0, f[y].length()) if (f[y][x] == c) {
+		assert(!found);
+		found = true;
+		res_y = y;
+		res_x = x;
+	}
+}
+
+void add(vector<vector<vector<pos>>> &positions, int rem, int y, int x, int dy , int dx) {
+	int m = positions.front().size();
+	int n = positions.front().front().size();
+	int rem2 = (rem + 1) % 4;
+	int y2 = y + dy;
+	int x2 = x + dx;
+	
+	if (x2 < 0 || y2 < 0 || x2 == n || y2 == m || positions[rem2][y2][x2].rem == -1) return;
+	// cout << rem << ' ' << y << ' ' << x << "      " << y2 << ' ' << x2 << endl;;
+	positions[rem][y][x].edges.push_back(positions[rem2][y2][x2]);	
+}
+
+string solve() {
+	next(int, m); 
+	next(int, n);
+	
+	auto f = readVector<string>(m);
+	
+	vector<vector<vector<pos>>> positions(4, vector<vector<pos>>(m, vector<pos>(n)));
+	vector<char> rotate(256, 'x');
+	rotate['>'] = 'v';
+	rotate['v'] = '<';
+	rotate['<'] = '^';
+	rotate['^'] = '>';
+	
+	int sx, sy, gx, gy;
+	find(f, sy, sx, 'S');
+	find(f, gy, gx, 'G');
+	
+	f[sy][sx] = '.';
+	f[gy][gx] = '.';
+	
+	FOR (rem, 0, 4) {
+		FOR (y, 0, m) FOR (x, 0, n) 
+			if (f[y][x] == '.')
+				positions[rem][y][x] = { y , x , rem };
+			else
+				positions[rem][y][x] = { -1 , -1, -1 };
+		FOR (y, 0, m) FOR (x, 0, n) if (rotate[f[y][x]] != 'x') {
+			int dx = 0;
+			int dy = 0;
+			if (f[y][x] == '<') dx--;
+			if (f[y][x] == '>') dx++;
+			if (f[y][x] == '^') dy--;
+			if (f[y][x] == 'v') dy++;
+			assert(dy * dx == 0 && abs(dy + dx) == 1);
+			
+			int x2 = x + dx;
+			int y2 = y + dy;
+			while (x2 >= 0 && x2 < n && y2 >= 0 && y2 < m && f[y2][x2] == '.') {
+				if (rem == 0 && y2 == sy && x2 == sx) ;
+				else positions[rem][y2][x2] = { -1 , -1, -1 };
+				x2 += dx;
+				y2 += dy;
+			}
+		}
+	
+		FOR (y, 0, m) FOR (x, 0, n) if (rotate[f[y][x]] != 'x') f[y][x] = rotate[f[y][x]];
+	}
+	FOR (rem, 0, 4) FOR (y, 0, m) FOR (x, 0, n) if (positions[rem][y][x].y != -1) {
+		add(positions, rem, y, x, +1 ,  0);
+		add(positions, rem, y, x, -1 ,  0);
+		add(positions, rem, y, x,  0 , +1);
+		add(positions, rem, y, x,  0 , -1);
+	}
+	
+	vector<vector<vector<int>>> minDist(4, vector<vector<int>>(m, vector<int>(n, IntMaxVal)));
+	minDist[0][sy][sx] = 0;
+	vector<pos> order = { { sy , sx , 0 } };
+	FOR (i, 0, order.size()) {
+		int rem = order[i].rem;
+		int y = order[i].y;
+		int x = order[i].x;
+		
+		// cout << rem << ' ' << y << ' ' << x << "   " << positions[rem][y][x].edges.size() << endl;
+		for (auto c : positions[rem][y][x].edges) {
+			int rem2 = c.rem;
+			int y2 = c.y;
+			int x2 = c.x;
+			// cout << "   " << y2 << ' ' << x2 << endl;
+			if (minDist[rem2][y2][x2] == IntMaxVal) {
+				minDist[rem2][y2][x2] = minDist[rem][y][x] + 1;
+				order.push_back(c);
+			}
+		}
+	}
+	
+	int ans = IntMaxVal;
+	FOR (i, 0, 4) minimize(ans, minDist[i][gy][gx]);
+	if (ans != IntMaxVal) return tostr(ans);
+	
+	return "impossible";
+}
+
+int main() {
+	srand (time(NULL));
+	ios_base::sync_with_stdio(false); cin.tie(NULL);
+	
+	next(int, t);
+	FOR (i, 1 , t + 1) cout << "Case #" << i << ": " << solve() << endl;
+}

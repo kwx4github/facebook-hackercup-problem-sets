@@ -1,0 +1,155 @@
+﻿// Facebook Hacker Cup 2015 - Qualifying round - Problem #2
+
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+
+class NewYearsResolution
+{
+	// We will use this structure to store each line of food for each test case
+	public struct foodData
+	{
+		public int pos;			// Position (relative to the test case to which it belongs)
+		public int gp;			// Amount of protein
+		public int gc;			// Amount of carbohidrates
+		public int gf;			// Amount of fat
+	}
+	
+	// Generates each line of the answer, given the case number (c), the minimum number (n1) and the maximum number (n2)
+    public static void ProcessAndAnswer(int c, bool result)
+    {
+        Console.WriteLine("Case #{0}: {1}", c+1, result?"yes":"no");
+    }
+    
+    // Reads a line of food and returns a "foodData" with the separate values
+    public static foodData ReadAndStoreFood(int pos, string line)
+    {
+		// Variable to be returned
+		foodData fd;
+		// Split the line
+		string [] parts = line.Split(' ');
+		// Store it in "desired" variable
+		fd.pos = pos;
+		fd.gp = Convert.ToInt32(parts[0]);
+		fd.gc = Convert.ToInt32(parts[1]);
+		fd.gf = Convert.ToInt32(parts[2]);
+		
+		return fd;
+	}
+	
+	// Checks if current set of food might be a solution, i.e., every component (gp, gc, gf) is under (or not over) the maximum gp, gc and gf desired.
+	// Returns -1 if the set of food is still a possible solution, 0 if it is THE solution and +1 if any of its components is over the solution
+	public static int CheckSolution(foodData desired, List<foodData> set)
+	{
+		int gp = 0, gc = 0, gf = 0;
+		foreach(foodData fd in set)
+		{
+			gp += fd.gp;
+			gc += fd.gc;
+			gf += fd.gf;
+			
+			if (gp > desired.gp || gc > desired.gc || gf > desired.gf)
+				return 1;
+		}
+		
+		if (gp == desired.gp && gc == desired.gc && gf == desired.gf)
+			return 0;
+		else
+			return -1;
+	}
+        
+    // Main function
+    public static void Main(string[] args)
+    {	
+		// Variable to determine if each case has a solution
+		bool solutionFound;
+		
+		// ArrayList to store the food list for each test case
+		List<foodData> fullList;
+		
+		// List for the algorithm for each test case
+		List<foodData> currentState;
+		
+		// Desired amount of gp, gc and gf for each test case
+		foodData desired;
+			
+		// We read from a file if there is any parameter        
+        if (args.Length > 0)
+            Console.SetIn(new StreamReader(args[0]));
+        
+        // We read the total amount of cases (T)   
+        int t = Convert.ToInt32( Console.ReadLine() );
+        
+        // We read and process each case    
+        for(int i=0; i<t; i++)
+        {	
+			solutionFound = false;
+			// Read the desired final amount of gp, gc and gf, and store it in "desired" variable
+			desired = ReadAndStoreFood(0, Console.ReadLine());
+			
+			// Read the number of foods that will be given
+			int n = Convert.ToInt32(Console.ReadLine());
+			
+			// Read the foods and store them in the array list, as long as they do not exceed the desired amount of proteins, carbohidrates or fat
+			fullList = new List<foodData>();
+			for (int j = 0; j < n; j++)
+			{
+				foodData d = ReadAndStoreFood(fullList.Count, Console.ReadLine());
+				if (d.gp <= desired.gp && d.gc <= desired.gc && d.gf <= desired.gf)
+					fullList.Add(d);
+			}
+			
+			// Initialize the list of possible combinations
+			currentState = new List<foodData>();
+			for (int j = 0; j < fullList.Count; j++)
+			{
+				// Add the element of position j to the current combination
+				foodData fd = fullList.ElementAt(j);
+				currentState.Add(fd);
+
+				// Check if we are under, over or exactly in the solution
+				int result = CheckSolution(desired, currentState);
+				if (result == 0)
+				{
+					// Solution found
+					ProcessAndAnswer(i, true);
+					solutionFound = true;
+					break;
+				} else if (result > 0) {
+					// Solution exceeded
+					// Remove last element of the combination
+					fd = currentState.ElementAt(currentState.Count-1);
+					int pos = fd.pos;
+					currentState.RemoveAt(currentState.Count-1);
+
+					// If the last element removed was the last available element, then remove the previous element of the combination as well
+					if (pos == fullList.Count-1)
+					{						
+						if (currentState.Count > 0)
+						{
+							fd = currentState.ElementAt(currentState.Count-1);
+							// Continue by adding elements from this position
+							j = fd.pos;
+							currentState.RemoveAt(currentState.Count-1);
+						}	
+					}
+				} else {
+					// If we can still get to the solution but there are no more elements to add, then remove the two last ones and continue with the element next to the previous penultimate
+					if (j == fullList.Count - 1)
+					{
+						currentState.RemoveAt(currentState.Count-1);
+						if (currentState.Count > 0)
+						{
+							j = currentState.ElementAt(currentState.Count-1).pos;
+							currentState.RemoveAt(currentState.Count-1);
+						}
+					}
+				}
+			}
+			
+			if (!solutionFound)
+				ProcessAndAnswer(i, false);
+        }
+    }
+}

@@ -1,0 +1,104 @@
+#include <iostream>
+#include <vector>
+#include <tuple>
+
+using std::string;
+using std::tuple;
+using std::vector;
+
+int moves[][2] = { {-1, 0}, {0, 1}, {1, 0}, {0, -1} };
+const string lazers = "v<^>";
+
+int N, M;
+vector<string> maze;
+
+bool safe(int x, int y, int turn)
+{
+    for (int mi = 0; mi < 4; ++mi) {
+        int xx = x + moves[mi][0];
+        int yy = y + moves[mi][1];
+        while (xx >= 0 && xx < N && yy >= 0 && yy < M) {
+            if (maze[xx][yy] == '#') break;
+
+            auto l = lazers.find(maze[xx][yy]);
+            if (l != string::npos && (l + turn) % 4 == mi) return false;
+
+            xx += moves[mi][0];
+            yy += moves[mi][1];
+        }
+    }
+
+    return true;
+}
+
+int solve()
+{
+    vector<vector<vector<bool>>> been(N,
+        vector<vector<bool>>(M, vector<bool>(4, false)));
+
+    vector<tuple<int, int, int>> queue;
+
+    for (int i = 0; i < N; ++i) {
+        auto pos = maze[i].find("S");
+        if (pos != string::npos) {
+            queue.push_back(std::make_tuple(i, pos, 0));
+            been[i][pos][0] = true;
+            break;
+        }
+    }
+
+    for (int i = 0; i < queue.size(); ++i) {
+        int x = std::get<0>(queue[i]);
+        int y = std::get<1>(queue[i]);
+        int turn = std::get<2>(queue[i]);
+
+        if (maze[x][y] == 'G') return turn;
+
+        for (int mi = 0; mi < 4; ++mi) {
+            int newx = x + moves[mi][0];
+            int newy = y + moves[mi][1];
+            int newturn = turn + 1;
+
+            if (newx < 0 || newx >= N || newy < 0 || newy >= M) continue;
+
+            if (string("#<>^v").find(maze[newx][newy]) != string::npos)
+                continue;
+
+            if (been[newx][newy][newturn % 4]) continue;
+
+            if (!safe(newx, newy, newturn)) continue;
+
+            queue.push_back(std::make_tuple(newx, newy, newturn));
+            been[newx][newy][newturn % 4] = true;
+        }
+    }
+
+    return -1;
+}
+
+int main()
+{
+    int t;
+    std::cin >> t;
+
+    for (int ti = 0; ti < t; ++ti) {
+        std::cin >> N >> M;
+
+        maze = vector<string>(N);
+
+        for (int i = 0; i < N; ++i)
+            std::cin >> maze[i];
+
+        int res = solve();
+
+        std::cout << "Case #" << ti + 1 << ": ";
+        if (res == -1) {
+            std::cout << "impossible";
+        } else {
+            std::cout << res;
+        }
+        std::cout << std::endl;
+    }
+
+    return 0;
+}

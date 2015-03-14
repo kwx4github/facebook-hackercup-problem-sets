@@ -1,0 +1,295 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+
+class Solution
+{
+    static int[,] maze;
+    static bool[,] mazeFree;
+    static HashSet<int>[,] mazeVisited;
+    static bool[,] laserFree;
+    static HashSet<int>[,] laserTurn;
+    const int wall = -1;
+    const int laserL = -2, laserU = -3, laserR = -4, laserD = -5;
+    const int empty = 0;
+    static int[] dx = new int[] {0, -1, 0, 1};
+    static int[] dy = new int[] {-1, 0, 1, 0};
+    static int n, m;
+	
+	struct cell
+    {
+        internal int row, col, turn;
+        internal cell(int row, int col)
+        {
+            this.row = row;
+            this.col = col;
+            this.turn = 0;
+        }
+		internal cell(int row, int col, int turn)
+        {
+			this.row = row;
+            this.col = col;
+            this.turn = turn;
+		}
+	}
+
+    static void Main(String[] args)
+    {
+        Console.SetIn(new StreamReader(@"..\..\in.txt"));
+        var sw = new StreamWriter(@"..\..\out.txt");
+        Console.SetOut(sw);
+        /* Enter your code here. Read input from STDIN. Print output to STDOUT. Your class should be named Solution */
+        int t = int.Parse(Console.ReadLine());
+        for (int i = 0; i < t; i++)
+        {
+            string[] n_m = Console.ReadLine().Split(' ');
+            n = int.Parse(n_m[0]);
+            m = int.Parse(n_m[1]);
+
+            cell start = new cell(-1, -1);
+            cell goal = new cell(-1, -1);
+            
+            maze = new int[n, m];
+
+            mazeFree = new bool[n, m];
+            SetTo(mazeFree, n, m, true);
+
+            mazeVisited = new HashSet<int>[n, m];
+            SetTo(mazeVisited, n, m);
+
+            laserFree = new bool[n, m];
+            SetTo(laserFree, n, m, true);
+            
+            laserTurn = new HashSet<int>[n, m];
+            SetTo(laserTurn, n, m);
+			
+            for (int row = 0; row < n; row++)
+            {
+				string mazeStr = Console.ReadLine();
+				for (int col = 0; col < m; col++)
+                {
+					int mazeCell = empty;
+					switch (mazeStr[col])
+                    {
+						case '#':
+							mazeCell = wall;
+                            mazeFree[row, col] = false;
+							break;
+                        case '<':
+							mazeCell = laserL;
+                            mazeFree[row, col] = false;
+							break;
+                        case '^':
+							mazeCell = laserU;
+                            mazeFree[row, col] = false;
+							break;
+                        case '>':
+							mazeCell = laserR;
+                            mazeFree[row, col] = false;
+							break;
+                        case 'v':
+							mazeCell = laserD;
+                            mazeFree[row, col] = false;
+							break;
+                        case 'S':
+							start.row = row;
+							start.col = col;
+                            start.turn = 0;
+							break;
+                        case 'G':
+							goal.row = row;
+							goal.col = col;
+							break;
+					}
+
+                    maze[row, col] = mazeCell;
+				}
+			}
+
+			// Add all laser turrets
+			for (int row = 0; row < n; row++)
+            {
+				for (int col = 0; col < m; col++)
+                {
+					if (maze[row, col] <= laserL)
+                    {
+                        AddLaserTurret(row, col, maze[row, col]);
+                    }
+                }
+			}
+
+			Console.WriteLine("Case #{0}: {1}", i + 1, Solve(maze, start, goal));
+        }
+		
+        sw.Close();
+    }
+
+	private static string Solve(int[, ] maze, cell start, cell goal)
+    {
+        Queue<cell> queue = new Queue<cell>();
+        queue.Enqueue(start);
+
+        cell curr;
+        int turn;
+        int min = int.MaxValue;
+		while (queue.Count != 0)
+        {
+            curr = queue.Dequeue();
+            turn = curr.turn + 1;
+            for (int i = 0; i < 4; i++)
+            {
+                // Where we can move on turn + 1?
+				int x = curr.row + dx[i];
+				int y = curr.col + dy[i];
+				if (GoodMove(x, y, turn))
+                {
+					// Are we done?
+                    if (x == goal.row && y == goal.col)
+                    {
+                        min = (turn < min) ? turn : min;
+                    }
+                    else
+                    {
+                        // Add new possible way to go...
+                        queue.Enqueue(new cell(x, y, turn));
+                        mazeVisited[x, y].Add(turn % 4);
+                    }
+                }
+            }
+
+            // Stay on the same place?
+            if (GoodMove(curr.row, curr.col, turn))
+            {
+                curr.turn = turn;
+                queue.Enqueue(curr);
+                mazeVisited[curr.row, curr.col].Add(turn % 4);
+            }
+        }
+
+        return (min == int.MaxValue) ? "impossible" : min.ToString();
+    }
+
+	private static bool GoodMove(int x, int y, int turn)
+    {
+		// Cell is in the maze 
+		if (x > -1 && x < n && y > -1 && y < m)
+        {
+            // Cell is not wall or laser turret
+			if (mazeFree[x, y])
+            {
+				// Did we visit this cell before?
+				if (!IsVisited(x, y, turn))
+                {
+					// Are we destroyed by laser turret?
+					if (!IsDestroyed(x, y, turn))
+                    {
+                        return true;
+                    }
+
+					// We are destroyed by laser turret
+					return false;
+				}
+
+				// We visited this cell earlier. No need to BFS again
+				return false;
+            }
+
+            return false;
+		}
+
+		return false;
+    }
+
+    private static bool IsDestroyed(int x, int y, int turn)
+    {
+		// Are we under potential laser hit?
+		if (!laserFree[x, y])
+        {
+			// Does it hit us on current turn?
+            int r = turn % 4;
+			if (laserTurn[x, y].Contains(r))
+            {
+				return true;
+            }
+
+			return false;
+		}
+
+		return false;
+    }
+
+    private static bool IsVisited(int x, int y, int turn)
+    {
+        int r = turn % 4;
+
+        return mazeVisited[x, y].Contains(r);
+    }
+
+	private static void AddLaserTurret(int row, int col, int mazeCell)
+    {
+        int[] laserDir;
+        switch (mazeCell)
+        {
+			case laserL:
+                laserDir = new int[4] {0, 1, 2, 3};
+                break;
+            case laserU:
+                laserDir = new int[4] {3, 0, 1, 2};
+                break;
+            case laserR:
+                laserDir = new int[4] {2, 3, 0, 1};
+                break;
+            // case laserD:
+            default:
+                laserDir = new int[4] {1, 2, 3, 0};
+                break;
+        }
+
+        laserFree[row, col] = false;
+        for (int i = 0; i < 4; i++)
+        {
+            int x = row + dx[i];
+            int y = col + dy[i];
+			while (x > -1 && x < n && y > -1 && y < m && mazeFree[x, y])
+            {
+				laserFree[x, y] = false;
+				laserTurn[x, y].Add(laserDir[i]);
+				x += dx[i];
+				y += dy[i];
+			}
+        }
+    }
+
+    private static void SetTo(bool[,] array, int n, int m, bool value)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                array[i, j] = value;
+            }
+        }
+    }
+
+    private static void SetTo(int[,] array, int n, int m, int value)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                array[i, j] = value;
+            }
+        }
+    }
+
+    private static void SetTo(HashSet<int>[,] array, int n, int m)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < m; j++)
+            {
+                array[i, j] = new HashSet<int>();
+            }
+        }
+    }
+}

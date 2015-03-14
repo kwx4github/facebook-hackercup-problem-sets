@@ -1,0 +1,239 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+#define DEBUGW      0
+
+static int total_nodes;
+
+struct Food{
+    int p;
+    int c;
+    int f;
+    
+    Food():p(0),c(0),f(0){}
+    Food(int x, int y, int z):p(x),c(y),f(z){}
+};
+
+// qsort compare function
+int comparatorFood(const void *pLhs, const void *pRhs)
+{
+    int *lhs = (int *)pLhs;
+    int *rhs = (int *)pRhs;
+    
+    return *lhs > *rhs;
+}
+int comparatorFoodVec(const Food& l, const Food& r)
+{
+    return l.p < r.p;
+}
+
+void printArr(int s[], int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        printf("%*d", 5, s[i]);
+    }
+    
+    printf("\n");
+}
+
+void printTupleArray(Food A[], int size)
+{
+    printf("\n");
+    for(int i = 0; i < size; i++)
+    {
+        printf("%d, %d, %d\n", A[i].p, A[i].c, A[i].f);
+    }
+    printf("\n");
+    printf("\n");
+}
+
+bool checkSubset(const std::vector<Food>& vecFoods,
+                    int GP, int GC, int GF,
+                    Food A[],
+                    int size)
+{
+    int sumP = 0;
+    int sumC = 0;
+    int sumF = 0;
+    for(int i = 0; i < size; i++)
+    {
+        sumP += A[i].p;
+        sumC += A[i].c;
+        sumF += A[i].f;
+    }
+    
+    return ((sumP == GP) && (sumC == GC) && (sumF == GF));
+}
+
+bool subset_sumFood(
+                    const std::vector<Food>& vecFoods,
+                    int GP, int GC, int GF,
+                    int s[],                  //set vector
+                    Food t[],                   //tuplet vector
+                    int s_size,                     //set size
+                    int t_size,                     //tuplet size so far
+                    int sum,                        //sum so far
+                    int ite,                        //nodes count
+                    int const target_sum            //sum to be found
+                )
+{
+    total_nodes++;
+    if( target_sum == sum )
+    {
+        //printTupleArray(t,t_size);
+        if(checkSubset(vecFoods, GP, GC, GF, t, t_size))
+            return true;
+        
+        // constraint check
+        if( ite + 1 < s_size && sum - s[ite] + s[ite+1] <= target_sum )
+        {
+            // Exclude previous added item and consider next candidate
+            if(subset_sumFood(vecFoods, GP, GC, GF, s, t, s_size, t_size-1, sum - s[ite], ite + 1, target_sum))
+                return true;
+        }
+    }
+    else
+    {
+        // constraint check
+        if( ite < s_size && sum + s[ite] <= target_sum )
+        {
+            // generate nodes along the breadth
+            for( int i = ite; i < s_size; i++ )
+            {
+                t[t_size].p = vecFoods[i].p;
+                t[t_size].c = vecFoods[i].c;
+                t[t_size].f = vecFoods[i].f;
+                
+                if( sum + s[i] <= target_sum )
+                {
+                    if(subset_sumFood(vecFoods, GP, GC, GF, s, t, s_size, t_size + 1, sum + s[i], i + 1, target_sum))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool checkSubsets(const std::vector<Food>& vecFoods, int GP, int GC, int GF, int size, int target_sum)
+{
+    Food *tuplet_vector = (Food *)malloc(size * sizeof(Food));
+    
+//    // sort the set
+//    qsort(weights, size, sizeof(int), &comparatorFood);
+    
+    int *weights = new int[size];
+    for(int i = 0; i < size; i++)
+    {
+        weights[i] = vecFoods[i].p;
+    }
+    
+    int total = 0;
+    
+    //printArr(weights, size);
+    
+    for( int i = 0; i < size; i++ )
+    {
+        total += weights[i];
+    }
+    
+    bool bRet = false;
+    
+    if( weights[0] <= target_sum && total >= target_sum )
+    {
+        bRet = subset_sumFood(vecFoods, GP, GC, GF, weights, tuplet_vector, size, 0, 0, 0, target_sum);
+    }
+    
+    delete [] weights;
+    
+    free(tuplet_vector);
+    return bRet;
+}
+
+int main(int argc, const char * argv[])
+{
+    int T=0;
+#if DEBUGW
+    T=1;
+#else
+    scanf("%d\n", &T);
+#endif
+    int count = 0;
+    while(T-- > 0)
+    {
+        count++;
+        int GP, GC, GF;                             //prescribed values
+#if DEBUGW
+        GP=100;
+        GC=100;
+        GF=100;
+#else
+        scanf("%d %d %d\n", &GP, &GC, &GF);
+#endif
+        
+        int N;                                      //total number of food entries
+        std::vector < Food > vecFoods;
+        
+#if DEBUGW
+//        N=2;
+//        vecFoods.reserve(N);
+//        vecFoods.push_back(Food(50, 50, 60));
+//        vecFoods.push_back(Food(50, 50, 40));
+        
+        N=4;
+        vecFoods.reserve(N);
+        vecFoods.push_back(Food(40, 50, 60));
+        vecFoods.push_back(Food(40, 40, 30));
+        vecFoods.push_back(Food(10, 10, 10));
+        vecFoods.push_back(Food(20, 10, 10));
+        
+//        N=5;
+//        vecFoods.reserve(N);
+//        vecFoods.push_back(Food(40, 70, 30));
+//        vecFoods.push_back(Food(30, 10, 40));
+//        vecFoods.push_back(Food(20, 20, 50));
+//        vecFoods.push_back(Food(10, 50, 90));
+//        vecFoods.push_back(Food(40, 10, 20));
+
+#else
+        scanf("%d\n", &N);
+        vecFoods.reserve(N);
+        int a = N;
+        while(a-- > 0)
+        {
+            int x,y,z;
+            scanf("%d %d %d\n", &x, &y, &z);
+            vecFoods.push_back(Food(x,y,z));
+        }
+#endif
+        //printArr(weights, N);
+        
+        std::sort(vecFoods.begin(), vecFoods.end(), comparatorFoodVec);
+        
+        int targetSum = GP;
+        
+        char output[16] = "\0";
+        //vecFoods, int GP, int GC, int GF, int size, int target_sum
+        if(checkSubsets(vecFoods, GP, GC, GF, N, targetSum))
+        {
+            sprintf(output, "Case #%d: yes", count);
+        }
+        else
+        {
+            sprintf(output, "Case #%d: no", count);
+        }
+        
+        printf("%s\n", output);
+    }
+    
+    return 0;
+}
+
+
+

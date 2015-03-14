@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+from copy import deepcopy
+from heapq import heappush, heappop
+#def input(f=open('laser_maze_example_input.txt')): return f.readline().rstrip()
+
+rotate = { '^': ('^', '>', 'v', '<'), 
+           '<': ('<', '^', '>', 'v'),
+           '>': ('>', 'v', '<', '^'),
+           'v': ('v', '<', '^', '>') }
+
+def maze_fired(m, M, N):
+    f = deepcopy(m)
+    for i in range(M):
+        for j in range(N):
+            dc = None
+            if m[i][j] == '^': dc = (-1,  0)
+            if m[i][j] == '<': dc = ( 0, -1)
+            if m[i][j] == '>': dc = ( 0,  1)
+            if m[i][j] == 'v': dc = ( 1,  0)
+            
+
+            # fire-line -> '*', laser -> '#'
+            if (dc):
+                cc = (i+dc[0], j+dc[1])
+                f[i][j] = '#'
+                while (0 <= cc[0] < M) and \
+                      (0 <= cc[1] < N) and \
+                      (f[cc[0]][cc[1]] == '.'):
+                    f[cc[0]][cc[1]] = '*'
+                    cc = (cc[0]+dc[0], cc[1]+dc[1]);
+    
+    # fire-line -> '#'
+    return [ [ '.' if x == '.' else '#' for x in ln ] for ln in f ]
+
+T = int(input())
+for cas in range(1,T+1):
+    M, N = tuple(map(int, input().split()))
+    maze = [ list(input()) for i in range(M) ]
+
+    for i in range(M):
+        for j in range(N):
+            if maze[i][j] == 'S':
+                st = (i, j)
+                maze[i][j] = '.'
+            if maze[i][j] == 'G':
+                en = (i, j)
+                maze[i][j] = '.'
+    
+    # pre-calculated mazes: 1) rotated lasers, 2) fired lasers
+    resolved = []
+    for i in range(4):
+        resolved.append(maze_fired(
+                [[rotate[x][i]
+                  if x in '^<>v'
+                  else x
+                  for x in ln ] for ln in maze],
+                M, N
+        ))
+    
+    # walk the maze
+    to_visit = [ (0, st[0], st[1]) ]    # ( step, Y, X)
+    visited  = { (0, st[0], st[1]) }    # ( step%4, Y, X)
+    sol = None
+
+    while (not sol) and to_visit:
+        (step, y, x) = heappop(to_visit)
+
+        # check SOLUTION
+        if (en[0] == y) and (en[1] == x):
+            sol = step
+            break
+
+        for dy, dx in [ (-1, 0), (0, -1), (0, 1), (1, 0) ]:
+            state = ((step+1)%4, y+dy, x+dx)
+
+            # check LEGALITY
+            if (0 <= y+dy < M) and \
+               (0 <= x+dx < N) and \
+               (resolved[(step+1)%4][y+dy][x+dx] == '.') and \
+               (state not in visited):
+
+                heappush(to_visit, (step+1, y+dy, x+dx));
+                visited.add(state)
+
+    print("Case #{0}: {1}".format(
+        cas,
+        sol if sol else "impossible"
+    ))
+

@@ -1,0 +1,241 @@
+import java.awt.Point;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+
+public class LaserMaze2 {
+	
+	private static final String LASERS = "^>v<";
+	private static final char WALL = '#';
+	private static final char GOAL = 'G';
+	private static final char SELF = 'S';
+	private static final char EMPTY = '.';
+	private static final char BEAM = 'x';
+	private static final char FOOTPRINT = 'o';
+	
+	private static int minSteps = -1;
+	private static Point goal;
+
+	public static void main (String [] args) throws IOException {
+		BufferedReader f = new BufferedReader(new FileReader("laser_maze.txt"));
+		PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("laser_maze_out.txt")));
+
+		StringTokenizer st = new StringTokenizer(f.readLine());
+		int numMazes = Integer.parseInt(st.nextToken());
+				
+		for(int i = 0; i < numMazes; i++){
+			st = new StringTokenizer(f.readLine());
+			int rows = Integer.parseInt(st.nextToken());
+			int columns = Integer.parseInt(st.nextToken());
+			char[][] maze = new char[rows][columns];
+			
+			Point self = null;
+			goal = null;
+			minSteps = -1;
+			
+			// Read in data
+			for(int j = 0; j < rows; j++){
+				String s = f.readLine();
+				for(int k = 0; k < columns; k++){
+					maze[j][k] = s.charAt(k);
+					if(s.charAt(k) == SELF){
+						self = new Point(j, k);
+						maze[j][k] = EMPTY;
+					}else if(s.charAt(k) == GOAL){
+						goal = new Point(j, k);
+						maze[j][k] = EMPTY;
+					}
+				}
+			}
+			
+			char[][][] mazes = new char[4][rows][columns];
+			addTimeDimension(maze, mazes);
+			mazes[0][self.x][self.y] = FOOTPRINT;
+
+//			printMaze(mazes);
+			
+			// Initialize BFS
+			ArrayList<Node> queue = new ArrayList<Node>();
+			queue.add(new Node(mazes, self, 0, 0));
+			
+			// Search by BFS
+			Node n;
+			while(queue.size() > 0){
+				n = queue.remove(0);
+				process(n ,goal, queue);
+			}
+			
+			// Output result
+			String str;
+			if(minSteps == -1){
+				str = "impossible";
+			}else{
+				str = "" + minSteps;
+			}
+			out.println("Case #" + (i+1) + ": " + str);
+//			System.out.println("Case #" + (i+1) + ": " + str);
+		}
+		
+		out.close();
+		f.close();
+	}
+
+	private static void addTimeDimension(char[][] maze, char[][][] mazes) {
+		mazes[0] = maze;
+		for(int i = 1; i < mazes.length; i++){
+			mazes[i] = turnAndFireLasers(mazes[i-1]);
+		}
+		mazes[0] = turnAndFireLasers(mazes[3]);
+	}
+	
+	private static char[][] turnAndFireLasers(char[][] prevMaze) {
+		char[][] newMaze = new char[prevMaze.length][prevMaze[0].length];
+		//Copy and turn lasers
+		for(int j = 0; j < prevMaze.length; j++){
+			for(int k = 0; k < prevMaze[j].length; k++){
+		
+				if(isLaser(prevMaze[j][k])){
+					newMaze[j][k] = turn(prevMaze[j][k]);
+				}else if(prevMaze[j][k] == BEAM){
+					newMaze[j][k] = EMPTY;
+				}else{
+					newMaze[j][k] = prevMaze[j][k];
+				}
+			}
+		}
+		//Fire (MUST be in a separate loops -- must copy completely, then turn)
+		for(int j = 0; j < prevMaze.length; j++){
+			for(int k = 0; k < prevMaze[j].length; k++){
+				if(isLaser(prevMaze[j][k])){
+					fire(j, k, newMaze);
+				}
+			}
+		}
+		return newMaze;
+	}
+
+	private static void process(Node n, Point goal, ArrayList<Node> queue){
+		if(reachedGoal(n.self, goal)){
+			if(minSteps == -1){
+				// First path found
+				minSteps = n.steps;
+				return;
+			}
+			// Take more efficient path
+			minSteps = Math.min(minSteps, n.steps);
+			return;
+		}
+		if(minSteps != -1 && n.steps > minSteps){
+			// Already found a more efficient path
+			return;
+		}
+		
+		char[][] nextMaze = n.mazes[(n.state+1)%4];
+		
+		ArrayList<Point> nextOptions = getOptions(nextMaze, n.self);
+
+		for(int i = 0; i < nextOptions.size(); i++){
+			Point nextSelf = nextOptions.get(i);
+			n.mazes[(n.state+1)%4][nextSelf.x][nextSelf.y] = FOOTPRINT;
+			
+			queue.add(new Node(n.mazes, nextSelf, n.steps + 1, (n.state+1)%4));
+		}
+	}
+
+	private static void fire(int i, int j, char[][] maze) {
+		if(maze[i][j] == LASERS.charAt(0)){
+			// up
+			i--;
+			while(i >= 0 && (maze[i][j] == EMPTY || maze[i][j] == BEAM)){
+				maze[i][j] = BEAM;
+				i--;
+			}
+		}
+		else if(maze[i][j] == LASERS.charAt(1)){
+			// right
+			j++;
+			while(j < maze[0].length && (maze[i][j] == EMPTY || maze[i][j] == BEAM)){
+				maze[i][j] = BEAM;
+				j++;
+			}
+		}
+		else if(maze[i][j] == LASERS.charAt(2)){
+			// down
+			i++;
+			while(i < maze.length && (maze[i][j] == EMPTY || maze[i][j] == BEAM)){
+				maze[i][j] = BEAM;
+				i++;
+			}
+		}
+		else if(maze[i][j] == LASERS.charAt(3)){
+			// left
+			j--;
+			while(j >= 0 && (maze[i][j] == EMPTY || maze[i][j] == BEAM)){
+				maze[i][j] = BEAM;
+				j--;
+			}
+		}
+	}
+
+	private static boolean isLaser(char c) {
+		return LASERS.indexOf(c) != -1;
+	}
+	
+	private static char turn(char laser) {
+		return LASERS.charAt((LASERS.indexOf(laser) + 1)%4);
+	}
+	
+	private static boolean reachedGoal(Point self, Point goal) {
+		return self.x == goal.x && self.y == goal.y;
+	}
+	
+	private static ArrayList<Point> getOptions(char[][] maze, Point self) {
+		
+		ArrayList<Point> options = new ArrayList<Point>();
+		if(self.x-1 >= 0 && maze[self.x-1][self.y] == EMPTY){
+			options.add(new Point(self.x-1, self.y));
+		}
+		if(self.x+1 < maze.length && maze[self.x+1][self.y] == EMPTY){
+			options.add(new Point(self.x+1, self.y));
+		}
+		if(self.y-1 >= 0 && maze[self.x][self.y-1] == EMPTY){
+			options.add(new Point(self.x, self.y-1));
+		}
+		if(self.y+1 < maze[0].length && maze[self.x][self.y+1] == EMPTY){
+			options.add(new Point(self.x, self.y+1));
+		}
+		return options;
+	}
+	
+	public static void printMaze(char[][][] maze){
+		for(int i = 0; i < maze[0].length; i++){
+			for(int k = 0; k < maze.length; k++){
+				for(int j = 0; j < maze[0][0].length; j++){
+					System.out.print(maze[k][i][j]);
+				}
+				System.out.print("   ");
+			}
+			System.out.println();
+		}
+		System.out.println();
+	}
+	
+	public static class Node {
+		public char[][][] mazes;
+		public Point self;
+		public int steps;
+		public int state;
+		
+		public Node(char[][][] mazes, Point self, int steps, int state){
+			this.mazes = mazes;
+			this.self = self;
+			this.steps = steps;
+			this.state = state;
+		}
+	}
+}

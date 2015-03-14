@@ -1,0 +1,191 @@
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <cstdlib>
+#include <climits>
+
+using namespace std;
+
+char maze[4][100][100];
+bool visited[4][100][100];
+char act_maze[100][100];
+
+int r,c;
+
+void form_4matrices(){
+
+	int i,j,k,num;
+	
+	for(i=0;i<r;i++){
+
+		for(j=0;j<c;j++){
+			
+			if(act_maze[i][j] == 'S')
+				visited[3][i][j] = true;
+
+			if(act_maze[i][j] == '^' || act_maze[i][j]=='>' || act_maze[i][j]=='v' || act_maze[i][j]=='<'){
+
+				if(act_maze[i][j] == '^')
+					num = 0;
+				else if(act_maze[i][j] == '>')
+					num = 3;
+				else if(act_maze[i][j] == 'v')
+					num = 2;
+				else
+					num = 1;
+
+				//turns > for num-th step
+				for(k = j+1; k<c; k++){
+					if(act_maze[i][k] == '.' || act_maze[i][k] == 'G' || act_maze[i][k] == 'S')
+						maze[num][i][k] = 'd';
+				}
+				num = (num+1)%4;
+
+				//turns v 
+				for(k = i+1; k<r; k++)
+					if(act_maze[k][j] == '.' || act_maze[k][j] == 'G' || act_maze[k][j] == 'S')
+						maze[num][k][j] = 'd';
+				num = (num+1)%4;
+				
+				//turns < 
+				for(k = j-1;k>=0;k--)
+					if(act_maze[i][k] == '.' || act_maze[i][k] == 'G' || act_maze[i][k] == 'S')
+						maze[num][i][k] = 'd';
+				num = (num+1)%4;
+				
+				//turns ^ 
+				for(k = i-1;k>=0;k--)
+					if(act_maze[k][j] == '.' || act_maze[k][j] == 'G' || act_maze[k][j] == 'S')
+						maze[num][k][j] = 'd';
+				num = (num+1)%4;
+			}
+		}
+	}
+}
+
+int find_min_steps(int curr_r, int curr_c, int steps, int ori){ //ori - orientation
+
+	//printf("\nCall with values %d %d %d %d -------",curr_r,curr_c,steps,ori);
+
+	if(curr_r < 0 || curr_r >= r || curr_c < 0 || curr_c >=c){
+		//cout<<"\nret -1 out of bounds\n";
+		return -1;
+	}
+
+	//find if we survive here
+	else if(maze[ori][curr_r][curr_c] == 'd'){
+		//cout<<"\nret -1 dead\n";
+		return -1;
+	}
+
+	//find if we are back to the same place
+	else if(visited[ori][curr_r][curr_c] == true){
+		//cout<<"\nret -1 visited\n";
+		return -1;
+	}
+	
+	//find if we are at the goal
+	else if(act_maze[curr_r][curr_c] == 'G'){
+		//cout<<"\nReached with value = "<<steps<<endl;
+		return steps;
+	}
+	
+	//find the next moves
+	else if(act_maze[curr_r][curr_c] == '.' || act_maze[curr_r][curr_c] == 'S'){
+
+		visited[ori][curr_r][curr_c] = true;
+		//cout<<"\nCame to safe cell\n";
+		
+		int r[4], min = INT_MAX;
+
+		//move ^
+		r[0] = find_min_steps(curr_r-1,curr_c,steps+1,(ori+1)%4);
+
+		//move >
+		r[1] = find_min_steps(curr_r,curr_c+1,steps+1,(ori+1)%4);
+
+		//move v
+		r[2] = find_min_steps(curr_r+1,curr_c,steps+1,(ori+1)%4);
+
+		//move <
+		r[3] = find_min_steps(curr_r,curr_c-1,steps+1,(ori+1)%4);
+
+		for(int i=0;i<4;i++){
+			if(r[i] != -1 && r[i]<min)
+				min = r[i];
+		}
+
+		visited[ori][curr_r][curr_c] = false;
+
+		if(min == INT_MAX)
+			return -1;
+		else
+			return min;
+	}
+	else{
+		//cout<<"\nret -1 wall or laser\n";
+		return -1;
+	}
+	
+}
+
+int main(){
+
+	int tcase;
+	int i,j,curr_r,curr_c;
+	int cnt=1;
+
+	cin>>tcase;
+
+	while(tcase--){
+		cin>>r>>c;
+
+		for(i=0;i<r;i++){
+			for(j=0;j<c;j++){
+
+				cin>>act_maze[i][j];
+
+				maze[0][i][j] = maze[1][i][j] = maze[2][i][j] = maze[3][i][j] = act_maze[i][j];
+				visited[0][i][j] = visited[1][i][j] = visited[2][i][j] = visited[3][i][j] = 0;
+
+				if(act_maze[i][j] == 'S'){
+					curr_r = i;
+					curr_c = j;
+				}
+					
+			}
+		}
+
+		form_4matrices();
+
+		int r[4], min = INT_MAX;
+
+		//move ^
+		r[0] = find_min_steps(curr_r-1,curr_c,1,0);
+
+		/*cout<<"\nafter call 1";
+		cin>> i;*/
+
+		//move >
+		r[1] = find_min_steps(curr_r,curr_c+1,1,0);
+
+		//move v
+		r[2] = find_min_steps(curr_r+1,curr_c,1,0);
+
+		//move <
+		r[3] = find_min_steps(curr_r,curr_c-1,1,0);
+
+		for(int i=0;i<4;i++){
+			if(r[i] != -1 && r[i]<min)
+				min = r[i];
+		}
+
+		if(min == INT_MAX)
+			printf("Case #%d: impossible\n",cnt++);
+		else
+			printf("Case #%d: %d\n",cnt++,min);
+
+	}
+
+	return 0;
+}

@@ -1,0 +1,233 @@
+import java.io.*;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.StringTokenizer;
+
+/**
+ * Created by rubanenko on 1/10/15.
+ */
+public class Main implements Runnable {
+
+    class Pair implements Comparable<Pair> {
+        int x, y, time;
+        public int compareTo(Pair rhs) {
+            return x > rhs.x ? 1 : x == rhs.x ? 0 : -1;
+        }
+        public Pair(int x, int y, int time) {
+            this.x = x;
+            this.y = y;
+            this.time = time;
+        }
+    }
+
+    boolean[][][] isSafe;
+    int n, m;
+    char[][] ar;
+    void fill(int x, int y, int time, int vx, int vy) {
+        x += vx;
+        y += vy;
+        while (ar[x][y] == '.' || ar[x][y] == 'S' || ar[x][y] == 'G') {
+            isSafe[x][y][time] = false;
+            x += vx;
+            y += vy;
+        }
+    }
+
+
+    public void solve() throws IOException {
+        int testCases = in.nextInt();
+        for (int test = 1; test <= testCases; test++) {
+            out.printf("Case #%d: ", test);
+            n = in.nextInt();
+            m = in.nextInt();
+            ar = new char[n + 2][m + 2];
+            for (int i = 1; i <= n; i++) {
+                String s = in.nextToken();
+                for (int j = 0; j < m; j++) {
+                    ar[i][j + 1] = s.charAt(j);
+                }
+            }
+            isSafe = new boolean[n + 2][m + 2][4];
+            int x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+            for (int i = 1; i <= n; i++) {
+                for (int j = 1; j <= m; j++) {
+                    if (ar[i][j] == 'S') {
+                        x1 = i;
+                        y1 = j;
+                    }
+                    if (ar[i][j] == 'G') {
+                        x2 = i;
+                        y2 = j;
+                    }
+                    if (ar[i][j] == '.' || ar[i][j] == 'S' || ar[i][j] == 'G') {
+                        for (int time = 0; time < 4; time++) {
+                            isSafe[i][j][time] = true;
+                        }
+                    }
+                }
+            }
+            for (int i = 1; i <= n; i++) {
+                for (int j = 1; j <= m; j++) {
+                    if (ar[i][j] == '^') {
+                        fill(i, j, 0, -1, 0);
+                        fill(i, j, 1, 0, 1);
+                        fill(i, j, 2, 1, 0);
+                        fill(i, j, 3, 0, -1);
+                    }
+                    if (ar[i][j] == '>') {
+                        fill(i, j, 3, -1, 0);
+                        fill(i, j, 0, 0, 1);
+                        fill(i, j, 1, 1, 0);
+                        fill(i, j, 2, 0, -1);
+                    }
+                    if (ar[i][j] == 'v') {
+                        fill(i, j, 2, -1, 0);
+                        fill(i, j, 3, 0, 1);
+                        fill(i, j, 0, 1, 0);
+                        fill(i, j, 1, 0, -1);
+                    }
+                    if (ar[i][j] == '<') {
+                        fill(i, j, 1, -1, 0);
+                        fill(i, j, 2, 0, 1);
+                        fill(i, j, 3, 1, 0);
+                        fill(i, j, 0, 0, -1);
+                    }
+                }
+            }
+            int[][][] dist = new int[n + 2][m + 2][4];
+            Queue<Pair> q = new LinkedList<Pair>();
+            q.add(new Pair(x1, y1, 0));
+          //  System.err.println("--------------");
+            while(!q.isEmpty()) {
+                Pair v = q.poll();
+            //    System.err.println(v.x + " " + v.y + " " + v.time);
+                for (int vx = -1; vx <= 1; vx++) {
+                    for (int vy = -1; vy <= 1; vy++) {
+                        if (Math.abs(vx) + Math.abs(vy) == 1) {
+                            int x = v.x + vx;
+                            int y = v.y + vy;
+                            if (isSafe[x][y][(v.time + 1) % 4] && dist[x][y][(v.time + 1) % 4] == 0) {
+                                q.add(new Pair(x, y, (v.time + 1) % 4));
+                                dist[x][y][(v.time + 1) % 4] = dist[v.x][v.y][v.time] + 1;
+                            }
+                        }
+                    }
+                }
+            }
+            int min = 1 << 30;
+            for (int i = 0; i < 4; i++) {
+                if (dist[x2][y2][i] < min && dist[x2][y2][i] != 0) {
+                    min = dist[x2][y2][i];
+                }
+            }
+           // out.printf("Case #%d: ", test);
+            if (min == (1 << 30)) {
+                out.println("impossible");
+            }
+            else {
+                out.println(min);
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        //	long startTime = System.currentTimeMillis();
+        new Main().run();
+        //	long finishTime = System.currentTimeMillis();
+        //	System.err.println(finishTime - startTime + "ms.");
+    }
+
+    public Scanner in;
+    public PrintWriter out;
+
+    @Override
+    public void run() {
+        try {
+            in = new Scanner(new FileInputStream("input.txt"));
+            out = new PrintWriter(new FileOutputStream("output.txt"));
+            solve();
+            out.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    public static class Scanner {
+        private BufferedReader reader;
+        private StringTokenizer tokenizer;
+        public boolean hasMoreTokens() throws IOException{
+            while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+                String s = nextLine();
+                if (s == null) return false;
+                tokenizer = new StringTokenizer(s);
+            }
+            return true;
+        }
+        Scanner(InputStream inputStream) {
+            reader = new BufferedReader(new InputStreamReader(inputStream));
+        }
+
+        public String nextLine() throws IOException {
+            return reader.readLine();
+        }
+
+        public String nextToken() throws IOException {
+            while (tokenizer == null || !tokenizer.hasMoreTokens())
+                tokenizer = new StringTokenizer(nextLine());
+            return tokenizer.nextToken();
+        }
+
+        public int nextInt() throws NumberFormatException, IOException {
+            return Integer.parseInt(nextToken());
+        }
+        public long nextLong() throws NumberFormatException, IOException {
+            return Long.parseLong(nextToken());
+        }
+
+
+        public double nextDouble() throws NumberFormatException, IOException {
+            return Double.parseDouble(nextToken());
+        }
+
+    }
+}/*
+    void swap(StringBuilder s, int i, int j) {
+        char tmp = s.charAt(i);
+        s.setCharAt(i, s.charAt(j));
+        s.setCharAt(j, tmp);
+    }
+
+    // a[i] a[j]
+
+
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int testCases = in.nextInt();
+        for (int test = 1; test <= testCases; test++) {
+            StringBuilder s = new StringBuilder(in.next());
+            int min = Integer.parseInt(s.toString());
+            int max = min;
+            for (int i = 0; i < s.length(); i++) {
+                for (int j = i + 1; j < s.length(); j++) {
+                    swap(s, i, j);
+                    if (s.charAt(0) == '0') {
+                        swap(s, i, j);
+                        continue;
+                    }
+                    int n = Integer.parseInt(s.toString());
+                    if (n > max) {
+                        max = n;
+                    }
+                    if (n < min) {
+                        min = n;
+                    }
+                    swap(s, i, j);
+                }
+            }
+            out.printf("Case #%d: %d %d\n", test, min, max);
+        }
+
+
+    }
+*/

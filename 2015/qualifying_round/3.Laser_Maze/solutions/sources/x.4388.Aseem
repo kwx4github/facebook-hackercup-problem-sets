@@ -1,0 +1,149 @@
+#include <iostream>
+#include <algorithm>
+#include <cstring>
+#include <queue>
+#include <vector>
+#include <cstdio>
+
+#define F first
+#define S second
+
+using namespace std;
+char maze[110][100];
+int attack[110][110][4];
+bool visited[110][110][4];
+int M,N;
+
+typedef pair<int,int> pi;
+
+bool isturret(int i,int j) {
+    if (maze[i][j] == '<' || maze[i][j] == '>' || maze[i][j] == '^' || maze[i][j] == 'v')
+        return true;
+    return false;
+}
+
+void setAttackUp(int x,int y, int mod) {
+    while(x-1>=0 && maze[--x][y]=='.') {
+        attack[--x][y][mod] = true;
+    }    
+}
+
+void setAttackRight(int x,int y, int mod) {
+    while(y+1<N && maze[x][++y] =='.') {
+        attack[x][y][mod] = true; ;
+    }
+}
+
+void setAttackDown(int x,int y, int mod) {
+    while(x+1<M && maze[++x][y] =='.') {
+        attack[x][y][mod] = true;
+    }
+}
+
+void setAttackLeft(int x,int y,int mod) {
+    while(y-1>=0 && maze[x][--y]== '.') {
+        attack[x][y][mod] = true;
+    }
+}
+
+void setAttack(int i, int j) {
+    if (maze[i][j] == '^') {
+        setAttackUp(i,j,0);
+        setAttackRight(i,j,1);
+        setAttackDown(i,j,2);
+        setAttackLeft(i,j,3);
+    }
+    if (maze[i][j] == '>') {
+        setAttackUp(i,j,3);
+        setAttackRight(i,j,0);
+        setAttackDown(i,j,1);
+        setAttackLeft(i,j,2);
+    }
+    if (maze[i][j] == 'v') {
+        setAttackUp(i,j,2);
+        setAttackRight(i,j,3);
+        setAttackDown(i,j,0);
+        setAttackLeft(i,j,1);
+    }
+    if (maze[i][j] == '<') {
+        setAttackUp(i,j,1);
+        setAttackRight(i,j,2);
+        setAttackDown(i,j,3);
+        setAttackLeft(i,j,0);
+    }
+}
+
+void addNodes(int x,int y, int dist, queue<pi>& bfsque) {
+    int nxt = (dist+1)%4;
+    if (x-1>=0 && maze[x-1][y] =='.' && !visited[x-1][y][nxt] && !(attack[x-1][y][nxt]))
+        bfsque.push(pi(x-1,y));
+    if (y-1>=0 && maze[x][y-1] =='.' && !visited[x][y-1][nxt] && !(attack[x][y-1][nxt]))
+        bfsque.push(pi(x,y-1));
+    if (x+1<M && maze[x+1][y] =='.' && !visited[x+1][y][nxt] && !(attack[x+1][y][nxt]))
+        bfsque.push(pi(x+1,y));    
+    if (y+1<N && maze[x][y+1] =='.' && !visited[x][y+1][nxt] && !(attack[x][y+1][nxt]))
+        bfsque.push(pi(x,y+1));    
+}
+
+int solve() {
+    vector<pi>turrets;
+    pi start, finish;
+    for(int i=0;i<M;i++)for(int j=0;j<N;j++) {
+        if (isturret(i,j))
+            turrets.push_back(pi(i,j));
+        if (maze[i][j] == 'S') {
+            start = pi(i,j);
+            maze[i][j] = '.';
+            //cout<<"Start is " << start.F<<" "<<start.S<<"\n";
+        }
+        if (maze[i][j] == 'G') {
+            finish = pi(i,j);
+            maze[i][j] = '.';
+            //cout<<"Start is " << finish.F<<" "<<finish.S<<"\n";
+        }
+    }
+    
+    for(int j=turrets.size() - 1;j>=0;j--) {
+        setAttack(turrets[j].F, turrets[j].S);
+    }
+    
+    queue<pi> bfsque;
+    bfsque.push(start);
+    for(int dist = 0;!bfsque.empty(); ++dist) {
+        int sz = bfsque.size();
+        // cout<<dist<<" "<<sz<<"\n";
+        for(int i=0;i<sz;i++) {
+            pi node = bfsque.front();
+            bfsque.pop();
+            // cout<<"node is " << node.F<<" "<<node.S<<"\n";
+            if (visited[node.F][node.S][dist%4])
+                continue;
+            if (node.F == finish.F && node.S == finish.S)
+                return dist;
+            visited[node.F][node.S][dist%4] = true;
+            addNodes(node.F,node.S,dist,bfsque);
+        }
+    }
+    return -1;
+}
+
+int main() {
+    freopen("input.txt", "r",stdin);
+    freopen("answerMaze.txt", "w",stdout);
+    int T;
+    scanf("%d",&T);
+    for(int kases=1;kases<=T;++kases) {
+        printf("Case #%d: ",kases);
+        scanf("%d%d",&M,&N);
+        for(int i=0;i<M;i++)scanf("%s",maze[i]);
+        memset(attack,0, sizeof(attack));
+        memset(visited,false,sizeof(visited));
+        int ans = solve();
+        if (ans == -1) {
+            printf("impossible\n");
+        } else {
+            printf("%d\n",ans);
+        }
+    }
+return 0;
+}

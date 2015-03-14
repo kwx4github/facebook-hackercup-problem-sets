@@ -1,0 +1,263 @@
+#include<stdio.h>
+#include<string.h>
+#include<iostream>
+#include<algorithm>
+#include<vector>
+#include<stack>
+#include<queue>
+using namespace std;
+#ifndef for
+	#define for if (0) ; else for
+#endif
+#ifdef LOCAL_DEBUG
+	#define DEBUG
+#endif
+//This file only works in GNU C++
+#ifdef DEBUG
+	int _CALL_DEPTH=0;
+	struct _CALL_STACK
+	{
+		_CALL_STACK();
+		~_CALL_STACK();
+	};
+	#define _PRINT_STACK_TAB(number) if (number) printf("%5d:\t",__LINE__); else printf("\t"); for (int i=0;i<_CALL_DEPTH;i++) printf("\t");
+	#define VAR(f,x) _PRINT_STACK_TAB(true); printf("%s=\t" f "\n",#x,x);
+	#define MSG(format,...) _PRINT_STACK_TAB(true); printf(format "\n",##__VA_ARGS__);
+	#define FUNC _PRINT_STACK_TAB(true); printf("%s\n",__PRETTY_FUNCTION__); _CALL_STACK _call_stack; 
+	_CALL_STACK::_CALL_STACK()
+	{
+		_PRINT_STACK_TAB(false);
+		printf("{\n");
+		_CALL_DEPTH++;
+	}
+	_CALL_STACK::~_CALL_STACK()
+	{
+		_CALL_DEPTH--;
+		_PRINT_STACK_TAB(false);
+		printf("}\n");
+	}
+	void _REDIRECT(bool in,bool out)
+	{
+		const char * f=__FILE__;
+		int i;
+		for (i=strlen(f)-1;i>=0;i--)
+		{
+			if (f[i]=='.')
+			{
+				break;
+			}
+		}
+		char *p=new char[strlen(f)+10];
+		strncpy(p,f,i);
+		if (in)
+		{
+			strcpy(p+i,".in");
+			freopen(p,"r",stdin);
+		}
+		if (out)
+		{
+			strcpy(p+i,".out");
+			freopen(p,"w",stdout);
+		}
+		delete[] p;
+	}
+#else
+	//display a single variable, like
+	//	VAR("%d",x);
+	#define VAR
+	//display a message, like
+	//	MSG("a[%d]=%d",i,a[i]);
+	#define MSG
+	//put this line at the beginning of a function in order to update the indent of call stack
+	#define FUNC
+#endif
+const int W=110,H=W;
+char a[H][W];
+bool safe[H][W][4];
+int h,w;
+int yS,xS,yG,xG;
+void readMap() {
+	cin>>h>>w;
+	int i;
+	for (i=0;i<h;i++) {
+		cin>>a[i];
+	}
+	int y,x;
+	for (y=0;y<h;y++) {
+		for (x=0;x<w;x++) {
+			if (a[y][x]=='S') {
+				yS=y;
+				xS=x;
+			}
+			if (a[y][x]=='G') {
+				yG=y;
+				xG=x;
+			}
+		}
+	}
+}
+inline bool isEmpty(char c) {
+	return c=='.'||c=='S'||c=='G';
+}
+inline bool inMap(int y,int x) {
+	return y>=0&&y<h&&x>=0&&x<w;
+}
+int getDirection(char c) {
+	switch (c) {
+		case '>':
+			return 0;
+			break;
+		case '^':
+			return 1;
+			break;
+		case '<':
+			return 2;
+			break;
+		case 'v':
+			return 3;
+			break;
+		default:
+			return -1;
+			break;
+	}
+}
+int dy[]={0,-1,0,1},dx[]={1,0,-1,0};
+void calcSafe() {
+	int t;
+	for (t=0;t<4;t++) {
+		int y,x;
+		for (y=0;y<h;y++) {
+			for (x=0;x<w;x++) {
+				safe[y][x][t]=isEmpty(a[y][x]);
+			}
+		}
+		for (y=0;y<h;y++) {
+			for (x=0;x<w;x++) {
+				int d=getDirection(a[y][x]);
+				if (d>=0) {
+					d=(d+t*3)%4;
+					int x2,y2;
+					for (x2=x,y2=y;inMap(y2,x2);y2+=dy[d],x2+=dx[d]) {
+						safe[y2][x2][t]=false;
+					}
+				}
+			}
+		}
+	}
+}
+const int INF=1<<30;
+const int N=W*H*4+10,M=N*4;
+int head[N],dist[N],inqueue[N];
+int dest[M],nxt[M];
+int n,m;
+int gSrc,gDst;
+void addEdge(int s,int t) {
+	dest[m]=t;
+	nxt[m]=head[s];
+	head[s]=m;
+	m++;
+}
+int getNodeIndex(int y,int x,int t) {
+	return y*w*4+x*4+t;
+}
+void buildGraph() {
+	int i;
+	n=w*h*4+2;
+	for (i=0;i<n;i++) {
+		head[i]=-1;
+		dist[i]=INF;
+		inqueue[i]=0;
+	}
+	gSrc=n-2;
+	gDst=n-1;
+	m=0;
+	int y1,x1,t1,y2,x2,t2,d;
+	for (y1=0;y1<h;y1++) {
+		for (x1=0;x1<w;x1++) {
+			for (t1=0;t1<4;t1++) {
+				t2=(t1+1)%4;
+				for (d=0;d<4;d++) {
+					y2=y1+dy[d];
+					x2=x1+dx[d];
+					if (safe[y1][x1][t1]&&inMap(y2,x2)&&safe[y2][x2][t2]) {
+						addEdge(getNodeIndex(y1,x1,t1),getNodeIndex(y2,x2,t2));
+					}
+				}
+			}
+		}
+	}
+	for (d=0;d<4;d++) {
+		y2=yS+dy[d];
+		x2=xS+dx[d];
+		t2=1;
+		if (inMap(y2,x2)&&safe[y2][x2][t2]) {
+			addEdge(gSrc,getNodeIndex(y2,x2,t2));
+		}
+	}
+	for (t1=0;t1<4;t1++) {
+		x1=xG;
+		y1=yG;
+		addEdge(getNodeIndex(y1,x1,t1),gDst);
+	}
+}
+void myPushFront(deque<int> &q,int x) {
+	q.push_front(x);
+	inqueue[x]=1;
+}
+void myPushBack(deque<int> &q,int x) {
+	q.push_back(x);
+	inqueue[x]=1;
+}
+int myPop(deque<int> &q) {
+	int x=q.front();
+	q.pop_front();
+	inqueue[x]=0;
+}
+void spfa() {
+	deque<int> q;
+	myPushBack(q,gSrc);
+	dist[gSrc]=0;
+	while (!q.empty()) {
+		int v=myPop(q);
+		int i;
+		for (i=head[v];i!=-1;i=nxt[i]) {
+			int t=dest[i];
+			if (dist[v]+1<dist[t]) {
+				dist[t]=dist[v]+1;
+				if (!inqueue[t]) {
+					if (!q.empty()&&dist[t]<dist[q.front()]) {
+						myPushFront(q,t);
+					}
+					else {
+						myPushBack(q,t);
+					}
+				}
+			}
+		}
+	}
+};
+int main()
+{
+	#ifdef DEBUG
+	_REDIRECT(1,1);
+	#else
+	ios::sync_with_stdio(false);
+	#endif
+	int t,ti;
+	cin>>t;
+	for (ti=1;ti<=t;ti++) {
+		readMap();
+		calcSafe();
+		buildGraph();
+		spfa();
+		int d=dist[gDst];
+		if (d==INF) {
+			cout<<"Case #"<<ti<<": "<<"impossible"<<endl;
+		}
+		else {
+			cout<<"Case #"<<ti<<": "<<d-1<<endl;
+		}
+	}
+	return 0;
+}
+

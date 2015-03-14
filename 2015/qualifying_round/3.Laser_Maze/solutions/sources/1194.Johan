@@ -1,0 +1,113 @@
+
+#include <iostream>
+#include <vector>
+#include <cstring>
+
+void dijkstra(std::vector<std::vector<int> > const & g, std::vector<int> & d, int s, int bound) {
+	int N = g.size();
+	for (int i = 0; i < N; ++i)
+		d[i] = bound;
+	d[s] = 0;
+	bool modified = true;
+	while (modified) {
+		modified = false;
+		for (int i = 0; i < N; ++i)
+			for (int j : g[i])
+				if (d[j] > d[i] + 1) {
+					d[j] = d[i] + 1;
+					modified = true;
+				}
+	}
+}
+
+int main() {
+	int N;
+	std::cin >> N;
+	for (int n = 1; n <= N; ++n) {
+		// Read maze
+		int H, W;
+		std::cin >> H >> W;
+		char maze[H + 2][W + 3];
+		int sx = 0, sy = 0, gx = 0, gy = 0;
+		for (int y = 0; y < H + 2; ++y) {
+			for (int x = 0; x < W + 2; ++x)
+				maze[y][x] = '#';
+			maze[y][W + 2] = '\0';
+		}
+		for (int y = 1; y <= H; ++y) {
+			int c;
+			while ((c = std::cin.get()), !strchr(".#SG<>^v", c));
+			for (int x = 1; x <= W; ++x) {
+				if (c == 'S') {
+					sx = x;
+					sy = y;
+					c = '.';
+				} else if (c == 'G') {
+					gx = x;
+					gy = y;
+					c = '.';
+				}
+				maze[y][x] = c;
+				c = std::cin.get();
+			}
+		}
+		// Build 4 mazes using turret sight as walls
+		char mazes[4][H + 2][W + 3];
+		for (int m = 0; m < 4; ++m)
+			for (int y = 0; y < H + 2; ++y) {
+				for (int x = 0; x < W + 2; ++x)
+					mazes[m][y][x] = maze[y][x] == '.' ? '.' : '#';
+				mazes[m][y][W + 2] = '\0';
+			}
+		for (int x = 1; x <= W; ++x)
+			for (int y = 1; y <= H; ++y) {
+				int d;
+				switch (maze[y][x]) {
+					case '>': d = 0; break;
+					case '^': d = 1; break;
+					case '<': d = 2; break;
+					case 'v': d = 3; break;
+					default: continue;
+				}
+				for (int t = 1; maze[y][x + t] == '.'; ++t)
+					mazes[(d + 0) % 4][y][x + t] = '#';
+				for (int t = 1; maze[y + t][x] == '.'; ++t)
+					mazes[(d + 1) % 4][y + t][x] = '#';
+				for (int t = 1; maze[y][x - t] == '.'; ++t)
+					mazes[(d + 2) % 4][y][x - t] = '#';
+				for (int t = 1; maze[y - t][x] == '.'; ++t)
+					mazes[(d + 3) % 4][y - t][x] = '#';
+			}
+		// Build graph
+		std::vector<std::vector<int> > graph;
+		graph.resize(4 * (H + 2) * (W + 2));
+		#define ID(m, y, x) (((m) % 4) * (H + 2) * (W + 2) + (y) * (W + 2) + (x))
+		for (int m = 0; m < 4; ++m)
+			for (int x = 1; x <= W; ++x)
+				for (int y = 1; y <= H; ++y) {
+					if (mazes[(m + 1) % 4][y][x + 1] == '.')
+						graph[ID(m, y, x)].push_back(ID(m + 1, y, x + 1));
+					if (mazes[(m + 1) % 4][y + 1][x] == '.')
+						graph[ID(m, y, x)].push_back(ID(m + 1, y + 1, x));
+					if (mazes[(m + 1) % 4][y][x - 1] == '.')
+						graph[ID(m, y, x)].push_back(ID(m + 1, y, x - 1));
+					if (mazes[(m + 1) % 4][y - 1][x] == '.')
+						graph[ID(m, y, x)].push_back(ID(m + 1, y - 1, x));
+				}
+		// Find shortest path
+		std::vector<int> dists;
+		dists.resize(graph.size());
+		int bound = dists.size() * dists.size();
+		dijkstra(graph, dists, ID(0, sy, sx), bound);
+		int best = bound;
+		for (int m = 0; m < 4; ++m)
+			if (best > dists[ID(m, gy, gx)])
+				best = dists[ID(m, gy, gx)];
+		std::cout << "Case #" << n << ": ";
+		if (best == bound)
+			std::cout << "impossible";
+		else
+			std::cout << best;
+		std::cout << std::endl;
+	}
+}

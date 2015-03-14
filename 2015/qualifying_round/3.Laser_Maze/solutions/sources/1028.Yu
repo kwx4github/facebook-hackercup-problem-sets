@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+from Queue import PriorityQueue
+
+moves = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+turrets = ['^', '>', 'v', '<']
+direction = dict(zip(turrets, moves))
+rotation = dict(zip(turrets, turrets[1:] + turrets[:1]))
+
+def solve(maze):
+    H = len(maze) + 2
+    W = len(maze[0]) + 2
+    maze = [['#'] * W] + [['#'] + list(r) + ['#'] for r in maze] + [['#'] * W]
+    safe = []
+    for r in xrange(4):
+        field = [[False] * W for i in xrange(H)]
+        for i in xrange(H):
+            for j in xrange(W):
+                if maze[i][j] in ('.', 'S', 'G'):
+                    field[i][j] = True
+        for i in xrange(H):
+            for j in xrange(W):
+                if maze[i][j] in turrets:
+                    d = direction[maze[i][j]]
+                    y = i + d[0]
+                    x = j + d[1]
+                    while maze[y][x] in ('.', 'S', 'G'):
+                        field[y][x] = False
+                        y += d[0]
+                        x += d[1]
+        safe.append(field)
+        for i in xrange(H):
+            for j in xrange(W):
+                if maze[i][j] in turrets:
+                    maze[i][j] = rotation[maze[i][j]]
+    visited = [[[False] * W for i in xrange(H)] for j in xrange(4)]
+    pq = PriorityQueue()
+    for i in xrange(H):
+        for j in xrange(W):
+            if maze[i][j] == 'S':
+                pq.put((0, 0, i, j))
+    while not pq.empty():
+        s, r, y, x = pq.get()
+        if not visited[r][y][x] and safe[r][y][x] or s == 0:
+            visited[r][y][x] = True
+            if maze[y][x] == 'G':
+                return str(s)
+            for move in moves:
+                pq.put((s + 1, (r + 1) % 4, y + move[0], x + move[1]))
+    return 'impossible'
+
+if __name__ == '__main__':
+    T = int(raw_input())
+    for i in xrange(1, T + 1):
+        M, N = map(int, raw_input().split())
+        maze = [list(raw_input()) for j in xrange(M)]
+        print 'Case #%d: %s' % (i, solve(maze))

@@ -1,0 +1,193 @@
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+
+public class Q3 {
+	static String inFile = "in.txt";
+	static String outFile = "Q3_out.txt";
+	static InputStreamReader isr;
+	static BufferedReader br;
+	static PrintWriter pw;
+
+	static int gint() throws NumberFormatException, IOException {
+		return Integer.parseInt(br.readLine());
+	}
+
+	static int[] ginta() throws NumberFormatException, IOException {
+		String l = br.readLine();
+		String[] v = l.split(" ");
+		int[] a = new int[v.length];
+
+		for (int i = 0; i < a.length; i++) {
+			a[i] = Integer.parseInt(v[i]);
+		}
+
+		return a;
+	}
+
+	static int[][] m;
+	public static void main(String[] args) throws NumberFormatException,
+			IOException {
+		isr = new InputStreamReader(new FileInputStream(inFile));
+		br = new BufferedReader(isr);
+		pw = new PrintWriter(outFile);
+
+		int t = gint();
+		for (int i = 1; i <= t; i++) {
+			int[] dim = ginta();
+			int rows = dim[0];
+			int cols = dim[1];
+			m = new int[rows][cols];
+			int[] s = new int[2];
+			int[] g = new int[2];
+			for (int j = 0; j < rows; j++) {
+				char[] row = br.readLine().toCharArray();
+				for (int k = 0; k < row.length; k++) {
+					switch (row[k]) {
+					case '#':
+						m[j][k] = 5;
+						break;
+					case 'S':
+						s[0] = j;
+						s[1] = k;
+						break;
+					case 'G':
+						g[0] = j;
+						g[1] = k;
+						break;
+					case '^':
+						m[j][k] = 1;
+						break;
+					case '>':
+						m[j][k] = 2;
+						break;
+					case 'v':
+						m[j][k] = 3;
+						break;
+					case '<':
+						m[j][k] = 4;
+						break;
+					}
+				}
+			}
+
+			String al = solve(i, m, s, g);
+			pw.println(al);
+		}
+		
+		pw.close();
+	}
+
+	static String solve(int casen, int[][] m, int[] s, int[] g) {
+		int ans = 0;
+		
+		if (!(s[0] == g[0] && s[1] == g[1])) {
+			ans = -1;
+			HashSet<Integer> visited = new HashSet<Integer>();
+			LinkedList<Integer> frontier = new LinkedList<Integer>();
+			HashMap<Integer, Integer> shortest = new HashMap<Integer, Integer>();
+			
+			int ss = enc(s[0], s[1], 0);
+			frontier.add(ss);
+			visited.add(ss);
+			shortest.put(ss, 0);
+
+			while(!frontier.isEmpty() && ans == -1) {
+				int cs = frontier.removeFirst();
+				int[] c = dec(cs);
+				
+				for (int i = 0; i < 4; i++) {
+					int[] next = Arrays.copyOf(c, c.length);
+					next[0] = (next[0] + 1) % 4;
+					if(i == 0) next[1]--;
+					if(i == 1) next[2]++;
+					if(i == 2) next[1]++;
+					if(i == 3) next[2]--;
+					
+					int nec = enc(next);
+					if (!visited.contains(nec) && isSafe(next)) {
+						frontier.addLast(nec);
+						visited.add(nec);
+						shortest.put(nec, shortest.get(cs) + 1);
+						
+						if (next[1] == g[0] && next[2] == g[1]) {
+							ans = shortest.get(nec);
+							break;
+						}
+					}
+				}
+			}
+			
+		}
+
+		if (ans != -1) {
+			return String.format("Case #%d: %d", casen, ans);
+		} else {
+			return String.format("Case #%d: impossible", casen);
+		}
+	}
+	
+	static boolean isSafe(int[] s) {
+		int t = s[0];
+		int r = s[1];
+		int c = s[2];
+		
+		if (r < 0 || r >= m.length || c < 0 || c >= m[0].length) return false;
+		if (m[r][c] != 0) return false;
+		for (int i = r - 1; i >= 0; i--) {
+			if (m[i][c] > 0 && m[i][c] < 5) {
+				if ((m[i][c] - 1 + t) % 4 == 2) return false;
+				break;
+			}
+		}
+		
+		for (int i = r + 1; i < m.length; i++) {
+			if (m[i][c] != 0 && m[i][c] < 5) {
+				if ((m[i][c] - 1 + t) % 4 == 0) return false;
+				break;
+			}
+		}
+		
+		for (int i = c + 1; i < m[0].length; i++) {
+			if (m[r][i] != 0 && m[r][i] < 5) {
+				if ((m[r][i] - 1 + t) % 4 == 3) return false;
+				break;
+			}
+		}
+		
+		for (int i = c - 1; i >= 0; i--) {
+			if (m[r][i] != 0 && m[r][i] < 5) {
+				if ((m[r][i] - 1 + t) % 4 == 1) return false;
+				break;
+			}
+		}
+		
+		return true;
+	}
+
+	static int enc(int row, int col, int tp) {
+		return (tp * 1000 + row) * 1000 + col;
+	}
+
+	static int enc(int[] s) {
+		return (s[0] * 1000 + s[1]) * 1000 + s[2];
+	}
+
+	static int enc(int[] p, int tp) {
+		return (tp * 1000 + p[0]) * 1000 + p[2];
+	}
+
+	static int[] dec(int s) {
+		int[] st = new int[3];
+		st[0] = s / (1000 * 1000);
+		st[1] = (s - (st[0] * 1000000)) / 1000;
+		st[2] = s % 1000;
+		return st;
+	}
+}

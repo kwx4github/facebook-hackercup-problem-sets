@@ -1,0 +1,128 @@
+#undef NDEBUG
+#ifdef ssu1
+#define _GLIBCXX_DEBUG
+#endif
+
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <iostream>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+#include <deque>
+#include <queue>
+#include <bitset>
+#include <sstream>
+#include <typeinfo>
+#include <limits>
+
+using namespace std;
+
+const int dx[] = {0, 1, 0, -1};
+const int dy[] = {1, 0, -1, 0};
+const string dname = ">v<^";
+const int kMaxSize = 120;
+const int kInf = 1e9;
+
+typedef pair<int, int> Position;
+typedef pair<Position, int> State;
+
+int n, m;
+vector<string> a;
+bool bad[kMaxSize][kMaxSize][4];
+
+bool InBound(const Position& pos) {
+  return 0 <= pos.first && pos.first < n &&
+         0 <= pos.second && pos.second < m;
+}
+
+void SolveTest(int test_number) {
+  printf("Case #%d: ", test_number);
+  cin >> n >> m;
+  a = vector<string>(n);
+  for (string& row : a)
+    cin >> row;
+  Position start, end{kInf, kInf};
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (a[i][j] == 'S')
+        start = {i, j}, a[i][j] = '.';
+      if (a[i][j] == 'G')
+        end = {i, j}, a[i][j] = '.';
+    }
+  }
+  memset(bad, 0, sizeof bad);
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (a[i][j] != '.') {
+        memset(bad[i][j], true, 4);
+        if (a[i][j] != '#') {
+          int startdir = find(dname.begin(), dname.end(), a[i][j]) - dname.begin();
+          for (int add = 0; add < 4; add++) {
+            int curdir = (startdir + add) % 4;
+            Position curpos = {i + dx[curdir], j + dy[curdir]};
+            while (InBound(curpos) && a[curpos.first][curpos.second] == '.') {
+              bad[curpos.first][curpos.second][add] = true;
+              curpos.first += dx[curdir];
+              curpos.second += dy[curdir];
+            }
+          }
+        }
+      } 
+    }
+  }
+  map<State, int> dist;
+  queue<State> q;
+  q.push({start, 0});
+  dist[{start, 0}] = 0;
+  while (!q.empty()) {
+    State s = q.front();
+    q.pop();
+    for (int dir = 0; dir < 4; ++dir) {
+      int time = dist[s] + 1;
+      State ns = {{s.first.first + dx[dir], s.first.second + dy[dir]}, time % 4};
+      if (InBound(ns.first) && !bad[ns.first.first][ns.first.second][ns.second]) {
+        if (!dist.count(ns)) {
+          dist[ns] = time;
+          q.push(ns);
+        }
+      }
+    }
+  }
+  int answer = kInf;
+  for (int mod = 0; mod < 4; ++mod) {
+    if (dist.count({end, mod}))
+      answer = min(answer, dist[{end, mod}]);
+  }
+  if (answer != kInf) 
+    cout << answer << endl;
+  else
+    cout << "impossible" << endl;
+//  fprintf(stderr, "Case %d time: %f", test_number, ((double)clock()) / CLOCKS_PER_SEC);
+}
+
+int main() {
+#ifdef ssu1
+  assert(freopen("input.txt", "r", stdin));
+#endif
+
+  int test_number;
+  cin >> test_number;
+  for (int i = 1; i <= test_number; ++i) {
+    SolveTest(i);
+  }
+
+#ifdef ssu1
+  cerr << "\nTime = " << ((double)clock()) / CLOCKS_PER_SEC << endl;
+#endif    
+  return 0;
+}
+

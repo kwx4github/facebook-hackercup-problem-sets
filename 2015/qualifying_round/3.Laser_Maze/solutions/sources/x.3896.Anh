@@ -1,0 +1,141 @@
+#include<iostream>
+#include<cstdio>
+#include<cmath>
+#include<climits>
+#include<vector>
+#include<algorithm>
+#include<map>
+
+#define MIN(a, b) (((a) < (b))?(a):(b))
+#define MAX(a, b) (((a) > (b))?(a):(b))
+
+using namespace std;
+
+const char INPUT[] = "laser_maze.txt";
+const char OUTPUT[] = "HelloWorld.outp";
+
+const int MAX_ROW = 100 + 11;
+const int MAX_COL = 100 + 11;
+const int MAX_TIME = 4;
+const int MAX_DIRECT = 4;
+const int ROW_DIRECT[MAX_DIRECT] = {-1, 0, 1, 0};
+const int COL_DIRECT[MAX_DIRECT] = {0, 1, 0, -1};
+const int MAX_Q = 10000;
+
+int top, bottom, numQ;
+
+int queue[MAX_Q][3];
+
+void pushQ(int id, int row, int col){
+  ++ top; ++ numQ;
+  if (top >= MAX_Q){
+    top = 0;
+  }
+  queue[top][0] = id;
+  queue[top][1] = row;
+  queue[top][2] = col;
+}
+
+void popQ(int &id, int &row, int &col){
+  id = queue[bottom][0];
+  row = queue[bottom][1];
+  col = queue[bottom][2];
+  ++ bottom; -- numQ;
+  if (bottom >= MAX_Q){
+    bottom = 0;
+  }
+}
+
+char mat[MAX_ROW][MAX_COL];
+bool wall[MAX_ROW][MAX_COL][MAX_TIME];
+
+int main(void){
+  freopen(INPUT, "r", stdin);
+  freopen(OUTPUT, "w", stdout);
+  int num_test;
+  cin >> num_test;
+  for (int id_test = 0; id_test < num_test; ++ id_test){
+    int num_row, num_col;
+    cin >> num_row >> num_col;
+
+	for (int id_row = 0; id_row < num_row; ++ id_row){
+	  for (int id_col = 0; id_col < num_col; ++ id_col){
+	    for (int id_time = 0; id_time < MAX_TIME; ++ id_time){
+		  wall[id_row][id_col][id_time] = true;
+		}
+	    cin >> mat[id_row][id_col];
+	  }
+	}
+
+	int start_row = 0, start_col = 0;
+	int goal_row = 0, goal_col = 0;
+
+	for (int id_row = 0; id_row < num_row; ++ id_row){
+	  for (int id_col = 0; id_col < num_col; ++ id_col){
+	    char temp = mat[id_row][id_col];
+		if (temp == 'S'){
+		  start_row = id_row;
+		  start_col = id_col;
+		} else if (temp == 'G'){
+		  goal_row = id_row;
+		  goal_col = id_col;
+		} else if (temp == '#'){
+		  for (int id_time = 0; id_time < MAX_TIME; ++ id_time){
+		    wall[id_row][id_col][id_time] = false;
+		  }
+		} else if (temp == '^' || temp == '<' || temp == '>' || temp == 'v'){
+		  for (int id_time = 0; id_time < MAX_TIME; ++ id_time){
+		    wall[id_row][id_col][id_time] = false;
+		  }
+		  int id_time;
+		  if (temp == '^') id_time = 0;
+		  if (temp == '>') id_time = 3;
+		  if (temp == 'v') id_time = 2;
+		  if (temp == '<') id_time = 1;
+		  for (int id_direct = 0; id_direct < MAX_DIRECT; ++ id_direct){
+		    int id_row2 = id_row + ROW_DIRECT[id_direct];
+		    int id_col2 = id_col + COL_DIRECT[id_direct];
+			int temp2 = mat[id_row2][id_col2];
+			while (temp2 == '.' || temp2 == 'S' || temp2 == 'G'){
+			  wall[id_row2][id_col2][id_time] = false;
+			  id_row2 += ROW_DIRECT[id_direct];
+			  id_col2 += COL_DIRECT[id_direct];
+			  temp2 = mat[id_row2][id_col2];
+			}
+			id_time = (id_time + 1) % 4;
+		  }
+		}
+	  }
+	}
+
+    cout << "Case #" << id_test + 1 << ": ";
+	top = -1; bottom = 0; numQ = 0;
+	bool result_found = false;
+	pushQ(0, start_row, start_col);
+	while (numQ > 0){
+	  int curStep, curRow, curCol;
+	  popQ(curStep, curRow, curCol);
+	  if (curRow == goal_row && curCol == goal_col){
+	    cout << curStep << endl;
+	    result_found = true;
+		break;
+	  }
+	  wall[curRow][curCol][curStep % 4] = false;
+	  for (int id_direct = 0; id_direct < MAX_DIRECT; ++ id_direct){
+	    int id_row = curRow + ROW_DIRECT[id_direct];
+		int id_col = curCol + COL_DIRECT[id_direct];
+		int id_step = curStep + 1;
+		if (id_row >= 0 && id_col >= 0
+		  && id_row < num_row && id_col < num_col
+          && wall[id_row][id_col][id_step % 4] == true){
+          pushQ(id_step, id_row, id_col);
+		}
+	  }
+	}
+	if (! result_found){
+      cout << "impossible" << endl;
+	}
+  }
+
+  return 0;
+}

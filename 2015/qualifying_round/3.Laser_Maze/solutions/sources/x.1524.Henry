@@ -1,0 +1,371 @@
+#include <stdio.h>
+
+#define MAX_STEPS 9999
+#define yeah 1
+
+int min_steps = MAX_STEPS;
+int steps;
+int pos_x,pos_y;
+int end_pos_x,end_pos_y;
+int t,m,n;
+char maze[200][200];
+
+int start_min_steps;
+
+int num_laser;
+
+int laser_x[1000];
+int laser_y[1000];
+int laser_d[1000];
+int visited[100][100][4];
+int path_x[1000];
+int path_y[1000];
+
+// return 1 : you are dead
+int check_single_laser(int your_x,int your_y,int lx,int ly, int d)
+{
+	int dx=0;
+	int dy=0;
+
+/*
+			if (maze[y][x] == '^')
+			laser_d[num_laser]=0;
+			else
+			if (maze[y][x] == '>')
+			laser_d[num_laser]=1;
+			else
+			if (maze[y][x] == 'v')
+			laser_d[num_laser]=2;
+			else
+			if (maze[y][x] == '<')
+			laser_d[num_laser]=3;
+*/
+
+	if (d == 0)
+	{
+		dx=0;
+		dy=-1;
+	}
+	else
+	if (d == 1)
+	{
+		dx=1;
+		dy=0;
+	}
+	else
+	if (d == 2)
+	{
+		dx=0;
+		dy=1;
+	}
+	else
+	if (d == 3)
+	{
+		dx=-1;
+		dy=0;
+	}
+
+	// laser in your position
+	if ((your_x != lx) && (your_y != ly))
+	{
+		return 0;
+	}
+
+	lx += dx;
+	ly += dy;
+		//printf("lx:%d ly:%d\n",lx,ly);
+	while ( (lx >= 0) && (ly >= 0) && (ly < m) && (lx < n) )
+	{
+		//printf("lx:%d ly:%d your_x:%d your_y:%d\n",lx,ly,your_x,your_y);
+
+		if ((your_x == lx) && (your_y == ly))
+		{
+			return 1;
+		}
+		
+		if ( (maze[ly][lx] == 'G') || (maze[ly][lx] == '.') || (maze[ly][lx] == 'S') )
+		{
+			lx += dx;
+			ly += dy;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
+// return 1 : you are dead
+int check_all_laser(int your_x,int your_y,int steps)
+{
+	//return 0;
+
+	int i,r;
+
+	for (i=0; i < num_laser; i++)
+	{
+		r=check_single_laser(your_x,your_y,laser_x[i],laser_y[i],(laser_d[i] + steps) % 4);
+		//printf("laser_x: %d, laser_y: %d\n",laser_x[i],laser_y[i]);
+		if (r > 0)
+		{
+			//printf("dead\n");
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+void print_visited()
+{
+	int x,y;
+
+	for (y=0; y < m; y++)
+	{
+		for (x=0; x < n; x++)
+		if (end_pos_x == x && end_pos_y == y)
+		printf("G");
+		else
+		if (maze[y][x] != '.')
+		printf("%c",maze[y][x]);
+		else
+		printf("%d",visited[y][x][0]);
+		printf("\n");
+	}
+
+}
+
+void print_path()
+{
+	int i,distance;
+	for (i=0; i < min_steps; i++)
+	{
+		distance = abs(path_x[i] - end_pos_x) + abs(path_y[i] - end_pos_y);
+		printf("steps:%d(%d) x:%d y:%d distance:%d\n",i,i%4,path_x[i],path_y[i],distance);
+	}
+}
+
+int abs(int v)
+{
+	if (v < 0)
+	return -v;
+	else
+	return v;
+}	
+
+
+void search_dfs(int steps,int x,int y,int limit_max)
+{
+	int i,j,k,distance;
+	int walk_x[4];
+	int walk_y[4];
+	int walk_v[4];
+
+	if (steps > limit_max)
+	return;
+
+	if (steps > min_steps)
+	return;
+
+
+	// impossible movement
+	if ( (x < 0) || (x >= n) || (y < 0) || (y >= m) )
+	return ;
+
+	if ( (maze[y][x] == '#') || (maze[y][x] == '^') || (maze[y][x] == '>') || (maze[y][x] == '<') || (maze[y][x] == 'v') )
+	return ;
+
+	distance = abs(x - end_pos_x) + abs(y - end_pos_y);
+
+	// quit when solution is found
+	if (min_steps < MAX_STEPS)
+	{
+		//printf("steps:%d x:%d y:%d\n",steps,x,y);
+		return;
+	}
+
+	// impossible to run
+	if (steps+distance > limit_max)
+	{
+		return;
+	}
+
+	//printf("steps:%d x:%d y:%d distance:%d\n",steps,x,y,distance);
+
+	// visited before (prevent repeat steps)
+	if ( visited[y][x][steps % 4] > 0)
+	{
+		//printf("visited before steps:%d x:%d y:%d distance:%d\n",steps,x,y,distance);	
+		return ;
+	}
+
+
+
+
+//printf("steps: %d x: %d y: %d end_x: %d end_y: %d limit: %d min_steps: %d distance: %d\n",steps,x,y,end_pos_x,end_pos_y,limit_max,min_steps,distance);
+//print_visited();
+
+	if (steps > 0)
+	{
+		if (check_all_laser(x,y,steps))
+		{
+			return;
+		}
+	}
+
+
+	visited[y][x][steps % 4] = 1;
+
+	path_x[steps] = x;
+	path_y[steps] = y;
+
+	if ( maze[y][x] == 'G' )
+	{
+		if (steps < min_steps )
+		min_steps = steps;
+		//printf("arrive steps:%d\n",steps);
+		//printf("steps:%d x:%d y:%d\n",steps,x,y);
+		return;
+	}
+
+
+// path for next steps
+
+	walk_x[0] = 1;
+	walk_y[0] = 0;
+
+	walk_x[1] = -1;
+	walk_y[1] = 0;
+
+	walk_x[2] = 0;
+	walk_y[2] = 1;
+
+	walk_x[3] = 0;
+	walk_y[3] = -1;
+
+	for (i=0; i < 4; i++)
+	walk_v[i] = abs(x + walk_x[i] - end_pos_x) + abs(y + walk_y[i] - end_pos_y);
+
+
+	//printf("steps:%d j:%d limit_max:%d\n",steps,j,limit_max);
+
+	// bubble sort	
+	for (j=1; j < 4; j++)
+	for (i=0; i < 4-j; i++)
+	if (walk_v[i] > walk_v[i+1])
+	{
+		k = walk_v[i+1];
+		walk_v[i+1] = walk_v[i];
+		walk_v[i] = k;
+
+		k = walk_x[i+1];
+		walk_x[i+1] = walk_x[i];
+		walk_x[i] = k;
+
+		k = walk_y[i+1];
+		walk_y[i+1] = walk_y[i];
+		walk_y[i] = k;
+	}
+
+	//for (i=0; i < 4; i++)
+	//printf("walk_v[%d]=%d x=%d y=%d\n",i,walk_v[i],walk_x[i],walk_y[i]);
+	
+
+	search_dfs(steps+1,x+walk_x[0],y+walk_y[0],limit_max);
+	search_dfs(steps+1,x+walk_x[1],y+walk_y[1],limit_max);
+	search_dfs(steps+1,x+walk_x[2],y+walk_y[2],limit_max);
+	search_dfs(steps+1,x+walk_x[3],y+walk_y[3],limit_max);
+
+	//visited[y][x][steps % 4] = 0;
+
+
+}
+
+int main()
+{
+	int i,j,k;
+	int x,y,z;
+
+	scanf("%d",&t);
+	for (i=0; i < t; i++)
+	{
+		scanf("%d %d",&m,&n);
+		for (j=0; j < m; j++)
+		scanf("%s",maze[j]);
+
+		num_laser = 0;
+		min_steps = MAX_STEPS;
+
+		for (y=0; y < m; y++)
+		for (x=0; x < n; x++)
+		if (maze[y][x] == 'S')
+		{
+			pos_x = x;
+			pos_y = y;
+			//printf("start x:%d y:%d\n",x,y);
+		}
+		else
+		if (maze[y][x] == 'G')
+		{
+			end_pos_x = x;
+			end_pos_y = y;
+			//printf("target x:%d y:%d\n",x,y);
+		}
+		else
+		if ( (maze[y][x] == '^') || (maze[y][x] == '>') || (maze[y][x] == 'v') || (maze[y][x] == '<') )
+		{
+
+			laser_x[num_laser]=x;
+			laser_y[num_laser]=y;
+
+			if (maze[y][x] == '^')
+			laser_d[num_laser]=0;
+			else
+			if (maze[y][x] == '>')
+			laser_d[num_laser]=1;
+			else
+			if (maze[y][x] == 'v')
+			laser_d[num_laser]=2;
+			else
+			if (maze[y][x] == '<')
+			laser_d[num_laser]=3;
+			
+			num_laser++;
+		}
+
+		start_min_steps = abs(pos_x - end_pos_x) + abs(pos_y - end_pos_y);
+
+		//search_dfs(0,pos_x,pos_y);
+		//k = start_min_steps+1;
+		k = MAX_STEPS;
+		k = 34;
+		for (k=start_min_steps; k < MAX_STEPS; k++)
+		{
+//			printf("trying k=%d\n",k);
+			for (x=0; x < 100; x++)
+			for (y=0; y < 100; y++)
+			for (z=0; z < 4; z++)
+			{
+				visited[y][x][z] = 0;
+			}
+
+			search_dfs(0,pos_x,pos_y,k);
+			if (min_steps < MAX_STEPS)
+			k = MAX_STEPS;
+		}
+
+
+		if (min_steps >= MAX_STEPS)
+		printf("Case #%d: impossible\n",i+1);
+		else
+		//printf("Case #%d: %d %d\n",i+1,min_steps,start_min_steps);
+		printf("Case #%d: %d\n",i+1,min_steps);
+
+		//print_path();
+	}
+
+
+	return 0;
+}

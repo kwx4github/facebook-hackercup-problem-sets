@@ -1,0 +1,147 @@
+#!/usr/bin/env python
+
+import sys
+from copy import deepcopy
+from collections import deque, defaultdict
+from pprint import pprint
+
+EMPTY = '.'
+WALL = '#'
+START = 'S'
+GOAL = 'G'
+TURRET_UP = '^'
+TURRET_RIGHT = '>'
+TURRET_DOWN = 'v'
+TURRET_LEFT = '<'
+TURRET_FIRE = 'o'
+TURRETS = set([TURRET_UP, TURRET_RIGHT, TURRET_DOWN, TURRET_LEFT])
+TURRETS_ORDERED = [TURRET_UP, TURRET_RIGHT, TURRET_DOWN, TURRET_LEFT]
+PASSABLE = set([EMPTY, START, GOAL])
+TURRETABLE = set([EMPTY, START, GOAL, TURRET_FIRE])
+MOD = 4
+OP_UP = 0
+OP_RIGHT = 1
+OP_DOWN = 2
+OP_LEFT = 3
+
+def main():
+  fi = sys.stdin
+  #fi = open('laser_maze.txt')
+  fo = sys.stdout
+  caseCount = int(fi.readline().strip())
+  for i in range(1, caseCount+1):
+    maze, r, c = readInput(fi)
+    solution = solve(maze, r, c)
+    displayAndClear(fo, i, solution)
+
+def readInput(f):
+  r, c = [int(arg) for arg in f.readline().split()]
+  maze = []
+  for i in xrange(r):
+    maze.append(list(f.readline().strip()))
+  return maze, r, c
+
+def displayAndClear(f, i, solution):
+  if solution == -1:
+    f.write('Case #%d: %s\n' % (i, 'impossible'))
+  else:
+    f.write('Case #%d: %d\n' % (i, solution))
+  f.flush()
+
+def solve(maze, rCount, cCount):
+  firedMazes = []
+  for i in xrange(0, MOD):
+    firedMaze = prepareMaze(maze, rCount, cCount, i)
+    firedMazes.append(firedMaze)
+
+  startR, startC = find(maze, START)
+  return bfs(firedMazes, rCount, cCount, startR, startC)
+
+def prepareMaze(maze, rCount, cCount, time):
+  maze = deepcopy(maze)
+  for i in xrange(rCount):
+    for j in xrange(cCount):
+      if maze[i][j] in TURRETS:
+        maze[i][j] = rotateTurret(maze[i][j], time)
+        drawTurretLine(maze, rCount, cCount, i, j)
+  return maze
+
+def rotateTurret(turret, time):
+  i = TURRETS_ORDERED.index(turret)
+  return TURRETS_ORDERED[(i + time) % MOD]
+
+def drawTurretLine(maze, rCount, cCount, i, j):
+  if maze[i][j] == TURRET_UP:
+    followTurretFire(maze, rCount, cCount, i-1, j, -1, 0)
+  elif maze[i][j] == TURRET_RIGHT:
+    followTurretFire(maze, rCount, cCount, i, j+1, 0, 1)
+  elif maze[i][j] == TURRET_DOWN:
+    followTurretFire(maze, rCount, cCount, i+1, j, 1, 0)
+  elif maze[i][j] == TURRET_LEFT:
+    followTurretFire(maze, rCount, cCount, i, j-1, 0, -1)
+
+def followTurretFire(maze, rCount, cCount, i, j, rDiff, cDiff):
+  while i >= 0 and i < rCount and j >= 0 and j < cCount:
+    if maze[i][j] in PASSABLE:
+      maze[i][j] = TURRET_FIRE
+    elif maze[i][j] not in TURRETABLE:
+      break
+    i += rDiff
+    j += cDiff
+
+def bfs(mazes, rLimit, cLimit, startR, startC):
+  q = deque()
+  q.append((startR, startC, 0))
+  parent = {}
+  parent[startR, startC, 0] = (-1, -1, -1)
+
+  while q:
+    row, col, time = q.popleft()
+    maze = mazes[time]
+
+    if maze[row][col] == GOAL:
+      return findPathLength(parent, row, col, time)
+
+    nxtTime = (time + 1) % MOD
+    nxtMaze = mazes[nxtTime]
+    for nxtRow, nxtCol, nxtOp in generateSteps(row, col, nxtMaze, rLimit, cLimit):
+      if (nxtRow, nxtCol, nxtTime) not in parent:
+        parent[nxtRow, nxtCol, nxtTime] = row, col, time
+        q.append((nxtRow, nxtCol, nxtTime))
+
+  return -1
+
+def find(maze, block):
+  for i, r in enumerate(maze):
+    for j, c in enumerate(r):
+      if c == block:
+        return i, j
+  return -1, -1
+
+def generateSteps(r, c, nxtMaze, rLimit, cLimit):
+  if r+1 < rLimit and nxtMaze[r+1][c] in PASSABLE:
+    yield r+1, c, OP_DOWN
+  if c+1 < cLimit and nxtMaze[r][c+1] in PASSABLE:
+    yield r, c+1, OP_RIGHT
+  if r-1 >= 0 and nxtMaze[r-1][c] in PASSABLE:
+    yield r-1, c, OP_UP
+  if c-1 >= 0 and nxtMaze[r][c-1] in PASSABLE:
+    yield r, c-1, OP_LEFT
+
+def findPathLength(parent, row, col, time):
+  length = 0
+  cur = row, col, time
+  while True:
+    cur = parent[cur]
+    if cur == (-1, -1, -1):
+      break
+    length += 1
+  return length
+
+def printMaze(maze):
+  for r in maze:
+    print r
+
+if __name__ == '__main__':
+  main()
+

@@ -1,0 +1,152 @@
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <iosfwd>
+#include <algorithm>
+#include <iterator>
+#include <vector>
+#include <list>
+#include <deque>
+#include <map>
+#include <set>
+#include <numeric>
+#include <limits>
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <climits>
+using namespace std;
+
+#define MP(a,b) make_pair((a),(b))
+#define FOR(i,n) for(int i = 0;i <(int)(n); i++)
+#define REP(i,n,m) for(int i =(int)(n);i<(int)(m);i++)
+#define MF(a,b) memset((a), (b), sizeof((a)))
+typedef pair<int,int> ipair;
+typedef pair<double,double> dpair;
+typedef long long int64;
+
+const int MAX_N = 101;
+char maze[MAX_N][MAX_N];
+int state[5][MAX_N][MAX_N];
+int mask[MAX_N][MAX_N];
+
+const int dx[4] = {-1,0,1,0};
+const int dy[4] = {0,-1,0,1};
+const string dirs = "<^>v";
+
+int index(char c){
+    FOR(i, 4)if(c == dirs[i])return i;
+    return -1;
+}
+
+void init(int m,int n,
+          vector<ipair> wallPos,
+          vector<ipair> laserPos){
+    FOR(i, m)FOR(j, n)FOR(k, 5)state[k][i][j]=0;
+    for(auto p:wallPos)FOR(i, 5)state[i][p.first][p.second]=1;
+    for(auto p:laserPos)FOR(i, 5)state[i][p.first][p.second]=1;
+    
+    for(auto p:laserPos){
+        int org = index(maze[p.first][p.second]);
+        int x,y,nx,ny;
+        FOR(i, 4){
+            int d = (org+i)%4;
+            y=p.first;
+            x=p.second;
+            while(true){
+                nx=x+dx[d];
+                ny=y+dy[d];
+                if (nx<0||ny<0||nx>=n||ny>=m
+                    ||state[4][ny][nx]==1) {
+                    break;
+                }
+                state[i][ny][nx]=1;
+                x=nx;
+                y=ny;
+            }
+        }
+    }
+}
+
+int search(ipair src,ipair dst,int m,int n)
+{
+    int num = -1;
+    int step= 0,index;
+    vector<ipair> cur,next;
+    cur.push_back(src);
+    int x,y,nx,ny;
+    FOR(i, m)MF(mask[i], 0);
+    int up=4*n*m;
+    while (!cur.empty() && step<up) {
+        next.clear();
+        ++step;
+        index=step%4;
+        for(ipair p:cur)mask[p.first][p.second]=0;
+        for(ipair p:cur){
+            y=p.first;
+            x=p.second;
+            FOR(i, 4){
+                nx = x + dx[i];
+                ny = y + dy[i];
+                if (nx>=0&&ny>=0&&ny<m&&nx<n
+                    &&state[index][ny][nx]==0
+                    &&mask[ny][nx]==0) {
+                    mask[ny][nx]=1;
+                    next.push_back(MP(ny, nx));
+                }
+            }
+        }
+        if (mask[dst.first][dst.second] == 1) {
+            num = step;
+            break;
+        }
+        swap(cur, next);
+    }
+    return num;
+}
+
+int main(int argc, const char * argv[])
+{
+#ifndef ONLINE_JUDGE
+    freopen("//Users//lebinjiang//Project//input.txt", "r", stdin);
+    freopen("//Users//lebinjiang//Project//output.txt", "w", stdout);
+#endif
+    std::ios::sync_with_stdio(false);
+    int T,num;
+    cin>>T;
+    FOR(t, T){
+        int m,n;
+        cin>>m>>n;
+        ipair src,dst;
+        vector<ipair> wallPos;
+        vector<ipair> laserPos;
+        FOR(i, m)FOR(j, n){
+            cin>>maze[i][j];
+            switch (maze[i][j]) {
+                case 'S':
+                    src=MP(i,j);
+                    break;
+                case 'G':
+                    dst = MP(i, j);
+                    break;
+                case '.':
+                    break;
+                case '#':
+                    wallPos.push_back(MP(i,j));
+                    break;
+                default:
+                    laserPos.push_back(MP(i, j));
+                    break;
+            }
+        }
+        init(m,n,wallPos,laserPos);
+        num = search(src,dst,m,n);
+        if(num!=-1)
+            cout<<"Case #"<<t+1<<":"<<num<<endl;
+        else
+            cout<<"Case #"<<t+1<<":impossible"<<endl;
+    }
+    return 0;
+}
+

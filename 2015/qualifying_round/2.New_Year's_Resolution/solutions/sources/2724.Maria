@@ -1,0 +1,147 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <algorithm>    // std::sort
+using namespace std;
+
+#define HIGHER -1
+#define LOWER 1
+#define EXACT 0
+
+class Food;
+
+int remainingFood(vector<Food>& vec, Food& current, int index);
+
+struct descending
+{
+	template<class T>
+	bool operator()(T const &a, T const &b) const { return a > b; }
+};
+
+class Food
+{
+public:
+	Food() : prot(0), carbo(0), fat(0) {}
+	Food(int proteins, int carbo, int fat) : prot(proteins),
+		carbo(carbo),
+		fat(fat) {}
+
+	int getRemainingFood() const 
+	{
+		if(prot==0 && carbo==0 && fat==0)
+			return EXACT;
+		if(prot>=0 && carbo>=0 && fat>=0)
+			return LOWER;
+		else return HIGHER;
+	}
+
+	bool TooMuchFood() const
+	{
+		return prot<0 || carbo<0 || fat<0;
+	}
+
+	bool ExactAmount() const
+	{
+		return prot==0 && carbo==0 && fat==0;
+
+	}
+
+	Food operator-(const Food& other) const 
+	{
+		return Food(prot - other.prot,
+			carbo - other.carbo,
+			fat - other.fat);
+	}
+
+	bool operator>(const Food& other) const 
+	{
+		return (prot > other.prot) ||
+			(prot == other.prot) && (carbo > other.carbo) ||
+			(prot == other.prot) && (carbo == other.carbo) && (fat > other.fat);
+	}
+
+	bool operator==(const Food& other) const 
+	{
+		return prot == other.prot &&
+			carbo == other.carbo &&
+			fat == other.fat;
+	}
+
+private:
+	int prot, carbo, fat;
+};
+
+
+
+int main() {
+
+	string inputName = "new_years_resolution.txt";
+	string outputName = "new_years_resolution_out.txt";
+
+	ifstream inputFile;
+	ofstream outputFile;
+
+	inputFile.open(inputName);
+	outputFile.open(outputName);
+
+	int T;
+	inputFile >> T;
+
+	for(int test = 1; test <= T; test++)
+	{
+		std::vector<Food> meals;
+		int proteins, carbo, fat;
+		inputFile >> proteins >> carbo >> fat;
+		Food maxFood(proteins, carbo, fat);
+
+		int numFoods;
+		inputFile >> numFoods;
+
+		for(int i=0; i<numFoods; i++)
+		{
+			inputFile >> proteins >> carbo >> fat;
+			Food simpleFood(proteins, carbo, fat);
+			meals.push_back(simpleFood);
+		}
+
+		sort(meals.begin(), meals.end(), descending());    
+		int isPossible = remainingFood(meals, maxFood, 0) == 0;
+
+		outputFile << "Case #"<<test<<": ";
+		outputFile << (isPossible ? "yes" : "no") <<endl;
+
+
+	}
+
+	outputFile.close();
+	inputFile.close();
+
+	return EXIT_SUCCESS;
+}
+
+int remainingFood(vector<Food>& vec, Food& current, int i)
+{
+	if(i == vec.size())
+	{
+		return current.getRemainingFood(); 
+	}
+	if(current.TooMuchFood())
+	{
+		return HIGHER;
+	}
+	if(current.ExactAmount())
+	{
+		return EXACT;
+	}
+
+	int rFood = remainingFood( vec, current - vec[i], i+1);
+	if(rFood==EXACT || rFood==LOWER && i==(vec.size()-1)) 
+	{
+		return rFood;
+	}
+	else return remainingFood(vec, current, i+1);
+
+}
+
+

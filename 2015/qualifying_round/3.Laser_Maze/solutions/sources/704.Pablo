@@ -1,0 +1,112 @@
+#include <algorithm>
+#include <cstring>
+#include <deque>
+#include <iostream>
+#include <string>
+#include <vector>
+
+using namespace std;
+int const MAXN = 100;
+int const INF = 1<<29;
+
+string z[MAXN];
+int g[MAXN][MAXN];
+int m, n;
+int si, sj;
+int gi, gj;
+
+void read_map() {
+  cin >> m >> n;
+  for (int i = 0; i != m; ++i) cin >> z[i];
+}
+int const dy[] = { -1, 0, 1, 0 };
+int const dx[] = { 0, 1, 0, -1 };
+void fire_laser(int i, int j) {
+  char const* I = "^>v<";
+  int K = find(I, I+4, z[i][j]) - I;
+  for (int k = 0; k != 4; ++k) {
+    int y = i, x = j;
+    while (0 <= y && y < m && 0 <= x && x < n) {
+      char c = z[y][x];
+      if ((y != i || x != j) &&
+          (c == '#' || c == '<' || c == '>' || c == '^' || c == 'v')) {
+        break;
+      }
+      g[y][x] |= (1<<k);
+      y += dy[(k + K) % 4];
+      x += dx[(k + K) % 4];
+    }
+  }
+}
+void prep_map() {
+  memset(g, 0, sizeof(g));
+  for (int i = 0; i != m; ++i)
+  for (int j = 0; j != n; ++j)
+    switch (z[i][j]) {
+    case '#': g[i][j] = 15; break;
+    case 'S': si = i; sj = j; break;
+    case 'G': gi = i; gj = j; break;
+    case '.': break;
+    // Lasers!
+    case '<': case '>': case '^': case 'v': fire_laser(i, j); break;
+    }
+}
+
+int dp[4][MAXN][MAXN];
+bool inq[4][MAXN][MAXN];
+
+int find_way() {
+  for (int k = 0; k != 4; ++k)
+  for (int i = 0; i != m; ++i)
+  for (int j = 0; j != n; ++j)
+    dp[k][i][j] = INF;
+  memset(inq, 0, sizeof(inq));
+  dp[0][si][sj] = 0;
+  inq[0][si][sj] = true;
+  deque<pair<int,pair<int,int>>> work{{0, {si, sj}}};
+  while (!work.empty()) {
+    auto at = work.front();
+    work.pop_front();
+    int t4 = at.first;
+    int i = at.second.first;
+    int j = at.second.second;
+    int t = dp[t4][i][j];
+    inq[t4][i][j] = false;
+    for (int k = 0; k != 4; ++k) {
+      int y = i + dy[k];
+      int x = j + dx[k];
+      if (y < 0 || y >= m || x < 0 || x >= n) continue;
+      int nt = t + 1;
+      int nt4 = nt % 4;
+      if (g[y][x] & (1<<nt4)) continue; // Lasers!
+      if (nt < dp[nt4][y][x]) {
+        dp[nt4][y][x] = nt;
+        if (!inq[nt4][y][x]) {
+          inq[nt4][y][x] = true;
+          work.emplace_back(nt4, make_pair(y, x));
+        }
+      }
+    }
+  }
+  int rv = INF;
+  for (int k = 0; k != 4; ++k)
+    rv = min(rv, dp[k][gi][gj]);
+  return rv;
+}
+
+int main() {
+  cin.sync_with_stdio(false);
+  int T; cin >> T;
+  for (int C = 1; C <= T; C++) {
+    read_map();
+    prep_map();
+    int rv = find_way();
+    cout << "Case #" << C << ": ";
+    if (rv == INF) {
+      cout << "impossible";
+    } else {
+      cout << rv;
+    }
+    cout << '\n';
+  }
+}

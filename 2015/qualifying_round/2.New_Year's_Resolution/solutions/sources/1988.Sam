@@ -1,0 +1,176 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+
+namespace HackerCupNewYearsResolution
+{
+   class Program
+   {
+
+      private static string[] GetInputFileLines(string nameToFilter = "")
+      {
+
+         var localExampleFile = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.txt").FirstOrDefault(t => t.Contains(nameToFilter));
+
+         if (localExampleFile == null)
+         {
+            throw new FileNotFoundException("No file has been found containing {0} as part of its filename.");
+         }
+
+         return File.ReadAllLines(localExampleFile, Encoding.ASCII);
+      }
+
+      private static StringBuilder _sb;
+
+      public const char LineFeed = '\n';
+
+      private static void SetCaseResult(int caseNumber, bool isPossible)
+      {
+         if (_sb == null)
+         {
+            _sb = new StringBuilder();
+         }
+
+         _sb.Append(string.Format("Case #{0}: {1}", caseNumber, (isPossible ? "yes" : "no")));
+         _sb.Append(LineFeed);
+      }
+
+      public static T[][] FastPowerSet<T>(T[] seq)
+      {
+         var powerSet = new T[1 << seq.Length][];
+         powerSet[0] = new T[0];
+         for (var i = 0; i < seq.Length; i++)
+         {
+            var cur = seq[i];
+            var count = 1 << i;
+            for (var j = 0; j < count; j++)
+            {
+               var source = powerSet[j];
+               var destination = powerSet[count + j] = new T[source.Length + 1];
+               for (var q = 0; q < source.Length; q++)
+                  destination[q] = source[q];
+               destination[source.Length] = cur;
+            }
+         }
+         return powerSet;
+      }
+
+      private static Tuple<int, int, int> TotalList(Tuple<int, int, int>[] foodItemsToCombine)
+      {
+         var totalProtein = foodItemsToCombine.Sum(t => t.Item1);
+         var totalCarb = foodItemsToCombine.Sum(t => t.Item2);
+         var totalFat = foodItemsToCombine.Sum(t => t.Item3);
+
+         return new Tuple<int, int, int>(totalProtein, totalCarb, totalFat);
+
+      }
+
+      private static bool ExactlyMeetsNutritionalRequirements(Tuple<int, int, int> valueToCalculate, Tuple<int, int, int> desiredValue)
+      {
+         if (valueToCalculate.Item1.Equals(desiredValue.Item1) && valueToCalculate.Item2.Equals(desiredValue.Item2) &&
+             valueToCalculate.Item3.Equals(desiredValue.Item3))
+         {
+            return true;
+         }
+         return false;
+      }
+
+      static void Main(string[] args)
+      {
+
+         var lines = GetInputFileLines("new_years_resolution");
+
+         Func<string> shift = () =>
+         {
+            var firstLineSelected = lines.First();
+            lines = lines.Skip(1).ToArray();
+            return firstLineSelected;
+         };
+
+
+         var numberOfTestCases = int.Parse(shift());
+
+         for (var caseNumber = 1; caseNumber <= numberOfTestCases; caseNumber++)
+         {
+            var caseParamsString = shift().Split(Convert.ToChar(" "));
+
+            var desiredProtein = int.Parse(caseParamsString[0]);
+            var desiredCarbs = int.Parse(caseParamsString[1]);
+            var desiredFat = int.Parse(caseParamsString[2]);
+
+            var desiredNutrition = new Tuple<int, int, int>(desiredProtein, desiredCarbs, desiredFat);
+
+            var numberOfFoods = int.Parse(shift());
+
+            var menu = new List<Tuple<int, int, int>>();
+
+            for (var foodNumber = 1; foodNumber <= numberOfFoods; foodNumber++)
+            {
+               var foodSpecifics = shift().Split(Convert.ToChar(" "));
+
+               var currentFoodItemProtein = int.Parse(foodSpecifics[0]);
+               var currentFoodItemCarbs = int.Parse(foodSpecifics[1]);
+               var currentFoodItemFat = int.Parse(foodSpecifics[2]);
+
+               menu.Add(new Tuple<int, int, int>(currentFoodItemProtein, currentFoodItemCarbs, currentFoodItemFat));
+
+            }
+
+            if (numberOfFoods == 1)
+            {
+               var onlyFoodItemAvailable = menu.First();
+               if (onlyFoodItemAvailable.Item1.Equals(desiredProtein) && onlyFoodItemAvailable.Item2.Equals(desiredCarbs) &&
+                   onlyFoodItemAvailable.Item3.Equals(desiredFat))
+               {
+                  // The one item can satisfy.
+                  SetCaseResult(caseNumber, true);
+                  continue;
+               }
+            }
+
+            // Try each possible combination of food, either eating or not eating a food, to see if we can get the exact desired food intake
+
+            var possibleCombinations = Math.Pow(2, numberOfFoods);
+
+            Console.WriteLine("Case {0} has {1} possible combinations of food.", caseNumber, possibleCombinations);
+
+            var menuPosibilities = FastPowerSet(menu.ToArray());
+
+            var foundPosibilties = menuPosibilities.LongLength;
+
+            var hasMatch = false;
+
+            foreach (var possibleCombination in menuPosibilities)
+            {
+               var totalNutitionInSelection = TotalList(possibleCombination);
+
+               var isMatch = ExactlyMeetsNutritionalRequirements(totalNutitionInSelection, desiredNutrition);
+
+               if (isMatch)
+               {
+                  hasMatch = true;
+                  break;
+               }
+
+            }
+
+            Console.WriteLine("Case {0} has calculated {1} possible combinations of food.", caseNumber, foundPosibilties);
+
+
+            SetCaseResult(caseNumber, hasMatch);
+         }
+
+         var result = _sb.ToString();
+         File.WriteAllText(Directory.GetCurrentDirectory() + "/new_years_resolution_result.txt", result, Encoding.ASCII);
+
+         Console.WriteLine(result);
+
+         Console.WriteLine("Finished");
+         Thread.Sleep(5000);
+
+      }
+   }
+}

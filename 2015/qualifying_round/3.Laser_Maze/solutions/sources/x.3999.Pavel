@@ -1,0 +1,124 @@
+#!/usr/bin/python
+import sys
+from functools import partial
+sys.setrecursionlimit(10000000)
+
+from itertools import combinations, ifilter, imap
+
+
+TURRETS = ["<", "^", ">", "v",]
+HARDS = TURRETS + ["#"]
+TURRETS_MAP = dict(zip(TURRETS, range(4)))
+TURRETS_VECTOR = [
+    [0,  -1],
+    [-1, 0],
+    [0,  1],
+    [1,  0],
+]
+
+def turret_on(t, step=0):
+    return TURRETS[(TURRETS_MAP[t] + step) % 4]
+
+class LazerField(object):
+    def __init__(self, lines, max_x, max_y):
+        self.lines = lines
+        self.max_x = max_x
+        self.max_y = max_y
+        self.turrets = []
+
+        self.answer = None
+
+        for x in xrange(max_x):
+            for y in xrange(max_y):
+                c = lines[x][y]
+                if c == "S":
+                    [self.Sx, self.Sy] = [x, y]
+                elif c == "G":
+                    [self.Gx, self.Gy] = [x, y]
+                elif c in TURRETS:
+                    self.turrets.append([x, y])
+            lines[x] = lines[x].replace("S",".").replace("G", ".")
+
+        self.turrets_state = map(lambda (x, y): self.lines[x][y], self.turrets)
+        self.STATE_TABLE = {}
+
+    def turrets_on(self, step=0):
+        return map(partial(turret_on, step=step), self.turrets_state)
+
+    def check_limits(self, (x, y)):
+        return self.max_x > x > -1 < y < self.max_y
+
+    def check_state_on(self, sx, sy, step):
+        if self.answer is not None and step >= self.answer:
+            return False
+
+        if step == 0:
+            return True
+
+        if not self.check_limits((sx, sy)):
+            return False
+
+        if self.lines[sx][sy] not in [".", "G", "S"]:
+            return False
+
+        for (tx, ty) in self.turrets:
+            t = turret_on(self.lines[tx][ty], step=step)
+            (vx, vy) = TURRETS_VECTOR[TURRETS_MAP[t]]
+            if tx != sx and ty != sy:
+                continue
+            [x, y] = [tx+vx, ty+vy]
+            while self.check_limits((x, y)):
+                if self.lines[x][y] in HARDS:
+                    break
+                if x == sx and y == sy:
+                    return False
+                x, y = x + vx, y + vy
+        return True
+
+    def get_new_states(self, state):
+        [sx, sy, step] = state
+        next_step = step + 1
+        states = [
+            [sx+1, sy, next_step],
+            [sx, sy+1, next_step],
+            [sx-1, sy, next_step],
+            [sx, sy-1, next_step],
+        ]
+        return filter(lambda x: self.check_state_on(x[0], x[1], step=next_step), states)
+
+    def hashstate(self, state):
+        [sx, sy, step] = state
+        return "-".join(map(str, [sx, sy, str(step % 4)]))
+
+    def fix_state(self, state, step=0):
+        if state[-1] <= step + 1:
+            return
+        for s in self.STATE_TABLE.get(self.hashstate(state), []):
+            self.fix_state(s, step+1)
+            state[-1] = step + 1
+
+    def get_state_table(self, state=None):
+        state = state or [self.Sx, self.Sy, 0]
+        [sx, sy, step] = state
+        if sx == self.Gx and sy == self.Gy:
+            self.answer = state[-1]
+            return self.answer
+
+        h = self.hashstate(state)
+        if h not in self.STATE_TABLE:
+            self.STATE_TABLE[h] = self.get_new_states(state)
+            map(self.get_state_table, self.STATE_TABLE[h])
+        else:
+            map(partial(self.fix_state, step=step), self.STATE_TABLE[h])
+        return self.answer
+
+
+num = int(sys.stdin.readline().strip())
+
+for i in xrange(num):
+    [max_x, max_y] = map(int, sys.stdin.readline().strip().split())
+    lines = map(lambda _: sys.stdin.readline().strip(), xrange(max_x))
+    lf = LazerField(lines, max_x, max_y)
+    answer = lf.get_state_table()
+    print "Case #%s: %s" % (i+1, answer if answer else "impossible")
+

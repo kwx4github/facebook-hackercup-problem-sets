@@ -1,0 +1,166 @@
+package qualification.round.twothousandandfifteen;
+
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class LaserMaze {
+	private static char[][] maze;
+
+	private static boolean[][][] isVisitable;
+
+	private static int endX, endY;
+
+	private static int[] dirX = { 0, 1, 0, -1 };
+
+	private static int[] dirY = { 1, 0, -1, 0 };
+
+	private static String getMinPath() {
+		int[][][] used = new int[4][maze.length][maze[0].length];
+		Queue<Integer> queueX = new LinkedList<Integer>();
+		Queue<Integer> queueY = new LinkedList<Integer>();
+		Queue<Integer> queueDimension = new LinkedList<Integer>();
+		prepareMaze(queueX, queueY);
+		initializeVisitable();
+		queueDimension.add(0);
+
+		while (!queueX.isEmpty()) {
+			int currentX = queueX.poll();
+			int currentY = queueY.poll();
+			int currentDimension = queueDimension.poll();
+			int nextDimension = (currentDimension + 1) % 4;
+
+			for (int i = 0; i < dirX.length; ++i) {
+				int nextX = currentX + dirX[i];
+				int nextY = currentY + dirY[i];
+				if (isInBounds(nextX, nextY)
+						&& used[nextDimension][nextX][nextY] == 0
+						&& isVisitable[nextDimension][nextX][nextY]) {
+					used[nextDimension][nextX][nextY] = used[currentDimension][currentX][currentY] + 1;
+					queueX.add(nextX);
+					queueY.add(nextY);
+					queueDimension.add(nextDimension);
+				}
+			}
+		}
+
+		Integer minPath = Integer.MAX_VALUE;
+		boolean isReached = false;
+		for (int i = 0; i < 4; ++i) {
+			if (used[i][endX][endY] != 0) {
+				isReached = true;
+				if (minPath > used[i][endX][endY]) {
+					minPath = used[i][endX][endY];
+				}
+			}
+		}
+
+		if (isReached) {
+			return minPath.toString();
+		} else {
+			return "impossible";
+		}
+	}
+
+	private static boolean isInBounds(int x, int y) {
+		boolean isInXBounds = x >= 0 && x < maze.length;
+		boolean isInYBounds = y >= 0 && y < maze[0].length;
+		return isInXBounds && isInYBounds;
+	}
+
+	private static void initializeVisitable() {
+		isVisitable = new boolean[4][maze.length][maze[0].length];
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < maze.length; ++j) {
+				for (int k = 0; k < maze[0].length; ++k) {
+					isVisitable[i][j][k] = true;
+				}
+			}
+		}
+
+		for (int i = 0; i < maze.length; ++i) {
+			for (int j = 0; j < maze[0].length; ++j) {
+				if (maze[i][j] == '#') {
+					isVisitable[0][i][j] = false;
+					isVisitable[1][i][j] = false;
+					isVisitable[2][i][j] = false;
+					isVisitable[3][i][j] = false;
+				}
+
+				int padDir = getPadDir(i, j);
+				if (padDir != -1) {
+					for (int k = 0; k < 4; ++k) {
+						int dir = (padDir + k) % 4;
+						setNotVisitable(k, dir, i, j);
+					}
+				}
+			}
+		}
+	}
+
+	private static int getPadDir(int x, int y) {
+		switch (maze[x][y]) {
+		case 'v':
+			return 1;
+		case '<':
+			return 2;
+		case '^':
+			return 3;
+		case '>':
+			return 0;
+		default:
+			return -1;
+		}
+	}
+
+	private static void setNotVisitable(int dim, int dir, int x, int y) {
+		boolean shouldContinue = true;
+		int currentX = x;
+		int currentY = y;
+		while (shouldContinue) {
+			isVisitable[dim][currentX][currentY] = false;
+
+			currentX += dirX[dir];
+			currentY += dirY[dir];
+			shouldContinue = isInBounds(currentX, currentY)
+					&& maze[currentX][currentY] == '.';
+		}
+	}
+
+	private static void prepareMaze(Queue<Integer> xQueue, Queue<Integer> yQueue) {
+		for (int i = 0; i < maze.length; ++i) {
+			for (int j = 0; j < maze[0].length; ++j) {
+				if (maze[i][j] == 'S') {
+					xQueue.add(i);
+					yQueue.add(j);
+					maze[i][j] = '.';
+				}
+
+				if (maze[i][j] == 'G') {
+					endX = i;
+					endY = j;
+					maze[i][j] = '.';
+				}
+			}
+		}
+	}
+
+	public static void main(String[] args) {
+		Scanner scanner = new Scanner(System.in);
+		int tests = Integer.parseInt(scanner.next());
+		for (int i = 0; i < tests; ++i) {
+			int n = Integer.parseInt(scanner.next());
+			int m = Integer.parseInt(scanner.next());
+			maze = new char[n][m];
+			for (int j = 0; j < n; ++j) {
+				String currentLine = scanner.next();
+				for (int k = 0; k < m; ++k) {
+					maze[j][k] = currentLine.charAt(k);
+				}
+			}
+
+			String minPath = getMinPath();
+			System.out.println(String.format("Case #%d: %s", i + 1, minPath));
+		}
+	}
+}

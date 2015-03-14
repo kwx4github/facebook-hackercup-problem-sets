@@ -1,0 +1,249 @@
+import java.awt.Point;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Queue;
+
+public class Main {
+
+	public static byte dx[] = { 0, 0, 1, -1 };
+	public static byte dy[] = { 1, -1, 0, 0 };
+	public static byte wall = 4;
+	public static byte point = 9;
+	public static byte one = 1;
+	public static byte up = 0;
+	public static byte right = 1;
+	public static byte down = 2;
+	public static byte left = 3;
+	public static byte jug = 7;
+
+	public static int[] readInts(String cad) {
+		String read[] = cad.split(" ");
+		int res[] = new int[read.length];
+		for (int i = 0; i < read.length; i++) {
+			res[i] = Integer.parseInt(read[i]);
+		}
+		return res;
+	}
+
+	static void printArrayInt(int[] array) {
+		if (array == null || array.length == 0)
+			return;
+		for (int i = 0; i < array.length; i++) {
+			if (i > 0)
+				System.out.print(" ");
+			System.out.print(array[i]);
+		}
+		System.out.println();
+	}
+
+	static void printMatrixInt(int[][] array) {
+		if (array == null || array.length == 0)
+			return;
+		for (int i = 0; i < array.length; i++) {
+			for (int j = 0; j < array[0].length; j++) {
+				if (j > 0)
+					System.out.print(" ");
+				System.out.print(array[i][j]);
+			}
+			System.out.println();
+		}
+
+	}
+
+	public static class State {
+		ArrayList<Laser> lasers;
+		int steps;
+		byte x;
+		byte y;
+
+		public State(int steps, byte x, byte y) {
+			this.steps = steps;
+			this.x = x;
+			this.y = y;
+			lasers = new ArrayList<Laser>();
+		}
+
+		@Override
+		public String toString() {
+			return steps + " " + x + " " + y;
+		}
+
+	}
+
+	public static byte f(char s) {
+		if (s == '^')
+			return up;
+		if (s == '>')
+			return right;
+		if (s == 'v')
+			return down;
+		if (s == '<')
+			return left;
+		if (s == '.')
+			return point;
+		if (s == 'S')
+			return 8;
+		if (s == 'G')
+			return 7;
+		if (s == '#')
+			return 4;
+		return -1;
+	}
+
+	public static boolean isLaser(char c) {
+
+		return c == 'v' | c == '^' | c == '<' | c == '>';
+	}
+
+	public static class Laser {
+		byte x, y, dir;
+
+		public Laser(byte x, byte y, byte dir) {
+			this.x = x;
+			this.y = y;
+			this.dir = dir;
+		}
+
+	}
+
+	public static HashMap<Point, Integer> tabla = new HashMap<Point, Integer>();
+
+	public static boolean die(State s, char map[][], byte tempX, byte tempY) {
+
+		for (byte i = tempX; i < map.length; i++) {
+			if (isLaser(map[i][tempY])) {
+				if (s.lasers.get(tabla.get(new Point(i, tempY))).dir == left)
+					return true;
+			} else if (isLaser(map[i][tempY]) || map[i][tempY] == '#')
+				break;
+		}
+		for (byte i = tempX; i >= 0; i--) {
+			if (isLaser(map[i][tempY])) {
+				if (s.lasers.get(tabla.get(new Point(i, tempY))).dir == right)
+					return true;
+			} else if (isLaser(map[i][tempY]) || map[i][tempY] == '#')
+				break;
+		}
+		for (byte i = tempY; i < map[0].length; i++) {
+			if (isLaser(map[tempX][i])) {
+				if (s.lasers.get(tabla.get(new Point(tempX, i))).dir == down)
+					return true;
+			} else if (isLaser(map[tempX][i]) || map[tempX][i] == '#')
+				break;
+		}
+		for (byte i = tempY; i >= 0; i--) {
+			if (isLaser(map[tempX][i])) {
+				if (s.lasers.get(tabla.get(new Point(tempX, i))).dir == up)
+					return true;
+			} else if (isLaser(map[tempX][i]) || map[tempX][i] == '#')
+				break;
+		}
+		return false;
+	}
+
+	public static boolean isValid(byte x, byte y, char map[][]) {
+		return x >= 0 && x < map.length && y >= 0 && y < map[0].length
+				&& (map[x][y] == '.' || map[x][y] == 'G');
+	}
+
+	public static int solve(int n, int m, char map[][]) {
+		Queue<State> q = new LinkedList<State>();
+		State s = new State(0, (byte) 0, (byte) 0);
+		State a;
+		byte fx = 0, fy = 0;
+		byte tempX, tempY;
+		State temp;
+		byte visited[][] = new byte[n][m];
+
+		ArrayList<Laser> lasers = new ArrayList<Laser>();
+
+		for (byte i = 0; i < n; i++) {
+			for (byte j = 0; j < m; j++) {
+				if (isLaser(map[i][j])) {
+					lasers.add(new Laser(i, j, f(map[i][j])));
+					tabla.put(new Point(i, j), lasers.size() - 1);
+				}
+				if (map[i][j] == 'S') {
+					s.x = i;
+					s.y = j;
+					map[i][j] = '.';
+				}
+				if (map[i][j] == 'G') {
+					fx = i;
+					fy = j;
+				}
+
+			}
+		}
+		s.lasers = lasers;
+		q.add(s);
+
+		while (!q.isEmpty()) {
+			a = q.poll();
+			for (int i = 0; i < dx.length; i++) {
+				tempX = (byte) (a.x + dx[i]);
+				tempY = (byte) (a.y + dy[i]);
+				if (isValid(tempX, tempY, map) && visited[tempX][tempY] < 5) {
+					if (!die(a, map, tempX, tempY)) {
+						visited[tempX][tempY]++;
+						if (tempX == fx && tempY == fy)
+							return a.steps + 1;
+						temp = new State(a.steps + 1, tempX, tempY);
+
+						for (int j = 0; j < a.lasers.size(); j++) {
+							temp.lasers.add(new Laser(a.lasers.get(j).x,
+									a.lasers.get(j).y, (byte) ((byte) (a.lasers
+											.get(j).dir + one) % 4)));
+						}
+						q.add(temp);
+					}
+				}
+			}
+
+		}
+
+		return 0;
+	}
+
+	public static void main(String[] args) throws IOException {
+		BufferedReader in;
+		StringBuilder out = new StringBuilder();
+		File f = new File("entrada");
+		if (f.exists()) {
+			in = new BufferedReader(new FileReader(f));
+		} else
+			in = new BufferedReader(new InputStreamReader(System.in));
+
+		int cases = Integer.parseInt(in.readLine());
+		int d[];
+		int n, m;
+		char map[][];
+		for (int i = 0; i < cases; i++) {
+			out.append("Case #" + (i + 1) + ": ");
+			d = readInts(in.readLine());
+			n = d[0];
+			m = d[1];
+			map = new char[n][];
+			for (int j = 0; j < n; j++) {
+				map[j] = in.readLine().toCharArray();
+			}
+			int res = solve(n, m, map);
+			if (res == 0) {
+				out.append("impossible\n");
+			} else {
+				out.append(res + "\n");
+
+			}
+
+		}
+		System.out.print(out);
+
+	}
+
+}

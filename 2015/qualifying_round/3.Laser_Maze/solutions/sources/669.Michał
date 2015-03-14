@@ -1,0 +1,137 @@
+#include <iostream>
+#include <climits>
+
+using namespace std;
+
+char board[100][100][4];
+int visited[100][100][4];
+
+char lasers[] = {'<', '^', '>', 'v'};
+
+int laserIndex(char current){
+	for(int x=0; x<4; x++){	
+		if(lasers[x] == current){
+			return x;
+		}
+	}
+	return -1;
+}
+
+char getCorrectLaser(int tick, char current){
+	return lasers[(laserIndex(current) + tick)%4];
+}
+
+bool walkable(int x, int y, int q, int width, int height){
+	if(!(x >= 0 && y >= 0 && x < width && y < height)){
+		return false;
+	}
+	return(board[y][x][q] == 'S' || board[y][x][q] == 'G' || board[y][x][q] == '.');
+}
+
+bool passLaser(int x, int y, int q, int width, int height){
+	if(walkable(x, y, q, width, height)){
+		board[y][x][q] = 'X';
+		return true;
+	} else if(board[y][x][q] == 'X'){
+		return true;
+	}
+	return false;
+}
+
+int search(int x, int y, int steps, int width, int height){
+	if(board[y][x][steps%4] == 'G')return steps;
+
+	visited[y][x][steps%4] = steps;
+
+	int minSteps = INT_MAX;
+
+	for(int i=-1; i<2; i++){
+		if(i != 0 && visited[y+i][x][(steps+1)%4] > steps+1 && walkable(x, y+i, (steps+1)%4, width, height)){
+			minSteps = min(minSteps, search(x, y+i, steps+1, width, height));
+		}
+		if(i != 0 && visited[y][x+i][(steps+1)%4] > steps+1 && walkable(x+i, y, (steps+1)%4, width, height)){
+			minSteps = min(minSteps, search(x+i, y, steps+1, width, height));
+		}
+	}
+	
+	return minSteps;
+}
+
+int main(){
+	int t;
+	cin >> t;
+	
+	for(int test=1; test<=t; test++){
+
+		int startX, startY;
+
+		int height, width;
+		cin >> height >> width;
+		for(int y=0; y<height; y++){
+			for(int x=0; x<width; x++){
+				char c;
+				cin >> c;
+				for(int q=0;q<4;q++) {
+					if(laserIndex(c) != -1){
+						board[y][x][q] = getCorrectLaser(q, c);
+					} else {
+						board[y][x][q] = c;
+					}
+
+					visited[y][x][q] = INT_MAX;
+				}
+				if(c == 'S'){
+					startX = x;
+					startY = y;					
+				}
+			}
+		}
+
+		for(int y=0; y<height; y++){
+			for(int x=0; x<width; x++){
+				for(int q=0; q<4; q++){
+					switch(laserIndex(board[y][x][q])){
+						case -1:
+							break;
+						case 0:
+							for(int p = x-1; p>=0; p--){
+								if(!passLaser(p, y, q, width, height)){
+									break;
+								}
+							}
+							break;
+						case 1:
+							for(int p = y-1; p>=0; p--){
+								if(!passLaser(x, p, q, width, height)){
+									break;
+								}
+							}
+							break;
+						case 2:
+							for(int p=x+1; p<width; p++){
+								if(!passLaser(p, y, q, width, height)){
+									break;
+								}
+							}
+							break;
+						case 3:
+							for(int p=y+1; p<height; p++){
+								if(!passLaser(x, p, q, width, height)){
+									break;
+								}
+							}
+							break;
+					}					
+				}		
+			}
+
+		}
+		int minSteps = search(startX, startY, 0, width, height);
+		cout << "Case #" << test << ": ";
+		if(minSteps != INT_MAX){
+			cout << minSteps << "\n";
+		} else {
+			cout << "impossible\n";
+		}
+	}
+}	

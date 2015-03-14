@@ -1,0 +1,133 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <cctype>
+#include <cstdlib>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <stack>
+#include <queue>
+#include <map>
+#include <set>
+#include <list>
+#include <bitset>
+#include <numeric>
+#include <algorithm>
+#include <functional>
+using namespace std;
+
+const inline int __GET_INT(){int ret;scanf("%d",&ret);return ret;}
+#define INPT_INT __GET_INT()
+
+typedef long long LL;
+
+char grid[105][105];
+int danger[105][105], M, N;
+map< char, pair<int,int> > mp;
+bool visited[105][105][5];
+int dx[] = {0,0,1,-1};
+int dy[] = {-1,1,0,0};
+
+bool isLaser(char c)
+{
+    return (c == '^' || c == 'v' || c == '>' || c == '<');
+}
+
+void rotateLaser(char &c)
+{
+    c = (c == '^' ? '>' : (c == '>' ? 'v' : (c == 'v' ? '<' : '^')));
+}
+
+void shootLaser(int r, int c, int step)
+{
+    pair<int,int> d = mp[grid[r][c]];
+
+    while(true)
+    {
+        r += d.first;
+        c += d.second;
+
+        if( r < 0 || c < 0 || r >= M || c >= N || isLaser(grid[r][c]) || grid[r][c] == '#' ) break;
+
+        danger[r][c] |= (1<<step);
+    }
+}
+
+int BFS(int r, int c)
+{
+    memset(visited,0,sizeof(visited));
+    queue< pair< pair<int,int>, pair<int,int> > > Q;
+
+    visited[r][c][0] = true;
+    Q.push( make_pair( make_pair(r,c), make_pair(0,0) ) );
+
+    while(!Q.empty())
+    {
+        r = Q.front().first.first;
+        c = Q.front().first.second;
+        int d = (Q.front().second.first+1)%4;
+        int step = Q.front().second.second;
+
+        Q.pop();
+
+        if( grid[r][c] == 'G' ) return step;
+
+        for(int k = 0; k < 4; ++k)
+        {
+            int i = r + dx[k];
+            int j = c + dy[k];
+
+            if( i < 0 || j < 0 || i >= M || j >= N || isLaser(grid[i][j]) || grid[i][j] == '#' || (danger[i][j]&(1<<d)) || visited[i][j][d] )
+            {
+                continue;
+            }
+
+            visited[i][j][d] = true;
+            Q.push( make_pair( make_pair(i,j) , make_pair(d,step+1) ) );
+        }
+    }
+    return -1;
+}
+
+int main()
+{
+    freopen("laser_maze.txt","r",stdin);
+    freopen("laser_maze_out.txt","w",stdout);
+
+    mp['^'] = make_pair(-1,0);
+    mp['>'] = make_pair(0,1);
+    mp['v'] = make_pair(1,0);
+    mp['<'] = make_pair(0,-1);
+
+    int T = INPT_INT;
+
+    for(int ca = 1; ca <= T; ++ca)
+    {
+        M = INPT_INT; N = INPT_INT;
+
+        for(int i = 0; i < M; ++i) scanf("%s",grid[i]);
+
+        memset(danger,0,sizeof(danger));
+        for(int i = 0; i < M; ++i) for(int j = 0;j < N; ++j) if(isLaser(grid[i][j]))
+        {
+            for(int k = 0; k < 4; ++k)
+            {
+                shootLaser(i,j,k);
+                rotateLaser(grid[i][j]);
+            }
+        }
+
+        for(int i = 0; i < M; ++i) for(int j = 0; j < N; ++j) if( grid[i][j] == 'S' )
+        {
+            int res = BFS(i, j);
+
+            printf("Case #%d: ",ca);
+            if( res != -1 ) printf("%d\n",res);
+            else puts("impossible");
+        }
+    }
+	return 0;
+}

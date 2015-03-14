@@ -1,0 +1,158 @@
+#include <algorithm>
+#include <numeric>
+#include <functional>
+
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <set>
+#include <map>
+#include <stack>
+#include <unordered_set>
+#include <unordered_map>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cctype>
+#include <cassert>
+
+#include <cmath>
+#include <complex>
+#include <ctime>
+using namespace std;
+
+#define debug(x) cerr<<#x<<" = "<<(x)<<endl;
+
+
+int main(int argc, char *argv[])
+{
+  int t;cin>>t;
+  for(int tt = 0 ; tt < t; tt++){
+
+    int n, m, sx, sy;cin>>n>>m;
+    vector<string> vs;
+    for(int i = 0 ; i < n; i++){
+      string s; cin>>s;vs.push_back(s);
+    }
+
+    for(int i=0;i<n;i++)
+      for(int j = 0 ; j < m; j++){
+        if(vs[i][j]=='S'){
+          sx=i, sy=j;break;
+        }
+      }
+
+
+    map<char, string> mask = {{'^', "^>v<"},
+                              {'>', ">v<^"},
+                              {'v', "v<^>"},
+                              {'<', "<^>v"}
+    };
+    int d[4][101][101];
+
+    memset(d, 1, sizeof(d));
+
+    for(int i=0;i<4;i++){
+      for(int j = 0 ; j < n; j++){
+        vector<pair<int, char> > p;
+        for(int k = 0 ; k < m; k++){
+          char c = vs[j][k];
+          if(mask.count(c) || c=='#')p.push_back({k, (mask.count(c) ? mask[c][i] : '#')});
+        }
+
+        if(p.size()){
+          int pre = -1, pre_char=' ';
+          for(auto x : p){
+            int col = x.first;
+            char tc = x.second;
+            d[i][j][col] = 0;
+            if(pre_char=='>' || tc == '<')
+              for(int iz = pre+1;iz<col;iz++)d[i][j][iz]=0;
+
+            pre_char = tc;
+            pre = col;
+          }
+          if(pre_char == '>')
+            for(int iz = pre+1;iz<m;iz++)d[i][j][iz]=0;
+        }
+      }
+
+      for(int k=0;k<m;k++){
+        vector<pair<int, char> > p;
+        for(int j=0;j<n;j++){
+          char c = vs[j][k];
+          if(mask.count(c) || c=='#')p.push_back({j, (mask.count(c) ? mask[c][i] : '#')});
+        }
+        if(p.size()){
+          int pre = -1, pre_char=' ';
+          for(auto x : p){
+            int row = x.first;
+            char tc = x.second;
+            d[i][row][k] = 0;
+            if(pre_char=='v' || tc=='^')
+              for(int iz=pre+1;iz<row;iz++)d[i][iz][k] = 0;
+
+            pre = row;
+            pre_char = tc;
+          }
+          if(pre_char == 'v')
+            for(int iz=pre+1;iz<n;iz++)d[i][iz][k] = 0;
+        }
+      }
+
+      //cout<<"\n\n----------"<<i<<endl;
+      //for(int j = 0 ; j < n; j++){
+      //  for(int k = 0 ; k < m; k++){
+      //    cout<<d[i][j][k]<<" ";
+      //  }cout<<endl;
+      //}
+
+    }
+
+    int dx[4] = {1, 0, -1, 0};
+    int dy[4] = {0, 1, 0, -1};
+
+    //t%4, x, y
+    //{{x, y}, {dist%4, dist} }
+    vector<pair<pair<int, int>, int> > q, q2;
+    set<pair<pair<int, int>, int> > vis;
+    int ans = 0, dt=0;
+    q.push_back({{sx, sy}, 0});
+    while(!q.empty() && !ans){
+      dt++;
+      q.swap(q2);
+      q.clear();
+      for(auto & p :  q2){
+        int x = p.first.first, y = p.first.second, dist = p.second;
+        //cout<<x<<","<<y<<","<<dist<<endl;
+
+        for(int ix=0;ix<4;ix++){
+          int xx = x+dx[ix], yy = y+dy[ix];
+          if(0<=xx && xx<n && 0<=yy && yy<m){
+            int nt = (p.second+1) % 4;
+            if(d[nt][xx][yy]){
+              if(vs[xx][yy] == 'G'){
+                ans = dt;break;
+              }
+              if(!vis.count({{xx, yy}, nt})){
+                q.push_back({{xx, yy}, nt});
+                vis.insert({{xx, yy}, nt});
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if(ans)
+      cout<<"Case #"<<tt+1<<": "<<ans<<endl;
+    else
+      cout<<"Case #"<<tt+1<<": "<<"impossible"<<endl;
+  }
+
+    return 0;
+}

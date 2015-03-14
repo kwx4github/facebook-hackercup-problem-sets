@@ -1,0 +1,125 @@
+#include <cstdio>
+#include <cassert>
+#include <cstring>
+
+#include <queue>
+#include <algorithm>
+#include <iostream>
+
+using namespace std;
+
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define REP(i, n) FOR(i, 0, n)
+#define TRACE(x) cout << #x << " = " << x << endl
+#define _ << " _ " <<
+
+const int MAX = 105;
+
+const int dx[] = { 1, 0, -1, 0 };
+const int dy[] = { 0, -1, 0, +1 };
+const char dirs[] = "v<^>";
+
+struct State {
+  int x, y, t;
+};
+
+int N, M;
+char a[MAX][MAX];
+int dist[MAX][MAX][4];
+bool blocked[MAX][MAX][4];
+
+void block_all(int i, int j) {
+  REP(d, 4) blocked[i][j][d] = true;
+}
+
+int get(int i, int j) {
+  REP(d, 4) if (a[i][j] == dirs[d]) return d;
+  return -1;
+}
+
+bool ok(int i, int j) {
+  if (i < 0 || i >= N) return false;
+  if (j < 0 || j >= M) return false;
+  if (a[i][j] != '.' && a[i][j] != 'S' && a[i][j] != 'G') return false;
+  return true;
+}
+
+bool can_pass(int i, int j, int t) {
+  if (!ok(i, j)) return false;
+  return !blocked[i][j][t];
+}
+
+void solve() {
+  scanf("%d%d", &N, &M);
+  REP(i, N) scanf("%s", a[i]);
+
+  queue< State > q;
+  memset(blocked, 0, sizeof blocked);
+  memset(dist, 0, sizeof dist);
+
+  REP(i, N) REP(j, M) {
+    if (a[i][j] == 'S') {
+      dist[i][j][0] = 1;
+      q.push({i, j, 0});
+    }
+
+    if (a[i][j] == '#')
+      block_all(i, j);
+
+    int dir = get(i, j);
+    if (dir == -1) continue;
+
+    block_all(i, j);
+
+    REP(k, 4) {
+      int d = (dir + k) % 4;
+      int ci = i + dx[d];
+      int cj = j + dy[d];
+
+      while (ok(ci, cj)) {
+	blocked[ci][cj][k] = true;
+	ci += dx[d];
+	cj += dy[d];
+      }
+    }
+  }
+
+  while (!q.empty()) {
+    State now = q.front(); q.pop();
+    int x = now.x;
+    int y = now.y;
+    int t = now.t;
+
+    if (a[x][y] == 'G') {
+      printf("%d\n", dist[x][y][t] - 1);
+      return;
+    }
+
+    REP(d, 4) {
+      int nx = x + dx[d];
+      int ny = y + dy[d];
+      int nt = (t + 1) % 4;
+
+      if (!can_pass(nx, ny, nt)) continue;
+      if (dist[nx][ny][nt]) continue;
+
+      dist[nx][ny][nt] = 1 + dist[x][y][t];
+      q.push({nx, ny, nt});
+    }
+  }
+
+  puts("impossible");
+}
+
+int main(void) 
+{
+  int T;
+  scanf("%d", &T);
+
+  REP(tc, T) {
+    printf("Case #%d: ", tc + 1);
+    solve();
+  }
+
+  return 0;
+}

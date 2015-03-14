@@ -1,0 +1,189 @@
+import java.io.InputStreamReader;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Scanner;
+import java.util.Set;
+ 
+public class Main {
+	static char[] dirLT = {'>', 'v', '<', '^'};
+	static int[] dirR = {0, 1, 0, -1};
+	static int[] dirC = {1, 0, -1, 0};
+	
+	static class Point{
+		final int r;
+		final int c;
+		Point(int r, int c){
+			this.r = r;
+			this.c = c;
+		}
+		@Override
+		public int hashCode() {
+			return 1000 * r + c;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if(!(obj instanceof Point)){
+				return false;
+			}
+			Point p = (Point) obj;
+			return (p.r == r && p.c == c);
+		}
+		
+	}
+	
+	static class LaserTurret{
+		final Point p;
+		final int dir;
+		LaserTurret(Point p, int dir){
+			this.p = p;
+			this.dir = dir;
+		}
+		
+		int nextDir(int step){
+			return (dir+step)%4;
+		}
+	}
+	
+	static class State {
+		final int minStep;
+		final Point p;
+
+		State(int minStep, Point p){
+			this.minStep = minStep;
+			this.p = p;
+		}
+
+		@Override
+		public int hashCode() {
+			return this.p.hashCode();
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if(!(obj instanceof State)){
+				return false;								
+			}
+			
+			State s = (State) obj;
+			return (this.p.equals(s.p) && ((s.minStep % 4) == this.minStep % 4));
+		}
+	}
+	
+	private static char[][] copyField(char[][] c){
+		char[][] ret = new char[c.length][];
+		for(int i = 0; i<ret.length; i++){
+			ret[i] = Arrays.copyOf(c[i], c[i].length);
+		}
+		return ret;
+	}
+	
+	private static void shoot(char[][] f, LaserTurret lt){
+		int r = lt.p.r + dirR[lt.dir];
+		int c = lt.p.c + dirC[lt.dir];
+		
+		while(f[r][c] == '.'){
+			f[r][c] = '#';
+			r += dirR[lt.dir];
+			c += dirC[lt.dir];
+		}
+	}
+
+	private static void solve(int c, int M, int N, char[][] field) {
+		Set<State> states = new HashSet<State>();
+		ArrayDeque<State> queue = new ArrayDeque<State>();
+		List<LaserTurret> ltList = new ArrayList<LaserTurret>();
+		Point goal = null;
+		Point start = null;
+		
+		for(int i = 1; i<M-1; i++){
+			for(int j = 1; j<N-1; j++){
+				char f = field[i][j];
+				if(f == 'S'){ 
+					start = new Point(i, j);
+					field[i][j] = '.';
+				}else if(f == 'G'){
+					goal = new Point(i, j);
+					field[i][j] = '.';
+				}
+				else if(f == '#' || f == '.'){
+					
+				}else{
+					for(int k = 0; k<4; k++){
+						if(f == dirLT[k]){
+							ltList.add(new LaserTurret(new Point(i,j), k));
+						}
+					}
+					field[i][j] = '#';
+				}
+			}
+		}
+		
+		State first = new State(0, start); 
+		queue.add(first);
+		states.add(first);
+		
+		while(!queue.isEmpty()){
+			State s = queue.poll();
+			if(s.p.r == goal.r && s.p.c == goal.c){
+				System.out.println("Case #"+ c +": " + s.minStep);
+				return;
+			}
+			
+			char[][] f = copyField(field);
+			
+			Point[] nextPoints = new Point[4];
+			for(int i = 0; i<4; i++){
+				nextPoints[i] = new Point(s.p.r + dirR[i], s.p.c + dirC[i]);
+			}
+			
+			for(LaserTurret lt : ltList){
+				LaserTurret nextLT = new LaserTurret(lt.p, lt.nextDir(s.minStep+1));
+				shoot(f, nextLT);
+			}
+			
+			for(Point p : nextPoints){
+				if(f[p.r][p.c] == '.'){
+					State next = new State(s.minStep+1, p);
+					if(states.add(next)){
+						queue.add(next);
+					}
+				}
+			}
+		}
+		
+		System.out.println("Case #"+ c +": " + "impossible");
+		return;
+	}
+	
+	public static void main(String[] args) {
+		Scanner scan = new Scanner(new InputStreamReader(System.in));
+		
+		int T = scan.nextInt();
+		
+		for(int i = 1; i<=T; i++){
+			int M = scan.nextInt();
+			int N = scan.nextInt();
+			scan.nextLine();
+			
+			char[][] field = new char[M+2][];
+			String walls = "";
+			for(int j = 0; j<N+2; j++){
+				walls += "#";
+			}
+			field[0] = walls.toCharArray();
+			for(int j = 1; j<M+1; j++){
+				String line = "#" + scan.nextLine() + "#";
+				field[j] = line.toCharArray();
+			}
+			field[M+1] = walls.toCharArray();
+			
+			solve(i, M+2, N+2, field);
+		}
+		
+		scan.close();
+	}
+	
+}

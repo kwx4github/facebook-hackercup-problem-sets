@@ -1,0 +1,143 @@
+#include <cstdio>
+#include <queue>
+using std::queue;
+
+
+const int mv[] = { 1, 2, 4, 8 };
+const int dx[] = { 0, -1, 0, 1 };
+const int dy[] = { -1, 0, 1, 0 };
+const char way[] = { '<', '^', '>', 'v' };
+
+int m, n;
+
+int odl[128][128][4];
+int blocked[128][128];
+char t[128][128];
+
+void reset() {
+    for(int x = 0; x <= m + 1; ++x)
+        for(int y = 0; y <= n + 1; ++y) {
+            blocked[x][y] = 0;
+            for(int i = 0; i < 4; ++i)
+                odl[x][y][i] = 0;
+        }
+    for(int i = 0; i <= m + 1; ++i)
+        blocked[i][0] = blocked[i][n + 1] = 15;
+    for(int i = 0; i <= n + 1; ++i)
+        blocked[0][i] = blocked[m + 1][i] = 15;
+}
+
+void lock(int x, int y) {
+//     printf(">%d %d\n", x, y);
+    if(t[x][y] == '#' || t[x][y] == 'S' || t[x][y] == 'G')
+        return;
+    int i = 0;
+    while(way[i++] != t[x][y]);
+    i %= 4;
+    for(int _ = 0; _ < 4; ++_) {
+        int xx = x, yy = y;
+        xx += dx[i];
+        yy += dy[i];
+        
+        while(t[xx][yy] == '.' || t[xx][yy] == 'S' || t[xx][yy] == 'G') {
+            blocked[xx][yy] |= mv[_];
+            xx += dx[i];
+            yy += dy[i];
+        }
+        
+        i++;
+        i %= 4;
+    }
+}
+
+struct P {
+    int x, y, odl;
+    P(int x, int y) : x(x), y(y), odl(0) {}
+    P(int x, int y, int odl) : x(x), y(y), odl(odl & 3) {}
+    P() = default;
+    P& operator=(P const& other) = default;
+};
+
+queue<P>q;
+
+void BFS(P v) {
+    q.push(v);
+    while(!q.empty()) {
+        v = q.front();
+#ifdef debbfs
+        printf("====(%d %d %d)====\n", v.x, v.y, v.odl);
+#endif
+        q.pop();
+        for(int i = 0; i < 4; ++i) {
+            P tmp(v.x + dx[i], v.y + dy[i], v.odl + 1);
+            if(!(blocked[tmp.x][tmp.y] & (1 << v.odl)))
+                if(odl[tmp.x][tmp.y][tmp.odl] == 0)
+                {
+#ifdef debbfs
+                    printf(">(%d %d %d)\n", tmp.x, tmp.y, tmp.odl);
+#endif
+                    odl[tmp.x][tmp.y][tmp.odl] = odl[v.x][v.y][v.odl] + 1;
+                    q.push(tmp);
+                }
+        }
+    }
+}
+
+void prog() {
+#ifdef deb
+    printf("\n");
+#endif
+    scanf("%d%d", &m, &n);
+    reset();
+    P S, G;
+    for(int x = 1; x <= m; ++x) {
+        scanf("%s", t[x] + 1);
+        for(int y = 1; y <= n; ++y) {
+            if(t[x][y] != '.' && t[x][y] != 'S' && t[x][y] != 'G')
+                blocked[x][y] = 15;
+            if(t[x][y] == 'S')
+                S = P(x, y);
+            if(t[x][y] == 'G')
+                G = P(x, y);
+        }
+    }
+    
+    for(int x = 1; x <= m; ++x)
+        for(int y = 1; y <= n; ++y)
+            if(t[x][y] != '.')
+                lock(x, y);
+    
+#ifdef deb
+    printf("S: %d %d\nG: %d %d\n", S.x, S.y, G.x, G.y);
+    for(int x = 1; x < m + 1; ++x) {
+        for(int y = 1; y < n + 1; ++y)
+            printf("%2d ", blocked[x][y]);
+        printf("\n");
+    }
+#endif
+    BFS(S);
+    G.odl = 1e9;
+    for(int i = 0; i < 4; ++i) {
+//         printf("*%d\n", odl[G.x][G.y][i]);
+        if(odl[G.x][G.y][i]) {
+            G.odl = G.odl < odl[G.x][G.y][i] ? G.odl : odl[G.x][G.y][i];
+        }
+    }
+    
+//    printf("S: %d %d\nG: %d %d\n", S.x, S.y, G.x, G.y);
+    
+    if(G.odl ^ (int)1e9)
+        printf("%d\n", G.odl);
+    else
+        printf("impossible\n");
+}
+
+int main() {
+    int _;
+    scanf("%d", &_);
+    for(int i = 1; i <= _; ++i) {
+        printf("Case #%d: ", i);
+        prog();
+    }
+    return 0;
+}

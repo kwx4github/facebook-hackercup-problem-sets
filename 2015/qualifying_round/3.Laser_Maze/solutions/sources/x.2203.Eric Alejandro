@@ -1,0 +1,80 @@
+import sys
+
+T = int(sys.stdin.readline())
+
+dr = [-1, 0, 1, 0]
+dc = [0, 1, 0, -1]
+
+def inside(maze, row, col):
+  return row >= 0 and col >= 0 and row < len(maze) and col < len(maze[0])
+
+def propagate(maze, row, col, dire):
+  for level in range(4):
+    dire = (dire + 1) % 4
+    rr = row
+    cc = col
+    maze[row][col][level] = '.'
+    while inside(maze, rr, cc) and (maze[rr][cc][level] == '.' or maze[rr][cc][level] == 'G'):
+      maze[rr][cc][level] = '#'
+      rr = rr + dr[dire]
+      cc = cc + dc[dire]
+  return maze  
+
+def bfs(maze, row, col, level):
+  queue = [(row, col, level)]
+  seen = {}
+  seen[(row, col, level)] = True
+  dist = {}
+  dist[(row, col, level)] = 0
+  while queue:
+    tri = queue.pop(0)
+    if maze[tri[0]][tri[1]][tri[2]] == 'G':
+      return dist[tri]
+    blevel = (tri[2]+1)%4
+    for d in range(4):
+      brow = tri[0] + dr[d]
+      bcol = tri[1] + dc[d]
+      if not inside(maze, brow, bcol):
+        continue
+      if maze[brow][bcol][blevel] == '#':
+        continue
+      btri = (brow, bcol, blevel)
+      if seen.get(btri, False):
+        continue
+      seen[btri] = True
+      dist[btri] = dist[tri] + 1
+      queue.append(btri)
+  return -1
+    
+for case in range(T):
+  rows, cols = map(int, sys.stdin.readline().split(" "))
+  maze = [[['.' for i in xrange(4)] for i in xrange(cols)] for i in xrange(rows)]
+  for row in range(rows):
+    line = sys.stdin.readline().strip()
+    for col in range(cols):
+      for level in range(4):
+        maze[row][col][level] = line[col]
+  for row in range(rows):
+    for col in range(cols):
+      if maze[row][col][0] == '^':
+        maze = propagate(maze, row, col, 0)
+      elif maze[row][col][0] == '>':
+        maze = propagate(maze, row, col, 1)
+      elif maze[row][col][0] == 'v':
+        maze = propagate(maze, row, col, 2)
+      elif maze[row][col][0] == '<':
+        maze = propagate(maze, row, col, 3)
+
+  # We do the bfs.
+  for row in range(rows):
+    for col in range(cols):
+      if maze[row][col][0] == 'S':
+        for level in range(4):
+          maze[row][col][level] = '.'
+        res = bfs(maze, row, col, 3)
+        line = 'Case #%d: ' % (1+case)
+        if res < 0:
+          print line + 'impossible'
+        else:
+          print line + str(res)
+

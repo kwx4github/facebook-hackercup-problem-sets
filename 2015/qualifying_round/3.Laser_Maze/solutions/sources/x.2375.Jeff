@@ -1,0 +1,113 @@
+#include <stdio.h>
+#include <string.h>
+#include <iostream>
+#include <algorithm>
+#include <string>
+#include <queue>
+#include <vector>
+
+using namespace std ;
+
+const int N = 110 ;
+
+char maze[N][N] ;
+int n, m ;
+int Hash[256] ;
+const int dx[] = { -1, 0, 1, 0 } ;
+const int dy[] = { 0, 1, 0, -1 } ;
+bool vis[N][N][4] = {0} ;
+
+struct Node {
+    int x, y, d ;
+    Node(int x, int y, int d) : x(x), y(y), d(d) {
+    }
+};
+
+vector < Node > v ;
+
+bool can[N][N] ;
+
+void init() {
+    memset( Hash, -1, sizeof (Hash) ) ;
+    Hash['^'] = 0 ;
+    Hash['<'] = 3 ;
+    Hash['v'] = 2 ;
+    Hash['>'] = 1 ;
+}
+
+void prework( Node &a ) {
+    a.d = (a.d + 1) % 4 ;
+    int x = a.x, y = a.y, d = a.d ;
+    x += dx[d], y += dy[d] ;
+
+    while (  x < n && x >= 0 && y < m && y >= 0  &&
+            ( maze[x][y] == '.' || maze[x][y] == 'G' || maze[x][y] == 'S' ) ){
+        can[x][y] = 1 ;
+        x += dx[d], y += dy[d] ;
+    }
+
+}
+
+int bfs( pair <int, int > start, pair <int, int> end ) {
+    memset( vis, 0, sizeof (vis) ) ;
+    queue < pair <int, int> > Q ;
+    Q.push( start ) ;
+
+    for ( int T = 0; !Q.empty(); ++T ) {
+        int sz = Q.size();
+        memset( can, 0, sizeof (can) ) ;
+        for ( int i = 0; i < v.size(); ++i ) {
+            prework( v[i] ) ;
+        }
+        while ( sz-- ) {
+            int x = Q.front().first, y = Q.front().second ;
+            Q.pop() ;
+            if ( x == end.first && y == end.second )    return T ;
+            for ( int i = 0; i < 4; ++i ) {
+                int tx = x + dx[i], ty = y + dy[i] ;
+                if ( (tx < n && ty < m && tx >= 0 && ty >= 0) == false ) continue ;
+                if ( can[tx][ty] == true )  continue ;
+                if ( Hash[tx] != -1 || maze[tx][ty] == '#' || vis[tx][ty][T%4] )  continue ;
+                Q.push( make_pair(tx, ty) ) ;
+                vis[tx][ty][T%4] = 1 ;
+            }
+        }
+    }
+    return -1 ;
+}
+
+int main() {
+    init() ;
+    freopen( "input.txt", "r", stdin ) ;
+    freopen( "output.txt", "w", stdout ) ;
+
+    int T, cas = 1 ;
+    cin >> T ;
+    while ( T-- ) {
+        cin >> n >> m ;
+        for ( int i = 0; i < n; ++i ) {
+            cin >> maze[i] ;
+        }
+        pair < int, int > start, end ;
+        for ( int i = 0; i < n; ++i ) {
+            for ( int j = 0; j < m; ++j ) {
+                if ( maze[i][j] == 'S' ) {
+                    start = make_pair( i, j ) ;
+                } else if ( maze[i][j] == 'G' ) {
+                    end = make_pair( i, j ) ;
+                } else if ( Hash[maze[i][j]] != -1 ) {
+                    v.push_back( Node( i, j, Hash[maze[i][j]] )) ;
+                }
+            }
+        }
+
+        int ret = bfs( start, end ) ;
+        printf( "Case #%d: ", cas++ ) ;
+        if ( ret == -1 )
+            puts("impossible") ;
+        else
+            printf("%d\n", ret) ;
+    }
+
+    return 0 ;
+}

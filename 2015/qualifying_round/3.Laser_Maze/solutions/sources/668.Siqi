@@ -1,0 +1,231 @@
+#include <algorithm>
+#include <deque>
+#include <iostream>
+#include <tuple>
+
+using namespace std;
+
+char lazers[] = { '>', 'v', '<', '^' };
+
+bool is_lazer(char c) {
+    return (c == '>') || (c == 'v') || (c == '<') || (c == '^');
+}
+
+char turn_lazer(char c, int turns) {
+    int i;
+    for (i = 0; i < 4; ++i) {
+        if (lazers[i] == c) {
+            break;
+        }
+    }
+    return lazers[(i + turns) % 4];
+}
+
+bool is_blocking_tile(char c) {
+    return (c == '#') || (c == '>') || (c == 'v') || (c == '<') || (c == '^');
+}
+
+int main(int argc, char* argv[]) {
+    int T;
+    cin >> T;
+
+    for (int t = 1; t <= T; ++t) {
+        int H;
+        cin >> H;
+        int W;
+        cin >> W;
+
+        char* maze = new char[H * W];
+
+        int start_x = -1;
+        int start_y = -1;
+        int goal_x = -1;
+        int goal_y = -1;
+
+        for (int y = 0; y < H; ++y) {
+            for (int x = 0; x < W; ++x) {
+                char c;
+                cin >> c;
+                maze[(y * W) + x] = c;
+                if (c == 'S') {
+                    start_x = x;
+                    start_y = y;
+                } else if (c == 'G') {
+                    goal_x = x;
+                    goal_y = y;
+                }
+            }
+        }
+
+        bool* allowed_positions = new bool[4 * H * W];
+        fill(allowed_positions, allowed_positions + (4 * H * W), true);
+
+        for (int turns = 0; turns < 4; ++turns) {
+            for (int y = 0; y < H; ++y) {
+                for (int x = 0; x < W; ++x) {
+                    char c = maze[(y * W) + x];
+                    if (is_lazer(c)) {
+                        c = turn_lazer(c, turns);
+                        if (c == '>') {
+                            for (int xx = x + 1; xx < W; ++xx) {
+                                if (is_blocking_tile(maze[(y * W) + xx])) {
+                                    break;
+                                } else {
+                                    allowed_positions[(turns * H * W) + (y * W) + xx] = false;
+                                }
+                            }
+                        } else if (c == 'v') {
+                            for (int yy = y + 1; yy < H; ++yy) {
+                                if (is_blocking_tile(maze[(yy * W) + x])) {
+                                    break;
+                                } else {
+                                    allowed_positions[(turns * H * W) + (yy * W) + x] = false;
+                                }
+                            }
+                        } else if (c == '<') {
+                            for (int xx = x - 1; xx >= 0; --xx) {
+                                if (is_blocking_tile(maze[(y * W) + xx])) {
+                                    break;
+                                } else {
+                                    allowed_positions[(turns * H * W) + (y * W) + xx] = false;
+                                }
+                            }
+                        } else if (c == '^') {
+                            for (int yy = y - 1; yy >= 0; --yy) {
+                                if (is_blocking_tile(maze[(yy * W) + x])) {
+                                    break;
+                                } else {
+                                    allowed_positions[(turns * H * W) + (yy * W) + x] = false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        bool* visited = new bool[4 * H * W];
+        fill(visited, visited + (4 * H * W), false);
+
+        int* distances = new int[4 * H * W];
+        fill(distances, distances + (4 * H * W), -1);
+
+        deque<tuple<int, int, int>> queue;
+
+        visited[(0 * H * W) + (start_y * W) + start_x] = true;
+        distances[(0 * H * W) + (start_y * W) + start_x] = 0;
+        queue.push_back(make_tuple(start_x, start_y, 0));
+
+        while (!queue.empty()) {
+            tuple<int, int, int> node = queue.front();
+            queue.pop_front();
+
+            int cur_x = get<0>(node);
+            int cur_y = get<1>(node);
+            int cur_turn = get<2>(node);
+            int cur_dist = distances[(cur_turn * H * W) + (cur_y * W) + cur_x];
+
+            int next_turn = (cur_turn + 1) % 4;
+            int next_left = cur_x - 1;
+            int next_right = cur_x + 1;
+            int next_up = cur_y + 1;
+            int next_down = cur_y - 1;
+            if (next_left >= 0) {
+                if (!is_blocking_tile(maze[(cur_y * W) + next_left])) {
+                    int index_3d = (next_turn * H * W) + (cur_y * W) + next_left;
+                    if (allowed_positions[index_3d]) {
+                        if (!visited[index_3d]) {
+                            visited[index_3d] = true;
+                            distances[index_3d] = 1 + cur_dist;
+                            tuple<int, int, int> left_node = make_tuple(next_left, cur_y, next_turn);
+                            queue.push_back(left_node);
+                        }
+                    }
+                }
+            } 
+            if (next_right < W) {
+                if (!is_blocking_tile(maze[(cur_y * W) + next_right])) {
+                    int index_3d = (next_turn * H * W) + (cur_y * W) + next_right;
+                    if (allowed_positions[index_3d]) {
+                        if (!visited[index_3d]) {
+                            visited[index_3d] = true;
+                            distances[index_3d] = 1 + cur_dist;
+                            tuple<int, int, int> right_node = make_tuple(next_right, cur_y, next_turn);
+                            queue.push_back(right_node);
+                        }
+                    }
+                }
+            }
+            if (next_up < H) {
+                if (!is_blocking_tile(maze[(next_up * W) + cur_x])) {
+                    int index_3d = (next_turn * H * W) + (next_up * W) + cur_x;
+                    if (allowed_positions[index_3d]) {
+                        if (!visited[index_3d]) {
+                            visited[index_3d] = true;
+                            distances[index_3d] = 1 + cur_dist;
+                            tuple<int, int, int> up_node = make_tuple(cur_x, next_up, next_turn);
+                            queue.push_back(up_node);
+                        }
+                    }
+                }
+            }
+            if (next_down >= 0) {
+                if (!is_blocking_tile(maze[(next_down * W) + cur_x])) {
+                    int index_3d = (next_turn * H * W) + (next_down * W) + cur_x;
+                    if (allowed_positions[index_3d]) {
+                        if (!visited[index_3d]) {
+                            visited[index_3d] = true;
+                            distances[index_3d] = 1 + cur_dist;
+                            tuple<int, int, int> down_node = make_tuple(cur_x, next_down, next_turn);
+                            queue.push_back(down_node);
+                        }
+                    }
+                }
+            }
+        }
+
+        int shortest_distance = -1;
+        for (int i = 0; i < 4; ++i) {
+            if (allowed_positions[(i * H * W) + (goal_y * W) + goal_x]) {
+                int dist = distances[(i * H * W) + (goal_y * W) + goal_x];
+                if (dist != -1) {
+                    if (shortest_distance == -1) {
+                        shortest_distance = dist;
+                    } else {
+                        if (dist < shortest_distance) {
+                            shortest_distance = dist;
+                        }
+                    }
+                }
+            }
+        }
+        cout << "Case #" << t << ": ";
+        if (shortest_distance == -1) {
+            cout << "impossible";
+        } else {
+            cout << shortest_distance;
+        }
+        if (t != T) {
+            cout << "\n";
+        }
+
+        /*
+        cout << "Allowed positions:" << "\n";
+        for (int i = 0; i < 4; ++i) {
+            cout << "    " << (allowed_positions[(i * H * W) + (goal_y * W) + goal_x] ? "true" : "false") << "\n";
+        }
+
+        cout << "Goal distances:" << "\n";
+        for (int i = 0; i < 4; ++i) {
+            cout << "    " << distances[(i * H * W) + (goal_y * W) + goal_x] << "\n";
+        }
+        */
+
+        delete[] maze;
+        delete[] allowed_positions;
+        delete[] visited;
+        delete[] distances;
+    }
+
+    return 0;
+}

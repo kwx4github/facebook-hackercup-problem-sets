@@ -1,0 +1,113 @@
+#include <iostream>
+#include <vector>
+#include <deque>
+using namespace std;
+
+struct state {
+	int r, c;
+	int step;
+	state(int r, int c, int step) : r(r), c(c), step(step){}
+};
+
+int dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+char turret[] = {'^', '>', 'v', '<'};
+
+vector<string> boards[4];
+
+int getDir(char c, int step) {
+	for (int i = 0; i < 4; i++) {
+		if (turret[i] == c) {
+			return (i + step) % 4;
+		}
+	}
+
+	return -1;
+}
+
+int m, n;
+
+bool isInRange(int r, int c) {
+	return r >= 0 && r < m && c >= 0 && c < n;
+}
+int main() {
+	int t;
+	cin >> t;
+
+	for (int tt = 0; tt < t; tt++) {
+		cin >> m >> n;
+		vector<string> board(m);
+		for (int i = 0; i < m; i++) cin >> board[i];
+
+		int sr = -1, sc = -1, gr = -1, gc = -1;
+
+		for (int i = 0; i < m; i++) {
+			for (int j = 0; j < n; j++) {
+				if (board[i][j] == 'S') {
+					sr = i; sc = j;
+					board[i][j] = '.';
+				} else if (board[i][j] == 'G') {
+					gr = i; gc = j;
+					board[i][j] = '.';
+				}
+			}
+		}
+
+
+		for (int i = 0; i < 4; i++) {
+			boards[i] = board;
+			for (int r = 0; r < m; r++) {
+				for (int c = 0; c < n; c++) {
+					int d = getDir(boards[i][r][c], i);
+
+					if (d == -1) continue;
+
+					int currentR = r + dir[d][0];
+					int currentC = c + dir[d][1];
+					while (isInRange(currentR, currentC) && 
+						boards[i][currentR][currentC] != '#' && 
+						getDir(boards[i][currentR][currentC], i) == -1) {
+						boards[i][currentR][currentC] = 'L';
+						currentR += dir[d][0];
+						currentC += dir[d][1];
+					}
+				}
+
+			}
+		}
+
+		vector<vector<vector<int> > > steps(4, vector<vector<int> >(m, vector<int>(n, -1)));
+		deque<state> que;
+		steps[0][sr][sc] = 0;
+		que.push_back(state(sr, sc, 0));
+
+		cout << "Case #" << tt + 1 << ": ";
+		bool found = false;
+		while (que.size()) {
+			state p = que.front();
+			que.pop_front();
+
+			if (p.r == gr && p.c == gc) {
+				found = true;
+				cout << steps[p.step][p.r][p.c] << endl;
+				break;
+			}
+
+			int nextStep = (p.step + 1) % 4;
+
+			for (int d = 0; d < 4; d++) {
+				int nr = p.r + dir[d][0];
+				int nc = p.c + dir[d][1];
+				if (isInRange(nr, nc) &&
+					boards[nextStep][nr][nc] == '.' &&
+					steps[nextStep][nr][nc] == -1) {
+					steps[nextStep][nr][nc] = steps[p.step][p.r][p.c]+ 1;
+					que.push_back(state(nr, nc, nextStep));
+				}
+			}
+		}
+
+		if (!found) {
+			cout << "impossible" << endl;
+		}
+	}
+}

@@ -1,0 +1,184 @@
+#include <fstream>
+#include <string>
+#include <queue>
+
+char field[105][105];
+char * lasers[105][105][4];
+char * cannon;
+bool states[105][105][4];
+int sx, sy;
+int iN;
+std::ifstream input;
+std::ofstream output;
+
+struct Pos {
+	Pos(int x, int y, int wave) : x(x), y(y), wave(wave) {}
+
+	int x;
+	int y;
+	int wave;
+};
+
+void Clean(int n, int m) {
+	for (int i = 0; i < n + 2; ++i) {
+		for (int j = 0; j < m + 2; ++j) {
+			field[i][j] = '#';
+			lasers[i][j][0] = 0;
+			lasers[i][j][1] = 0;
+			lasers[i][j][2] = 0;
+			lasers[i][j][3] = 0;
+			states[i][j][0] = false;
+			states[i][j][1] = false;
+			states[i][j][2] = false;
+			states[i][j][3] = false;
+		}
+	}
+}
+
+int GetCannonState() {
+	int cannonState;
+	if (cannon == 0)
+		cannonState = 0;
+	else if (*cannon == '^')
+		cannonState = 0;
+	else if (*cannon == '>')
+		cannonState = 1;
+	else if (*cannon == 'v')
+		cannonState = 2;
+	else if (*cannon == '<')
+		cannonState = 3;
+	return cannonState;
+}
+
+int GetCannonFutureState() {
+	int cannonState = GetCannonState();
+	if (cannon != 0)
+		cannonState = (cannonState + 1) % 4;
+	return cannonState;
+}
+
+bool IsVisitedState(int x, int y) {
+	int c = GetCannonFutureState();
+	bool result = states[x][y][c] == true;
+	states[x][y][c] = true;
+	return result;
+}
+
+void RotateCannons(int n, int m) {
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= m; ++j) {
+			if (field[i][j] == '^')
+				field[i][j] = '>';
+			else if (field[i][j] == '>')
+				field[i][j] = 'v';
+			else if (field[i][j] == 'v')
+				field[i][j] = '<';
+			else if (field[i][j] == '<')
+				field[i][j] = '^';
+		}
+	}
+}
+
+void ReadInput(int n, int m) {
+	cannon = 0;
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= m; ++j) {
+			input >> field[i][j];
+			if (field[i][j] == 'S') {
+				sx = i;
+				sy = j;
+				field[i][j] = '.';
+			}
+			if (cannon == 0 && field[i][j] == '^' || field[i][j] == '>' || field[i][j] == 'v' || field[i][j] == '<')
+				cannon = &(field[i][j]);
+		}
+	}
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= m; ++j) {
+			char c = field[i][j];
+			if (c == '^' || c == '>' || c == '<' || c == 'v') {
+				int k = i;
+				int l = j + 1;
+				while (field[k][l] == '.' || field[k][l] == 'S' || field[k][l] == 'G') {
+					lasers[k][l][3] = &(field[i][j]);
+					++l;
+				}
+				k = i;
+				l = j - 1;
+				while (field[k][l] == '.' || field[k][l] == 'S' || field[k][l] == 'G') {
+					lasers[k][l][1] = &(field[i][j]);
+					--l;
+				}
+				k = i + 1;
+				l = j;
+				while (field[k][l] == '.' || field[k][l] == 'S' || field[k][l] == 'G') {
+					lasers[k][l][0] = &(field[i][j]);
+					++k;
+				}
+				k = i - 1;
+				l = j;
+				while (field[k][l] == '.' || field[k][l] == 'S' || field[k][l] == 'G') {
+					lasers[k][l][2] = &(field[i][j]);
+					--k;
+				}
+			}
+		}
+	}
+}
+
+void Expand(Pos p, std::queue<Pos> & q) {
+	if (!IsVisitedState(p.x, p.y + 1) && (field[p.x][p.y + 1] == '.' || field[p.x][p.y + 1] == 'G'))
+		q.push(Pos(p.x, p.y + 1, p.wave + 1));
+	if (!IsVisitedState(p.x, p.y - 1) && (field[p.x][p.y - 1] == '.' || field[p.x][p.y - 1] == 'G'))
+		q.push(Pos(p.x, p.y - 1, p.wave + 1));
+	if (!IsVisitedState(p.x + 1, p.y) && (field[p.x + 1][p.y] == '.' || field[p.x + 1][p.y] == 'G'))
+		q.push(Pos(p.x + 1, p.y, p.wave + 1));
+	if (!IsVisitedState(p.x - 1, p.y) && (field[p.x - 1][p.y] == '.' || field[p.x - 1][p.y] == 'G'))
+		q.push(Pos(p.x - 1, p.y, p.wave + 1));
+}
+
+bool IsDead(int x, int y) {
+	return (lasers[x][y][0] != 0 && *lasers[x][y][0] == 'v') ||
+		(lasers[x][y][1] != 0 && *lasers[x][y][1] == '<') ||
+		(lasers[x][y][2] != 0 && *lasers[x][y][2] == '^') ||
+		(lasers[x][y][3] != 0 && *lasers[x][y][3] == '>');
+}
+
+void Solve(int n, int m) {
+	std::queue<Pos> q;
+	q.push(Pos(sx, sy, 0));
+	int prevWave = 0;
+	
+	while (!q.empty()) {
+		Pos p = q.front();
+		q.pop();
+		if (prevWave < p.wave)
+			RotateCannons(n, m);		
+		if (field[p.x][p.y] == 'G' && !IsDead(p.x, p.y)) {
+			output << "Case #" << iN << ": " << p.wave << std::endl;
+			return;
+		}
+		if (p.wave == 0 || (p.wave > 0 && !IsDead(p.x, p.y))) {
+			Expand(p, q);
+		}
+		prevWave = p.wave;
+
+	}
+	output << "Case #" << iN << ": impossible" << std::endl;
+}
+
+int main() {
+	int N;	
+	input.open("laser_maze.txt");
+	output.open("output");
+	input >> N;
+	for (iN = 1; iN <= N; ++iN) {
+		int n, m;
+		input >> n >> m;
+		Clean(n, m);
+		ReadInput(n, m);
+		Solve(n, m);
+	}
+	input.close();
+	output.close();
+}

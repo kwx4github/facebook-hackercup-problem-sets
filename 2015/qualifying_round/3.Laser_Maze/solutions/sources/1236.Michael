@@ -1,0 +1,168 @@
+import java.io.*;
+import java.util.*;
+
+public class LaserMaze {
+    BufferedReader br;
+    StringTokenizer in;
+    PrintWriter out;
+    int startx, starty, endx, endy, n, m;
+    char[][] maze;
+    boolean[][][] bad;
+    int[] dx = {-1, 0, 1, 0};
+    int[] dy = {0, 1, 0, -1};
+
+    public String nextToken() throws IOException {
+        while (in == null || !in.hasMoreTokens()) {
+            in = new StringTokenizer(br.readLine());
+        }
+        return in.nextToken();
+    }
+
+    public int nextInt() throws IOException {
+        return Integer.parseInt(nextToken());
+    }
+
+    public double nextDouble() throws IOException {
+        return Double.parseDouble(nextToken());
+    }
+
+    public long nextLong() throws IOException {
+        return Long.parseLong(nextToken());
+    }
+
+    public static void main(String[] args) throws IOException {
+        new LaserMaze().run();
+    }
+
+    class Triple {
+        int x;
+        int y;
+        int n;
+
+        public Triple(int x, int y, int n) {
+            this.x = x;
+            this.y = y;
+            this.n = n;
+        }
+    }
+
+    int bfs() {
+        ArrayDeque<Triple> queue = new ArrayDeque<Triple>();
+        boolean[][][] used = new boolean[m][n][4];
+        int[][][] dist = new int[m][n][4];
+        queue.addLast(new Triple(startx, starty, 0));
+        used[startx][starty][0] = true;
+        dist[startx][starty][0] = 0;
+        while (!queue.isEmpty()) {
+            Triple u = queue.pollFirst();
+            int x0 = u.x;
+            int y0 = u.y;
+            int n0 = u.n;
+            for (int i = 0; i < 4; i++) {
+                int x1 = x0 + dx[i];
+                int y1 = y0 + dy[i];
+                int n1 = (n0 + 1) % 4;
+                if (0 <= x1 && x1 < m && 0 <= y1 && y1 < n && maze[x1][y1] == '.') {
+                    if (!used[x1][y1][n1] && !bad[n1][x1][y1]) {
+                        queue.add(new Triple(x1, y1, n1));
+                        used[x1][y1][n1] = true;
+                        dist[x1][y1][n1] = dist[x0][y0][n0] + 1;
+                    }
+                }
+            }
+        }
+        int res = Integer.MAX_VALUE;
+        for (int i = 0; i < 4; i++) {
+            if (used[endx][endy][i]) {
+                res = Math.min(res, dist[endx][endy][i]);
+            }
+        }
+        if (res == Integer.MAX_VALUE) {
+            res = -1;
+        }
+        return res;
+    }
+
+    public void solve() throws IOException {
+        int t = nextInt();
+        for (int cycle = 1; cycle <= t; cycle++) {
+            m = nextInt();
+            n = nextInt();
+            maze = new char[m][n];
+            for (int i = 0; i < m; i++) {
+                String s = nextToken();
+                for (int j = 0; j < n; j++) {
+                    maze[i][j] = s.charAt(j);
+                    if (s.charAt(j) == 'S') {
+                        startx = i;
+                        starty = j;
+                        maze[i][j] = '.';
+                    } else if (s.charAt(j) == 'G') {
+                        endx = i;
+                        endy = j;
+                        maze[i][j] = '.';
+                    }
+                }
+            }
+
+            bad = new boolean[4][m][n];
+            for (int x = 0; x < 4; x++) {
+                for (int i = 0; i < m; i++) {
+                    for (int j = 0; j < n; j++) {
+                        int cur = -1;
+                        if (maze[i][j] == '^') {
+                            cur = x;
+                        } else if (maze[i][j] == '>') {
+                            cur = (x + 1) % 4;
+                        } else if (maze[i][j] == 'v') {
+                            cur = (x + 2) % 4;
+                        } else if (maze[i][j] == '<') {
+                            cur = (x + 3) % 4;
+                        }
+
+                        if (cur != -1) {
+                            int cx = i + dx[cur], cy = j + dy[cur];
+                            while (0 <= cx && cx < m && 0 <= cy && cy < n && maze[cx][cy] == '.') {
+                                bad[x][cx][cy] = true;
+                                cx += dx[cur];
+                                cy += dy[cur];
+                            }
+                        }
+                    }
+                }
+            }
+
+//            for (int i = 0; i < 4; i++) {
+//                for (int j = 0; j < m; j++) {
+//                    for (int k = 0; k < n; k++) {
+//                        System.out.print(bad[i][j][k] + " ");
+//                    }
+//                    System.out.println();
+//                }
+//                System.out.println();
+//            }
+
+            int res = bfs();
+            out.print("Case #" + cycle + ": ");
+            if (res == -1) {
+                out.println("impossible");
+            } else {
+                out.println(res);
+            }
+        }
+    }
+
+    public void run() {
+        try {
+            br = new BufferedReader(new FileReader("laser_maze.txt"));
+            out = new PrintWriter("laser_maze_output.txt");
+
+            solve();
+
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+}

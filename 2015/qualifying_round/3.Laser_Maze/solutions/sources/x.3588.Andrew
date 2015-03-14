@@ -1,0 +1,118 @@
+import sys
+import Queue
+
+
+def main(namein, nameout):
+    filein = open(namein, 'r')
+    fileout = open(nameout, 'w')
+    numcases = int(filein.readline())
+    for i in range(numcases):
+        dimstring = filein.readline().split()
+        dimy = int(dimstring[0])
+        dimx = int(dimstring[1])
+        starty = 0
+        startx = 0
+        endy = 0
+        endx = 0
+        maze = [[0 for x in range(dimx)] for x in range(dimy)]
+        for y in range(dimy):
+            row = filein.readline()
+            for x in range(len(row)-1):
+                maze[y][x] = row[x]
+                if row[x] == 'S':
+                    starty = y
+                    startx = x
+                elif row[x] == 'G':
+                    endy = y
+                    endx = x
+        sol = solve(dimy,dimx,starty,startx,endy,endx,maze)
+        outline = "Case #{0}: {1}\n".format(i+1, sol)
+        fileout.write(outline)
+
+def solve(dimy, dimx, starty, startx, endy, endx, maze):
+    mazes = []
+    for i in range(4):
+        mazes.append(genmaze(dimy, dimx, maze, i))
+    # construct graph as map from 3-tuples to 3-tuples
+    graph = dict()
+    for i in range(4):
+        for j in range(dimy):
+            for k in range(dimx):
+                dests = []
+                # movement down
+                if j+1 < dimy and mazes[(i+1)%4][j+1][k] == '.':
+                    dests.append(((i+1)%4,j+1,k))
+                if j-1 >= 0 and mazes[(i+1)%4][j-1][k] == '.':
+                    dests.append(((i+1)%4,j-1,k))
+                if k+1 < dimx and mazes[(i+1)%4][j][k+1] == '.':
+                    dests.append(((i+1)%4,j,k+1))
+                if k-1 >= 0 and mazes[(i+1)%4][j][k-1] == '.':
+                    dests.append(((i+1)%4,j,k-1))
+                graph[(i,j,k)] = dests
+    # perform DFS
+    seen = set()
+    tosee = Queue.Queue()
+    length = dict()
+    seen.add((0, starty, startx))
+    tosee.put((0, starty, startx))
+    length[(0, starty, startx)] = 0
+    while not tosee.empty():
+        from_node = tosee.get()
+        for to_node in graph[from_node]:
+            _, to_y, to_x = to_node
+            if to_y == endy and to_x == endx:
+                return length[from_node] + 1
+            if to_node not in seen:
+                seen.add(to_node)
+                tosee.put(to_node)
+                length[to_node] = length[from_node] + 1
+    return "impossible"
+
+def genmaze(dimy, dimx, origmaze, t):
+    maze = [[0 for x in range(dimx)] for x in range(dimy)]
+    # clone the original maze
+    for y in range(len(origmaze)):
+        for x in range(len(origmaze[y])):
+            maze[y][x] = origmaze[y][x]
+    # project the turrets with correct time
+    for y in range(len(maze)):
+        for x in range(len(maze[y])):
+            if maze[y][x] == '#' or maze[y][x] == '.':
+                continue
+            if maze[y][x] == 'S' or maze[y][x] == 'G':
+                maze[y][x] = '.'
+            else:
+                (dy, dx) = rotate_turret(maze[y][x], t)
+                (newy, newx) = (y+dy, x+dx)
+                while newy >= 0 and newy < dimy \
+                        and newx >= 0 and newx < dimx:
+                    square = maze[newy][newx]
+                    if square == '#' or square == '^' or square == '>' \
+                            or square == 'v' or square == '<':
+                        break
+                    maze[newy][newx] = 'x'
+                    newy = newy + dy
+                    newx = newx + dx
+    return maze
+
+# returns the direction of shot as y, x tuple
+def rotate_turret(turret, t):
+    direction = 0
+    if turret == '>':
+        direction = 1
+    elif turret == 'v':
+        direction = 2
+    elif turret == '<':
+        direction = 3
+    direction = (direction + t) % 4
+    if direction == 0:
+        return (-1, 0)
+    elif direction == 1:
+        return (0, 1)
+    elif direction == 2:
+        return (1, 0)
+    elif direction == 3:
+        return (0, -1)
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2])

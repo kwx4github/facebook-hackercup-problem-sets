@@ -1,0 +1,188 @@
+// https://www.facebook.com/hackercup/problems.php?pid=1523599254559737&round=742632349177460
+
+// Lasers are powerful, but they do not pass through walls or laser turrets. The laser turrets respond to your movements, so you can't stand still and wait for the turrets to turn.
+// !!! TODO If you reach the goal, but are immediately shot by a laser, your efforts will have been in vain, so make sure you reach the goal safely.
+// 90 degrees clockwise, and then shoots
+
+#include <string>
+#include <iostream>
+
+using namespace std;
+
+int T;
+int M, N;
+char maze[100][100];
+int sx, sy;
+int gx, gy;
+
+bool forbid[4][100][100];
+bool acc[2][100][100];
+
+/*
+  . (empty space) 
+  # (wall) 
+  S (starting position) 
+  G (goal) 
+  < > ^ v (laser turrets) 
+*/
+void parse() {
+  cin >> M >> N;
+  for(int y = 0; y < M; y++)
+  for(int x = 0; x < N; x++)
+  {
+    char c;
+    cin >> c;
+    if(c == 'S') {
+      sx = x;
+      sy = y;
+      maze[y][x] = '.';
+    } else if(c == 'G') {
+      gx = x;
+      gy = y;
+      maze[y][x] = '.';
+    } else {
+      maze[y][x] = c;
+    }
+  }
+}
+
+void del(int x, int y, int dir) {
+  int px, py;
+  // N
+  px = x;
+  py = y - 1;
+  while(py >= 0 && maze[py][px] == '.') {
+    forbid[dir][py][px] = true;
+    py--;
+  }
+  
+  // E
+  px = x + 1;
+  py = y;
+  while(px < N && maze[py][px] == '.') {
+    forbid[(dir+1)%4][py][px] = true;
+    px++;
+  }
+  
+  // S
+  px = x;
+  py = y + 1;
+  while(py < M && maze[py][px] == '.') {
+    forbid[(dir+2)%4][py][px] = true;
+    py++;
+  }
+  
+  // W
+  px = x - 1;
+  py = y;
+  while(px >= 0 && maze[py][px] == '.') {
+    forbid[(dir+3)%4][py][px] = true;
+    px--;
+  }
+}
+
+void precompute() {
+  for(int s = 0; s < 4; s++)
+  for(int y = 0; y < M; y++)
+  for(int x = 0; x < N; x++)
+    forbid[s][y][x] = false;
+  for(int y = 0; y < M; y++)
+  for(int x = 0; x < N; x++) {
+    if(maze[y][x] != '.')
+      for(int s = 0; s < 4; s++)
+        forbid[s][y][x] = true;
+    if(maze[y][x] == '^')
+      del(x, y, 0);
+    else if(maze[y][x] == '<')
+      del(x, y, 1);
+    else if(maze[y][x] == 'v')
+      del(x, y, 2);
+    else if(maze[y][x] == '>')
+      del(x, y, 3);
+  }
+}
+
+bool next_step(int step) {
+  int s2 = step%2;
+  int s12 = (step+1)%2;
+  int s14 = (step+1)%4;
+  int oneok = false;
+  if(acc[s2][gy][gx] == true) {
+    cout << step;
+    return true;
+  }
+  if(step > 130000)
+    return false;
+  
+  for(int y = 0; y < M; y++)
+  for(int x = 0; x < N; x++)
+    acc[s12][y][x] = false;
+  
+  for(int y = 0; y < M; y++)
+  for(int x = 0; x < N; x++) {
+    if(acc[s2][y][x]) {
+      if(!forbid[s14][y][x+1]) {
+        acc[s12][y][x+1] = true;
+        oneok = true;
+      }
+      if(!forbid[s14][y][x-1]) {
+        acc[s12][y][x-1] = true;
+        oneok = true;
+      }
+      if(!forbid[s14][y+1][x]) {
+        acc[s12][y+1][x] = true;
+        oneok = true;
+      }
+      if(!forbid[s14][y-1][x]) {
+        acc[s12][y-1][x] = true;
+        oneok = true;
+      }
+    }
+  }
+  if(!oneok)
+    return false;
+  return next_step(step +1 );
+}
+
+bool solve() {
+  precompute();
+  for(int y = 0; y < M; y++)
+  for(int x = 0; x < N; x++)
+    acc[0][y][x] = false;
+  acc[0][sy][sx] = true;
+  
+  return next_step(0);
+}
+
+void print() {
+  for(int y = 0; y < M; y++) {
+    for(int x = 0; x < N; x++) {
+      cout << maze[y][x];
+    }
+    cout << endl;
+  }
+  cout << endl;
+  
+  for(int s = 0; s < 4; s++) {
+    for(int y = 0; y < M; y++) {
+      for(int x = 0; x < N; x++) {
+        cout << forbid[s][y][x];
+      }
+      cout << endl;
+    }
+    cout << endl;
+  }
+}
+
+int main() {
+  cin >> T;
+  for(int i = 0; i < T; i++) {
+    int r;
+    cout << "Case #" << i+1 << ": ";
+    parse();
+    if(!solve())
+      cout << "impossible";
+    cout << endl;
+    //print();
+  }
+}

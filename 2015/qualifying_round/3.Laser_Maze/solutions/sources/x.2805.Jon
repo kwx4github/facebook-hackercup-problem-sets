@@ -1,0 +1,274 @@
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+/**
+ * Created by jonthoms on 1/10/15.
+ */
+public class Solution3 {
+    public static void main(String[] args) {
+        process();
+    }
+
+    private static void process(){
+        File file = new File("input3.txt");
+        Scanner scanner = null;
+        try {
+            scanner = new Scanner(file);
+        } catch (Exception e){
+            trace(e);
+        }
+        String line = scanner.nextLine();
+        int nProblems = Integer.parseInt(line);
+        trace(nProblems);
+
+        StringBuilder result = new StringBuilder();
+
+        for(int n = 0; n < nProblems; ++n){
+            line = scanner.nextLine();
+            int[] hw = parseLineInts(line);
+            int h = hw[0];
+            int w = hw[1];
+            char[][] map = new char[h][w];
+            for(int i = 0; i < h; ++i){
+                map[i] = scanner.nextLine().toCharArray();
+            }
+            int pathCost = getPathCost(map);
+
+            int problemNumber = n + 1;
+            if(pathCost < 0){
+                result.append("Case #" + problemNumber + ": impossible\n");
+            } else {
+                result.append("Case #" + problemNumber + ": " + pathCost + "\n");
+            }
+
+        }
+
+        String output = result.toString();
+        trace(output);
+
+        saveStringFile("output3.txt", output);
+
+        trace("finished");
+    }
+
+    private static int getPathCost(char[][] mapInput){
+        // find the starting position
+        int h = mapInput.length;
+        int w = mapInput[0].length;
+
+        int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+
+        char start = "S".charAt(0);
+        char goal = "G".charAt(0);
+        char wall = "#".charAt(0);
+        char space = ".".charAt(0);
+        char up = "^".charAt(0);
+        char right = ">".charAt(0);
+        char down = "v".charAt(0);
+        char left = "<".charAt(0);
+
+        // generate 4 possible map states (z direction)
+        Node[][][] nodes = new Node[w][h][4];
+        for(int i = 0; i < w; ++i){
+            for(int j = 0; j < h; ++j){
+                for(int k = 0; k < 4; ++k){
+                    nodes[i][j][k] = new Node(i, j, k);
+                }
+            }
+        }
+
+        // find walls, start, goal
+        for(int i = 0; i < w; ++i){
+            for(int j = 0; j < h; ++j){
+                char c = mapInput[j][i];
+                if(c == start) {
+                    x0 = i;
+                    y0 = j;
+                } else if(c == goal){
+                    x1 = i;
+                    y1 = j;
+                } else if(c == wall
+                        || c == up
+                        || c == right
+                        || c == down
+                        || c == left){
+                    for(int k = 0; k < 4; ++k) {
+                        nodes[i][j][k].closed = true;
+                    }
+                }
+            }
+        }
+
+        // fill in laser beams
+        for(int i = 0; i < w; ++i){
+            for(int j = 0; j < h; ++j){
+                char c = mapInput[j][i];
+                int index;
+                if(c == up) index = 0;
+                else if(c == right) index = 1;
+                else if(c == down) index = 2;
+                else if(c == left) index = 3;
+                else continue;
+                for(int k = 0; k < 4; ++k) {
+                    if(index == 0){ // up
+                        for(int y = j - 1; y >= 0; --y){
+                            Node n = nodes[i][y][k];
+                            if(n.closed) break; // hit a wall or laser
+                            n.closed = true;
+                        }
+                    } else if(index == 1) { // right
+                        for(int x = i + 1; x < w; ++x){
+                            Node n = nodes[x][j][k];
+                            if(n.closed) break;
+                            n.closed = true;
+                        }
+                    } else if(index == 2) { // down
+                        for(int y = j + 1; y < h; ++y){
+                            Node n = nodes[i][y][k];
+                            if(n.closed) break;
+                            n.closed = true;
+                        }
+                    } else { // left
+                        for(int x = i - 1; x >= 0; --x){
+                            Node n = nodes[x][j][k];
+                            if(n.closed) break;
+                            n.closed = true;
+                        }
+                    }
+                    ++index;
+                    index %= 4;
+                }
+            }
+        }
+
+        for(int i = 0; i < w; ++i){
+            for(int j = 0; j < h; ++j){
+                for(int k = 0; k < 4; ++k){
+                    Node n = nodes[i][j][k];
+                    for(int z = 0; z < 4; ++z){
+                        int kk = (k + z) % 4;
+                        Node goalNode = nodes[x1][y1][kk];
+                        if(!goalNode.closed){
+                            n.h = Math.abs(x1 - i) + Math.abs(y1 - j) + z;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        /*StringBuilder stringBuilder = new StringBuilder();
+        for(int k = 0; k < 4; ++k){
+            for(int j = 0; j < h; ++j){
+                for(int i =0; i< w; ++i){
+                    Node n = nodes[i][j][k];
+                    stringBuilder.append(n.closed ? "#" : "~");
+                }
+                stringBuilder.append("\n");
+            }
+            stringBuilder.append("\n");
+        }
+        trace(stringBuilder.toString());*/
+
+        Node n = nodes[x0][y0][0];
+        n.g = 0;
+        n.open = true;
+        ArrayList<Node> openNodes = new ArrayList<Node>();
+        openNodes.add(n);
+
+        int[][] search = {{-1,0,1},{1,0,1},{0,-1,1},{0,1,1}};
+
+        // find shortest path - A*
+        while (openNodes.size() > 0){
+            // find the openNode with the most promising path
+            Node best = null;
+            for(Node node:openNodes){
+                if(best == null || node.gh() < best.gh()){
+                    best = node;
+                }
+            }
+            best.closed = true;
+            openNodes.remove(best);
+            // expand nodes around it
+            int x = best.x;
+            int y = best.y;
+            int z = best.z;
+            int g1 = best.g + 1;
+            for(int[] offset:search){
+                int xs = x + offset[0];
+                int ys = y + offset[1];
+                int zs = (z + offset[2]) % 4;
+                if(xs < 0 || xs >= w || ys < 0 || ys >= h) continue;
+                n = nodes[xs][ys][zs];
+                if(n.closed) continue;
+                if(n.h == 0) return g1; // this is the goal and it's open
+                if(n != best.parent){
+                    if(!n.open){
+                        n.open = true;
+                        n.parent = best;
+                        n.g = g1;
+                        openNodes.add(n);
+                    } else if(n.g > g1){
+                        n.parent = best;
+                        n.g = g1;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static class Node{
+        public Node(int x, int y, int z){
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.g = -1;
+        }
+        public int x;
+        public int y;
+        public int z;
+        public int g;
+        public int h;
+        public boolean closed = false;
+        public boolean open = false;
+        public Node parent;
+        public int gh(){
+            return g + h;
+        }
+    }
+
+    private static int[] parseLineInts(String line){
+        if(line.length() == 0) return new int[0];
+        String[] parts = line.split(" ");
+        int n = parts.length;
+        int[] result = new int[n];
+        for(int i = 0; i < n; ++i){
+            result[i] = Integer.parseInt(parts[i]);
+        }
+        return result;
+    }
+
+    private static void trace(Object... arguments) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < arguments.length; ++i) {
+            if (i != 0) builder.append(", ");
+            builder.append(arguments[i]);
+        }
+        builder.append("\n\n");
+        System.out.print(builder.toString());
+    }
+
+    private static void saveStringFile(String fileName, String output){
+        try {
+            PrintWriter out = new PrintWriter(fileName);
+            out.print(output);
+            out.close();
+        } catch (Exception e){
+            trace(e);
+        }
+    }
+}
+

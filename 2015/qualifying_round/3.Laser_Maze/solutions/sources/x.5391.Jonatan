@@ -1,0 +1,155 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+typedef struct map_t {
+	int w, h;
+	char f[100][100];
+	bool v[100][100][4];
+}map_t;
+
+map_t g_map;
+int g_time;
+
+static char g_turrets[] = {'>', 'v', '<', '^'};
+
+typedef struct step_t {
+	int x, y;
+	step_t * n;
+}step_t;
+
+inline char mf(step_t * step) {
+	return g_map.f[step->x][step->y];
+}
+
+inline char mfc(int x, int y) {
+	return g_map.f[x][y];
+}
+
+inline bool issolid(char c) {
+	if(c == '#' || c == '>' || c == 'v' || c == '<' || c == '^')
+		return true;
+	return false;
+}
+
+bool checkstep(step_t * step) {
+	//printf("checkctep %d %d\n", step->x, step->y);
+	//out of bounds
+	if(step->x < 0 || step->x >= g_map.w || step->y < 0 || step->y >= g_map.h)
+		return false;
+	//step in solid
+	if(issolid(mf(step)))
+		return false;
+	//already visited
+	if(g_map.v[step->x][step->y][g_time % 4]) {
+		return false;
+	}
+	//right laser
+	for(int i = step->x + 1; i < g_map.w; i++) {
+		char f = mfc(i, step->y);
+		if(issolid(f)) {
+			if(f == g_turrets[(2 + g_time) % 4])
+				return false;
+			break;
+		}
+	}
+	//left laser
+	for(int i = step->x - 1; i >= 0; i--) {
+		char f = mfc(i, step->y);
+		if(issolid(f)) {
+			if(f == g_turrets[(0 + g_time) % 4])
+				return false;
+			break;
+		}
+	}
+	//up laser
+	for(int i = step->y + 1; i < g_map.h; i++) {
+		char f = mfc(step->x, i);
+		if(issolid(f)) {
+			if(f == g_turrets[(3 + g_time) % 4])
+				return false;
+			break;
+		}
+	}
+	//down laser
+	for(int i = step->y - 1; i >= 0; i--) {
+		char f = mfc(step->x, i);
+		if(issolid(f)) {
+			if(f == g_turrets[(1 + g_time) % 4])
+				return false;
+			break;
+		}
+	}
+	//printf("ok\n");
+	return true;
+}
+
+void solvesteps(step_t * steps) {
+	step_t * newsteps = NULL;
+	while(steps) {
+		step_t * step = steps;
+		if(checkstep(step) || !g_time) {
+			//printf("step %d %d t%d\n", step->x, step->y, g_time);
+			if(mf(step) == 'G') {
+				printf("%d", g_time);
+				return;
+			}
+			g_map.v[step->x][step->y][g_time % 4] = true;
+			for(int x = -1; x <= 1; x++) {
+				for(int y = -1; y <= 1; y++) {
+					if((!x && !y) || (x && y))
+						continue;
+					step_t * newstep = new step_t;
+					newstep->x = step->x + x;
+					newstep->y = step->y + y;
+					newstep->n = newsteps;
+					newsteps = newstep;
+				}
+			}
+		}
+		steps = step->n;
+		delete step;
+	}
+	if(!newsteps) {
+		printf("impossible");
+		return;
+	}
+	g_time++;
+	solvesteps(newsteps);
+}
+
+void solvecase() {
+	g_time = 0;
+	memset(&g_map, 0, sizeof(map_t));
+	scanf("%d %d ", &g_map.h, &g_map.w);
+	for(int y = 0; y < g_map.h; y++) {
+		char buffer[200];
+		fgets(buffer, 200, stdin);
+		for(int x = 0; x < g_map.w; x++)
+			g_map.f[x][y] = buffer[x];
+	}
+	int x, y;
+	for(x = 0; x < g_map.w; x++) {
+		for(y = 0; y < g_map.h; y++) {
+			if(g_map.f[x][y] == 'S')
+				goto doublebreak1;
+		}
+	}
+doublebreak1:
+	step_t * steps = new step_t;
+	steps->x = x;
+	steps->y = y;
+	steps->n = NULL;
+	solvesteps(steps);
+}
+
+int main(int argc, char ** argv) {
+	int numcases = 0;
+	scanf("%d ", &numcases);
+	for(int i = 1; i <= numcases; i++) {
+		printf("Case #%d: ", i);
+		solvecase();
+		printf("\n");
+	}
+	return 0;
+}

@@ -1,0 +1,366 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.TreeSet;
+public class Main {
+	public static int m;
+	public static int n;
+	public static char[][] maze;
+	public static final String laser = "<>^v";
+	public static final String wall = "<>^v#";
+	public static int sx;
+	public static int sy;
+	public static int gx;
+	public static int gy;
+	public static int[][][] dp;
+	public static void main(String[] args) throws NumberFormatException, IOException{
+		ContestScanner in = new ContestScanner("input.dat");
+		StringBuilder sb = new StringBuilder();
+		int t = in.nextInt();
+		for(int i=0; i<t; i++){
+			m = in.nextInt();
+			n = in.nextInt();
+			maze = new char[m][n];
+			for(int j=0; j<m; j++){
+				String line = in.nextToken();
+				for(int k=0; k<n; k++){
+					maze[j][k] = line.charAt(k);
+				}
+			}
+			char[][][] mazes = make4maze();
+//			for(int j=0; j<4; j++){
+//				for(int k=0; k<m; k++){
+//					for(int l=0; l<n; l++){
+//						System.err.print(mazes[j][k][l]);
+//					}
+//					System.err.println();
+//				}
+//				System.err.println();
+//			}
+			dp = new int[4][m][n];
+			for(int j=0; j<4; j++){
+				for(int k=0; k<m; k++){
+					for(int l=0; l<n; l++){
+						dp[j][k][l] = -1;
+					}
+				}
+			}
+			dp[0][sy][sx] = 0;
+			int res = -1;
+			Queue<Data> qu = new LinkedList<Data>();
+			qu.add(new Data(0, sx, sy));
+			while(!qu.isEmpty()){
+				Data d = qu.poll();
+				if(d.x == gx && d.y == gy){
+					res = d.turn;
+					break;
+				}
+				int next = (d.turn+1)%4;
+				if(d.y - 1 >= 0 && mazes[next][d.y-1][d.x] == '.'){
+					int old = dp[next][d.y-1][d.x];
+					if(old == -1 || old > d.turn+1){
+						qu.add(new Data(d.turn+1, d.x, d.y-1));
+						dp[next][d.y-1][d.x] = d.turn+1;
+					}
+				}
+				if(d.y + 1 < m  && mazes[next][d.y+1][d.x] == '.'){
+					int old = dp[next][d.y+1][d.x];
+					if(old == -1 || old > d.turn+1){
+						qu.add(new Data(d.turn+1, d.x, d.y+1));
+						dp[next][d.y+1][d.x] = d.turn+1;
+					}
+				}
+				if(d.x - 1 >= 0 && mazes[next][d.y][d.x-1] == '.'){
+					int old = dp[next][d.y][d.x-1];
+					if(old == -1 || old > d.turn+1){
+						qu.add(new Data(d.turn+1, d.x-1, d.y));
+						dp[next][d.y][d.x-1] = d.turn+1;
+					}
+				}
+				if(d.x + 1 < n  && mazes[next][d.y][d.x+1] == '.'){
+					int old = dp[next][d.y][d.x+1];
+					if(old == -1 || old > d.turn+1){
+						qu.add(new Data(d.turn+1, d.x+1, d.y));
+						dp[next][d.y][d.x+1] = d.turn+1;
+					}
+				}
+			}
+			if(res >= 0){
+				sb.append("Case #"+(i+1)+": "+res+"\n");
+//				System.out.println("Case #"+(i+1)+": "+res);
+			}else{
+				sb.append("Case #"+(i+1)+": impossible\n");
+//				System.out.println("Case #"+(i+1)+": impossible");
+			}
+		}
+		PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter("output.dat")));
+		pw.print(sb.toString());
+		pw.close();
+	}
+	
+	public static char[][][] make4maze(){
+		char[][][] mazes = new char[4][m][n];
+		for(int i=0; i<4; i++){
+			for(int j=0; j<m; j++){
+				for(int k=0; k<n; k++){
+					if(maze[j][k] == 'S'){
+						sx = k;
+						sy = j;
+						maze[j][k] = '.';
+					}else if(maze[j][k] == 'G'){
+						gx = k;
+						gy = j;
+						maze[j][k] = '.';
+					}
+					if(laser.indexOf(maze[j][k]) != -1){
+						if(maze[j][k] == '^'){
+							mazes[i][j][k] = '#';
+							int y = j-1;
+							while(y >= 0 && wall.indexOf(maze[y][k]) == -1){
+								mazes[i][y][k] = '@';
+								y--;
+							}
+							maze[j][k] = '>';
+						}else if(maze[j][k] == '>'){
+							mazes[i][j][k] = '#';
+							int x = k+1;
+							while(x < n && wall.indexOf(maze[j][x]) == -1){
+								mazes[i][j][x] = '@';
+								x++;
+							}
+							maze[j][k] = 'v';
+						}else if(maze[j][k] == 'v'){
+							mazes[i][j][k] = '#';
+							int y = j+1;
+							while(y < m && wall.indexOf(maze[y][k]) == -1){
+								mazes[i][y][k] = '@';
+								y++;
+							}
+							maze[j][k] = '<';
+						}else if(maze[j][k] == '<'){
+							mazes[i][j][k] = '#';
+							int x = k-1;
+							while(x >= 0 && wall.indexOf(maze[j][x]) == -1){
+								mazes[i][j][x] = '@';
+								x--;
+							}
+							maze[j][k] = '^';
+						}
+					}else if(mazes[i][j][k] != '@'){
+						mazes[i][j][k] = maze[j][k];
+					}
+				}
+			}
+		}
+		return mazes;
+	}
+}
+
+class Data{
+	int turn;
+	int x;
+	int y;
+	public Data(int turn, int x, int y){
+		this.turn = turn;
+		this.x = x;
+		this.y = y;
+	}
+}
+
+class MyComp implements Comparator<int[]>{
+	public int compare(int[] a, int[] b) {
+		return a[0] - b[0];
+	}
+}
+
+
+class Reverse implements Comparator<Integer>{
+	public int compare(Integer arg0, Integer arg1) {
+		return arg1 - arg0;
+	}
+}
+
+class Node{
+	int id;
+	List<Node> edge = new ArrayList<Node>();
+	public Node(int id){
+		this.id = id;
+	}
+	public void createEdge(Node node){
+		edge.add(node);
+	}
+}
+
+
+class NodeW{
+	int id;
+	List<NodeW> edge = new ArrayList<NodeW>();
+	List<Integer> costList = new ArrayList<Integer>();
+	public NodeW(int id) {
+		this.id = id;
+	}
+	public void createEdge(NodeW node, int cost) {
+		edge.add(node);
+		costList.add(cost);
+	}
+}
+
+class Range<T extends Comparable<T>> implements Comparable<Range<T>>{
+	T start;
+	T end;
+	public Range(T start, T end){
+		this.start = start;
+		this.end = end;
+	}
+	public boolean inRange(T val){
+		if(start.compareTo(val) <= 0 && end.compareTo(val) >= 0){
+			return true;
+		}
+		return false;
+	}
+	public boolean isCommon(Range<T> range){
+		if(inRange(range.start) || inRange(range.end) || range.inRange(start)){
+			return true;
+		}
+		return false;
+	}
+	public Range<T> connect(Range<T> range){
+		if(!isCommon(range)) return null;
+		Range<T> res = new Range<T>(start.compareTo(range.start) <= 0 ? start : range.start,
+				end.compareTo(range.end) >= 0 ? end : range.end);
+		return res;
+	}
+	public boolean connectToThis(Range<T> range){
+		if(!isCommon(range)) return false;
+		start = start.compareTo(range.start) <= 0 ? start : range.start;
+		end = end.compareTo(range.end) >= 0 ? end : range.end;
+		return true;
+	}
+	@Override
+	public int compareTo(Range<T> range) {
+		int res = start.compareTo(range.start);
+		if(res == 0) return end.compareTo(range.end);
+		return res;
+	}
+	public String toString(){
+		return "["+start+","+end+"]";
+	}
+}
+
+class RangeSet<T extends Comparable<T>>{
+	TreeSet<Range<T>> ranges = new TreeSet<Range<T>>();
+	public void add(Range<T> range){
+		Range<T> con = ranges.floor(range);
+		if(con != null){
+			if(con.connectToThis(range))
+				range = con;
+		}
+		con = ranges.ceiling(range);
+		while(con != null && range.connectToThis(con)){
+			ranges.remove(con);
+			con = ranges.ceiling(range);
+		}
+		ranges.add(range);
+	}
+	public String toString(){
+		StringBuilder bld = new StringBuilder();
+		for(Range<T> r: ranges){
+			bld.append(r+"\n");
+		}
+		return bld.toString();
+	}
+}
+
+
+class MyMath{
+	public final static double PIhalf = Math.PI/2.0;
+	public static double pAngle(double x, double y){
+		// ƒxƒNƒgƒ‹(1, 0)‚Æ(x, y)‚Æ‚Ì‚È‚·Šp‚ð•Ô‚·(rad:0 to 2pi)
+		if(x == 0){
+			if(y == 0){
+				System.err.println("pAngle error: zero vector.");
+				return 0;
+			}else if(y < 0){
+				return PIhalf*3.0;
+			}else{
+				return PIhalf;
+			}
+		}
+		double rad = Math.atan(y/x);
+		if(rad < 0){
+			rad += Math.PI*2.0;
+		}
+		return rad;
+	}
+	public static long fact(long n){
+		long res = 1;
+		while(n > 0){
+			res *= n--;
+		}
+		return res;
+	}
+	public static long[][] pascalT(int n){
+		long[][] tri = new long[n][];
+		for(int i=0; i<n; i++){
+			tri[i] = new long[i+1];
+			for(int j=0; j<i+1; j++){
+				if(j == 0 || j == i){
+					tri[i][j] = 1;
+				}else{
+					tri[i][j] = tri[i-1][j-1] + tri[i-1][j];
+				}
+			}
+		}
+		return tri;
+	}
+
+	// Å‘åŒö–ñ”
+	static int gcd(int a, int b){
+		return b == 0 ? a : gcd(b, a % b);
+	}
+
+	// Å¬Œö”{”
+	static int lcm(int a, int b){
+		return a * b / gcd(a, b);
+	}
+}
+
+class ContestScanner{
+	private BufferedReader reader;
+	private String[] line;
+	private int idx;
+	public ContestScanner() throws FileNotFoundException{
+		reader = new BufferedReader(new InputStreamReader(System.in));
+	}
+
+	public ContestScanner(String filename) throws FileNotFoundException{
+		reader = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+	}
+	
+	public String nextToken() throws IOException{
+		if(line == null || line.length <= idx){
+			line = reader.readLine().trim().split(" ");
+			idx = 0;
+		}
+		return line[idx++];
+	}
+	public long nextLong() throws IOException, NumberFormatException{
+		return Long.parseLong(nextToken());
+	}
+	public int nextInt() throws NumberFormatException, IOException{
+		return (int)nextLong();
+	}
+	public double nextDouble() throws NumberFormatException, IOException{
+		return Double.parseDouble(nextToken());
+	}
+}

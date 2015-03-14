@@ -1,0 +1,181 @@
+﻿#include <stdio.h>
+#include <queue>
+#include <utility>
+#define SPACE '.'
+#define WALL '#'
+#define START 'S'
+#define GOAL 'G'
+#define TURRET_LEFT '<'
+#define TURRET_UP '^'
+#define TURRET_RIGHT '>'
+#define TURRET_DOWN 'v'
+#define WALL_VALUE 0
+#define TURRET_VALUE 1
+#define EMPTY_VALUE 2
+#define GOAL_VALUE 3
+
+struct Point
+{
+	Point()
+	{
+		x = 0;
+		y = 0;
+		step = 0;
+	}
+
+	Point(int x_, int y_, int step_)
+	{
+		x = x_;
+		y = y_;
+		step = step_;
+	}
+
+	int x, y;
+	int step;
+};
+
+std::pair<int, int> moveStep[4] =
+{
+	std::make_pair(-1, 0),
+	std::make_pair(0, -1),
+	std::make_pair(1, 0),
+	std::make_pair(0, 1),
+};
+
+int main()
+{
+	int T;
+
+
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+	scanf("%d", &T);
+
+	for (int caseNum = 0; caseNum < T; caseNum++)
+	{
+		int M, N;
+		char rawMap[101][101] = { 0, };
+		int steps[101][101] = { 0, };
+		int pathMap[4][101][101] = { 0, };
+		std::queue<Point> points;
+
+		scanf("%d %d", &M, &N);
+
+		for (int i = 1; i <= M; i++)
+		{
+			scanf("%s", &rawMap[i][1]);
+			for (int j = 1; j <= N; j++)
+			{
+				if (rawMap[i][j] == START)
+				{
+					points.push(Point(j, i, 0));
+					steps[i][j] = 1;
+				}
+			}
+		}
+
+
+		for (int i = 1; i <= M; i++)
+		{
+			for (int j = 1; j <= N; j++)
+			{
+				if (rawMap[i][j] == SPACE || rawMap[i][j] == START)
+				{
+					for (int step = 0; step < 4; step++)
+						pathMap[step][i][j] = EMPTY_VALUE;
+				}
+				else if (rawMap[i][j] == GOAL)
+				{
+					for (int step = 0; step < 4; step++)
+						pathMap[step][i][j] = GOAL_VALUE;
+				}
+			}
+		}
+
+		for (int step = 0; step < 4; step++)
+		{
+			for (int i = 1; i <= M; i++)
+			{
+				for (int j = 1; j <= N; j++)
+				{
+					if (rawMap[i][j] == TURRET_LEFT || rawMap[i][j] == TURRET_UP ||
+						rawMap[i][j] == TURRET_RIGHT || rawMap[i][j] == TURRET_DOWN)
+					{
+						pathMap[step][i][j] = WALL_VALUE;
+						int moveIdx;
+						int moveX, moveY;
+
+						switch (rawMap[i][j])
+						{
+						case TURRET_LEFT:
+							moveIdx = step;
+							break;
+						case TURRET_UP:
+							moveIdx = (step + 1) % 4;
+							break;
+						case TURRET_RIGHT:
+							moveIdx = (step + 2) % 4;
+							break;
+						case TURRET_DOWN:
+							moveIdx = (step + 3) % 4;
+							break;
+						}
+
+						moveX = moveStep[moveIdx].first;
+						moveY = moveStep[moveIdx].second;
+						int x = j + moveX, y = i + moveY;
+
+						while (pathMap[step][y][x] != WALL_VALUE)
+						{
+							pathMap[step][y][x] = TURRET_VALUE;
+							x += moveX;
+							y += moveY;
+						}
+					}
+				}
+			}
+		}
+
+		int minStep = -1;
+		while (!points.empty())
+		{
+			Point point = points.front();
+
+			points.pop();
+
+			for (int i = 0; i < 4; i++)
+			{
+				Point newPoint;
+				int nowStep = point.step + 1;
+				newPoint.step = nowStep;
+				newPoint.x = point.x + moveStep[i].first;
+				newPoint.y = point.y + moveStep[i].second;
+
+				int value = pathMap[nowStep % 4][newPoint.y][newPoint.x];
+
+				if (value == GOAL_VALUE)
+				{
+					minStep = nowStep;
+					goto NEXT;
+				}
+				else if (value == EMPTY_VALUE)
+				{
+					if (((steps[newPoint.y][newPoint.x] >> (nowStep % 4)) & 1) == 0)
+					{
+						steps[newPoint.y][newPoint.x] += 1 << (nowStep % 4);
+						points.push(newPoint);
+					}
+				}
+			}
+		}
+
+	NEXT:
+		printf("Case #%d: ", caseNum + 1);
+		if (minStep == -1)
+			printf("impossible\n");
+		else
+			printf("%d\n", minStep);
+
+	}
+
+}

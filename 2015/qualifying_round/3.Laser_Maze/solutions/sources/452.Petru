@@ -1,0 +1,104 @@
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <queue>
+#define x first
+#define y second
+#define mp make_pair
+using namespace std;
+
+typedef pair<int,int> per;
+int dx[]={0,1,0,-1};
+int dy[]={1,0,-1,0};
+
+int T,n,m,dmin[4][105][105];
+vector<string> board[4];
+per s,g;
+
+char nxt(char c) {
+  if(c=='^') return '>';
+  if(c=='>') return 'v';
+  if(c=='v') return '<';
+  if(c=='<') return '^';
+  return c;
+}
+
+void rot(vector<string> &p) {
+  for(int i=0; i<n; ++i) for(int j=0; j<m; ++j) p[i][j]=nxt(p[i][j]);
+}
+
+int is(per a) {
+  return (a.x>=0 && a.y>=0 && a.x<n && a.y<m);
+}
+
+int em(char c) {
+  return c=='.' || c=='S' || c=='G';
+}
+
+int ch(int t,per p) {
+  for(int i=p.x; i>=0; --i) {
+    if(board[t][i][p.y]=='v') return 0;
+    else if(!em(board[t][i][p.y])) break;
+  }
+  for(int i=p.x; i<n; ++i) {
+    if(board[t][i][p.y]=='^') return 0;
+    else if(!em(board[t][i][p.y])) break;
+  }
+  for(int j=p.y; j>=0; --j) {
+    if(board[t][p.x][j]=='>') return 0;
+    else if(!em(board[t][p.x][j])) break;
+  }
+  for(int j=p.y; j<m; ++j) {
+    if(board[t][p.x][j]=='<') return 0;
+    else if(!em(board[t][p.x][j])) break;
+  }
+  return 1;
+}
+
+int bfs(per s,per g) {
+  memset(dmin,0,sizeof(dmin));
+  queue<pair<int,per> > c;
+  c.push(mp(0,s));
+  dmin[0][s.x][s.y]=1;
+  for(;!c.empty();) {
+    int t=c.front().x;
+    per fr=c.front().y;
+    c.pop();
+    for(int d=0; d<4; ++d) {
+      per nxt=mp(fr.x+dx[d],fr.y+dy[d]);
+      int tn=t+1;
+      if(tn==4) tn=0;
+      if(is(nxt) && em(board[0][nxt.x][nxt.y]) && dmin[tn][nxt.x][nxt.y]==0 && ch(tn,nxt)) {
+        dmin[tn][nxt.x][nxt.y]=dmin[t][fr.x][fr.y]+1;
+        c.push(mp(tn,nxt));
+      }
+    }
+  }
+  int r=(1<<30);
+  for(int i=0; i<4; ++i) if(dmin[i][g.x][g.y])r=min(r,dmin[i][g.x][g.y]);
+  if(r==(1<<30)) return -1;
+  return r;
+}
+
+int main() {
+  ifstream f("input.txt");
+  ofstream o("output.txt");
+  f>>T;
+  for(int t=1; t<=T; ++t) {
+    f>>n>>m;
+    board[0].resize(n);
+    for(int i=0; i<n; ++i) f>>board[0][i];
+    for(int i=1; i<4; ++i) {
+      board[i]=board[i-1];
+      rot(board[i]);
+    }
+    for(int i=0; i<n; ++i) for(int j=0; j<m; ++j)
+      if(board[0][i][j]=='S') s=make_pair(i,j);
+      else if(board[0][i][j]=='G') g=make_pair(i,j);
+
+    int vl=bfs(s,g);
+    if(vl==-1) o<<"Case #"<<t<<": impossible\n";
+    else o<<"Case #"<<t<<": "<<vl-1<<"\n";
+  }
+}

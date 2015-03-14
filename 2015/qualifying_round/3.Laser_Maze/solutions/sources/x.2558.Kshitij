@@ -1,0 +1,268 @@
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.util.Arrays;
+import java.io.BufferedWriter;
+import java.util.InputMismatchException;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.io.Writer;
+import java.util.AbstractCollection;
+import java.util.LinkedList;
+import java.math.BigInteger;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("laser_maze.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("output.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		OutputWriter out = new OutputWriter(outputStream);
+		LaserMaze solver = new LaserMaze();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class LaserMaze {
+
+    int n, m;
+    char[][][] g;
+    static final char WALL = '#';
+    String lasers = "^>v<";
+    int[] di = new int[] {-1, 0, 1, 0};
+    int[] dj = new int[] {0, 1, 0, -1};
+    boolean[][][] vis;
+    int si, sj;
+    int INF = Integer.MAX_VALUE;
+
+    class Position {
+        int i, j, t, d;
+
+        public Position(int i, int j, int t, int d) {
+            this.i = i;
+            this.j = j;
+            this.t = t;
+            this.d = d;
+        }
+    }
+
+    public void solve(int testNumber, InputReader in, OutputWriter out) {
+        n = in.readInt();
+        m = in.readInt();
+        g = new char[4][n][m];
+        for (int i = 0; i < n; i++) {
+            g[0][i] = in.readString().toCharArray();
+            for (int t = 1; t < 4; t++) {
+                g[t][i] = Arrays.copyOf(g[0][i], g[0][i].length);
+            }
+        }
+        preProcessGrids();
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (g[0][i][j] == 'S') {
+                    si = i;
+                    sj = j;
+                }
+            }
+        }
+
+        vis = new boolean[4][n][m];
+        LinkedList<Position> q = new LinkedList<Position>();
+        q.add(new Position(si, sj, 0, 0));
+
+        int res = INF;
+        while (!q.isEmpty()) {
+            Position current = q.removeFirst();
+
+            int t = current.t;
+            int i = current.i;
+            int j = current.j;
+            vis[t][i][j] = true;
+
+            if (g[t][i][j] == 'G') {
+                res = current.d;
+                break;
+            }
+
+            int nt = (current.t + 1) % 4;
+            int nd = current.d + 1;
+
+            for (int k = 0; k < 4; k++) {
+                int ni = i + di[k];
+                int nj = j + dj[k];
+
+                if (inBounds(ni, nj) && g[nt][ni][nj] != WALL) {
+                    if (!vis[nt][ni][nj]) {
+                        q.addLast(new Position(ni, nj, nt, nd));
+                    }
+                }
+            }
+
+        }
+        out.print("Case #" + testNumber + ": ");
+        if (res == INF) {
+            out.printLine("impossible");
+        } else {
+            out.printLine(res);
+        }
+    }
+
+
+    void preProcessGrids() {
+        for (int t = 0; t < 4; t++) {
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < m; j++) {
+
+                    if (t == 0 && g[t][i][j] == 'S') {
+                        si = i;
+                        sj = j;
+                    }
+
+                    int idx = lasers.indexOf(g[t][i][j]);
+
+                    if (idx > -1) {
+                        idx = (idx + t) % 4;
+
+                        for (int k = 1; ; k++) {
+                            int ni = i + k * di[idx];
+                            int nj = j + k * dj[idx];
+                            if (!inBounds(ni, nj)) {
+                                break;
+                            }
+                            g[t][ni][nj] = WALL;
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+
+    boolean inBounds(int i, int j) {
+        return (i >= 0 && i < n && j >= 0 && j < m);
+    }
+
+}
+
+class InputReader {
+    private InputStream stream;
+    private byte[] buf = new byte[1024];
+    private int curChar;
+    private int numChars;
+    private SpaceCharFilter filter;
+
+    public InputReader(InputStream stream) {
+        this.stream = stream;
+    }
+
+    public int read() {
+        if (numChars == -1)
+            throw new InputMismatchException();
+        if (curChar >= numChars) {
+            curChar = 0;
+            try {
+                numChars = stream.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (numChars <= 0)
+                return -1;
+        }
+        return buf[curChar++];
+    }
+
+    public int readInt() {
+        int c = read();
+        while (isSpaceChar(c))
+            c = read();
+        int sgn = 1;
+        if (c == '-') {
+            sgn = -1;
+            c = read();
+        }
+        int res = 0;
+        do {
+            if (c < '0' || c > '9')
+                throw new InputMismatchException();
+            res *= 10;
+            res += c - '0';
+            c = read();
+        } while (!isSpaceChar(c));
+        return res * sgn;
+    }
+
+    public String readString() {
+        int c = read();
+        while (isSpaceChar(c))
+            c = read();
+        StringBuilder res = new StringBuilder();
+        do {
+            res.appendCodePoint(c);
+            c = read();
+        } while (!isSpaceChar(c));
+        return res.toString();
+    }
+
+    public boolean isSpaceChar(int c) {
+        if (filter != null)
+            return filter.isSpaceChar(c);
+        return isWhitespace(c);
+    }
+
+    public static boolean isWhitespace(int c) {
+        return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+    }
+
+    public String next() {
+        return readString();
+    }
+
+    public interface SpaceCharFilter {
+        public boolean isSpaceChar(int ch);
+    }
+}
+
+class OutputWriter {
+    private final PrintWriter writer;
+
+    public OutputWriter(OutputStream outputStream) {
+        writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+    }
+
+    public void print(Object...objects) {
+        for (int i = 0; i < objects.length; i++) {
+            if (i != 0)
+                writer.print(' ');
+            writer.print(objects[i]);
+        }
+    }
+
+    public void printLine(Object...objects) {
+        print(objects);
+        writer.println();
+    }
+
+    public void close() {
+        writer.close();
+    }
+
+}
+

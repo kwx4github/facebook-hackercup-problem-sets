@@ -1,0 +1,139 @@
+package main
+
+import "fmt"
+import "strconv"
+import "strings"
+
+type entry struct {
+	f bool
+	p []int
+}
+
+func SubsetSum(arr []int, S int) [][]int {
+	table := make([][]entry, 0, len(arr)+1)
+
+	zeroElems := make([]entry, S+1)
+
+	zeroElems[0].f = true
+
+	table = append(table, zeroElems)
+
+	for i := 1; i <= len(arr); i++ {
+		row := make([]entry, S+1)
+		row[0].f = true
+		ai := arr[i-1]
+		for j := 0; j <= S; j++ {
+			curr := entry{}
+			if j >= ai && table[i-1][j-ai].f {
+				curr.f = true
+				curr.p = append(curr.p, ai)
+			}
+			if table[i-1][j].f {
+				curr.f = true
+				curr.p = append(curr.p, 0)
+			}
+			row[j] = curr
+		}
+		table = append(table, row)
+	}
+
+	result := make([][]int, 0)
+
+	if !table[len(arr)][S].f {
+		return result
+	}
+
+	var computePath func([]int, int, int)
+	computePath = func(path []int, i, j int) {
+		if len(table[i][j].p) == 0 {
+			copyPath := make([]int, len(path))
+			copy(copyPath, path)
+			result = append(result, path)
+			return
+		}
+
+		for _, a := range table[i][j].p {
+			if a > 0 {
+				path = append(path, i-1)
+				computePath(path, i-1, j-a)
+				path = path[:len(path)-1]
+			} else {
+				computePath(path, i-1, j)
+			}
+		}
+	}
+
+	computePath([]int{}, len(arr), S)
+
+	return result
+}
+
+func stringPathFromInts(arr []int) string {
+	out := make([]string, len(arr))
+	for i, a := range arr {
+		out[i] = strconv.Itoa(a)
+	}
+	return strings.Join(out, ":")
+}
+
+func IsFeasible(sums []int, arrs [][]int) bool {
+	result := make(map[string]bool)
+
+	for i, s := range sums {
+		temp := make([]int, 0, len(arrs))
+		for _, a := range arrs {
+			temp = append(temp, a[i])
+		}
+
+		paths := SubsetSum(temp, s)
+		if len(paths) == 0 {
+			return false
+		}
+
+		hm := make(map[string]bool)
+		for _, p := range paths {
+			sp := stringPathFromInts(p)
+			if i == 0 || result[sp] {
+				hm[sp] = true
+			}
+		}
+
+		if len(hm) == 0 {
+			return false
+		}
+
+		result = hm
+	}
+
+	return true
+}
+
+func main() {
+	T := 0
+	fmt.Scanf("%d\n", &T)
+
+	for i := 0; i < T; i++ {
+		gp, gc, gf := 0, 0, 0
+		fmt.Scanf("%d %d %d\n", &gp, &gc, &gf)
+
+		N := 0
+		fmt.Scanf("%d\n", &N)
+
+		arrs := make([][]int, 0)
+
+		p, c, f := 0, 0, 0
+		for j := 0; j < N; j++ {
+			fmt.Scanf("%d %d %d\n", &p, &c, &f)
+			arrs = append(arrs, []int{p, c, f})
+		}
+
+		answer := ""
+		if IsFeasible([]int{gp, gc, gf}, arrs) {
+			answer = "yes"
+		} else {
+			answer = "no"
+		}
+
+		fmt.Printf("Case #%d: %s\n", i+1, answer)
+	}
+}

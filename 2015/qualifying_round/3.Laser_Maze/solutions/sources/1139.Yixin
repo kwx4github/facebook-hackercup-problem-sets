@@ -1,0 +1,205 @@
+//============================================================================
+// Name        : Onew.cpp
+// Author      : Yixin
+// Version     :
+// Copyright   : Your copyright notice
+// Description : Hello World in C++, Ansi-style
+//============================================================================
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <queue>
+#include <utility>
+#include <unordered_set>
+using namespace std;
+
+int findStart(vector<string> & coll) {
+	for (int i = 0; i < coll.size(); i++) {
+		for (int j = 0; j < coll[0].size(); j++) {
+			if (coll[i][j] == 'S') {
+				coll[i][j] = '.';
+				return i * coll[0].size() + j;
+			}
+		}
+	}
+	return -1;
+}
+
+int findGoal(vector<string> & coll) {
+	for (int i = 0; i < coll.size(); i++) {
+		for (int j = 0; j < coll[0].size(); j++) {
+			if (coll[i][j] == 'G') {
+				coll[i][j] = '.';
+				return i * coll[0].size() + j;
+			}
+		}
+	}
+	return -1;
+}
+
+/*bool isPosOK(vector<string> & coll, , int state) { //state = 0, 1, 2, 3
+ int M = coll.size();
+ int N = coll[0].size();
+ int r = P/M;
+ int c = P%M;
+ while( r < M) {
+ if(coll[r][c] != '.') {
+ if( getShot())
+ }
+ r ++;
+ }
+ return true;
+ }*/
+
+void getForbid(vector<string> & coll, vector<vector<bool> > & table) {
+	int M = coll.size();
+	int N = coll[0].size();
+	for (int i = 0; i < M; i++) {
+		for (int j = 0; j < N; j++) {
+			if (coll[i][j] != '.') {
+				table[i][j] = false;
+			}
+			int tmp;
+			if (coll[i][j] == '<') {
+				tmp = j - 1;
+				while (tmp >= 0 && coll[i][tmp] == '.') {
+					table[i][tmp] = false;
+					tmp--;
+				}
+			} else if (coll[i][j] == '>') {
+				tmp = j + 1;
+				while (tmp < N && coll[i][tmp] == '.') {
+					table[i][tmp] = false;
+					tmp++;
+				}
+			} else if (coll[i][j] == '^') {
+				tmp = i - 1;
+				while (tmp >= 0 && coll[tmp][j] == '.') {
+					table[tmp][j] = false;
+					tmp--;
+				}
+			} else if (coll[i][j] == 'v') {
+				tmp = i + 1;
+				while (tmp < M && coll[tmp][j] == '.') {
+					table[tmp][j] = false;
+					tmp++;
+				}
+			}
+		}
+	}
+}
+
+void updateMaze(vector<string> & coll) {
+	for (int i = 0; i < coll.size(); i++) {
+		for (int j = 0; j < coll[0].size(); j++) {
+			if (coll[i][j] == '>') {
+				coll[i][j] = 'v';
+			} else if (coll[i][j] == 'v') {
+				coll[i][j] = '<';
+			} else if (coll[i][j] == '<') {
+				coll[i][j] = '^';
+			} else if (coll[i][j] == '^') {
+				coll[i][j] = '>';
+			}
+		}
+	}
+}
+
+int mazeSteps(vector<string> & coll) {
+	unordered_set<int> hash;
+	queue<pair<int, int>> qu;
+	int M = coll.size();
+	int N = coll[0].size();
+	int S = findStart(coll);
+	int G = findGoal(coll);
+	vector < string > coll0(coll);
+	vector < string > coll1(coll0);
+	updateMaze (coll1);
+	vector < string > coll2(coll1);
+	updateMaze (coll2);
+	vector < string > coll3(coll2);
+	updateMaze (coll3);
+	vector < vector<bool> > table0(M, vector<bool>(N, true));
+	vector < vector<bool> > table1(M, vector<bool>(N, true));
+	vector < vector<bool> > table2(M, vector<bool>(N, true));
+	vector < vector<bool> > table3(M, vector<bool>(N, true));
+	getForbid(coll0, table0);
+	getForbid(coll1, table1);
+	getForbid(coll2, table2);
+	getForbid(coll3, table3);
+	vector < vector<vector<bool> > > table;
+	table.push_back(table0);
+	table.push_back(table1);
+	table.push_back(table2);
+	table.push_back(table3);
+	int rowS = S / N;
+	int colS = S % N;
+	//if (table0[rowS][colS] == false) {
+	//	return -1;
+	//}
+	qu.push(make_pair(S, 0));
+	hash.insert(S);
+	while (!qu.empty()) {
+		int tmp = qu.front().first;
+		int level = qu.front().second;
+		if (tmp % (M * N) == G) {
+			return level;
+		}
+		qu.pop();
+		int row = tmp % (M * N) / N;
+		int col = tmp % (M * N) % N;
+		int state = tmp / (M * N);
+		state = (state + 1) % 4;
+		int pos;
+		pos = (row + 1) * N + col + M * N * state;
+		if (row + 1 < M && table[state][row + 1][col]
+				&& hash.find(pos) == hash.end()) {
+			qu.push(make_pair(pos, level + 1));
+			hash.insert(pos);
+		}
+		pos = (row - 1) * N + col + M * N * state;
+		if (row - 1 >= 0 && table[state][row - 1][col]
+				&& hash.find(pos) == hash.end()) {
+			qu.push(make_pair(pos, level + 1));
+			hash.insert(pos);
+		}
+		pos = row * N + col + 1 + M * N * state;
+		if (col + 1 < N && table[state][row][col + 1]
+				&& hash.find(pos) == hash.end()) {
+			qu.push(make_pair(pos, level + 1));
+			hash.insert(pos);
+		}
+		pos = row * N + col - 1 + M * N * state;
+		if (col - 1 >= 0 && table[state][row][col - 1]
+				&& hash.find(pos) == hash.end()) {
+			qu.push(make_pair(pos, level + 1));
+			hash.insert(pos);
+		}
+	}
+	return -1;
+}
+
+int main() {
+	cout << "HelloWorld\n";
+	int T;
+	cin >> T;
+	for (int i = 1; i <= T; i++) {
+		int M;
+		int N;
+		cin >> M >> N;
+		vector < string > coll;
+		for (int j = 0; j < M; j++) {
+			string tmp;
+			cin >> tmp;
+			coll.push_back(tmp);
+		}
+		int steps = mazeSteps(coll);
+		if (steps == -1) {
+			cout << "Case #" << i << ": " << "impossible" << endl;
+		} else {
+			cout << "Case #" << i << ": " << steps << endl;
+		}
+	}
+	return 0;
+}

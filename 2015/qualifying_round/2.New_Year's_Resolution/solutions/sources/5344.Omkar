@@ -1,0 +1,162 @@
+/* problem2.c
+*  Omkar H. Ramachandran
+*  omkar13@iisertvm.ac.in
+*  Find a series of vectors (x,y,z) such that their sum is (xo,yo,zo).  
+*  Algorithm:
+*     1. Filter out x's that cannot add up. i.e. x/y/z > xo/yo/zo
+*     2. Treat it as a vector and run it through the approximation algorithm
+*     3. If yes, return yes, else return no
+*  File Format:
+*	Line 1: T
+*	Line 2: gp gc gf
+*	Line 3: N
+*	Line 4 -> N+4: P C F
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+
+struct food{
+	int p;
+	int c;
+	int f;
+}target;
+
+int getsize(FILE *fp){
+	int size;
+	fscanf(fp,"%d",&size);
+	return size;
+}
+void populate(struct food*,int,FILE*);
+int equals(struct food,struct food);
+void add(struct food*,struct food);
+void assign(struct food*,struct food);
+void readfood(struct food*,FILE *);
+void print(struct food);
+
+int main(int argc, char ** argv){
+	char *a = argv[1];
+	FILE *fp;
+	FILE *fout;
+	fout = fopen("output2.txt","w");
+	if(!(fp = fopen(a,"r"))){
+		printf("Invalid input file\n");
+		exit(1);
+	}
+	fseek(fp,SEEK_SET,0);
+	int T = getsize(fp),i;
+	if(T>20){
+		printf("Max 20 test cases\n");
+		exit(1);
+	}
+	for (i=0;i<T;i++){
+		readfood(&target,fp);
+		int N = getsize(fp);
+		if(N>20){	
+			printf("Max number of foods: 20\n");
+			break;
+		}
+		int res = isedible(target,N,fp);
+		if(res){
+			fprintf(fout,"Case #%d: yes\n",i+1);
+			printf("%d: yes",i+1);
+		}else{
+			fprintf(fout,"Case #%d: no\n",i+1);
+			printf("%d: no",i+1);
+		}
+	}
+	fclose(fp);
+	fclose(fout);
+	return 0;
+}
+
+void readfood(struct food *target,FILE *fp){
+	int p,c,f;
+	fscanf(fp,"%d %d %d",&p,&c,&f);
+	printf("%d %d %d\n",p,c,f);
+	(*(target)).p=p;
+	(*(target)).c=c;
+	(*(target)).f=f;
+}
+
+int equals(struct food one, struct food two){
+	if((one.p == two.p) && (one.c==two.c) && (one.f==two.f))
+		return 1;
+	return 0;
+}
+
+void add(struct food *one,struct food two){
+	(*(one)).p += two.p;
+	(*(one)).c += two.c;
+	(*(one)).f += two.f;
+}
+
+void assign(struct food *one,struct food two){
+	(*(one)).p = two.p;
+	(*(one)).c = two.c;
+	(*(one)).f = two.f;
+}
+
+void populate(struct food *list,int N,FILE *fp){
+	int i;
+	for(i=0;i<N;i++){
+		int p,c,f;
+		fscanf(fp,"%d %d %d",&p,&c,&f);
+		(*(list+i)).p = p;
+		(*(list+i)).c = c;
+		(*(list+i)).f = f;
+	}
+}
+
+void print(struct food cur){
+	printf("%d %d %d\n",cur.p,cur.c,cur.f);
+}
+
+int isedible(struct food target,int N,FILE *fp){
+	struct food *list = (struct food *) malloc (N*sizeof(struct food));
+	populate(list,N,fp); 
+	int i,j;
+	int sizeS = 1;
+	struct food *S = (struct food *) malloc (sizeof(struct food));
+	(*S).p = 0;
+	(*S).c = 0;
+	(*S).f = 0;
+	for(i=0;i<N;i++){
+		struct food* T = (struct food *) malloc (sizeS*sizeof(struct food));
+		struct food* U = (struct food *) malloc (2*sizeS*sizeof(struct food));
+		char br;
+		for(j=0;j<sizeS;j++){
+			(*(T+j)).p = (*(list+i)).p + (*(S+j)).p;
+			(*(T+j)).c = (*(list+i)).c + (*(S+j)).c; 
+			(*(T+j)).f = (*(list+i)).f + (*(S+j)).f; 
+		}
+		for(j=0;j<sizeS;j++){
+			assign((U+j),*(T+j));
+		}	
+		for(j=0;j<sizeS;j++){
+			assign((U+j+sizeS),(*(S+j)));
+		}
+		int count =0;
+		for(j=0;j<2*sizeS;j++){
+			if(((*(U+j)).p < target.p) && ((*(U+j)).c < target.c) && ((*(U+j)).f < target.f)){
+				count++;
+				if(count>sizeS)
+					S = realloc(S,(count)*sizeof(struct food));
+				assign((S+count-1),(*(U+j)));
+			}
+			else if(equals(*(U+j),target)){
+				free(S);
+				free(list);
+				free(U);
+				free(T);
+				return 1;
+			}
+		}
+		sizeS = count;
+		free(U);
+		free(T);
+	}
+	free(S);
+	free(list);
+	return 0;
+}

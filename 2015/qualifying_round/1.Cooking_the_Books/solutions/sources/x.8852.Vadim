@@ -1,0 +1,116 @@
+/*
+	OS: Windows 7 Home Edition SP1
+	Language: Oracle SQL, PL/SQL (Oracle Database Express Edition 11g Rel.2)
+		
+	Installation Guide: http://docs.oracle.com/cd/E17781_01/install.112/e18803/toc.htm
+	
+	Please create directory for input/output files on DB Server: "C:/FB_HC/"
+	Run this script as SYSTEM user: sqlplus SYSTEM/<<User Password>> @script1.sql
+	
+	You can set another existing directory name in DEFINE DIR_NAME line;
+	You can set another existing input/output file names in DEFINE FILE_NAME_... lines;
+	You can set another external table name in DEFINE TABLE_INPUT line;
+	
+	You can run script for another user, but some extra privilegies should be granted firstly:
+		GRANT CREATE DIRECTORY TO Another_User;
+		GRANT CREATE ANY TABLE TO Another_User;
+		
+	During execution this script some DB objects will be created:
+		DIRECTORY, defined as DIR_NAME constant;
+		TABLE, defined as TABLE_INPUT_FILE constant;
+	You can drop it by executing following statements (if necessary);
+		DROP DIRECTORY &DIR_NAME;
+		DROP TABLE &TABLE_INPUT;
+*/
+DEFINE DIR_NAME = "C:/FB_HC/";
+DEFINE FILE_NAME_INPUT = "'cooking_the_books.txt'";
+DEFINE FILE_NAME_OUTPUT = "cooking_the_books_output.txt";
+DEFINE TABLE_INPUT = "example_input_1";
+
+CLEAR SCREEN;
+SET SERVEROUTPUT ON;
+SET FEEDBACK OFF;
+SET HEADING OFF;
+SET TERMOUT OFF;
+SET VERIFY OFF;
+SET ECHO OFF;
+SET TRIMSPOOL ON;
+SET PAGESIZE 0;
+
+CREATE OR REPLACE DIRECTORY FB_HC AS &DIR_NAME;
+
+DROP TABLE &TABLE_INPUT;
+CREATE TABLE &TABLE_INPUT (
+	val	varchar2(100),
+    rn  number
+) 	
+ORGANIZATION EXTERNAL (
+	TYPE ORACLE_LOADER
+	DEFAULT DIRECTORY FB_HC
+	ACCESS PARAMETERS (
+		RECORDS DELIMITED BY '\n'
+		NOBADFILE NODISCARDFILE NOLOGFILE
+		FIELDS
+			MISSING FIELD VALUES ARE NULL
+			(
+				val char(100),
+				rn  recnum
+			)
+		)
+	LOCATION (&FILE_NAME_INPUT)
+);
+
+COLUMN result FORMAT A50;
+
+SPOOL &FILE_NAME_OUTPUT;
+
+WITH
+    example_input AS (
+        SELECT  i.rn - 1 AS case_id, 
+                i.val, 
+                LENGTH(i.val) AS len,
+                SUBSTR(i.val, 1, 1) AS first_num
+        FROM    example_input_1 i
+        WHERE   i.rn > 1
+    )
+SELECT  'Case #' || d.case_id || ': ' ||
+        MAX(
+            CASE
+                WHEN d.first_num = '0'
+                THEN '0'
+                ELSE d.min_num || SUBSTR(REGEXP_REPLACE(d.val, d.min_num, d.first_num, d.min_num_pos, 1), 2) 
+            END 
+        ) || ' ' ||
+        MAX(
+            CASE
+                WHEN d.first_num = '0'
+                THEN '0'
+                ELSE d.max_num || SUBSTR(REGEXP_REPLACE(d.val, d.max_num, d.first_num, d.max_num_pos, 1), 2)
+            END 
+        ) AS result
+FROM    (
+            SELECT  d.*,
+                    MIN(CASE d.num WHEN '0' THEN NULL ELSE d.num END) OVER(PARTITION BY d.case_id) AS min_num,
+                    MAX(CASE d.num WHEN '0' THEN NULL ELSE d.num END) OVER(PARTITION BY d.case_id) AS max_num,
+                    INSTR(d.val, MIN(CASE d.num WHEN '0' THEN NULL ELSE d.num END) OVER(PARTITION BY d.case_id), -1) AS min_num_pos,
+                    INSTR(d.val, MAX(CASE d.num WHEN '0' THEN NULL ELSE d.num END) OVER(PARTITION BY d.case_id), -1) AS max_num_pos
+            FROM    (
+                        SELECT  i.*,
+                                SUBSTR(i.val, r.pos, 1) AS num
+                        FROM    example_input i CROSS JOIN (
+                                                    SELECT  ROWNUM AS rn,
+                                                            LEVEL AS pos
+                                                    FROM    (
+                                                                SELECT  MAX(ii.len) AS max_len
+                                                                FROM    example_input ii
+                                                            )
+                                                    CONNECT BY  LEVEL <= max_len
+                                                ) r
+                        WHERE   r.rn <= i.len
+                    ) d
+        ) d
+GROUP BY    d.case_id
+ORDER BY    d.case_id;
+
+SPOOL OFF;
+QUIT;

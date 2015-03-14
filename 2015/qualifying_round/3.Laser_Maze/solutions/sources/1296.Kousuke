@@ -1,0 +1,118 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <algorithm>
+
+using namespace std;
+
+map<long long, int> memo;
+long long mkey(int x, int y, int st) {
+	return ((long long)st << 48) | ((long long)y << 24) | ((long long)x) ;
+}
+
+int width, height;
+int gx, gy;
+
+const int NOROUTE = 999999;
+const int dxs[] = {1,0,-1,0}, dys[] = {0, 1, 0, -1};
+
+string maze[4][128];
+
+int solv(int x, int y, int tt) {
+	if (x < 0 || y < 0 || x >= width || y>= height) {
+		return NOROUTE;
+	}
+	// cout << tt << ": " << x << "," << y << endl;
+	auto m = memo.find(mkey(x,y,tt%4));
+	if (m != memo.end() && tt >= m->second) {
+		return NOROUTE;
+	}
+	if (maze[tt%4][y][x] == 'G') {
+		return tt;
+	}
+
+	if (maze[tt%4][y][x] != '.' && maze[tt%4][y][x] != 'S' && tt != 0) {
+		return NOROUTE;
+	}
+	memo[mkey(x,y,tt%4)] = tt;
+	
+
+	int r = NOROUTE;
+	for (int i=0; i<4; i++) {
+		r = min(r, solv(x + dxs[i],y + dys[i],tt+1));
+	}
+
+	return r;
+}
+
+string nextstate(const string &a) {
+	string s = a;
+	for (auto &&c : s) {
+		if (c == '^') c = '>';
+		else if (c == '>') c = 'v';
+		else if (c == 'v') c = '<';
+		else if (c == '<') c = '^';
+	}
+	return s;
+}
+
+void laser(string map[]) {
+	for (int y=0; y<height; y++) {
+		for (int x=0; x<width; x++) {
+			int dx = 0, dy = 0;
+			if (map[y][x] == '^') dy = -1;
+			if (map[y][x] == '>') dx = 1;
+			if (map[y][x] == 'v') dy = 1;
+			if (map[y][x] == '<') dx = -1;
+			if (dx | dy) {
+				for (int xx=x+dx, yy=y+dy; xx>=0 && yy>=0 && xx <width && yy <height;) {
+					if (map[yy][xx] != '.' && map[yy][xx] != 'S' && map[yy][xx] != 'G' && map[yy][xx] != '*') {
+						break;
+					}
+					map[yy][xx] = '*';
+					xx+=dx;
+					yy+=dy;
+				}
+			}
+		}
+	}
+//	cerr << "---" << height << endl;
+//	for (int y=0; y<height; y++) {
+//		cerr << map[y] << endl;
+//	}
+}
+
+int main() {
+	int T;
+	cin >> T;
+	for (int t = 0; t < T; t++) {
+		int M , N;
+		cin >> M >> N;
+		int sx = 0,sy = 0;
+		for (int m = 0; m<M; m++) {
+			cin >> maze[0][m];
+			auto p = maze[0][m].find('S');
+			if (p != string::npos) {
+				sy = m; sx = p;
+			}
+			p = maze[0][m].find('G');
+			if (p != string::npos) {
+				gy = m; gx = p;
+			}
+			for (int i = 1; i<4; i++) {
+				maze[i][m].assign(nextstate(maze[i-1][m]));
+			}
+		}
+		width = N;
+		height = M;
+
+		for (int i=0; i<4; i++) {
+			laser(maze[i]);
+		}
+		memo.clear();
+		int r = solv(sx, sy, 0);
+		cout << "Case #" << (t+1) << ": " << (r==NOROUTE?"impossible": to_string(r)) << endl;
+	}
+	return 0;
+}

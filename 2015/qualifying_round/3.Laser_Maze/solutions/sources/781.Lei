@@ -1,0 +1,182 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <cctype>
+#include <climits>
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <string>
+#include <stack>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <algorithm>
+#include <sstream>
+#include <initializer_list>
+
+using namespace std;
+
+class Point {
+public:
+    int x;
+    int y;
+
+    Point(int _x, int _y): x(_x), y(_y) {}
+
+    bool operator == (const Point &z) {
+        return x == z.x && y == z.y;
+    }
+};
+
+class State {
+public:
+    Point p;
+    int timestamp;
+
+    State(Point _p, int _t): p(_p), timestamp(_t) {}
+};
+
+bool occupy[128][128][4] = {{{0}}};
+bool block[128][128][4] = {{{0}}};
+
+Point dir[4] = {
+    Point(0, -1),
+    Point(-1, 0),
+    Point(0, 1),
+    Point(1, 0)
+};
+
+inline Point getIndex(vector <string>& board, int N, int M, char c) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < M; j++) {
+            if (board[i][j] == c) {
+                return Point(i, j);
+            }
+        }
+    }
+
+    return Point(-1, -1);
+}
+
+inline bool isTurret(char c) {
+    return (c == '<' || c == '>' || c == '^' || c == 'v');
+}
+
+inline bool isWall(char c) {
+    return (c == '#' || isTurret(c));
+}
+
+inline int getDirection(char c) {
+    if (c == '<') return 0;
+    else if (c == '^') return 1;
+    else if (c == '>') return 2;
+    else return 3;
+}
+
+inline bool isAvailable(Point p, vector <string> &board, int N, int M) {
+    return (p.x >= 0 && p.x < N && p.y >= 0 && p.y < M && !isWall(board[p.x][p.y]));
+}
+
+void getBlock(vector <string>& board, int N, int M) {
+    memset(block, false, sizeof(block));
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < M; j++) {
+            if (isTurret(board[i][j])) {
+                int d = getDirection(board[i][j]);
+
+                for (int k = 0; k < 4; k++) {
+                    int idx = (k + d) % 4;
+                    
+                    Point next(i + dir[idx].x, j + dir[idx].y);
+                    while (isAvailable(next, board, N, M)) {
+                        block[next.x][next.y][k] = true;
+
+                        next.x += dir[idx].x;
+                        next.y += dir[idx].y;
+                    }
+                }
+            }
+        }
+    }
+}
+
+int getMin(vector <string>& board, int N, int M) {
+    Point start = getIndex(board, N, M, 'S');
+    Point goal = getIndex(board, N, M, 'G');
+
+    int res = -1;
+
+    memset(occupy, false, sizeof(occupy));
+    occupy[start.x][start.y][0] = true;
+
+    getBlock(board, N, M);
+
+    State s(start, 0);
+    queue <State> Q;
+    Q.push(s);
+
+    while (!Q.empty()) {
+        State current = Q.front();
+        Q.pop();
+
+        if (current.p == goal) {
+            if (res == -1) {
+                res = current.timestamp;
+            } else {
+                res = std::min(res, current.timestamp);
+            }
+        }
+        
+        for (int d = 0; d < 4; d++) {
+            Point next = current.p;
+            next.x += dir[d].x;
+            next.y += dir[d].y;
+
+            if (block[next.x][next.y][(current.timestamp + 1) % 4] ||
+                occupy[next.x][next.y][(current.timestamp + 1) % 4] ||
+                !isAvailable(next, board, N, M)) {
+                continue;
+            }
+
+            occupy[next.x][next.y][(current.timestamp + 1) % 4] = true;
+            State n(next, current.timestamp + 1);
+            Q.push(n);
+        }
+    }
+
+    return res;
+}
+
+int main(int argc, char *argv[])
+{
+    int T = 0;
+
+    cin >> T;
+
+    for (int i = 1; i <= T; i++) {
+        vector <string> board;
+        
+        int N = 0, M = 0;
+        cin >> M >> N;
+        
+        for (int j = 0; j < M; j++) {
+            string line;
+            cin >> line;
+            board.push_back(line);
+        }
+
+        int res = getMin(board, M, N);
+
+        cout << "Case #" << i << ": ";
+        if (res == -1) {
+            cout << "impossible" << endl;
+        } else {
+            cout << res << endl;
+        }
+    }
+    return 0;
+}

@@ -1,0 +1,117 @@
+#include <bits/stdc++.h>
+using namespace std;
+const int inf = 1e9;
+int n,m;
+int sx, sy;
+map<char,int> adonde;
+map<char,int> cual;
+char tipos[] = {'^','>','v','<'};
+int dx[] = {-1, 1, 0, 0};
+int dy[] = { 0, 0, 1, -1};
+char G[4][100][100];
+bool vis[4][100][100];
+int D[4][100][100];
+
+bool laser(char q) {
+    for(int i=0; i<4; ++i) if(q==tipos[i]) return true;
+    return false;
+}
+
+bool legal(int i, int j) {
+    return i>=0 and i<n and j>=0 and j<m;
+}
+
+void preprocesa() {
+    for(int i=0; i<n; ++i) {
+        for(int j=0; j<m; ++j) {
+            if(laser(G[0][i][j])) {
+                for(int k=0; k<4; ++k) {
+                    char tipolaser = tipos[(cual[G[0][i][j]]+k)%4];
+                    G[k][i][j] = tipolaser;
+                    int dir = adonde[tipolaser];
+                    int oi = i+dx[dir], oj = j+dy[dir];
+                    while(legal(oi, oj) and not laser(G[k][oi][oj]) and (G[k][oi][oj]!='#')) {
+                        G[k][oi][oj] = 'X';
+                        oi += dx[dir], oj += dy[dir];
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct triplet {
+    int k,i,j;
+};
+
+void run() {
+    queue < triplet > Q;
+    D[0][sx][sy] = 0;
+    Q.push({0,sx,sy});
+    while(not Q.empty()) {
+        int dim = Q.front().k;
+        int nextdim = (dim+1)%4;
+        int i = Q.front().i;
+        int j = Q.front().j;
+        Q.pop();
+        if(not vis[dim][i][j]) {
+            vis[dim][i][j] = true;
+            for(int k=0; k<4; ++k) {
+                int oi = i+dx[k];
+                int oj = j+dy[k];
+                if(not legal(oi, oj)) continue;
+                char sig = G[nextdim][oi][oj];
+                if(not laser(sig) and sig!='#' and sig!='X') {
+                    D[nextdim][oi][oj] = min(D[nextdim][oi][oj], D[dim][i][j]+1);
+                    Q.push({nextdim, oi, oj});
+                }
+            }
+        }
+    }
+}
+
+int main() {
+    adonde['^'] = 0;
+    adonde['>'] = 2;
+    adonde['v'] = 1;
+    adonde['<'] = 3;
+    cual['^'] = 0;
+    cual['>'] = 1;
+    cual['v'] = 2;
+    cual['<'] = 3;
+    int T; cin >> T;
+    int cas = 0;
+    while(cas<T) {
+        cout << "Case #" << (cas++)+1 << ": ";
+        cin >> n >> m;
+        memset(vis, false, 4*100*100);
+        for(int i=0; i<4; ++i)
+            for(int j=0; j<100; ++j)
+                for(int k=0; k<100; ++k) D[i][j][k] = inf;
+        vector< pair<int,int> > salidas;
+        for(int i=0; i<n; ++i)
+            for(int j=0; j<m; ++j) { 
+                cin >> G[0][i][j];
+                G[3][i][j] = G[2][i][j] = G[1][i][j] = G[0][i][j];
+                if(G[0][i][j]=='G') salidas.push_back(make_pair(i,j));
+                if(G[0][i][j]=='S') sx = i, sy = j;
+            }
+        preprocesa();
+        run();
+        //
+         /*cout << endl;
+         for(int k=0; k<4; ++k) {
+             for(int i=0; i<n; ++i) {
+                 for(int j=0; j<m; ++j) cout << G[k][i][j];
+                 cout << endl;
+             }
+             cout << endl << "-------------------" << endl;
+         }*/
+        //
+        int mindist = inf;
+        for(int i=0; i<salidas.size(); ++i)
+            for(int k=0; k<4; ++k) mindist = min(mindist, D[k][salidas[i].first][salidas[i].second]);
+        if(mindist == inf) cout << "impossible" << endl;
+        else cout << mindist << endl;
+    }
+}

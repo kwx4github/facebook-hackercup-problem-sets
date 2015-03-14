@@ -1,0 +1,139 @@
+package main
+
+import (
+	"fmt"
+	//"strings"
+	"time"
+)
+
+func yo(err error) {
+	if err != nil {
+		fmt.Println(err)
+		panic(42)
+	}
+}
+
+type Result struct {
+	test int
+	ans  string
+}
+
+type Solver interface {
+	add(i int, t Task)
+	run()
+}
+
+func create(serial bool, count int) Solver {
+	if serial {
+		return CSolver{}
+	}
+	results := make([]string, count, count)
+	resp := make(chan Result)
+	return PSolver{count, results, resp}
+}
+
+// Consequetive
+type CSolver struct{}
+
+func (s CSolver) add(i int, t Task) {
+	ans := solve(t)
+	fmt.Printf("Case #%d: %s\n", i+1, ans)
+}
+
+func (s CSolver) run() {
+}
+
+// Parallel solver
+type PSolver struct {
+	count   int
+	results []string
+	resp    chan Result
+}
+
+func (s PSolver) add(i int, t Task) {
+	go func(ch chan Result, test int, t Task) {
+		ch <- Result{test, solve(t)}
+	}(s.resp, i, t)
+}
+
+func (s PSolver) run() {
+	for s.count > 0 {
+		select {
+		case res := <-s.resp:
+			s.results[res.test] = res.ans
+			s.count--
+		}
+	}
+	for i, ans := range s.results {
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}
+
+var pows []int32
+
+func solve(pr Task) string {
+	num := pr.num
+	count := len(num)
+	//fmt.Println(num, count)
+	var min, max int32 = 0, 0
+	var anum int32
+	_, err := fmt.Sscan(num, &anum)
+	yo(err)
+	if count <= 1 {
+		return fmt.Sprintf("%s %s", num, num)
+	}
+	for i := 0; i < count; i++ {
+		di := int32(num[i])
+		for j := i + 1; j < count; j++ {
+			if i == 0 && num[j] == '0' {
+				continue
+			}
+			dj := int32(num[j])
+			diff := int32(dj-di) * (pows[count-i-1] - pows[count-j-1])
+			if diff > 0 {
+				if max < diff {
+					max = diff
+				}
+			} else {
+				if min > diff {
+					min = diff
+				}
+			}
+		}
+	}
+	return fmt.Sprintf("%d %d", anum+min, anum+max)
+}
+
+type Task struct {
+	num string
+}
+
+func next_task() Task {
+	var number string
+	_, err := fmt.Scanln(&number)
+	yo(err)
+	return Task{number}
+}
+
+func main() {
+	perf := false
+	start := time.Now()
+	pows = make([]int32, 10, 10)
+	var pow int32 = 1
+	for i := 0; i < 10; i++ {
+		pows[i] = pow
+		pow = pow * 10
+	}
+	var tests_count int
+	_, err := fmt.Scanln(&tests_count)
+	yo(err)
+
+	solver := create(true, tests_count)
+	for i := 0; i < tests_count; i++ {
+		solver.add(i, next_task())
+	}
+	solver.run()
+	if perf {
+		fmt.Printf("%2fs total\n", time.Since(start).Seconds())
+	}
+}

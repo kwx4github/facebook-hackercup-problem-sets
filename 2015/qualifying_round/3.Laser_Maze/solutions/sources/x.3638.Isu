@@ -1,0 +1,113 @@
+#include <iostream>
+#include <algorithm>
+#include <cassert>
+#include <cfloat>
+#include <climits>
+#include <cstring>
+#include <fstream>
+#include <map>
+#include <numeric>
+#include <stack>
+#include <string>
+#include <vector>
+#include <queue>
+
+using namespace std;
+
+int cache[100][100][4];
+bool checked[100][100][4];
+char board[100][100][4];
+int rowSize, colSize;
+char turret[4] = { '<', '^', '>', 'v' };
+const int MAX = 987654321;
+
+bool isSafe(int row, int col, int angle){
+	for (int r = 0; r < row; r++){
+		if (board[r][col][angle] == 'v') return false;
+	}
+	for (int r = row + 1; r < rowSize; r++){
+		if (board[r][col][angle] == '^') return false;
+	}
+	for (int c = 0; c < col; c++){
+		if (board[row][c][angle] == '>') return false;
+	}
+	for (int c = col + 1; c < colSize; c++){
+		if (board[row][c][angle] == '<') return false;
+	}
+	return true;
+}
+
+int minPath(int row, int col, int angle){
+	int &cacheValue = cache[row][col][angle];
+	if (cacheValue != -1) return cacheValue;
+
+	if (!(angle == 0 && board[row][col][angle] == 'S') && !isSafe(row, col, angle)) return cacheValue = 987654321;
+
+	if (board[row][col][angle] == 'G') return 0;
+
+	int dx[4] = { 1, -1, 0, 0 };
+	int dy[4] = { 0, 0, 1, -1 };
+	cacheValue = MAX;
+	for (int i = 0; i < 4; i++){
+		
+		int nextRow = row + dy[i];
+		int nextCol = col + dx[i];
+		int nextAngle = (angle + 1) % 4;
+		if (nextRow < 0 || nextCol < 0 || nextCol >= colSize || nextRow >= rowSize) continue;
+		char shape=board[nextRow][nextCol][angle];
+		if (!checked[nextRow][nextCol][nextAngle] &&
+			shape != '#' && shape != '^' && shape != '<' && shape != '>' && shape != 'v'){
+			checked[nextRow][nextCol][nextAngle] = true;
+			cacheValue = min(cacheValue, minPath(nextRow, nextCol, nextAngle)+1);
+			checked[nextRow][nextCol][nextAngle] = false;
+		}
+		
+	}
+	return cacheValue;
+}
+
+int main(){
+	vector<int> results;
+	int testCase;
+	cin >> testCase;
+	fstream outFile;
+	outFile.open("C:\\test\\LazerMaze.txt", fstream::out);
+	for (int t = 0; t < testCase; t++){
+		memset(cache, -1, sizeof(cache));
+		memset(checked, 0, sizeof(checked));
+		cin >> rowSize >> colSize;
+		int startRow, startCol;
+		for (int row = 0; row < rowSize; row++){
+			for (int col = 0; col < colSize; col++){
+				cin>>board[row][col][0];
+				if (board[row][col][0] == 'S'){
+					startRow = row;
+					startCol = col;
+				}
+				for (int i = 1; i < 4; i++){
+					board[row][col][i] = board[row][col][0];
+				}
+				for (int i = 0; i < 4; i++){
+					if (board[row][col][0] == turret[i]){
+						for (int j = 1; j < 4; j++){
+							board[row][col][j] = turret[(i + j) % 4];
+						}
+						break;
+					}
+				}
+			}
+		}
+		int minValue = minPath(startRow, startCol, 0);
+
+		outFile << "Case #" << t + 1 << ": ";
+		if (minValue == MAX){
+			outFile << "impossible";
+		}
+		else{
+			outFile << minValue;
+		}
+		outFile << endl;
+	}
+	outFile.close();
+	return 0;
+}

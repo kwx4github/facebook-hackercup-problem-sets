@@ -1,0 +1,178 @@
+//
+//  main.cpp
+//  facebook_laser_maze
+//
+//  Created by Alexandru Andronache on 09/01/15.
+//  Copyright (c) 2015 Alexandru Andronache. All rights reserved.
+//
+
+#include <iostream>
+
+using namespace std;
+
+const int NMAX = 101;
+
+const int WALL = -1;
+const int LASER_NORD = -2;
+const int LASER_EAST = -3;
+const int LASER_SOUTH = -4;
+const int LASER_WEST = -5;
+const int BLANK = 0;
+const int START_POSITION = 0;
+const int END_POSITION = 0;
+
+const int STEPS = 100000;
+
+FILE *f = fopen("input.in", "r");
+FILE *g = fopen("output.out", "w");
+
+int T;
+int N, M;
+int a[NMAX][NMAX];
+bool mark[NMAX][NMAX];
+char sir[NMAX];
+int sx, sy;
+int ex, ey;
+
+void markPositions(int i, int j)
+{
+    if (i > 0 && a[i - 1][j] >= START_POSITION) a[i - 1][j] = a[i][j] + 1, mark[i - 1][j] = true;
+    if (i < N - 1 && a[i + 1][j] >= START_POSITION) a[i + 1][j] = a[i][j] + 1, mark[i + 1][j] = true;
+    if (j > 0 && a[i][j - 1] >= START_POSITION) a[i][j - 1] = a[i][j] + 1, mark[i][j - 1] = true;
+    if (j < M - 1 && a[i][j + 1] >= START_POSITION) a[i][j + 1] = a[i][j] + 1, mark[i][j + 1] = true;
+}
+
+void updateLasers()
+{
+    // update lasers
+    for (int i = 0; i < N; ++i)
+    {
+        for (int j = 0; j < M; ++j)
+        {
+            if (a[i][j] == LASER_NORD) a[i][j] = LASER_EAST;
+            else if (a[i][j] == LASER_EAST) a[i][j] = LASER_SOUTH;
+            else if (a[i][j] == LASER_SOUTH) a[i][j] = LASER_WEST;
+            else if (a[i][j] == LASER_WEST) a[i][j] = LASER_NORD;
+        }
+    }
+    
+    // fire lassers
+    for (int i = 0; i < N; ++i)
+    {
+        for (int j = 0; j < M; ++j)
+        {
+            if (a[i][j] == LASER_NORD)
+            {
+                for (int k = i - 1; k >= 0; --k)
+                {
+                    if (a[k][j] >= BLANK) a[k][j] = BLANK;
+                    else k = -1;
+                }
+            }
+            if (a[i][j] == LASER_SOUTH)
+            {
+                for (int k = i + 1; k <= N - 1; ++k)
+                {
+                    if (a[k][j] >= BLANK) a[k][j] = BLANK;
+                    else k = N;
+                }
+            }
+            if (a[i][j] == LASER_EAST)
+            {
+                for (int k = j + 1; k <= M - 1; ++k)
+                {
+                    if (a[i][k] >= BLANK) a[i][k] = BLANK;
+                    else k = M;
+                }
+            }
+            if (a[i][j] == LASER_WEST)
+            {
+                for (int k = j - 1; k >= 0; --k)
+                {
+                    if (a[i][k] >= BLANK) a[i][k] = BLANK;
+                    else k = -1;
+                }
+            }
+        }
+    }
+}
+
+bool verifySolution()
+{
+    if (a[ex][ey] > END_POSITION)
+    {
+        return true;
+    }
+    return false;
+}
+
+int main(int argc, const char * argv[])
+{
+    fscanf(f, "%d", &T);
+    for (int t = 1; t <= T; ++t)
+    {
+        fscanf(f, "%d %d\n", &N, &M);
+        bool found = false;
+        for (int i = 0; i < N; ++i)
+        {
+            fgets(sir, 101, f);
+            for (int j = 0; j < M; ++j)
+            {
+                if (sir[j] == '#') a[i][j] = WALL;
+                if (sir[j] == '^') a[i][j] = LASER_NORD;
+                if (sir[j] == 'v') a[i][j] = LASER_SOUTH;
+                if (sir[j] == '<') a[i][j] = LASER_WEST;
+                if (sir[j] == '>') a[i][j] = LASER_EAST;
+                if (sir[j] == '.') a[i][j] = BLANK;
+                if (sir[j] == 'S') a[i][j] = START_POSITION, sx = i, sy = j;
+                if (sir[j] == 'G') a[i][j] = END_POSITION, ex = i, ey = j;
+            }
+        }
+        
+        markPositions(sx, sy);
+        updateLasers();
+        if (verifySolution())
+        {
+            fprintf(g, "Case #%d: %d\n", t, a[ex][ey]);
+            found = true;
+        }
+        if (!found)
+        {
+            for (int s = 0; s < STEPS; ++s)
+            {
+                for (int i = 0; i < N; ++i)
+                    for (int j = 0; j < M; ++j)
+                        mark[i][j] = false;
+                
+                for (int i = 0; i < N; ++i)
+                {
+                    for (int j = 0; j < M; ++j)
+                    {
+                        if (a[i][j] > START_POSITION && !mark[i][j])
+                        {
+                            markPositions(i, j);
+                            a[i][j] = 0;
+                            mark[i][j] = true;
+                        }
+                    }
+                }
+                
+                updateLasers();
+                
+                if (verifySolution())
+                {
+                    fprintf(g, "Case #%d: %d\n", t, a[ex][ey]);
+                    found = true;
+                    s = STEPS;
+                }
+            }
+        }
+        
+        if (!found)
+        {
+            fprintf(g, "Case #%d: impossible\n", t);
+        }
+    }
+    
+    return 0;
+}

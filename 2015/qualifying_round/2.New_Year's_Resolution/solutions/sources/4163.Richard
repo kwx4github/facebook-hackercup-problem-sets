@@ -1,0 +1,174 @@
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+
+/**
+ * Created by Richard Zhang on 1/9/15.
+ */
+public class NewYearResolution {
+    public static void main(String[] args) {
+        if (args.length < 1) {
+            log("Please provide input file");
+            System.exit(0);
+        }
+
+        Case[] cases = readCases(args[0]);
+        if (cases == null) {
+            System.exit(0);
+        }
+
+        for (int i = 0; i < cases.length; i++) {
+            log("Case #" + (i+1) + ": " + (cases[i].isPossible()? "yes" : "no"));
+        }
+    }
+
+    private static Case[] readCases(String path) {
+        try {
+            FileReader fileReader = new FileReader(path);
+            BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+            String line = bufferedReader.readLine();
+            int n = Integer.parseInt(line);
+            if (n < 1 || n > 20) {
+                log("Invalid number of cases " + n);
+                System.exit(0);
+            }
+
+            Case[] cases = new Case[n];
+            for (int i = 0; i < n; i++) {
+                line = bufferedReader.readLine();
+                cases[i] = new Case(line, bufferedReader);
+            }
+
+            return cases;
+        } catch (FileNotFoundException e) {
+            log("File not found");
+            System.exit(0);
+        } catch (IOException e) {
+            log("Error in reading file " + path);
+            System.exit(0);
+        } catch (Exception e) {
+            log("error in reading file " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    private static void log(String line) {
+        System.out.println(line);
+    }
+
+    private static class Case {
+        public final Balance balance;
+
+        public final Food[] foods;
+
+        public Case(String line, BufferedReader reader) throws Exception {
+            balance = new Balance(line);
+
+            if (balance.protein < 10 || balance.protein > 1000) {
+                throw new Exception("Invalid amount of protein for the case. " + balance.protein);
+            }
+            if (balance.carbohydrate < 10 || balance.carbohydrate > 1000) {
+                throw new Exception("Invalid amount of carbohydrate for the case. " + balance.carbohydrate);
+            }
+            if (balance.fat < 10 || balance.fat > 1000) {
+                throw new Exception("Invalid amount of fat for the case. " + balance.fat);
+            }
+
+            line = reader.readLine();
+            int number_of_foods = Integer.parseInt(line);
+            if (number_of_foods < 1 || number_of_foods > 20) {
+                throw new Exception("Invalid number of foods " + number_of_foods);
+            }
+
+            foods = new Food[number_of_foods];
+            for (int i = 0; i < number_of_foods; i++) {
+                foods[i] = new Food(reader.readLine());
+            }
+        }
+
+        public boolean isPossible() {
+            return isPossible(balance, 0);
+        }
+
+        private boolean isPossible(Balance remain, int food_index_start) {
+            if (foods.length == 0 || food_index_start >= foods.length) { return false; }
+
+            Food cur = foods[food_index_start];
+            int remainProtein = remain.protein - cur.balance.protein;
+            int remainCarbohydrate = remain.carbohydrate - cur.balance.carbohydrate;
+            int remainFat = remain.fat - cur.balance.fat;
+
+            // Balanced
+            if (remainProtein == 0 && remainCarbohydrate == 0 && remainFat == 0) {
+                return true;
+            }
+
+            // Exceeded. Only goes no path
+            if (remainProtein < 0 || remainCarbohydrate < 0 || remainFat < 0) {
+                return isPossible(remain, food_index_start+1);
+            }
+
+            // Not exceeded. Evaluate both yes/no path
+            Balance new_remain = new Balance(remainProtein, remainCarbohydrate, remainFat);
+            return isPossible(remain, food_index_start+1) || isPossible(new_remain, food_index_start+1);
+        }
+    }
+
+    private static class Food {
+        public final Balance balance;
+
+        public Food(String line) throws Exception {
+            balance = new Balance(line);
+
+            if (balance.protein < 10 || balance.protein > 1000) {
+                throw new Exception("Invalid amount of protein for the food. " + balance.protein);
+            }
+            if (balance.carbohydrate < 10 || balance.carbohydrate > 1000) {
+                throw new Exception("Invalid amount of carbohydrate for the food. " + balance.carbohydrate);
+            }
+            if (balance.fat < 10 || balance.fat > 1000) {
+                throw new Exception("Invalid amount of fat for the food. " + balance.fat);
+            }
+        }
+    }
+
+    private static class Balance {
+        public final int protein;
+        public final int carbohydrate;
+        public final int fat;
+
+        public Balance(String line) throws Exception {
+            int[] values = parsePortionValues(line);
+            protein = values[0];
+            carbohydrate = values[1];
+            fat = values[2];
+        }
+
+        public Balance(int protein, int carbohydrate, int fat) {
+            this.protein = protein;
+            this.carbohydrate = carbohydrate;
+            this.fat = fat;
+        }
+
+        private static int[] parsePortionValues(String line) throws Exception {
+            String[] portions = line.split(" ");
+            if (portions.length != 3) { throw new Exception("Not valid input for food " + line); }
+
+            int[] values = new int[3];
+            values[0] = Integer.parseInt(portions[0]);
+            values[1] = Integer.parseInt(portions[1]);
+            values[2] = Integer.parseInt(portions[2]);
+
+            return values;
+        }
+
+        @Override
+        public String toString() {
+            return protein + ":" + carbohydrate + ":" + fat;
+        }
+    }
+}
+

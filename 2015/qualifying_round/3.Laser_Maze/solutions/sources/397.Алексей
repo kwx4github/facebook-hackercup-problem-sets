@@ -1,0 +1,181 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <vector>
+using namespace std;
+
+const int INF = (int)1e8;
+const int N = 110;
+int T;
+char table[N][N];
+int n, m;
+bool g[N][N][4];
+int dist[N][N][4];
+int sx, sy, tx, ty;
+
+const int DX[4] = {-1, 0, 1, 0};
+const int DY[4] = {0, 1, 0, -1};
+const char C[4] = {'^', '>', 'v', '<'};
+
+void printGraph()
+{
+	printf("GRAPH:\n\n");
+	for (int i = 0; i < 4; i++)
+	{
+		for (int x = 0; x < n; x++)
+		{
+			for (int y = 0; y < m; y++)
+				printf("%d", (int)g[x][y][i]);
+			printf("\n");
+		}
+		printf("\n");
+	}
+	printf("--------------------\n\n");
+}
+
+bool checkPos(int x, int y, int dir)
+{
+	if (x < 0 || x >= n || y < 0 || y >= m) return false;
+	return g[x][y][dir];
+}
+
+bool checkPos2(int x, int y)
+{
+	if (x < 0 || x >= n || y < 0 || y >= m) return false;
+	return (table[x][y] == '.');
+}
+
+void parse()
+{
+	for (int x = 0; x < n; x++)
+		for (int y = 0; y < m; y++)
+			for (int i = 0; i < 4; i++)
+				g[x][y][i] = (table[x][y] == '.');
+	for (int x = 0; x < n; x++)
+		for (int y = 0; y < m; y++)
+		{
+			if (table[x][y] == '.' || table[x][y] == '#') continue;
+			int dir = 0;
+			while (dir < 4 && C[dir] != table[x][y]) dir++;
+			if (dir == 4) throw;
+			for (int i = 0; i < 4; i++)
+			{
+				int ndir = (dir + i) % 4;
+				int nx = x + DX[ndir];
+				int ny = y + DY[ndir];
+				while(checkPos2(nx, ny))
+				{
+					g[nx][ny][i] = 0;
+					nx += DX[ndir];
+					ny += DY[ndir];
+				}
+			}
+		}
+	return;
+}
+
+void read()
+{
+	scanf("%d%d", &n, &m);
+	for (int x = 0; x < n; x++)
+	{
+		scanf(" %s ", table[x]);
+		for (int y = 0; y < m; y++)
+		{
+			if (table[x][y] == 'S')
+			{
+				sx = x;
+				sy = y;
+				table[x][y] = '.';
+			}
+			if (table[x][y] == 'G')
+			{
+				tx = x;
+				ty = y;
+				table[x][y] = '.';
+			}
+		}
+	}
+	return;
+}
+
+struct Vertex
+{
+	int x, y, dir;
+
+	Vertex() : x(), y(), dir() {}
+	Vertex(int _x, int _y, int _dir) : x(_x), y(_y), dir(_dir) {}
+};
+
+Vertex q[N * N * 4];
+int sz;
+
+void addQ(int x, int y, int dir)
+{
+	q[sz++] = Vertex(x, y, dir);
+}
+
+void tryAddQ(int x, int y, int dir, int w)
+{
+	if (dist[x][y][dir] <= w) return;
+	dist[x][y][dir] = w;
+	addQ(x, y, dir);
+	return;
+}
+
+void bfs()
+{
+	for (int x = 0; x < n; x++)
+		for (int y = 0; y < m; y++)
+			for (int i = 0; i < 4; i++)
+				dist[x][y][i] = INF;
+	dist[sx][sy][0] = 0;
+	sz = 0;
+	addQ(sx, sy, 0);
+	for (int k = 0; k < sz; k++)
+	{
+		int x = q[k].x;
+		int y = q[k].y;
+		int dir = q[k].dir;
+		int ndir = (dir + 1) % 4;
+		for (int i = 0; i < 4; i++)
+		{
+			int nx = x + DX[i];
+			int ny = y + DY[i];
+			if (!checkPos(nx, ny, ndir)) continue;
+			tryAddQ(nx, ny, ndir, dist[x][y][dir] + 1);
+		}
+	}
+}
+
+int solve()
+{
+	read();
+	parse();
+//	printGraph();
+	bfs();
+	int res = INF;
+	for (int d = 0; d < 4; d++)
+		res = min(res, dist[tx][ty][d]);
+	return res;
+}
+
+int main()
+{
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	scanf("%d", &T);
+	for (int i = 1; i <= T; i++)
+	{
+		printf("Case #%d: ", i);
+		int res = solve();
+		if (res == INF)
+			printf("impossible\n");
+		else
+			printf("%d\n", res);
+	}
+
+	return 0;
+}

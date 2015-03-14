@@ -1,0 +1,142 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cstring>
+#include <string>
+#include <climits>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <ctime>
+#include <iostream>
+#include <sstream>
+#include <cctype>
+
+#define PI 3.14159265358979
+#define EPS 1e-9
+
+using namespace std;
+
+#define REP(i, n) for (int i=0; i<n; i++)
+#define FOR(i, m, n) for (int i=m; i<=n; i++)
+#define ABS(a) (((a)>0)?(a):(-(a)))
+typedef long long ll;
+typedef unsigned long long ull;
+typedef long double ld;
+typedef pair<int,int> ii;
+
+#define MAXN 111
+
+struct Pt {
+	char c;
+	int i;
+	int j;
+};
+
+struct Q {
+	int k;
+	int i;
+	int j;
+};
+
+int dj[4] = {1, 0, -1, 0};
+int di[4] = {0, 1, 0, -1};
+char maze[4][MAXN][MAXN];
+char plan[MAXN][MAXN];
+int D[4][MAXN][MAXN];
+int n, m;
+vector<Pt> lasers;
+Pt start;
+Pt goal;
+
+char rotate(char c) {
+	switch(c) {
+		case '>': return 'v';
+		case 'v': return '<';
+		case '<': return '^';
+		case '^': return '>';
+	}
+	return 'E';
+}
+
+int laser_id(char c) {
+	switch(c) {
+		case '>': return 0;
+		case 'v': return 1;
+		case '<': return 2;
+		case '^': return 3;
+	}
+	return -1;
+}
+
+void solve() {
+	lasers.clear();
+	// Read input
+	scanf("%d%d", &m, &n);
+	REP(i, m) REP(j, n) {
+		char c; scanf(" %c", &c);
+		if (c=='S') {
+			start = (Pt){'s', i, j};
+			plan[i][j] = '.';
+		}
+		else if (c=='G') {
+			goal = (Pt){'g', i, j};
+			plan[i][j] = '.';
+		}
+		else if (c=='>' || c=='<' || c=='^' || c=='v') {
+			lasers.push_back((Pt){c, i, j});
+			plan[i][j] = '#';
+		}
+		else plan[i][j] = c;
+	}
+	// Create four mazes by the lasers
+	REP(k, 4) {
+		REP(i, m) REP(j, n) maze[k][i][j] = plan[i][j];
+		REP(l, lasers.size()) {
+			int d = laser_id(lasers[l].c);
+			int i = lasers[l].i + di[d];
+			int j = lasers[l].j + dj[d];
+			while (i>=0 && i<m && j>=0 && j<n && plan[i][j]=='.') {
+				maze[k][i][j] = '#';
+				i += di[d];
+				j += dj[d];
+			}
+		}
+		REP(l, lasers.size()) lasers[l].c = rotate(lasers[l].c);
+	}
+	// BFS
+	REP(k, 4) REP(i, m) REP(j, n) D[k][i][j] = -1;
+	D[0][start.i][start.j] = 0;
+	queue<Q> q;
+	q.push((Q){0, start.i, start.j});
+	while (!q.empty()) {
+		Q qqq = q.front(); q.pop();
+		int i = qqq.i; int j = qqq.j; int k = qqq.k;
+		REP(d, 4) {
+			int kkk = (k+1)%4;
+			int iii = i + di[d];
+			int jjj = j + dj[d];
+			if (iii>=0 && iii<m && jjj>=0 && jjj<n && D[kkk][iii][jjj]==-1 && maze[kkk][iii][jjj]=='.') {
+				D[kkk][iii][jjj] = D[k][i][j] + 1;
+				q.push((Q){kkk, iii, jjj});
+			}
+		}
+	}
+	int ans = 5000000;
+	REP(k, 4) if (D[k][goal.i][goal.j]!=-1) ans = min(ans, D[k][goal.i][goal.j]);
+	if (ans==5000000) printf("impossible\n");
+	else printf("%d\n", ans);
+}
+
+int main() {
+	int t; scanf("%d", &t);
+	REP(i, t) {
+		printf("Case #%d: ", i+1);
+		solve();
+	}
+	return 0;
+}

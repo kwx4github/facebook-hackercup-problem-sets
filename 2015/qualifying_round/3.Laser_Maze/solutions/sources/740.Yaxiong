@@ -1,0 +1,146 @@
+/******************************************************************************\
+*                         Author:  Dumbear                                     *
+*                         Email:   dumbear[#at]163.com                         *
+*                         Website: http://dumbear.com                          *
+\******************************************************************************/
+#include <algorithm>
+#include <bitset>
+#include <cctype>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <list>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <typeinfo>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+#define output(x) cout << #x << ": " << (x) << endl;
+
+typedef long long LL;
+typedef vector<int> VI;
+typedef vector<long long> VL;
+typedef vector<double> VD;
+typedef vector<string> VS;
+
+const int delta[][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+const int max_n = 100 + 10, max_m = 100 + 10;
+
+int t, n, m, min_steps[4][max_n][max_m];
+char maze[max_n][max_m];
+bool mask[4][max_n][max_m];
+
+int get_direction(char laser) {
+    if (laser == '^')
+        return 0;
+    if (laser == '>')
+        return 1;
+    if (laser == 'v')
+        return 2;
+    if (laser == '<')
+        return 3;
+    return -1;
+}
+
+void fill_mask(bool mask[max_n][max_m], int x, int y, int d) {
+    char &laser = maze[x][y];
+    char bak = laser;
+    laser = '.';
+    while (x >= 0 && x < n && y >= 0 && y < m && maze[x][y] == '.') {
+        mask[x][y] = true;
+        x += delta[d][0];
+        y += delta[d][1];
+    }
+    laser = bak;
+}
+
+void generate_mask() {
+    memset(mask, 0, sizeof(mask));
+    for (int d = 0; d < 4; ++d) {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                if (maze[i][j] == '#') {
+                    mask[d][i][j] = true;
+                } else {
+                    int laser_d = get_direction(maze[i][j]);
+                    if (laser_d != -1) {
+                        fill_mask(mask[d], i, j, (laser_d + d) % 4);
+                    }
+                }
+            }
+        }
+    }
+}
+
+int get_min_steps(int x0, int y0, int x1, int y1) {
+    generate_mask();
+    queue<pair<int, int> > q;
+    memset(min_steps, -1, sizeof(min_steps));
+    q.push(make_pair(0, x0 * m + y0));
+    min_steps[0][x0][y0] = 0;
+    while (!q.empty()) {
+        int d = q.front().first;
+        int x = q.front().second / m, y = q.front().second % m;
+        q.pop();
+        for (int i = 0; i < 4; ++i) {
+            int n_d = (d + 1) % 4;
+            int n_x = x + delta[i][0], n_y = y + delta[i][1];
+            if (n_x >= 0 && n_x < n && n_y >= 0 && n_y < m && !mask[n_d][n_x][n_y] && min_steps[n_d][n_x][n_y] == -1) {
+                q.push(make_pair(n_d, n_x * m + n_y));
+                min_steps[n_d][n_x][n_y] = min_steps[d][x][y] + 1;
+                if (n_x == x1 && n_y == y1)
+                    return min_steps[n_d][x1][y1];
+            }
+        }
+    }
+    return -1;
+}
+
+void solve() {
+    scanf("%d%d", &n, &m);
+    int x0, y0, x1, y1;
+    for (int i = 0; i < n; ++i) {
+        scanf("%s", maze[i]);
+        for (int j = 0; j < m; ++j) {
+            if (maze[i][j] == 'S') {
+                maze[i][j] = '.';
+                x0 = i;
+                y0 = j;
+            } else if (maze[i][j] == 'G') {
+                maze[i][j] = '.';
+                x1 = i;
+                y1 = j;
+            }
+        }
+    }
+    int n_steps = get_min_steps(x0, y0, x1, y1);
+    printf("Case #%d: ", ++t);
+    if (n_steps == -1) {
+        puts("impossible");
+    } else {
+        printf("%d\n", n_steps);
+    }
+}
+
+int main() {
+    freopen("out.txt", "w", stdout);
+    int t;
+    scanf("%d", &t);
+    for (int i = 0; i < t; ++i)
+        solve();
+    return 0;
+}

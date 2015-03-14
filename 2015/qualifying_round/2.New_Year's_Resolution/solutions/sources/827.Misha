@@ -1,0 +1,79 @@
+(ns fb2015-1-2)
+
+(defn num->digits [num]
+  (map #(- (int %) 48) (str num)))
+
+(defn num->bin [cnt num]
+  (let [digits (num->digits (Integer/toString num 2))]
+    (vec (concat (repeat (- cnt (count digits)) 0)
+                 digits))))
+
+(defn less-than-goal [[a b c] [a' b' c']]
+  (and (<= a a')
+       (<= b b')
+       (<= c c')))
+
+(defn more-than-goal [[a b c] [a' b' c']]
+  (and (>= a a')
+       (>= b b')
+       (>= c c')))
+
+(defn solve [goal foods]
+  ;; optimization #1 filter less than
+  (let [foods-filtered (filter #(less-than-goal % goal) foods)
+        ;; optimization #2 sum is not less than goal
+        sum-for-each (reduce (fn [a b]
+                               (map + a b)) [0 0 0] foods-filtered)
+        food-count (count foods-filtered)
+        bin-count (reduce * (repeat food-count 2))]
+    (if (more-than-goal sum-for-each goal)
+      (loop [case 0]
+        (if (< case bin-count)
+          ;; test
+          (let [bin (num->bin food-count case)
+                prod (->> foods-filtered
+                          (map (fn [b v] (if (= b 1) v [0 0 0])) bin)
+                          (reduce (fn [a b]
+                                    (map + a b)) [0 0 0]))]
+            (if (= prod goal)
+              "yes"
+              (recur (inc case))
+              ))
+          ;; nothing found
+          "no"
+          ))
+      "no"
+      )))
+
+(defn problem-2 [in out]
+  (let [rawdata (map read-string (re-seq #"\w+" (slurp in)))
+        num-of-tests (first rawdata)]
+    (loop [current 1
+           data (rest rawdata)
+           outcontent []]
+      (if (> current num-of-tests)
+        (spit out (apply str outcontent))
+        ;; else
+        (let [goal (take 3 data)
+              food-cnt (first (drop 3 data))
+              foods
+              (vec (map vec (partition 3 3 (take (* food-cnt 3) (drop 4 data)))))
+              result (solve goal foods)
+              outcase (format "Case #%d: %s\n" current result)
+              ]
+          ;; solve
+          (print outcase)
+          (recur  (inc current) (drop (+ 4 (* food-cnt 3)) data)
+                  (conj outcontent outcase))
+          )))))
+
+
+;; Optimization #1 Filter values greater
+;; Optimization #2 No if sum is lower
+
+
+
+
+
+
+

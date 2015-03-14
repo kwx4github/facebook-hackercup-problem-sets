@@ -1,0 +1,154 @@
+
+
+#if 1
+
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cmath>
+#include <string>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include <cassert>
+#include <fstream>
+using namespace std;
+typedef int64_t int64;
+
+typedef pair<int,int> pii;
+typedef pair<double,double> pdd;
+#define mp make_pair
+#define rr first
+#define cc second
+
+static void solve();
+
+int main() {
+	freopen("C.in.txt","r",stdin);
+	freopen("C.out.txt","w",stdout);
+	int test_case;
+	cin >> test_case;
+	for (int t = 1; t <= test_case; ++t) {
+		cout << "Case #" << t << ": ";
+		solve();
+		cout << '\n';
+	}
+	return 0;
+}
+
+static void solve() {
+	int nr, nc;
+	cin >> nr >> nc;
+	vector<string> grid(nr);
+	for (int r = 0; r < nr; ++r) {
+		cin >> grid[r];
+	}
+	int sr = 0, sc = 0, gr = 0, gc = 0;
+	vector<vector<int>> maze(4);
+	maze.resize(nr);
+	for (auto & v : maze)
+		v.resize(nc);
+	for (int row = 0; row < nr; row++) {
+		for (int col = 0; col < nc; col++) {
+			switch(grid[row][col]) {
+				case '#':
+				case '<':
+				case '>':
+				case 'v':
+				case '^':
+					maze[row][col] = 0x0f; break;
+				case '.': break;
+				case 'S': sr = row; sc = col; break;
+				case 'G': gr = row; gc = col; break;
+			}
+		}
+	}
+	
+	map<char, int> dir{{'<', 0}, {'^', 1}, {'>', 2}, {'v', 3}};
+	for (int step = 0; step < 4; step++) {
+		int mask = 1 << step;
+		for (int row = 0; row < nr; row++) {
+			for (int col = 0; col < nc; col++) {
+				if (dir.find(grid[row][col]) != dir.end()) {
+					int d = dir[grid[row][col]];
+					d = (d + step) % 4;
+					switch (d) {
+						case 0:
+							for (int i = col - 1; i >= 0; --i) {
+								if (grid[row][i] == '.' || grid[row][i] == 'S' || grid[row][i] == 'G')
+									maze[row][i] |= mask;
+								else
+									break;
+							}
+							break;
+						case 2:
+							for (int i = col + 1; i < nc; ++i) {
+								if (grid[row][i] == '.' || grid[row][i] == 'S' || grid[row][i] == 'G')
+									maze[row][i] |= mask;
+								else
+									break;
+							}
+							break;
+						case 3:
+							for (int i = row + 1; i < nr; ++i) {
+								if (grid[i][col] == '.' || grid[i][col] == 'S' || grid[i][col] == 'G')
+									maze[i][col] |= mask;
+								else
+									break;
+							}
+							break;
+						case 1:
+							for (int i = row - 1; i >= 0; --i) {
+								if (grid[i][col] == '.' || grid[i][col] == 'S' || grid[i][col] == 'G')
+									maze[i][col] |= mask;
+								else
+									break;
+							}
+							break;
+					}
+				}
+			}
+		}
+	}
+	
+	set<pii> visited[4];
+	set<pii> cur;
+	
+	int nmoves = 0;
+	int step = 0;
+	cur.insert({sr, sc});
+	set<pii> next;
+	auto check = [&maze, &next, &visited, &step, nr, nc](int r, int c){
+			if (r >= 0 && r < nr && c >= 0 && c < nc
+				&& (maze[r][c] & (1 << step)) == 0
+				&& visited[step].find(mp(r, c)) == visited[step].end())
+			next.insert(mp(r, c));
+	};
+	
+	while (!cur.empty()) {
+		visited[step].insert(begin(cur), end(cur));
+		step = (step + 1) % 4;
+		for (auto const & move : cur) {
+			if (move.rr == gr && move.cc == gc) {
+				cout << nmoves;
+				return;
+			}
+			check(move.rr - 1, move.cc);
+			check(move.rr + 1, move.cc);
+			check(move.rr, move.cc - 1);
+			check(move.rr, move.cc + 1);
+		}
+		cur = move(next);
+		next.clear();
+		nmoves++;
+	}
+
+	cout << "impossible";
+}
+
+#endif
+

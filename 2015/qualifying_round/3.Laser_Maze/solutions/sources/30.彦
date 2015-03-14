@@ -1,0 +1,129 @@
+#include <cstdio>
+#include <cstring>
+#include <queue>
+//#include <iostream>
+using namespace std;
+
+const int maxn = 128;
+const int vec[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+const char * laser = "<^>v";
+
+char map[maxn][maxn];
+int dist[maxn][maxn][4];
+bool get_shoot[maxn][maxn][4];
+int w, h;
+
+int getdir(char _laser) {
+    for (int i = 0; i < 4; ++i) {
+        if (laser[i] == _laser) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool inside(int x, int y) {
+    return x >= 0 && x < h && y >= 0 && y < w;
+}
+
+int main() {
+    //freopen("laser_maze_example_input.txt", "r", stdin);
+    int T;
+    scanf("%d", &T);
+    for (int caseId = 1; caseId <= T; ++caseId) {
+        printf("Case #%d: ", caseId);
+        scanf("%d%d", &h, &w);
+        for (int i = 0; i < h; ++i) {
+            scanf("%s", map[i]);
+        }
+        int startx = -1, starty = -1, endx = -1, endy = -1;
+        for (int x = 0; x < h; ++x) {
+            for (int y = 0; y < w; ++y) {
+                if (map[x][y] == 'S') {
+                    startx = x;
+                    starty = y;
+                    map[x][y] = '.';
+                } else if (map[x][y] == 'G') {
+                    endx = x;
+                    endy = y;
+                    map[x][y] = '.';
+                }
+            }
+        }
+        memset(get_shoot, false, sizeof get_shoot);
+        for (int x = 0; x < h; ++x) {
+            for (int y = 0; y < w; ++y) {
+                if (map[x][y] == '.') {
+                    for (int dir = 0; dir < 4; ++dir) {
+                        bool die = false;
+                        for (int movdir = 0; movdir < 4; ++movdir) {
+                            int curx = x, cury = y;
+                            while (inside(curx, cury)) {
+                                if (map[curx][cury] != '.') {
+                                    break;
+                                }
+                                curx += vec[movdir][0];
+                                cury += vec[movdir][1];
+                            }
+                            if (!inside(curx, cury) || map[curx][cury] == '#') {
+                                continue;
+                            }
+                            if ((getdir(map[curx][cury]) + dir) % 4 == movdir) {
+                                die = true;
+                                break;
+                            }
+                        }
+                        get_shoot[x][y][dir] = die;
+                        //cout << x << ' ' << y << ' ' << dir << ' ' << die << endl;
+                    }
+                } else if (map[x][y] != '#') {
+                    // laser point
+                    for (int dir = 0; dir < 4; ++dir) {
+                        get_shoot[x][y][dir] = true;
+                    }
+                }
+            }
+        }
+        queue<int> q;
+        memset(dist, -1, sizeof dist);
+        dist[startx][starty][0] = 0;
+        q.push(startx);
+        q.push(starty);
+        q.push(0);
+        int ans = -1;
+        while (!q.empty()) {
+            int x = q.front();
+            q.pop();
+            int y = q.front();
+            q.pop();
+            int dir = q.front();
+            q.pop();
+            //cout << x << ' ' << y << ' ' << dir << ' ' << dist[x][y][dir] << endl;
+            if (x == endx && y == endy) {
+                ans = dist[x][y][dir];
+                break;
+            }
+            for (int movdir = 0; movdir < 4; ++movdir) {
+                int newx = x + vec[movdir][0];
+                int newy = y + vec[movdir][1];
+                int newdir = (dir + 1) % 4;
+                if (!inside(newx, newy) || map[newx][newy] == '#') {
+                    continue;
+                }
+                if (!get_shoot[newx][newy][newdir]) {
+                    if (dist[newx][newy][newdir] == -1) {
+                        dist[newx][newy][newdir] = dist[x][y][dir] + 1;
+                        q.push(newx);
+                        q.push(newy);
+                        q.push(newdir);
+                    }
+                }
+            }
+        }
+        if (ans == -1) {
+            puts("impossible");
+        } else {
+            printf("%d\n", ans);
+        }
+    }
+}

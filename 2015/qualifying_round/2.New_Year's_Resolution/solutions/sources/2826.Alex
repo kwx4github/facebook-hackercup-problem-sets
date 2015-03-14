@@ -1,0 +1,248 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace NewYearsResolution
+{
+    struct Component
+    {
+        public int protein, carbohydrates, fat;
+    }
+
+    struct TestCase
+    {
+        public Component targetCalories;
+        public Component[] foodItems;
+    }
+
+    class TestCaseSolver
+    {
+        private const short NO_STATE = -1, ITEM_EXCLUDED = 0, ITEM_INCLUDED = 1;
+
+        private short[] stack;
+        private TestCase testCase;
+        private Component currentSum;
+
+        private bool Backtracking()
+        {
+            int position = 1;
+            Init(position);
+            bool hasSuccessor, isValid;
+            while (position > 0)
+            {
+                hasSuccessor = true;
+                isValid = false;
+
+                while (hasSuccessor && !isValid)
+                {
+                    hasSuccessor = Successor(position);
+                    if (hasSuccessor)
+                    {
+                        isValid = IsValid(position);
+                    }
+                }
+
+                if (hasSuccessor)
+                {
+                    if (IsSolution(position))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        if (this.stack[position] == ITEM_INCLUDED)
+                        {
+                            // include current food on count
+                            this.currentSum.carbohydrates += this.testCase.foodItems[position - 1].carbohydrates;
+                            this.currentSum.fat += this.testCase.foodItems[position - 1].fat;
+                            this.currentSum.protein += this.testCase.foodItems[position - 1].protein;
+                        }
+
+                        position++;
+                        Init(position);
+                    }
+                }
+                else
+                {
+                    position--;
+                    if (this.stack[position] == ITEM_INCLUDED)
+                    {
+                        // include current food on count
+                        this.currentSum.carbohydrates -= this.testCase.foodItems[position - 1].carbohydrates;
+                        this.currentSum.fat -= this.testCase.foodItems[position - 1].fat;
+                        this.currentSum.protein -= this.testCase.foodItems[position - 1].protein;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsSolution(int position)
+        {
+            int carbohydrates = this.stack[position] == ITEM_INCLUDED ? this.testCase.foodItems[position - 1].carbohydrates : 0;
+            int fat = this.stack[position] == ITEM_INCLUDED ? this.testCase.foodItems[position - 1].fat : 0;
+            int protein = this.stack[position] == ITEM_INCLUDED ? this.testCase.foodItems[position - 1].protein : 0;
+
+            return
+                this.testCase.targetCalories.carbohydrates == this.currentSum.carbohydrates + carbohydrates
+                && this.testCase.targetCalories.fat == this.currentSum.fat + fat
+                && this.testCase.targetCalories.protein == this.currentSum.protein + protein;
+        }
+
+        private bool IsValid(int position)
+        {
+            if (stack[position] == ITEM_INCLUDED
+                && (this.currentSum.carbohydrates + this.testCase.foodItems[position - 1].carbohydrates > this.testCase.targetCalories.carbohydrates
+                    || this.currentSum.fat + this.testCase.foodItems[position - 1].fat > this.testCase.targetCalories.fat
+                    || this.currentSum.protein + this.testCase.foodItems[position - 1].protein > this.testCase.targetCalories.protein
+                    )
+                )
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool Successor(int position)
+        {
+            if(position <= this.testCase.foodItems.Length
+                && this.stack[position] <= ITEM_EXCLUDED)
+            {
+                this.stack[position]++;
+                return true;
+            }
+
+            return false;
+        }
+
+        private void Init(int position)
+        {
+            if (position >= this.stack.Length) return;
+            this.stack[position] = NO_STATE;
+        }
+
+        public bool SolveTestCase(TestCase tCase)
+        {
+            this.testCase = tCase;
+            bool quickTest = QuickCheckTest(this.testCase);
+            if (!quickTest) return false;
+
+            this.testCase.foodItems = FilterTestCase(this.testCase);
+
+            stack = new short[this.testCase.foodItems.Length + 1];
+            currentSum = new Component()
+            {
+                carbohydrates = 0,
+                fat = 0,
+                protein = 0
+            };
+
+            return Backtracking();
+        }
+
+        private Component[] FilterTestCase(TestCase testCase)
+        {
+            List<Component> foodItems = testCase.foodItems.ToList();
+            // Remove those items that have more calories than the target amount of calories which Alex wants to eat.
+            foodItems.RemoveAll(p => p.protein > testCase.targetCalories.protein
+                || p.fat > testCase.targetCalories.fat
+                || p.carbohydrates > testCase.targetCalories.carbohydrates);
+            return foodItems.ToArray();
+        }
+
+        private bool QuickCheckTest(TestCase testCase)
+        {
+            if (testCase.foodItems.All(p => p.carbohydrates > testCase.targetCalories.carbohydrates)
+                || testCase.foodItems.All(p => p.fat > testCase.targetCalories.fat)
+                || testCase.foodItems.All(p => p.protein > testCase.targetCalories.protein))
+            {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            TestCase[] testCases = ReadData("data/in.txt");
+
+            bool[] results = new bool[testCases.Length];
+            for (int index = 0; index < testCases.Length; index++)
+            {
+                TestCaseSolver solver = new TestCaseSolver();
+                bool result = solver.SolveTestCase(testCases[index]);
+                results[index] = result;
+            }
+            
+            PrintResults("data/out.txt", results);
+        }
+
+        private static void PrintResults(string fileName, bool[] results)
+        {
+            using (StreamWriter writer = new StreamWriter(fileName))
+            {
+                for (int i = 0; i < results.Length; i++)
+                {
+                    writer.WriteLine("Case #{0}: {1}", i + 1, results[i] ? "yes" : "no");
+                }
+            }
+        }
+
+        private static Component ExtractComponent(string line)
+        {
+            string[] parts;
+            parts = line.Split(' ');
+            Component component = new Component()
+            {
+                protein = Convert.ToInt32(parts[0]),
+                carbohydrates = Convert.ToInt32(parts[1]),
+                fat = Convert.ToInt32(parts[2])
+            };
+
+            return component;
+        }
+
+        private static TestCase[] ReadData(string fileName)
+        {
+            string line;
+            TestCase[] testCases;
+            using (StreamReader reader = new StreamReader(fileName))
+            {
+                line = reader.ReadLine();
+                int noOfTestCases = Convert.ToInt32(line);
+                testCases = new TestCase[noOfTestCases];
+
+                for (int i = 0; i < noOfTestCases; i++)
+                {
+                    line = reader.ReadLine().Trim();
+                    Component targetCalories = ExtractComponent(line);
+
+                    line = reader.ReadLine();
+                    int noOfFoods = Convert.ToInt32(line);
+                    Component[] foodItems = new Component[noOfFoods];
+                    for (int j = 0; j < noOfFoods; j++)
+                    {
+                        line = reader.ReadLine();
+                        foodItems[j] = ExtractComponent(line);
+                    }
+
+                    testCases[i] = new TestCase()
+                    {
+                        targetCalories = targetCalories,
+                        foodItems = foodItems.ToArray()
+                    };
+                }
+            }
+
+            return testCases;
+        }
+    }
+}

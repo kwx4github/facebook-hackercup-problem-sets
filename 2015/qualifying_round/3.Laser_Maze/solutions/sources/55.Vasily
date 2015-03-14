@@ -1,0 +1,157 @@
+#include <ctime>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <utility>
+#include <queue>
+#include <cstring>
+#include <cstdio>
+#include <algorithm>
+
+using namespace std;
+
+// TEMPLATE {{{
+#ifndef LOCAL
+#define OJ 1
+#else
+#define OJ 0
+#endif
+
+#define endl '\n'
+#define TIMESTAMP merr << "Execution time: " << (double)clock()/CLOCKS_PER_SEC << " s.\n"
+class C_ {}; template <typename T> C_& operator <<(C_& __m, const T& __s) { if (!OJ) cerr << "\E[91m" << __s << "\E[0m"; return __m; }
+C_ merr;
+
+struct __s { __s() { if (OJ) { ios_base::Init i; cin.sync_with_stdio(0); cin.tie(0); } } ~__s(){ TIMESTAMP; } } __S;
+/// END OF TEMPLATE }}}
+
+int n,m;
+char A[111][111];
+vector<pair<int,int> > E;
+
+char D[4] = { '<', '^', '>', 'v' };
+int MX[11111][4];
+
+inline int getidx(char c) {
+  if (D[0] == c) return 0;
+  if (D[1] == c) return 1;
+  if (D[2] == c) return 2;
+  return 3;
+}
+
+inline char rotate(char c, int cnt) {
+  return D[(getidx(c)+cnt)%4];
+}
+
+bool check(int x, int y, int idx) {
+  for (int i = 0; i < (int)E.size(); i++) {
+    int xx = E[i].first, yy = E[i].second;
+    char c = rotate(A[xx][yy], idx);
+    if (c == '<' && x == xx && yy-MX[i][0] <= y && y <= yy)          return false;
+    if (c == '^' && y == yy && xx-MX[i][1] <= x && x <= xx)          return false;
+    if (c == '>' && x == xx && yy          <= y && y <= yy+MX[i][2]) return false;
+    if (c == 'v' && y == yy && xx          <= x && x <= xx+MX[i][3]) return false;
+  }
+  return true;
+}
+
+struct p {
+  int x, y, idx;
+  p(int xx=0, int yy=0, int idxx=0) {
+    x = xx, y = yy, idx = idxx;
+  }
+};
+
+#define MAX_STEPS 100001
+bool dp[101][101][MAX_STEPS+5];
+
+int main() {
+  int T;
+  freopen("input.txt", "rt", stdin); freopen("output.txt", "wt", stdout);
+  cin >> T;
+  for (int tt = 0; tt < T; tt++) {
+    merr << '\r' << tt << '\r';
+    bool can[101][101][4];
+    int sx,sy,ex,ey;
+    queue<p> Q;
+    int ans = MAX_STEPS+1;
+    sx = sy = ex = ey = -1;
+    memset(dp, 0, sizeof(dp));
+    E.clear();
+    cin >> n >> m;
+    for (int i = 0; i < n; i++) {
+      string s;
+      cin >> s;
+      for (int j = 0; j < m; j++) {
+        if (s[j] == 'S') { sx = i; sy = j; s[j] = '.'; }
+        if (s[j] == 'G') { ex = i; ey = j; s[j] = '.'; }
+        if (s[j] != '.' && s[j] != '#') E.push_back(make_pair(i,j));
+        A[i][j] = s[j];
+      }
+    }
+    for (int i = 0; i < (int)E.size(); i++) {
+      int x, y;
+      MX[i][0] = MX[i][1] = MX[i][2] = MX[i][3] = 0;
+      x = E[i].first;
+      y = E[i].second-1;
+      while (y >= 0 && A[x][y] == '.') { MX[i][0]++; y--; }
+      x = E[i].first-1;
+      y = E[i].second;
+      while (x >= 0 && A[x][y] == '.') { MX[i][1]++; x--; }
+      x = E[i].first;
+      y = E[i].second+1;
+      while (y < m  && A[x][y] == '.') { MX[i][2]++; y++; }
+      x = E[i].first+1;
+      y = E[i].second;
+      while (x < n  && A[x][y] == '.') { MX[i][3]++; x++; }
+    }
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < m; j++) {
+        if (A[i][j] != '.') {
+          can[i][j][0] = can[i][j][1] = can[i][j][2] = can[i][j][3] = 0;
+        } else {
+          for (int t = 0; t < 4; t++) {
+            can[i][j][t] = check(i, j, t);
+          }
+        }
+      }
+    }
+    dp[sx][sy][0] = 1;
+    Q.push(p(sx,sy,0));
+    while (Q.size()) {
+      int x = Q.front().x, y = Q.front().y, idx = Q.front().idx;
+      Q.pop();
+      if (x == ex && y == ey) ans = min(ans, idx);
+      if (x       && can[x-1][y][(idx+1)%4] && !dp[x-1][y][idx+1]) {
+        dp[x-1][y][idx+1] = 1;
+        //if (idx+2 < MAX_STEPS) Q.push(p(x-1, y, idx+1));
+        if (idx+1 < ans) Q.push(p(x-1, y, idx+1));
+      }
+      if (y       && can[x][y-1][(idx+1)%4] && !dp[x][y-1][idx+1]) {
+        dp[x][y-1][idx+1] = 1;
+        if (idx+1 < ans) Q.push(p(x, y-1, idx+1));
+      }
+      if (x+1 < n && can[x+1][y][(idx+1)%4] && !dp[x+1][y][idx+1]) {
+        dp[x+1][y][idx+1] = 1;
+        if (idx+1 < ans) Q.push(p(x+1, y, idx+1));
+      }
+      if (y+1 < m && can[x][y+1][(idx+1)%4] && !dp[x][y+1][idx+1]) {
+        dp[x][y+1][idx+1] = 1;
+        if (idx+1 < ans) Q.push(p(x, y+1, idx+1));
+      }
+    }
+    //for (int i = 0; i < MAX_STEPS; i++) {
+      //if (dp[ex][ey][i]) {
+        //ans = i;
+        //break;
+      //}
+    //}
+    cout << "Case #" << tt+1 << ": ";
+    if (ans > MAX_STEPS) {
+      cout << "impossible" << endl;
+    } else {
+      cout << ans << endl;
+    }
+  }
+  return 0;
+}

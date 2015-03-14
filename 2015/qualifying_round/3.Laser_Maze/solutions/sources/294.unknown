@@ -1,0 +1,224 @@
+import org.omg.CORBA.IRObject;
+
+import java.io.*;
+import java.util.*;
+
+/**
+ * Created by shamir0xe on 1/5/2015 AD.
+ */
+
+public class Solution {
+
+
+    public static int n, m;
+    public static void main(String[] args) {
+        MyInput in;
+        try {
+            in = new MyInput(new FileInputStream(new File("input.txt")));
+        }
+        catch (IOException e) {
+            throw new UnknownError();
+        }
+        PrintWriter out;
+        try {
+            out = new PrintWriter(new FileOutputStream(new File("output.txt")));
+        }
+        catch (IOException e) {
+            throw new UnknownError();
+        }
+
+//        MyInput in = new MyInput(System.in);
+//        PrintWriter out = new PrintWriter(System.out);
+
+        int test = in.nextInt();
+        for (int testCase = 0; testCase < test; testCase++) {
+            n = in.nextInt();
+            m = in.nextInt();
+            char board[][] = new char[n][];
+            for (int i = 0; i < n; i++) {
+                String row = in.next();
+                board[i] = row.toCharArray();
+            }
+
+            int[][] directions = {
+                    {-1, 0}, // up
+                    {0, +1}, // right
+                    {+1, 0}, // down
+                    {0, -1} // left
+            };
+
+//            for (int i = 0; i < directions.length; i++) {
+//                out.println(i + ": " + directions[i][0] + " " + directions[i][1]);
+//            }
+
+            boolean blocked[][][] = new boolean[4][n][m];
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < m; j++) {
+                    if (isObstacle(board[i][j])) {
+                        for (int k = 0; k < 4; k++) {
+                            blocked[k][i][j] = true;
+                        }
+                    }
+                    if (isTurret(board[i][j])) {
+//                        out.println(board[i][j]);
+                        int constant;
+                        switch (board[i][j]) {
+                            case ('^') : {constant = 0; break;}
+                            case ('>') : {constant = 1; break;}
+                            case ('v') : {constant = 2; break;}
+                            default: {constant = 3; break;}
+                        }
+                        for (int k = 0; k < 4; k++) {
+                            fillForward(i, j, directions[(k + constant) % 4], blocked[k], board);
+                        }
+                    }
+                }
+            }
+
+
+//            for (int i = 0; i < 4; i++) {
+//                out.println("blocked[" + i + "]");
+//                for (int j = 0; j < n; j++) {
+//                    for (int k = 0; k < m; k++) {
+//                        out.print(blocked[i][j][k] ? 1 : 0);
+//                    }
+//                    out.println();
+//                }
+//            }
+
+            int dist[][][] = new int[4][n][m];
+            for (int step = 0; step < 4; step++) {
+                for (int i = 0; i < n; i++) {
+                    for (int j = 0; j < m; j++) {
+                        dist[step][i][j] = -1;
+                    }
+                }
+            }
+            int[] source = new int[2];
+            int[] dest = new int[2];
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < m; j++) {
+                    if (board[i][j] == 'S') {
+                        source = new int[] {i, j};
+                    }
+                    if (board[i][j] == 'G') {
+                        dest = new int[] {i, j};
+                    }
+                }
+            }
+
+            dist[0][source[0]][source[1]] = 0;
+            Queue <int[] > Q = new LinkedList<int[]>();
+            Q.add(new int[] {source[0], source[1], 0});
+            while (!Q.isEmpty()) {
+                int[] head = Q.poll();
+                int x = head[0];
+                int y = head[1];
+                int step = head[2];
+
+                int nextDirection = (step + 1) % 4;
+                for (int i = 0; i < 4; i++) {
+                    int xx = x + directions[i][0];
+                    int yy = y + directions[i][1];
+                    if (inBoard(xx, yy) && !blocked[nextDirection][xx][yy] && dist[nextDirection][xx][yy] == -1) {
+                        dist[nextDirection][xx][yy] = step + 1;
+                        Q.add(new int[] {xx, yy, step + 1});
+//                        out.println(xx + " " + yy + " " + (step + 1));
+                    }
+                }
+            }
+
+            int ans = -1;
+            for (int i = 0; i < 4; i++) {
+                if (ans == -1) {
+                    ans = dist[i][dest[0]][dest[1]];
+                }
+                else {
+                    if (dist[i][dest[0]][dest[1]] != -1) {
+                        ans = Math.min(ans, dist[i][dest[0]][dest[1]]);
+                    }
+                }
+            }
+
+            out.println("Case #" + (testCase + 1) + ": " + (ans == -1 ? "impossible" : Integer.toString(ans)));
+//            out.flush();
+        }
+
+        out.flush();
+    }
+
+    static boolean inBoard(int i, int j) {
+        return i >= 0 && i < n && j >= 0 && j < m;
+    }
+
+    static boolean isObstacle(char ch) {
+        return isTurret(ch) || ch == '#';
+    }
+
+    static boolean isTurret(char ch) {
+        return ch == '^' || ch == '<' || ch == '>' || ch == 'v';
+    }
+
+    static void fillForward(int i, int j, int[] direction, boolean[][] blocked, char[][] board) {
+        i += direction[0];
+        j += direction[1];
+        while (inBoard(i, j) && !isObstacle(board[i][j])) {
+            blocked[i][j] = true;
+            i += direction[0];
+            j += direction[1];
+        }
+    }
+}
+
+class MyInput {
+    private BufferedReader br;
+    private StringTokenizer st;
+
+    MyInput (InputStream inputStream) {
+        br = new BufferedReader(new InputStreamReader(inputStream));
+        st = null;
+    }
+
+    public String next() {
+        if (st == null || !st.hasMoreElements()) {
+            try {
+                String line = br.readLine();
+                while (line == null || line.equals("")) {
+                    throw new UnknownError();
+                }
+                st = new StringTokenizer(line);
+            } catch (IOException e) {
+                throw new UnknownError();
+            }
+        }
+        return st.nextToken();
+    }
+
+    public String nextLine() {
+        try {
+            return br.readLine();
+        }
+        catch (IOException e) {
+            throw new UnknownError();
+        }
+    }
+
+    public void readEmptyLine() {
+        try {
+            br.readLine();
+        }
+        catch (IOException e) {
+            throw new UnknownError();
+        }
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+    public long nextLong() {
+        return Long.parseLong(next());
+    }
+
+}
+

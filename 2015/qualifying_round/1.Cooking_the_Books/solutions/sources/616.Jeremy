@@ -1,0 +1,131 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data.Common;
+using System.IO;
+using System.Linq;
+using System.Runtime.Remoting.Messaging;
+
+namespace Problem1
+{
+    internal class Program
+    {
+        public static void RunTestCases(string[] rawTestCases,
+            int numTestCases,
+            Action<String> outputAction,
+            Action<String> debugAction)
+        {
+            int currentLine = 0;
+            for (int i = 0; i < numTestCases; i++)
+            {
+                string rawValue = rawTestCases[currentLine++];
+                
+
+                string min = FindMin(rawValue);
+                string max = FindMax(rawValue);
+
+               
+                outputAction("Case #" + (i + 1) + ": " + min + " " + max);
+            }
+        }
+
+        private static string FindMax(string num)
+        {
+            int cpos = 0;
+            var positions =
+                num.Select(x => int.Parse(x.ToString())).Select(x => Tuple.Create(cpos++, x)).ToList();
+
+            if (positions.Count == 1) return num.ToString();
+
+            var possiblePositions = positions.Skip(1).ToList();
+            if (possiblePositions.Count == 0) return num;
+
+            var max = possiblePositions.Max(x => x.Item2);
+            var maxPos = possiblePositions.Last(x => x.Item2 == max);
+
+            if (positions[0].Item2 >= maxPos.Item2)
+            {
+                var remainder = string.Join("", positions.Skip(1).Select(x => x.Item2.ToString()).ToList());
+                return positions[0].Item2 + FindMax(remainder);
+            }
+            else
+            {
+                positions[maxPos.Item1] = positions[0];
+                positions[0] = maxPos;
+                string numRaw = string.Join("", positions.Select(x => x.Item2.ToString()).ToList());
+                return numRaw;
+            }
+        }
+
+        private static string FindMin(string num,bool excludeZero=true)
+        {
+            int cpos = 0;
+            var positions =
+                num.Select(x => int.Parse(x.ToString())).Select(x => Tuple.Create(cpos++, x)).ToList();
+
+            if (positions.Count == 1) return num.ToString();
+
+            var possiblePositions = excludeZero ? positions.Skip(1).Where(x => x.Item2 != 0).ToList():positions.Skip(1).ToList();
+            if (possiblePositions.Count == 0) return num.ToString();
+
+            var min = possiblePositions.Min(x => x.Item2);
+            var minPos = possiblePositions.Last(x => x.Item2 == min);
+
+            if (positions[0].Item2 <= minPos.Item2)
+            {
+                var remainder = string.Join("", positions.Skip(1).Select(x => x.Item2.ToString()).ToList());
+                return positions[0].Item2 + FindMin(remainder,false);
+            }
+            else
+            {
+                positions[minPos.Item1] = positions[0];
+                positions[0] = minPos;
+                string numRaw = string.Join("", positions.Select(x => x.Item2.ToString()).ToList());
+                return numRaw;
+            }
+            
+        }
+
+        private static void Main(string[] args)
+        {
+            string filename = args.Length == 0 ? "" : args[0];
+            if (filename == "")
+            {
+                var filenames = Directory.GetFiles(Environment.CurrentDirectory).Where(x => x.EndsWith(".in")).ToArray();
+                Console.WriteLine("Test file?");
+                int n = 0;
+                foreach (var f in filenames)
+                {
+                    Console.WriteLine(n++ + ":" + f);
+                }
+                var i = int.Parse(Console.ReadLine());
+                filename = filenames[i];
+            }
+            if (filename == "")
+            {
+                filename = Directory.GetFiles(Environment.CurrentDirectory).First(x => x.EndsWith(".in"));
+            }
+
+            string[] testFile = File.ReadAllLines(filename);
+            int NumberOfTestCases = int.Parse(testFile.First().Trim());
+
+            List<string> output = new List<string>();
+            RunTestCases(testFile.Skip(1).ToArray(),
+                NumberOfTestCases,
+                output.Add,
+                Console.WriteLine);
+            File.WriteAllLines("output.out", output);
+            Console.WriteLine("Finished " + filename);
+            Console.WriteLine("-- press any key --");
+            Console.ReadKey();
+        }
+    }
+
+    internal static class Helpers
+    {
+        public static int[] GetSettings(this string[] rawFile, int line)
+        {
+            return rawFile[line].Split(' ')
+                .Select(x => int.Parse(x.Trim())).ToArray();
+        }
+    }
+}

@@ -1,0 +1,134 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+using namespace std;
+
+char G[101][101][4];
+bool V[101][101][4];
+int dir[4][2] = {{-1, 0}, {1,0}, {0, -1}, {0, 1}};
+int M, N, T;
+pair<int, int> start, goal;
+
+void rotateLaser(int k) {
+	for (int i = 0; i < M; ++i)
+		for (int j = 0; j < N; ++j) {
+			if (G[i][j][k] == '<') {
+				G[i][j][k + 1] = '^';
+			} else if (G[i][j][k] == '^') {
+				G[i][j][k + 1] = '>';
+			} else if (G[i][j][k] == '>') {
+				G[i][j][k + 1] = 'v';
+			} else if (G[i][j][k] == 'v') {
+				G[i][j][k + 1] = '<';
+			} else {
+				G[i][j][k + 1] = G[i][j][k];
+			}
+		}
+}
+
+bool canCross(int x, int y, int k) {
+	if (G[x][y][k] == '#' || G[x][y][k] == '^' || G[x][y][k] == '>' || G[x][y][k] == 'v' || G[x][y][k] == '<') {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+void findSafeZone(int k) {
+	for (int i = 0; i < M; ++i)
+		for (int j = 0; j < N; ++j) {
+			V[i][j][k] = true;
+		}
+	for (int i = 0; i < M; ++i)
+		for (int j = 0; j < N; ++j) {
+			if (G[i][j][k] == '#') {
+				V[i][j][k] = false;
+			} else if (G[i][j][k] == '<') {
+				V[i][j][k] = false;
+				for (int p = j - 1; p >= 0 && canCross(i, p, k); --p) {
+					V[i][p][k] = false;
+				} 
+			} else if (G[i][j][k] == '^') {
+				V[i][j][k] = false;
+				for (int p = i - 1; p >= 0 && canCross(p, j, k); --p) {
+					V[p][j][k] = false;
+				}
+			} else if (G[i][j][k] == '>') {
+				V[i][j][k] = false;
+				for (int p = j + 1; p <= N - 1 && canCross(i, p, k); ++p) {
+					V[i][p][k] = false;
+				}
+			} else if (G[i][j][k] == 'v') {
+				V[i][j][k] = false;
+				for (int p = i + 1; p <= M - 1 && canCross(p, j, k); ++p) {
+					V[p][j][k] = false;
+				}
+			}
+		}
+}
+
+int bfs() {
+	vector<pair<int, int> > prev, cur;
+	V[start.first][start.second][0] = false;
+	cur.push_back(start);
+	int dist = 0;
+	while (!cur.empty()) {
+		++dist;
+		int k = dist % 4;
+		prev = cur;
+		cur.clear();
+		for (int i = 0; i < prev.size(); ++i) {
+			pair<int, int> p1 = prev[i];
+			for (int j = 0; j < 4; ++j) {
+				int x = p1.first + dir[j][0], y = p1.second + dir[j][1];
+				if (x < 0 || x > M - 1 || y < 0 || y > N - 1 || V[x][y][k] == false) {
+					continue;
+				}
+				V[x][y][k] = false;
+				pair<int, int> p2(x, y);
+				if (p2 == goal) {
+					return dist;
+				}
+				cur.push_back(p2);
+			}
+		}
+	}
+	return -1;
+}
+
+int shortestPath() {
+	for (int i = 0; i < 3; ++i) {
+		rotateLaser(i);
+	}
+	for (int i = 0; i < 4; ++i) {
+		findSafeZone(i);
+	}
+	return bfs();
+}
+
+int main() {
+	freopen("laser_maze.txt", "r", stdin);
+	freopen("laser_maze_output.txt", "w", stdout);
+	cin >> T;
+	for (int k = 0; k < T; ++k) {
+		cin >> M >> N;
+		for (int i = 0; i < M; ++i)
+			for (int j = 0; j < N; ++j) {
+				cin >> G[i][j][0];
+				if (G[i][j][0] == 'S') {
+					start = make_pair(i, j);
+				} else if (G[i][j][0] == 'G') {
+					goal = make_pair(i, j);
+				}
+			}
+		int ans = shortestPath();
+		if (ans >= 0) {
+			cout << "Case #" << k + 1 << ": " << ans << endl;
+		} else {
+			cout << "Case #" << k + 1 << ": impossible" << endl;
+		}
+	}
+	fclose(stdin);
+	fclose(stdout);
+	return 0;
+}

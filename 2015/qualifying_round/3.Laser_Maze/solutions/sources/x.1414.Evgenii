@@ -1,0 +1,421 @@
+import java.util.List;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.PriorityQueue;
+import java.util.InputMismatchException;
+import java.util.ArrayList;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.AbstractCollection;
+import java.util.HashSet;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		Laser solver = new Laser();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class Laser {
+    private String[] propagateLasers(String[]field) {
+        int N = field.length;
+        int M = field[0].length();
+        char[][] res = new char[N][M];
+        for(int i=0;i<N;i++) {
+            for(int j=0;j<M;j++) {
+                res[i][j]= field[i].charAt(j);
+            }
+        }
+         for(int i=0;i<field.length;i++) {
+             for(int j=0;j<field[0].length();j++) {
+                 if(field[i].charAt(j)=='>') {
+                     for(int dx = 0;j+dx<M;dx++) {
+                        if(dx!=0 && (res[i][j+dx]=='>' || res[i][j+dx]=='<' || res[i][j+dx]=='^'|| res[i][j+dx]=='v' ||res[i][j+dx]=='#'))
+                            break;
+                        res[i][j+dx] = '#';
+                     }
+                 }
+                 if(field[i].charAt(j)=='<') {
+                     for(int dx = 0;j-dx>=0;dx++) {
+                         if(dx!=0 && (res[i][j-dx]=='>' || res[i][j-dx]=='<' ||
+                                 res[i][j-dx]=='^'|| res[i][j-dx]=='v' ||res[i][j-dx]=='#'))
+                             break;
+                         res[i][j-dx] = '#';
+                     }
+                 }
+
+                 if(field[i].charAt(j)=='v') {
+                     for(int dx = 0;i+dx<N;dx++) {
+                         if(dx!=0 && (res[i+dx][j]=='>' || res[i+dx][j]=='<' || res[i+dx][j]=='^'|| res[i+dx][j]=='v' ||res[i+dx][j]=='#'))
+                             break;
+                         res[i+dx][j] = '#';
+                     }
+                 }
+                 if(field[i].charAt(j)=='^') {
+                     for(int dx = 0;i-dx>=0;dx++) {
+                         if(dx!=0 && (res[i-dx][j]=='>' || res[i-dx][j]=='<' || res[i-dx][j]=='^'|| res[i-dx][j]=='v' ||res[i-dx][j]=='#'))
+                             break;
+
+                         res[i-dx][j] = '#';
+                     }
+                 }
+
+
+             }
+         }
+
+        String[]res2 = new String[N];
+        for(int i=0;i<N;i++) {
+            res2[i] = new String(res[i]);
+        }
+        return res2;
+    }
+
+    private String[] turnLasers(String[]field) {
+        int N = field.length;
+        int M = field[0].length();
+        char[][] res = new char[N][M];
+        for(int i=0;i<N;i++) {
+            for(int j=0;j<M;j++) {
+                res[i][j]= field[i].charAt(j);
+            }
+        }
+
+        for(int i=0;i<N;i++)
+            for(int j=0;j<M;j++) {
+                if(field[i].charAt(j)=='>')
+                    res[i][j]= 'v';
+
+                if(field[i].charAt(j)=='<')
+                    res[i][j]= '^';
+
+                if(field[i].charAt(j)=='^')
+                    res[i][j]= '>';
+
+                if(field[i].charAt(j)=='v')
+                    res[i][j]= '<';
+            }
+
+        String[]res2 = new String[N];
+        for(int i=0;i<N;i++) {
+            res2[i] = new String(res[i]);
+        }
+        return res2;
+    }
+
+    int getVid(int N,int M, int x, int y, int i) {
+        return i*N*M+x*M+y;
+    }
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int T = in.nextInt();
+        for(int tt = 0;tt<T;tt++) {
+            int N = in.nextInt();
+            int M = in.nextInt();
+            String field[] = new String[N];
+            for(int i=0;i<N;i++) {
+                field[i] = in.nextToken();
+            }
+            String fields[][] = new String[4][N];
+            for(int i=0;i<4;i++) {
+                fields[i] = propagateLasers(field);
+                field = turnLasers(field);
+            }
+            // build graph
+            SparseGraph g = new SparseGraph(M*N*4,M*N*32);
+            for(int i=0;i<4;i++) {
+                int nexti = (i+1)%4;
+                for(int x=0;x<N;x++) {
+                    for(int y = 0;y<M;y++) {
+                        for(int dx = -1;dx<=1;dx++) {
+                            for(int dy = -1;dy<=1;dy++) {
+                                if(Math.abs(dx)+Math.abs(dy)!=1)
+                                    continue;
+                                if(x+dx<0 || y+dy<0 || x+dx>=N || y+dy>=M)
+                                    continue;
+                                if(fields[nexti][x+dx].charAt(y+dy)=='.' ||
+                                        fields[nexti][x+dx].charAt(y+dy)=='G' ||
+                                        fields[nexti][x+dx].charAt(y+dy)=='S') {
+                                    int vFrom = getVid(N,M,x,y,i);
+                                    int vTo = getVid(N,M,x+dx,y+dy,nexti);
+                                    g.addEdge(vFrom,vTo,1);
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            // find starting node
+            int x = 0;
+            int y = 0;
+            for(int i=0;i<field.length;i++) {
+                for(int j=0;j<field[0].length();j++) {
+                    if(field[i].charAt(j)=='S') {
+                        x = i;
+                        y = j;
+                    }
+                }
+            }
+            int Vstart = getVid(N,M,x,y,0);
+            HashSet<Integer> vEnd = new HashSet<Integer>();
+
+            for(int k=0;k<4;k++) {
+                for (int i = 0; i < fields[k].length; i++) {
+                    for (int j = 0; j < fields[k][0].length(); j++) {
+                        if (field[i].charAt(j) == 'G') {
+                            vEnd.add(getVid(N,M,i,j,k));
+                        }
+                    }
+                }
+            }
+
+            long[] distance = new Djikstra(null).run(g,Vstart,-1);
+            long ans = Long.MAX_VALUE;
+            for(Integer i:vEnd) {
+                ans = Math.min(ans,distance[i]);
+            }
+
+            out.println("Case #"+Integer.toString(tt+1)+": "+ (ans==Long.MAX_VALUE?"impossible":ans));
+
+
+        }
+    }
+}
+
+class InputReader {
+
+    private InputStream stream;
+    int curCharIndex = 0;
+    int charsInBuf = 0;
+     byte buf[] = new byte[16*1024];
+
+    public InputReader(InputStream stream) {
+        this.stream = stream;
+    }
+
+
+    public int readChar() {
+
+        if (curCharIndex >= charsInBuf) {
+            curCharIndex = 0;
+            try {
+                charsInBuf = stream.read(buf);
+            } catch (IOException e) {
+                throw new InputMismatchException();
+            }
+            if (charsInBuf <= 0)
+                return -1;
+        }
+        return buf[curCharIndex++];
+    }
+
+
+    public int nextInt() {
+
+        int c;
+        do {
+            c = readChar();
+        }while(isWhitespace(c));
+
+        int sign = 1;
+        if (c == '-') {
+            c = readChar();
+            sign = -1;
+
+        }
+        int res = 0;
+        do {
+            res *= 10;
+            res += c - '0';
+            c = readChar();
+        } while (!isWhitespace(c) && c!=-1);
+        return sign * res;
+    }
+
+
+    public String nextToken() {
+        int c;
+        do {
+            c = readChar();
+        }while(isWhitespace(c));
+
+        StringBuilder res = new StringBuilder();
+        do {
+            res.appendCodePoint(c);
+            c = readChar();
+        } while (!isWhitespace(c) && c!=-1);
+        return res.toString();
+    }
+
+    /*
+    * For the purpose of compatibilty with Chelper Chrome extension
+     */
+
+
+    private boolean isWhitespace(int c) {
+        return  c==' ' || c=='\n'|| c=='\r' || c=='\t';
+    }
+}
+
+class SparseGraph extends   Graph
+{
+    public int []From;
+    public int []To;
+    public int Head[];
+    public int Next[];
+
+    public int Weight[];
+    int edgeCapacity;
+
+
+
+    public SparseGraph(int vertexCount,int edgeCapacity)
+    {
+        if(edgeCapacity>0) {
+            From = new int[edgeCapacity];
+            To = new int[edgeCapacity];
+            Next = new int[edgeCapacity];
+            Arrays.fill(Next, -1);
+
+        }
+        Head = new int[vertexCount];
+        Arrays.fill(Head, -1);
+        this.edgeCapacity=edgeCapacity;
+
+        this.vertexCount=vertexCount;
+        edgeCount=0;
+    }
+
+
+
+    public void addEdge(int from, int to) {
+        From[edgeCount]=from;
+        To[edgeCount]=to;
+        Next[edgeCount]=Head[from];
+        Head[from]=edgeCount;
+        ++edgeCount;
+
+    }
+
+
+    public void addEdge(int from, int to, int weight)
+    {
+        if(Weight==null)  {
+            Weight=new int[edgeCapacity];
+        }
+        addEdge(from,to);
+        Weight[edgeCount-1]=weight;
+    }
+
+
+}
+
+class Djikstra
+{
+    long []vertexWeights;
+    public Djikstra(long []vertexWeights) {
+       this.vertexWeights=vertexWeights;
+    }
+
+
+    public long[] run(SparseGraph g, int source, int to)
+    {
+        long distance[]=new long[g.getVertexCount()];
+        Arrays.fill(distance,Long.MAX_VALUE);
+        // start vertex
+        PriorityQueue<Pair<Long,Integer>> Q=new PriorityQueue<Pair<Long, Integer>>();
+        distance[source] = 0;
+        Q.add(new Pair(0L,source));
+
+        while(!Q.isEmpty()) {
+            // fetch the closest to start element
+            // from “queue” organized via set
+            Pair<Long,Integer> top = Q.poll();
+            int v = top.second;
+            long d=top.first;
+            if(v==to) break;
+
+              if(distance[v]!=d) continue;
+              int p=g.Head[v];
+              while (p!=-1) {
+                int v2 = g.To[p];
+                long weight = g.Weight[p];
+                if(vertexWeights!=null) {
+                    weight+=vertexWeights[v]-vertexWeights[v2];
+                }
+                if(distance[v2] > distance[v] + weight) {
+                    distance[v2] = distance[v] + weight;
+                    Q.add(new Pair(distance[v2], v2));
+                }
+                p=g.Next[p];
+            }
+        }
+        return distance;
+    }
+}
+
+abstract class Graph
+{
+    public int vertexCount;
+    public int edgeCount;
+    public int getVertexCount()
+    {
+        return vertexCount;
+    }
+
+
+}
+
+class Pair<FIRST, SECOND> implements Comparable<Pair<FIRST, SECOND>> {
+
+    public final FIRST first;
+    public final SECOND second;
+
+    public Pair(FIRST first, SECOND second) {
+        this.first = first;
+        this.second = second;
+    }
+
+    public int compareTo(Pair<FIRST, SECOND> o) {
+        int cmp = compare(first, o.first);
+        return cmp == 0 ? compare(second, o.second) : cmp;
+    }
+
+    private static int compare(Object o1, Object o2) {
+        return o1 == null ? o2 == null ? 0 : -1 : o2 == null ? +1
+                : ((Comparable) o1).compareTo(o2);
+    }
+
+    public int hashCode() {
+        return 31 * hashcode(first) + hashcode(second);
+    }
+
+    private static int hashcode(Object o) {
+        return o == null ? 0 : o.hashCode();
+    }
+
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Pair))
+            return false;
+        if (this == obj)
+            return true;
+        return equal(first, ((Pair) obj).first)
+                && equal(second, ((Pair) obj).second);
+    }
+    private boolean equal(Object o1, Object o2) {
+        return o1 == null ? o2 == null : (o1 == o2 || o1.equals(o2));
+    }
+
+}
+

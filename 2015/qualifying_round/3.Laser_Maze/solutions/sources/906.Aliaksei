@@ -1,0 +1,142 @@
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <algorithm>
+#include <queue>
+#include <functional>
+#include <numeric>
+#include <cmath>
+#include <sstream>
+#include <utility>
+#include <iomanip>
+
+using namespace std;
+
+string lasers = ">v<^";
+const int step[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+
+vector<string> field[4];
+
+void rotate(vector<string>& a) {
+	for (int i = 0; i < a.size(); ++i)
+		for (int j = 0; j < a[i].size(); ++j)
+		{
+			int p = lasers.find(a[i][j]);
+			if (p != -1) {
+				a[i][j] = lasers[(p+1) % 4];
+			}
+		}
+}
+
+vector<string> makemaze(const vector<string>& a) {
+	vector<string> res = a;
+	for (int i = 0; i < a.size(); ++i)
+		for (int j = 0; j < a[i].size(); ++j)
+		{
+			int p = lasers.find(a[i][j]);
+			if (p != -1) 
+			{
+				int newi = i + step[p][0], newj = j + step[p][1];
+				while (newi >= 0 && newj >= 0 && newi < a.size() && newj < a[0].size() && a[newi][newj] != '#' && lasers.find(a[newi][newj]) == -1) {
+					res[newi][newj] = ' ';
+					newi += step[p][0], newj += step[p][1];
+				}
+			}
+		}
+	return res;
+}
+
+int f[100][100][4];
+
+struct item 
+{
+	int x, y, p;
+	item(int x, int y, int p) : x(x), y(y), p(p) {}
+};
+
+int main()
+{
+	ifstream ifs("3.in");
+	ofstream ofs("3.out");
+
+	int t;
+	ifs >> t;
+
+	for (int test = 0; test < t; ++test)
+	{
+		vector<string> a;
+		int n, m;
+		ifs >> n >> m;
+		for (int i = 0; i < n; ++i)
+		{
+			string t;
+			ifs >> t;
+			a.push_back(t);
+		}
+
+		int sx, sy, fx, fy;
+		for (int i = 0; i < n; ++i)
+			for (int j = 0; j < m; ++j)
+			{
+				if (a[i][j] == 'S') 
+				{
+					sx = i; sy = j;
+					a[i][j] = '.';
+				}
+				if (a[i][j] == 'G') 
+				{
+					fx = i; fy = j;
+					a[i][j] = '.';
+				}
+			}
+
+		for (int i = 0; i < 4; ++i)
+		{
+			field[i] = makemaze(a);
+			rotate(a);
+		}
+
+
+		memset(f, -1, sizeof(f));
+		f[sx][sy][0] = 0;
+		queue<item> q;
+		int res = -1;
+		bool found = false;
+		q.push(item(sx, sy, 0));
+		while (!q.empty() && !found) {
+			item cur = q.front();
+			q.pop();
+			for (int k = 0; k < 4; ++k)
+			{
+				int newx = cur.x + step[k][0];
+				int newy = cur.y + step[k][1];
+				int news = (cur.p + 1) % 4;
+				if (newx >= 0 && newy >= 0 && newx < n && newy < m && field[news][newx][newy] == '.')
+				{
+					if (f[newx][newy][news] == -1) 
+					{
+						f[newx][newy][news] = f[cur.x][cur.y][cur.p] + 1;
+						q.push(item(newx, newy, news));
+						if (newx == fx && newy == fy) {
+							res = f[newx][newy][news];
+							found = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		ofs << "Case #" << test+1 << ": "; 
+		if (res < 0)
+			ofs << "impossible";
+		else
+			ofs << res;
+		ofs << endl;
+	}
+	return 0;
+}

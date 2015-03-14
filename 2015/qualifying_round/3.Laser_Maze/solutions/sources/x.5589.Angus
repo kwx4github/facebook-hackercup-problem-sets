@@ -1,0 +1,141 @@
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <vector>
+#include <queue>
+
+using namespace std;
+
+struct State {
+	int x, y, s;
+	State (int _x, int _y, int _s) {
+		x = _x;
+		y = _y;
+		s = _s;
+	}
+};
+
+int M, N, T, dx[] = {-1, 1, 0, 0}, dy[] = {0, 0, 1, -1}, xl, xh, yl, yh;
+char maze[128][128], pos[128][128][4];
+vector <pair<int, int> > xs[128], ys[128];
+
+void los(int x, int y) {
+	xl = xh = x;
+	yl = yh = y;
+	for (int i = x - 1; i >= 0; i--) {
+		if (maze[i][y] == 'S' || maze[i][y] == 'G' || maze[i][y] == '.')
+			xl = i;
+	}
+	for (int i = x + 1; i < M; i++) {
+		if (maze[i][y] == 'S' || maze[i][y] == 'G' || maze[i][y] == '.')
+			xh = i;
+	}
+	for (int i = y - 1; i >= 0; i--) {
+		if (maze[x][i] == 'S' || maze[x][i] == 'G' || maze[x][i] == '.')
+			yl = i;
+	}
+	for (int i = y + 1; i < N; i++) {
+		if (maze[x][i] == 'S' || maze[x][i] == 'G' || maze[x][i] == '.')
+			yh = i;
+	}
+	return;
+}
+
+int main() {
+	scanf("%d", &T);
+	for (int tc = 0; tc < T; tc++) {
+		scanf("%d %d", &M, &N);
+		for (int i = 0; i < M; i++)
+			scanf("%s", maze[i]);
+		int sx, sy, gx, gy;
+		for (int i = 0; i < 128; i++) {
+			xs[i].clear();
+			ys[i].clear();
+		}
+		memset(pos, 0, sizeof(pos));
+		for (int i = 0; i < M; i++)
+			for (int j = 0; j < N; j++) {
+				if (maze[i][j] == 'S') {
+					sx = i; sy = j;
+				}
+				if (maze[i][j] == 'G') {
+					gx = i; gy = j;
+				}
+				if (maze[i][j] == '^') {
+					los(i, j);
+					xs[i].push_back(make_pair(yl * 128 + yh, j * 128 + 0));
+					ys[j].push_back(make_pair(xl * 128 + xh, i * 128 + 0));				
+				}
+				if (maze[i][j] == '>') {
+					los(i, j);
+					xs[i].push_back(make_pair(yl * 128 + yh, j * 128 + 1));
+					ys[j].push_back(make_pair(xl * 128 + xh, i * 128 +1));									
+				}
+				if (maze[i][j] == 'v') {
+					los(i, j);
+					xs[i].push_back(make_pair(yl * 128 + yh, j * 128 +2));
+					ys[j].push_back(make_pair(xl * 128 + xh, i * 128 +2));									
+				}
+				if (maze[i][j] == '<') {
+					los(i, j);
+					xs[i].push_back(make_pair(yl * 128 + yh, j * 128 +3));
+					ys[j].push_back(make_pair(xl * 128 + xh, i * 128 +3));				
+				}
+			}
+		char fin = 0;
+		queue <State> q;
+		q.push(State(sx, sy, 0));
+		while (!q.empty()) {
+			int cx = q.front().x;
+			int cy = q.front().y;
+			int cs = q.front().s;
+			q.pop();
+			if (pos[cx][cy][cs % 4] == 1)
+				continue;
+			pos[cx][cy][cs % 4] = 1;
+			if (cx == gx && cy == gy) {
+				printf("Case #%d: %d\n", tc + 1, cs);
+				fin = 1;
+				break;
+			}
+			for (int i = 0; i < 4; i++) {
+				int nx = cx + dx[i];
+				int ny = cy + dy[i];
+				int ns = cs + 1;
+				int ok = 1;
+				
+				if (!(nx >= 0 && nx < M && ny >= 0 && ny < N && (maze[nx][ny] == 'S' || maze[nx][ny] == '.' || maze[nx][ny] == 'G')))
+	continue;
+				for (int j = 0; j < xs[nx].size(); j++) {
+					int tyl = xs[nx][j].first / 128;
+					int tyh = xs[nx][j].first % 128;
+					int ty = xs[nx][j].second / 128;
+					int td = (xs[nx][j].second % 128 + ns) % 4;
+					if (ny >= tyl && ny < ty &&td == 3)
+						ok = 0;
+					if (ny <= tyh && ny > ty && td == 1)
+						ok = 0;
+					
+				}
+				for (int j = 0; j < ys[ny].size(); j++) {
+					int txl = ys[ny][j].first / 128;
+					int txh = ys[ny][j].first % 128;
+					int tx = ys[ny][j].second / 128;
+					int td = (ys[ny][j].second % 128 + ns) % 4;
+					if (nx >= txl && nx < tx && td == 0)
+						ok = 0;
+					if (nx <= txh && nx > tx && td == 2)
+						ok = 0;
+				}
+				if(ok) {
+					q.push(State(nx, ny, ns));
+				}
+			}
+			
+		}
+		if (!fin)
+			printf("Case #%d: impossible\n", tc + 1);
+			
+	}	
+	return 0;
+}

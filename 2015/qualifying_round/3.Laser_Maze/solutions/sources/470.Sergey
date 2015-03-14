@@ -1,0 +1,175 @@
+import java.io.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.util.TreeSet;
+
+/**
+ * Author: Sergey Paramonov
+ * Date: 10.01.15
+ * Time: 0:10
+ */
+public class FHC_Q20140109_C {
+
+    Scanner scanner;
+    BufferedReader buffered = new BufferedReader(new InputStreamReader(System.in));
+    StreamTokenizer input = new StreamTokenizer(buffered);
+
+    static PrintWriter output;
+
+    int nextInt() throws Exception {
+        input.nextToken();
+        return (int) input.nval;
+    }
+
+    static void flushAndClose() {
+        output.flush();
+        System.out.flush();
+        output.close();
+    }
+
+    char[] G = {'^', '>', 'v', '<'};
+
+    int n;
+    int m;
+    char[][] f;
+
+    int idx(int i, int j, int k) {
+        return k*n*m + i*m + j;
+    }
+
+    boolean isEmpty(char c) {
+        return c == '.' || c == 'S' || c == 'G';
+    }
+
+    boolean isLaser(int i, int j, int k, char g) {
+        if (i < 0 || i >= n || j < 0 || j >= m) {
+            return false;
+        }
+        for (int q = 0; q < 4; q++) {
+            if (G[q] == f[i][j]) {
+                return G[(q+k)%4] == g;
+            }
+        }
+        return false;
+    }
+
+    boolean isAttacked(int x, int y, int k) {
+        int i = x;
+        int j = y;
+        while (i > 0 && isEmpty(f[i-1][j])) i--;
+        if (isLaser(i-1,j,k,'v')) return true;
+
+        i = x;
+        j = y;
+        while (i+1 < n && isEmpty(f[i+1][j])) i++;
+        if (isLaser(i+1,j,k,'^')) return true;
+
+        i = x;
+        j = y;
+        while (j > 0 && isEmpty(f[i][j-1])) j--;
+        if (isLaser(i,j-1,k,'>')) return true;
+
+        i = x;
+        j = y;
+        while (j+1 < m && isEmpty(f[i][j+1])) j++;
+        if (isLaser(i,j+1,k,'<')) return true;
+
+        return false;
+    }
+
+    Object solve() {
+        n = scanner.nextInt();
+        m = scanner.nextInt();
+        f = new char[n][];
+        for (int i = 0; i < n; i++) {
+            f[i] = scanner.next().toCharArray();
+        }
+
+        int K = n*m*4;
+
+        ArrayList<Integer>[] r = new ArrayList[K];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (!isEmpty(f[i][j])) {
+                    continue;
+                }
+                for (int k = 0; k < 4; k++) {
+                    r[idx(i,j,k)] = new ArrayList<>();
+                    int kn = (k+1)%4;
+                    if (i > 0 && isEmpty(f[i-1][j]) && !isAttacked(i-1, j, kn)) {
+                        r[idx(i,j,k)].add(idx(i-1,j,kn));
+                    }
+                    if (i+1 < n && isEmpty(f[i+1][j]) && !isAttacked(i+1, j, kn)) {
+                        r[idx(i,j,k)].add(idx(i+1,j,kn));
+                    }
+                    if (j > 0 && isEmpty(f[i][j-1]) && !isAttacked(i, j-1, kn)) {
+                        r[idx(i,j,k)].add(idx(i,j-1,kn));
+                    }
+                    if (j+1 < m && isEmpty(f[i][j+1]) && !isAttacked(i, j+1, kn)) {
+                        r[idx(i,j,k)].add(idx(i,j+1,kn));
+                    }
+                }
+            }
+        }
+
+        int xs = -1;
+        int ys = -1;
+        int xf = -1;
+        int yf = -1;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (f[i][j] == 'S') {
+                    xs = i;
+                    ys = j;
+                }
+                if (f[i][j] == 'G') {
+                    xf = i;
+                    yf = j;
+                }
+            }
+        }
+
+        int[] q = new int[2*K];
+        boolean[] b = new boolean[2*K];
+        q[0] = idx(xs, ys, 0);
+        b[idx(xs, ys, 0)] = true;
+        int L = 0;
+        int R = 1;
+        int c = 0;
+        while (L < R) {
+            int R1 = R;
+            for (int i = L; i < R; i++) {
+                if (q[i] == idx(xf,yf,0) || q[i] == idx(xf,yf,1) || q[i] == idx(xf,yf,2) || q[i] == idx(xf,yf,3)) {
+                    return c;
+                }
+                for (int u : r[q[i]]) {
+                    if (!b[u]) {
+                        q[R1] = u;
+                        R1++;
+                        b[u] = true;
+                    }
+                }
+            }
+            L = R;
+            R = R1;
+            c++;
+        }
+        return "impossible";
+    }
+
+    void main() throws Exception {
+        scanner = new Scanner(new File("/home/cepera/root/spam/input.txt"));
+        output = new PrintWriter("/home/cepera/root/spam/FHC_C.txt");
+        int kt = scanner.nextInt();
+        for (int nt = 1; nt <= kt; nt++) {
+            output.println("Case #" + nt + ": " + solve());
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        new FHC_Q20140109_C().main();
+        flushAndClose();
+    }
+
+}

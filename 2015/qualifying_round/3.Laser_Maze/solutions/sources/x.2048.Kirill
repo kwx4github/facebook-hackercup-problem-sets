@@ -1,0 +1,157 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <cmath>
+#include <algorithm>
+#include <queue>
+#include <sstream>
+#include <fstream>
+#include <stack>
+#include <bitset>
+//#pragma comment(linker, "/STACK:167177216")
+
+using namespace std;
+
+char d[100][100];
+
+int dx[4] = {1, 0, 0, -1};
+int dy[4] = {0, 1, -1, 0};
+
+char backmap[8] = {'.', '#', 'S', 'G', '^', '>', 'v', '<'};
+
+int n, m;
+
+void setbox(bitset<30000> & current, int x, int y, int bc) {
+	int offset = (x * m + y) * 3;
+	current.set(offset, (1 & bc));
+	current.set(offset + 1, (2 & bc));
+	current.set(offset + 2, (4 & bc));
+}
+
+int getbox(bitset<30000> & current, int x, int y) {
+	int offset = (x * m + y) * 3;
+	return current.test(offset) + 2 * current.test(offset + 1) + 4 * current.test(offset + 2);
+}
+
+int getcharid (char ch) {
+	for (int bc = 0; bc < 8; ++bc)
+		if (ch == backmap[bc])
+			return bc;
+	return -1;
+}
+
+template <size_t N>
+class LessThan { 
+public:
+   bool operator() (const std::bitset<N> &lhs, const std::bitset<N> &rhs) const 
+   { 
+      size_t i = N;
+      while ( i > 0 ) {
+         if ( lhs[i-1] == rhs[i-1] ) {
+            i--;
+         } else if ( lhs[i-1] < rhs[i-1] ) {
+            return true;
+         } else {
+            return false;
+         }
+      }
+      return false;
+   } 
+}; 
+
+int main() {
+	freopen("input.txt", "rt", stdin);
+	freopen("output.txt", "wt", stdout);
+	int t;
+	scanf("%d", &t);
+	for (int i = 0; i < t; ++i) {
+		int ans = -1, goalx, goaly;
+
+		/* Read input */
+		scanf("%d%d", &n, &m);
+		bitset<30000> current;
+		for (int j = 0; j < n; ++j) {
+			scanf("\n");
+			for (int k = 0; k < m; ++k) {
+				scanf("%c", &d[j][k]);
+				if (d[j][k] == 'G')
+					goalx = j, goaly = k;
+				else
+					setbox(current, j, k, getcharid(d[j][k]));
+			}
+		}
+		
+		/* BFS */
+		map <bitset<30000>, int, LessThan<30000>> used;
+		queue <bitset<30000>> q;
+		q.push(current);
+		used[current] = 0;
+		while (!q.empty() && ans == -1) {
+			bitset<30000> current = q.front();
+			int len = used[current];
+			q.pop();
+			int dir[4] = {1, 1, 1, 1};
+			int px, py; // current player pos
+			for (int j = 0; j < n; ++j)
+				for (int k = 0; k < m; ++k)
+					if (backmap[getbox(current, j, k)] == 'S')
+						px = j, py = k; // found player position
+			for (int j = 0; j < n; ++j) {
+				for (int k = 0; k < m; ++k) {
+					// Ban move directions by laser beems
+					int bc = getbox(current, j, k);
+					if (bc == 4) bc = 5, setbox(current, j, k, bc);
+					else if (bc == 5) bc = 6, setbox(current, j, k, bc);
+					else if (bc == 6) bc = 7, setbox(current, j, k, bc);
+					else if (bc == 7) bc = 4, setbox(current, j, k, bc);
+					if ((backmap[bc] == '^' && j > px) || (backmap[bc] == 'v' && j < px)) {
+						if (py - 1 == k)
+							dir[2] = false;
+						if (py + 1 == k)
+							dir[1] = false;
+						if (py == k)
+							dir[3] = dir[0] = false;
+					}
+					if ((backmap[bc] == '>' && k < py) || (backmap[bc] == '<' && k > py)) {
+						if (px - 1 == j)
+							dir[3] = false;
+						if (px + 1 == j)
+							dir[0] = false;
+						if (px == j)
+							dir[1] = dir[2] = false;
+					}
+				}
+			}
+			for (int move = 0;  move < 4; ++move) {
+				if (!dir[move])
+					continue; // laser beem
+				int nx = px + dx[move];
+				int ny = py + dy[move];
+				if (nx >= n || nx < 0 || ny >= m || ny < 0)
+					continue; //outside of board
+				int bc = getbox(current, nx, ny);
+				if (backmap[bc] == '.') {
+					setbox(current, nx, ny, 2);
+					setbox(current, px, py, 0);
+					if (used.count(current) == 0 || used[current] > len + 1) {
+						used[current] = len + 1;
+						q.push(current);
+						if (goalx == nx && goaly == ny && (ans == -1 || ans > len + 1))
+							ans = len + 1;
+					}
+					setbox(current, nx, ny, 0);
+					setbox(current, px, py, 2);
+				}
+			}
+		}
+		/* Result*/
+		printf("Case #%d: ", 1 + i);
+		if (ans != -1) 
+			printf("%d\n", ans);
+		else
+			printf("impossible\n");
+	}
+	return 0;
+}

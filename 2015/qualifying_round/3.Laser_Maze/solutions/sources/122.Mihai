@@ -1,0 +1,133 @@
+#include <fstream>
+
+using namespace std;
+
+const int NMAX = 101;
+const int INF = 999999999;
+
+int t, m, n, sx, sy, gx, gy, answer;
+char maze[NMAX][NMAX], mazeState[4][NMAX][NMAX];
+int nrMin[4][NMAX][NMAX];
+
+void getDir(char turret, int state, int &dx, int &dy) {
+  int dir = 0;
+  dx = dy = 0;
+  switch (turret) {
+    case '<': dir = 0; break;
+    case '^': dir = 1; break;
+    case '>': dir = 2; break;
+    case 'v': dir = 3; break;
+  }
+  dir = (dir + state) % 4;
+  switch (dir) {
+    case 0: dx = -1; break;
+    case 1: dy = -1; break;
+    case 2: dx = 1; break;
+    case 3: dy = 1; break;
+  }
+}
+
+void computeMazeStates() {
+  int dx, dy, ii, jj;
+
+  for (int state = 0; state < 4; ++state)
+    for (int i = 0; i < m; ++i)
+      for (int j = 0; j < n; ++j)
+        mazeState[state][i][j] = ' ';
+
+  for (int state = 0; state < 4; ++state)
+    for (int i = 0; i < m; ++i)
+      for (int j = 0; j < n; ++j) {
+        switch (maze[i][j]) {
+          case '.':
+            if (mazeState[state][i][j] == ' ') mazeState[state][i][j] = '.';
+            break;
+          case '#':
+            mazeState[state][i][j] = '#';
+            break;
+          default:
+            mazeState[state][i][j] = '#';
+            getDir(maze[i][j], state, dx, dy);
+            ii = i + dy;
+            jj = j + dx;
+            while (ii >= 0 && ii < m && jj >= 0 && jj < n) {
+              if (maze[ii][jj] != '.') break;
+              mazeState[state][ii][jj] = '#';
+              ii += dy;
+              jj += dx;
+            }
+        }
+      }
+}
+
+void initNrMin() {
+  for (int state = 0; state < 4; ++state)
+    for (int i = 0; i < m; ++i)
+      for (int j = 0; j < n; ++j)
+        nrMin[state][i][j] = INF;
+}
+
+void calcNrMin(int y, int x, int state, int nr) {
+  if (y < 0 || y >= m || x < 0 || x >= n) return;
+  if (nr && mazeState[state][y][x] != '.') return;
+  if (nrMin[state][y][x] <= nr) return;
+
+  nrMin[state][y][x] = nr;
+
+  int nextState = (state + 1) % 4;
+
+  calcNrMin(y, x - 1, nextState, nr + 1);
+  calcNrMin(y - 1, x, nextState, nr + 1);
+  calcNrMin(y, x + 1, nextState, nr + 1);
+  calcNrMin(y + 1, x, nextState, nr + 1);
+}
+
+int getAnswer() {
+  int result = INF;
+  for (int state = 0; state < 4; ++state)
+    if (nrMin[state][gy][gx] < result) result = nrMin[state][gy][gx];
+  return result;
+}
+
+int main() {
+  ifstream fi("p3.in");
+  ofstream fo("p3.out");
+
+  fi >> t;
+
+  for (int test = 1; test <= t; ++test) {
+    fi >> m >> n;
+    for (int i = 0; i < m; ++i) {
+      fi >> maze[i];
+      for (int j = 0; j < n; ++j)
+        if (maze[i][j] == 'S') {
+          sy = i;
+          sx = j;
+          maze[i][j] = '.';
+        }
+        else if (maze[i][j] == 'G') {
+          gy = i;
+          gx = j;
+          maze[i][j] = '.';
+        }
+    }
+
+    computeMazeStates();
+
+    initNrMin();
+
+    calcNrMin(sy, sx, 0, 0);
+
+    answer = getAnswer();
+
+    fo << "Case #" << test << ": ";
+    if (answer < INF) fo << answer;
+    else fo << "impossible";
+    fo << endl;
+  }
+
+  fo.close();
+  fi.close();
+
+  return 0;
+}

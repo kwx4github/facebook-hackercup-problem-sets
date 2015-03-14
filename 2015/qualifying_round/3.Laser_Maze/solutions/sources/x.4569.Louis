@@ -1,0 +1,201 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+using namespace std;
+
+typedef vector<vector<bool> > Mask;
+typedef vector<vector<char> > Maze;
+typedef vector<vector<int> > Dist;
+
+struct Coord {int x, y;};
+
+Dist DIST;
+
+void print(const Mask& mask);
+void print(const Dist& dist);
+bool is_in(int i, int j, int n, int m);
+bool is_laser(char c);
+Coord create_dir(char c);
+void turn_90(Coord& dir);
+void make_wall(int i, int j, vector<Mask>& r);
+void make_laser(int i, int j, char c, vector<Mask>& r, const Maze& M);
+Maze init_Maze(const Coord& size, Coord& start, Coord& goal);
+Dist init_Dist(const Maze& M, const Coord& goal);
+vector<Mask> init_masks(const Maze& M);
+bool equal_coord(const Coord& a, const Coord& b);
+bool loop(const Coord& pos, const vector<Coord>& path);
+vector<Coord> get_choices(const Coord& pos, const vector<Coord>& path, const Mask& mask);
+
+int BT_steps(Coord pos, vector<Coord>& path, const vector<Mask>& mask, const Coord& goal) {
+    int p_size = path.size();
+    if (equal_coord(pos, goal) and mask[(p_size-1)%4][pos.x][pos.y])
+        return p_size-1;
+    else {
+        vector<Coord> choices = get_choices(pos, path, mask[p_size%4]);
+        int c_s = choices.size();
+        if (c_s == 0) return -1;
+        else {
+            for (int i = 0; i < c_s; ++i) {
+                vector<Coord> new_path = path;
+                new_path.push_back(choices[i]);
+                int result = BT_steps(choices[i], new_path, mask, goal);
+                if (result >= 0) return result;
+            }
+        }
+    }
+    return -1;
+}
+
+int main() {
+    int cases;
+    cin >> cases;
+    for (int i = 1; i <= cases; ++i) {
+        Coord size, start, goal;
+        cin >> size.x >> size.y;
+        Maze M = init_Maze(size, start, goal);
+        vector<Mask> masks = init_masks(M);
+        DIST = init_Dist(M, goal);
+        vector<Coord> path;
+        path.push_back(start);
+        int step =  BT_steps(start, path, masks, goal);
+        cout << "Case #" << i << ": ";
+        if (step == -1) cout << "impossible" << endl;
+        else cout << step << endl;
+    }
+}
+
+bool order(const Coord& a, const Coord& b) {
+    return (DIST[a.x][a.y] < DIST[b.x][b.y]);
+}
+
+vector<Coord> get_choices(const Coord& pos, const vector<Coord>& path, const Mask& mask) {
+    vector<Coord> r;
+    int dx[] = {-1,1,0,0};
+    int dy[] = {0,0,-1,1};
+    int n = mask.size();
+    int m = mask[0].size();
+    for (int i = 0; i < 4; ++i) {
+        Coord n_pos = pos;
+        n_pos.x += dx[i], n_pos.y += dy[i];
+        
+        if (is_in(n_pos.x, n_pos.y, n, m) and
+            mask[n_pos.x][n_pos.y] and
+            not loop(n_pos, path)
+            ) r.push_back(n_pos);
+    }
+    sort(r.begin(), r.end(), order);
+    return r;
+}
+
+bool loop(const Coord& pos, const vector<Coord>& path) {
+    int n = path.size();
+    for (int i = n-4; i >= 0; i -= 4) {
+        if (equal_coord(path[i], pos)) return true;
+    }
+    return false;
+}
+
+Maze init_Maze(const Coord& size, Coord& S, Coord& G) {
+    Maze r (size.x, vector<char> (size.y));
+    for (int i = 0; i < size.x; ++i) {
+        for (int j = 0; j < size.y; ++j) {
+            cin >> r[i][j];
+            if (r[i][j] == 'S') S.x = i, S.y = j;
+            else if (r[i][j] == 'G') G.x = i, G.y = j;
+        }
+    }
+    return r;
+}
+
+vector<Mask> init_masks(const Maze& M) {
+    int n = M.size();
+    int m = M[0].size();
+    vector<Mask> result(4, vector<vector<bool> > (n, vector<bool> (m, true)));
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+            char cell = M[i][j];
+            if(cell == '#') make_wall(i,j, result);
+            else if (is_laser(cell)) make_laser(i, j, cell, result, M); 
+        }
+    }
+    return result;
+}
+
+Dist init_Dist(const Maze& M, const Coord& goal) {
+    int n = M.size();
+    int m = M[0].size();
+    Dist result(n, vector<int> (m));
+    for (int i = 0; i < n; ++i)
+        for (int j = 0; j < m; ++j)
+            result[i][j] = abs(goal.x-i) + abs(goal.y-j);
+    return result;
+}
+
+bool equal_coord(const Coord& a, const Coord& b) {
+    return (a.x == b.x and a.y == b.y);
+}
+bool is_in(int i, int j, int n, int m) {
+    return (i >= 0 and j >= 0 and i < n and j < m);
+}
+
+bool is_laser(char c) {
+    return (c=='>' or c=='<' or c=='^' or c=='v');
+}
+
+Coord create_dir(char c) {
+    Coord r;
+    r.x = r.y = 0;
+    if (c == '^') r.x = -1;
+    else if (c == 'v') r.x = 1;
+    else if (c == '>') r.y = 1;
+    else if (c == '<') r.y = -1;
+    return r;
+}
+
+void turn_90(Coord& dir) {
+    int tmp = dir.x;
+    dir.x = dir.y;
+    dir.y = -tmp;
+}
+
+void make_wall(int i, int j, vector<Mask>& r) {
+    for (int k = 0; k < 4; ++k) r[k][i][j] = false;
+}
+
+void make_laser(int i, int j, Coord& dir, Mask& r, const Maze& M) {
+    int n = M.size();
+    int m = M[0].size();
+    do {
+        r[i][j] = false;
+        i += dir.x;
+        j += dir.y;
+    } while (is_in(i,j, n, m) and not is_laser(M[i][j]) and M[i][j] != '#');
+}
+
+void make_laser(int i, int j, char c, vector<Mask>& r, const Maze& M) {
+    Coord dir = create_dir(c);
+    for (int k = 0; k < 4; ++k) {
+        make_laser(i, j, dir, r[k], M);
+        turn_90(dir);
+    }
+}
+
+void print(const Mask& r) {
+    cout << "-------------------------------------" << endl;
+    for (unsigned int i = 0; i < r.size(); ++i) {
+        for (unsigned int j = 0; j < r[i].size(); ++j) {
+            cout << r[i][j];
+        }
+        cout << endl;
+    }
+}
+void print(const Dist& r) {
+    cout << "-------------------------------------" << endl;
+    for (unsigned int i = 0; i < r.size(); ++i) {
+        for (unsigned int j = 0; j < r[i].size(); ++j) {
+            cout << r[i][j];
+        }
+        cout << endl;
+    }
+}

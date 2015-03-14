@@ -1,0 +1,106 @@
+<?php
+/**
+ * Facebook Hacker Cup 2015 Qualification Round
+ * New Year's Resolution
+ * @see https://www.facebook.com/hackercup/problems.php?pid=1036037553088752&round=742632349177460
+ */
+
+ini_set('memory_limit', 0);
+set_time_limit(0);
+
+$input = new SplFileObject('input.txt');
+$caseCount = (int) $input->fgets();
+
+ob_start();
+
+// Challenge
+for ($case = 1; $case <= $caseCount; $case++ ) {
+    // The 3 values wanted
+    $wanted = explode(' ', trim($input->fgets()));
+    $choices = (int) $input->fgets();
+
+    // The possibilities
+    $options = array();
+    for ($i = 0; $i < $choices; $i++) {
+        $options[] = explode(' ', trim($input->fgets()));
+    }
+
+//    echo "wanted ";
+//    echo implode(' ', $wanted) . "\n";
+
+    // Check whether possible
+    $result = findIfPossible($wanted, $options) ? 'yes' : 'no';
+
+    printf("Case #%d: %s\n", $case, $result);
+}
+
+// Resolver
+function findIfPossible($wanted, $options)
+{
+    // Housekeeping
+    foreach ($options as $index => $option) {
+
+        if ($option[0] > $wanted[0] || $option[1] > $wanted[1] || $option[2] > $wanted[2]) {
+            // Too big to begin with, discard
+            unset($options[$index]);
+            continue;
+        }
+
+//        echo "Test against ";
+//        echo implode(' ', $option) . "\n";
+
+        if ($option == $wanted) {
+            // perfect match, no need to do anything else
+            return true;
+        }
+    }
+
+    // Re-index
+    sort($options);
+
+    $optionsCount = count($options);
+
+    // For each option create a test-set with the other options, without repeating the same set
+    for ($i = 0; $i < $optionsCount - 1; $i++) {
+        if (testOptions($wanted, $options[$i], array_slice($options, $i + 1))) {
+            return true;
+        }
+    }
+
+    // We tried everything and found nothing
+    return false;
+}
+
+function testOptions($wanted, $base, $options)
+{
+    $optionsCount = count($options);
+    // Try the base-option with every other available options
+    for ($i = 0; $i < $optionsCount; $i++) {
+        $option = &$options[$i];
+
+        $groupedSet = $base;
+        $groupedSet[0] += $option[0];
+        $groupedSet[1] += $option[1];
+        $groupedSet[2] += $option[2];
+
+        if ($groupedSet == $wanted) {
+            return true;
+        }
+
+        if ($groupedSet[0] > $wanted[0] || $groupedSet[1] > $wanted[1] || $groupedSet[2] > $wanted[2]) {
+            // Too big; discard this set for further tests
+            continue;
+        }
+
+//        echo "Test against ";
+//        echo implode(' ', $groupedSet) . "\n";
+
+        // Try the N-aggregated options with the other remaining options
+        if (testOptions($wanted, $groupedSet, array_slice($options, $i + 1))) {
+            return true;
+        }
+    }
+}
+
+// Save and display output
+file_put_contents('output.txt', ob_get_flush());

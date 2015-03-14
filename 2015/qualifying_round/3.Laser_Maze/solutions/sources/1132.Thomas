@@ -1,0 +1,310 @@
+#include <algorithm>
+#include <cassert>
+#include <cstddef>
+#include <iostream>
+#include <queue>
+#include <string>
+#include <utility>
+#include <vector>
+
+using coord = std::pair<std::size_t, std::size_t>;
+
+std::ostream & operator<<(std::ostream & os, coord const & c)
+{
+    return os << '[' << c.first << ", " << c.second << ']';
+}
+
+struct maze
+{
+    enum tile { FREE = 0, WALL, STRT, GOAL, TRTN, TRTE, TRTS, TRTW };
+
+    std::vector<tile> v;
+    unsigned int nrows;
+    unsigned int ncols;
+
+    std::vector<coord> blocked_tiles[4];
+
+    coord start = { -1, -1 };
+    coord goal = { -1, -1 };
+
+    tile at(std::size_t i, std::size_t j) const
+    {
+        return v.at(i * ncols + j);
+    }
+
+    maze(unsigned int r, unsigned int c)
+    :  v(r * c, FREE), nrows(r), ncols(c)
+    {}
+
+    static tile parse(char c)
+    {
+        switch(c)
+        {
+        case '.': return FREE;
+        case '#': return WALL;
+        case 'S': return STRT;
+        case 'G': return GOAL;
+        case '^': return TRTN;
+        case '>': return TRTE;
+        case 'v': return TRTS;
+        case '<': return TRTW;
+        default: std::abort();
+        }
+    }
+
+    void set_row(unsigned int row, std::string const & s)
+    {
+        assert(s.size() == ncols);
+        for (unsigned int j = 0; j != ncols; ++j)
+        {
+            v[ncols * row + j] = parse(s[j]);
+        }
+    }
+
+    void initialize()
+    {
+        assert(v.size() == nrows * ncols);
+
+        for (std::size_t i = 0; i != nrows; ++i)
+        {
+            for (std::size_t j = 0; j != ncols; ++j)
+            {
+                tile t = at(i, j);
+                if (TRTN <= t && t <= TRTW)
+                {
+                    std::size_t k = 4 - (t - TRTN);
+                    fill_blocked_n((0 + k) % 4, i, j);
+                    fill_blocked_e((1 + k) % 4, i, j);
+                    fill_blocked_s((2 + k) % 4, i, j);
+                    fill_blocked_w((3 + k) % 4, i, j);
+                }
+
+                if (t == STRT) { start = coord(i, j); }
+                if (t == GOAL) { goal  = coord(i, j); }
+            }
+        }
+
+        for (auto & bt : blocked_tiles)
+        {
+            std::sort(bt.begin(), bt.end());
+            bt.erase(std::unique(bt.begin(), bt.end()), bt.end());
+        }
+
+        assert(start.first + 1 != 0 && goal.first + 1 != 0);
+    }
+
+    void fill_blocked_n(std::size_t step, std::size_t i, std::size_t j)
+    {
+        while (i > 0)
+        {
+            --i;
+            if (!walkable_tile(i, j)) { break; }
+            blocked_tiles[step].emplace_back(i, j);
+        }
+    }
+
+    void fill_blocked_s(std::size_t step, std::size_t i, std::size_t j)
+    {
+        while (i + 1 < nrows)
+        {
+            ++i;
+            if (!walkable_tile(i, j)) { break; }
+            blocked_tiles[step].emplace_back(i, j);
+        }
+    }
+
+    void fill_blocked_e(std::size_t step, std::size_t i, std::size_t j)
+    {
+        while (j + 1 < ncols)
+        {
+            ++j;
+            if (!walkable_tile(i, j)) { break; }
+            blocked_tiles[step].emplace_back(i, j);
+        }
+    }
+
+    void fill_blocked_w(std::size_t step, std::size_t i, std::size_t j)
+    {
+        while (j > 0)
+        {
+            --j;
+            if (!walkable_tile(i, j)) { break; }
+            blocked_tiles[step].emplace_back(i, j);
+        }
+    }
+
+    bool walkable_tile(std::size_t i, std::size_t j) const
+    {
+        tile t = at(i, j);
+        return t == FREE || t == GOAL || t == STRT;
+    }
+
+    bool free_at_step(std::size_t i, std::size_t j, std::size_t step) const
+    {
+        if (!walkable_tile(i, j)) { return false; }
+
+        auto & bt = blocked_tiles[step % 4];
+        return !std::binary_search(bt.begin(), bt.end(), coord(i, j));
+    }
+
+    bool can_go_n(coord const & from, std::size_t step) const
+    {
+        return from.first > 0          && free_at_step(from.first - 1, from.second, step);
+    }
+
+    bool can_go_s(coord const & from, std::size_t step) const
+    {
+        return from.first + 1 < nrows  && free_at_step(from.first + 1, from.second, step);
+    }
+
+    bool can_go_e(coord const & from, std::size_t step) const
+    {
+        return from.second + 1 < ncols && free_at_step(from.first, from.second + 1, step);
+    }
+
+    bool can_go_w(coord const & from, std::size_t step) const
+    {
+        return from.second > 0         && free_at_step(from.first, from.second - 1, step);
+    }
+
+    static std::size_t absdiff(std::size_t a, std::size_t b)
+    {
+        return a > b ? a - b : b - a;
+    }
+
+    std::size_t heur(coord x) const
+    {
+        // L^1-distance from (x.i, x.j) to goal; this is guaranteed to be
+        // no larger than any actual path.
+        return absdiff(x.first, goal.first) + absdiff(x.second, goal.second);
+    }
+
+    void print() const
+    {
+        static constexpr char tilestr[] = ".*SG^>v<";
+
+        for (unsigned int i = 0; i != nrows; ++i)
+        {
+            for (unsigned int j = 0; j != ncols; ++j)
+            {
+                std::cout << tilestr[at(i, j)];
+            }
+            std::cout << '\n';
+        }
+
+        std::cout << "Start: " << start << ", Goal:  " << goal << ".\n";
+
+        for (std::size_t k = 0; k != 4; ++k)
+        {
+            std::cout << "Blocked at turn " << k << ":";
+            for (auto const & c : blocked_tiles[k]) { std::cout << ' ' << c; }
+            std::cout << '\n';
+        }
+    }
+};
+
+// Queue item for search algorithm
+struct item
+{
+    std::size_t heuristic;
+    std::size_t cost;
+    coord tile;
+
+    item(std::size_t h, std::size_t c, coord t) : heuristic(h), cost(c), tile(t) {}
+};
+
+bool operator<(item const & lhs, item const & rhs)
+{
+    // std::priority_queue puts the GREATEST element on top.
+    return lhs.heuristic > rhs.heuristic;
+}
+
+int main()
+{
+    unsigned int t, m, n;
+    if (!(std::cin >> t)) { std::abort(); }
+
+    for (unsigned int c = 0; c != t; ++c)
+    {
+        if (!(std::cin >> m >> n) || !std::cin.ignore(1, '\n')) { std::abort(); }
+
+        maze mz(m, n);
+
+        for (unsigned int i = 0; i != m; ++i)
+        {
+            std::string line;
+            if (!std::getline(std::cin, line) || line.size() != n) { std::abort(); }
+            mz.set_row(i, line);
+        }
+
+        mz.initialize();
+
+        bool found = false;
+        std::cout << "Case #" << c + 1 << ": ";
+
+        std::priority_queue<item> q;
+
+        std::vector<bool> already_visited[4] = {
+            std::vector<bool>(mz.nrows * mz.ncols),
+            std::vector<bool>(mz.nrows * mz.ncols), 
+            std::vector<bool>(mz.nrows * mz.ncols), 
+            std::vector<bool>(mz.nrows * mz.ncols) };
+        
+        q.emplace(mz.heur(mz.start), 0, mz.start);
+
+        while (!q.empty())
+        {
+            item current = q.top();
+            q.pop();
+
+            already_visited[current.cost % 4][current.tile.first * mz.ncols + current.tile.second] = true;
+
+            //std::cout << "Currently at: " << current.tile << ", cost = " << current.cost << ", h = " << current.heuristic << "\n";
+
+            if (current.tile == mz.goal)
+            {
+                std::cout << current.cost << '\n';
+                found = true;
+                break;
+            }
+
+            std::size_t next_cost = current.cost + 1;
+
+            auto & av = already_visited[next_cost % 4];
+
+            if (mz.can_go_n(current.tile, next_cost))
+            {
+                coord next_tile = current.tile;
+                --next_tile.first;
+                if (!av[next_tile.first * mz.ncols + next_tile.second])
+                    q.emplace(mz.heur(next_tile) + current.cost, next_cost, next_tile);
+            }
+
+            if (mz.can_go_e(current.tile, next_cost))
+            {
+                coord next_tile = current.tile;
+                ++next_tile.second;
+                if (!av[next_tile.first * mz.ncols + next_tile.second])
+                    q.emplace(mz.heur(next_tile) + current.cost, next_cost, next_tile);
+            }
+
+            if (mz.can_go_s(current.tile, next_cost))
+            {
+                coord next_tile = current.tile;
+                ++next_tile.first;
+                if (!av[next_tile.first * mz.ncols + next_tile.second])
+                    q.emplace(mz.heur(next_tile) + current.cost, next_cost, next_tile);
+            }
+
+            if (mz.can_go_w(current.tile, next_cost))
+            {
+                coord next_tile = current.tile;
+                --next_tile.second;
+                if (!av[next_tile.first * mz.ncols + next_tile.second])
+                    q.emplace(mz.heur(next_tile) + current.cost, next_cost, next_tile);
+            }
+        }
+
+        if (!found) { std::cout << "impossible\n"; }
+    }
+}

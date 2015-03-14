@@ -1,0 +1,98 @@
+import Control.Monad
+import Text.Printf
+import Control.Applicative
+import Data.Array.Unboxed
+import Data.Array.ST
+
+main :: IO ()
+main = do
+    t <- readLn :: IO Int
+    forM_ [1..t] $ \caseNum -> do
+        (m,n) <- readPair
+        g <- replicateM m getLine
+        let r = case solve m n g of Nothing -> "impossible"
+                                    Just x -> show x
+        printf "Case #%d: %s\n" caseNum r
+    
+readPair :: IO (Int,Int)
+readPair = do
+    [a,b] <- map read . words <$> getLine
+    return (a,b)
+
+dirToInt :: Char -> Int
+dirToInt '^' = 0
+dirToInt '>' = 1
+dirToInt 'v' = 2
+dirToInt '<' = 3
+
+intToDir :: Int -> Char
+intToDir 0 = '^'
+intToDir 1 = '>'
+intToDir 2 = 'v'
+intToDir 3 = '<'
+
+rotate :: Int -> Char -> Char
+rotate _ 'G' = '.'
+rotate _ 'S' = '.'
+rotate _ '.' = '.'
+rotate _ '#' = '#'
+rotate d ch  = intToDir $ mod (dirToInt ch + d) 4
+
+isLazer :: Char -> Bool
+isLazer = flip elem "<>^v"
+
+next :: (Int,Int) -> (Int,Int) -> (Int,Int)
+next (dx,dy) (x,y) = (x+dx,y+dy)
+        
+dirs :: [(Int,Int)]
+dirs = [(-1,0),(0,1),(1,0),(0,-1)]
+
+simulateLazer :: UArray (Int,Int) Char -> UArray (Int,Int) Bool
+simulateLazer g = runSTUArray $ do
+    let bb = bounds g
+    arr <- newArray bb True
+    forM_ (assocs g) $ \(p,v) -> when (v /= '.') $ writeArray arr p False
+    forM_ (assocs g) $ \(p,v) -> when (isLazer v) $ do
+        let d = dirs !! dirToInt v
+        let go p' | not (inRange bb p') = return () | otherwise = do
+                b <- readArray arr p'
+                when b $ writeArray arr p' False >> go (next d p')
+        go (next d p)
+    return arr
+
+bfs :: Array Node [Node] -> Node -> UArray Node Int
+bfs g st = runSTUArray $ do
+    dist <- newArray (bounds g) (-1)
+    let dfs [] [] = return ()
+        dfs [] acc = dfs acc []
+        dfs (p:ps) acc = do
+            d <- readArray dist p
+            nps <- filterM (fmap (==(-1)). readArray dist) $ g ! p
+            forM_ nps $ flip (writeArray dist) (d+1) 
+            dfs ps (nps++acc)
+    writeArray dist st 0
+    dfs [st] []
+    return dist
+
+
+type Node = (Int,Int,Int)
+solve :: Int -> Int -> [String] -> Maybe Int
+solve m n ss = if null goals then Nothing else Just (minimum goals) where
+    g :: UArray (Int,Int) Char
+    g = listArray ((0,0),(m-1,n-1)) (concat ss)
+    (sy,sx) = head [ p | (p,'S') <- assocs g ]
+    (gy,gx)  = head [ p | (p,'G') <- assocs g ]
+    gs :: [UArray (Int,Int) Bool]
+    gs = [ simulateLazer g' | d <- [0..3], let g' = amap (rotate d) g ]
+    dist :: UArray Node Int
+    dist = bfs graph (sy,sx,0)
+    goals = [ x | d <- [0..3], let x = dist ! (gy,gx,d), x >= 0 ]
+    graph :: Array Node [Node]
+    graph = array ((0,0,0),(m-1,n-1,3)) $ do
+        p@(y,x,d) <- range ((0,0,0),(m-1,n-1,3))
+        let es = do
+            p'@(y',x') <- map (flip next (y,x)) dirs
+            let d' = (d + 1) `mod` 4
+            guard (inRange ((0,0),(m-1,n-1)) p' && (gs !! d') ! p')
+            return (y',x',d')
+        return (p,es)

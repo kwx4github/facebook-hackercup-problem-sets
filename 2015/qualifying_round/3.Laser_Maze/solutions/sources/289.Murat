@@ -1,0 +1,139 @@
+#include<bits/stdc++.h>
+  
+using namespace std;
+
+template<class T> inline T sqr(const T& a) { return a * a; }
+  
+typedef long long li;
+typedef long double ld;
+typedef pair<int, int> pt;
+  
+constexpr ld EPS = 1e-9;
+constexpr ld PI = 2 * acos(0.0);
+constexpr int N = 110;
+
+char a[N][N];
+bool b[4][N][N];
+int d[4][N][N];
+pt par[4][N][N];
+
+const int dx[] = {-1, 0, 0, 1};
+const int dy[] = {0, -1, 1, 0};
+
+inline bool is_turret(char c) {
+  return c == '<' || c == '>' || c == '^' || c == 'v';
+}
+
+const char *kTurrets = "^>v<";
+const pt kDirections[] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+
+inline pt rot(char c, int period) {
+  int id = 0;
+  for (int i = 0; i < 4; ++i) {
+    if (kTurrets[i] == c) {
+      id = i;
+      break;
+    }
+  }
+  id = (id + period) & 3;
+  return kDirections[id];
+}
+
+int main() {
+  int tests;
+  scanf("%d", &tests);
+  for (int it = 1; it <= tests; ++it) {
+    int n, m;
+    scanf("%d%d\n", &n, &m);
+    pt start(-1, -1);
+    pt finish(-1, -1);
+    vector<pt> turrets;
+    for (int i = 0; i < n; ++i) {
+      gets(a[i]);
+      for (int j = 0; j < m; ++j) {
+        if (a[i][j] == 'S')
+          start = {i, j};
+        else if (a[i][j] == 'G')
+          finish = {i, j};
+        else if (is_turret(a[i][j]))
+          turrets.push_back({i, j});
+      }
+    }
+    for (int tim = 0; tim < 4; ++tim) {
+      for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+          if(a[i][j] == '#' || is_turret(a[i][j]))
+            b[tim][i][j] = true;
+          else
+            b[tim][i][j] = false;
+        }
+      }
+      for (pt t : turrets) {
+        pt cur = rot(a[t.first][t.second], tim);
+        int x = t.first + cur.first;
+        int y = t.second + cur.second;
+        while (0 <= x && x < n && 0 <= y && y < m
+               && a[x][y] != '#' && !is_turret(a[x][y])) {
+          b[tim][x][y] = true;
+          x += cur.first;
+          y += cur.second;
+        }
+      }
+      /*
+      printf("tim %d\n", tim);
+      for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
+          printf("%c", b[tim][i][j] ? 'x' : '.');
+        }
+        puts("");
+      }
+      */  
+    }
+    assert(start.first >= 0 && finish.first >= 0);
+    queue<tuple<int, int, int>> q;
+    memset(d, -1, sizeof d);
+    if (1 || !b[0][start.first][start.second]) {
+      q.push(make_tuple(0, start.first, start.second));
+      d[0][start.first][start.second] = 0;
+    }
+    while (!q.empty()) {
+      auto fm = q.front();
+      q.pop();
+      int cur_tim = get<0>(fm);
+      int next_tim = (cur_tim + 1) & 3;
+      int fx = get<1>(fm);
+      int fy = get<2>(fm);
+      assert(d[cur_tim][fx][fy] >= 0);
+      int nval = d[cur_tim][fx][fy] + 1;
+      for (int dir = 0; dir < 4; ++dir) {
+        int x = fx + dx[dir];
+        int y = fy + dy[dir];
+        if (!(0 <= x && x < n && 0 <= y && y < m))
+          continue;
+        if (b[next_tim][x][y])
+          continue;
+        int &tg = d[next_tim][x][y];
+        if (tg < 0 || tg > nval) {
+          tg = nval;
+          par[next_tim][x][y] = pt(fx, fy);
+          q.push(make_tuple(next_tim, x, y));
+        }
+      }
+    }
+    int ans = 1e9;
+    for (int i = 0; i < 4; ++i) {
+      int val = d[i][finish.first][finish.second];
+      if (val >= 0) {
+        ans = min(ans, val);
+      }
+    }
+    printf("Case #%d: ", it);
+    if (ans > 1e8) {
+      puts("impossible");
+    } else {
+      printf("%d\n", ans);
+    }
+  }
+
+  return 0;
+}

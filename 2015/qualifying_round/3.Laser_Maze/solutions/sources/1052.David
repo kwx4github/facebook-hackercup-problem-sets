@@ -1,0 +1,133 @@
+#include<iostream>
+#include<vector>
+#include<queue>
+#include<map>
+
+using namespace std;
+
+struct state{
+	int i;
+	int j;
+	int step;
+};
+
+int n, m;
+int di[4] = {-1, 0, 1, 0};
+int dj[4] = {0, 1, 0, -1};
+
+bool isTurret(char x)
+{
+	return x == 'v' || x == '<' || x == '^' || x == '>';
+}
+
+void transform(vector<vector<vector<char> > >& v)
+{
+	map<char, int> direction;
+	direction['^'] = 0;
+	direction['>'] = 1;
+	direction['v'] = 2;
+	direction['<'] = 3;
+	for (int k = 0; k < 4; k++)
+	{
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < m; j++)
+			{
+				if (!isTurret(v[k][i][j])) continue;
+				int dir = direction[v[k][i][j]];
+				int ni = i+di[dir], nj = j+dj[dir];
+				while (ni < n && ni >= 0 && nj < m && nj >= 0 && v[k][ni][nj] != '#' && !isTurret(v[k][ni][nj]))
+				{
+					v[k][ni][nj] = '$';
+					ni += di[dir];
+					nj += dj[dir];
+				}
+			}
+		}
+	}
+}
+
+int bfs(vector<vector<vector<char> > >& v, int si, int sj, int gi, int gj)
+{
+	queue<state> q;
+	state ini;
+	ini.i = si;
+	ini.j = sj;
+	ini.step = 0;
+	q.push(ini);
+	vector<vector<vector<bool> > > vis (4, vector<vector<bool> > (n, vector<bool> (m, false)));
+	vis[0][si][sj] = true;
+	while (!q.empty())
+	{
+		state act = q.front();
+		q.pop();
+		int dim = act.step%4;
+		int nextdim = (dim+1)%4;
+		int i = act.i;
+		int j = act.j;
+		int st = act.step;
+		for (int k = 0; k < 4; k++)
+		{
+			int ni = i+di[k];
+			int nj = j+dj[k];
+			if (ni < 0 || ni >= n || nj < 0 || nj >= m || vis[nextdim][ni][nj] || v[nextdim][ni][nj] != '.') continue;
+			if (ni == gi && nj == gj) return st+1;
+			vis[nextdim][ni][nj] = true;
+			state next;
+			next.step = st+1;
+			next.i = ni;
+			next.j = nj;
+			q.push(next);
+		}
+	}
+	return -1;
+}
+
+int main()
+{
+	int T;
+	cin >> T;
+	map<char, char> convert;
+	convert['^'] = '>';
+	convert['>'] = 'v';
+	convert['v'] = '<';
+	convert['<'] = '^';
+	convert['#'] = '#';
+	convert['.'] = '.';
+	for (int C = 1; C <= T; C++)
+	{
+		cin >> n >> m;
+		vector<vector<vector<char> > > v (4, vector<vector<char> > (n, vector<char> (m)));
+		int si, sj, gi, gj;
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < m; j++)
+			{
+				char x;
+				cin >> x;
+				if (x == 'S')
+				{
+					x = '.';
+					si = i;
+					sj = j;
+				}
+				else if (x == 'G')
+				{
+					x = '.';
+					gi = i;
+					gj = j;
+				}
+				v[0][i][j] = x;
+				for (int k = 1; k < 4; k++) v[k][i][j] = convert[v[k-1][i][j]];
+			}
+		}
+		transform(v);
+		bool bad = false;
+		int res = bfs(v, si, sj, gi, gj);
+		
+		cout << "Case #" << C << ": ";
+		if (res == -1) cout << "impossible";
+		else cout << res;
+		cout << endl;
+	}
+}

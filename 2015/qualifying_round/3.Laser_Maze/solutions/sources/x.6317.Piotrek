@@ -1,0 +1,180 @@
+#include <cstdio>
+#include <iostream>
+#include <queue>
+#include <set>
+#include <string>
+
+using namespace std;
+
+const int FREE = -1;
+const int BLOCKED = -2;
+const int UP = 0;
+const int RIGHT = 1;
+const int DOWN = 2;
+const int LEFT = 3;
+const int INF = 9999999;
+
+int V[150][150];
+bool vis[150][150][4];
+set<int> dir[150][150];
+int dis[150][150];
+
+vector<pair<pair<int, int>, int> > Turrets;
+
+priority_queue<pair<int, pair<int, int> > > Q;
+
+void TagLagerPositon(int x, int y, int delta_x, int delta_y, int time)
+{
+    y += delta_y;
+    x += delta_x;
+
+    while(V[y][x] != BLOCKED)
+    {
+        dir[y][x].insert(time);
+        y += delta_y;
+        x += delta_x;
+    }
+}
+
+void checkIfMovePossible(int x, int y, int delta_x, int delta_y, int time)
+{
+    y += delta_y;
+    x += delta_x;
+    time++;
+    if ((V[y][x] == FREE) && (!vis[y][x][time % 4]))
+    {
+        if (dir[y][x].find(time % 4) == dir[y][x].end())
+        {
+            Q.push(make_pair(time, make_pair(y, x)));
+            dis[y][x] = min(dis[y][x], time);
+        }
+    }
+}
+
+int main()
+{
+    int TestCase;
+    cin >> TestCase;
+
+    for (int test = 1; test <= TestCase; test++)
+    {
+
+        pair<int, int> start, goal;
+
+        int sizeX, sizeY;
+        cin >> sizeY >> sizeX;
+
+        for (int i = 0; i <= sizeY + 1; i++)
+            for (int j = 0; j <= sizeX + 1; j++)
+                dis[i][j] = INF;
+
+        for (int i = 0; i <= sizeY + 1; i++)
+        {
+            for (int j = 0; j <= sizeX + 1; j++)
+            {
+                dir[i][j].clear();
+                for (int z = 0; z <= 3; z++)
+                    vis[i][j][z] = false;
+            }
+        }
+
+
+        for (int i = 0; i <= sizeY + 1; i++)
+            V[i][0] = V[i][sizeX + 1] = BLOCKED;
+        for (int i = 0; i <= sizeX + 1; i++)
+            V[0][i] = V[sizeY + 1][i] = BLOCKED;
+
+        for (int i = 1; i <= sizeY; i++)
+        {
+            string input;
+            cin >> input;
+
+            for (int j = 1; j <= sizeX; j++)
+            {
+
+                int direction;
+
+                switch(input[j - 1])
+                {
+                    case '.':
+                        V[i][j] = FREE;
+                        break;
+                    case '#':
+                        V[i][j] = BLOCKED;
+                        break;
+                    case 'S':
+                        V[i][j] = FREE;
+                        start = make_pair(i, j);
+                        break;
+                    case 'G':
+                        V[i][j] = FREE;
+                        goal = make_pair(i, j);
+                        break;
+                    default:
+
+                        if (input[j - 1] == '^')
+                            direction = UP;
+                        else if (input[j - 1] == '>')
+                            direction = RIGHT;
+                        else if (input[j - 1] == 'v')
+                            direction = DOWN;
+                        else if (input[j - 1] == '<')
+                            direction = LEFT;
+                        else printf("WTF");
+
+                        Turrets.push_back(make_pair(make_pair(i, j), direction));
+                }
+            }
+        }
+
+        for(auto& turret : Turrets)
+        {
+            int y = turret.first.first;
+            int x = turret.first.second;
+            int dir = turret.second;
+            int time;
+
+            switch(dir)
+            {
+                case LEFT: time = 1; break;
+                case RIGHT: time = 3; break;
+                case UP: time = 0; break;
+                case DOWN: time = 2; break;
+            }
+
+            TagLagerPositon(x, y, 0, -1, (time) % 4);
+            TagLagerPositon(x, y, 1, 0, (time + 1) % 4);
+            TagLagerPositon(x, y, 0, 1, (time + 2) % 4);
+            TagLagerPositon(x, y, -1, 0, (time + 3) % 4);
+        }
+
+        Q.push(make_pair(0, make_pair(start.first, start.second)));
+
+        while(!Q.empty())
+        {
+            int step = Q.top().first;
+            int y = Q.top().second.first;
+            int x = Q.top().second.second;
+            Q.pop();
+
+            vis[y][x][step % 4] = true;
+
+            checkIfMovePossible(x, y, 1, 0, step);
+            checkIfMovePossible(x, y, -1, 0, step);
+            checkIfMovePossible(x, y, 0, 1, step);
+            checkIfMovePossible(x, y, 0, -1, step);
+
+            if (dis[goal.first][goal.second] != INF)
+                while (!Q.empty())
+                    Q.pop();
+        }
+
+        if (dis[goal.first][goal.second] != INF)
+            printf("Case #%d: %d\n", test, dis[goal.first][goal.second]);
+        else
+            printf("Case #%d: impossible\n", test);
+
+        Turrets.clear();
+
+    }
+}

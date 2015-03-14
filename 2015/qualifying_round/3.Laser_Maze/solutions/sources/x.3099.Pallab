@@ -1,0 +1,259 @@
+/*
+ *      Author : Pallab
+ *
+ * "I have not failed, I have just found 10000 ways that won't work."
+*/
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <list>
+#include <map>
+#include <set>
+#include <queue>
+#include <deque>
+#include <numeric>
+#include <stack>
+#include <functional>
+#include <bitset>
+#include <iomanip>
+
+#include <ctime>
+#include <cassert>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <climits>
+#include <cstring>
+#include <cstdlib>
+#include <termcap.h>
+
+using namespace std;
+
+#define foR(i1, st, ed) for(int i1 = st , j1 = ed ; i1 < j1 ; ++i1 )
+#define fo(i1, ed) foR( i1 , 0 , ed )
+#define foE(i1, st, ed) foR( i1, st, ed+1 )
+#define foit(i, x) for (typeof((x).begin()) i = (x).begin(); i != (x).end(); i++)
+#define bip system("pause")
+#define Int long long
+#define pb push_back
+#define SZ(X) (int)(X).size()
+#define LN(X) (int)(X).length()
+#define mk make_pair
+#define SET(ARRAY, VALUE) memset( ARRAY , VALUE , sizeof(ARRAY) )
+#define line puts("")
+
+inline void wait(double seconds) {
+    double endtime = clock() + (seconds * CLOCKS_PER_SEC);
+    while (clock() < endtime) {;
+    }
+}
+
+template<class T>
+inline T fastIn() {
+    register char c = 0;
+    register T a = 0;
+    bool neg = false;
+    while (c < 33)c = getchar();
+    while (c > 33) {
+        if (c == '-') {
+            neg = true;
+        } else {
+            a = (a * 10) + (c - '0');
+        }
+        c = getchar();
+    }
+    return neg ? -a : a;
+}
+
+int row, col;
+string maze[101];
+
+inline void read() {
+    cin >> row >> col;
+    foR(i, 0, row) {
+        cin >> maze[i];
+    }
+}
+
+
+#define UP 0
+#define RT 1
+#define DN 2
+#define LF 3
+
+vector<pair<int, int> > cannon;
+vector<int> face;
+
+vector<int> canseen[101][101];
+
+inline void solve_seen(int cannonid, int r, int c, int r_type, int c_type){
+    if(r<0||c<0||r>=row||c>=col)return ;
+    if( !(maze[r][c]=='.' || maze[r][c]=='S' || maze[r][c]=='G'))return ;
+
+    canseen[r][c].push_back(cannonid);
+    solve_seen(cannonid, r+r_type, c+c_type, r_type,c_type);
+}
+inline void precalculate_path(){
+    cannon.clear();
+    face.clear();
+    foR(i, 0, row) {
+        foR(j, 0, col) {
+            canseen[i][j].clear();
+
+            if (maze[i][j] == '^') {
+                cannon.push_back(mk(i, j));
+                face.push_back(UP);
+            }else if(maze[i][j] == '>') {
+                cannon.push_back(mk(i, j));
+                face.push_back(RT);
+            }else if(maze[i][j] == 'v') {
+                cannon.push_back(mk(i, j));
+                face.push_back(DN);
+            }else if(maze[i][j] == '<') {
+                cannon.push_back(mk(i, j));
+                face.push_back(LF);
+            }
+        }
+    }
+    foR(i,0,SZ(cannon)){
+        solve_seen(i, cannon[i].first, cannon[i].second+1,+0,+1);
+        solve_seen(i, cannon[i].first, cannon[i].second-1,+0,-1);
+        solve_seen(i, cannon[i].first+1, cannon[i].second,+1,+0);
+        solve_seen(i, cannon[i].first-1, cannon[i].second,-1,+0);
+    }
+}
+inline int getCannonFace(int initial_direction,int after_move){
+    int direction = (initial_direction+after_move)%4;
+    return direction;
+}
+
+int dist[101][101];
+int visit[101][101];
+int const INF=1023456789;
+int rr[]={+0,+0,+1,-1};
+int cc[]={+1,-1,+0,+0};
+
+
+inline bool isNice(int r,int c, int mv){
+    if(r<0||c<0||r>=row||c>=col)return false;
+    if( !(maze[r][c]=='.' || maze[r][c]=='S' || maze[r][c]=='G') ) return false;
+    vector<int> cannoids = canseen[r][c];
+    foR(i,0,SZ(cannoids)){
+        pair<int,int> cannon_position = cannon[cannoids[i]];
+        int initial_cannon_face = face[cannoids[i]];
+        int current_cannot_face = getCannonFace(initial_cannon_face, mv);
+        switch (current_cannot_face){
+            case 0: //UP
+                //Is I am down to cannon face
+                if(r<cannon_position.first){
+                    return false;
+                }
+                break;
+            case 1: //RT
+                if(c>cannon_position.second){
+                    return false;
+                }
+                break;
+            case 2: //DN
+                if(r>cannon_position.first){
+                    return false;
+                }
+                break;
+            case 3: //LF
+                if(c<cannon_position.second){
+                    return false;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    return true;
+}
+inline int bfs(int sr,int sc){
+    foR(i,0,row){
+        foR(j,0,col){
+            dist[i][j]=INF;
+            visit[i][j]=0;
+        }
+    }
+    queue< pair<int,pair<int,int> > >q;
+    q.push(make_pair(sr, make_pair(sc, 0)));
+    dist[sr][sc]=0;
+    visit[sr][sc]=1;
+    int mv;
+
+    while(q.empty()==false){
+        pair<int,pair<int,int> > parent = q.front();
+        sr=parent.first;
+        sc=parent.second.first;
+        mv=parent.second.second;
+        q.pop();
+        if(maze[sr][sc]=='G'){
+            return mv;
+        }
+
+        foR(i,0,4){
+            int r1 = sr+rr[i];
+            int c1 = sc+cc[i];
+            int m1 = mv+1;
+            //can I come here ?
+            if(isNice(r1, c1, m1)){
+                if( m1<dist[r1][c1]){
+                    //possibly nice
+                    q.push(make_pair(r1, make_pair(c1, m1)));
+                    dist[r1][c1]=m1;
+                    visit[r1][c1]+=1;
+                }else if(m1>=dist[r1][c1] && visit[r1][c1]<5){
+                    q.push(make_pair(r1, make_pair(c1, m1)));
+                    dist[r1][c1]=m1;
+                    visit[r1][c1]+=1;
+                }
+
+            }
+
+        }
+    }
+    return INF;
+
+}
+inline void proc() {
+    precalculate_path();
+    int retval = INF;
+    foR(i,0,row){
+        foR(j,0,col){
+            if(maze[i][j]=='S'){
+                retval = bfs(i,j);
+                if(retval>=INF){
+                    puts("impossible");
+                }else{
+                    cout<<retval<<"\n";
+                }
+                return ;
+            }
+        }
+    }
+}
+
+int main() {
+    int kase = 1;
+#if defined( xerxes_pc )
+    if (!freopen("in1", "r", stdin))
+        puts("error opening file in "), assert(0);
+    kase = 1;
+#endif
+    kase = fastIn<int>();
+    fo(i, kase) {
+        read();
+        cout<<"Case #"<<i+1<<": ";
+        proc();
+    }
+    return 0;
+}
+
+/**
+* C Lion by JetBrain
+*/

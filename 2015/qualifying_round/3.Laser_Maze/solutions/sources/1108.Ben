@@ -1,0 +1,164 @@
+import scala.collection.mutable
+import scala.io.Source
+import scala.collection.mutable.PriorityQueue
+
+object Solution {
+
+    type Vec2[T] = Array[Array[T]]
+    type Vec3[T] = Array[Array[Array[T]]]
+    type Board = Vec2[Tile]
+    
+    case class Test(src: (Int,Int), dst: (Int,Int), board: Board)
+    
+    sealed trait Direction {
+        def rotate = this match {
+            case Up => Right
+            case Right => Down
+            case Down => Left
+            case Left => Up
+        }
+    }
+    object Up extends Direction
+    object Down extends Direction
+    object Left extends Direction
+    object Right extends Direction
+
+    sealed trait Tile
+    object Empty extends Tile
+    case class Laser(dir: Direction) extends Tile
+    object Wall extends Tile
+
+    object Node {
+        def parse(c:Char): Tile = c match {
+            case '.' | 'S' | 'G' => Empty
+            case '>' => Laser(Right)
+            case '^' => Laser(Up)
+            case 'v' => Laser(Down)
+            case '<' => Laser(Left)
+            case '#' => Wall
+        }
+    }
+
+    def parse(lines: Iterator[String]): Test = {
+        val m :: n :: Nil = lines.next().split(" ").map(_.toInt).toList
+        val boardStr = lines.take(m).map(_.toCharArray).toArray
+        val board = boardStr.map(_.map(Node.parse))
+        val src = boardStr.zipWithIndex.flatMap {
+            case (row, i) => row.zipWithIndex.collectFirst {
+                case ('S', j) => (i, j)
+            }
+        }.head
+        val dst = boardStr.zipWithIndex.flatMap {
+            case (row, i) => row.zipWithIndex.collectFirst {
+                case ('G', j) => (i, j)
+            }
+        }.head
+        Test(src,dst,board)
+    }
+
+    def tickLasers(board: Board): Board = board.map(_.map{
+        case Laser(dir) => Laser(dir.rotate)
+        case other => other
+    })
+
+    def toMovable(board: Board): Vec2[Boolean] = {
+        val m = board.length
+        val n = board(0).length
+        val movable = Array.fill(m, n)(true)
+        for(i <- 0 until m; j <- 0 until n) {
+            board(i)(j) match {
+                case Laser(dir) =>
+                    movable(i).update(j, false)
+                    dir match {
+                        case Up =>
+                            var k = i-1
+                            while(k >= 0 && board(k)(j) != Wall && !board(k)(j).isInstanceOf[Laser]) {
+                                movable(k).update(j, false)
+                                k -= 1
+                            }
+                        case Down =>
+                            var k = i+1
+                            while(k < m && board(k)(j) != Wall && !board(k)(j).isInstanceOf[Laser]) {
+                                movable(k).update(j, false)
+                                k += 1
+                            }
+                        case Left =>
+                            var k = j-1
+                            while(k >= 0 && board(i)(k) != Wall && !board(i)(k).isInstanceOf[Laser]) {
+                                movable(i).update(k, false)
+                                k -= 1
+                            }
+                        case Right =>
+                            var k = j+1
+                            while(k < n && board(i)(k) != Wall && !board(i)(k).isInstanceOf[Laser]) {
+                                movable(i).update(k, false)
+                                k += 1
+                            }
+                    }
+                case Wall => movable(i).update(j, false)
+                case _ => 
+            }
+        }
+        movable
+    }
+
+    case class Node(t: Int, y: Int, x: Int)
+
+    def solve(test: Test): String = {
+        val m = test.board.length
+        val n = test.board(0).length
+        val Inf = m * n + 1
+        val boards = Iterator.iterate(test.board)(tickLasers).take(4).map(toMovable).toArray
+        val dists = Array.fill(4, m, n)(Inf)
+        val visited = Array.fill(4, m, n)(false)
+
+        val next = mutable.PriorityQueue()(Ordering.by[(Int, Node), Int](_._1).reverse)
+
+        def updateDist(pos: Node, dist: Int) = {
+            dists(pos.t)(pos.y).update(pos.x, dist)
+            next.enqueue((dist, pos))
+        }
+        
+        def getDist(pos: Node) = dists(pos.t)(pos.y)(pos.x)
+
+        def visit(pos: Node): Unit = {
+            visited(pos.t)(pos.y).update(pos.x, true)
+        }
+
+        def getNeighbors(pos: Node): List[Node] = {
+            val candidates = List(
+                Node((pos.t+1) % 4, pos.y-1, pos.x),
+                Node((pos.t+1) % 4, pos.y+1, pos.x),
+                Node((pos.t+1) % 4, pos.y, pos.x-1),
+                Node((pos.t+1) % 4, pos.y, pos.x+1))
+            candidates.filter(node => 
+                node.x >= 0 && node.x < n && 
+                node.y >= 0 && node.y < m && 
+                boards(node.t)(node.y)(node.x)
+            )
+        }
+
+        updateDist(Node(0, test.src._1, test.src._2), 0)
+        var cur: Node = null
+        while(next.nonEmpty) {
+            cur = next.dequeue()._2
+            if(!visited(cur.t)(cur.y)(cur.x)){
+                visit(cur)
+                for(neighbor <- getNeighbors(cur)) {
+                    updateDist(neighbor, Math.min(getDist(cur)+ 1, getDist(neighbor)))
+                }
+            }
+        }
+        val sol = List(0,1,2,3).map(dists(_)(test.dst._1)(test.dst._2)).min
+        if(sol == Inf) "impossible" else sol.toString
+    }
+
+    def main(args: Array[String]): Unit = {
+        val lines = Source.stdin.getLines
+        val T = lines.take(1).toList.head.toInt
+        for(t <- 1 to T){
+            println(s"Case #$t: ${solve(parse(lines))}")
+        }
+    }
+
+}

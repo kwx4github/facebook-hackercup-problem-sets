@@ -1,0 +1,141 @@
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <cstring>
+#include <queue>
+
+using namespace std;
+
+struct Pos{
+	int x, y, MapNum, step;
+	Pos(int a, int b, int c, int d) {
+		x = a; y = b; MapNum = c; step = d;
+	}
+};
+
+struct Loc{
+	int x, y, Dir;
+	Loc(int a, int b, int c) {
+		x = a; y = b; Dir = c;
+	}
+};
+
+const int D[4][2] = {{-1,0}, {0, 1}, {1, 0}, {0, -1}};
+
+void init(char Grid[110][110][4], int k, int dir, int x, int y, int n, int m) {
+	int i = x;
+	int j = y;
+	i += D[dir][0];
+	j += D[dir][1];
+	while (0 <= i && i < n && 0 <= j && j < m && Grid[i][j][k] != '#') {
+		Grid[i][j][k] = 'X';
+		i += D[dir][0];
+		j += D[dir][1];
+	}
+}
+
+int main() {
+	freopen("a.txt", "r", stdin);
+	freopen("b.txt", "w", stdout);
+	int T;
+	char Grid[110][110][4];
+	bool h[110][110][4];
+	queue<Pos> Q;
+	queue<Loc> Q2;
+	cin >> T;
+	int ans;
+	for(int Case = 0; Case < T; Case++) {
+		int n, m;
+		int GX, GY, SX, SY;
+		ans = 0;
+		while (!Q.empty()) Q.pop();
+		cin >> n >> m;
+		for(int i = 0; i < n; i++)
+			for(int j = 0; j < m; j++)
+				for(int k = 0; k < 4; k++)
+					h[i][j][k] = true;
+		for(int i = 0; i < n; i++)
+			for(int j = 0; j < m; j++) {
+				cin >> Grid[i][j][0];
+				if (Grid[i][j][0] == 'G') {
+					GX = i; GY = j;
+				}
+				if (Grid[i][j][0] == 'S') {
+					SX = i; SY = j;
+				}
+			}
+		for(int k2 = 1; k2 < 5; k2++) {
+			int k = k2 % 4;
+			for(int i = 0; i < n; i++)
+				for(int j = 0; j < m; j++) {
+					Grid[i][j][k] = Grid[i][j][k2 - 1];
+					if (Grid[i][j][k] == '^') {
+						Grid[i][j][k] = '>';
+						continue;
+					}
+					if (Grid[i][j][k] == '>') {
+						Grid[i][j][k] = 'v';
+						continue;
+					}
+					if (Grid[i][j][k] == 'v') {
+						Grid[i][j][k] = '<';
+						continue;
+					}
+					if (Grid[i][j][k] == '<') {
+						Grid[i][j][k] = '^';
+						continue;
+					}
+				}
+		}
+        for(int k = 0; k < 4; k++) {
+            for(int i = 0; i < n; i++)
+                for(int j = 0; j < m; j++) {
+                    if (Grid[i][j][k] == '^') Q2.push(Loc(i, j, 0));
+                    if (Grid[i][j][k] == '>') Q2.push(Loc(i, j, 1));
+                    if (Grid[i][j][k] == 'v') Q2.push(Loc(i, j, 2));
+                    if (Grid[i][j][k] == '<') Q2.push(Loc(i, j, 3));
+                }
+            while (!Q2.empty()) {
+                Loc temp = Q2.front();
+                Q2.pop();
+        //        cout << temp.x << " " << temp.y << " " << temp.Dir << endl;
+                init(Grid, k, temp.Dir, temp.x, temp.y, n, m);
+            }
+        }
+	//	for(int k = 0; k < 4; k++) {
+	//		for(int i = 0; i < n; i++) {
+	//			for(int j = 0; j < m; j++)
+	//				cout << Grid[i][j][k];
+	//			cout << endl;
+	//		}
+	//		cout << endl;
+	//	}
+		h[SX][SY][0] = false;
+		Q.push(Pos(SX, SY, 0, 0));
+		while (!Q.empty()) {
+			Pos now = Q.front();
+			Q.pop();
+			//cout << now.x << " " << now.y << " " << now.MapNum << " " << now.step << endl;
+			for(int k = 0; k < 4; k++) {
+				int nextX = now.x + D[k][0];
+				int nextY = now.y + D[k][1];
+			//	cout << nextX << " " << nextY << endl;
+				if (0 <= now.x + D[k][0] && now.x + D[k][0] < n && 0 <= now.y + D[k][1] && now.y + D[k][1] < m)
+					if (Grid[now.x + D[k][0]][now.y + D[k][1]][(now.MapNum + 1) % 4] != '#' &&
+						Grid[now.x + D[k][0]][now.y + D[k][1]][(now.MapNum + 1) % 4] != 'X')
+							if (h[now.x + D[k][0]][now.y + D[k][1]][(now.MapNum + 1) % 4]) {
+								if (now.x + D[k][0] == GX && now.y + D[k][1] == GY) {
+									ans = now.step + 1;
+									break;
+								}
+								h[now.x + D[k][0]][now.y + D[k][1]][(now.MapNum + 1) % 4] = false;
+								Q.push(Pos(now.x + D[k][0], now.y + D[k][1], (now.MapNum + 1) % 4, now.step + 1));
+							}
+			}
+			if (ans != 0) break;
+		}
+		cout << "Case #" << Case + 1 << ": ";
+		if (ans != 0) cout << ans << endl;
+		else cout << "impossible" << endl;
+	}
+}

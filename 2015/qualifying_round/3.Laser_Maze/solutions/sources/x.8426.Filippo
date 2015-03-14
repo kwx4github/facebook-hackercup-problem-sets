@@ -1,0 +1,121 @@
+#include <iostream>
+#include <fstream>
+#include <climits>
+
+using namespace std;
+
+bool laserized[4][100][100]; //[t][x][y] laserizzata (x,y) a t
+int dist[4][100][100]; //[t][x][y] toccato (x,y) a t
+char lab[101][101];
+int c1S, c2S;
+int c1G, c2G;
+int n,m;
+
+bool libero(char a)
+{
+	return a=='.' || a=='S' || a=='G';
+}
+
+void initLas(int px, int py, int type)
+{
+	
+	for(int i=0; i<4; i++)
+	{
+		int tx=px;
+		int ty=py;
+		switch(type)
+		{
+			case 0:
+			tx--;
+			while(tx>=0 && libero(lab[tx][ty]))
+				laserized[i][tx--][ty]=true;
+			break;
+			case 1:
+			ty++;
+			while(ty<n && libero(lab[tx][ty]))
+				laserized[i][tx][ty++]=true;
+			break;
+			case 2:
+			tx++;
+			while(tx<m && libero(lab[tx][ty]))
+				laserized[i][tx++][ty]=true;
+			break;
+			case 3:
+			ty--;
+			while(ty>=0 && libero(lab[tx][ty]))
+				laserized[i][tx][ty--]=true;
+			break;
+		}
+		type++;
+		type%=4;
+	}
+}
+
+void go(int t, int c1, int c2, int dis)
+{
+	if(c1<0 || c2<0 || c1>=m || c2>= n || !libero(lab[c1][c2]) || (laserized[t][c1][c2]&&dis!=0) || dist[t][c1][c2]<=dis)
+		return ;
+	dist[t][c1][c2]=dis;
+	t++;
+	t%=4;
+	go(t,c1+1,c2,dis+1);
+	go(t,c1-1,c2,dis+1);
+	go(t,c1,c2-1,dis+1);
+	go(t,c1,c2+1,dis+1);
+}
+
+int solve()
+{
+	for(int i=0; i<m; i++)
+		for(int j=0; j<n; j++)
+			for(int k=0; k<4; k++)
+			{
+				dist[k][i][j]=INT_MAX;
+				laserized[k][i][j]=false;
+			}
+	for(int i=0; i<m; i++)
+		for(int j=0; j<n; j++)
+		{
+			if(lab[i][j]=='S')
+			{
+				c1S=i;
+				c2S=j;
+			}
+			else if(lab[i][j]=='G')
+			{
+				c1G=i;
+				c2G=j;
+			}
+			else if(lab[i][j]=='^')
+				initLas(i,j,0);
+			else if(lab[i][j]=='>')
+				initLas(i,j,1);
+			else if(lab[i][j]=='v')
+				initLas(i,j,2);
+			else if(lab[i][j]=='<')
+				initLas(i,j,3);
+		}
+	//cout << laserized[0][0][0] << endl;
+	go(0,c1S,c2S,0);
+	return min(min(dist[0][c1G][c2G],dist[1][c1G][c2G]),min(dist[2][c1G][c2G],dist[3][c1G][c2G]));
+}
+
+int main()
+{
+	ifstream in("input.txt");
+	ofstream out("output.txt");
+	int t;
+	in >> t;
+	for(int i=0; i<t; i++)
+	{
+		in >> m >> n;
+		for(int i=0; i<m; i++)
+			in >> lab[i];
+		int ris = solve();
+		if(ris==INT_MAX)
+			out << "Case #" << i+1 << ": impossible" << endl;
+		else
+			out << "Case #" << i+1 << ": "<< ris << endl;
+	}
+	return 0;
+}

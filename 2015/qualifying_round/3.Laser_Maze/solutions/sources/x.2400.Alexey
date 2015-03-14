@@ -1,0 +1,216 @@
+import java.util.LinkedList;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.util.Collection;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Queue;
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("input.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("output.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		Reader in = new Reader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		laser solver = new laser();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class laser {
+    class Tuple {
+        int l, i, j;
+        Tuple(int z, int q, int w) {
+            l = z; i = q; j = w;
+        }
+    }
+    void copyrotate(char[][] a, char[][] b) {
+        for (int i = 0; i < b.length; i++) {
+            for (int j = 0; j < b[0].length; j++) {
+                switch (b[i][j]) {
+                    case '<':
+                        a[i][j] = '^';
+                        break;
+                    case '^':
+                        a[i][j] = '>';
+                        break;
+                    case '>':
+                        a[i][j] = 'v';
+                        break;
+                    case 'v':
+                        a[i][j] = '<';
+                        break;
+                    default:
+                        a[i][j] = b[i][j];
+                }
+            }
+        }
+    }
+    void firelaser(char[][] a) {
+        int m = a.length;
+        int n = a[0].length;
+        for (int i = 0; i < m; i++) {
+            boolean fire = false;
+            for (int j = 0; j < n; j++) {
+                switch (a[i][j]) {
+                    case '>':
+                        fire = true;
+                        break;
+                    case '.':
+                        if (fire) a[i][j] = '>';
+                        break;
+                    default:
+                        fire = false;
+                        break;
+                }
+            }
+        }
+        for (int i = 0; i < m; i++) {
+            boolean fire = false;
+            for (int j = n - 1; j >= 0; j--) {
+                switch (a[i][j]) {
+                    case '<':
+                        fire = true;
+                        break;
+                    case '.':
+                        if (fire) a[i][j] = '<';
+                        break;
+                    default:
+                        fire = false;
+                        break;
+                }
+            }
+        }
+        for (int j = 0; j < n; j++) {
+            boolean fire = false;
+            for (int i = 0; i < m; i++) {
+                switch (a[i][j]) {
+                    case 'v':
+                        fire = true;
+                        break;
+                    case '.':
+                        if (fire) a[i][j] = 'v';
+                        break;
+                    default:
+                        fire = false;
+                        break;
+                }
+            }
+        }
+        for (int j = 0; j < n; j++) {
+            boolean fire = false;
+            for (int i = m - 1; i >= 0; i--) {
+                switch (a[i][j]) {
+                    case '^':
+                        fire = true;
+                        break;
+                    case '.':
+                        if (fire) a[i][j] = '^';
+                        break;
+                    default:
+                        fire = false;
+                        break;
+                }
+            }
+        }
+    }
+    public void solve(int testNumber, Reader in, PrintWriter out) {
+        int m = in.nextInt();
+        int n = in.nextInt();
+        char[][][] map = new char[4][m][n];
+        int sm = -1, sn = -1;
+        int fm = -1, fn = -1;
+        for (int i = 0; i < m; i++) {
+            String s = in.next();
+            for (int j = 0; j < n; j++) {
+                switch (s.charAt(j)) {
+                    case 'S':
+                        sm = i; sn = j;
+                        map[0][i][j] = '.';
+                        break;
+                    case 'G':
+                        fm = i; fn = j;
+                        map[0][i][j] = '.';
+                        break;
+                    default:
+                        map[0][i][j] = s.charAt(j);
+                        break;
+                }
+            }
+        }
+        for (int i = 1; i < 4; i++)
+            copyrotate(map[i], map[i - 1]);
+        for (int i = 0; i < 4; i++)
+            firelaser(map[i]);
+        int[] dx = {0, 1, 0, -1};
+        int[] dy = {1, 0, -1, 0};
+        int[][][] ww = new int[4][m][n];
+        Queue<Tuple> que = new LinkedList<>();
+        que.add(new Tuple(0, sm, sn));
+        ww[0][sm][sn] = 1;
+        while (!que.isEmpty()) {
+            Tuple cur = que.poll();
+            int nl = (cur.l + 1) % 4;
+            for (int d = 0; d < 4; d++) {
+                int ni = cur.i + dx[d];
+                int nj = cur.j + dy[d];
+                if (ni >= 0 && ni < m && nj >= 0 && nj < n) {
+                    if (map[nl][ni][nj] == '.' && ww[nl][ni][nj] == 0) {
+                        ww[nl][ni][nj] = ww[cur.l][cur.i][cur.j] + 1;
+                        que.add(new Tuple(nl, ni, nj));
+                    }
+                }
+            }
+        }
+        int ans = 1000000;
+        for (int i = 0; i < 4; i++)
+            if (ww[i][fm][fn] != 0) ans = Math.min(ans, ww[i][fm][fn]);
+        ans--;
+        out.printf("Case #%d: %s\n", testNumber, ans == 999999 ? "impossible" : Integer.toString(ans));
+    }
+}
+
+class Reader {
+    private BufferedReader in;
+    private StringTokenizer st;
+    public Reader(InputStream is) {
+        in = new BufferedReader(new InputStreamReader(is));
+    }
+    public String next() {
+        try {
+            while (st == null || !st.hasMoreTokens()) {
+                st = new StringTokenizer(in.readLine());
+            }
+            return st.nextToken();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+}
+

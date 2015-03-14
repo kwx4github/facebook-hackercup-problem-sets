@@ -1,0 +1,218 @@
+package fhc15.q;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class C implements Runnable {
+	static final boolean PROD = true;
+	static final int NTHREAD = 1;
+	static String BASEPATH = "c:\\temp\\fhc\\";
+//	static String BASEPATH = "/home/ec2-user/";
+	
+	static String INPATH = BASEPATH + "laser_maze.txt";
+	static String OUTPATH = INPATH.substring(0, INPATH.length()-4) + new SimpleDateFormat("-HHmmss").format(new Date()) + ".out";
+	
+	static String INPUT = "";
+	
+	int m, n;
+	char[][] map;
+	
+	public void read() // not parallelized
+	{
+		m = ni(); n = ni();
+		map = new char[m][];
+		for(int i = 0;i < m;i++){
+			map[i] = in.next().toCharArray();
+		}
+	}
+	
+	public void process() // parallelized!
+	{
+		int sr = -1, sc = -1;
+		int gr = -1, gc = -1;
+		int[] dr = { 1, 0, -1, 0 };
+		int[] dc = { 0, -1, 0, 1 };
+		
+		for(int i = 0;i < m;i++){
+			for(int j = 0;j < n;j++){
+				if(map[i][j] == 'S'){
+					sr =  i; sc = j;
+					map[i][j] = '.';
+				}
+				if(map[i][j] == 'G'){
+					gr =  i; gc = j;
+					map[i][j] = '.';
+				}
+			}
+		}
+		
+		String dir = "v<^>";
+		boolean[][][] ng = new boolean[4][m][n];
+		for(int k = 0;k < 4;k++){
+			for(int i = 0;i < m;i++){
+				for(int j = 0;j < n;j++){
+					if(map[i][j] == '#')ng[k][i][j] = true;
+					int ind = dir.indexOf(map[i][j]);
+					if(ind >= 0){
+						ind = ind+k&3;
+						ng[k][i][j] = true;
+						int r = i+dr[ind], c = j+dc[ind];
+						while(r >= 0 && r < m && c >= 0 && c < n && map[r][c] == '.'){
+							ng[k][r][c] = true;
+							r += dr[ind];
+							c += dc[ind];
+						}
+					}
+				}
+			}
+		}
+		
+		int[][][] d = new int[m][n][4];
+		for(int i = 0;i < m;i++){
+			for(int j = 0;j < n;j++){
+				Arrays.fill(d[i][j], 999999999);
+			}
+		}
+		d[sr][sc][0] = 0;
+		Queue<int[]> q = new ArrayDeque<int[]>();
+		q.add(new int[]{sr, sc, 0});
+		while(!q.isEmpty()){
+			int[] cur = q.poll();
+			int r = cur[0], c = cur[1], p = cur[2];
+			int t = d[r][c][p];
+			if(r == gr && c == gc){
+				out.println(t);
+				return;
+			}
+			for(int k = 0;k < 4;k++){
+				int nr = r + dr[k], nc = c + dc[k];
+				if(nr >= 0 && nr < m && nc >= 0 && nc < n && map[nr][nc] == '.' && !ng[p+1&3][nr][nc]
+						&& d[nr][nc][p+1&3] > t + 1){
+					d[nr][nc][p+1&3] = t + 1;
+					q.add(new int[]{nr, nc, p+1&3});
+				}
+			}
+		}
+		out.println("impossible");
+	}
+	
+	public static void preprocess()
+	{
+	}
+	
+	Scanner in;
+	PrintWriter out;
+	StringWriter sw;
+	int cas;
+	static List<Status> running = new ArrayList<Status>();
+	
+	@Override
+	public void run()
+	{
+		long S = System.nanoTime();
+		// register
+		synchronized(running){
+			Status st = new Status();
+			st.id = cas;
+			st.S = S;
+			running.add(st);
+		}
+		process();
+		// deregister
+		synchronized(running){
+			for(Status st : running){
+				if(st.id == cas){
+					running.remove(st);
+					break;
+				}
+			}
+		}
+		long G = System.nanoTime();
+		
+		if(PROD){
+			System.err.println("case " + cas + " solved. [" + (G-S)/1000000 + "ms]");
+			synchronized(running){
+				StringBuilder sb = new StringBuilder("running : ");
+				for(Status st : running){
+					sb.append(st.id + ":" + (G-st.S)/1000000 + "ms, ");
+				}
+				System.err.println(sb);
+			}
+		}
+	}
+	
+	private static class Status {
+		public int id;
+		public long S;
+	}
+	
+	public C(int cas, Scanner in)
+	{
+		this.cas = cas;
+		this.in = in;
+		this.sw = new StringWriter();
+		this.out = new PrintWriter(this.sw);
+	}
+	
+	private int ni() { return Integer.parseInt(in.next()); }
+	private long nl() { return Long.parseLong(in.next()); }
+	private int[] na(int n) { int[] a = new int[n]; for(int i = 0;i < n;i++)a[i] = ni(); return a; }
+	private double nd() { return Double.parseDouble(in.next()); }
+	private void tr(Object... o) { if(!PROD)System.out.println(Arrays.deepToString(o)); }
+	
+	public static void main(String[] args) throws Exception
+	{
+		long start = System.nanoTime();
+		
+		ExecutorService es = Executors.newFixedThreadPool(NTHREAD);
+		CompletionService<C> cs = new ExecutorCompletionService<C>(es);
+		
+		if(PROD){
+			System.out.println("INPATH : " + INPATH);
+			System.out.println("OUTPATH : " + OUTPATH);
+		}
+		Scanner in = PROD ? new Scanner(new File(INPATH)) : new Scanner(INPUT);
+		PrintWriter out = PROD ? new PrintWriter(new File(OUTPATH)) : new PrintWriter(System.out);
+		int n = in.nextInt();
+		in.nextLine();
+		
+		preprocess();
+		for(int i = 0;i < n;i++){
+			C runner = new C(i+1, in);
+			runner.read();
+			cs.submit(runner, runner);
+		}
+		es.shutdown();
+		String[] outs = new String[n];
+		for(int i = 0;i < n;i++){
+			C runner = cs.take().get(); // not ordered
+			runner.out.flush();
+			runner.out.close();
+			outs[runner.cas-1] = runner.sw.toString();
+		}
+		for(int i = 0;i < n;i++){
+			out.printf("Case #%d: ", i+1);
+			out.append(outs[i]);
+			out.flush();
+		}
+		
+		long end = System.nanoTime();
+		System.out.println((end - start)/1000000 + "ms");
+		if(PROD){
+			System.out.println("INPATH : " + INPATH);
+			System.out.println("OUTPATH : " + OUTPATH);
+		}
+	}
+}

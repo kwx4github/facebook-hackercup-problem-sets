@@ -1,0 +1,57 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
+import Data.Function.Memoize
+import Test.QuickCheck
+import Debug.Trace
+
+main :: IO ()
+main = interact
+       $ unlines . map toCase . zip [1..]
+       . map solve
+       . toTasks
+       . drop 1 . lines
+
+data Task = Task (Int, Int, Int) [(Int, Int, Int)]
+          deriving Show
+
+toCase :: (Int, Bool) -> String
+toCase (n, b) = "Case #" ++ show n ++ ": " ++
+                (if b then "yes" else "no")
+
+-- chop n [] = []
+-- chop n xs = take n xs : chop n (drop n xs)
+
+toTasks :: [String] -> [Task]
+toTasks [] = []
+toTasks (goal:n:rest) =
+  let
+    readTuple [p', c', f'] = (read p', read c', read f')
+    goal' = readTuple $ words goal
+    n' = read n :: Int
+    foods = map (readTuple . words) $ take n' rest :: [(Int, Int, Int)]
+  in
+   Task goal' foods : toTasks (drop n' rest)
+
+solve :: Task -> Bool
+solve (Task goal foods) = ssp foods goal
+
+ssp :: [(Int, Int, Int)] -> (Int, Int, Int) -> Bool
+ssp foods goal = (memoize2 go) (length foods - 1) goal
+  where n = length foods
+        (a, b, c) `minus` (d, e, f) = (a - d, b - e, c - f)
+        go 0 s' = foods !! 0 == s'
+        go n s' = go n' s' || x == s' || go n' (s' `minus` x)
+          where x = foods !! n
+                n' = n - 1
+
+-- inputs = [ 1, 3, 2, 5, 1, 0, 3, 20, 99
+--          , 12, 14, 15, 11, 23, 31, 32
+--          , 100, 101, 200, 1, 1, 1, 1] :: [Int]
+
+-- q xs s = (memoize2 go) (length xs - 1) s
+--   where n = length xs
+--         go :: Int -> Int -> Bool
+--         go 0 s' = xs !! 0 == s'
+--         go n s' = go n' s' || x == s' || go n' (s' - x)
+--           where x = xs !! n
+--                 n' = n - 1

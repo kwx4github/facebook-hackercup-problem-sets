@@ -1,0 +1,311 @@
+#include<iostream>
+#include<fstream>
+#include<string>
+#include<queue>
+
+using namespace std;
+
+struct Location{
+	int x = -1;
+	int y = -1;
+};
+
+struct Cell{
+	int steps;	// 몇번 걸렸는지
+	bool turret[4];	// 레이저가 오는지
+	// true이면 레이저가 오는거
+	char type;
+};
+
+class Maze{
+public:
+	Cell **cells;
+	int hight, width;
+	Location start, goal;
+
+	queue<Location> myqueue;
+
+	Maze(int hight, int width, char** maze){
+
+		this->hight = hight;
+		this->width = width;
+
+		cells = new Cell*[hight];
+		for (int i = 0; i < hight; i++){
+			cells[i] = new Cell[width];
+			for (int j = 0; j < width; j++)
+				cells[i][j].type = maze[i][j];
+		}
+		initiateCellsValue();
+	}
+	~Maze(){
+		for (int i = 0; i < hight; i++)
+			delete[] cells[i];
+		delete[] cells;
+	}
+	void initiateCellsValue(){
+		Location temp;
+		for (int i = 0; i < hight; i++){
+			for (int j = 0; j < width; j++){
+				switch (cells[i][j].type){
+				case 'G':
+					goal.x = j; goal.y = i;
+				case '.':
+					cells[i][j].steps = INT_MAX;
+					break;
+				case 'S':
+					start.x = j; start.y = i;
+					cells[i][j].steps = 0;
+					break;
+				case 'v':
+				case '^':
+				case '>':
+				case '<':
+					temp.x = j;
+					temp.y = i;
+					setTurret(temp, cells[i][j].type);
+				default:
+					cells[i][j].steps = -1;
+				}
+			}
+		}
+	}
+
+	void setTurret(Location l, char type){ // turret 돌아가는거에 맞춰서
+		int n;
+		int x = l.x, y = l.y;
+		switch (type){
+		case '^':
+			n = 0;
+			break;
+		case '>':
+			n = 3;
+			break;
+		case 'v':
+			n = 2;
+			break;
+		case '<':
+			n = 1;
+			break;
+		}
+		y--;
+		while (y >= 0 && (cells[y][x].type == '.'
+			|| cells[y][x].type == 'S'
+			|| cells[y][x].type == 'G')){	// fire toward up
+			cells[y][x].turret[n] = false;
+			y--;
+		}
+		y = l.y;
+		x++;
+		n = (n + 1) % 4;
+		while (x < width && (cells[y][x].type == '.'
+			|| cells[y][x].type == 'S'
+			|| cells[y][x].type == 'G')){	// fire toward right
+			cells[y][x].turret[n] = false;
+			x++;
+		}
+		x = l.x;
+		y++;
+		n = (n + 1) % 4;
+		while (y < hight && (cells[y][x].type == '.'
+			|| cells[y][x].type == 'S'
+			|| cells[y][x].type == 'G')){	// down
+			cells[y][x].turret[n] = false;
+			y++;
+		}
+		y = l.y;
+		x--;
+		n = (n + 1) % 4;
+		while (x >= 0 && (cells[y][x].type == '.'
+			|| cells[y][x].type == 'S'
+			|| cells[y][x].type == 'G')){	// left
+			cells[y][x].turret[n] = false;
+			x--;
+		}
+	}
+
+	Location pop(){
+		Location temp = myqueue.front();
+		myqueue.pop();
+		return temp;
+	}
+
+	void pushFromHere2(Location here, int steps){
+		Location l, r, u, d; // left, right, up, downward
+		l = r = u = d = here;
+		steps++;
+		l.x--;	r.x++;	u.y--;	d.y++;	// set locations
+		bool p = turretAvoidTest(here, steps);
+			
+		if (l.x >= 0){
+			if (stepTest(l, steps)) {
+				if (turretTest(l, steps)){
+					cells[l.y][l.x].steps = steps;
+					myqueue.push(l);
+				}
+				else if(p && stepTest(l, steps + 2)){
+					cells[l.y][l.x].steps = steps + 2;
+					myqueue.push(l);
+				}
+			}
+		}
+		if (r.x < width){
+			if (stepTest(r, steps)) {
+				if (turretTest(r, steps)){
+					cells[r.y][r.x].steps = steps;
+					myqueue.push(r);
+				}
+				else if (p && stepTest(r, steps + 2)){
+					cells[r.y][r.x].steps = steps + 2;
+					myqueue.push(r);
+				}
+			}
+		}
+		if (u.y >= 0){
+			if (stepTest(u, steps)) {
+				if (turretTest(u, steps)){
+					cells[u.y][u.x].steps = steps;
+					myqueue.push(u);
+				}
+				else if (p && stepTest(u, steps + 2)){
+					cells[u.y][u.x].steps = steps + 2;
+					myqueue.push(u);
+				}
+			}
+		}
+		if (d.y < hight){
+			if (stepTest(d, steps)) {
+				if (turretTest(d, steps)){
+					cells[d.y][d.x].steps = steps;
+					myqueue.push(d);
+				}
+				else if (p && stepTest(d, steps + 2)){
+					cells[d.y][d.x].steps = steps + 2;
+					myqueue.push(d);
+				}
+			}
+		}
+	}
+
+	bool test(Location l, int steps){
+		if (cells[l.y][l.x].steps > steps &&
+			cells[l.y][l.x].turret[steps % 4])
+			return true;
+		return false;
+	}
+
+	bool stepTest(Location l, int steps){
+		if (cells[l.y][l.x].steps > steps)
+			return true;
+		return false;
+	}
+
+	bool turretTest(Location l, int steps){
+		return cells[l.y][l.x].turret[steps % 4];
+	}
+
+	bool turretAvoidTest(Location here, int steps){
+		Location l, r, u, d; // left, right, up, downward
+		l = r = u = d = here;
+		l.x--;	r.x++;	u.y--;	d.y++;	// set locations
+		bool can = false;
+	
+		if (l.x >= 0 && turretTest(l, steps))can = true;		
+		if (r.x < width && turretTest(r, steps)) can = true;		
+		if (u.y >= 0 && turretTest(u, steps)) can = true;		
+		if (d.y < hight && turretTest(d, steps)) can = true;
+		
+		return can;
+	}
+
+	void turretTest(Location cl, Location next, int steps){
+		Location l, r, u, d; // left, right, up, downward
+		l = r = u = d = cl;
+		l.x--;	r.x++;	u.y--;	d.y++;	// set locations
+		if (cells[next.y][next.x].steps < steps) return;
+		if (l.x >= 0){
+			if (test(l, steps)) {
+				cells[l.y][l.x].steps = steps;
+				myqueue.push(l);
+			}
+		}
+		if (r.x < width){
+			if (test(r, steps)) {
+				cells[r.y][r.x].steps = steps;
+				myqueue.push(r);
+			}
+		}
+		if (u.y >= 0){
+			if (test(u, steps)) {
+				cells[u.y][u.x].steps = steps;
+				myqueue.push(u);
+			}
+		}
+		if (d.y < hight){
+			if (test(d, steps)) {
+				cells[d.y][d.x].steps = steps;
+				myqueue.push(d);
+			}
+		}
+	}
+
+	int compute(){
+		myqueue.push(start);
+		Location cl;// current
+		while (!myqueue.empty()){
+			cl = pop();
+			pushFromHere2(cl, cells[cl.y][cl.x].steps);
+		}
+		if (cells[goal.y][goal.x].steps != INT_MAX) return cells[goal.y][goal.x].steps;
+		else return -1;
+	}
+	void avoid(Location cl){
+
+	}
+};
+
+Location findLocation(char** maze, int M, int N, char target){
+	Location sp;	// starting point
+	for (int i = 0; i < M; i++){
+		for (int j = 0; j < N; j++){
+			if (maze[i][j] == target) {
+				sp.x = j;
+				sp.y = i;
+				return sp;
+			}
+		}
+	}
+	return sp;
+}
+
+void prog(){
+	ifstream input("laser_maze.txt");
+	ofstream output("output.txt");
+	int T; // case number
+	int M, N;
+	input >> T;
+	char** maze;
+	int steps;
+	for (int i = 0; i < T; i++){
+		input >> M >> N;
+		maze = new char*[M];
+		for (int j = 0; j < M; j++) {
+			maze[j] = new char[N + 1];
+			input >> maze[j];
+		}
+		Maze m(M, N, maze);
+		steps = m.compute();
+		output << "Case #" << i + 1 << ": ";
+		if (steps == -1) output << "impossible" << endl;
+		else output << steps << endl;
+
+		for (int j = 0; j < M; j++)
+			delete[] maze[j];
+		delete[] maze;
+	}
+
+}
+int main(){
+	prog();
+	return 0;
+}

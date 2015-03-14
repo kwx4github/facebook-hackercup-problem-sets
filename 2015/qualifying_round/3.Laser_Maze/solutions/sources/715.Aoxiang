@@ -1,0 +1,118 @@
+#include <cstdio>
+#include <queue>
+#include <vector>
+#include <algorithm>
+#include <cstdlib>
+
+using namespace std;
+
+const int N = 100 + 10;
+const int d[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+char a[N][N];
+int visit[N][N][4];
+int sx, sy, tx, ty;
+
+struct Node {
+  int x, y;
+  int dir;
+  Node(int x, int y, int dir): x(x), y(y), dir(dir) {}
+};
+
+vector<Node> A;
+int sum[N][N];
+int n, m;
+
+bool hit(int x, int y, int delta) {
+  // printf("miao: %d %d %d\n", x, y, delta);
+  for (Node turret : A) {
+    int dir = (turret.dir + delta) % 4;
+    int len = max(abs(x - turret.x), abs(y - turret.y));
+    // printf("turrent: %d %d %d\n", turret.x, turret.y, turret.dir);
+    // printf("aim: %d %d\n", dir, len);
+    if (!(turret.x + d[dir][0] * len == x
+          && turret.y + d[dir][1] * len == y)) continue;
+    int px = x, py = y;
+    int xx = turret.x, yy = turret.y;
+    if (px * m + py > xx * m + yy) {
+      swap(px, xx);
+      swap(py, yy);
+    }
+    // printf("%d %d %d %d\n", px, py, xx, yy);
+    if (sum[xx + 1][yy + 1] - sum[xx + 1][py] - sum[px][yy + 1] + sum[px][py] > 1) continue;
+    return true;
+  }
+  // printf("miao not hit: %d %d %d\n", x, y, delta);
+  return false;
+}
+
+int main() {
+  freopen("C.in", "r", stdin);
+  freopen("C.out", "w", stdout);
+  int cas;
+  scanf("%d", &cas);
+  for (int num = 1; num <= cas; ++num) {
+    scanf("%d%d", &n, &m);
+    for (int i = 0; i < n; ++i) {
+      scanf("%s", a[i]);
+    }
+    A.clear();
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        if (a[i][j] == 'S') {
+          a[i][j] = '.';
+          sx = i;
+          sy = j;
+        } else if (a[i][j] == 'G') {
+          a[i][j] = '.';
+          tx = i;
+          ty = j;
+        } else if (a[i][j] == '^') {
+          A.push_back(Node(i, j, 0));
+        } else if (a[i][j] == '>') {
+          A.push_back(Node(i, j, 1));
+        } else if (a[i][j] == 'v') {
+          A.push_back(Node(i, j, 2));
+        } else if (a[i][j] == '<') {
+          A.push_back(Node(i, j, 3));
+        }
+      }
+    }
+    memset(sum, 0, sizeof(sum));
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        sum[i + 1][j + 1] = sum[i][j + 1] + sum[i + 1][j] - sum[i][j] + (a[i][j] != '.');
+      }
+    }
+    memset(visit, 255, sizeof(visit));
+    queue<Node> Q;
+    Q.push(Node(sx, sy, 0));
+    visit[sx][sy][0] = 0;
+    int ret = -1;
+    while (!Q.empty()) {
+      Node cur = Q.front();
+      if (cur.x == tx && cur.y == ty) {
+        ret = visit[cur.x][cur.y][cur.dir];
+        break;
+      }
+      Q.pop();
+      for (int k = 0; k < 4; ++k) {
+        int x = cur.x + d[k][0];
+        int y = cur.y + d[k][1];
+        if (x < 0 || x >= n || y < 0 || y >= m) continue;
+        if (a[x][y] != '.') continue;
+        int dir = (cur.dir + 1) % 4;
+        if (visit[x][y][dir] >= 0) continue;
+        if (hit(x, y, dir)) continue;
+        Q.push(Node(x, y, dir));
+        visit[x][y][dir] = visit[cur.x][cur.y][cur.dir] + 1;
+      }
+    }
+    printf("Case #%d: ", num);
+    if (ret >= 0) {
+      printf("%d\n", ret);
+    } else {
+      puts("impossible");
+    }
+  }
+  return 0;
+}

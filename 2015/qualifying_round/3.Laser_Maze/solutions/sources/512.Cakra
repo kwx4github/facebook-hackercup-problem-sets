@@ -1,0 +1,165 @@
+#include<bits/stdc++.h>
+ 
+#define INF 1000000000
+#define EPS 1e-9
+#define sz(c) (int) (c).size()
+#define all(c) (c).begin(), (c).end()
+#define tr(c, i) for(typeof((c).begin()) i = (c).begin(); i != (c).end(); ++i)
+#define uniq(c) sort(all(c)); (c).resize(unique(all(c)) - (c).begin())
+#define lobo(c, x) (int) (lower_bound(all(c), (x)) - (c).begin())
+#define upbo(c, x) (int) (upper_bound(all(c), (x)) - (c).begin())
+ 
+#define pb push_back
+#define mp make_pair
+#define fi first
+#define se second
+ 
+using namespace std;
+
+#ifdef DEBUG   
+    #define wrap(a) a
+    #define debug(args...) { vector<string> _v = split(#args, ','); err(_v.begin(), args); }
+
+    vector<string> split(const string& s, char c) {
+        vector<string> v;
+        stringstream ss(s);
+        string x;
+        while (getline(ss, x, c))
+            v.emplace_back(x);
+        return move(v);
+    }
+
+    void err(vector<string>::iterator it) { cout << endl; }
+    template<typename T, typename... Args>
+    void err(vector<string>::iterator it, T a, Args... args) {
+        cerr << it -> substr((*it)[0] == ' ', it -> length()) << " = " << a << ", ";
+        err(++it, args...);
+    }
+#else
+    #define debug(args...) 
+    #define wrap(a) 
+#endif
+typedef long long ll;
+typedef pair <int, int> ii;
+
+#define OBS_NONE 4
+#define OBS_WALL -1
+#define NORTH 0
+#define EAST 1
+#define SOUTH 2
+#define WEST 3
+
+#define NDIR 4
+const int dr[] = {-1, 0, 1, 0};
+const int dc[] = {0, 1, 0, -1};
+int obs[105][105];
+int dist[105][105][4];
+
+bool valid_coor(int r, int c, int num_row, int num_col) {
+    if ( r < 0 || r >= num_row || c < 0 || c >= num_col ) return false;
+    return true;
+}
+bool valid(int r, int c, int t4, int num_row, int num_col) {
+    if ( !valid_coor(r, c, num_row, num_col) ) return false;
+    if ( obs[r][c] == OBS_WALL ) return false;
+    if ( dist[r][c][t4] != -1 ) return false;
+    
+    for ( int dir = 0; dir < NDIR; ++dir ) {
+        int nr = r, nc = c;
+        for ( ; 
+            valid_coor(nr, nc, num_row, num_col) && obs[nr][nc] == OBS_NONE;
+            nr += dr[dir], nc += dc[dir] ); 
+
+        if ( valid_coor(nr, nc, num_row, num_col) && obs[nr][nc] != OBS_WALL ) {
+            if ( (obs[nr][nc] + t4)%4 == (dir + 2)%4 ) return false;
+        }
+    }
+    return true;
+}
+
+int main() {
+    int ntc;
+    scanf("%d", &ntc);
+
+    for ( int tc = 0; tc < ntc; ++tc ) {
+        int num_row, num_col;
+        scanf("%d%d", &num_row, &num_col);
+        debug(num_row, num_col);
+
+        char smaze[105][105];
+        for ( int r = 0; r < num_row; ++r ) 
+            scanf("%s", smaze[r]);
+
+        for ( int r = 0; r < num_row; ++r ) 
+            for ( int c = 0; c < num_col; ++c ) {
+                obs[r][c] = OBS_NONE;
+            }
+
+        int sr, sc, er, ec;
+        for ( int r = 0; r < num_row; ++r ) 
+            for ( int c = 0; c < num_col; ++c ) {
+                char cell = smaze[r][c];
+                if ( cell == 'S' ) {
+                    sr = r; sc = c;
+                }
+                else if ( cell == 'G' ) {
+                    er = r; ec = c;
+                }
+                else if ( cell == '#' ) {
+                    obs[r][c] = OBS_WALL;
+                }
+                else if ( cell != '.' ) {
+                    if ( cell == '^' ) 
+                        obs[r][c] = NORTH;
+                    else if ( cell == '>' ) 
+                        obs[r][c] = EAST;
+                    else if ( cell == 'v' ) 
+                        obs[r][c] = SOUTH;
+                    else if ( cell == '<' ) 
+                        obs[r][c] = WEST;
+                }
+            }
+        //for ( int r = 0; r < num_row; ++r ) { for ( int c = 0; c < num_col; ++c ) printf("[%d]", obs[r][c]); puts(""); }
+
+        memset(dist, -1, sizeof(dist));
+
+        typedef tuple<int, int, int> State;
+        queue<State> q;
+        q.emplace(sr, sc, 0);
+        dist[sr][sc][0] = 0;
+        while ( !q.empty() ) {
+            int r, c, t4;
+            tie(r, c, t4) = q.front(); q.pop();
+            //debug(r, c, t4, dist[r][c][t4]);
+
+            if ( r == er && c == ec ) {
+                break;
+            }
+
+            for ( int dir = 0; dir < NDIR; ++dir ) {
+                int nr = r + dr[dir];
+                int nc = c + dc[dir];
+                int nt4 = (t4 + 1)%4;
+                //debug("neigh", nr, nc, nt4);
+                
+                if ( !valid(nr, nc, nt4, num_row, num_col) ) continue;
+
+                dist[nr][nc][nt4] = dist[r][c][t4] + 1;
+                q.emplace(nr, nc, nt4);
+            }
+        }
+
+        int ans = INF;
+        for ( int dir = 0; dir < NDIR; ++dir ) {
+            int dis = dist[er][ec][dir];
+            if ( dis != -1 ) 
+                ans = min(ans, dist[er][ec][dir]);
+        }
+        
+        printf("Case #%d: ", tc+1);
+        if ( ans == INF ) printf("impossible\n");
+        else printf("%d\n", ans);
+    }
+
+    return 0;
+}

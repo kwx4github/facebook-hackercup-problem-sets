@@ -1,0 +1,341 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Solver.Ex;
+using Debug = System.Diagnostics.Debug;
+using Watch = System.Diagnostics.Stopwatch;
+using StringBuilder = System.Text.StringBuilder;
+using System.Numerics;
+namespace Solver
+{
+    public class Solver
+    {
+        public void Solve()
+        {
+            var T = sc.Integer();
+            for (int _ = 1; _ <= T; _++)
+            {
+                var r = sc.Integer();
+                var c = sc.Integer();
+                var map = sc.Char(r, c);
+                var enable = new bool[r, c, 4];
+                var s = -1;
+                var g = -1;
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                    {
+                        switch (map[i][j])
+                        {
+                            case '.':
+                            case'S':
+                            case'G':
+                                for (int k = 0; k < 4; k++)
+                                    enable[i, j, k] = true;
+                                if (map[i][j] == 'S') s = i * c + j;
+                                if (map[i][j] == 'G') g = i * c + j;
+                                break;
+                        }
+                    }
+                const string laser ="<^>v";
+                int[] dy = { -1, 0, 1, 0 };
+                int[] dx = { 0, 1, 0, -1 };
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                    {
+                        int t = -1;
+                        for (int k = 0; k < 4; k++)
+                            if (map[i][j] == laser[k]) t = k;
+                        if (t == -1) continue;
+                        for (int k = 0; k < 4; k++)
+                        {
+                            var x = i;
+                            var y = j;
+                            var u = (k + t) % 4;
+                            while (true)
+                            {
+                                x += dx[u];
+                                y += dy[u];
+                                if (x < 0 || x >= r || y < 0 || y >= c) break;
+                                if (map[x][y] == '#') break;
+                                if (laser.Contains(map[x][y])) break;
+                                enable[x, y, k] = false;
+                            }
+                        }
+                    }
+                var dist = new int[r, c, 4];
+                for (int i = 0; i < r; i++)
+                    for (int j = 0; j < c; j++)
+                        for (int k = 0; k < 4; k++)
+                            dist[i, j, k] = int.MaxValue;
+                dist[s / c, s % c, 0] = 0;
+                var pq = new Queue<Trinity<int>>();
+                pq.Enqueue(new Trinity<int>(s / c, s % c, 0));
+                while (pq.Any())
+                {
+                    var p = pq.Dequeue();
+                    if (dist[p.I, p.J, p.K % 4] < p.K) continue;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        var nx = p.I + dx[i];
+                        var ny = p.J + dy[i];
+                        var nt = p.K + 1;
+                        if (nx < 0 || nx >= r || ny < 0 || ny >= c) continue;
+                        if (!enable[nx, ny, nt % 4]) continue;
+                        if (dist[nx, ny, nt % 4] > nt)
+                        {
+                            dist[nx, ny, nt % 4] = nt;
+                            pq.Enqueue(new Trinity<int>(nx, ny, nt));
+                        }
+                    }
+                }
+                var min=int.MaxValue;
+                for (int i = 0; i < 4; i++)
+                    min = Math.Min(min, dist[g / c, g % c, i]);
+                var ans = min == int.MaxValue ? "impossible" : min.ToString();
+                IO.Printer.Out.WriteLine("Case #{0}: {1}", _, ans);
+
+            }
+        }
+       
+        internal IO.StreamScanner sc;
+        static T[] Enumerate<T>(int n, Func<int, T> f) { var a = new T[n]; for (int i = 0; i < n; i++) a[i] = f(i); return a; }
+    }
+
+    #region Main and Settings
+    static class Program
+    {
+        static void Main(string[] arg)
+        {
+#if DEBUG
+            var errStream = new System.IO.FileStream(@"..\..\dbg.out", System.IO.FileMode.Create, System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite);
+            Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(errStream, "debugStream"));
+            Debug.AutoFlush = false;
+            var sw = new Watch(); sw.Start();
+            IO.Printer.Out.AutoFlush = true;
+            try
+            {
+#endif
+
+            var solver = new Solver();
+            solver.sc = new IO.StreamScanner(Console.OpenStandardInput());
+            solver.Solve();
+            IO.Printer.Out.Flush();
+#if DEBUG
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(ex.Message);
+                Console.Error.WriteLine(ex.StackTrace);
+            }
+            finally
+            {
+                sw.Stop();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Error.WriteLine("Time:{0}ms", sw.ElapsedMilliseconds);
+                Debug.Close();
+                System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
+            }
+#endif
+        }
+
+
+    }
+    #endregion
+}
+
+#region IO Helper
+namespace Solver.IO
+{
+    public class Printer : System.IO.StreamWriter
+    {
+        static Printer()
+        {
+            Out = new Printer(Console.OpenStandardOutput()) { AutoFlush = false };
+#if DEBUG
+            Error = new Printer(Console.OpenStandardError()) { AutoFlush = true };
+#else
+            Error = new Printer(System.IO.Stream.Null) { AutoFlush = false };
+#endif
+        }
+        public static Printer Out { get; set; }
+        public static Printer Error { get; set; }
+        public override IFormatProvider FormatProvider { get { return System.Globalization.CultureInfo.InvariantCulture; } }
+        public Printer(System.IO.Stream stream) : base(stream, new System.Text.UTF8Encoding(false, true)) { }
+        public Printer(System.IO.Stream stream, System.Text.Encoding encoding) : base(stream, encoding) { }
+        public void Write<T>(string format, IEnumerable<T> source) { base.Write(format, source.OfType<object>().ToArray()); }
+        public void WriteLine<T>(string format, IEnumerable<T> source) { base.WriteLine(format, source.OfType<object>().ToArray()); }
+    }
+    public class StreamScanner
+    {
+        public StreamScanner(System.IO.Stream stream) { iStream = stream; }
+        private readonly System.IO.Stream iStream;
+        private readonly byte[] buf = new byte[1024];
+        private int len, ptr;
+        private bool eof = false;
+        public bool IsEndOfStream { get { return eof; } }
+        const byte lb = 33, ub = 126, el = 10, cr = 13;
+        public byte read()
+        {
+            if (eof) throw new System.IO.EndOfStreamException();
+            if (ptr >= len) { ptr = 0; if ((len = iStream.Read(buf, 0, 1024)) <= 0) { eof = true; return 0; } }
+            return buf[ptr++];
+        }
+        public char Char() { byte b = 0; do b = read(); while (b < lb || ub < b); return (char)b; }
+        public char[] Char(int n) { var a = new char[n]; for (int i = 0; i < n; i++) a[i] = Char(); return a; }
+        public char[][] Char(int n, int m) { var a = new char[n][]; for (int i = 0; i < n; i++) a[i] = Char(m); return a; }
+        public string Scan()
+        {
+            if (eof) throw new System.IO.EndOfStreamException();
+            StringBuilder sb = null;
+            var enc = System.Text.UTF8Encoding.Default;
+            do
+            {
+                for (; ptr < len && (buf[ptr] < lb || ub < buf[ptr]); ptr++) ;
+                if (ptr < len) break;
+                ptr = 0;
+                if ((len = iStream.Read(buf, 0, 1024)) <= 0) { eof = true; return ""; }
+            } while (true);
+            do
+            {
+                var f = ptr;
+                for (; ptr < len; ptr++)
+                    if (buf[ptr] < lb || ub < buf[ptr])
+                    //if (buf[ptr] == cr || buf[ptr] == el)
+                    {
+                        string s;
+                        if (sb == null) s = enc.GetString(buf, f, ptr - f);
+                        else { sb.Append(enc.GetChars(buf, f, ptr - f)); s = sb.ToString(); }
+                        ptr++; return s;
+                    }
+                if (sb == null) sb = new StringBuilder(enc.GetString(buf, f, len - f));
+                else sb.Append(enc.GetChars(buf, f, len - f));
+                ptr = 0;
+
+            }
+            while (!eof && (len = iStream.Read(buf, 0, 1024)) > 0);
+            eof = true; return (sb != null) ? sb.ToString() : "";
+        }
+        public long Long()
+        {
+            long ret = 0; byte b = 0; bool isMynus = false;
+            const byte zr = 48, nn = 57, my = 45;
+            do b = read();
+            while (b != my && (b < zr || nn < b));
+            if (b == my) { isMynus = true; b = read(); }
+            for (; true; b = read())
+                if (b < zr || nn < b)
+                    return isMynus ? -ret : ret;
+                else ret = ret * 10 + b - zr;
+        }
+        public int Integer()
+        {
+            int ret = 0; byte b = 0; bool isMynus = false;
+            const byte zr = 48, nn = 57, my = 45;
+            do b = read();
+            while (b != my && (b < zr || nn < b));
+            if (b == my) { isMynus = true; b = read(); }
+            for (; true; b = read())
+                if (b < zr || nn < b)
+                    return isMynus ? -ret : ret;
+                else ret = ret * 10 + b - zr;
+        }
+        public double Double() { return double.Parse(Scan(), System.Globalization.CultureInfo.InvariantCulture); }
+        public string[] Scan(int n) { var a = new string[n]; for (int i = 0; i < n; i++) a[i] = Scan(); return a; }
+        public double[] Double(int n) { var a = new double[n]; for (int i = 0; i < n; i++) a[i] = Double(); return a; }
+        public int[] Integer(int n) { var a = new int[n]; for (int i = 0; i < n; i++) a[i] = Integer(); return a; }
+        public long[] Long(int n) { var a = new long[n]; for (int i = 0; i < n; i++)a[i] = Long(); return a; }
+        public void Flush() { iStream.Flush(); }
+    }
+}
+#endregion
+#region Extension
+namespace Solver.Ex
+{
+    static public partial class EnumerableEx
+    {
+        static public string AsString(this IEnumerable<char> ie) { return new string(ie.ToArray()); }
+        static public string AsJoinedString<T>(this IEnumerable<T> ie, string st = " ") { return string.Join(st, ie); }
+
+    }
+}
+#endregion
+#region Trinity<T>
+
+public struct Trinity<T>
+{
+    public T I, J, K;
+    public Trinity(T i, T j, T k) : this() { I = i; J = j; K = k; }
+    public Trinity(params T[] arg) : this(arg[0], arg[1], arg[2]) { }
+    public override string ToString() { return string.Format("{0} {1} {2}", I, J, K); }
+}
+#endregion
+#region PriorityQueue and PairingHeap
+public class MergeablePriorityQueue<T>
+{
+    PairingHeap<T> top;
+    Comparison<T> compare;
+    int size;
+    public int Count { get { return size; } }
+    public MergeablePriorityQueue() : this(Comparer<T>.Default) { }
+    public MergeablePriorityQueue(Comparison<T> comparison) { compare = comparison; }
+    public MergeablePriorityQueue(IComparer<T> comparer) { compare = comparer.Compare; }
+    public void Enqueue(T item)
+    {
+        var heap = new PairingHeap<T>(item);
+        top = PairingHeap<T>.Merge(top, heap, compare);
+        size++;
+    }
+    public T Dequeue()
+    {
+        var ret = top.Key;
+        size--;
+        top = PairingHeap<T>.Pop(top, compare);
+        return ret;
+    }
+    public bool Any() { return size > 0; }
+    public T Peek() { return top.Key; }
+}
+
+#region PairingHeap
+public class PairingHeap<T>
+{
+    public PairingHeap(T k) { key = k; }
+    private readonly T key;
+    public T Key { get { return key; } }
+    private PairingHeap<T> head;
+    private PairingHeap<T> next;
+    static public PairingHeap<T> Pop(PairingHeap<T> s, Comparison<T> compare)
+    {
+        return MergeLst(s.head, compare);
+    }
+    static public PairingHeap<T> Merge(PairingHeap<T> l, PairingHeap<T> r, Comparison<T> compare)
+    {
+        if (l == null || r == null) return l == null ? r : l;
+        if (compare(l.key, r.key) > 0) Swap(ref l, ref r);
+        r.next = l.head;
+        l.head = r;
+        return l;
+    }
+    static public PairingHeap<T> MergeLst(PairingHeap<T> s, Comparison<T> compare)
+    {
+        var n = new PairingHeap<T>(default(T));
+        while (s != null)
+        {
+            PairingHeap<T> a = s, b = null;
+            s = s.next; a.next = null;
+            if (s != null) { b = s; s = s.next; b.next = null; }
+            a = Merge(a, b, compare); a.next = n.next;
+            n.next = a;
+        }
+        while (n.next != null)
+        {
+            var j = n.next;
+            n.next = n.next.next;
+            s = Merge(j, s, compare);
+        }
+        return s;
+    }
+    static void Swap(ref PairingHeap<T> l, ref PairingHeap<T> r) { var t = l; l = r; r = t; }
+}
+#endregion
+#endregion

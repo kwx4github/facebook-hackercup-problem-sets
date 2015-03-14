@@ -1,0 +1,112 @@
+#include <cstdio>
+#include <cassert>
+#include <cstring>
+#include <map>
+#include <queue>
+using std::map;
+using std::queue;
+
+const int dir[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+map<char, char> next_turret{{'^', '>'},
+                            {'>', 'v'},
+                            {'v', '<'},
+                            {'<', '^'}};
+int n, m, si, sj, gi, gj;
+char maze[4][111][111];
+bool vis[4][111][111];
+
+bool IsEmpty(char ch) {
+  return ch == '.' || ch == 'F';
+}
+
+void Init() {
+  memset(maze[0], 0, sizeof(maze[0]));
+  assert(scanf("%d%d", &n, &m) == 2);
+  for (int i = 0; i < n; ++i) {
+    assert(scanf(" %s", maze[0][i]) == 1);
+    for (int j = 0; j < m; ++j) {
+      if (maze[0][i][j] == 'S') {
+        si = i;
+        sj = j;
+        maze[0][i][j] = '.';
+      } else if (maze[0][i][j] == 'G') {
+        gi = i;
+        gj = j;
+        maze[0][i][j] = '.';
+      }
+    }
+  }
+  for (int t = 0; t < 4; ++t) {
+    if (t < 3) memcpy(maze[t + 1], maze[t], sizeof(maze[t]));
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        if (maze[t][i][j] == '^') {
+          for (int ti = i - 1; ti >= 0 && IsEmpty(maze[t][ti][j]); --ti)
+            maze[t][ti][j] = 'L';
+          maze[(t + 1) % 4][i][j] = next_turret[maze[t][i][j]];
+        } else if (maze[t][i][j] == '>') {
+          for (int tj = j + 1; tj < m && IsEmpty(maze[t][i][tj]); ++tj)
+            maze[t][i][tj] = 'L';
+          maze[(t + 1) % 4][i][j] = next_turret[maze[t][i][j]];
+        } else if (maze[t][i][j] == 'v') {
+          for (int ti = i + 1; ti < n && IsEmpty(maze[t][ti][j]); ++ti)
+            maze[t][ti][j] = 'L';
+          maze[(t + 1) % 4][i][j] = next_turret[maze[t][i][j]];
+        } else if (maze[t][i][j] == '<') {
+          for (int tj = j - 1; tj >= 0 && IsEmpty(maze[t][i][tj]); --tj)
+            maze[t][i][tj] = 'L';
+          maze[(t + 1) % 4][i][j] = next_turret[maze[t][i][j]];
+        }
+      }
+    }
+  }
+  memset(vis, 0, sizeof(vis));
+}
+
+struct Step {
+  int steps, level, pi, pj;
+  Step(int steps, int level, int pi, int pj) : steps(steps), level(level),
+                                               pi(pi), pj(pj) {}
+};
+
+bool InRange(int pi, int pj) {
+  return 0 <= pi && pi < n && 0 <= pj && pj < m;
+}
+
+void Work() {
+  queue<Step> que;
+  que.push(Step(0, 0, si, sj));
+  vis[0][si][sj] = true;
+  while (!que.empty()) {
+    int d = que.front().steps;
+    int s = que.front().level;
+    int pi = que.front().pi;
+    int pj = que.front().pj;
+    que.pop();
+    if (pi == gi && pj == gj) {
+      printf("%d\n", d);
+      return;
+    }
+    for (int i = 0; i < 4; ++i) {
+      int ti = pi + dir[i][0];
+      int tj = pj + dir[i][1];
+      if (InRange(ti, tj) && maze[(s + 1) % 4][ti][tj] == '.'
+          && !vis[(s + 1) % 4][ti][tj]) {
+        vis[(s + 1) % 4][ti][tj] = true;
+        que.push(Step(d + 1, (s + 1) % 4, ti, tj));
+      }
+    }
+  }
+  printf("impossible\n");
+}
+
+int main() {
+  int cases;
+  assert(scanf("%d", &cases) == 1);
+  for (int i = 1; i <= cases; ++i) {
+    printf("Case #%d: ", i);
+    Init();
+    Work();
+  }
+  return 0;
+}

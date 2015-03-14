@@ -1,0 +1,129 @@
+#include <fstream>
+#include <string>
+#include <cstring>
+
+using namespace std;
+
+ifstream input;
+ofstream output;
+
+const int MAXN = 100 + 10;
+const int delta[4][2] = {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
+
+int R, C;
+string maze[MAXN];
+int tx, ty;
+
+bool vst[MAXN][MAXN][4];
+
+struct Qnode
+{
+	int x, y, step;
+	void set(int X, int Y, int STEP)
+	{
+		x = X; y = Y; step = STEP;
+	}
+	void get(int & X, int & Y, int &STEP)
+	{
+		X = x; Y = y; STEP = step;
+	}
+}q[MAXN * MAXN * 4 + 100];
+
+bool in_range(int x, int y)
+{
+	return (x >= 0 && x < R && y >= 0 && y < C);
+}
+
+bool pos_clear(int x, int y, int rot)
+{
+	if (!in_range(x, y)) return false;
+
+	if (maze[x][y] == '.')
+		for (int d = 0; d < 4; d++)
+		{
+			int nx = x, ny = y;
+			while (in_range(nx, ny) && maze[nx][ny] == '.')
+			{
+				nx += delta[d][0];
+				ny += delta[d][1];
+			}
+			if (in_range(nx, ny) && maze[nx][ny] < 4)
+				if ( (d + 2) % 4 == (maze[nx][ny] + rot) % 4)
+				{
+					vst[x][y][rot] = true;
+					return false;
+				}
+		}
+	return true;
+}
+
+void singleCase(int case_num)
+{
+	input >> R >> C;
+	for (int i=0; i<R; i++)
+		input >> maze[i];
+
+	memset(vst, 0, sizeof(vst));
+
+	int sx, sy;
+	for (int i=0; i<R; i++)
+		for (int j=0; j<C; j++)
+			switch (maze[i][j])
+			{
+			case 'G':
+				tx = i; ty = j; maze[i][j] = '.'; break;
+			case 'S':
+				sx = i; sy = j; maze[i][j] = '.'; break;
+			case 'v':
+				maze[i][j] = 0; break;
+			case '<':
+				maze[i][j] = 1; break;
+			case '^':
+				maze[i][j] = 2; break;
+			case '>':
+				maze[i][j] = 3;
+			}
+
+	int f = 0, r = 0;
+	q[0].set(sx, sy, 0);
+	int solution = 0;
+	int x, y, step, nx, ny, nstep, rot;
+	while (f <= r && !solution)
+	{
+		q[f++].get(x, y, step);
+		for (int d = 0; d < 4; d++)
+		{
+			nx = x + delta[d][0];
+			ny = y + delta[d][1];
+			nstep = step + 1;
+			rot = nstep % 4;
+			if (!vst[nx][ny][rot] && pos_clear(nx, ny, rot))
+			{
+				vst[nx][ny][rot] = true;
+				q[++r].set(nx, ny, nstep);
+				if (nx == tx && ny == ty)
+				{
+					solution = nstep;
+					break;
+				}
+			}
+		}
+	}
+
+	output << "Case #" << case_num << ": ";
+	if (solution) output << solution << endl;
+	else output << "impossible" << endl;
+}
+
+int main()
+{
+	input.open("maze_in.txt");
+	output.open("maze.out");
+
+	int T;
+	input >> T;
+	for (int i=0; i<T; i++)
+		singleCase(i + 1);
+
+	return 0;
+}

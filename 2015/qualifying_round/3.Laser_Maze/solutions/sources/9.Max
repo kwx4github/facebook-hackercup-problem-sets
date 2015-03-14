@@ -1,0 +1,116 @@
+#include <cstdio>
+#include <cassert>
+#include <algorithm>
+using namespace std;
+
+const int N = 105;
+char F[N][N];
+
+int D[4][N][N];
+
+int Q[4 * N * N * 3];
+int lpt = 0, rpt = 0;
+
+char dir[] = ">v<^";
+
+int vx[] = {1, 0, -1, 0}, vy[] = {0, 1, 0, -1};
+
+bool bad[4][N][N];
+
+void solve(int cs)
+{
+    int n, m;
+    scanf("%d %d ", &n, &m);
+    lpt = rpt = 0;
+    for (int i = 0; i < n; i++)
+        gets(F[i]);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+            for (int t = 0; t < 4; t++)
+                bad[t][i][j] = false;
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+        {
+            if (F[i][j] == '#')
+                for (int t = 0; t < 4; t++)
+                    bad[t][i][j] = true;
+            else if (F[i][j] == 'S' || F[i][j] == '.' || F[i][j] == 'G')
+                continue;
+            else
+            {
+                int q = find(dir, dir + 4, F[i][j]) - dir;
+                assert(q != 4);
+                for (int t = 0; t < 4; t++)
+                {
+                    int d = (q + t) & 3;
+                    bad[t][i][j] = true;
+                    for (int y = i + vy[d], x = j + vx[d]; y >= 0 && x >= 0 && y < n && x < m; y += vy[d], x += vx[d])
+                    {
+                        if (F[y][x] == '#' || find(dir, dir + 4, F[y][x]) != dir + 4)
+                            break;
+                        bad[t][y][x] = true;
+                    } 
+                }
+            }
+        }
+    int sy = -1, sx = -1, ty = -1, tx = -1;
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+        {
+            if (F[i][j] == 'S')
+            {
+                assert(sy == -1);
+                sy = i, sx = j;
+            }
+            if (F[i][j] == 'G')
+            {
+                assert(ty == -1);
+                ty = i, tx = j;
+            }
+        }
+    assert(sy != -1 && ty != -1);
+    Q[rpt++] = sy, Q[rpt++] = sx, Q[rpt++] = 0;
+    for (int t = 0; t < 4; t++)
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < m; j++)
+                D[t][i][j] = -1;
+    
+    D[0][sy][sx] = 0;
+
+    while (lpt != rpt)
+    {
+        int y = Q[lpt++], x = Q[lpt++], t = Q[lpt++];
+        //fprintf(stderr, "%d %d %d\n", y, x, t);
+        for (int v = 0; v < 4; v++)
+        {
+            int ty = y + vy[v];
+            int tx = x + vx[v];
+            int tt = (t + 1) & 3;
+            if (ty < 0 || tx < 0 || ty >= n || tx >= m || bad[tt][ty][tx])
+                continue;
+            if (D[tt][ty][tx] != -1)
+                continue;
+            D[tt][ty][tx] = D[t][y][x] + 1;
+            Q[rpt++] = ty;
+            Q[rpt++] = tx;
+            Q[rpt++] = tt;
+        }
+    }
+    int mn = 1e9;
+    for (int t = 0; t < 4; t++)
+        if (D[t][ty][tx] != -1)
+            mn = min(mn, D[t][ty][tx]);
+    if (mn < 5e8)
+        printf("Case #%d: %d\n", cs, mn);
+    else
+        printf("Case #%d: impossible\n", cs);
+}
+
+
+int main()
+{
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; i++)
+        solve(i + 1);
+}

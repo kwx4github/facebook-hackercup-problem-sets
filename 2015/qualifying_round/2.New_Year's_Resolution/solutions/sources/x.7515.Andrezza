@@ -1,0 +1,308 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+package anewyearsresolution;
+
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Scanner;
+import java.util.Set;
+
+public class ANewYearsResolution {
+
+    public static int[] requirements;
+    public static ArrayList<Integer> validP;
+    public static ArrayList<Integer> validC;
+    public static ArrayList<Integer> validF;
+    
+    public static void main(String[] args) {
+        String inputFilepath = "/Users/heitor/Desktop/new_years_resolution_example_input.txt"; // "Insert input file path here";
+        String outputFilepath = "/Users/heitor/Desktop/output-new_years_resolution.txt";
+        
+        
+        try {
+            Scanner in = new Scanner(new FileReader(inputFilepath));
+            PrintWriter writer = new PrintWriter(outputFilepath, "UTF-8");                                                
+
+            
+            int nTestCases = Integer.parseInt(in.nextLine());                        
+            for (int i = 1; i <= nTestCases; i++)
+            {                
+                String[] requirementString = in.nextLine().split("\\s+");                
+                int[] requirements =  new int[3];
+                requirements[0] = Integer.parseInt(requirementString[0]);
+                requirements[1] = Integer.parseInt(requirementString[1]);
+                requirements[2] = Integer.parseInt(requirementString[2]);
+                
+                int nCombinations = Integer.parseInt(in.nextLine());        
+                int[][] combinations = new int[nCombinations][3];                 
+                for(int k = 0; k < nCombinations; k++)
+                {
+                    String[] foodCombination = new String[3];
+                    foodCombination = in.nextLine().split("\\s+");
+                    combinations[k][0] = Integer.parseInt(foodCombination[0]);
+                    combinations[k][1] = Integer.parseInt(foodCombination[1]);
+                    combinations[k][2] = Integer.parseInt(foodCombination[2]);
+                }
+                
+                
+                String line = "Case #" + i + ": ";
+                if (hasRightCombination(requirements, combinations))
+                {
+                    line += "yes";
+                    
+                } else 
+                {
+                    line += "no";
+                }
+                writer.println(line);                                
+
+            }
+            
+            
+            writer.close();
+            
+        } catch (FileNotFoundException ex) {} catch (UnsupportedEncodingException ex) {}                      
+    }
+    
+    public static boolean hasRightCombination(int[] caseRequirements, int[][] combinations)
+    {             
+        requirements = caseRequirements;        
+        combinations = filterBigCombinations(combinations);       
+        validP = new ArrayList<>();
+        validC = new ArrayList<>();
+        validF = new ArrayList<>();
+        
+        
+        MergeSort mergesort = new MergeSort(combinations, 0);
+        combinations = mergesort.getSortedArray();        
+                       
+        ArrayList<Integer> indexes = new ArrayList<>();
+        if (hasSum(combinations, 0, requirements[0], indexes, 0, combinations.length - 1))
+        {        
+            return true;
+        } else
+        {         
+            return false;
+            
+        }
+    }
+    
+    public static boolean hasSum(int[][] combinations, int nutrient, int sum, ArrayList<Integer> indexes, int start, int end)
+    {                        
+        for (int i = end; i >= start; i--)
+        {
+            int higher = combinations[i][nutrient];                  
+            if (higher == sum)
+            {                
+                indexes.add(new Integer(i));                
+                if (satisfiesOtherRequirements(nutrient, indexes,combinations))
+                {
+                    return true;
+                }
+            } else if (higher < sum)
+            {
+                for (int k = start; k < i; k++)
+                {
+                    int lower = combinations[k][nutrient];
+                    if (higher + lower == sum)
+                    {                                                                        
+                        indexes.add(new Integer(i));
+                        indexes.add(new Integer(k));                                                                        
+
+                        if (satisfiesOtherRequirements(nutrient, indexes,combinations))
+                        {
+                            return true;
+                        } else
+                        {
+                            indexes.remove(new Integer(i));
+                            indexes.remove(new Integer(k));
+                        }
+                        
+                    } else if (higher + lower < sum)
+                    {
+                        indexes.add(new Integer(i));
+                        indexes.add(new Integer(k));
+
+                        if (hasSum(combinations, nutrient, (sum -  higher - lower), indexes, k + 1, i - 1))
+                        {
+                            return true;
+                        } else
+                        {
+                            indexes.remove(new Integer(i));
+                            indexes.remove(new Integer(k));
+                            
+                        }
+                    }                                                
+                }     
+            }                                                            
+        }
+                            
+        return false;
+    }
+    
+    public static boolean satisfiesOtherRequirements(int currentRequirementChecked, ArrayList<Integer> indexes, int[][]combinations)
+    {
+        
+        Set<Integer> set = new LinkedHashSet<Integer>(indexes);       
+        Iterator<Integer> iterator = set.iterator();        
+        
+        if (currentRequirementChecked == 0)
+        {
+            int sumP = 0;
+            int sumC = 0;
+            int sumF = 0;
+            
+            while (iterator.hasNext())
+            {
+                int index = iterator.next();
+                int p = combinations[index][0];
+                int c = combinations[index][1];
+                int f = combinations[index][2];
+                sumP += p;
+                sumC += c;
+                sumF += f;    
+            }            
+                        
+            return (sumC == requirements[1] && sumF == requirements[2]);
+        }
+        
+        return false;
+    }
+    
+    
+    public static void printElements(int[][] combinations, ArrayList<Integer> indexes)
+    {
+        for (int i = 0; i < indexes.size(); i++)
+        {
+            int index = indexes.get(i);
+        }
+    }
+    
+    
+    //----------------------------
+    // Procedures
+    //----------------------------
+    
+    public static int[][] filterBigCombinations(int[][] source)
+    {
+        
+        int removalCounter = 0;
+        int size = source.length;
+        for (int i = 0; i < size; i++)
+        {            
+            if (source[i][0] > requirements[0] || source[i][1] > requirements[1] || source[i][2] > requirements[2])
+            {
+                source[i][0] = -1;
+                removalCounter++;
+            }
+        }
+        
+        
+        int[][] validList = new int[(size - removalCounter)][3];        
+        int k = 0;
+        for (int i = 0; i < size; i++)
+        {
+            if (source[i][0] != -1)
+            {
+                
+                validList[k][0] = source[i][0];
+                validList[k][1] = source[i][1];
+                validList[k][2] = source[i][2];
+                k++;
+            }
+        
+        }
+                
+        
+        return validList;
+    }
+    
+  
+    
+    public static class MergeSort {
+        
+        private int[][] combinations;
+        private int[][] helper;
+        private int requirementIndex;
+        
+        private int number;
+
+        public MergeSort(int[][] combinations, int requirementIndex)
+        {
+                        
+            this.combinations = combinations;
+            this.requirementIndex = requirementIndex;            
+            int size = combinations.length;
+            helper = new int[size][3];
+            mergesort(0, size - 1);
+        }        
+        
+        public int[][] getSortedArray()
+        {
+            return combinations;
+        }
+        
+        private void mergesort(int low, int high) {
+            // check if low is smaller then high, if not then the array is sorted
+            if (low < high) {
+                // Get the index of the element which is in the middle
+                int middle = low + (high - low) / 2;
+                // Sort the left side of the array
+                mergesort(low, middle);
+                // Sort the right side of the array
+                mergesort(middle + 1, high);
+                // Combine them both
+                merge(low, middle, high);
+            }
+        }
+
+        private void merge(int low, int middle, int high) {
+
+            // Copy both parts into the helper array
+            for (int i = low; i <= high; i++) {                
+                helper[i][0] = combinations[i][0];
+                helper[i][1] = combinations[i][1];
+                helper[i][2] = combinations[i][2];
+            }
+
+            int i = low;
+            int j = middle + 1;
+            int k = low;
+            // Copy the smallest values from either the left or the right side back
+            // to the original array
+            while (i <= middle && j <= high) {
+                if (helper[i][requirementIndex] <= helper[j][requirementIndex]) {
+                    combinations[k][0] = helper[i][0];
+                    combinations[k][1] = helper[i][1];
+                    combinations[k][2] = helper[i][2];
+                    i++;
+                } else {
+                    combinations[k][0] = helper[j][0];
+                    combinations[k][1] = helper[j][1];
+                    combinations[k][2] = helper[j][2];
+                    j++;
+                }
+                k++;
+            }
+            // Copy the rest of the left side of the array into the target array
+            while (i <= middle) {
+                combinations[k][0] = helper[i][0];
+                combinations[k][1] = helper[i][1];
+                combinations[k][2] = helper[i][2];
+                k++;
+                i++;
+            }
+
+        }
+    }    
+}

@@ -1,0 +1,210 @@
+<?php
+// set max execution time to 5.5 mins (gives me 30 secs to upload results)
+ini_set('max_execution_time', 330);
+
+$input = file_get_contents(dirname (__FILE__).'/input.txt');
+
+/**
+ * Output file
+ **/
+$fileOutput = dirname (__FILE__).'/output.txt';
+
+/**
+ * Number of tests
+ **/
+$t = 0;
+
+/**
+ * Number of options
+ **/
+$n = 0;
+
+/**
+ * Store each meal option
+ **/
+$testCases = array();
+$foodOptions = array();
+$foodPlan = array();
+
+$pOptions = array();
+$cOptions = array();
+$fOptions = array();
+
+// Organize cases in array format
+$i = 0;
+$j = 0;
+$case = 1;
+foreach(preg_split("/((\r?\n)|(\r\n?))/", $input) as $line)
+{    
+   	// remove white space from line
+   	$delimiter = " ";
+   	// Skip empty lines (just in case)
+   	if(!empty($line))
+   	{
+	   	if($i == 0)
+	   	{
+		   	$t = $line;
+	   	}
+	   	else
+	   	{
+		   	// Build array
+			if($n==0 && empty($testCases[$case]['plan']))
+			{
+				// Get meal plan
+				// Explode line into each food group
+		   		$array = explode($delimiter,$line);
+		   		$foodPlan = array();
+		   		$k = 0;
+		   		foreach($array as $key => $value)
+		   		{
+			   		// Prevent white space creating irregular arrays
+			   		if($k>2) break;
+			   		$k++;
+			   		// key map { 0 = Protein, 1 = Carbs, 2 = Fat }
+			   		$foodPlan[] = (int) $value;
+		   		}
+		   		
+				// Store first $mealOption
+				$testCases[$case]['plan'] = $foodPlan;
+			}
+			else if($n==0)
+			{
+				// Get set number of options
+				$n = (int) $line;
+				$testCases[$case]['number_options'] = $n;
+			}
+			else
+			{
+				// Build array of meal options
+				$array = explode($delimiter,$line);
+				$option = array();
+				$k = 0;
+		   		foreach($array as $key => $value)
+		   		{
+			   		// Prevent white space creating irregular arrays
+			   		if($k>2) break;
+			   		$k++;
+			   		// key map { 0 = Protein, 1 = Carbs, 2 = Fat }
+			   		$option[] = (int) $value;
+		   		}
+		   		
+		   		$pOptions[] = $option[0];
+				$cOptions[] = $option[1];
+				$fOptions[] = $option[2];
+		   		
+				$foodOptions[] = $option;
+				$n--;
+				if($n==0)
+				{
+					// Set testCase options
+					// $testCases[$case]['options'] = $foodOptions;
+					
+					$testCases[$case]['option_array']['protein'] = $pOptions;
+					$testCases[$case]['option_array']['carbs'] = $cOptions;
+					$testCases[$case]['option_array']['fat'] = $fOptions;
+					
+					// Move to next case
+					$case++;
+					// clear options
+					$foodOptions = array();
+					$pOptions = array();
+					$cOptions = array();
+					$fOptions = array();
+				}
+			}		   	
+	   	}
+	   	$i++;
+   	}
+}
+
+// Fun starts here
+$possibleCombinations = 0;
+$caseString = '';
+$i = 1;
+foreach($testCases as $key => $case)
+{
+	$ok = true;
+	// Start building caseString
+	$caseString .= 'Case #'.$i.': ';
+	// Step 1 get possible combinations
+	$ok = checkPossibleCombinations($case['number_options'],$case['option_array'],$case['plan']);
+	// Add to caseString
+	$caseString .= ($ok) ? 'yes' : 'no';
+	$caseString .= ($i<$t) ? "\n" : '';
+	$i++;
+}
+
+/**
+ * return true/false if there is a combination match
+ * Count in binary to check if a 
+ **/
+function checkPossibleCombinations($numberOptions,$array,$result=array())
+{
+	$arrayP = $array['protein'];
+	$arrayC = $array['carbs'];
+	$arrayF = $array['fat'];
+	
+	$resultP = $result[0];
+	$resultC = $result[1];
+	$resultF = $result[2];
+	
+	// Calculate the total number of possible combinations:
+	$possibleCombinations = pow(2,$numberOptions);
+	$combinations = array();
+	
+	for ($i = 0; $i < $possibleCombinations; $i++) 
+	{  
+		// Reset values for each combination
+		$totalP = 0;
+		$totalC = 0;
+		$totalF = 0;
+		$combination = array();
+		$match = 0;
+	    // For each combination check if each bit is set 
+	    for ($j = 0; $j < $numberOptions; $j++) 
+	    { 
+	    	// Check if bit $j set in $i? 
+	        if(pow(2, $j) & $i)
+	        {
+		    	$totalP += $arrayP[$j];
+		    	$totalC += $arrayC[$j];
+		    	$totalF += $arrayF[$j];
+		    	
+		    	// Store combination key to use it to compare combos later     
+				$combination[] = $j;
+	        }    
+	    } 
+		if($totalP == $resultP)
+		{
+			// Need totals to get combination keys, but that's all
+			$combinations['protein'][] = $combination;
+			$match++;
+		}
+		if($totalC == $resultC)
+		{
+			// Need totals to get combination keys, but that's all
+			$combinations['carbs'][] = $combination;
+			$match++;
+		}
+		if($totalF == $resultF)
+		{
+			// Need totals to get combination keys, but that's all
+			$combinations['fat'][] = $combination;
+			$match++;
+		}
+		if($match==3)
+		{
+			// Returning here will save some memory, no need to keep searching
+			return true;
+		}
+	}
+	//return $combinations;
+	return false;
+}
+
+file_put_contents ($fileOutput,$caseString);
+
+?><pre><?php
+echo $caseString;
+//print_r($testCases);
+?></pre>

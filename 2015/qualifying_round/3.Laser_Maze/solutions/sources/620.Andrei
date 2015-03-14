@@ -1,0 +1,109 @@
+#include <fstream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+const int MAX_D = 4;
+const int DX[MAX_D] = {-1, 0, 1, 0};
+const int DY[MAX_D] = {0, 1, 0, -1};
+const int oo = 0x3f3f3f3f;
+
+vector<string> Map;
+vector< vector< vector<bool> > > Obstacle;
+int Rows, Columns;
+pair<int, int> Source, Destination;
+
+inline int GetDirection(const char symbol) {
+    if (symbol == '^')
+        return 0;
+    if (symbol == '>')
+        return 1;
+    if (symbol == 'v')
+        return 2;
+    if (symbol == '<')
+        return 3;
+    return -1;
+}
+
+inline bool ValidCell(const int x, const int y) {
+    return (0 <= x && x < Rows && 0 <= y && y < Columns);
+}
+
+void BuildObstacles() {
+    Obstacle = vector< vector< vector<bool> > >(Rows, vector< vector<bool> >(Columns, vector<bool>(MAX_D, false)));
+    for (int d = 0; d < MAX_D; ++d) {
+        for (int x = 0; x < Rows; ++x) {
+            for (int y = 0; y < Columns; ++y) {
+                if (Map[x][y] != '.')
+                    Obstacle[x][y][d] = true;
+                if (GetDirection(Map[x][y]) != -1) {
+                    int newD = (d + GetDirection(Map[x][y])) % MAX_D;
+                    for (int hitX = x + DX[newD], hitY = y + DY[newD]; ValidCell(hitX, hitY) && Map[hitX][hitY] == '.'; hitX += DX[newD], hitY += DY[newD])
+                        Obstacle[hitX][hitY][d] = true;
+                }
+            }
+        }
+    }
+}
+
+int BFS(const pair<int, int> &source, const pair<int, int> &destination) {
+    vector< vector< vector<int> > > distances = vector< vector< vector<int> > >(Rows, vector< vector<int> >(Columns, vector<int>(MAX_D, oo)));
+    queue< pair<pair<int, int>, int> > q;
+    distances[source.first][source.second][0] = 0;
+    q.push(make_pair(source, 0));
+    for (; !q.empty(); q.pop()) {
+        int x = q.front().first.first, y = q.front().first.second, d = q.front().second;
+        if (x == destination.first && y == destination.second)
+            return distances[x][y][d];
+        for (int i = 0; i < MAX_D; ++i) {
+            int nx = x + DX[i], ny = y + DY[i], nd = (d + 1) % MAX_D;
+            if (ValidCell(nx, ny) && !Obstacle[nx][ny][nd] && distances[nx][ny][nd] == oo) {
+                distances[nx][ny][nd] = distances[x][y][d] + 1;
+                q.push(make_pair(make_pair(nx, ny), nd));
+            }
+        }
+    }
+    return -1;
+}
+
+void Read(ifstream &cin) {
+    cin >> Rows >> Columns;
+    Map = vector<string>(Rows, "");
+    for (int x = 0; x < Rows; ++x)
+        cin >> Map[x];
+    for (int x = 0; x < Rows; ++x) {
+        for (int y = 0; y < Columns; ++y) {
+            if (Map[x][y] == 'S') {
+                Source = make_pair(x, y);
+                Map[x][y] = '.';
+            }
+            if (Map[x][y] == 'G') {
+                Destination = make_pair(x, y);
+                Map[x][y] = '.';
+            }
+        }
+    }
+}
+
+int main() {
+    ifstream cin("input.txt");
+    ofstream cout("output.txt");
+    int tests;
+    cin >> tests;
+    for (int t = 1; t <= tests; ++t) {
+        Read(cin);
+        BuildObstacles();
+        int distance = BFS(Source, Destination);
+        cout << "Case #" << t << ": ";
+        if (distance == -1)
+            cout << "impossible\n";
+        else
+            cout << distance << "\n";
+    }
+    cin.close();
+    cout.close();
+    return 0;
+}

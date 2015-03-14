@@ -1,0 +1,171 @@
+#include <iostream>
+#include <queue>
+#include <fstream>
+using namespace std;
+
+const int MAX_R = 110;
+const int INF = 1000000;
+const int MAX_COMB = 4;
+int T,R,C;
+string maze[MAX_R];
+int dist[MAX_R][MAX_R][4];
+
+int dx[] = {1,-1,0,0};
+int dy[] = {0,0,1,-1};
+
+class Node
+{
+public:
+
+    int x;
+    int y;
+    int steps;
+
+    Node(int _x, int _y,int _steps)
+    {
+        x = _x;
+        y = _y;
+        steps = _steps;
+    }
+    Node(){}
+
+};
+
+Node *start,*endd;
+
+bool isLaser(int x, int y)
+{
+    return maze[x][y] == '<' || maze[x][y] == '>' || maze[x][y] == '^' || maze[x][y] == 'v';
+}
+
+// 0 - left
+// 1 - right;
+// 2 - up
+// 3 - down
+
+int getDir(int x, int y, int steps)
+{
+    if((maze[x][y] == '<' && steps == 0) || (maze[x][y] == 'v' && steps == 1) ||
+        (maze[x][y] == '>' && steps == 2) || (maze[x][y] == '^' && steps == 3))
+        return 0;
+
+     if((maze[x][y] == '>' && steps == 0) || (maze[x][y] == '^' && steps == 1) ||
+        (maze[x][y] == '<' && steps == 2) || (maze[x][y] == 'v' && steps == 3))
+        return 1;
+
+
+     if((maze[x][y] == '^' && steps == 0) || (maze[x][y] == '<' && steps == 1) ||
+        (maze[x][y] == 'v' && steps == 2) || (maze[x][y] == '>' && steps == 3))
+        return 2;
+
+    return 3;
+
+}
+bool go(int x, int y, int dx, int dy, int steps)
+{
+    while(0<=x && x < R && 0<=y && y<C)
+    {
+        if(maze[x][y]=='#')
+            return true;
+
+        if(isLaser(x,y))
+        {
+            int dir = getDir(x,y,steps);
+            if(dir == 0 && dy == 1)
+                return false;
+            if(dir == 1 && dy == -1)
+                return false;
+            if(dir == 2 && dx == 1)
+                return false;
+            if(dir == 3 && dx == -1)
+                return false;
+        }
+        x+=dx;
+        y+=dy;
+    }
+
+    return true;
+}
+
+bool valid(int x, int y, int steps)
+{
+    if(x < 0 || x >= R || y < 0 || y >= C || maze[x][y] == '#' || isLaser(x,y))
+        return false;
+
+    return go(x,y,1,0,steps%4) && go(x,y,-1,0,steps%4) && go(x,y,0,1,steps%4) && go(x,y,0,-1,steps%4);
+}
+
+int bfs()
+{
+    queue<Node* > q;
+    dist[start->x][start->y][0] = 0;
+    q.push(start);
+
+    while(!q.empty())
+    {
+
+        Node *top = q.front(); q.pop();
+
+
+        if(top->x == endd->x && top->y == endd->y)
+            return dist[top->x][top->y][top->steps%4];
+
+
+        for(int i=0; i<MAX_COMB; i++)
+        {
+
+            int nextX = top->x + dx[i];
+            int nextY = top->y + dy[i];
+
+            if(dist[nextX][nextY][(1 + top->steps)%4] == INF && valid(nextX,nextY,1 + top->steps))
+            {
+                Node *nextNode = new Node(nextX,nextY, 1 + top->steps);
+                dist[nextX][nextY][(1 + top->steps)%4] =  1 + top->steps;
+                q.push(nextNode);
+            }
+
+        }
+    }
+
+    return -1;
+}
+
+int main()
+{
+
+    ifstream fin("laser_maze.txt");
+    ofstream fout("laser_maze_output.txt");
+    fin >> T;
+
+    for(int t=1; t<=T; t++)
+    {
+        fin >> R >> C;
+
+        for(int i=0; i<R; i++)
+            fin >> maze[i];
+
+        for(int i=0; i<R; i++)
+        {
+            for(int j=0; j<C; j++)
+            {
+                dist[i][j][0] = dist[i][j][1] = dist[i][j][2] = dist[i][j][3] = INF;
+
+                if(maze[i][j] == 'S')
+                    start = new Node(i,j,0);
+
+                if(maze[i][j] == 'G')
+                    endd = new Node(i,j,0);
+            }
+        }
+
+
+        int result = bfs();
+
+        fout << "Case #" << t << ": ";
+        if(result == -1)
+            fout << "impossible\n";
+        else
+            fout << result << "\n";
+    }
+    return 0;
+}

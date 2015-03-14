@@ -1,0 +1,244 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace NewYearResolution
+{
+    class Program
+    {
+        static int n, k;
+        static int[] a;
+
+        static List<int> aa;
+
+        static void Main(string[] args)
+        {
+            TestCaseWorker worker = new TestCaseWorker();
+            worker.ReadFromFile("new_years_resolution.txt");
+            worker.FillTestCaseList();
+            worker.FindResult();
+            worker.WriteToFile("result.txt");
+        }
+
+        public static void p1(int pos, int maxUsed)
+        {
+            if (pos == k)
+            {
+                PrintArray(a);
+            }
+            else
+            {
+                for (int i = maxUsed + 1; i <= n; i++)
+                {
+                    a[pos] = i;
+                    p1(pos + 1, i);
+                }
+            }
+        }
+
+        public static void PrintArray(int[] array)
+        {
+            for (int i = 0; i < array.Length; i++)
+            {
+                aa.Add(array[i]);
+            }
+        }
+        public static void PrintList()
+        {
+            for (int i = 0; i < aa.Count; i++)
+            {
+                Console.Write(aa[i]+" ");
+            }
+        }
+    }
+
+    public class TestCaseWorker
+    {
+        private List<TestCase> testCaseList;
+        private List<string> lines;
+
+        public void ReadFromFile(string fileName)
+        {
+            this.lines = new List<string>();
+            using (StreamReader reader = new StreamReader(fileName))
+            {
+                int i = 0;
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    lines.Add(line.Trim());
+                    i++;
+                }
+            }
+        }
+
+        public void WriteToFile(string fileName)
+        {
+            using (StreamWriter writer = new StreamWriter(fileName))
+            {
+                string result = String.Empty;
+                for (int i = 0; i < this.testCaseList.Count; i++)
+                {
+                    if (i != this.testCaseList.Count - 1)
+                    {
+                        if (this.testCaseList[i].isPossibleGetGValues == true)
+                        {
+                            result += String.Format("Case #{0}: {1}\n", i + 1, "yes");
+                        }
+                        else
+                        {
+                            result += String.Format("Case #{0}: {1}\n", i + 1, "no");
+                        }
+                    }
+                    else
+                    {
+                        if (this.testCaseList[i].isPossibleGetGValues == true)
+                        {
+                            result += String.Format("Case #{0}: {1}", i + 1, "yes");
+                        }
+                        else
+                        {
+                            result += String.Format("Case #{0}: {1}", i + 1, "no");
+                        }
+                    }
+                    
+                }
+                writer.Write(result);
+            }
+        }
+
+        public void FillTestCaseList()
+        {
+            this.testCaseList = new List<TestCase>();
+            for (int i = 1; i < lines.Count; i++)
+            {
+                string gValues = lines[i];
+                int countOfCases = Convert.ToInt32(lines[i+1].Trim());
+                TestCase testCase = new TestCase(gValues, countOfCases);
+                for (int j = 0; j < countOfCases; j++)
+                {
+                    testCase.AddFoodCaseLineAtPosition(j, lines[i + 2 + j]);
+                }
+                this.testCaseList.Add(testCase);
+                i += countOfCases + 1;
+            }
+        }
+
+        public void FindResult()
+        {
+            foreach (var a in this.testCaseList)
+            {
+                a.FindPossibilityGetGValues();
+            }
+        }
+    }
+
+    public class TestCase
+    {
+        private int Gp;
+        private int Gc;
+        private int Gf;
+
+        private int CountOfCases;
+
+        private int[,] FoodCases;
+
+        public bool isPossibleGetGValues;
+        private List<int> variantsList = new List<int>();
+        private int n, k;
+        private int[] a;
+
+        public TestCase(string gValues, int countOfCases)
+        {
+            ReadGValues(gValues);
+            this.CountOfCases = countOfCases;
+            this.FoodCases = new int[countOfCases, 3];
+        }
+
+        public void ReadGValues(string line)
+        {
+            line = line.Trim();
+            string[] lineArray = line.Split(' ');
+            if (lineArray.Length == 3)
+            {
+                this.Gp = Convert.ToInt32(lineArray[0]);
+                this.Gc = Convert.ToInt32(lineArray[1]);
+                this.Gf = Convert.ToInt32(lineArray[2]);
+            }
+            else
+            {
+                throw new Exception("Length must be 3!");
+            }
+        }
+
+        public void AddFoodCaseLineAtPosition(int position, string line)
+        {
+            line = line.Trim();
+            string[] lineArray = line.Split(' ');
+            if (lineArray.Length == 3)
+            {
+                this.FoodCases[position, 0] = Convert.ToInt32(lineArray[0]);
+                this.FoodCases[position, 1] = Convert.ToInt32(lineArray[1]);
+                this.FoodCases[position, 2] = Convert.ToInt32(lineArray[2]);
+            }
+            else
+            {
+                throw new Exception("Length must be 3!");
+            }
+        }
+
+        public void FindPossibilityGetGValues()
+        {
+            for (int i = 1; i <= this.CountOfCases; i++)
+            {
+                this.variantsList.Clear();
+                this.n = this.CountOfCases;
+                this.k = i;
+                a = new int[k];
+                p1(0, 0);
+                for (int j = 0; j < variantsList.Count; j += i)//int j = 0; j < i; j += i
+                {
+                    int sum1 = 0, sum2 = 0, sum3 = 0;
+                    for (int m = j; m < j + i; m++)
+                    {
+                        sum1 += FoodCases[variantsList[m] - 1, 0]; //variantsList[j];
+                        sum2 += FoodCases[variantsList[m] - 1, 1]; //variantsList[j+1];
+                        sum3 += FoodCases[variantsList[m] - 1, 2];//variantsList[j+2];
+                    }
+                    if ((sum1 == Gp) && (sum2 == Gc) && (sum3 == Gf))
+                    {
+                        this.isPossibleGetGValues = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        public void p1(int pos, int maxUsed)
+        {
+            if (pos == k)
+            {
+                AddToVariantsList(a);
+            }
+            else
+            {
+                for (int i = maxUsed + 1; i <= n; i++)
+                {
+                    a[pos] = i;
+                    p1(pos + 1, i);
+                }
+            }
+        }
+
+        public void AddToVariantsList(int[] array)
+        {
+            for (int i = 0; i < array.Length; i++)
+            {
+                variantsList.Add(array[i]);
+            }
+        }
+    }
+}

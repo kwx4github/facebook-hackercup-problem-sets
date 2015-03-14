@@ -1,0 +1,87 @@
+#!/usr/bin/env pypy3
+
+from itertools import product
+from queue import Queue
+import pprint
+
+T = int(input())
+for Case in range(T):
+    M, N = map(int,input().split())
+    maze = []
+    for _ in range(M):
+        maze.append(input())
+
+    S = None
+    G = None
+    for r, c in product(range(M),range(N)):
+        if maze[r][c] == 'S':
+            S = (r,c)
+        if maze[r][c] == 'G':
+            G = (r,c)
+
+    assert S is not None
+    assert G is not None
+
+    dirs = [(-1,0),(0,1),(1,0),(0,-1)]
+    laser_dir = {'^':0,'>':1,'v':2,'<':3}
+    is_laser = lambda c : c in laser_dir
+    is_wall = lambda c : c == '#'
+
+    safe_list = []
+    for offset in range(4):
+        safe = [ [ True for c in range(N) ] for r in range(M) ]
+        for r,c in product(range(M),range(N)):
+            if is_laser( maze[r][c] ):
+                dir = dirs[ ( laser_dir[ maze[r][c] ] + offset ) % 4 ]
+                _r, _c = r, c
+                while True:
+                    safe[_r][_c] = False
+                    _r += dir[0]
+                    _c += dir[1]
+                    if not (0 <= _r < M and 0 <= _c < N):
+                        break
+                    if is_laser( maze[_r][_c] ) or is_wall( maze[_r][_c] ):
+                        break
+            elif is_wall( maze[r][c] ):
+                safe[r][c] = False
+        safe_list.append( safe )
+    
+    min_step = [ [ [ None for c in range(N) ] for r in range(M) ] for offset in range(4)]
+    q = Queue()
+
+    q.put((0,S[0],S[1]))
+    min_step[0][S[0]][S[1]] = 0
+
+    while not q.empty():
+        o, r, c = q.get()
+        s = min_step[o][r][c]
+
+        for _ in range(4):
+            _o = ( o + 1 ) % 4
+            _r = r + dirs[_][0]
+            _c = c + dirs[_][1]
+            
+            if not (0 <= _r < M and 0 <= _c < N):
+                continue
+            
+            if not safe_list[_o][_r][_c]:
+                continue
+
+            if min_step[_o][_r][_c] is None or s + 1 < min_step[_o][_r][_c]:
+                min_step[_o][_r][_c] = s + 1
+                q.put( (_o,_r,_c) )
+    
+    ans = None
+    for o in range(4):
+        cans = min_step[o][G[0]][G[1]]
+        if cans is not None:
+            if ans is None or cans < ans:
+                ans = cans
+    
+    output = str(ans) if ans is not None else 'impossible'
+    print('Case #%d: %s'%(Case+1,output))
+    
+    pp = pprint.PrettyPrinter(indent=4)
+    # pp.pprint(min_step)
+
+

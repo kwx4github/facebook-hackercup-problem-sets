@@ -1,0 +1,166 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <cmath>
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <cctype>
+#include <utility>
+#include <functional>
+#include <list>
+#include <deque>
+#include <stack>
+#include <queue>
+#include <complex>
+
+using namespace std;
+
+#define INF 0x3f3f3f3f
+#define PI M_PI
+#define mp make_pair
+
+#define MAXN 128
+
+typedef long long ll;
+typedef unsigned long long ull;
+
+const double inf = 1. / 0.;
+
+int cmp_double(double a, double b, double eps = 1e-9) {
+    return a + eps > b? b + eps > a ? 0 : 1 : -1;
+}
+
+int m, n;
+set<pair<int,int> > pd[4];
+char maze[4][MAXN][MAXN];
+
+bool allowed(int k, int i, int j) {
+    if (i < 0 || i >= m || j < 0 || j >= n || maze[k][i][j] != '.') return false;
+    return true;
+}
+
+bool isTurret(char c) {
+    return (c == '>') || (c == '<') || (c == '^') || (c == 'v');
+}
+
+char rotate(char c) {
+    switch (c) {
+        case '>': return 'v';
+        case 'v': return '<';
+        case '<': return '^';
+        case '^': return '>';
+    }
+
+    return -1;
+}
+
+void shoot() {
+    for (int k = 0; k < 4; ++k) {
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                if (!isTurret(maze[k][i][j])) continue;
+
+                int di = 0, dj = 0;
+                switch (maze[k][i][j]) {
+                    case '>':
+                        dj = 1;
+                        break;
+                    case 'v':
+                        di = 1;
+                        break;
+                    case '<':
+                        dj = -1;
+                        break;
+                    case '^':
+                        di = -1;
+                        break;
+                }
+
+                for (int l = 1; maze[k][i + l * di][j + l * dj] == '.'; ++l) {
+                    maze[k][i + l * di][j + l * dj] = 'x';
+                }
+            }
+        }
+    }
+}
+
+int main () {
+    int cases;
+    int di[] = {0, 0, -1, 1};
+    int dj[] = {-1, 1, 0, 0};
+    pair<int,int> goal;
+    queue<pair<int,pair<int,int> > > q;
+    scanf("%d", &cases);
+
+    for (int test = 1; test <= cases; ++test) {
+        while (!q.empty()) q.pop();
+        memset(maze, 0, sizeof(maze));
+        pd[0].clear();
+        pd[1].clear();
+        pd[2].clear();
+        pd[3].clear();
+        
+        scanf("%d %d", &m, &n);
+        for (int i = 0; i < m; ++i) {
+            for (int j = 0; j < n; ++j) {
+                scanf(" %c", &maze[0][i][j]);
+                if (maze[0][i][j] == 'S' || maze[0][i][j] == 's') {
+                    pd[0].insert(mp(i, j));
+                    q.push(mp(0, mp(i, j)));
+                    maze[0][i][j] = '.';
+                } else if (maze[0][i][j] == 'G' || maze[0][i][j] == 'g') {
+                    goal.first = i;
+                    goal.second = j;
+                    maze[0][i][j] = '.';
+                }
+
+                for (int k = 1; k < 4; ++k) {
+                    if (isTurret(maze[k-1][i][j])) {
+                        maze[k][i][j] = rotate(maze[k-1][i][j]);
+                    } else {
+                        maze[k][i][j] = maze[k-1][i][j];
+                    }
+                }
+            }
+        }
+
+        shoot();
+
+        int steps = 0;
+        bool arrived = false;
+        while (!q.empty()) {
+            pair<int,pair<int,int> > subj = q.front();
+            q.pop();
+
+            int s = subj.first;
+            int k = (subj.first + 1) % 4;
+            pair<int,int> pos = mp(subj.second.first, subj.second.second);
+            if (pos == goal) {
+                arrived = true;
+                steps = s;
+                break;
+            }
+
+            for (int i = 0; i < 4; ++i) {
+                int lin = subj.second.first + di[i];
+                int col = subj.second.second + dj[i];
+                if (allowed(k, lin, col) && pd[k].find(mp(lin, col)) == pd[k].end()) {
+                    pd[k].insert(mp(lin, col));
+                    q.push(mp(s + 1, mp(lin, col)));
+                }
+            }
+        }
+
+        printf("Case #%d: ", test);
+        if (arrived) {
+            printf("%d\n", steps);
+        } else {
+            printf("impossible\n");
+        }
+    }
+    return 0;
+}

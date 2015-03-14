@@ -1,0 +1,131 @@
+#include <iostream>
+#include <tuple>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+#define INF 9999999
+#define N 100
+#define M 100
+
+constexpr pair<int, int> dir[4] = { {-1, 0}, {0, 1}, {1, 0}, {0, -1} };
+
+int n, m;
+bool g[N][M][4];
+
+bool in_range(int i, int j) {
+  return 0 <= i && i < n && 0 <= j && j < m;
+}
+
+int sol[N][M][4];
+void shortest_path(int si, int sj) {
+  bool in_q[N][M][4];
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < m; j++) {
+      for (int k = 0; k < 4; k++) {
+        sol[i][j][k] = INF;
+        in_q[i][j][k] = false;
+      }
+    }
+  }
+  queue<tuple<int, int, int>> q;
+  q.push(make_tuple(si, sj, 0));
+  in_q[si][sj][0] = true;
+  sol[si][sj][0] = 0;
+  while (!q.empty()) {
+    int i, j, ts;
+    tie(i, j, ts) = q.front();
+    q.pop();
+    in_q[i][j][ts] = false;
+    int ni, nj, nts = (ts+1) % 4;
+    for (int k = 0; k < 4; k++) {
+      ni = i + dir[k].first;
+      nj = j + dir[k].second;
+      if (in_range(ni, nj) && g[ni][nj][nts]) {
+        //cout << ni << " " << nj << " " << nts << "\n";
+        if (sol[ni][nj][nts] > sol[i][j][ts] + 1) {
+          sol[ni][nj][nts] = sol[i][j][ts] + 1;
+          if (!in_q[ni][nj][nts]) {
+            in_q[ni][nj][nts] = true;
+            q.push(make_tuple(ni, nj, nts));
+          }
+        }
+      }
+    }
+  }
+}
+
+constexpr int dirch[4] = { '^', '>', 'v', '<' };
+
+int main() {
+  int t;
+  cin >> t;
+  for (int ca = 1; ca <= t; ca++) {
+    cin >> n >> m;
+    char a[N][M];
+    pair<int, int> s, t;
+    s = t = make_pair(-1, -1);
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < m; j++) {
+        cin >> a[i][j];
+        if (a[i][j] == 'S') {
+          s = make_pair(i, j);
+          a[i][j] = '.';
+        } else if (a[i][j] == 'G') {
+          t = make_pair(i, j);
+          a[i][j] = '.';
+        }
+      }
+    }
+    for (int k = 0; k < 4; k++) {
+      int b[N][M];
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+          b[i][j] = a[i][j];
+        }
+      }
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+          const int* pos = find<const int*, int>(dirch, dirch+4, b[i][j]);
+          if (pos == dirch+4) {
+            continue;
+          }
+          int p = pos - dirch;
+          p = (p + k) % 4;
+          auto di = dir[p];
+          b[i][j] = '!';
+          for (int ii = i, jj = j; in_range(ii, jj); ii += di.first, jj += di.second) {
+            if (b[ii][jj] == '.') {
+              b[ii][jj] = '!';
+            } else if (b[ii][jj] != '!') {
+              break;
+            }
+          }
+        }
+      }
+      for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+          g[i][j][k] = (b[i][j] == '.');
+          //cout << g[i][j][k];
+        }
+        //cout << "\n";
+      }
+      //cout << "\n";
+    }
+    shortest_path(s.first, s.second);
+    int mi = INF;
+    for (int k = 0; k < 4; k++) {
+      if (sol[t.first][t.second][k] < mi) {
+        mi = sol[t.first][t.second][k];
+      }
+    }
+    if (mi != INF) {
+      cout << "Case #" << ca << ": " << mi << "\n";
+    } else {
+      cout << "Case #" << ca << ": impossible\n";
+    }
+  }
+
+  return 0;
+}

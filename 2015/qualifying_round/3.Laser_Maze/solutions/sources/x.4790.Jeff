@@ -1,0 +1,179 @@
+import sys, copy
+
+UPWARDS_ARROW_KEY = "^"
+DOWNWARDS_ARROW_KEY = "v"
+LEFT_ARROW_KEY = "<"
+RIGHT_ARROW_KEY = ">"
+WALL_KEY = "#"
+EMPTY_KEY = "."
+GOAL_KEY = "G"
+START_KEY = "S"
+
+UPWARDS_ARROW = 0
+RIGHT_ARROW = 1
+DOWNWARDS_ARROW = 2
+LEFT_ARROW = 3
+WALL = 4
+EMPTY = 5
+GOAL = 6
+START = 7
+LAZERDEATH = 8
+
+def main(argv):
+	# read data in
+	input_file_name = argv[0]
+	#print(input_file_name)
+	g = open(input_file_name, 'r')
+	lines_ary = g.readlines()
+	output_ary = []
+	i = 0
+	# GET THE TOTAL COUNT
+	count = int(lines_ary[0])
+	i += 1
+	test_case_index = 0
+	for test_case_index in range(count):
+		dimensions = row_to_array(lines_ary[i])
+		dimensions.reverse() # flip the order
+		print(dimensions)
+		i += 1
+		res = process_test_case(i, dimensions, lines_ary)
+		if res < 0:
+			output_ary += "Case #" + str(test_case_index+1) + ": " + "impossible" + "\n"
+		else:
+			output_ary += "Case #" + str(test_case_index+1) + ": " + str(res) + "\n"
+		i += dimensions[1]
+	
+	# write data out
+	o = open("output_q3.txt", 'w')
+	for line in output_ary:
+		o.write(line)
+	o.close()
+
+# inputs: the current index, the array of lines
+# outputs: the new current index
+def process_test_case(i, dimensions, lines):
+	height = dimensions[1]
+	width = dimensions[0]
+	board, start, goal, visited_status = build_board(height, width, lines[i:i+height])
+	boards = process_boards(height, width, board)
+	print(boards)
+	moves = 0
+	cur_positions = [start]
+	won = 0
+	while True:
+		new_moves = []
+		
+		if len(cur_positions) == 0:
+			break
+		for move in cur_positions:
+			# try to go left
+			if move[0] != 0 and (boards[moves % 4][move[1]][move[0]-1] == EMPTY or boards[moves % 4][move[1]][move[0]-1] == START or boards[moves % 4][move[1]][move[0]-1] == GOAL) and not visited_status[move[1]][move[0] -1][moves % 4]:
+				print("L"+ str(move) + str(boards[moves % 4][move[1]][move[0]-1]))
+				new_moves += [[move[0] - 1, move[1]]]
+				visited_status[move[1]][move[0] -1][moves % 4] = 1
+			# try to go right
+			if move[0] != width -1 and (boards[moves % 4][move[1]][move[0]+1] == EMPTY or boards[moves % 4][move[1]][move[0]+1] == START or boards[moves % 4][move[1]][move[0]+1] == GOAL) and not visited_status[move[1]][move[0] +1][moves % 4]:
+				print("R"+ str(move))
+				new_moves += [[move[0] + 1, move[1]]]
+				visited_status[move[1]][move[0] +1][moves % 4] = 1
+			# try to go down
+			if move[1] != height -1 and (boards[moves % 4][move[1]+1][move[0]] == EMPTY or boards[moves % 4][move[1]+1][move[0]] == START or boards[moves % 4][move[1]+1][move[0]] == GOAL) and not visited_status[move[1] +1][move[0]][moves % 4]:
+				print("D"+ str(move))
+				new_moves += [[move[0], move[1] + 1]]
+				visited_status[move[1]+1][move[0]][moves % 4] = 1
+			# try to go up
+			if move[1] != 0 and ((boards[moves % 4][move[1]-1][move[0]] == EMPTY) or (boards[moves % 4][move[1]-1][move[0]] == START) or (boards[moves % 4][move[1]-1][move[0]] == GOAL)) and not visited_status[move[1]-1][move[0]][moves % 4]:
+				print("U" + str(boards[moves % 4][move[1]-1][move[0]]))
+				new_moves += [[move[0], move[1] - 1]]
+				visited_status[move[1]-1][move[0]][moves % 4] = 1
+		moves += 1
+		if len(new_moves) == 0:
+			break
+		if goal in new_moves:
+			print("GOAL: " + str(new_moves))
+			print(goal)
+			won = 1
+			break
+		cur_positions = new_moves
+	if won:
+		return moves
+	return -1
+
+
+
+def valid_position(move, board, width, height, position):
+	move += 1 # account for the fact that the lazer shoots after it rotates
+	for x in reversed(range(0, position[0]-1)):
+		#print("1: " + str(x))
+		if board[position[1]][x] == (RIGHT_ARROW- move) % 4:
+			return False
+		if board[position[1]][x] != EMPTY and board[position[1]][x] != START and board[position[1]][x] != GOAL:
+			break
+	for x in range(position[0] +1, width):
+		#print("2: " + str(x))
+		if board[position[1]][x] == (LEFT_ARROW - move) % 4:
+			return False
+		if board[position[1]][x] != EMPTY and board[position[1]][x] != START and board[position[1]][x] != GOAL:
+			break
+	for y in reversed(range(0, position[1])):
+		#print("3: " + str(y))
+		#print("4: " + str(y))
+		if board[y][position[0]] == (DOWNWARDS_ARROW - move) % 4:
+			return False
+		if board[y][position[0]] != EMPTY and board[y][position[0]] != START and board[y][position[0]] != GOAL:
+			break
+	for y in range(position[1]+1, height):
+		
+		if board[y][position[0]] == (UPWARDS_ARROW - move) % 4:
+			return False
+		if board[y][position[0]] != EMPTY and board[y][position[0]] != START and board[y][position[0]] != GOAL:
+			break
+	return True
+		
+
+def retrieve_value(board, position):
+	return board[position[0]][position[1]]
+
+def build_board(height, width, lines):
+	board = [["" for i in range(width)] for j in range(height)]
+	visited_status = [[[0,0,0,0] for i in range(width)] for j in range(height)]
+	start = [0,0]
+	goal = [0,0]
+	for y in range(height):
+		for x in range(width):
+			board[y][x] = lines[y][x]
+			if lines[y][x] == START_KEY:
+				board[y][x] = START
+				start = [x,y]
+			elif lines[y][x] == GOAL_KEY:
+				board[y][x] = GOAL
+				goal = [x,y]
+			elif lines[y][x] == UPWARDS_ARROW_KEY:
+				board[y][x] = UPWARDS_ARROW
+			elif lines[y][x] == RIGHT_ARROW_KEY:
+				board[y][x] = RIGHT_ARROW
+			elif lines[y][x] == DOWNWARDS_ARROW_KEY:
+				board[y][x] = DOWNWARDS_ARROW
+			elif lines[y][x] == LEFT_ARROW_KEY:
+				board[y][x] = LEFT_ARROW
+			elif lines[y][x] == EMPTY_KEY:
+				board[y][x] = EMPTY
+			elif lines[y][x] == WALL_KEY:
+				board[y][x] = WALL
+	return board, start, goal, visited_status
+
+def process_boards(height, width, board):
+	boards = [copy.deepcopy(board), copy.deepcopy(board), copy.deepcopy(board), copy.deepcopy(board)]
+	for y in range(height):
+		for x in range(width):
+			if board[y][x] == EMPTY or board[y][x] == START or board[y][x] == GOAL:
+				for r in range(4):
+					if not valid_position(r+1, board, width, height, [x,y]):
+						boards[(r+1) % 4][y][x] = LAZERDEATH
+	return boards
+
+def row_to_array(row):
+	return list(map(lambda x: int(x), list(row.split(" "))))
+
+if __name__ == "__main__":
+	main(sys.argv[1:])

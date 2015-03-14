@@ -1,0 +1,242 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.LinkedList;
+import java.util.Scanner;
+
+
+public class LaserMaze {	
+	private static class Position {
+		int r;
+		int c;
+		int s;
+		
+		public Position(int r, int c, int s) {
+			this.r = r;
+			this.c = c;
+			this.s = s;
+		}
+		
+		public String toString() {
+			return r + ", " + c + ", " + s;
+		}
+	}
+
+	private static int getObject(int[][] maze, int r, int c, int s) {
+		int obj = maze[r][c];
+		if (obj >= 0 && obj <= 3) {
+			obj = (obj + s % 4) % 4;
+		}
+		
+		return obj;
+	}
+	
+	private static boolean isOnLaserLine(int[][] maze, int r, int c, int s) {
+		
+		uloop: for (int i = r - 1; i >= 0; i--) {
+			int obj = getObject(maze, i, c, s);
+			if (obj == 2) {
+				return true;
+			}
+
+			switch (obj) {
+			case 6:
+			case 3:
+			case 1:
+			case 0:
+				break uloop;
+			}
+		}
+	
+		rloop: for (int i = c + 1; i < maze[r].length; i++) {
+			int obj = getObject(maze, r, i, s);
+			if (obj == 3) {
+				return true;
+			}
+
+			switch (obj) {
+			case 6:
+			case 2:
+			case 1:
+			case 0:
+				break rloop;
+			}
+		}
+
+		dloop: for (int i = r + 1; i < maze.length; i++) {
+			int obj = getObject(maze, i, c, s);
+			if (obj == 0) {
+				return true;
+			}
+
+			switch (obj) {
+			case 6:
+			case 3:
+			case 1:
+			case 2:
+				break dloop;
+			}
+		}
+	
+		lloop: for (int i = c - 1; i >= 0; i--) {
+			int obj = getObject(maze, r, i, s);
+			if (obj == 1) {
+				return true;
+			}
+
+			switch (obj) {
+			case 6:
+			case 2:
+			case 3:
+			case 0:
+				break lloop;
+			}
+		}		
+		
+		return false;
+	}
+	
+	private static int countSteps(int[][] maze, Position start, Position end) {
+		LinkedList<Position> q = new LinkedList<Position>();
+		boolean[][][] visited = new boolean[maze.length][maze[0].length][maze.length * maze[0].length];
+
+		q.addLast(start);
+		while(! q.isEmpty()) {
+			Position p = q.removeFirst();
+			if ((start.r != p.r || start.c != p.c) && isOnLaserLine(maze, p.r, p.c, p.s)) {
+				continue;
+			}
+			
+			if (p.r == end.r && p.c == end.c) {
+				return p.s;
+			}
+
+			if (! visited[p.r][p.c][p.s]) {
+				if ((p.s+1) >= visited[0][0].length) {
+					break;
+				}
+				
+				visited[p.r][p.c][p.s] = true;
+				
+				if ((p.r-1) >= 0) {
+					switch(maze[p.r-1][p.c]) {
+					case 4:
+					case 5:
+					case 7:
+						q.add(new Position(p.r-1, p.c, p.s+1));
+						break;
+					default:
+						break;
+					}
+				}
+				
+				if ((p.c+1) < maze[p.r].length) {
+					switch(maze[p.r][p.c+1]) {
+					case 4:
+					case 5:
+					case 7:
+						q.add(new Position(p.r, p.c+1, p.s+1));
+						break;
+					default:
+						break;
+					}					
+				}
+				
+				if ((p.r+1) < maze.length) {
+					switch(maze[p.r+1][p.c]) {
+					case 4:
+					case 5:
+					case 7:
+						q.add(new Position(p.r+1, p.c, p.s+1));
+						break;
+					default:
+						break;
+					}
+				}
+				
+				if ((p.c-1) >= 0) {
+					switch(maze[p.r][p.c-1]) {
+					case 4:
+					case 5:
+					case 7:
+						q.add(new Position(p.r, p.c-1, p.s+1));
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+		
+		return -1;
+	}
+	
+	public static void main(String[] args) throws Exception {
+		String baseDir = "c:\\Users\\sampatk\\Downloads\\";
+		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(baseDir + "laser_maze.txt")));
+		BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(baseDir + "output.txt")));
+		
+		Scanner s = new Scanner(br);
+		int T = s.nextInt();
+		for(int i=0; i<T; i++) {
+			int M = s.nextInt();
+			int N = s.nextInt();
+
+			Position start = null;
+			Position end = null;
+			
+			int[][] maze = new int[M][N];
+			for(int j=0; j<M; j++) {
+				char[] mazeRow = s.next().toCharArray();
+				for(int k=0; k<mazeRow.length; k++) {
+					switch (mazeRow[k]) {
+					case '^' :
+						maze[j][k] = 0;
+						break;
+					case '>' : 
+						maze[j][k] = 1;
+						break;
+					case 'v' :
+						maze[j][k] = 2;
+						break;
+					case '<' : 
+						maze[j][k] = 3;
+						break;
+					case 'S' : 
+						maze[j][k] = 4;
+						start = new Position(j, k, 0);
+						break;
+					case 'G' : 
+						maze[j][k] = 5;
+						end = new Position(j, k, 0);
+						break;
+					case '#' : 
+						maze[j][k] = 6;
+						break;
+					case '.' : 
+						maze[j][k] = 7;
+						break;						
+					}
+				}
+			}
+
+			int res = countSteps(maze, start, end);
+			String str = "Case #" + (i+1) + ": ";
+			if (res == -1) {
+				str += "impossible";
+			} else {
+				str += res;
+			}
+			
+			System.out.println(str);
+			bw.write(str + System.lineSeparator());			
+		}
+
+		s.close();
+		br.close();
+		bw.close();
+	}
+}

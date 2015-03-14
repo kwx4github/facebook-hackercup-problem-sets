@@ -1,0 +1,389 @@
+<?php
+/**
+ * Facebook Hacker Cup 2015 Qualification Round
+ * Laser Maze
+ * @see https://www.facebook.com/hackercup/problems.php?pid=1523599254559737&round=742632349177460
+ */
+
+ini_set('memory_limit', -1);
+set_time_limit(600);
+
+$input = new SplFileObject('input.txt');
+$caseCount = (int) $input->fgets();
+
+ob_start();
+
+// Challenge
+for ($case = 1; $case <= $caseCount; $case++ ) {
+    list($height, $width) = explode(' ', trim($input->fgets()));
+
+    $maze = array();
+    for ($i = 0; $i < $height; $i++) {
+        $maze[] = str_split(trim($input->fgets()));
+    }
+
+    $result = solveMaze($case, $maze) ?: 'impossible';
+
+    printf("Case #%d: %s\n", $case, $result);
+
+}
+
+// Resolver
+function solveMaze($case, $maze)
+{
+    $maze = new Maze($maze);
+
+    $turretCount = $maze->turretCount();
+
+    // 1st round with 1 player at the start
+    $rounds = array(
+        array(new Player($maze->start->x, $maze->start->y))
+    );
+
+    $history = array();
+    $modulo = ($turretCount == 0) ? 1 : 4;
+
+    $i = 0;
+    while (($players = array_shift($rounds))) {
+        $i++;
+        //echo "Case $case, round $i, " .  count($players) . " active players\n";
+
+        // Gather players for the next round
+        $nextround = array();
+
+        while (($player = array_shift($players))) {
+            // A player reached the goal
+            if ($maze->goal($player->x, $player->y)) {
+                return $player->moves;
+            }
+
+            // Find possible movements
+            if ($maze->testPosition($player->x + 1, $player->y)) {
+                // Player can move right
+                $anotherPlayer = clone $player;
+                $anotherPlayer->x++;
+                $anotherPlayer->moves++;
+                $anotherPlayer->previous = $player;
+
+                $unique = $anotherPlayer->x . '-' . $anotherPlayer->y . '@' . ($anotherPlayer->moves % $modulo);
+                if (!in_array($unique, $history)) {
+                    $history[] = $unique;
+                    $nextround[] = $anotherPlayer;
+                }
+            }
+
+            if ($maze->testPosition($player->x - 1, $player->y)) {
+                // Player can move left
+                $anotherPlayer = clone $player;
+                $anotherPlayer->x--;
+                $anotherPlayer->moves++;
+                $anotherPlayer->previous = $player;
+
+                $unique = $anotherPlayer->x . '-' . $anotherPlayer->y . '@' . ($anotherPlayer->moves % $modulo);
+                if (!in_array($unique, $history)) {
+                    $history[] = $unique;
+                    $nextround[] = $anotherPlayer;
+                }
+            }
+
+            if ($maze->testPosition($player->x, $player->y - 1)) {
+                // Player can move up
+                $anotherPlayer = clone $player;
+                $anotherPlayer->y--;
+                $anotherPlayer->moves++;
+                $anotherPlayer->previous = $player;
+
+                $unique = $anotherPlayer->x . '-' . $anotherPlayer->y . '@' . ($anotherPlayer->moves % $modulo);
+                if (!in_array($unique, $history)) {
+                    $history[] = $unique;
+                    $nextround[] = $anotherPlayer;
+                }
+            }
+
+            if ($maze->testPosition($player->x, $player->y + 1)) {
+                // Player can move up
+                $anotherPlayer = clone $player;
+                $anotherPlayer->y++;
+                $anotherPlayer->moves++;
+                $anotherPlayer->previous = $player;
+
+                $unique = $anotherPlayer->x . '-' . $anotherPlayer->y . '@' . ($anotherPlayer->moves % $modulo);
+                if (!in_array($unique, $history)) {
+                    $history[] = $unique;
+                    $nextround[] = $anotherPlayer;
+                }
+            }
+
+        }
+
+        // Advance the turrets once per round
+        $maze->advance();
+
+        // Create next round with new players
+        if ($nextround) {
+            $rounds[] = $nextround;
+        }
+
+    }
+
+    // All players failed
+    return null;
+}
+
+
+class Maze
+{
+    public $width;
+    public $height;
+
+    public $steps = 0;
+
+    protected $maze;
+
+    /**
+     * @var Position
+     */
+    public $start;
+
+    /**
+     * @var Position
+     */
+    public $goal;
+
+    /**
+     * @var Turret[]
+     */
+    protected $turrets = array();
+
+    public function __construct($maze)
+    {
+        // Parse maze data
+        foreach ($maze as $y => &$line) {
+            foreach ($line as $x => &$point) {
+                if ($point == 'S') {
+                    $this->start = new Position($x, $y);
+                    $point = '.';
+                } elseif ($point == 'G') {
+                    $this->goal = new Position($x, $y);
+                    $point = '.';
+                } elseif ($point == '^' || $point == '>' || $point == 'v' || $point == '<') {
+                    $this->turrets[] = new Turret(new Position($x, $y), $point);
+                    $point = '#';
+                }
+            }
+            unset($point);
+        }
+        unset($line);
+
+        $this->maze = $maze;
+        $this->width = count($maze[0]);
+        $this->height = count($maze);
+
+        // Pre-calculate all turret ranges
+        foreach ($this->turrets as $turret) {
+            $turret->setRanges($this);
+        }
+    }
+
+    public function goal($x, $y)
+    {
+        // Return whether we reached the goal
+        return ($x == $this->goal->x && $y == $this->goal->y);
+    }
+
+    public function advance()
+    {
+        $this->steps++;
+        foreach ($this->turrets as $turret) {
+            $turret->rotate();
+        }
+    }
+
+    public function turretCount()
+    {
+        return count($this->turrets);
+    }
+
+    /**
+     * get real data
+     */
+    public function getPoint($x, $y) {
+        return isset($this->maze[$y][$x]) ? $this->maze[$y][$x] : '#'; # fake a wall when outofbounds
+    }
+
+    /**
+     * test whether point is a wall or being targeted
+     */
+    public function testPosition($x, $y)
+    {
+        // We cant moves through pillars
+        if ($this->getPoint($x, $y) == '#') {
+            return false;
+        }
+
+        // And we cant move where turrets will be firing
+        foreach ($this->turrets as $turret) {
+            if ($turret->shallBeFiredUpon($x, $y)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
+
+
+class Position
+{
+    public $x;
+    public $y;
+
+    public function __construct($x, $y)
+    {
+        $this->x = $x;
+        $this->y = $y;
+    }
+}
+
+class Player extends Position
+{
+    public $moves = 0;
+    public $previous;
+
+    public function historyIsRepeating()
+    {
+        // Make sure we are not doing what has already been done
+        // If there are no turrets there is no use in retracing any single step
+        $previous = $this;
+        while (($previous = $previous->previous)) {
+            if ($previous->x == $this->x && $previous->y == $this->y) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+class Turret
+{
+    const DIRECTION_UP = 1;
+    const DIRECTION_RIGHT = 2;
+    const DIRECTION_DOWN = 3;
+    const DIRECTION_LEFT = 4;
+
+    protected $position;
+    protected $direction;
+    protected $ranges;
+
+    public function __construct(Position $position, $direction)
+    {
+        $this->position = $position;
+
+        // mapping
+        $directions = array(
+            '^' => static::DIRECTION_UP,
+            '>' => static::DIRECTION_RIGHT,
+            'v' => static::DIRECTION_DOWN,
+            '<' => static::DIRECTION_LEFT,
+        );
+        $this->direction = $directions[$direction];
+
+        // Pre-calculate our range per direction
+    }
+
+    public function setRanges(Maze $maze)
+    {
+        $this->ranges = array(
+            static::DIRECTION_UP => $this->detectRangeUp($maze),
+            static::DIRECTION_RIGHT => $this->detectRangeRight($maze),
+            static::DIRECTION_DOWN => $this->detectRangeDown($maze),
+            static::DIRECTION_LEFT => $this->detectRangeLeft($maze),
+        );
+    }
+    protected function detectRangeUp(Maze $maze)
+    {
+        $range = array();
+        $x = $this->position->x;
+        $y = $this->position->y;
+        do {
+            $y--;
+            if ($maze->getPoint($x, $y) == '#') {
+                break;
+            }
+            $range[] = "$x-$y";
+        } while(true);
+        return $range;
+    }
+    protected function detectRangeRight(Maze $maze)
+    {
+        $range = array();
+        $x = $this->position->x;
+        $y = $this->position->y;
+        do {
+            $x++;
+            if ($maze->getPoint($x, $y) == '#') {
+                break;
+            }
+            $range[] = "$x-$y";
+        } while(true);
+        return $range;
+    }
+    protected function detectRangeDown(Maze $maze)
+    {
+        $range = array();
+        $x = $this->position->x;
+        $y = $this->position->y;
+        do {
+            $y++;
+            if ($maze->getPoint($x, $y) == '#') {
+                break;
+            }
+            $range[] = "$x-$y";
+        } while(true);
+        return $range;
+    }
+    protected function detectRangeLeft(Maze $maze)
+    {
+        $range = array();
+        $x = $this->position->x;
+        $y = $this->position->y;
+        do {
+            $x--;
+            if ($maze->getPoint($x, $y) == '#') {
+                break;
+            }
+            $range[] = "$x-$y";
+        } while(true);
+        return $range;
+    }
+
+    public function nextDirection()
+    {
+        if ($this->direction == static::DIRECTION_LEFT) {
+            return static::DIRECTION_UP;
+        } else {
+            return $this->direction + 1;
+        }
+
+    }
+
+    /*
+     * Return whether turret targets given position
+     *
+     * @return bool
+     */
+    public function shallBeFiredUpon($x, $y)
+    {
+        return in_array("$x-$y", $this->ranges[$this->nextDirection()]);
+    }
+
+    public function rotate()
+    {
+        $this->direction = $this->nextDirection();
+    }
+}
+
+
+
+// Save and display output
+ob_get_level() && file_put_contents('output.txt', ob_get_flush());

@@ -1,0 +1,266 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <set>
+#include <fstream>
+#include <queue>
+using namespace std;
+
+vector<vector<char> > maze0;
+vector<vector<char> > maze1;
+vector<vector<char> > maze2;
+vector<vector<char> > maze3;
+int startx, starty, goalx, goaly, rows, cols;
+
+bool feasible(int x, int y, int level) {
+  if (x < 0 || x >= rows) 
+    return false;
+  if (y < 0 || y >= cols)
+    return false;
+  vector<vector<char> > curMaze; // maze to use
+  int l = level % 4;
+  switch (l) {
+    case 0:
+      curMaze = maze0;
+      break;
+    case 1:
+      curMaze = maze1;
+      break;
+    case 2:
+      curMaze = maze2;
+      break;
+    case 3:
+      curMaze = maze3;
+      break;
+  }
+
+  if (curMaze[x][y] == '#')
+    return false;
+
+  bool blocked = false;
+  for (int i = x - 1; i >= 0; --i) {
+    if (!blocked && curMaze[i][y] == 'v') {
+      return false;
+    } else if (curMaze[i][y] != 'v' && curMaze[i][y] != '.' && curMaze[i][y] !=
+        'G' && curMaze[i][y] != 'S') 
+      break; 
+  }
+
+  for (int i = x + 1; i < rows; ++i) {
+    if (!blocked && curMaze[i][y] == '^') {
+      return false;
+    } else if (curMaze[i][y] != '^' && curMaze[i][y] != '.' && curMaze[i][y] !=
+        'G' && curMaze[i][y] != 'S') {
+      break;
+    }
+  }
+
+  for (int i = y - 1; i >= 0; --i) {
+    if (!blocked && curMaze[x][i] == '>') {
+      return false;
+    } else if (curMaze[x][i] != '>' && curMaze[x][i] != '.' && curMaze[x][i] !=
+        'G' && curMaze[x][i] != 'S') {
+      break;
+    }
+  }
+
+  for (int i = y + 1; i < cols; ++i) {
+    if (!blocked && curMaze[x][i] == '<') {
+      return false;
+    } else if (curMaze[x][i] != '<' && curMaze[x][i] != '.' && curMaze[x][i] !=
+        'G' && curMaze[x][i] != 'S')
+      break;
+  }
+
+  return true;
+}
+
+bool destroyed(int x, int y, int level) {
+  vector<vector<char> > curMaze; // maze to use
+  int l = level % 4;
+  switch (l) {
+    case 0:
+      curMaze = maze0;
+      break;
+    case 1:
+      curMaze = maze1;
+      break;
+    case 2:
+      curMaze = maze2;
+      break;
+    case 3:
+      curMaze = maze3;
+      break;
+  }
+
+  bool blocked = false;
+  for (int i = x - 1; i >= 0; --i) {
+    if (!blocked && curMaze[i][y] == 'v') {
+      return true;
+    } else if (curMaze[i][y] != 'v' && curMaze[i][y] != '.' && curMaze[i][y] !=
+        'G' && curMaze[i][y] != 'S')
+      break; 
+  }
+
+  for (int i = x + 1; i < rows; ++i) {
+    if (!blocked && curMaze[i][y] == '^') {
+      return true;
+    } else if (curMaze[i][y] != '^' && curMaze[i][y] != '.' && curMaze[i][y] !=
+        'G' && curMaze[i][y] != 'S') {
+      break;
+    }
+  }
+
+  for (int i = y - 1; i >= 0; --i) {
+    if (!blocked && curMaze[x][i] == '>') {
+      return true;
+    } else if (curMaze[x][i] != '>' && curMaze[x][i] != '.' && curMaze[x][i] !=
+        'G' && curMaze[x][i] != 'S') {
+      break;
+    }
+  }
+
+  for (int i = y + 1; i < cols; i++) {
+    //fout << i << endl;
+    if (!blocked && curMaze[x][i] == '<') {
+      return true;
+    } else if (curMaze[x][i] != '<' && curMaze[x][i] != '.' && curMaze[x][i] !=
+        'G' && curMaze[x][i] != 'S') 
+      break;
+  }
+  return false;
+}
+
+int bfs() {
+  //tuple<int, int, int> e = make_tuple(startx, starty, 0);
+  vector<int> e;
+  e.push_back(startx);
+  e.push_back(starty);
+  e.push_back(0);
+  queue<vector<int> > q;
+  q.push(e); 
+  if (startx == goalx && starty == goaly) {
+    return 0;
+  }
+  while (!q.empty()) {
+    e = q.front();
+    q.pop();
+    int tmpx = e[0];
+    int tmpy = e[1];
+    int tmpL = e[2];
+    if (tmpL > 13)
+      return -1;
+    if (destroyed(tmpx, tmpy, tmpL) && tmpL != 0) {
+      return -1;
+    }
+    if (feasible(tmpx, tmpy - 1, tmpL + 1)) {
+      vector<int> tmpTup;
+      tmpTup.push_back(tmpx); tmpTup.push_back(tmpy-1);
+      tmpTup.push_back(tmpL+1);
+      if (tmpx == goalx && tmpy - 1 == goaly)
+        return tmpL + 1; 
+      q.push(tmpTup);
+    }
+    if (feasible(tmpx, tmpy + 1, tmpL + 1)) {
+      vector<int> tmpTup;
+      tmpTup.push_back(tmpx); tmpTup.push_back(tmpy+1);
+      tmpTup.push_back(tmpL+1);
+      if (tmpx == goalx && tmpy + 1 == goaly)
+        return tmpL + 1;
+      q.push(tmpTup);
+    } 
+    if (feasible(tmpx + 1, tmpy, tmpL + 1)) {
+      // tuple<int, int, int> tmpTup (tmpx + 1, tmpy - 1, tmpL + 1);
+      vector<int> tmpTup;
+      tmpTup.push_back(tmpx+1); tmpTup.push_back(tmpy);
+      tmpTup.push_back(tmpL+1);
+      if (tmpx + 1 == goalx && tmpy == goaly)
+        return tmpL + 1;
+      q.push(tmpTup);
+    }
+    if (feasible(tmpx + 1, tmpy, tmpL + 1)) {
+      // tuple<int, int, int> tmpTup (tmpx + 1, tmpy + 1, tmpL + 1);
+      vector<int> tmpTup;
+      tmpTup.push_back(tmpx+1); tmpTup.push_back(tmpy);
+      tmpTup.push_back(tmpL+1);
+      if (tmpx + 1 == goalx && tmpy == goaly) 
+        return tmpL + 1;
+      q.push(tmpTup);
+    }
+  }
+  return -1;
+}
+
+int main() {
+  int t;
+  ifstream fin("input55.txt");
+  ofstream fout("output55.txt");
+  fin >> t;
+  for (int i = 0; i < t; i++) {
+    vector<vector<char> > clean;
+    maze0 = clean;
+    maze1 = clean;
+    maze2 = clean;
+    maze3 = clean;
+    fin >> rows >> cols;
+    for (int j = 0; j < rows; j++) {
+      vector<char> tmp0, tmp1, tmp2, tmp3;
+      for (int k = 0; k < cols; k++) {
+        char e;
+        fin >> e;
+        if (e == 'S') {
+          startx = j;
+          starty = k;
+        } else if (e == 'G') {
+          goalx = j;
+          goaly = k;
+        }
+        switch (e) {
+          case '^':
+            tmp0.push_back(e);
+            tmp1.push_back('>');
+            tmp2.push_back('v');
+            tmp3.push_back('<');
+            break;
+          case '>':
+            tmp0.push_back(e);
+            tmp1.push_back('v');
+            tmp2.push_back('<');
+            tmp3.push_back('^');
+            break;
+          case 'v':
+            tmp0.push_back(e);
+            tmp1.push_back('<');
+            tmp2.push_back('^');
+            tmp3.push_back('>');
+            break;
+          case '<':
+            tmp0.push_back(e);
+            tmp1.push_back('^');
+            tmp2.push_back('>');
+            tmp3.push_back('v');
+            break;
+          default:
+            tmp0.push_back(e);
+            tmp1.push_back(e);
+            tmp2.push_back(e);
+            tmp3.push_back(e);
+            break;
+        }
+      }
+      maze0.push_back(tmp0);
+      maze1.push_back(tmp1);
+      maze2.push_back(tmp2);
+      maze3.push_back(tmp3);
+    }
+
+    int level = bfs();
+    if (level == -1) {
+      fout << "Case #" << i + 1 << ": impossible" << endl;
+    } else {
+      fout << "Case #" << i + 1 << ": " << level << endl;
+    }
+  }
+  return 0;
+}

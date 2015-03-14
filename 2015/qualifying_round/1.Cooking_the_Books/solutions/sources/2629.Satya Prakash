@@ -1,0 +1,302 @@
+#include <stdio.h>
+#include <math.h>
+
+typedef signed long long int int64_t;
+typedef signed char int8_t;
+
+typedef struct ret_ {
+  int x;
+  int y;
+  int l;
+  int m;
+} ret_t;
+
+typedef struct elem_ {
+  int dig;
+  int pos;
+} elem_t;
+
+void
+stab_sort(elem_t *a, int pos, int n)
+{
+  int i, j;
+  elem_t tmp;
+
+  for (i=pos+1; i<=9; i++) {
+    j = i;
+    while (j>pos && a[j].dig < a[j-1].dig) {
+      tmp = a[j];
+      a[j] = a[j-1];
+      a[j-1] = tmp;
+      j--;
+    }  
+  }
+}
+
+int
+smallest(elem_t *a, int start, int end, int def, int eq, int *mini, int zero)
+{
+  int ret = def;
+  int i = -1;
+
+  if (eq) {
+    for (i=start; i<=end; i++) {
+      if (!zero && !a[i].dig) {
+        continue;
+      }
+      if (a[i].dig <= ret) {
+        ret = a[i].dig;
+        *mini = i;
+      }
+    }
+  } else {
+    for (i=start; i<=end; i++) {
+      if (!zero && !a[i].dig) {
+        continue;
+      }
+      if (a[i].dig < ret) {
+        ret = a[i].dig;
+        *mini = i;
+      }
+    }
+  }
+
+  return ret;
+}
+
+int
+largest(elem_t *a, int start, int end, int def, int eq, int *maxi)
+{
+  int ret = def;
+  int i;
+
+  if (eq) {
+    for (i=start; i<=end; i++) {
+      if (a[i].dig >= ret) {
+        ret = a[i].dig;
+        *maxi = i;
+      }
+    }
+  } else {
+    for (i=start; i<=end; i++) {
+      if (a[i].dig > ret) {
+        ret = a[i].dig;
+        *maxi = i;
+      }
+    }
+  }
+  return ret;
+}
+
+int
+getleftmost(elem_t *a, int start, int end, int def, int large)
+{
+  int i;
+
+  if (large) {
+    for (i=start; i<=end; i++) {
+      if (a[i].dig > def) {
+        return i;
+      }
+    }
+  } else {
+    for (i=start; i<=end; i++) {
+      if (a[i].dig < def) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+static inline void
+swap(char *str, int i, int j)
+{
+  char tmp;
+  tmp = str[i];
+  str[i] = str[j];
+  str[j] = tmp;
+}
+
+static inline void
+swaptwo(int *a, int *b)
+{
+  int tmp;
+  tmp = *a;
+  *a = *b;
+  *b = tmp;
+}
+
+void
+fudge(int64_t num, int id) 
+{
+  int i;
+  int startpos;
+  int totaldig;
+  elem_t a[15];
+  ret_t ret;
+  char str[15];
+  int neg = 0;
+
+  if (num < 0) {
+    neg = 1;
+    num = -num;
+  } 
+ 
+  str[10] = '\0';
+  for (i=9; num; i--) {
+    a[i].dig = num%10;
+    a[i].pos = i;
+    str[i] = a[i].dig + '0';
+    num = num/10;
+  }
+  startpos = i+1;
+  totaldig = 10-startpos;
+ 
+  int maxseen; int maxi; 
+  if (a[startpos+1].dig != 0) {
+    maxseen = a[startpos].dig;
+    maxi = startpos;
+  }
+
+  for (i=startpos+1; i<=9 && !a[i].dig; i++);
+ 
+//  int maxseen = a[i].dig;
+//  int maxi = i;
+  if (a[startpos+1].dig == 0) {
+    maxseen = a[i].dig;
+    maxi = i;
+  }
+
+  int spli = i;
+
+  for (; i<=9; i++) {
+    if (a[i].dig >= maxseen) {
+      maxseen = a[i].dig;
+      maxi = i;
+    } else {
+      break;
+    }
+  }
+
+  ret.x = ret.y = -1;
+  
+  if (i==10) {
+    goto find_min;
+  }
+
+  int mini = maxi;
+  int nexti;
+  int min = smallest(a, maxi, 9, maxseen, 1, &mini, 1);
+  int lefti, leftni;
+
+  if (min == 0) {
+    int noni = -1;
+    int nonmin;
+
+    nonmin = smallest(a, maxi+1, 9, maxseen, 1, &noni, 0);
+    lefti = getleftmost(a, startpos+1, maxi, 0, 1);
+
+//    printf("maxi - %d %d %d \n", maxi, mini, noni);
+    if (noni != -1) {
+      leftni = getleftmost(a, startpos, maxi, nonmin, 1);
+  //    printf("%d %d \n", lefti, leftni);
+      if (lefti == -1) {
+        ret.x = leftni;
+        ret.y = noni; 
+      } else if (leftni == -1) {
+        ret.x = lefti;
+        ret.y = mini;
+      } else if (leftni < lefti) {
+        ret.x = leftni;
+        ret.y = noni; 
+      } else {
+        ret.x = lefti;
+        ret.y = mini;
+      } 
+    } else {
+      ret.x = lefti;
+      ret.y = mini;
+    }
+  } else {
+    lefti = getleftmost(a, startpos, maxi, min, 1);
+    ret.x = lefti;
+    ret.y = mini; 
+  }
+
+  int minseen; 
+  int minseeni;
+  int amaxi;
+
+find_min:
+  minseen = a[startpos].dig;
+  minseeni = startpos;
+  amaxi;
+
+  for(i=startpos+1; i<=9; i++)
+  {
+    if (a[i].dig <= minseen) {
+      minseen = a[i].dig;
+      minseeni = i;
+    } else {
+      break;
+    }
+  }
+
+  int large = largest(a, minseeni, 9, minseen, 1, &amaxi);
+  int smalli = getleftmost(a, startpos, minseeni, large, 0);
+
+  ret.l = smalli;
+  ret.m = amaxi;
+ 
+  //printf("%d %d large - %d\n", smalli, amaxi, large);
+ // printf("%d %d \n", minseen, minseeni); 
+  if (neg) { 
+    swaptwo(&ret.x, &ret.l);
+    swaptwo(&ret.y, &ret.m);
+  }
+ 
+print_case: 
+  printf("Case #%d: ", id);
+  if (ret.x != -1) {
+    swap(str, ret.x, ret.y);
+    if (neg) printf("-");
+    printf("%s ", &str[startpos]); 
+    swap(str, ret.y, ret.x);
+  } else {
+    if (neg) printf("-");
+    printf("%s ", &str[startpos]); 
+  }
+
+  if (ret.l != -1) {
+    swap(str, ret.l, ret.m);
+    if (neg) printf("-");
+    printf("%s ", &str[startpos]);
+    swap(str, ret.l, ret.m);
+  } else {
+    if (neg) printf("-");
+    printf("%s ", &str[startpos]);
+  }
+
+  printf("\n");
+}
+
+int
+main()
+{
+  int n;
+  int i;
+  int64_t num;
+
+  scanf("%d\n", &n);
+  for(i=0; i<n; i++) {
+    scanf("%lld", &num);
+    if (num == 0) {
+      printf("Case #%d: %lld %lld \n", i+1, num, num); 
+      continue;
+    }
+    fudge(num, i+1); 
+  }
+
+  return 0;
+}

@@ -1,0 +1,148 @@
+#include <iostream>
+#include <map>
+
+using namespace std;
+
+string maze[102];
+int H, W;
+
+int d[2][102][102];
+int flag[102][102];
+
+const int di[] = {-1,0,1,0};
+const int dj[] = {0,1,0,-1};
+
+typedef std::pair<int,int> P;
+
+int get_laser_type(const char c) {
+  switch (c) {
+    case '^': return 0;
+    case '>': return 1;
+    case 'v': return 2;
+    case '<': return 3;
+  }
+  return -1;
+}
+
+int is_laser(const char c) {
+  switch (c) {
+    case '^':
+    case '>':
+    case 'v':
+    case '<':
+      return 1;
+  }
+  return 0;
+}
+
+void init(int idx) {
+  for (int i = 0; i < H; i++)
+    for (int j = 0; j < W; j++)
+      d[idx][i][j] = (1<<28);
+}
+
+int solve() {
+  int c = 0;
+  int n = c+1;
+
+  init(c);
+
+  memset(flag, 0, sizeof flag);
+
+  int si = -1, sj = -1;
+  for (int i = 0; i < H; i++) for (int j = 0; j < W; j++) if (maze[i][j] == 'S') {
+    si = i; sj = j;
+  }
+  int gi = -1, gj = -1;
+  for (int i = 0; i < H; i++) for (int j = 0; j < W; j++) if (maze[i][j] == 'G') {
+    gi = i; gj = j;
+  }
+
+  d[c][si][sj] = 0;
+
+  // laser に関係する座標を列挙する
+  map<P, int> laser_pos;
+  for (int i = 0; i < H; i++) for (int j = 0; j < W; j++) if (is_laser(maze[i][j])) {
+    int start_type = get_laser_type(maze[i][j]);
+    int proc_flag = 0;
+    int t = 0;
+    int k = start_type;
+    for (;;) {
+      int ni = i, nj = j;
+      //cout << "def ni,nj=" << ni << "," << nj << endl;
+      while (1) {
+        ni += di[k], nj += dj[k];
+        if (ni < 0 || H <= ni || nj < 0 || W <= nj) break;
+        if (maze[ni][nj] == '#' || is_laser(maze[ni][nj])) break;
+
+        //cout << "set dni,dnj,v=" << ni << "," << nj << "," << (1<<t) << endl;
+
+        if (laser_pos.count(P(ni,nj)) == 0) {
+          laser_pos[P(ni,nj)] = 0;
+        }
+        laser_pos[P(ni,nj)] |= (1<<t);
+      }
+      proc_flag |= (1<<k);
+      if (proc_flag == 15) break;
+      k = (k + 1) % 4;
+      t++;
+    }
+  }
+
+  int t = 0; // 時刻
+
+  for (int z = 0; z < 1000; z++) {
+    init(n);
+    t++;
+
+    int t_flag = t % 4;
+
+    for (int i = 0; i < H; i++) for (int j = 0; j < W; j++) {
+      if (d[c][i][j] == (1<<28)) continue;
+
+      if (i == gi && j == gj) return d[c][i][j];
+
+      for (int k = 0; k < 4; k++) {
+        int ni = i + di[k], nj = j + dj[k];
+        if (ni < 0 || H <= ni || nj < 0 || W <= nj) continue;
+        if (maze[ni][nj] == '#' || is_laser(maze[ni][nj])) continue;
+
+        if (laser_pos.count(P(ni,nj)) != 0) {
+          //cout << "(from)t,i,j,flg,cur_t=" << t << "," << i << "," << j << "," << laser_pos[P(ni,nj)] <<"," << t_flag << endl;
+          if (laser_pos[P(ni,nj)] & (1<<t_flag)) {
+            //cout << "skip!(i,j,flg,t_flag)=" << i << ","<< j  <<","<< laser_pos[P(ni,nj)] <<"," << t_flag << endl;
+            continue;
+          }
+        }
+        d[n][ni][nj] = min(d[n][ni][nj], d[c][i][j] + 1);
+      }
+    }
+
+    swap(c, n);
+  }
+
+  return 0;
+}
+
+int main()  {
+  int T;
+  cin >> T;
+
+  for (int z = 1; z <= T; z++) {
+    cin >> H >> W;
+    cin.ignore();
+    for (int i = 0; i < H; i++) {
+      getline(cin, maze[i]);
+    }
+    const int value = solve();
+
+    cout << "Case #" << z << ": ";
+    if (value) {
+      cout << value << endl;
+    } else {
+      cout << "impossible" << endl;
+    }
+  }
+
+  return 0;
+}

@@ -1,0 +1,127 @@
+package nl.dcm360.fbhc15.q
+
+/*
+ * Note: On large test cases, the default stack size might be insufficient
+ */
+
+import scala.io.Source
+
+object Helpers{
+  
+  def avoidBorder(pos:Int, w:Int, h:Int, direction:Int) = {
+    (pos >= 0) && (pos < w * h) && !(direction == 1 && pos % w == 0) && !(direction == -1 && (pos + 1) % w == 0)
+  }
+  
+}
+
+class Solver(goal:Int, dir2:List[Int], w:Int, h:Int, basicField: Set[Int]){
+  val memory: scala.collection.mutable.HashMap[(Int, Int), Int] = scala.collection.mutable.HashMap()
+  val heatMap = buildHeatmap
+  
+  def buildHeatmap = {
+    var moveSet = dir2.map((d) => (goal + d, d)).filter((a) => Helpers.avoidBorder(a._1, w, h, a._2)).map((a) => a._1).filterNot(basicField.contains(_)).toSet
+    val visited = scala.collection.mutable.Set(goal) ++ basicField
+    var round = 2
+    val heatMap: Array[Int] = Array.ofDim(w * h)
+    heatMap(goal) = 1
+    while(!moveSet.isEmpty){
+      moveSet.map(heatMap(_) = round)
+      visited ++= moveSet.toSet
+      moveSet = moveSet.map((m:Int) => dir2.map((d) => (m + d, d)).filter((a) => Helpers.avoidBorder(a._1, w, h, a._2)).map((a) => a._1).filterNot(visited.contains(_))).foldLeft(List[Int]())(_ ::: _).toSet
+      round += 1
+    }
+    heatMap
+  }
+  
+  def recSolve(blocks:IndexedSeq[Set[Int]], pos:Int, turn:Int):Int = {
+    if(pos == goal){
+      0
+    }else{
+      memory.getOrElseUpdate((turn % 4, pos), {      
+        val moves = dir2.map((d) => (pos + d, d)).filter((a) => Helpers.avoidBorder(a._1, w, h, a._2)).map((a) => a._1).filterNot(blocks((turn+1)%4).contains(_)).sortWith(heatMap(_) < heatMap(_))
+        val newBlocks = blocks.zipWithIndex.map((b) => if(b._2 == turn % 4) b._1 + pos else b._1)
+        val solutions = moves.map(recSolve(newBlocks, _, turn+1)).filterNot(_ == -1).sortWith(_ < _)
+        solutions.headOption match{
+          case Some(a) => a + 1
+          case None => -1
+        }
+      })
+    }
+  }
+}
+
+object LaserMaze {
+  val inputFile = "input/laser_maze.txt"
+  
+  def output(no:Int, answer:Int, duration: Long){
+    val dstr = " ("+duration+")"
+    if (answer == -1)
+      println("Case #"+no+": impossible")
+    else
+      println("Case #"+no+": "+answer)
+  }
+  
+  def recSolve(blocks:IndexedSeq[Set[Int]], pos:Int, turn:Int, goal:Int, dir2:List[Int], w:Int, h:Int, memory: scala.collection.mutable.HashMap[(Int, Int), Int], heatMap:Array[Int]):Int = {
+    if(pos == goal){
+      0
+    }else{
+      memory.getOrElseUpdate((turn % 4, pos), {      
+        val moves = dir2.map((d) => (pos + d, d)).filter((a) => Helpers.avoidBorder(a._1, w, h, a._2)).map((a) => a._1).filterNot(blocks((turn+1)%4).contains(_)).sortWith(heatMap(_) < heatMap(_))
+        val newBlocks = blocks.zipWithIndex.map((b) => if(b._2 == turn % 4) b._1 + pos else b._1)
+        val solutions = moves.map(recSolve(newBlocks, _, turn+1, goal, dir2, w, h, memory, heatMap)).filterNot(_ == -1).sortWith(_ < _)
+        solutions.headOption match{
+          case Some(a) => a + 1
+          case None => -1
+        }
+      })
+    }
+  }
+  
+  def printField1(field: String, w:Int): Unit = {
+    if(!field.isEmpty()){
+      println(field.take(w))
+      printField1(field.drop(w), w)
+    }   
+  }
+  
+  def addBlock(field:Set[Int], pos:Int, d:Int, w:Int, h:Int):Set[Int] = {
+    if(!Helpers.avoidBorder(pos, w, h, d) || field.contains(pos)){
+      Set()
+    }else{
+      addBlock(field, pos + d, d, w, h) + pos
+    }
+  }
+  
+  def printField2(field:Set[Int], w: Int, h:Int) {
+    val fieldStr = (for (i <- 0 to w * h -1) yield field.contains(i) match{
+      case true => '#'
+      case false => '.';
+    }).foldLeft("")(_ + _)
+    printField1(fieldStr, w)
+  }
+  
+  def main(args: Array[String]): Unit = {
+    val turrets = ">v<^" //If repeated, a turret is turned clockwise each step right
+    val block = turrets + "#";
+    val inputLines = Source.fromFile(inputFile).getLines
+    val challengeCount = inputLines.next.toInt
+    for(challenge <- 1 to challengeCount){
+      val startTime = System.currentTimeMillis()
+      val dim = inputLines.next.split("\\s").map(_.toInt)
+      val fieldStr = (for(lineNum <- 1 to dim(0)) yield inputLines.next).foldLeft("")(_ + _)
+      val basicField = fieldStr.toList.zipWithIndex.filter((t:Tuple2[Char, Int]) => block.contains(t._1)).map((t:Tuple2[Char, Int]) => t._2).toSet
+      val start = fieldStr.indexOf('S')
+      val goal = fieldStr.indexOf('G')
+      val directions = Array(1,dim(1), -1, -dim(1))//RIGHT DOWN LEFT UP  (note: same as in val turrets!)
+      val lasers = basicField.map( pos => (pos, fieldStr.charAt(pos))).filter((t:Tuple2[Int, Char])=> turrets.contains(t._2))
+      val blocks = for(rotation <- 0 to 3) yield{
+        val beams = lasers.map((t:Tuple2[Int, Char])=> (t._1, (turrets.indexOf(t._2)+rotation) % 4))
+        beams.map((t:Tuple2[Int, Int])=>addBlock(basicField, t._1 + directions(t._2), directions(t._2), dim(1), dim(0))).foldLeft(Set[Int]())((a:Set[Int], b:Set[Int]) => b ++ a) ++ basicField
+      }
+      
+      val solver = new Solver(goal, directions.toList, dim(1), dim(0), basicField)
+      output(challenge, solver.recSolve(blocks, start, 0), System.currentTimeMillis() - startTime)
+    }
+  }
+
+}

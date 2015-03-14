@@ -1,0 +1,176 @@
+#include <iostream>
+#include <cstring>
+#include <queue>
+#include <vector>
+#include <cstdio>
+#include <functional>
+#define INF 1e9
+#define max_N 44100
+using namespace std;
+typedef struct node{int idx,dis;} Node;
+bool operator < (const Node& a, const Node& b) {return a.dis>b.dis;}
+priority_queue<Node > PQ;
+typedef struct edge{int tar,wei;} Edge;
+vector<Edge > mp[max_N];
+int dis[max_N];
+int par[max_N];
+bool v[max_N];
+int T,M,N,ans;
+int hash(int a,int b,int c){return a*10201+b*101+c;}
+bool isTurret(char c){return (c=='^')||(c=='>')||(c=='v')||(c=='<');}
+char rot(char c)
+{
+	if(c=='^')return '>';
+	if(c=='>')return 'v';
+	if(c=='v')return '<';
+	return '^';
+}
+int di[4]={-1,0,1,0};
+int dj[4]={0,1,0,-1};
+//if int,char...etc. 
+//priority_queue<int ,vector<int >, greater<int > > PQ;
+void ini(int S)
+{
+	memset(v,false,sizeof(v));
+	memset(par,-1,sizeof(par));
+	for(int i=0;i<max_N;i++)
+		dis[i]=INF;
+	while(!PQ.empty())
+		PQ.pop();
+	PQ.push((Node){S,0});
+	dis[S]=0;
+	par[S]=S;
+}
+void DJ(int S)
+{
+	ini(S);
+	while(!PQ.empty())
+	{
+		while(!PQ.empty()&&v[PQ.top().idx])
+			PQ.pop();
+		if(PQ.empty())
+			break;
+		Node now=PQ.top();		
+		v[now.idx]=true;
+		PQ.pop();
+		for(int i=0;i<mp[now.idx].size();i++)
+		{
+			if(dis[mp[now.idx][i].tar]>now.dis+mp[now.idx][i].wei)
+			{
+				dis[mp[now.idx][i].tar]=now.dis+mp[now.idx][i].wei;
+				par[mp[now.idx][i].tar]=now.idx;
+				PQ.push((Node){mp[now.idx][i].tar,dis[mp[now.idx][i].tar]});
+				//v[mp[now.idx][i].tar]=false; if negative edge
+			}
+		}
+	}
+	return;
+}
+//int main():mp.clear();
+char in[4][105][105];
+void input()
+{
+	for(int i=0;i<M;i++)
+	{
+		scanf("%s",in[0][i]);
+		for(int k=0;k<N;k++)
+		{
+			if(isTurret(in[0][i][k]))
+			{
+				for(int p=1;p<4;p++)
+					in[p][i][k]=rot(in[p-1][i][k]);
+			}
+			else
+			{
+				for(int p=1;p<4;p++)
+					in[p][i][k]=in[p-1][i][k];
+			}
+		}
+	}
+}
+void process()
+{
+	//build normal edge
+	for(int p=0;p<4;p++)
+		for(int i=0;i<M;i++)
+			for(int j=0;j<N;j++)
+			{
+				if(in[p][i][j]=='#')
+					continue;
+				else if(!isTurret(in[p][i][j]))
+				{
+					char c;
+					for(int k=0,ni,nj;k<4;k++)
+					{
+						ni=i+di[k];
+						nj=j+dj[k];
+						if(ni==-1||ni==M||nj==-1||nj==N)
+							continue;
+						c=in[(p+1)%4][ni][nj];
+						if(!isTurret(c)&&c!='#')
+							mp[hash(p,i,j)].push_back((Edge){hash((p+1)%4,ni,nj),1});
+					}
+				}
+			}
+	//build S edge
+	for(int i=0;i<M;i++)
+		for(int j=0;j<N;j++)
+			if(in[0][i][j]=='S')
+				for(int k=0;k<4;k++)
+					mp[max_N-1].push_back((Edge){hash(1,i+di[k],j+dj[k]),1});
+	//build G edge
+	for(int i=0;i<M;i++)
+		for(int j=0;j<N;j++)
+			if(in[0][i][j]=='G')
+				for(int k=0;k<4;k++)
+					mp[hash(k,i,j)].push_back((Edge){max_N-2,0});
+	//cut invalid edge
+	for(int p=0;p<4;p++)
+		for(int i=0;i<M;i++)
+			for(int j=0;j<N;j++)
+			{
+				if(!isTurret(in[p][i][j]))
+					continue;
+				int mode;
+				if(in[p][i][j]=='^')
+					mode=0;
+				else if(in[p][i][j]=='>')
+					mode=1;
+				else if(in[p][i][j]=='v')
+					mode=2;
+				else mode=3;
+				int x=i,y=j;
+				while(x!=-1&&x!=M&&y!=-1&&y!=N)
+				{
+					mp[hash(p,x,y)].clear();
+					x+=di[mode],y+=dj[mode];
+				}
+			}
+	//DJ
+	DJ(max_N-1);
+	ans=min(ans,dis[max_N-2]);
+}
+int main()
+{
+	freopen("in3.txt","r",stdin);
+	freopen("out3.txt","w",stdout);
+	scanf("%d",&T);
+	for(int cs=1;cs<=T;cs++)
+	{
+		scanf("%d%d",&M,&N);
+		input();
+		/*for(int k=0;k<4;k++,cout<<endl)
+			for(int i=0;i<M;i++,cout<<endl)
+				for(int j=0;j<N;j++)
+					cout<<in[k][i][j];*/
+		ans=INF;
+		for(int i=0;i<max_N;i++)
+			mp[i].clear();
+		process();
+		if(ans==INF)
+			printf("Case #%d: impossible\n",cs);
+		else
+			printf("Case #%d: %d\n",cs,ans);
+	}
+	return 0;
+}

@@ -1,0 +1,277 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+void swap(int *a, int *b){
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+int mod(int a){
+    return a>0?a:-a;
+}
+
+int g_r, g_c;
+FILE *output_file;
+
+void sort_g(int a[][4], int length){
+    for(int i = 0; i < length; i++){
+        for(int j = i + 1; j < length; j++){
+            if(mod(a[i][2] - g_r) + mod(a[i][3] - g_c) > mod(a[j][2] - g_r) + mod(a[j][3] - g_c)){
+                swap(&a[i][0], &a[j][0]);
+                swap(&a[i][1], &a[j][1]);
+            }else if(mod(a[i][2] - g_r) + mod(a[i][3] - g_c) == mod(a[j][2] - g_r) + mod(a[j][3] - g_c)){
+                if(a[i][0] > a[j][0]){
+                    swap(&a[i][0], &a[j][0]);
+                    swap(&a[i][1], &a[j][1]);
+                }
+            }
+        }
+    }
+}
+
+int path_length(char maze[][100], int count[][100], int h, int w, int pos_r, int pos_c, int laser_r[], int laser_c[], int laser_dt[], int laser_count, int length){
+    int *laser_d = (int *)malloc(sizeof(int)*laser_count);
+    for(int i = 0; i < laser_count; i++){
+        laser_d[i] = laser_dt[i];
+    }
+    count[pos_r][pos_c]++;
+    if(maze[pos_r][pos_c] == 'G'){
+        printf("%d\n", length);
+        return 1;
+    }
+    int move_r = 1, move_d = 1, move_l = 1, move_u = 1;
+    if(pos_c == 0)
+        move_l = 0;
+    if(pos_c == w - 1)
+        move_r = 0;
+    if(pos_r == 0)
+        move_u = 0;
+    if(pos_r == h - 1)
+        move_d = 0;
+    
+    if(move_l == 1 && maze[pos_r][pos_c - 1] != '.' && maze[pos_r][pos_c - 1] != 'G'){
+        move_l = 0;
+    }if(move_r == 1 && maze[pos_r][pos_c + 1] != '.' && maze[pos_r][pos_c + 1] != 'G'){
+        move_r = 0;
+    }if(move_u == 1 && maze[pos_r - 1][pos_c] != '.' && maze[pos_r - 1][pos_c] != 'G'){
+        move_u = 0;
+    }if(move_d == 1 && maze[pos_r + 1][pos_c] != '.' && maze[pos_r + 1][pos_c] != 'G'){
+        move_d = 0;
+    }
+    
+    int flag;
+    for(int i = 0; i < laser_count; i++){
+        flag = 0;
+        if(laser_d[i] == 1){
+            laser_d[i] = 2;
+            for(int j = laser_c[i]; j < pos_c; j++){
+                if(maze[laser_r[i]][j] == '#'){
+                    flag = 1;
+                }else{
+                    break;
+                }
+            }
+            if(flag == 0){
+            if(pos_r == laser_r[i] - 1 && move_d == 1 && pos_c > laser_c[i]){
+                move_d = 0;
+            }else if(pos_r == laser_r[i] + 1 && move_u == 1 && pos_c > laser_c[i]){
+                move_u = 0;
+            }else if(pos_r == laser_r[i] &&  pos_c > laser_c[i]){
+                move_l = 0;
+                move_r = 0;
+            }
+            }
+        }else if(laser_d[i] == 2){
+            laser_d[i] = 3;
+            for(int j = laser_r[i]; j < pos_r; j++){
+                if(maze[j][laser_c[i]] == '#'){
+                    flag = 1;
+                }else{
+                    break;
+                }
+            }
+            if(flag == 0){
+            if(pos_c == laser_c[i] - 1 && move_r == 1 && pos_r > laser_r[i]){
+                move_r = 0;
+            }else if(pos_c == laser_c[i] + 1 && move_l == 1 && pos_r > laser_r[i]){
+                move_l = 0;
+            }else if(pos_c == laser_c[i] && pos_r > laser_r[i]){
+                move_u = 0;
+                move_d = 0;
+            }
+            }
+        }else if(laser_d[i] == 3){
+            laser_d[i] = 4;
+            for(int j = pos_c - 1; j >= laser_c[i]; j--){
+                if(maze[laser_r[i]][j] == '#'){
+                    flag = 1;
+                }else{
+                    break;
+                }
+            }
+
+            if(flag == 0){
+            
+            if(pos_r == laser_r[i] - 1 && move_d == 1 && pos_c < laser_c[i]){
+                move_d = 0;
+            }else if(pos_r == laser_r[i] + 1 && move_u == 1 && pos_c < laser_c[i]){
+                move_u = 0;
+            }else if(pos_r == laser_r[i] && pos_c < laser_c[i]){
+                move_l = 0;
+                move_r = 0;
+            }
+            }
+        }else if(laser_d[i] == 4){
+            laser_d[i] = 1;
+            for(int j = pos_r - 1; j >= laser_r[i]; j--){
+                if(maze[j][laser_c[i]] == '#'){
+                    flag = 1;
+                }else{
+                    break;
+                }
+            }
+            if(flag == 0){
+            if(pos_c == laser_c[i] - 1 && move_r == 1 && pos_r < laser_r[i]){
+                move_r = 0;
+            }else if(pos_c == laser_c[i] + 1 && move_l == 1 && pos_r < laser_r[i]){
+                move_l = 0;
+            }else if(pos_c == laser_c[i] && pos_r < laser_r[i]){
+                move_u = 0;
+                move_d = 0;
+            }
+            }
+        }
+    }
+    
+    int result, order[4][4], count_pos = 0;
+    if(move_l == 1 && maze[pos_r][pos_c - 1] == 'G'){
+        fprintf(output_file, "%d\n", length);
+        return 1;
+    }else if(move_r == 1 && maze[pos_r][pos_c + 1] == 'G'){
+        fprintf(output_file, "%d\n", length);
+        return 1;
+    }else if(move_u == 1 && maze[pos_r - 1][pos_c] == 'G'){
+        fprintf(output_file, "%d\n", length);
+        return 1;
+    }else if(move_d == 1 && maze[pos_r + 1][pos_c] == 'G'){
+        fprintf(output_file, "%d\n", length);
+        return 1;
+    }
+    
+    if(move_l == 1 && count[pos_r][pos_c - 1] <= 1){
+        order[count_pos][0] = count[pos_r][pos_c - 1];
+        order[count_pos][1] = 4;
+        order[count_pos][2] = pos_r;
+        order[count_pos][3] = pos_c - 1;
+        count_pos++;
+    }
+    if(move_r == 1 && count[pos_r][pos_c + 1] <= 1){
+        order[count_pos][0] = count[pos_r][pos_c + 1];
+        order[count_pos][1] = 2;
+        order[count_pos][2] = pos_r;
+        order[count_pos][3] = pos_c + 1;
+        count_pos++;
+    }
+    if(move_u == 1 && count[pos_r - 1][pos_c] <= 1){
+        order[count_pos][0] = count[pos_r - 1][pos_c];
+        order[count_pos][1] = 1;
+        order[count_pos][2] = pos_r - 1;
+        order[count_pos][3] = pos_c;
+        count_pos++;
+    }
+    if(move_d == 1 && count[pos_r + 1][pos_c] <= 1){
+        order[count_pos][0] = count[pos_r + 1][pos_c];
+        order[count_pos][1] = 3;
+        order[count_pos][2] = pos_r + 1;
+        order[count_pos][3] = pos_c;
+        count_pos++;
+    }
+    
+    sort_g(order, count_pos);
+    
+    for(int i = 0; i < count_pos; i++){
+        if(move_l == 1 && order[i][1] == 4){
+            maze[pos_r][pos_c] = '.';
+            result = path_length(maze, count, h, w, pos_r, pos_c - 1, laser_r, laser_c, laser_d, laser_count, length + 1);
+                if(result == 1)
+                    return 1;
+        }
+        if(move_r == 1 && order[i][1] == 2){
+            maze[pos_r][pos_c] = '.';
+            result = path_length(maze, count, h, w, pos_r, pos_c + 1, laser_r, laser_c, laser_d, laser_count, length + 1);
+            if(result == 1)
+                return 1;
+        }
+        if(move_u == 1 && order[i][1] == 1){
+            maze[pos_r][pos_c] = '.';
+            result = path_length(maze, count, h, w, pos_r - 1, pos_c, laser_r, laser_c, laser_d, laser_count, length + 1);
+            if(result == 1)
+                return 1;
+        }
+        if(move_d == 1 && order[i][1] == 3){
+            maze[pos_r][pos_c] = '.';
+            result = path_length(maze, count, h, w, pos_r + 1, pos_c, laser_r, laser_c, laser_d, laser_count, length + 1);
+            if(result == 1)
+                return 1;
+        }
+    }
+    free(laser_d);
+    return 0;
+}
+
+int main(){
+    FILE *input_file = fopen("laser_maze.txt", "r");
+    output_file = fopen("laser_maze_output.txt", "w");
+    int t, h, w, start_r, start_c, laser_r[10000], laser_c[10000], laser_d[10000], laser_count, count[100][100];
+    char maze[100][100];
+    fscanf(input_file, "%d", &t);
+    for(int i = 0; i < t; i++){
+        laser_count = 0;
+        memset(count, 0, sizeof(count[0][0])*100*100);
+        fscanf(input_file, "%d %d", &h, &w);
+        for(int j = 0; j < h; j++){
+            fscanf(input_file, "%s", &maze[j]);
+            for(int k = 0; k < w; k++){
+                if(maze[j][k] == 'S'){
+                    start_r = j;
+                    start_c = k;
+                }
+                if(maze[j][k] == 'G'){
+                    g_r = j;
+                    g_c = k;
+                }
+                if(maze[j][k] == '^'){
+                    laser_r[laser_count] = j;
+                    laser_c[laser_count] = k;
+                    laser_d[laser_count] = 1;
+                    laser_count++;
+                }else if(maze[j][k] == '>'){
+                    laser_r[laser_count] = j;
+                    laser_c[laser_count] = k;
+                    laser_d[laser_count] = 2;
+                    laser_count++;
+                }else if(maze[j][k] == 'v'){
+                    laser_r[laser_count] = j;
+                    laser_c[laser_count] = k;
+                    laser_d[laser_count] = 3;
+                    laser_count++;
+                }else if(maze[j][k] == '<'){
+                    laser_r[laser_count] = j;
+                    laser_c[laser_count] = k;
+                    laser_d[laser_count] = 4;
+                    laser_count++;
+                }
+            }
+        }
+        
+        fprintf(output_file, "Case #%d: ", i + 1);
+        if(path_length(maze, count, h, w, start_r, start_c, laser_r, laser_c, laser_d, laser_count, 1) != 1){
+            fprintf(output_file, "impossible\n");
+        }
+    }
+    fclose(input_file);
+    fclose(output_file);
+    return 0;
+}

@@ -1,0 +1,376 @@
+//package cup.hacker.fb;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class LaserMaze {
+	private static BufferedReader br;
+	private static PrintWriter pw;
+	
+	static class Maze {
+		private int _w, _h;
+		private int[] _goal, _start, _crr;
+		private List<int[]> _walls = null;
+		private Map<int[], String> _pillars = new HashMap<int[], String>(); // position of laser pillars and directions
+		
+		public Maze(int w, int h, int[] goal, int[] start, List<int[]> walls, Map<int[], String> pillars) {
+			set_w(w);
+			set_h(h);
+			set_goal(goal);
+			set_start(start);
+			set_crr(start);
+			set_walls(walls);
+			set_pillars(pillars);
+		}
+		
+		// rotate laser pillars 90 degrees clockwise
+		public void rotatePillars() {
+			for(int [] p : _pillars.keySet()) {
+				String direction = _pillars.get(p);
+				
+				switch (direction) {
+					case "^":
+						_pillars.put(p, ">");
+						break;
+					case ">":
+						_pillars.put(p, "v");
+						break;
+					case "v":
+						_pillars.put(p, "<");
+						break;
+					case "<":
+						_pillars.put(p, "^");
+						break;
+					default:
+						_pillars.put(p, null);
+						break;
+				}
+			}
+		}
+		
+		// returns True if a laser pillar is facing a pos
+		public boolean isFacing(int[] pillar, int[] pos) {
+			boolean FLAG = false;
+			
+			if (pillar[0] == pos[0]) {
+				switch (_pillars.get(pillar)) {
+					case ">": case "<":
+						FLAG = false;
+						break;
+					case "^":
+						if (pillar[1] > pos[1]) FLAG = true;
+						break;
+					case "v":
+						if (pillar[1] < pos[1]) FLAG = true;
+						break;
+				}
+			} else if (pillar[1] == pos[1]) {
+				switch (_pillars.get(pillar)) {
+					case "^": case "v":
+						FLAG = false;
+						break;
+					case ">":
+						if (pillar[0] < pos[0]) FLAG = true;
+						break;
+					case "<":
+						if (pillar[0] > pos[0]) FLAG = true;
+						break;
+				}	
+			}
+			
+			return FLAG;
+		}
+		
+		public boolean isBlocked(int[] pos) {
+			for (int[] key : _pillars.keySet()) {
+				if (Arrays.equals(key, pos)) return true;
+			}
+			
+			for (int[] w : _walls) {
+				if (Arrays.equals(w, pos)) return true;
+			}
+			
+			return false;
+		}
+
+		public boolean isShootable(int[] pillar, int[] pos) {
+			boolean FLAG = false;
+			
+			if (isFacing(pillar, pos)) {
+				if (pillar[0] == pos[0]) {
+					int abs = Math.abs(pillar[1] - pillar[1]);
+					if (abs == 1) FLAG = true;
+					else {
+						for (int i = (pillar[1] > pos[1]) ? pos[1] + 1 : pillar[1] + 1; i < abs; i++) {
+							int[] mid = {pillar[0], i};
+							FLAG = !isBlocked(mid);
+						}
+					}
+				} else if (pillar[1] == pillar[1]) {
+					int abs = Math.abs(pillar[0] - pillar[0]);
+					if (abs == 1) FLAG = true;
+					else {
+						for (int i = (pillar[0] > pos[0]) ? pos[0] + 1 : pillar[0] + 1; i < abs; i++) {
+							int[] mid = {i, pillar[1]};
+							FLAG = !isBlocked(mid);
+						}
+					}
+				}
+			}
+			
+			return FLAG;
+		}
+		
+		public int get_w() {
+			return _w;
+		}
+
+		public void set_w(int _w) {
+			this._w = _w;
+		}
+
+		public int[] get_goal() {
+			return _goal;
+		}
+
+		public void set_goal(int[] _goal) {
+			this._goal = _goal;
+		}
+
+		public int get_h() {
+			return _h;
+		}
+
+		public void set_h(int _h) {
+			this._h = _h;
+		}
+
+		public int[] get_start() {
+			return _start;
+		}
+
+		public void set_start(int[] _start) {
+			this._start = _start;
+		}
+		
+		// get current state
+		public int[] get_crr() {
+			return _crr;
+		}
+
+		// move
+		public void set_crr(int[] _crr) {
+			this._crr = _crr;
+		}
+
+		public List<int[]> get_walls() {
+			return _walls;
+		}
+
+		public void set_walls(List<int[]> _walls) {
+			this._walls = _walls;
+		}
+
+		public Map<int[], String> get_pillars() {
+			return _pillars;
+		}
+
+		public void set_pillars(Map<int[], String> _pillars) {
+			this._pillars = _pillars;
+		}
+	}
+	
+	// 
+	public static boolean goal(Maze m) {
+		return Arrays.equals(m.get_crr(), m.get_goal());
+	}
+	
+	// not change state of maze m
+	public static Maze move(int[] pos, Maze m) {
+		Maze new_m = m;
+		new_m.set_crr(pos);
+		
+		// rotate laser pillars
+		m.rotatePillars();
+
+		return new_m;
+	}
+	
+	// return true if move is applicable
+	public static boolean isValid(int[] pos, Maze m) {
+		if (m.isBlocked(pos)) { // if hit a wall or a laser pillar
+			return false;
+		} else {
+			Maze new_m = m;
+			new_m.rotatePillars();
+			for (int[] p: new_m.get_pillars().keySet()) {
+				if (!new_m.isShootable(p, pos)) {
+					return true;
+				}
+			}
+		}		
+		return false;
+	}
+	
+	public static List<int[]> validMoves(Maze maze) {
+		List<int[]> vm = new ArrayList<int[]>();
+		int[] crr = maze.get_crr();
+		int x = crr[0];
+		int y = crr[1];
+		
+		if (x + 1 < maze.get_w()) {
+			int[] m = {x+1, y};
+			vm.add(m);
+		}
+		
+		if (x - 1 >= 0) {
+			int[] m = {x-1, y};
+			vm.add(m);
+		}
+		
+		if (y + 1 < maze.get_h()) {
+			int[] m = {x, y+1};
+			vm.add(m);
+		}
+		
+		if (y - 1 >= 0) {
+			int[] m = {x, y-1};
+			vm.add(m);
+		}
+		
+		List<int[]> finalList = new ArrayList<int[]>();
+		for (int[] m: vm) {
+			if (isValid(m, maze)) finalList.add(m);
+		}
+		
+		return finalList;
+	}
+	
+	public static int heuristic(int[] a, int[] b) {
+//		return Math.sqrt(Math.pow(a[1] - b[1], 2) + Math.pow(a[0] - b[0], 2));
+		return a[1] + b[0];
+	}
+	
+	public static Map<int[], int[]> search(int[] start, int[] goal, Maze m) {
+		List<int[]> visited = new ArrayList<int[]>();
+		List<int[]> open = new ArrayList<int[]>();
+		open.add(start);
+		
+		Map<int[], int[]> map = new HashMap<int[], int[]>();
+		
+		Map<int[], Integer> g_score = new HashMap<int[], Integer>();
+		Map<int[], Integer> f_score = new HashMap<int[], Integer>();
+		g_score.put(start, 0);
+		f_score.put(start, g_score.get(start) + heuristic(start, goal));
+
+		int[] curr = start;
+		while (!open.isEmpty()) {
+			for (int[] node: open) {
+				if (f_score.get(node) < f_score.get(curr)) curr = node;
+			}
+			
+			if (goal(m)) return map;
+			
+			open.remove(curr);
+			visited.add(curr);
+			m.set_crr(curr);
+			for (int[] neighbor : validMoves(m)) {
+				boolean VISITED = false;
+				for (int[] v : visited) {
+					if (Arrays.equals(v, neighbor)) {
+						VISITED = true;
+						break;
+					}
+				}
+				
+				if (!VISITED) {
+					int tentative_g_score = g_score.get(curr) + 1;
+					
+					boolean IN_OPEN = false;
+					for (int[] o : open) {
+						if (Arrays.equals(o, neighbor)) {
+							IN_OPEN = true;
+							break;
+						}
+					}
+					
+					if (!IN_OPEN || (g_score.get(neighbor) != null && tentative_g_score < g_score.get(neighbor))) {
+						map.put(neighbor, curr);
+						g_score.put(neighbor, tentative_g_score);
+						f_score.put(neighbor, g_score.get(neighbor) + heuristic(neighbor, goal));
+						
+						if (!IN_OPEN) open.add(neighbor);
+					}
+				}
+			}
+		}
+		
+		return new HashMap<int[], int[]>();
+	}
+	
+	public static void main(String[] args) throws IOException {
+		br = new BufferedReader(new InputStreamReader(new FileInputStream("input.txt")));
+		pw = new PrintWriter(new FileOutputStream("output.txt"));
+		
+		final int MAX_NUM_CASE = Integer.parseInt(br.readLine());
+		int i = 0;
+		
+		while (i < MAX_NUM_CASE) {
+			i++;
+			pw.print("Case #" + i + ": ");
+			
+			String[] dimension = br.readLine().split(" ");
+			int height = Integer.parseInt(dimension[0]);
+			int width = Integer.parseInt(dimension[1]);
+			List<int[]> walls = new ArrayList<int[]>();
+			Map<int[], String> pillars = new HashMap<int[], String>();
+			int[] start = null, goal = null;
+			
+			for (int j = 0; j < height; j++) {
+				String tk = br.readLine();
+				for (int k = 0; k < width; k++) {
+					int[] pos = {k, j};
+					switch (Character.toString(tk.charAt(k))) {
+						case "S":
+							start = pos;
+							break;
+						case "G":
+							goal = pos;
+							break;
+						case "#":
+							walls.add(pos);
+							break;
+						case "^":
+							pillars.put(pos, "^");
+							break;
+						case ">":
+							pillars.put(pos, ">");
+							break;
+						case "v":
+							pillars.put(pos, "v");
+							break;
+						case "<":
+							pillars.put(pos, "<");
+							break;
+					}
+				}
+			}
+			
+			Maze maze = new Maze(width, height, goal, start, walls, pillars);
+			pw.print(search(start, goal, maze).size());
+			
+			if (i != MAX_NUM_CASE) pw.println();
+		}
+
+		pw.close();
+	}
+}

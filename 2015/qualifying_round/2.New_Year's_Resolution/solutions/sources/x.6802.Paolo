@@ -1,0 +1,110 @@
+#!/usr/bin/env ruby
+
+require 'pp'
+
+case_number = 0
+food_case = {}
+is_case = false
+case_n = 0
+cases = []
+
+class Case
+
+  attr_accessor :combinations, :cases, :uniques, :aspected_result, :filtered_array, :nutritions, :output
+
+  def initialize(row)
+    @row = row
+    @aspected_result = row['aspected_result'].dup
+    @cases = row['cases'].dup
+    @nutritions = [[],[],[]]
+    @combinations = []
+    @uniques = []
+    @filtered_array = []
+    prepare_nutritions()
+    process_nutritions()
+
+    self.output = self.combinations.length > 0 ? 'yes' : 'no'
+  end
+
+  def process_nutritions()
+    nutrition_to_sum = self.nutritions[0]
+    for i in 0..2
+      nutrition = self.nutritions[i]
+      target = self.aspected_result[i].to_i
+      self.combinations = []
+      subset_sum(nutrition_to_sum, target)
+      unique_elements()
+      unique_indexes = unique_indexes(nutrition)
+      nutrition_to_sum = elements_for_indexes(i,unique_indexes)
+    end
+  end
+
+  def prepare_nutritions()
+    self.cases.each do |i|
+      self.nutritions[0] << i[0].to_i
+      self.nutritions[1] << i[1].to_i
+      self.nutritions[2] << i[2].to_i
+    end
+  end
+
+  def subset_sum(numbers, target, partial=[])
+    s = partial.inject 0, :+
+    r = []
+
+    self.combinations << partial if s == target
+
+    return if s >= target # if we reach the number why bother to continue
+
+    (0..(numbers.length - 1)).each do |i|
+      n = numbers[i]
+      remaining = numbers.drop(i+1)
+      subset_sum(remaining, target, partial + [n])
+    end
+  end
+
+  def unique_elements
+    self.uniques = self.combinations.flatten.uniq
+  end
+
+  def unique_indexes(g)
+    uniques_indexes = []
+    self.uniques.each do |n|
+      uniques_indexes << g.each_index.select{|i| g[i] == n}
+    end
+    uniques_indexes = uniques_indexes.flatten.uniq.sort
+    return uniques_indexes
+  end
+
+  def elements_for_indexes(i, indexes)
+    elements_for_indexes = []
+
+    indexes.each do |x|
+      elements_for_indexes << self.cases[x][i+1].to_i
+    end
+    return elements_for_indexes
+  end
+
+end
+
+ARGF.each_with_index do |line, idx|
+  line = line.strip
+
+  if(is_case && case_n > 0)
+    cases << line.split(/ /)
+    if (cases.length == case_n)
+      is_case = false
+      food_case['cases'] = cases
+      case_number +=1
+      case_study = Case.new(food_case.dup)
+      puts "Case ##{case_number}: #{case_study.output}"
+    end
+  elsif (is_case && case_n == 0)
+    case_n = line.to_i
+    cases = []
+  elsif (idx > 0 && !is_case)
+    food_case['aspected_result'] = line.split(/ /)
+    is_case = true
+    case_n = 0
+  end
+
+end

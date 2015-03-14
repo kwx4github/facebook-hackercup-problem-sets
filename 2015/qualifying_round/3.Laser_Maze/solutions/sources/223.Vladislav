@@ -1,0 +1,180 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+inline bool IsLaser(char laser)
+{
+    return laser == '<' || laser == '>' || laser == 'v' || laser == '^';
+}
+
+inline int LaserToNumber(char laser)
+{
+    if (laser == '>') {
+        return 0;
+    } else if (laser == 'v') {
+        return 1;
+    } else if (laser == '<') {
+        return 2;
+    } else {
+        return 3;
+    }
+}
+
+inline char NumberToLaser(int num)
+{
+    if (num == 0) {
+        return '>';
+    } else if (num == 1) {
+        return 'v';
+    } else if (num == 2) {
+        return '<';
+    } else {
+        return '^';
+    }
+}
+
+inline void UpLaser(char& laser)
+{
+    laser = NumberToLaser((LaserToNumber(laser) + 1) % 4);
+}
+
+void UpField(vector<string>& field)
+{
+    for (int i = 0; i < (int) field.size(); ++i) {
+        for (int j = 0; j < (int) field[i].size(); ++j) {
+            if (IsLaser(field[i][j])) {
+                UpLaser(field[i][j]);
+            }
+        }
+    }
+}
+
+inline bool IsWall(char wall)
+{
+    return wall == '#';
+}
+
+const int dx[4] = {-1, 0, 0, 1};
+const int dy[4] = {0, -1, 1, 0};
+
+int main()
+{
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    int tests;
+    cin >> tests;
+    for (int test = 0; test < tests; ++test) {
+        int n, m;
+        cin >> n >> m;
+        vector<string> field(n);
+        for (int i = 0; i < n; ++i) {
+            cin >> field[i];
+        }
+        UpField(field);
+        vector<vector<bool> > occupied[4];
+        for (int shift = 0; shift < 4; ++shift) {
+            occupied[shift].assign(n, vector<bool>(m, false));
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < m; ++j) {
+                    if (IsLaser(field[i][j])) {
+                        if (field[i][j] == '>') {
+                            for (int k = j + 1; k < m; ++k) {
+                                if (IsLaser(field[i][k]) || IsWall(field[i][k])) {
+                                    break;
+                                }
+                                occupied[shift][i][k] = true;
+                            }
+                        } else if (field[i][j] == 'v') {
+                            for (int k = i + 1; k < n; ++k) {
+                                if (IsLaser(field[k][j]) || IsWall(field[k][j])) {
+                                    break;
+                                }
+                                occupied[shift][k][j] = true;
+                            }
+                        } else if (field[i][j] == '<') {
+                            for (int k = j - 1; k >= 0; --k) {
+                                if (IsLaser(field[i][k]) || IsWall(field[i][k])) {
+                                    break;
+                                }
+                                occupied[shift][i][k] = true;
+                            }
+                        } else if (field[i][j] == '^') {
+                            for (int k = i - 1; k >= 0; --k) {
+                                if (IsLaser(field[k][j]) || IsWall(field[k][j])) {
+                                    break;
+                                }
+                                occupied[shift][k][j] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            UpField(field);
+        }
+        int start_i, start_j;
+        int goal_i, goal_j;
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                if (field[i][j] == 'S') {
+                    start_i = i;
+                    start_j = j;
+                }
+                if (field[i][j] == 'G') {
+                    goal_i = i;
+                    goal_j = j;
+                }
+            }
+        }
+        queue<int> q_i, q_j, q_shift;
+        q_i.push(start_i);
+        q_j.push(start_j);
+        q_shift.push(0);
+        vector<vector<int> > ans[4];
+        for (int shift = 0; shift < 4; ++shift) {
+            ans[shift].assign(n, vector<int>(m, -1));
+        }
+        ans[0][start_i][start_j] = 0;
+        while (!q_i.empty()) {
+            int cur_i = q_i.front();
+            q_i.pop();
+            int cur_j = q_j.front();
+            q_j.pop();
+            int cur_shift = q_shift.front();
+            q_shift.pop();
+            int next_shift = (cur_shift + 1) % 4;
+            for (int t = 0; t < 4; ++t) {
+                int next_i = cur_i + dx[t];
+                int next_j = cur_j + dy[t];
+
+                if (next_i >= 0 && next_i < n &&
+                        next_j >= 0 && next_j < m &&
+                        !occupied[cur_shift][next_i][next_j] &&
+                        !IsLaser(field[next_i][next_j]) &&
+                        !IsWall(field[next_i][next_j])) {
+                    if (ans[next_shift][next_i][next_j] == -1) {
+                        ans[next_shift][next_i][next_j] = ans[cur_shift][cur_i][cur_j] + 1;
+                        q_i.push(next_i);
+                        q_j.push(next_j);
+                        q_shift.push(next_shift);
+                    }
+                }
+            }
+        }
+        int answer = -1;
+        for (int shift = 0; shift < 4; ++shift) {
+            if (ans[shift][goal_i][goal_j] != -1) {
+                if (answer == -1 || ans[shift][goal_i][goal_j] < answer) {
+                    answer = ans[shift][goal_i][goal_j];
+                }
+            }
+        }
+        cout << "Case #" << test + 1 << ": ";
+        if (answer == -1) {
+            cout << "impossible" << endl;
+        } else {
+            cout << answer << endl;
+        }
+    }
+
+    return 0;
+}

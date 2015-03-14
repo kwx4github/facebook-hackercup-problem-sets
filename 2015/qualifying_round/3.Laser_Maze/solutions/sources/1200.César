@@ -1,0 +1,169 @@
+#include <iostream>
+#include <stack>
+#include <set>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <map>
+
+#define inf (1 << 30)
+#define INF (1<<45LL)
+#define pb push_back
+#define mp make_pair
+using namespace std;
+
+typedef pair<int, int> pi;
+typedef long long ll;
+
+/*
+ * 
+ * 		PUCMM PROGRAMMING FORCE
+ * 
+ * */
+
+int n, m;
+int dist[200][200][4];
+bool visited[200][200][4];
+bool killed[200][200][4];
+
+char graph[200][200];
+
+pi start, finish;
+
+pi rotations[4];
+
+
+int dirX[] = {1, -1, 0,  0};
+int dirY[] = {0,  0, 1, -1};
+
+struct Gun{
+	int x, y, dir;
+};
+
+vector<Gun> machines;
+
+int bfs(){
+	
+	int state = 0;
+	dist[start.first][start.second][state] = 0;
+	
+	queue< pair<pi, int> > Q;
+	
+	Q.push( mp( mp(start.first, start.second), 0 ) );
+	
+	int ret = inf;
+	
+	while(!Q.empty()){
+		
+		pi pos = Q.front().first;
+		int curState = Q.front().second;
+		Q.pop();
+		
+		if(pos.first == finish.first && pos.second == finish.second)
+		{
+			ret = dist[finish.first][finish.second][curState];
+			break;
+		}
+		
+		for(int i=0; i < 4; i++){
+			
+			int nn = pos.first + dirX[i];
+			int nm = pos.second + dirY[i];
+			
+			if(nn > n || nm > m || nn <= 0 || nm <= 0) continue;
+			
+			int newState = curState + 1;
+			newState %= 4;
+			if(visited[nn][nm][newState]) continue;
+			if(killed[nn][nm][newState]) continue;
+			if(graph[nn][nm] == '#') continue;
+			if(graph[nn][nm] == '^' || graph[nn][nm] == '>' || graph[nn][nm] == 'v' || graph[nn][nm] == '<') continue;
+			
+			dist[nn][nm][newState] = dist[pos.first][pos.second][curState] + 1;
+			visited[nn][nm][newState] = true;
+			Q.push( mp( mp(nn, nm), newState));
+		}
+	}
+	
+	
+	return ret;
+}
+int main(){
+
+	int t; cin >> t;
+	
+	rotations[0] = mp(-1, 0);
+	rotations[1] = mp(0, 1);
+	rotations[2] = mp(1, 0);
+	rotations[3] = mp(0, -1);
+	
+	for(int i=1; i <= t; i++){
+		
+		memset(dist, inf, sizeof dist);
+		memset(visited, false, sizeof visited);
+		memset(killed, false, sizeof killed);
+		
+		cin >> n >> m;
+		
+		machines.clear();
+		start = mp(-1, -1);
+		finish = mp(-1, -1);
+		for(int j=1; j <= n; j++){
+			for(int k=1; k <= m; k++){
+				cin >> graph[j][k];
+				
+				if(graph[j][k] == 'S')
+					start = mp(j, k);
+				
+				if(graph[j][k] == 'G')
+					finish = mp(j, k);
+					
+				if(graph[j][k] == '^' || graph[j][k] == '<' || graph[j][k] == '>' || graph[j][k] == 'v')
+				{
+					int dir;
+					if(graph[j][k] == '^') dir = 0;
+					if(graph[j][k] == '>') dir = 1;
+					if(graph[j][k] == 'v') dir = 2;
+					if(graph[j][k] == '<') dir = 3;
+					Gun cur; cur.x = j; cur.y = k; cur.dir = dir;
+					
+					machines.pb(cur);
+
+				}
+			}
+		}
+
+		for(int j=0; j < machines.size(); j++){
+			
+			int x, y, dir = machines[j].dir;
+			
+			for(int state=0; state < 4; state++, dir++){
+				dir %= 4;
+				x = machines[j].x, y = machines[j].y;
+				
+				while(x <= n && y <= m && x > 0 && y > 0){
+					x += rotations[dir].first;
+					y += rotations[dir].second;
+					
+					if(graph[x][y] == '^' || graph[x][y] == '>' || graph[x][y] == 'v' || graph[x][y] == '<') break;
+					if(graph[x][y] == '#') break;
+
+					killed[x][y][state] = true;
+
+				}
+			}
+		}
+		
+		int ans = bfs();
+		
+		cout << "Case #" << i << ": ";
+		if(ans == inf)
+			cout << "impossible" << endl;
+		else
+			cout << ans << endl;
+	}
+	return 0;
+}

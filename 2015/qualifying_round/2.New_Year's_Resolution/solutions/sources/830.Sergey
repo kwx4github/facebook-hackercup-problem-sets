@@ -1,0 +1,46 @@
+% ECLiPSe 6.1 #194 - http://www.eclipseclp.org/
+% Usage:
+% sed 's/^ */[/; s/ *$/]./; s/ \+/, /g' in-file | eclipse -b NewYearsResolution.ecl -e main > out-file
+
+:- set_stream(log_output, stderr).
+:- set_stream(warning_output, stderr).
+
+:- lib(eplex).
+
+model(Gp, Gc, Gf, Foods) :-
+    length(Foods, N),
+    length(Xs, N),
+    Xs $:: 0..1,
+    integers(Xs),
+    ( foreach(Xi, Xs), foreach(Food, Foods), foreach(Pi, Ps), foreach(Ci, Cs), foreach(Fi, Fs) do
+        [P, C, F] = Food,
+        Pi $= Xi * P,
+        Ci $= Xi * C,
+        Fi $= Xi * F
+    ),
+    integers([Ps, Cs, Fs]),
+    Gp $= sum(Ps), Gc $= sum(Cs), Gf $= sum(Fs).
+
+find :-
+    eplex_solver_setup(max(0)),
+    eplex_solve(_),
+    eplex_cleanup.
+
+do_case(Case_num, Gp, Gc, Gf, Foods) :-
+    printf("Case #%w: ", [Case_num]),
+    ( model(Gp, Gc, Gf, Foods), find ->
+        writeln("yes")
+    ;
+        writeln("no")
+    ).
+
+main :-
+    read([T]),
+    ( for(Case_num, 1, T) do
+        read([Gp, Gc, Gf]),
+        read([N]),
+        ( for(_I, 1, N), foreach(Food, Foods) do
+            read(Food) 
+        ),
+        do_case(Case_num, Gp, Gc, Gf, Foods) 
+    ).

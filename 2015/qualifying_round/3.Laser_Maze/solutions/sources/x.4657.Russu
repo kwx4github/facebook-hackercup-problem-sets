@@ -1,0 +1,303 @@
+//#include <bits/stdc++.h>
+#include <fstream>
+#include <queue>
+#include <algorithm>
+std::ifstream fin("laser_maze.txt");
+std::ofstream fout("3.out");
+
+
+class map
+{
+public:
+    map();
+    ~map();
+    void mapsDraw();
+    void rotateTurrets();
+    void laserShot();
+    void mapRead();
+    bool isTurret(char Turr);
+    char nextTurret(char Turr);
+    void startLee();
+    int nextState(int nr);
+    void drawSteps();
+    void resultDraw(int T);
+private:
+    char mapChar[5][102][102];
+    bool mapStepState[5][102][102];
+    int H, W;
+    int playerX, playerY;
+    int finalX, finalY;
+    int stepsToF;
+};
+
+
+
+
+
+
+int main(int argc, char const *argv[])
+{
+    int nT;
+    fin >> nT;
+    for (int T = 1; T <= nT; ++T)
+    {
+        map Mapa;
+        Mapa.mapRead();
+        Mapa.rotateTurrets();
+        Mapa.laserShot();
+        //Mapa.mapsDraw();//DEBUG
+        // fout.flush();// DEBUG
+        Mapa.startLee();
+        Mapa.resultDraw(T);
+    }
+    return 0;
+}
+
+
+
+
+void map::startLee()
+{
+    std::queue < std::pair<std::pair<int, int>, std::pair<int, int> > > coada;
+    coada.push(std::make_pair(std::make_pair(playerY, playerX), std::make_pair(0, 0)));
+    std::pair < std::pair<int, int>, std::pair<int, int> > front;
+    while (!coada.empty())
+    {
+        front = coada.front();
+        int state = front.second.first;
+        int x = front.first.second;
+        int y = front.first.first;
+        int stepCount = front.second.second;
+
+        if (x > W || x < 1)
+        {
+            coada.pop();
+            continue;
+        }
+
+        if (y > H || y < 1)
+        {
+            coada.pop();
+            continue;
+        }
+
+        if (isTurret(mapChar[state][y][x]) || mapChar[state][y][x] == '#' || mapStepState[state][y][x])
+        {
+            coada.pop();
+            continue;
+        }
+
+        if (x == finalX && y == finalY)
+        {
+            stepsToF = stepCount;
+            coada.pop();
+            break;
+            continue;
+
+        }
+        mapStepState[state][y][x] = 1;
+        coada.pop();
+
+        coada.push(std::make_pair(std::make_pair(y, x - 1), std::make_pair(nextState(state), stepCount + 1)));
+        coada.push(std::make_pair(std::make_pair(y, x + 1), std::make_pair(nextState(state), stepCount + 1)));
+        coada.push(std::make_pair(std::make_pair(y + 1, x), std::make_pair(nextState(state), stepCount + 1)));
+        coada.push(std::make_pair(std::make_pair(y - 1, x), std::make_pair(nextState(state), stepCount + 1)));
+
+
+
+    }
+}
+
+
+
+
+
+
+void map::resultDraw(int T)
+{
+    fout << "Case #" << T << ": ";
+    if (stepsToF == 0)
+    {
+        fout << "impossible";
+    }
+    else
+    {
+        fout << stepsToF;
+    }
+    fout << "\n";
+}
+
+int map::nextState(int nr)
+{
+    if (nr == 4)
+    {
+        return 1;
+    }
+    else return nr + 1;
+}
+
+map::map()
+{
+    stepsToF = H = W = playerY = playerX = finalX = finalY = 0;
+    for (int i = 0; i < 102; ++i)
+    {
+        for (int j = 0; j < 102; ++j)
+        {
+            mapChar[0][i][j] = mapChar[1][i][j] = mapChar[2][i][j] = mapChar[3][i][j] = mapChar[4][i][j] = 0;
+            mapStepState[0][i][j] = mapStepState[1][i][j] = mapStepState[2][i][j] = mapStepState[3][i][j] = mapStepState[4][i][j] = 0;
+        }
+    }
+}
+
+map::~map()
+{
+
+}
+
+bool map::isTurret(char Turr)
+{
+    if (Turr == '<' || Turr == 'v' || Turr == '^' || Turr == '>')
+    {
+        return 1;
+    }
+    else return 0;
+}
+
+char map::nextTurret(char Turr)
+{
+    if (Turr == '<')
+    {
+        return '^';
+    }
+    if (Turr == '^')
+    {
+        return '>';
+    }
+    if (Turr == '>')
+    {
+        return 'v';
+    }
+    if (Turr == 'v')
+    {
+        return '<';
+    }
+}
+
+void map::mapsDraw()
+{
+    for (int state = 1; state <= 4 ; ++state)
+    {
+        fout << "state:" << state << "\n";
+        for (int i = 1; i <= H; ++i)
+        {
+            for (int j = 1; j <= W; ++j)
+            {
+                fout << mapChar[state][i][j];
+            }
+            fout << "\n";
+        }
+    }
+}
+
+
+void map::laserShot()
+{
+    for (int state = 1; state <= 4 ; ++state)
+    {
+        for (int i = 1; i <= H; ++i)
+        {
+            for (int j = 1; j <= W; ++j)
+            {
+                if (isTurret(mapChar[state][i][j]))
+                {
+                    if (mapChar[state][i][j] == '<')
+                    {
+                        for (int m = j - 1; m > 0; --m)
+                        {
+                            if (mapChar[state][i][m] == '#' || isTurret(mapChar[state][i][m]))
+                            {
+                                break;
+                            }
+                            else mapChar[state][i][m] = '#';
+                        }
+                    }
+                    if (mapChar[state][i][j] == '>')
+                    {
+                        for (int m = j + 1; m <= W; ++m)
+                        {
+                            if (mapChar[state][i][m] == '#' || isTurret(mapChar[state][i][m]))
+                            {
+                                break;
+                            }
+                            else mapChar[state][i][m] = '#';
+                        }
+                    }
+                    if (mapChar[state][i][j] == 'v')
+                    {
+                        for (int m = i + 1; m <= H; ++m)
+                        {
+                            if (mapChar[state][m][j] == '#' || isTurret(mapChar[state][m][j]))
+                            {
+                                break;
+                            }
+                            else mapChar[state][m][j] = '#';
+                        }
+                    }
+                    if (mapChar[state][i][j] == '^')
+                    {
+                        for (int m = i - 1; m > 0; --m)
+                        {
+                            if (mapChar[state][m][j] == '#' || isTurret(mapChar[state][m][j]))
+                            {
+                                break;
+                            }
+                            else mapChar[state][m][j] = '#';
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void map::rotateTurrets()
+{
+    for (int state = 1; state <= 4 ; ++state)
+    {
+        for (int i = 1; i <= H; ++i)
+        {
+            for (int j = 1; j <= W; ++j)
+            {
+                if (isTurret(mapChar[state][i][j]))
+                {
+                    mapChar[state][i][j] = nextTurret(mapChar[state - 1][i][j]);
+                }
+            }
+        }
+    }
+}
+
+void map::mapRead()
+{
+    fin >> H >> W;
+    for (int i = 1; i <= H; ++i)
+    {
+        for (int j = 1; j <= W; ++j)
+        {
+            fin >> mapChar[0][i][j];
+            if (mapChar[0][i][j] == 'S')
+            {
+                mapChar[0][i][j] = '.';
+                playerX = j;
+                playerY = i;
+            }
+            if (mapChar[0][i][j] == 'G')
+            {
+                mapChar[0][i][j] = '.';
+                finalX = j;
+                finalY = i;
+            }
+            mapChar[1][i][j] = mapChar[2][i][j] = mapChar[3][i][j] = mapChar[4][i][j] = mapChar[0][i][j];
+        }
+    }
+}

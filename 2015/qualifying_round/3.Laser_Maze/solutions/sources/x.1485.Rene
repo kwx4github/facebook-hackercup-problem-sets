@@ -1,0 +1,188 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <set>
+#include <map>
+#include <cstring>
+#include <string>
+#include <cmath>
+#include <cassert>
+#include <ctime>
+#include <algorithm>
+#include <sstream>
+#include <list>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <cstdlib>
+#include <cstdio>
+#include <iterator>
+#include <functional>
+#include <bitset>
+typedef long long ll;
+using namespace std;
+class triple{
+public:
+    int i,j,k;
+    triple(int a,int b, int c){
+        i=a;
+        j=b;
+        k=c;
+    }
+    triple(){
+        i=j=k=0;
+    }
+};
+char G[101][101];
+char gg[4][101][101];
+int v[4][101][101];
+const char trs[]={'<', '^', '>', 'v'};
+pair<int,int> turrets[10001];
+pair<int,int> Start;
+pair<int,int> Target;
+int M,N,TurretCount;
+template<typename T>
+void prnt(T arr[][101]){
+    for(int i=0;i<M;i++){
+        for(int j=0;j<N;j++){
+            cout << arr[i][j];
+        }
+        cout << endl;
+    }
+    cout << endl;
+}
+bool isTurret(char ch){
+    return (ch==trs[0] || ch==trs[1] || ch==trs[2] || ch==trs[3]);
+}
+bool isNOOB(int i, int j){
+    return (i>=0 && j>=0 && i<M && j<N);
+}
+int getTurrIndex(char ch){
+    for(int i=0;i<4;i++){
+        if(ch==trs[i])return i;
+    }
+    return -1;
+}
+void rotateTurrs(int a, int inc){
+    for(int k=0;k<TurretCount;k++){
+        int i,j;
+        i=turrets[k].first;
+        j=turrets[k].second;
+        char turr=gg[a][i][j];
+        gg[a][i][j]=trs[(getTurrIndex(turr)+inc)%4];
+    }
+}
+void drawWall(int a, int i, int j, int ddx, int ddy){
+    while(isNOOB(i,j) && gg[a][i][j]!='#' && !isTurret(gg[a][i][j])){
+        gg[a][i][j]='#';
+        i+=ddx;
+        j+=ddy;
+    }
+}
+void drawWalls(int a){
+    for(int k=0;k<TurretCount;k++){
+        int i,j;
+        i=turrets[k].first;
+        j=turrets[k].second;
+        char turr=gg[a][i][j];
+        gg[a][i][j]='.';
+        switch(turr){
+            case '<':
+                drawWall(a,i,j,0,-1);
+            break;
+            case '^':
+                drawWall(a,i,j,-1,0);
+            break;
+            case '>':
+                drawWall(a,i,j,0,1);
+            break;
+            case 'v':
+                drawWall(a,i,j,1,0);
+            break;
+        }
+    }
+}
+int bfs(){
+    for(int i=0;i<4;i++){
+        for(int j=0;j<101;j++){
+            for(int k=0;k<101;k++)
+                v[i][j][k]=0;
+        }
+    }
+    queue<triple> q;
+    q.push(triple(Start.first,Start.second,0));
+    v[0][Start.first][Start.second]=1;
+    int dx[]={0,1,0,-1};
+    int dy[]={1,0,-1,0};
+    while(!q.empty()){
+        triple pos=q.front();
+        q.pop();
+        for(int i=0;i<4;i++){
+            int nx,ny,nk;
+            nx=pos.i+dx[i];
+            ny=pos.j+dy[i];
+            nk=(pos.k+1)%4;
+            //cout << nx << " " << ny << " " << nk << " " << gg[nk][nx][ny]  << endl;
+            if(isNOOB(nx,ny) && gg[nk][nx][ny]!='#' && v[nk][nx][ny]==0){
+                v[nk][nx][ny]=v[pos.k][pos.i][pos.j]+1;
+                q.push(triple(nx,ny,nk));
+            }
+        }
+    }
+    int mn=9999999+1;
+    for(int i=0;i<4;i++){
+        if(v[i][Target.first][Target.second]!=0){
+            mn=min(mn,v[i][Target.first][Target.second]);
+        }
+    }
+    return mn-1;
+}
+int main()
+{
+    freopen("txt.in","r",stdin);
+    freopen("out","w",stdout);
+    int T;
+    cin >> T;
+    for(int t=0;t<T;t++){
+        cin >> M >> N;
+        TurretCount=0;
+        for(int i=0;i<M;i++){
+            for(int j=0;j<N;j++){
+                cin >> G[i][j];
+                char ch=G[i][j];
+                if(ch=='S'){
+                    Start=make_pair(i,j);
+                    ch='.';
+                    G[i][j]='.';
+                }
+                if(ch=='G'){
+                    Target=make_pair(i,j);
+                    ch='.';
+                    G[i][j]='.';
+                }
+                if(isTurret(ch)){
+                    turrets[TurretCount++]=make_pair(i,j);
+                }
+                for(int k=0;k<4;k++){
+                    gg[k][i][j]=ch;
+                }
+            }
+        }
+        for (int i=0;i<4;i++){
+            rotateTurrs(i,i);
+            drawWalls(i);
+        }
+        //prnt(v[0]);
+        int ans=bfs();
+        cout << "Case #" << t+1 << ": ";
+        if(ans==9999999){
+            cout << "impossible";
+        } else {
+            cout << ans;
+        }
+        cout << endl;;
+        //prnt(G);
+        //prnt(gg[zx]);
+    }
+    return 0;
+}

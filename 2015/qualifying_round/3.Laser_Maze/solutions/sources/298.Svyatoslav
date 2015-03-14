@@ -1,0 +1,62 @@
+from sys import stdin
+from collections import defaultdict
+import heapq
+
+def blocked(walls, turrets, death, i, j, step):
+    return (i,j) in walls or (i,j) in turrets or death[(i,j,step % 4)]
+
+rot_cycle = [(-1,0),(0,1),(1,0),(0,-1)]
+
+T = int(stdin.readline().rstrip())
+for case in xrange(1, T+1):
+    size = stdin.readline().rstrip().split(' ')
+    M, N = int(size[0]), int(size[1])
+    walls, turrets = {}, {}
+    for i in xrange(M):
+        line = stdin.readline().rstrip()
+        for j in xrange(N):
+            if line[j] == 'G':
+                gi, gj = i, j
+            elif line[j] == 'S':
+                si, sj = i, j
+            elif line[j] == '#':
+                walls[(i,j)] = True
+            elif line[j] == '^':
+                turrets[(i,j)] = 0
+            elif line[j] == 'v':
+                turrets[(i,j)] = 2
+            elif line[j] == '<':
+                turrets[(i,j)] = 3
+            elif line[j] == '>':
+                turrets[(i,j)] = 1
+    death = defaultdict(bool)
+    for point, init in turrets.iteritems():
+        for mod in xrange(4):
+            step = rot_cycle[(init + mod) % 4]
+            i, j = point
+            while True:
+                i += step[0]
+                j += step[1]
+                if i < 0 or i >= M or j < 0 or j >= N or (i,j) in walls or (i,j) in turrets:
+                    break
+                death[(i,j,mod)] = True
+
+    heap = [(0, si, sj)]
+    dist = {(si, sj, 0): 0}
+    while len(heap):
+        step, x, y = heapq.heappop(heap)
+        step += 1
+        for dx, dy in [(-1,0),(1,0),(0,1),(0,-1)]:
+            i, j = x + dx, y + dy
+            if i < 0 or i >= M or j < 0 or j >= N or blocked(walls, turrets, death, i, j, step):
+                continue
+            if (i,j,step%4) in dist and dist[(i,j,step%4)] <= step:
+                continue
+            dist[(i,j,step%4)] = step
+            heapq.heappush(heap, (step, i, j))
+    possibilities = [dist[(gi,gj,x)] for x in [0,1,2,3] if (gi,gj,x) in dist]
+    if not len(possibilities):
+        print "Case #%s: impossible" % case
+    else:
+        print "Case #%s: %s" % (case, min(possibilities))
+    case += 1

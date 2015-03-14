@@ -1,0 +1,122 @@
+#include <cstdio>
+#include <algorithm>
+#include <cstring>
+using namespace std;
+
+FILE *in = fopen("f.in", "r");
+FILE *out = fopen("f.out", "w");
+
+int n, m, sx, sy, ex, ey;
+char G[111][111];
+bool isBlocked[4][111][111];
+int mov[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+int Q[111 * 111 * 4][3], sQ, eQ;
+int best[111][111][4];
+
+int getCharId(char ch){
+	switch(ch){
+		case '<': return 2;
+		case '>': return 0;
+		case '^': return 3;
+		case 'v': return 1;
+	}
+
+	return -1;
+}
+
+void add(int x, int y, int d, int v){
+	if(best[x][y][d] != -1){
+		return;
+	}
+	best[x][y][d] = v;
+	Q[eQ][0] = x;
+	Q[eQ][1] = y;
+	Q[eQ ++][2] = d;
+}
+
+#define INSIDE(x,y) (x>=0&&x<n&&y>=0&&y<m)
+
+int main(){
+	int ntest;
+	fscanf(in, "%d", &ntest);
+	for(int test = 1; test <= ntest; test++){
+		fscanf(in, "%d%d\n", &n, &m);
+		for(int q = 0; q < n; q++){
+			fscanf(in, "%s", G[q]);
+		}
+
+		for(int x = 0; x < n; x++){
+			for(int y = 0; y < m; y++){
+				if(G[x][y] == 'S'){
+					sx = x;
+					sy = y;
+					G[x][y] = '.';
+				}
+				else if(G[x][y] == 'G'){
+					ex = x;
+					ey = y;
+					G[x][y] = '.';
+				}
+			}
+		}
+
+		memset(isBlocked, 0, sizeof isBlocked);
+
+		for(int dir = 0; dir < 4; dir++){
+			for(int x = 0; x < n; x++){
+				for(int y = 0; y < m; y++){
+					if(G[x][y] != '.'){
+						isBlocked[dir][x][y] = true;
+						int dd = getCharId(G[x][y]);
+						if(dd != -1){
+							dd = (dd + dir) % 4;
+							int nx = x + mov[dd][0], ny = y + mov[dd][1];
+							while(INSIDE(nx, ny) && G[nx][ny] == '.'){
+								isBlocked[dir][nx][ny] = true;
+								nx += mov[dd][0];
+								ny += mov[dd][1];
+							}
+						}
+					}
+				}
+			}
+		}
+
+		memset(best, -1, sizeof best);
+		sQ = eQ = 0;
+		add(sx, sy, 0, 0);
+		while(sQ < eQ){
+			int x = Q[sQ][0];
+			int y = Q[sQ][1];
+			int d = Q[sQ][2];
+			sQ ++;
+			for(int dir = 0; dir < 4; dir++){
+				int nx = x + mov[dir][0];
+				int ny = y + mov[dir][1];
+
+				if(INSIDE(nx, ny) && !isBlocked[(d + 1) % 4][nx][ny]){
+					add(nx, ny, (d + 1) % 4, best[x][y][d] + 1);
+				}
+			}
+		}
+
+		int res = -1;
+		for(int d = 0; d < 4; d++){
+			if(best[ex][ey][d] == -1){
+				continue;
+			}
+			if(res == -1){
+				res = best[ex][ey][d];
+			}
+			res = min(res, best[ex][ey][d]);
+		}
+
+		if(res == -1){
+			fprintf(out, "Case #%d: impossible\n", test);
+		}
+		else{
+			fprintf(out, "Case #%d: %d\n", test, res);
+		}
+	}
+	return 0;
+}

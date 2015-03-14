@@ -1,0 +1,170 @@
+import java.io.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.StringTokenizer;
+
+public class QualC implements Runnable {
+    public void run() {
+        HashMap<Character,Integer[][]> dir = new HashMap<Character, Integer[][]>();
+        dir.put('>', new Integer[][]{{0, 1}, {1, 0}, {0,-1}, {-1,0}});
+        dir.put('<', new Integer[][]{{0,-1}, {-1,0}, {0, 1}, {1, 0}});
+        dir.put('^', new Integer[][]{{-1, 0}, {0,1}, {1,0}, {0, -1}});
+        dir.put('v', new Integer[][]{{1,0}, {0, -1}, {-1, 0}, {0,1}});
+        int[] dx = {-1, 0, 0, 1};
+        int[] dy = {0, -1, 1, 0};
+        int test = nextInt();
+        for (int testCase = 1; testCase <= test; ++testCase) {
+            int rc = nextInt();
+            int cc = nextInt();
+
+            int startR = -1;
+            int startC = -1;
+            int goalR = -1;
+            int goalC = -1;
+
+            char[][] f = new char[rc][cc];
+            for (int i = 0; i < rc; ++i) {
+                f[i] = next().toCharArray();
+            }
+
+            boolean[][][] acc = new boolean[rc][cc][4];
+            int[][][] res = new int[rc][cc][4];
+            for (int i = 0; i < rc; ++i) {
+                for (int j = 0; j < cc; ++j) {
+
+                    for (int k = 0; k < 4; ++k) {
+                        acc[i][j][k] = true;
+                        res[i][j][k] = Integer.MAX_VALUE/3;
+                    }
+                }
+            }
+            for (int i = 0; i < rc; ++i) {
+                for (int j = 0; j < cc; ++j) {
+
+                    if (f[i][j] == '#') {
+                        for (int k = 0; k < 4; ++k) {
+                            acc[i][j][k] = false;
+                        }
+                    }
+                    else if (f[i][j] == '>' || f[i][j] == '<' || f[i][j] == '^' || f[i][j] == 'v') {
+                        Integer[][] d = dir.get(f[i][j]);
+                        for (int k = 0; k < 4; ++k) {
+                            int dist = 1;
+                            while (i+d[k][0]*dist >= 0 && i+d[k][0]*dist < rc &&
+                                    j+d[k][1]*dist >= 0 && j+d[k][1]*dist < cc &&
+                                    isEmpty(f[i+d[k][0]*dist][j+d[k][1]*dist])) {
+                                acc[i+d[k][0]*dist][j+d[k][1]*dist][k] = false;
+                                ++dist;
+                            }
+                        }
+                    } else if (f[i][j] == 'S') {
+                        startR = i;
+                        startC = j;
+                    } else if (f[i][j] == 'G') {
+                        goalR = i;
+                        goalC = j;
+                    }
+                }
+            }
+
+            LinkedList<Integer> q = new LinkedList<Integer>();
+            q.add(getPos(startR, startC, 0));
+            res[startR][startC][0] = 0;
+            while (!q.isEmpty()) {
+                int pos = q.removeFirst();
+                int r = getRow(pos);
+                int c = getCol(pos);
+                int time = getTime(pos);
+
+                for (int k = 0; k < 4; ++k) {
+                    int nr = r+dx[k];
+                    int nc = c+dy[k];
+                    if (nr >= 0 && nr < rc && nc >= 0 && nc < cc) {
+                        //in field
+
+                        if (acc[nr][nc][(time+1)%4]) {
+                            //we won't get shoot after step
+
+                            if (res[nr][nc][(time+1)%4] > res[r][c][time] + 1) {
+                                q.addLast(getPos(nr, nc, (time+1)%4));
+                                res[nr][nc][(time+1)%4] = res[r][c][time] + 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            String ans = "impossible";
+            int min = Integer.MAX_VALUE/3;
+            for (int time = 0; time < 4; ++time) {
+                if (res[goalR][goalC][time] < min) {
+                    ans = res[goalR][goalC][time] + "";
+                    min = res[goalR][goalC][time];
+                }
+            }
+            out.println("Case #" + testCase + ": " + ans);
+        }
+        out.flush();
+    }
+
+    private int getTime(int pos) {
+        return pos%1000;
+    }
+
+    private int getCol(int pos) {
+        return (pos/1000)%1000;
+    }
+
+    private int getRow(int pos) {
+        return pos/1000000;
+    }
+
+    private Integer getPos(int startR, int startC, int time) {
+        return startR*1000000 + startC*1000 + time;
+    }
+
+    private boolean isEmpty(char c) {
+        return c=='.' || c=='S' || c=='G';
+    }
+
+
+    private static BufferedReader br;
+    private static StringTokenizer stk;
+    private static PrintWriter out;
+    public static void main(String[] args) throws FileNotFoundException {
+        out = new PrintWriter("Cout.txt");
+        br = new BufferedReader(new InputStreamReader(new FileInputStream("C.txt")));
+        (new QualC()).run();
+    }
+
+    public void loadLine() {
+        try {
+            stk = new StringTokenizer(br.readLine());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public String nextLine() {
+        try {
+            return br.readLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public int nextInt() {
+        while (stk == null || !stk.hasMoreElements()) loadLine();
+        return Integer.parseInt(stk.nextToken());
+    }
+    public long nextLong() {
+        while (stk == null || !stk.hasMoreElements()) loadLine();
+        return Long.parseLong(stk.nextToken());
+    }
+    private String next() {
+        while (stk == null || !stk.hasMoreElements()) loadLine();
+        return stk.nextToken();
+    }
+
+}

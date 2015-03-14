@@ -1,0 +1,145 @@
+package fbhackup.y2015;
+
+import com.google.common.io.Resources;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+/**
+ * Created by lan on 1/11/15.
+ */
+public class NewYearResolution {
+    public static final String SEP = " ";
+
+    private Map<String, Boolean> memo = new HashMap<>();
+
+    static class Combine {
+        int protein;
+        int carbohydrates;
+        int fat;
+
+        public Combine(int p, int c, int f) {
+            this.protein = p;
+            this.carbohydrates = c;
+            this.fat = f;
+        }
+
+        public boolean ge(Combine c) {
+            return protein >= c.protein &&
+                    carbohydrates >= c.carbohydrates &&
+                    fat >= c.fat;
+        }
+
+        public void plus(Combine c) {
+            protein += c.protein;
+            carbohydrates += c.carbohydrates;
+            fat += c.fat;
+        }
+
+        public void minus(Combine c) {
+            protein -= c.protein;
+            carbohydrates -= c.carbohydrates;
+            fat -= c.fat;
+        }
+
+        public boolean isClear() {
+            return protein == 0 && carbohydrates == 0 && fat == 0;
+        }
+
+        @Override
+        public String toString() {
+            return protein + SEP + carbohydrates + SEP + fat;
+        }
+    }
+
+    private boolean canMeet(Combine target, Combine[] foods, int i, Map<String, Boolean> memo) {
+        String cacheKey = target.toString() + SEP + i;
+        if (memo.containsKey(cacheKey)) {
+            return memo.get(cacheKey);
+        }
+
+        boolean last = (i == foods.length - 1) ? true : false;
+        if (target.ge(foods[i])) {
+            target.minus(foods[i]);
+            if (target.isClear()) {
+                return true;
+            } else {
+                if (last) {
+                    memo.put(cacheKey, false);
+                    return false;
+                } else {
+                    if (canMeet(target, foods, i + 1, memo)) {
+                        return true;
+                    }
+                }
+            }
+            target.plus(foods[i]);
+        }
+
+        if (!last) {
+            if (canMeet(target, foods, i + 1, memo)) {
+                return true;
+            }
+        }
+
+        memo.put(cacheKey, false);
+        return false;
+    }
+
+    public boolean canMeet(Combine target, Combine[] foods) {
+        Combine c = new Combine(target.protein, target.carbohydrates, target.fat);
+        boolean targetTooSmall = true, targetTooBig = false;
+        for (Combine f : foods) {
+            if (target.ge(f)) {
+                targetTooSmall = false;
+            }
+            c.minus(f);
+        }
+        if (c.protein > 0 || c.carbohydrates > 0 || c.fat > 0) {
+            targetTooBig = true;
+        }
+
+        if (targetTooSmall || targetTooBig) {
+            return false;
+        }
+        return canMeet(target, foods, 0, new HashMap<>());
+    }
+
+    public static void main(String[] args) throws FileNotFoundException {
+        long startTime = System.currentTimeMillis();
+
+        String input = "new_years_resolution.txt";
+        NewYearResolution newYearResolution = new NewYearResolution();
+        try (
+                Scanner scanner = new Scanner(new File(Resources.getResource(input).getPath()));
+                PrintStream out = new PrintStream(new FileOutputStream("output/" + input + ".out"));
+        ) {
+            int T = scanner.nextInt();
+            for (int i = 0; i < T; i++) {
+                System.out.println("processing case #" + (i + 1));
+                Combine target = new Combine(
+                        scanner.nextInt(), scanner.nextInt(), scanner.nextInt());
+
+                int num = scanner.nextInt();
+                Combine[] foods = new Combine[num];
+                for (int n = 0; n < num; n++) {
+                    foods[n] = new Combine(
+                            scanner.nextInt(), scanner.nextInt(), scanner.nextInt()
+                    );
+                }
+
+                boolean meet = newYearResolution.canMeet(target, foods);
+                out.println("Case #" + (i + 1) + ":" + SEP + (meet ? "yes" : "no"));
+            }
+        }
+
+        long endTime = System.currentTimeMillis();
+        long totalTime = endTime - startTime;
+        System.out.println(totalTime);
+    }
+}

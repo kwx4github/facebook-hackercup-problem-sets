@@ -1,0 +1,125 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <string>
+
+using namespace std;
+
+typedef vector<string> Maze;
+
+const string dirs = ">v<^";
+const vector<int> dy = {1, 0, -1, 0};
+const vector<int> dx = {0, 1, 0, -1};
+
+bool inside(const Maze& m, int x, int y)
+{
+  return x >= 0 && y >= 0 && x < m.size() && y < m[0].size();
+}
+
+bool canMove(const Maze& m, int x, int y)
+{
+  return m[x][y] == '.' || m[x][y] == 'S' || m[x][y] == 'G';
+}
+
+bool canShoot(const Maze& m, int x, int y)
+{
+  return canMove(m, x, y) || m[x][y] == '*';
+}
+
+void fillMaze(Maze& m)
+{
+  for( int i = 0; i < m.size(); i++ ) {
+    for( int j = 0; j < m[0].size(); j++ ) {
+      auto ind = dirs.find(m[i][j]);
+      if( ind != string::npos ) {
+	int x = i + dx[ind];
+	int y = j + dy[ind];
+	while(inside(m, x, y) && canShoot(m, x, y)) {
+	  m[x][y] = '*';
+	  x += dx[ind];
+	  y += dy[ind];
+	}
+      }
+    }
+  }
+}
+
+struct Item {
+  int mod, x, y;
+
+  Item(int _mod, int _x, int _y) : mod(_mod), x(_x), y(_y) {}
+};
+
+void solveTest(int tn)
+{
+  cout << "Case #" << tn << ": ";
+  int n,m;
+  cin >> n >> m;
+  vector<Maze> world(dirs.size(), Maze(n));
+  for( int i = 0; i < n; i++ ) {
+    cin >> world[0][i];
+  }
+  int stX = 0, stY = 0, finX = 0, finY = 0;
+  for( int i = 0; i < world[0].size(); i++ ) {
+    for( int j = 0; j < world[0][i].size(); j++ ) {
+      if( world[0][i][j] == 'S' ) {
+	stX = i;
+	stY = j;
+      } else if( world[0][i][j] == 'G') {
+	finX = i;
+	finY = j;
+      }
+    }
+  }
+  for( int i = 1; i < dirs.size(); i++ ) {
+    world[i] = world[0];
+    Maze& m = world[i];
+    for( int j = 0; j < m.size(); j++ ) {
+      for( int k = 0; k < m[j].size(); k++ ) {
+	int dd = dirs.find(m[j][k]);
+	if( dd != string::npos ) {
+	  m[j][k] = dirs[(dd+i) % dirs.size()];
+	}
+      }
+    } 
+  }
+
+  for( int i = 0; i < dirs.size(); i++ ) {
+    fillMaze(world[i]);
+  }
+
+  queue<Item> items;
+  items.push(Item(0, stX, stY));
+  vector< vector< vector<int> > > res(dirs.size(), vector<vector<int> >(world[0].size(), vector<int>(world[0][0].size(), 100000)));
+  res[0][stX][stY] = 0;
+  while( !items.empty() ) {
+    Item item = items.front();
+    if( item.x == finX && item.y == finY ) {
+      cout << res[item.mod][item.x][item.y] << "\n";
+      return;
+    }
+    for( int i = 0; i < dirs.size(); i++ ) {
+      int nx = item.x + dx[i];
+      int ny = item.y + dy[i];
+      int nmod = (item.mod + 1) % dirs.size();
+      if( inside(world[nmod], nx, ny ) && canMove(world[nmod], nx, ny) ) {
+	if( res[nmod][nx][ny] > res[item.mod][item.x][item.y] + 1 ) {
+	  res[nmod][nx][ny] = res[item.mod][item.x][item.y] + 1;
+	  items.push(Item(nmod, nx, ny));
+	}
+      }
+    }
+    items.pop();
+  }
+  cout << "impossible\n";
+}
+
+int main()
+{
+  int tn;
+  cin >> tn;
+  for( int i = 0; i < tn; i++ ) {
+    solveTest(i+1);
+  }
+  return 0;
+}

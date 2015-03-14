@@ -1,0 +1,427 @@
+// LaserMaze.cpp : Defines the entry point for the console application.
+//
+
+#include "stdio.h"
+#include <memory>
+#include <algorithm>
+#include <vector>
+#include <queue>
+
+using namespace std;
+
+typedef struct  
+{
+	int x;
+	int y;
+	int dist;
+} Node;
+
+class mycomparison
+{
+public:
+	bool operator() (const Node& lhs, const Node& rhs) const
+	{
+		return lhs.dist > rhs.dist;
+	}
+};
+
+int INF = 987654321;
+int T, M, N, S_x, S_y, G_x, G_y, N_laser, L_x[10000], L_y[10000];
+char L[10000]; //Laser
+char B[100][100]; //Board
+int S[100][100]; //Shortest Path
+bool Visit[100][100]; //Visit
+
+priority_queue<Node,vector<Node>,mycomparison> m_heap;
+
+bool checkHit(int x, int y, int turnCount)
+{
+	int r = turnCount % 4;
+
+	for(int i = 0; i < N_laser; i++)
+	{
+		if(B[L_x[i]][L_y[i]] == '^')
+		{
+			if(r == 1)
+			{
+				L[i] = '>';
+			} else if(r == 2)
+			{
+				L[i] = 'v';
+			} else if(r == 3)
+			{
+				L[i] = '<';
+			} else
+			{
+				L[i] = '^';
+			}
+		} else if(B[L_x[i]][L_y[i]] == '>')
+		{
+			if(r == 1)
+			{
+				L[i] = 'v';
+			} else if(r == 2)
+			{
+				L[i] = '<';
+			} else if(r == 3)
+			{
+				L[i] = '^';
+			} else
+			{
+				L[i] = '>';
+			}
+		} else if(B[L_x[i]][L_y[i]] == 'v')
+		{
+			if(r == 1)
+			{
+				L[i] = '<';
+			} else if(r == 2)
+			{
+				L[i] = '^';
+			} else if(r == 3)
+			{
+				L[i] = '>';
+			} else
+			{
+				L[i] = 'v';
+			}
+		} else if(B[L_x[i]][L_y[i]] == '<')
+		{
+			if(r == 1)
+			{
+				L[i] = '^';
+			} else if(r == 2)
+			{
+				L[i] = '>';
+			} else if(r == 3)
+			{
+				L[i] = 'v';
+			} else
+			{
+				L[i] = '<';
+			}
+		}
+	}
+
+	for(int i = 0; i < N_laser; i++)
+	{
+		if(x == L_x[i])
+		{
+			char dir = L[i];
+			if(dir == '<' && y < L_y[i])
+			{
+				for(int j = L_y[i]-1; j >= 0; j--)
+				{
+					if(y == j)
+					{
+						return true;
+					} else if(B[x][j] == '.' || B[x][j] == 'S' || B[x][j] == 'G')
+					{
+						continue;
+					} else
+					{
+						break;
+					}
+				}
+			} else if(dir == '>' && y > L_y[i])
+			{
+				for(int j = L_y[i]+1; j < N; j++)
+				{
+					if(y == j)
+					{
+						return true;
+					} else if(B[x][j] == '.' || B[x][j] == 'S' || B[x][j] == 'G')
+					{
+						continue;
+					} else
+					{
+						break;
+					}
+				}
+			}
+		} else if(y == L_y[i])
+		{
+			char dir = L[i];
+			if(dir == '^' && x < L_x[i])
+			{
+				for(int j = L_x[i]-1; j >= 0; j--)
+				{
+					if(x == j)
+					{
+						return true;
+					} else if(B[j][y] == '.' || B[j][y] == 'S' || B[j][y] == 'G')
+					{
+						continue;
+					} else
+					{
+						break;
+					}
+				}
+			} else if(dir == 'v' && x > L_x[i])
+			{
+				for(int j = L_x[i]+1; j < M; j++)
+				{
+					if(x == j)
+					{
+						return true;
+					} else if(B[j][y] == '.' || B[j][y] == 'S' || B[j][y] == 'G')
+					{
+						continue;
+					} else
+					{
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+void solve()
+{
+	while(!m_heap.empty())
+	{
+		Node n = m_heap.top();
+		m_heap.pop();
+
+		if(n.dist == S[n.x][n.y])
+		{
+			//mark visit
+			Visit[n.x][n.y] = true;
+
+			bool can_walk_right = n.y+1 < N && (B[n.x][n.y+1] == '.' || B[n.x][n.y+1] == 'S' || B[n.x][n.y+1] == 'G');
+			bool can_walk_down = n.x+1 < M && (B[n.x+1][n.y] == '.' || B[n.x+1][n.y] == 'S' || B[n.x+1][n.y] == 'G');
+			bool can_walk_up = n.x-1 >= 0 && (B[n.x-1][n.y] == '.' || B[n.x-1][n.y] == 'S' || B[n.x-1][n.y] == 'G');
+			bool can_walk_left = n.y-1 >= 0 && (B[n.x][n.y-1] == '.' || B[n.x][n.y-1] == 'S' || B[n.x][n.y-1] == 'G');
+
+			//right
+			if(can_walk_right && Visit[n.x][n.y+1] == false)
+			{
+				if(checkHit(n.x, n.y+1, n.dist+1) == false)
+				{
+					if(S[n.x][n.y+1] > n.dist+1)
+					{
+						Node* neighbor = new Node();
+						neighbor->x = n.x;
+						neighbor->y = n.y+1;
+						neighbor->dist = n.dist+1;
+						S[n.x][n.y+1] = n.dist+1;
+						m_heap.emplace(*neighbor);
+					}
+				} else
+				{
+					bool two_turn_success = false;
+
+					if(can_walk_up) {
+						two_turn_success = checkHit(n.x-1, n.y, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_down) {
+						two_turn_success = checkHit(n.x+1, n.y, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_left) {
+						two_turn_success = checkHit(n.x, n.y-1, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success && S[n.x][n.y+1] > n.dist+3) {
+						Node* neighbor = new Node();
+						neighbor->x = n.x;
+						neighbor->y = n.y+1;
+						neighbor->dist = n.dist+3;
+						S[n.x][n.y+1] = n.dist+3;
+						m_heap.emplace(*neighbor);
+					}
+				}
+			}
+			//down
+			if(can_walk_down && Visit[n.x+1][n.y] == false)
+			{
+				if(checkHit(n.x+1, n.y, n.dist+1) == false)
+				{
+					if(S[n.x+1][n.y] > n.dist+1)
+					{
+						Node* neighbor = new Node();
+						neighbor->x = n.x+1;
+						neighbor->y = n.y;
+						neighbor->dist = n.dist+1;
+						S[n.x+1][n.y] = n.dist+1;
+						m_heap.emplace(*neighbor);
+					}
+				} else
+				{
+					bool two_turn_success = false;
+
+					if(can_walk_up) {
+						two_turn_success = checkHit(n.x-1, n.y, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_right) {
+						two_turn_success = checkHit(n.x, n.y+1, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_left) {
+						two_turn_success = checkHit(n.x, n.y-1, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success && S[n.x+1][n.y] > n.dist+3) {
+						Node* neighbor = new Node();
+						neighbor->x = n.x+1;
+						neighbor->y = n.y;
+						neighbor->dist = n.dist+3;
+						S[n.x+1][n.y] = n.dist+3;
+						m_heap.emplace(*neighbor);
+					}
+				}
+			}
+			//up
+			if(can_walk_up && Visit[n.x-1][n.y] == false)
+			{
+				if(checkHit(n.x-1, n.y, n.dist+1) == false)
+				{
+					if(S[n.x-1][n.y] > n.dist+1)
+					{
+						Node* neighbor = new Node();
+						neighbor->x = n.x-1;
+						neighbor->y = n.y;
+						neighbor->dist = n.dist+1;
+						S[n.x-1][n.y] = n.dist+1;
+						m_heap.emplace(*neighbor);
+					}
+				} else
+				{
+					bool two_turn_success = false;
+
+					if(can_walk_down) {
+						two_turn_success = checkHit(n.x+1, n.y, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_right) {
+						two_turn_success = checkHit(n.x, n.y+1, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_left) {
+						two_turn_success = checkHit(n.x, n.y-1, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success && S[n.x-1][n.y] > n.dist+3) {
+						Node* neighbor = new Node();
+						neighbor->x = n.x-1;
+						neighbor->y = n.y;
+						neighbor->dist = n.dist+3;
+						S[n.x-1][n.y] = n.dist+3;
+						m_heap.emplace(*neighbor);
+					}
+				}
+			}
+			//left
+			if(can_walk_left && Visit[n.x][n.y-1] == false)
+			{
+				if(checkHit(n.x, n.y-1, n.dist+1) == false)
+				{
+					if(S[n.x][n.y-1] > n.dist+1)
+					{
+						Node* neighbor = new Node();
+						neighbor->x = n.x;
+						neighbor->y = n.y-1;
+						neighbor->dist = n.dist+1;
+						S[n.x][n.y-1] = n.dist+1;
+						m_heap.emplace(*neighbor);
+					}
+				} else
+				{
+					bool two_turn_success = false;
+
+					if(can_walk_down) {
+						two_turn_success = checkHit(n.x+1, n.y, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_right) {
+						two_turn_success = checkHit(n.x, n.y+1, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success == false && can_walk_up) {
+						two_turn_success = checkHit(n.x-1, n.y, n.dist+1) == false && checkHit(n.x, n.y, n.dist+2) == false;
+					}
+
+					if(two_turn_success && S[n.x][n.y-1] > n.dist+3) {
+						Node* neighbor = new Node();
+						neighbor->x = n.x;
+						neighbor->y = n.y-1;
+						neighbor->dist = n.dist+3;
+						S[n.x][n.y-1] = n.dist+3;
+						m_heap.emplace(*neighbor);
+					}
+				}
+			}
+		}
+	}
+}
+
+int main(int argc, char* argv)
+{
+	FILE * pFile;
+	FILE * wFile;
+	pFile = fopen ("laser_maze.txt","r");
+	wFile = fopen ("output.txt","w");
+
+	fscanf (pFile, "%d", &T);
+	for(int i = 0; i < T; i++)
+	{
+		while(!m_heap.empty())
+		{
+			m_heap.pop();
+		}
+
+		N_laser = 0;
+		fscanf(pFile, "%d %d", &M, &N);
+		for(int j = 0; j < M; j++)
+		{
+			char a;
+			fscanf(pFile, "%c", &a);
+
+			for(int k = 0; k < N; k++)
+			{
+				S[j][k] = INF;
+				Visit[j][k] = false;
+				
+				fscanf(pFile, "%c", &B[j][k]);
+				if(B[j][k] == 'S')
+				{
+					S_x = j, S_y = k, S[j][k] = 0;
+					Node* n = new Node();
+					n->x = j;
+					n->y = k;
+					n->dist = 0;
+					m_heap.emplace(*n);
+				}
+				else if(B[j][k] == '.')
+				{
+				}
+				else if(B[j][k] == 'G')
+				{
+					G_x = j, G_y = k;
+				}
+				else if(B[j][k] == '^' || B[j][k] == 'v' || B[j][k] == '<' || B[j][k] == '>')
+				{
+					L[N_laser] = B[j][k];
+					L_x[N_laser] = j, L_y[N_laser] = k, N_laser++;
+				}
+			}
+		}
+
+		solve();
+
+		if(Visit[G_x][G_y] == false)
+			fprintf(wFile,"Case #%d: impossible\n",i+1);
+		else
+			fprintf(wFile,"Case #%d: %d\n",i+1,S[G_x][G_y]);
+	}
+
+	fclose (pFile);
+	fclose (wFile);
+
+	return 0;
+}

@@ -1,0 +1,89 @@
+#include <cstdio>
+#include <cstring>
+#include <deque>
+
+using namespace std;
+
+const int mX[] = {-1, 0, 1, 0};
+const int mY[] = {0, 1, 0, -1};
+
+int n, m, bx, by, ex, ey;
+char board[105][105];
+int time[105][105], dp[105][105][4];
+
+void deal(const int& x0, const int& y0, const char& c) {
+	time[x0][y0] = 15;
+	int id;
+	switch(c) {
+		case '^': id = 0; break;
+		case '>': id = 1; break;
+		case 'v': id = 2; break;
+		case '<': id = 3; break;
+		return;
+	}
+	for (int i = 0; i < 4; ++i) {
+		int temp = (id + i) % 4;
+		int x = x0 + mX[temp], y = y0 + mY[temp];
+		while (x >= 0 && x < n && y >= 0 && y < m && board[x][y] == '.')
+			time[x][y] |= (1 << i), x += mX[temp], y += mY[temp];
+	}
+}
+
+void bfs() {
+	deque <pair<pair<int, int>, int> > de;
+	de.push_back(make_pair(make_pair(bx, by), 0));
+	memset(dp, 127, sizeof(dp));
+	dp[bx][by][0] = 0;
+	while (!de.empty()) {
+		int x0 = de.front().first.first, y0 = de.front().first.second, t0 = de.front().second;
+		de.pop_front();
+		int t = dp[x0][y0][t0] + 1;
+		for (int i = 0; i < 4; ++i) {
+			int x = x0 + mX[i], y = y0 + mY[i];
+			if (x < 0 || x >= n || y < 0 || y >= m)
+				continue;
+			if (!((1 << (t % 4)) & time[x][y]) && (t < dp[x][y][t % 4]))
+				dp[x][y][(t % 4)] = t, de.push_back(make_pair(make_pair(x, y), t % 4));
+		}
+	}
+}
+
+int main()
+{
+	freopen("aaa.in", "r", stdin);
+	freopen("aaa.out", "w", stdout);
+	int t;
+	scanf("%d", &t);
+	for (int Case = 1; Case <= t; ++Case) {
+		scanf("%d %d", &n, &m);
+		for (int i = 0; i < n; ++i) {
+			scanf("%s", board[i]);
+			for (int j = 0; j < m; ++j) {
+				if (board[i][j] == 'S')
+					bx = i, by = j, board[i][j] = '.';
+				else if (board[i][j] == 'G')
+					ex = i, ey = j, board[i][j] = '.';
+			}
+		}
+		memset(time, 0, sizeof(time));
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < m; ++j) {
+				if (board[i][j] == '#')
+					time[i][j] = 15;
+				else if (board[i][j] != '.')
+					deal(i, j, board[i][j]);
+			}
+		}
+		bfs();
+		printf("Case #%d: ", Case);
+		int ans = 0x7f7f7f7f;
+		for (int i = 0; i < 4; ++i)
+			if (ans > dp[ex][ey][i])
+				ans = dp[ex][ey][i];
+		if (ans == 0x7f7f7f7f)
+			printf("impossible\n");
+		else
+			printf("%d\n", ans);
+	}
+	return 0;
+}

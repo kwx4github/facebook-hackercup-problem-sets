@@ -1,0 +1,397 @@
+// Author: Kai Zhao
+
+#include <iostream>
+#include <queue>
+
+// Declaration
+using std::cout;
+using std::cin;
+using std::endl;
+using std::queue;
+
+
+// Defines
+#define MAX_SIZE 110
+
+
+// Global variables
+
+struct Element
+{
+  char value [5]; // For '#', '.', '<' ...
+                  // value[0] is the input value and it never changes
+                  // value[1] is the value which is T0
+                  // value[2] is the value which is T1 
+                  // value[3] is the value which is T2
+                  // value[4] is the value which is T3
+  
+  bool visited [4]; // Has been visited at T0, T1, T2, T3
+                    // Current element can not be visited again at T0 if it was visited at T0
+};
+
+int M, N;
+int step; // step = 0 when begin, step = 1 when first move, ...
+bool arrive_goal;
+Element matrix[MAX_SIZE][MAX_SIZE]; // Record the input and visit information
+
+struct Point
+{
+  Point(int _y, int _x)
+  {
+    y = _y;
+    x = _x;
+  }
+  
+  int y, x;
+};
+Point sp(0, 0); // The position of 'S'
+
+void Clear()
+{
+  step = 0;
+  arrive_goal = false;
+  
+  // Set visited
+  for (int i = 1; i <= M; ++i)
+  {
+    for (int j = 1; j <= N; ++j)
+    {
+      matrix[i][j].visited[0] = false;
+      matrix[i][j].visited[1] = false;
+      matrix[i][j].visited[2] = false;
+      matrix[i][j].visited[3] = false;
+    }
+  }
+}
+
+// Record the S
+void Input()
+{
+  for (int i = 1; i <= M; ++i)
+  {
+    for (int j = 1; j <= N; ++j)
+    {
+      cin >> matrix[i][j].value[0];
+
+      const char value = matrix[i][j].value[0];
+      matrix[i][j].value[1] = value;
+      matrix[i][j].value[2] = value;
+      matrix[i][j].value[3] = value;
+      matrix[i][j].value[4] = value;
+
+      if ('S' == value)
+      {
+	sp.y = i;
+	sp.x = j;
+      }
+    }
+  }
+}
+
+/*
+
+  ######
+  #....#
+  #....#
+  #....#
+  ######
+
+*/
+
+void BuildWall()
+{
+  // Init the fisrt line and last line
+  for (int i = 0; i <= N + 1; ++i)
+  {
+    // 0         (N+1)
+    // ###########
+    matrix[0][i].value[0] = '#';
+    matrix[0][i].value[1] = '#';
+    matrix[0][i].value[2] = '#';
+    matrix[0][i].value[3] = '#';
+    matrix[0][i].value[4] = '#';
+    
+    matrix[M + 1][i].value[0] = '#';
+    matrix[M + 1][i].value[1] = '#';
+    matrix[M + 1][i].value[2] = '#';
+    matrix[M + 1][i].value[3] = '#';
+    matrix[M + 1][i].value[4] = '#';
+  }
+
+  // Init the first column and last column
+  for (int i = 0; i <= M + 1; ++i)
+  {
+    //
+    // # 0
+    // # 1
+    // #
+    // #
+    // #
+    // # (M+1)
+    matrix[i][0].value[0] = '#';
+    matrix[i][0].value[1] = '#';
+    matrix[i][0].value[2] = '#';
+    matrix[i][0].value[3] = '#';
+    matrix[i][0].value[4] = '#';
+    
+    matrix[i][N + 1].value[0] = '#';
+    matrix[i][N + 1].value[1] = '#';
+    matrix[i][N + 1].value[2] = '#';
+    matrix[i][N + 1].value[3] = '#';
+    matrix[i][N + 1].value[4] = '#';
+  }
+}
+
+bool GoThroughCurrentCell(const char c)
+{
+  if ('.' == c || 'S' == c || 'G' == c)
+    return true;
+  return false;
+}
+
+bool GoThroughCurrentCell(const Point _p, const int _t)
+{
+  return GoThroughCurrentCell(matrix[_p.y][_p.x].value[_t + 1]);
+}
+
+// Shoot laser at T0, T1, T2, T3
+// t is { 0, 1, 2, 3 }
+// value[0] is never changed
+// value[1] refers to t = 0
+void ShootAndRotate(const int y, const int x, const int t)
+{
+  // cout << "ShootAndRotate(" << y << ", " << x << "," << t << ")" << endl;
+  const char direction = matrix[y][x].value[t + 1];
+  char next_direction;
+  
+  if ('^' == direction)
+  {
+    // Shoot up
+    for (int k = y - 1; k >= 1; --k)
+    {
+      if (GoThroughCurrentCell(matrix[k][x].value[0]))
+      {
+	// Laser can go through this cell
+	matrix[k][x].value[t + 1] = 'L';
+      }
+      else
+      {
+	// Laser can not go through wall and laser
+	break;
+      }
+    }
+
+    next_direction = '>';
+  }
+  else if ('>' == direction)
+  {
+    // Shoot right
+    for (int k = x + 1; k <= N; ++k)
+    {
+      if (GoThroughCurrentCell(matrix[y][k].value[0]))
+      {
+	// Laser can go through this cell
+	matrix[y][k].value[t + 1] = 'L';
+      }
+      else
+	break;
+    }
+
+    next_direction = 'v';
+  }
+  else if ('v' == direction)
+  {
+    // Shoot down
+    for (int k = y + 1; k <= M; ++k)
+    {
+      if (GoThroughCurrentCell(matrix[k][x].value[0]))
+      {
+	// Laser can go through this cell
+	matrix[k][x].value[t + 1] = 'L';
+      }
+      else
+	break;
+    }
+    
+    next_direction = '<';
+  }
+  else if ('<' == direction)
+  {
+    // Shoot left
+    for (int k = x - 1; k >= 1; --k)
+    {
+      if (GoThroughCurrentCell(matrix[y][k].value[0]))
+      {
+	// Laser can go through this cell
+	matrix[y][k].value[t + 1] = 'L';
+      }
+      else
+	break;
+    }
+
+    next_direction = '^';
+  }
+
+  if (t < 3)
+    matrix[y][x].value[t + 2] = next_direction; // Rotate 90
+}
+
+bool IsLaser(const char c)
+{
+  if ('^' == c || '>' == c || 'v' == c || '<' == c)
+    return true;
+  return false;
+}
+
+void InitMatrixAtEachT()
+{
+  // Shoot laser
+  for (int i = 1; i <= M; ++i)
+  {
+    for (int j = 1; j <= N; ++j)
+    {
+      if (IsLaser(matrix[i][j].value[0]))
+      {
+	ShootAndRotate(i, j, 0);
+	ShootAndRotate(i, j, 1);
+	ShootAndRotate(i, j, 2);
+	ShootAndRotate(i, j, 3);
+      }
+    }
+  }
+}
+
+void PrintMatrixAtT(const int t)
+{
+  cout << "\tPrintMatrixAtT(" << t << ")" << endl;
+  for (int i = 0; i <= M + 1; ++i)
+  {
+    cout << "\t\t";
+    for (int j = 0; j <= N + 1; ++j)
+    {
+      cout << matrix[i][j].value[t + 1] << " ";
+    }
+    cout << endl;
+  }
+}
+
+bool HasVisitedAtT(const Point _p, const int _t)
+{
+  return matrix[_p.y][_p.x].visited[_t];
+}
+
+bool VisitAtT(const Point _p, const int _t)
+{
+  matrix[_p.y][_p.x].visited[_t] = true;
+  if ('G' == matrix[_p.y][_p.x].value[0])
+  {
+    arrive_goal = true;
+    return true;
+  }
+  return false;
+}
+
+void BFS(queue<Point> q_bfs)
+{
+  if (q_bfs.empty())
+    return;
+  
+  step++;
+  const int t = step % 4;
+  
+  queue<Point> q_bfs_next;
+  while (!q_bfs.empty())
+  {
+    const Point p = q_bfs.front();
+    const Point p_up(p.y - 1, p.x);
+    const Point p_right(p.y, p.x + 1);
+    const Point p_down(p.y + 1, p.x);
+    const Point p_left(p.y, p.x - 1);
+
+    // Up
+    if (GoThroughCurrentCell(p_up, t) && !HasVisitedAtT(p_up, t))
+    {
+      q_bfs_next.push(p_up);
+      if (VisitAtT(p_up, t))
+	return;
+    }
+
+    // Right
+    if (GoThroughCurrentCell(p_right, t) && !HasVisitedAtT(p_right, t))
+    {
+      q_bfs_next.push(p_right);
+      if (VisitAtT(p_right, t))
+	return;
+    }
+
+    // Down
+    if (GoThroughCurrentCell(p_down, t) && !HasVisitedAtT(p_down, t))
+    {
+      q_bfs_next.push(p_down);
+      if (VisitAtT(p_down, t))
+	return;
+    }
+
+    // Left
+    if (GoThroughCurrentCell(p_left, t) && !HasVisitedAtT(p_left, t))
+    {
+      q_bfs_next.push(p_left);
+      if (VisitAtT(p_left, t))
+	return;
+    }
+    
+    q_bfs.pop();
+  }
+
+  BFS(q_bfs_next);
+}
+
+void Run()
+{
+  matrix[sp.y][sp.x].visited[0] = true;
+
+  queue<Point> q_bfs;
+  q_bfs.push(sp);
+  
+  BFS(q_bfs);
+}
+
+int main()
+{
+  int T;
+  cin >> T;
+
+  for (int i = 1; i <= T; ++i)
+  {
+    cin >> M >> N;
+
+    Clear();
+
+    BuildWall();
+    
+    Input();
+
+    InitMatrixAtEachT();
+
+    // PrintMatrixAtT(0);
+    // PrintMatrixAtT(1);
+    // PrintMatrixAtT(2);
+    // PrintMatrixAtT(3);
+
+    Run();
+
+    cout << "Case #" << i << ": ";
+    if (!arrive_goal)
+    {
+      cout << "impossible" << endl;
+    }
+    else
+    {
+      cout << step << endl;
+    }
+    
+  }
+  
+  
+  return 0;
+}

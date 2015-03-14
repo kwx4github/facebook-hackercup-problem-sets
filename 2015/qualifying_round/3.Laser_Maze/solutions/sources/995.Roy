@@ -1,0 +1,232 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Runtime.Remoting.Messaging;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace TestCode
+{
+    public class Case3
+    {
+        private const char GOAL = 'G';
+        private const char PLAYER_LOCATION = 'S';
+        private const char EMPTY = '.';
+        private const char TURRET_RIGHT = '>';
+        private const char TURRET_LEFT = '<';
+        private const char TURRET_UP = '^';
+        private const char TURRET_DOWN = 'v';
+        
+        private static int _width;
+        private static int _height;
+
+        public static void Solve(string inputFile, string outputFile)
+        {
+            using (var reader = new StreamReader(File.OpenRead(inputFile)))
+            {
+                using (var writer = new StreamWriter(outputFile))
+                {
+                    int numCases = Int32.Parse(reader.ReadLine());
+
+                    for (int i = 1; i <= numCases; i++)
+                    {
+                        string[] parts = reader.ReadLine().Split();
+
+                        _height = Int32.Parse(parts[0]);
+                        _width = Int32.Parse(parts[1]);
+                        _turretsList = new List<Point>();
+
+                        char[,] field = new char[_width, _height];
+
+                        for (int y = 0; y < _height; y++)
+                        {
+                            var line = reader.ReadLine();
+
+                            for (int x = 0; x < _width; x++)
+                            {
+                                field[x, y] = line[x];
+                                if (field[x, y] == TURRET_UP || field[x, y] == TURRET_RIGHT || field[x, y] == TURRET_DOWN || field[x, y] == TURRET_LEFT)
+                                {
+                                    _turretsList.Add(new Point(x, y));
+                                }
+                            }
+                        }
+
+                        var result = Solve(field);
+
+                        writer.WriteLine("Case #{0}: {1}", i, result > 0 ? result.ToString() : "impossible");
+                    }
+                }
+            }
+        }
+
+        private static int Solve(char[,] field)
+        {
+            _evaluatedSets = new HashSet<Tuple<int, Point>>();
+            _possibleFields = new List<Tuple<char[,], Point>>();
+
+            var startLocation = GetStartLocation(field);
+
+            field[startLocation.X, startLocation.Y] = EMPTY;
+            
+            _possibleFields.Add(new Tuple<char[,], Point>(field, startLocation));
+            
+            int turn = 0;
+
+            while (_possibleFields.Count > 0)
+            {
+                var newFields = new List<Tuple<char[,], Point>>();
+                foreach (var possibleField in _possibleFields)
+                {
+                    var curField = possibleField.Item1;
+                    var location = possibleField.Item2;
+
+                    var left = new Point(location.X-1, location.Y);
+                    int solve = 0;
+
+                    if (EvalNewLocation(curField, turn, left, location, newFields, ref solve))
+                        return solve;
+                    
+                    var right = new Point(location.X + 1, location.Y);
+                    if (EvalNewLocation(curField, turn, right, location, newFields, ref solve))
+                        return solve;
+
+                    var up = new Point(location.X, location.Y - 1);
+                    if (EvalNewLocation(curField, turn, up, location, newFields, ref solve))
+                        return solve;
+                    
+                    var down = new Point(location.X, location.Y + 1);
+                    if (EvalNewLocation(curField, turn, down, location, newFields, ref solve))
+                        return solve;
+                }
+
+                turn++;
+                _possibleFields = newFields;
+            }
+
+            return -1;
+        }
+
+        private static bool EvalNewLocation(char[,] curField, int turn, Point newLocation, Point oldLocation, List<Tuple<char[,], Point>> newFields, ref int answer)
+        {
+            if (CanMoveTo(curField, newLocation))
+            {
+                if (curField[newLocation.X, newLocation.Y] == GOAL)
+                {
+                    answer = turn + 1;
+                    return true;
+                }
+                var newField = Move(curField, oldLocation, newLocation);
+                var stateValue = new Tuple<int, Point>(turn%4, newLocation);
+                if (!_evaluatedSets.Contains(stateValue))
+                {
+                    newFields.Add(new Tuple<char[,], Point>(newField, newLocation));
+                    _evaluatedSets.Add(stateValue);
+                }
+            }
+            return false;
+        }
+
+        private static List<Point> _turretsList;
+        private static HashSet<Tuple<int, Point>> _evaluatedSets;
+        private static List<Tuple<char[,], Point>> _possibleFields;
+
+
+        private static char[,] Move(char[,] field, Point location, Point newLocation)
+        {
+            var newField = (char[,])field.Clone();
+
+            foreach(var turretLocation in _turretsList)
+            {
+                newField[turretLocation.X, turretLocation.Y] = Rotate(newField[turretLocation.X, turretLocation.Y]);
+            }
+
+            return newField;
+        }
+
+        private static char Rotate(char c)
+        {
+            switch (c)
+            {
+                case TURRET_UP:
+                    return TURRET_RIGHT;
+                case TURRET_RIGHT:
+                    return TURRET_DOWN;
+                case TURRET_DOWN:
+                    return TURRET_LEFT;
+                case TURRET_LEFT:
+                    return TURRET_UP;
+            }
+
+            return c;
+        }
+
+        private static Point GetStartLocation(char[,] field)
+        {
+            for (int x = 0; x < _width; x++)
+            {
+                for (int y = 0; y < _height; y++)
+                {
+                    if (field[x, y] == PLAYER_LOCATION)
+                        return new Point(x, y);
+                }
+            }
+
+            return new Point(-1, -1);
+        }
+
+        private static bool CanMoveTo(char[,] field, Point point)
+        {
+            int x = point.X;
+
+            if (point.X < 0 || point.X >= _width
+                || point.Y < 0 || point.Y >= _height)
+                return false;
+
+            if (field[point.X, point.Y] != EMPTY && field[point.X, point.Y] != GOAL)
+                return false;
+
+            while (--x >= 0)
+            {
+                if (field[x, point.Y] == TURRET_UP)
+                    return false;
+
+                if (field[x, point.Y] != EMPTY && field[x, point.Y] != GOAL)
+                    break;
+            }
+
+            x = point.X;
+            while (++x < _width)
+            {
+                if (field[x, point.Y] == TURRET_DOWN)
+                    return false;
+
+                if (field[x, point.Y] != EMPTY && field[x, point.Y] != GOAL)
+                    break;
+            }
+
+            int y = point.Y;
+            while (--y >= 0)
+            {
+                if (field[point.X, y] == TURRET_RIGHT)
+                    return false;
+
+                if (field[point.X, y] != EMPTY && field[point.X, y] != GOAL)
+                    break;
+            }
+
+            y = point.Y;
+            while (++y < _height)
+            {
+                if (field[point.X, y] == TURRET_LEFT)
+                    return false;
+
+                if (field[point.X, y] != EMPTY && field[point.X, y] != GOAL)
+                    break;
+            }
+            return true;
+        }
+    }
+}

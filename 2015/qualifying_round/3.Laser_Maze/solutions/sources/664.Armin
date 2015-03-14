@@ -1,0 +1,147 @@
+#include <cstdio>
+#include <iostream>
+#include <algorithm>
+#include <map>
+#include <cstring>
+#include <queue>
+
+#define NORTH 1
+#define EAST 2
+#define SOUTH 3
+#define WEST 4
+#define EMPTY 0
+#define WALL -1
+
+#define MAX_INT 1<<30
+
+using namespace std;
+
+int T;
+int M, N;
+
+int min_dist[100][100][4];
+int maze[100][100];
+
+
+typedef pair<int, int> PII;
+typedef pair<int, PII> PIPII;
+
+bool is_valid(int x, int y, int step){
+    if(x < 0 || x >= M) return false;
+    if(y < 0 || y >= N) return false;
+    if(maze[x][y] != 0) return false; 
+    
+    int d = x;
+    while(d < M && maze[d][y] == 0) d++;
+    if(d < M && maze[d][y] > 0 && (maze[d][y] + step) % 4 == NORTH) return false;
+
+    int r = y;
+    while(r < N && maze[x][r] == 0) r++;
+    if(r < N && maze[x][r] > 0 && (maze[x][r] + step) % 4 == (WEST % 4)) return false;
+
+    int u = x;
+    while(u >= 0 && maze[u][y] == 0) u--;
+    if(u >= 0 && maze[u][y] > 0 && (maze[u][y] + step) % 4 == SOUTH) return false; 
+
+    int l = y;     
+    while(l >= 0 && maze[x][l] == 0) l--;    
+    if(l >= 0 && maze[x][l] > 0 && (maze[x][l] + step) % 4 == EAST) return false;
+    
+    return true;
+}
+
+int cti(char c){
+    switch(c){
+        case '.':
+            return EMPTY;
+        case '#':
+            return WALL;
+        case '^':
+            return NORTH;
+        case '>':
+            return EAST;
+        case 'v':
+            return SOUTH;
+        case '<':
+            return WEST;
+        case 'S':
+            return EMPTY;
+        case 'G':
+            return EMPTY;
+        default:
+            return -2;
+    }
+}
+
+
+int s_x, s_y;
+int g_x, g_y;
+
+void next(int i, int j, int step){
+    printf("%d\n", step);
+    if(min_dist[i][j][step%4] <= step) return;
+    min_dist[i][j][step%4] = step;
+
+    if(is_valid(i-1,j,step+1)) next(i-1, j, step+1);
+    if(is_valid(i+1,j,step+1)) next(i+1, j, step+1);
+    if(is_valid(i,j-1,step+1)) next(i, j-1, step+1);
+    if(is_valid(i,j+1,step+1)) next(i, j+1, step+1);    
+}
+
+queue<PIPII> qu;
+
+int main(){
+    
+    scanf("%d ", &T);
+    for(int cas=1; cas<=T; cas++){
+        scanf("%d %d ", &M, &N);
+
+        for(int i=0; i<M; i++)
+            for(int j=0; j<N; j++)
+                for(int k=0; k<4; k++)
+                    min_dist[i][j][k] = MAX_INT;
+        
+        for(int i=0; i<M; i++){
+            for(int j=0; j<N; j++){
+                char c;
+                scanf("%c ", &c);
+                maze[i][j] = cti(c);            
+                if(c == 'S'){s_x = i; s_y = j;}
+                if(c == 'G'){g_x = i; g_y = j;}           
+            }
+        }
+  
+        qu.push(make_pair(0, make_pair(s_x, s_y)));
+        
+        int step;
+
+        while(!qu.empty()){
+            PIPII tp = qu.front();
+            qu.pop();
+
+            step = tp.first;
+            int x = tp.second.first;
+            int y = tp.second.second;
+            if(step >= min_dist[x][y][step%4]) continue;
+            
+            min_dist[x][y][step%4] = step;
+
+            if(is_valid(x-1,y,step+1)) qu.push(make_pair(step+1, make_pair(x-1,y)));
+            if(is_valid(x+1,y,step+1)) qu.push(make_pair(step+1, make_pair(x+1,y)));
+            if(is_valid(x,y-1,step+1)) qu.push(make_pair(step+1, make_pair(x,y-1)));
+            if(is_valid(x,y+1,step+1)) qu.push(make_pair(step+1, make_pair(x,y+1))); 
+        }
+
+        //next(s_x, s_y, 0);
+        
+        int mmd = MAX_INT;
+        for(int i=0; i<4; i++)
+            mmd = (min_dist[g_x][g_y][i] < mmd)? min_dist[g_x][g_y][i]: mmd;
+    
+        if(mmd < MAX_INT) printf("Case %d: %d\n", cas, mmd);
+        else printf("Case %d: impossible\n", cas);
+
+    }
+
+    return 0;
+}

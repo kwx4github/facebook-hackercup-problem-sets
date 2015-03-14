@@ -1,0 +1,142 @@
+#include <iostream>
+#include <cstdio>
+#include <queue>
+#include <vector>
+#include <string>
+using namespace std;
+
+#define LEFT 0
+#define UP 1
+#define RIGHT 2
+#define DOWN 3
+
+class Point{
+public:
+    int f,r,c;
+    Point(){}
+    Point(int floor, int row, int col): f(floor),r(row),c(col){}
+
+    bool isValidOn(vector<vector<string> > &floors){
+        return floors[f][r][c]=='.';
+    }
+
+    int getCount(vector<vector<vector<int> > > &counts){
+        return counts[f][r][c];
+    }
+
+};
+
+bool isLazer(char c){
+    return c=='<' || c=='>' || c=='^' || c=='v';
+}
+
+int getDir(char c){
+    if(c=='<') return LEFT;
+    if(c=='^') return UP;
+    if(c=='>') return RIGHT;
+    if(c=='v') return DOWN;
+}
+
+void seeNext(vector<vector<string> > &floors, vector<vector<vector<int> > > &counts, queue<Point> &q, int curCount, int f, int r, int c ){
+    int m=floors[0].size(), n=floors[0][0].size();
+    if(r>=0 && r<m && c>=0 && c<n
+       && counts[f][r][c] == -1
+       && floors[f][r][c] == '.'
+       ){
+        counts[f][r][c] = curCount+1;
+        q.push(Point(f,r,c));
+    }
+}
+
+int countMoves(vector<string> &v){
+    int m=v.size(), n=v[0].size();
+
+    //Find the source and goal points
+    int sx,sy, gx,gy;
+    for(int i=0;i<m;i++){
+        for(int j=0;j<n;j++){
+            if(v[i][j]=='S') sx=i, sy=j, v[i][j]='.';
+            if(v[i][j]=='G') gx=i, gy=j, v[i][j]='.';
+        }
+    }
+
+
+    //Prepare the floors
+    vector<vector<string> > floors;
+    for(int f=0;f<4;f++){
+        floors.push_back(v);
+        vector<string> &curFloor = floors.back();
+        for(int i=0;i<m;i++){
+            for(int j=0;j<n;j++){
+                if(!isLazer(v[i][j])) continue;
+
+                curFloor[i][j] = '#';
+
+                int dir = (getDir(v[i][j]) + f) % 4;
+                if(dir==LEFT){
+                    for(int y=j-1; y>=0 && curFloor[i][y]=='.' ; y--) curFloor[i][y] = '#';
+                }else if(dir==UP){
+                    for(int x=i-1; x>=0 && curFloor[x][j]=='.' ; x--) curFloor[x][j] = '#';
+                }else if(dir==RIGHT){
+                    for(int y=j+1; y<n && curFloor[i][y]=='.' ; y++) curFloor[i][y] = '#';
+                }else if(dir==DOWN){
+                    for(int x=i+1; x<m && curFloor[x][j]=='.' ; x++) curFloor[x][j] = '#';
+                }
+            }
+        }
+    }
+/*
+    for(int i=0;i<4;i++){
+        for(int j=0;j<m;j++){
+            cout << floors[i][j] << endl;
+        }
+        cout << endl;
+    }
+*/
+
+    //do BFS
+
+    vector<vector<vector<int> > > counts(4, vector<vector<int> >( m, vector<int>(n, -1)));
+    queue<Point> q;
+    q.push(Point(0, sx, sy));
+    counts[0][sx][sy]=0;
+    int result = -1;
+    while(!q.empty() && result==-1){
+        int n=q.size();
+        for(int i=0;i<n;i++){
+            Point p = q.front(); q.pop();
+            if(p.r==gx && p.c==gy) {result=counts[p.f][p.r][p.c]; break;} //goal
+
+            int nextFloor = (p.f + 1)%4;
+            int curCount = p.getCount(counts);
+            seeNext(floors, counts, q, curCount, nextFloor, p.r+1, p.c);
+            seeNext(floors, counts, q, curCount, nextFloor, p.r-1, p.c);
+            seeNext(floors, counts, q, curCount, nextFloor, p.r, p.c+1);
+            seeNext(floors, counts, q, curCount, nextFloor, p.r, p.c-1);
+        }
+    }
+
+    return result;
+}
+
+int main(){
+    //freopen("cin.txt", "r", stdin);
+    //freopen("cout.txt", "w", stdout);
+
+    int T, m, n;
+    cin >> T;
+    for(int test=0;test<T;test++){
+        cin >> m >> n;
+        vector<string> v(m);
+        for(int i=0;i<m;i++) cin >> v[i];
+
+        int moveCount = countMoves(v);
+
+        cout << "Case #" << test+1 << ": ";
+        if(moveCount==-1) cout << "impossible";
+        else cout << moveCount ;
+        if(test!=T-1) cout << endl;
+    }
+
+    return 0;
+}

@@ -1,0 +1,99 @@
+#include <cstring>
+#include <cstdio>
+#include <queue>
+using namespace std;
+const int N = 105;
+const int K = 4;
+const int dx[] = { -1, 1, 0, 0 };
+const int dy[] = { 0, 0, -1, 1 };
+int T, n, m, f[K*N*N];
+char s[K][N][N];
+char next(char ch) {
+	switch (ch) {
+		case '<': return '^';
+		case '^': return '>';
+		case '>': return 'v';
+		case 'v': return '<';
+		default:  return ch;
+	}
+}
+bool get(char ch, int& dx, int& dy) {
+	switch (ch) {
+		case '<': dx =  0; dy = -1; break;
+		case '>': dx =  0; dy =  1; break;
+		case '^': dx = -1; dy =  0; break;
+		case 'v': dx =  1; dy =  0; break;
+		default:  return false;
+	}
+	return true;
+}
+bool wall(char ch) { return (next(ch) != ch)||(ch == '#'); }
+bool check(char ch) { return ch == '.'; }
+bool check(int x, int y) {
+	if ((x < 0)||(x >= n)) return false;
+	if ((y < 0)||(y >= m)) return false;
+	return true;
+}
+
+int code(int k, int x, int y) { return k*n*m+x*m+y; }
+void decode(int code, int &k, int &x, int &y) {
+	k = code/(n*m);
+	x = (code/m)%n;
+	y = code%m;
+}
+int main() {
+	scanf("%d", &T);
+	for (int C = 1; C <= T; C++) {
+		scanf("%d%d", &n, &m);
+		for (int i = 0; i < n; i++)
+			scanf("%s", s[0][i]);
+		int sx, sy, ex, ey;
+		for (int i = 0; i < n; i++)
+			for (int j = 0; j < m; j++) {
+				if (s[0][i][j] == 'S') { sx = i; sy = j; s[0][i][j] = '.'; }
+				if (s[0][i][j] == 'G') { ex = i; ey = j; s[0][i][j] = '.'; }
+			}
+		for (int k = 1; k < K; k++)
+			for (int i = 0; i < n; i++)
+				for (int j = 0; j < m; j++)
+					s[k][i][j] = next(s[k-1][i][j]);
+		for (int k = 0; k < K; k++)
+			for (int i = 0; i < n; i++)
+				for (int j = 0; j < m; j++) {
+					int dx, dy;
+					if (get(s[k][i][j], dx, dy)) {
+						int x = i+dx, y = j+dy;
+						while (check(x, y)&&(!wall(s[k][x][y]))) {
+							s[k][x][y] = '*';
+							x += dx; y += dy;
+						}
+					}
+				}
+		queue<int> q;
+		q.push(code(0, sx, sy));
+		memset(f, 0xFF, sizeof(f));
+		f[code(0, sx, sy)] = 0;
+		int ans = -1;
+		while (!q.empty()) {
+			int st = q.front();
+			q.pop();
+			int k, x, y;
+			decode(st, k, x, y);
+			for (int i = 0; i < 4; i++) {
+				int k2 = (k+1)%K, x2 = x+dx[i], y2 = y+dy[i];
+				if (check(x2, y2)&&check(s[k2][x2][y2])) {
+					int st2 = code(k2, x2, y2);
+					if (f[st2] < 0) {
+						q.push(st2);
+						f[st2] = f[st]+1;
+					}
+					if ((x2 == ex)&&(y2 == ey)&&(ans < 0)) ans = f[st2];
+				}
+			}
+		}
+		printf("Case #%d: ", C);
+		if (ans < 0) puts("impossible");
+		else printf("%d\n", ans);
+	}
+	return 0;
+}

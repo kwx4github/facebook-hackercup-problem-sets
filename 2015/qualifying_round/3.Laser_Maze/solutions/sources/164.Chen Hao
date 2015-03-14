@@ -1,0 +1,104 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+int n, m;
+int sx, sy, tx, ty;
+bool inb(int x, int y) {
+	return x >= 0 && y >= 0 && x < n && y < m;
+}
+const int dx[] = {-1, 0, 1, 0}, dy[] = {0, 1, 0, -1}; //URDL
+int f[128] = {};
+
+typedef pair<int, int> pii;
+int dis[110][110][4];
+char g[110][110];
+bool dead[110][110][4];
+
+int enc(int x, int y, int d) {
+	return (x * 110 + y) * 4 + d;
+}
+
+void dec(int &x, int &y, int &d, int t) {
+	d = t % 4;
+	t /= 4;
+	y = t % 110;
+	t /= 110;
+	x = t;
+}
+
+bool ok(int x, int y, int d) {
+	return inb(x, y) && !dead[x][y][d % 4] && g[x][y] != '#' && dis[x][y][d] == -1;
+}
+
+int main() {
+	memset(f, -1, sizeof f);
+	f['^'] = 0;
+	f['>'] = 1;
+	f['v'] = 2;
+	f['<'] = 3;
+	int T; scanf("%d", &T);
+	for(int ks = 1; ks <= T; ++ks) {
+		scanf("%d%d", &n, &m);
+		memset(dead, 0, sizeof dead);
+		for(int i = 0; i < n; ++i) scanf("%s", g[i]);
+		for(int i = 0; i < n; ++i) for(int j = 0; j < m; ++j) {
+			char c = g[i][j];
+			if(c == 'S') sx = i, sy = j;
+			else if(c == 'G') tx = i, ty = j;
+			else if(f[c] >= 0) {
+				for(int t = 0; t < 4; ++t) {
+					int d = (t + f[c]) % 4;
+					int x = i, y = j;
+					while(true) {
+						dead[x][y][t] = true;
+						x += dx[d];
+						y += dy[d];
+						if(!inb(x, y) || g[x][y] == '#' || f[g[x][y]] >= 0)
+							break;
+					}
+				}
+			}
+		}
+		/*if(ks == 1) {
+			for(int d = 0; d < 4; ++d) {
+				for(int i = 0; i < n; ++i) {
+					for(int j = 0; j < m; ++j) putchar(dead[i][j][d] ? 'D' : '.');
+					puts("");
+				}
+				puts("---");
+			}
+		}*/
+		memset(dis, -1, sizeof dis);
+		queue<int> q;
+		int encs = enc(sx, sy, 0);
+		dis[sx][sy][0] = 0;
+		q.push(encs);
+		while(q.size()) {
+			int ev = q.front(); q.pop();
+			int x, y, d;
+			dec(x, y, d, ev);
+			// if(dead[x][y][d]) break;
+			int di = dis[x][y][d];
+			for(int dir = 0; dir < 4; ++dir) {
+				int xx = x + dx[dir];
+				int yy = y + dy[dir];
+				int dd = (d + 1) % 4;
+				if(ok(xx, yy, dd)) {
+					dis[xx][yy][dd] = di + 1;
+					q.push(enc(xx, yy, dd));
+				}
+			}
+		}
+		int ans = -1;
+		for(int i = 0; i < 4; ++i) {
+			if(dis[tx][ty][i] != -1) {
+				if(ans == -1) ans = dis[tx][ty][i];
+				else ans = min(ans, dis[tx][ty][i]);
+			}
+		}
+		printf("Case #%d: ", ks);
+		if(ans >= 0) printf("%d\n", ans);
+		else puts("impossible");
+	}
+	return 0;
+}

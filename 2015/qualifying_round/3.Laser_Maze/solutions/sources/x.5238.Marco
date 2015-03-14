@@ -1,0 +1,78 @@
+from collections import deque
+from operator import add
+import sys
+
+file_in = sys.argv[1] if len(sys.argv) > 1 else "laser_maze_example_input.txt"
+file_out = file_in.replace("_input", "").replace(".txt", "") + "_output.txt"
+
+input = open(file_in)
+output = open(file_out, "w")
+
+t = int(input.readline().strip())
+rotate = "<^>v"
+neighbours = [(0,-1),(-1,0),(0,1),(1,0)]
+
+for ra in range(t):
+	(n,m) = map(int, input.readline().strip().split(" "))
+	field = []
+	turrets = []
+	start = (0,0)
+	for r in range(n):
+		line = list(input.readline().strip())
+		turrets.extend([(r,i) for i,x in enumerate(line) if x == '^' or x == '>' or x == '<' or x == 'v'])
+		if 'S' in line:
+			start = (r,line.index("S"))
+		field.append(line)
+
+	def bounds(x):
+		return 0 <= x[0] and x[0] < n and 0 <= x[1] and x[1] < m
+
+	def step(field):
+		shots = []
+		for t in turrets:
+			r = (rotate.index(field[t[0]][t[1]]) + 1) % 4
+			field[t[0]][t[1]] = rotate[r]
+			shot = t
+			while bounds(shot):
+				shot = tuple(map(add, shot, neighbours[r]))
+				shots.append(shot)
+		return shots
+
+	queue = deque([start])
+	found = False
+	shots = []
+	visited = set()
+
+	steps = 0
+	expanded = 1
+	acc = 0
+	while queue:
+		pos = queue.popleft()
+
+		hashcode = "".join([field[t[0]][t[1]] for t in turrets]) + str(pos)
+		expanded -= 1
+		#print hashcode, queue, expanded, acc, shots
+		
+		if field[pos[0]][pos[1]] == 'G' and not pos in shots:
+			found = True
+			break
+		
+		if not pos in shots and not hashcode in visited:
+			next = filter(lambda x: bounds(x) and field[x[0]][x[1]] in '.GS',
+					[tuple(map(add, pos, neigh)) for neigh in neighbours])
+
+			queue.extend(next)
+			acc += len(next)
+			visited.add(hashcode)
+
+		if expanded == 0:
+			steps += 1
+			expanded = acc
+			acc = 0
+			shots = step(field)
+
+	print found, steps
+	output.write("Case #%i: %s\n" % (ra+1, str(steps) if found else "impossible"))
+
+input.close()
+output.close()

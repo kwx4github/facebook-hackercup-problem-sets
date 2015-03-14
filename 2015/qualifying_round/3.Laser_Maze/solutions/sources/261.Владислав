@@ -1,0 +1,191 @@
+import java.io.*;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Scanner;
+import java.util.StringTokenizer;
+
+public class Main {
+    public static void main(String[] args) throws IOException {
+        Scanner in = new Scanner(new FileInputStream("C:\\Users\\Vlad\\Downloads\\in.txt"));
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("C:\\Users\\Vlad\\Downloads\\out.txt")));
+        StringTokenizer tokenizer = new StringTokenizer(in.nextLine());
+        int t = Integer.parseInt(tokenizer.nextToken());
+        for (int i = 0; i < t; i++) {
+            tokenizer = new StringTokenizer(in.nextLine());
+            int m = Integer.parseInt(tokenizer.nextToken()), n = Integer.parseInt(tokenizer.nextToken());
+
+            String[] maze = new String[m];
+            for (int j = 0; j < m; j++)
+                maze[j] = in.nextLine();
+
+            long length = solve(maze);
+            out.println("Case #" + (i + 1) + ": " + (length == -1 ? "impossible" : length));
+        }
+        in.close();
+        out.close();
+    }
+
+    private static long solve(String[] maze) {
+        int posX = 0, posY = 0, goalX = 0, goalY = 0;
+        for (int i = 0; i < maze.length; i++)
+            for (int j = 0; j < maze[i].length(); j++) {
+                if (maze[i].charAt(j) == 'S') {
+                    posX = i;
+                    posY = j;
+                }
+
+                if (maze[i].charAt(j) == 'G') {
+                    goalX = i;
+                    goalY = j;
+                }
+            }
+
+        boolean[][][] isBeaten = new boolean[maze.length][maze[0].length()][4];
+        fillFireMap(maze, isBeaten);
+
+        State startState = new State(posX, posY, 0);
+        HashMap<State, Long> states = new HashMap<>();
+        LinkedList<State> queue = new LinkedList<>();
+        queue.add(startState);
+        states.put(startState, 0L);
+
+        while (!queue.isEmpty()) {
+            State state = queue.pollFirst();
+            int x = state.getPosX(), y = state.getPosY(), nextStep = (state.getStepMod4() + 1) % 4;
+
+            if (x + 1 < maze.length && !isBeaten[x + 1][y][nextStep] && isCellEmpty(maze[x + 1].charAt(y))) {
+                State newState = new State(x + 1, y, nextStep);
+                if (!states.containsKey(newState)) {
+                    states.put(newState, states.get(state) + 1);
+                    queue.add(newState);
+                }
+            }
+
+            if (x - 1 >= 0 && !isBeaten[x - 1][y][nextStep] && isCellEmpty(maze[x - 1].charAt(y))) {
+                State newState = new State(x - 1, y, nextStep);
+                if (!states.containsKey(newState)) {
+                    states.put(newState, states.get(state) + 1);
+                    queue.add(newState);
+                }
+            }
+
+            if (y + 1 < maze[0].length() && !isBeaten[x][y + 1][nextStep] && isCellEmpty(maze[x].charAt(y + 1))) {
+                State newState = new State(x, y + 1, nextStep);
+                if (!states.containsKey(newState)) {
+                    states.put(newState, states.get(state) + 1);
+                    queue.add(newState);
+                }
+            }
+
+            if (y - 1 >= 0 && !isBeaten[x][y - 1][nextStep] && isCellEmpty(maze[x].charAt(y - 1))) {
+                State newState = new State(x, y - 1, nextStep);
+                if (!states.containsKey(newState)) {
+                    states.put(newState, states.get(state) + 1);
+                    queue.add(newState);
+                }
+            }
+        }
+
+        long result = -1;
+        for (int i = 0; i < 4; i++)
+            if (states.containsKey(new State(goalX, goalY, i))) {
+                long len = states.get(new State(goalX, goalY, i));
+                if (result == -1)
+                    result = len;
+                else
+                    result = Math.min(result, len);
+            }
+
+        return result;
+    }
+
+    private static boolean isCellEmpty(char c) {
+        return (c == '.' || c == 'S' || c == 'G');
+    }
+
+    private static void fillFireMap(String[] maze, boolean[][][] isBeaten) {
+        for (int i = 0; i < maze.length; i++)
+            for (int j = 0; j < maze[i].length(); j++) {
+                if (maze[i].charAt(j) == '<') {
+                    for (int k = j - 1; k >= 0 && isCellEmpty(maze[i].charAt(k)); k--)
+                        isBeaten[i][k][0] = true;
+                    for (int k = j + 1; k < maze[i].length() && isCellEmpty(maze[i].charAt(k)); k++)
+                        isBeaten[i][k][2] = true;
+                    for (int k = i + 1; k < maze.length && isCellEmpty(maze[k].charAt(j)); k++)
+                        isBeaten[k][j][3] = true;
+                    for (int k = i - 1; k >= 0 && isCellEmpty(maze[k].charAt(j)); k--)
+                        isBeaten[k][j][1] = true;
+                }
+
+                if (maze[i].charAt(j) == '>') {
+                    for (int k = j - 1; k >= 0 && isCellEmpty(maze[i].charAt(k)); k--)
+                        isBeaten[i][k][2] = true;
+                    for (int k = j + 1; k < maze[i].length() && isCellEmpty(maze[i].charAt(k)); k++)
+                        isBeaten[i][k][0] = true;
+                    for (int k = i + 1; k < maze.length && isCellEmpty(maze[k].charAt(j)); k++)
+                        isBeaten[k][j][1] = true;
+                    for (int k = i - 1; k >= 0 && isCellEmpty(maze[k].charAt(j)); k--)
+                        isBeaten[k][j][3] = true;
+                }
+
+                if (maze[i].charAt(j) == '^') {
+                    for (int k = j - 1; k >= 0 && isCellEmpty(maze[i].charAt(k)); k--)
+                        isBeaten[i][k][3] = true;
+                    for (int k = j + 1; k < maze[i].length() && isCellEmpty(maze[i].charAt(k)); k++)
+                        isBeaten[i][k][1] = true;
+                    for (int k = i + 1; k < maze.length && isCellEmpty(maze[k].charAt(j)); k++)
+                        isBeaten[k][j][2] = true;
+                    for (int k = i - 1; k >= 0 && isCellEmpty(maze[k].charAt(j)); k--)
+                        isBeaten[k][j][0] = true;
+                }
+
+                if (maze[i].charAt(j) == 'v') {
+                    for (int k = j - 1; k >= 0 && isCellEmpty(maze[i].charAt(k)); k--)
+                        isBeaten[i][k][1] = true;
+                    for (int k = j + 1; k < maze[i].length() && isCellEmpty(maze[i].charAt(k)); k++)
+                        isBeaten[i][k][3] = true;
+                    for (int k = i + 1; k < maze.length && isCellEmpty(maze[k].charAt(j)); k++)
+                        isBeaten[k][j][0] = true;
+                    for (int k = i - 1; k >= 0 && isCellEmpty(maze[k].charAt(j)); k--)
+                        isBeaten[k][j][2] = true;
+                }
+            }
+    }
+}
+
+/**  */
+class State {
+    private int posX, posY, stepMod4;
+
+    public State(int posX, int posY, int stepMod4) {
+        this.posX = posX;
+        this.posY = posY;
+        this.stepMod4 = stepMod4;
+    }
+
+    public int getPosX() {
+        return posX;
+    }
+
+    public int getPosY() {
+        return posY;
+    }
+
+    public int getStepMod4() {
+        return stepMod4;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null || obj.getClass() != getClass())
+            return false;
+
+        State anotherState = (State)obj;
+        return (posX == anotherState.posX && posY == anotherState.posY && stepMod4 == anotherState.stepMod4);
+    }
+
+    @Override
+    public int hashCode() {
+        return 10000 * posX + posY * 10 + stepMod4;
+    }
+}

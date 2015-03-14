@@ -1,0 +1,223 @@
+// Authored by dolphinigle
+
+#include <vector>
+#include <list>
+#include <map>
+#include <set>
+
+#include <queue>
+#include <deque>
+#include <stack>
+#include <bitset>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <utility>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <cstdio>
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+#include <cstdarg>
+
+#define FORN(X,Y) for (int (X) = 0;(X) < (Y);++(X))
+#define REP(X,Y,Z) for (int (X) = (Y);(X) < (Z);++(X))
+
+#define SZ(Z) ((int)(Z).size())
+#define ALL(W) (W).begin(), (W).end()
+#define PB push_back
+
+#define MP make_pair
+#define A first
+#define B second
+
+#define INF 1023123123
+#define EPS 1e-11
+
+#define MX(Z,Y) Z = max((Z),(Y))
+#define MN(X,Y) X = min((X),(Y))
+
+using namespace std;
+
+typedef long long ll;
+typedef double db;
+typedef vector<int> vint;
+
+vector<string> enframe(vector<string> abc, char impassable) {
+  string huhu(SZ(abc[0]) + 2,impassable);
+  FORN(i,SZ(abc)) abc[i] = impassable + abc[i] + impassable;
+  abc.insert(abc.begin(),huhu);
+  abc.push_back(huhu);
+  return abc;
+  }
+
+vector<string> grids[10];
+int dr[] = {-1, 0, 1, 0};
+int dc[] = {0, -1, 0, 1};
+
+
+class TupleIdManager {
+ public:
+  TupleIdManager(vector<int> values) {
+    n_ = SZ(values);
+    multipliers_ = new int[n_];
+    int multip = 1;
+    for (int i = 0; i < n_; ++i) {
+      multipliers_[i] = multip;
+      multip *= values[i];
+    }
+    total_ids_ = multip;
+  }
+  ~TupleIdManager() {
+    delete[] multipliers_;
+  }
+  int Get(...) {
+    va_list vlist;
+    va_start(vlist, n_);
+    int idx = 0;
+    for (int i = 0; i < n_; ++i) {
+      idx += va_arg(vlist, int) * multipliers_[i];
+    }
+    va_end(vlist);
+    return idx;
+  }
+  int TotalIds() {
+    return total_ids_;
+  }
+
+ private:
+  int* multipliers_;
+  int n_;
+  int total_ids_;
+};
+
+
+class ShortestPathBFS {
+ public:
+  ShortestPathBFS(int nodes) {
+    n_ = nodes;
+    adjs_ = new vector<int>[n_];
+  }
+  ~ShortestPathBFS() {
+    delete[] adjs_;
+  }
+  void AddDirEdge(int node1, int node2) {
+    adjs_[node1].push_back(node2);
+  }
+  int ShortestPath(int node1, int node2) {
+    queue<int> q;
+    vector<int> dist(n_, -1);
+    dist[node1] = 0;
+    q.push(node1);
+    while (!q.empty()) {
+      int node = q.front();
+      q.pop();
+      for (auto i: adjs_[node]) {
+        if (dist[i] == -1) {
+          dist[i] = dist[node]+1;
+          if (i == node2) return dist[i];
+          q.push(i);
+        }
+      }
+    }
+    return -1;
+  }
+ private:
+  int n_;
+  vector<int>* adjs_;
+};
+
+#ifdef DOLPHINIGLE_ENV
+int main_c() {
+#else
+int main() {
+#endif
+  map<char, int> ctodir = {{'^', 0},
+                           {'<', 1},
+                           {'v', 2},
+                           {'>', 3}};
+  int ntc;
+  cin >> ntc;
+  FORN(itc, ntc) {
+    printf("Case #%d: ", itc+1);
+    int row, col;
+    cin >> row >> col;
+    vector<string> init_grid;
+    FORN(i, row) {
+      string s;
+      cin >> s;
+      init_grid.PB(s);
+    }
+    init_grid = enframe(init_grid, '#');
+    row += 2;
+    col += 2;
+    int sr, sc, gr, gc;
+    FORN(r, row) FORN(c, col) {
+      if (init_grid[r][c] == 'S') {
+        init_grid[r][c] = '.';
+        sr = r;
+        sc = c;
+      } else if (init_grid[r][c] == 'G') {
+        init_grid[r][c] = '.';
+        gr = r;
+        gc = c;
+      }
+    }
+    FORN(i, 4) {
+      grids[i] = init_grid;
+      FORN(r, row) FORN(c, col) if (ctodir.count(grids[i][r][c])) {
+        int mr = r;
+        int mc = c;
+        int md = (ctodir[grids[i][r][c]] + 3 * i) % 4;
+        while (true) {
+          mr += dr[md];
+          mc += dc[md];
+          if (grids[i][mr][mc] == '.' || grids[i][mr][mc] == 'X') {
+            grids[i][mr][mc] = 'X';
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    TupleIdManager idm({row, col, 4});
+    ShortestPathBFS bfs(idm.TotalIds());
+    FORN(r, row) FORN(c, col) FORN(i, 4) {
+      FORN(dir, 4) {
+        int nr = r + dr[dir];
+        int nc = c + dc[dir];
+        int ni = (i + 1) % 4;
+        if (nr >= 0 && nr < row && nc >= 0 && nc < col) {
+          if (grids[ni][nr][nc] == '.') {
+            bfs.AddDirEdge(idm.Get(r, c, i), idm.Get(nr, nc, ni));
+          }
+        }
+      }
+    }
+    int best = -1;
+    FORN(i, 4) {
+      int val = bfs.ShortestPath(idm.Get(sr, sc, 0),
+                                 idm.Get(gr, gc, i));
+      if (val != -1) {
+        if (val < best || best == -1) {
+          best = val;
+        }
+      }
+    }
+    if (best == -1) {
+      cout << "impossible\n";
+    } else {
+      cout << best << endl;
+    }
+  }
+  return 0;
+}
+
+
+
+
+

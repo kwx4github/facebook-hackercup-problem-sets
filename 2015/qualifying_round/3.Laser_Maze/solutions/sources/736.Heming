@@ -1,0 +1,176 @@
+import java.util.*;
+import java.io.*;
+
+public class Solution {
+	
+	static final int EMPTY = -1;
+	static final int WALL = -2;
+	static final int TURRET = 0;
+	
+	static public int[] dx = { 1, 0, -1, 0 };
+	static public int[] dy = { 0, -1, 0, 1 };
+	
+	static public class Node {
+		int x, y, t;
+		int step;
+	}
+	
+	static public int[][] map;
+	static public int[][][] block;
+	static public int n, m;
+	static public int startX, startY, endX, endY;
+	
+	static public boolean[][][] visited;
+	
+	static public void readMap() {
+		n = scan.nextInt(); m = scan.nextInt();
+		map = new int[n][m];
+		for (int i = 0; i < n; i ++) {
+			String str = scan.next();
+			for (int j = 0; j < m; j ++) {
+				if (str.charAt(j) == '.') {
+					map[i][j] = EMPTY;
+				} else if (str.charAt(j) == '#') {
+					map[i][j] = WALL;
+				} else if (str.charAt(j) == 'S') {
+					map[i][j] = EMPTY;
+					startX = i; startY = j;
+				} else if (str.charAt(j) == 'G') {
+					map[i][j] = EMPTY;
+					endX = i; endY = j;
+				} else if (str.charAt(j) == 'v') {
+					map[i][j] = 0;
+				} else if (str.charAt(j) == '<') {
+					map[i][j] = 1;
+				} else if (str.charAt(j) == '^') {
+					map[i][j] = 2;
+				} else if (str.charAt(j) == '>') {
+					map[i][j] = 3;
+				}
+			}
+		}
+		/*
+		for (int x = 0; x < n; x ++) {
+			for (int y = 0; y < m; y ++) {
+				pw.print(map[x][y]);
+			}
+			pw.println();
+		}
+		pw.println("\n");
+		*/
+	}
+	
+	static public boolean inRange(int x, int y) {
+		if (x < 0 || x >= n) return false;
+		if (y < 0 || y >= m) return false;
+		return true;
+	}
+	
+	static public void fillBlock() {
+		block = new int[n][m][4];
+		for (int x = 0; x < n; x ++) {
+			for (int y = 0; y < m; y ++) {
+				if (map[x][y] == EMPTY) continue;
+				if (map[x][y] == WALL) {
+					for (int t = 0; t < 4; t ++) {
+						block[x][y][t] = 1;
+					}
+					continue;
+				}
+				for (int t = 0; t < 4; t ++) {
+					block[x][y][t] = 1;
+					int newDir = (map[x][y] + t) % 4;
+					int px = x, py = y;
+					do {
+						px += dx[newDir]; py += dy[newDir];
+						if (!inRange(px, py)) break;
+						if (map[px][py] != EMPTY) break;
+						block[px][py][t] = 1;
+					} while (true);
+				}
+			}
+		}
+		/*
+		for (int t = 0; t < 4; t ++) {
+			for (int x = 0; x < n; x ++) {
+				for (int y = 0; y < m; y ++) {
+					pw.print(block[x][y][t]);
+				}
+				pw.println();
+			}
+			pw.println("\n");
+		}*/
+	}
+	
+	static public boolean visitEnd() {
+		for (int t = 0; t < 4; t ++) {
+			if (visited[endX][endY][t]) return true;
+		}
+		return false;
+	}
+	
+	static public int traverse() {
+		if (startX == endX && startY == endY) return 0;
+		
+		visited = new boolean[n][m][4];
+		for (int x = 0; x < n; x ++) 
+			for (int y = 0; y < m; y ++)
+				for (int t = 0; t < 4; t ++)
+					visited[x][y][t] = false;
+		
+		Queue<Node> queue = new LinkedList<Node>();
+		
+		Node node = new Node();
+		node.x = startX; node.y = startY; node.t = 0; node.step = 0;
+		queue.add(node);
+		visited[startX][startY][0] = true;
+		
+		while (!queue.isEmpty()) {
+			Node cur = queue.poll();
+			int nt = (cur.t + 1) % 4, nstep = cur.step + 1;
+			
+			//pw.println(cur.x + "," + cur.y + " " + cur.t + " " + cur.step);
+			for (int dir = 0; dir < 4; dir ++) {
+				int nx = cur.x + dx[dir];
+				int ny = cur.y + dy[dir];
+				if (!inRange(nx, ny)) continue;
+				if (block[nx][ny][nt] > 0) continue;
+				if (visited[nx][ny][nt]) continue;
+				
+				Node newNode = new Node();
+				newNode.x = nx; newNode.y = ny; newNode.t = nt; newNode.step = nstep;
+				queue.add(newNode);
+				visited[nx][ny][nt] = true;
+				
+				if (nx == endX && ny == endY) {
+					return nstep;
+				}
+			}
+		}
+		return -1;
+	}
+	
+	static Scanner scan;
+	static PrintWriter pw;
+	
+	static public void main(String args[]) throws IOException {
+		scan  = new Scanner(new File("CC.in"));
+		pw = new PrintWriter("CC.out");
+		
+		int T;
+		T = scan.nextInt();
+		for (int ti = 1; ti <= T; ti ++) {
+			readMap();
+			fillBlock();
+			int ans = traverse();
+			pw.print("Case #" + ti + ": ");
+			if (ans >= 0) {
+				pw.println(ans);
+			} else {
+				pw.println("impossible");
+			}
+		}
+		scan.close();
+		pw.close();
+	}
+}

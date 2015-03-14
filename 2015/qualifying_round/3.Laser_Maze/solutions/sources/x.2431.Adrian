@@ -1,0 +1,145 @@
+#include <iostream>
+#include <queue>
+
+#define SPACE 0
+#define WALL 1
+#define TOWER_N 2
+#define TOWER_E 3
+#define TOWER_S 4
+#define TOWER_W 5
+
+#define NEXT(dir) ((dir) == TOWER_W ? TOWER_N : ((dir) + 1))
+
+int starti, startj, goali, goalj;
+int n, m;
+
+struct State {
+  int i, j, parity;
+
+  State(int i, int j, int parity) : i(i), j(j), parity(parity) {}
+
+  State() : i(0), j(0), parity(0) {}
+};
+
+int map[101][101];
+int lmin[4][101][101];
+int hit[4][101][101];
+
+void clear_maps() {
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      map[i][j] = hit[0][i][j] = hit[1][i][j] = hit[2][i][j] = hit[3][i][j] =
+          lmin[0][i][j] = lmin[1][i][j] = lmin[2][i][j] = lmin[3][i][j] = 0;
+    }
+  }
+}
+
+void fill_hit(int i, int j, int parity, int tower_dir) {
+  const int vi[6] = { 0, 0, -1, 0, 1, 0 };
+  const int vj[6] = { 0, 0, 0, 1, 0, -1 };
+  i += vi[tower_dir];
+  j += vj[tower_dir];
+  while (i >= 0 && j >= 0 && i < n && j < m && map[i][j] == SPACE) {
+    hit[parity][i][j] = 1;
+    i += vi[tower_dir];
+    j += vj[tower_dir];
+  }
+}
+
+int main()
+{
+  int ntests;
+  std::cin >> ntests;
+
+  for (int test = 1; test <= ntests; ++test) {
+    // Read in the maps.
+    std::cin >> n >> m;
+    clear_maps();
+    for (int i = 0; i < n; ++i) {
+      std::string s;
+      std::cin >> s;
+      for (int j = 0; j < m; ++j) {
+        switch(s[j]) {
+          case '#':
+            map[i][j] = WALL;
+            break;
+          case 'S':
+            map[i][j] = SPACE;
+            starti = i;
+            startj = j;
+            break;
+          case 'G':
+            map[i][j] = SPACE;
+            goali = i;
+            goalj = j;
+            break;
+          case '.':
+            map[i][j] = SPACE;
+            break;
+          case '<':
+            map[i][j] = TOWER_W;
+            break;
+          case '>':
+            map[i][j] = TOWER_E;
+            break;
+          case '^':
+            map[i][j] = TOWER_N;
+            break;
+          case 'V':
+            map[i][j] = TOWER_S;
+            break;
+        }
+      }
+    }
+
+    // Fill in the hit matrix.
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        if (map[i][j] >= TOWER_N && map[i][j] <= TOWER_W) {
+          fill_hit(i, j, 0, map[i][j]);
+          fill_hit(i, j, 1, NEXT(map[i][j]));
+          fill_hit(i, j, 2, NEXT(NEXT(map[i][j])));
+          fill_hit(i, j, 3, NEXT(NEXT(NEXT(map[i][j]))));
+        }
+      }
+    }
+
+    // Start the BFS.
+    std::deque<State> q;
+    q.push_back(State(starti, startj, 0));
+    lmin[0][starti][startj] = 1;
+    do {
+      if (q.empty()) break;
+
+      State s = q.front();
+      q.pop_front();
+
+      int vi[4] = { -1, 0, 1, 0 };
+      int vj[4] = { 0, 1, 0, -1 };
+      for (int dir = 0; dir < 4; ++dir) {
+        State snew = State(s.i + vi[dir], s.j + vj[dir], (s.parity + 1) % 4);
+        if (snew.i >= 0 && snew.j >= 0 && snew.i < n && snew.j < m &&
+            map[snew.i][snew.j] == 0 &&
+            hit[snew.parity][snew.i][snew.j] == 0 &&
+            lmin[snew.parity][snew.i][snew.j] == 0) {
+          q.push_back(snew);
+          lmin[snew.parity][snew.i][snew.j] = 1 + lmin[s.parity][s.i][s.j];
+        }
+      }
+    } while (lmin[0][goali][goalj] == 0 &&
+             lmin[1][goali][goalj] == 0 &&
+             lmin[2][goali][goalj] == 0 &&
+             lmin[3][goali][goalj] == 0);
+
+    std::cout << "Case #" << test << ": ";
+    if (lmin[0][goali][goalj] + lmin[1][goali][goalj] +
+        lmin[2][goali][goalj] + lmin[3][goali][goalj] == 0) {
+      std::cout << "impossible" << std::endl;
+    } else {
+      std::cout << lmin[0][goali][goalj] + lmin[1][goali][goalj] +
+          lmin[2][goali][goalj] + lmin[3][goali][goalj] - 1 << std::endl;
+    }
+  }
+
+  return 0;
+}

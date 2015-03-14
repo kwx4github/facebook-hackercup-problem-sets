@@ -1,0 +1,168 @@
+# include <stdio.h>
+# include <string.h>
+# include <queue>
+
+using namespace std;
+
+char graph[105][105];
+bool vis[105][105];
+bool f[105][105][4];
+
+int di[4] = {-1, 0, 1, 0};
+int dj[4] = {0, 1, 0, -1};
+
+typedef pair<int, int> coord;
+typedef pair<coord, int> item;
+
+int n, m;
+
+bool inside(int i, int j)
+{
+	return i >= 0 && i < m && j >= 0 && j < n;
+}
+
+void calculate(int i, int j, int d, char laser)
+{
+	switch (laser)
+	{
+		case '^':
+			f[i][j][d] = true;
+			break;
+		case '>':
+			f[i][j][(d + 3) % 4] = true;
+			break;
+		case 'v':
+			f[i][j][(d + 2) % 4] = true;
+			break;
+		case '<':
+			f[i][j][(d + 1) % 4] = true;
+			break;
+	}
+}
+
+void preProcess(int i, int j)
+{
+	for (int d = 0; d < 4; d ++)
+	{
+		int ni = i + di[d];
+		int nj = j + dj[d];
+
+		while (inside(ni, nj))
+		{
+			if (graph[ni][nj] == '.' ||
+				graph[ni][nj] == 'S' ||
+				graph[ni][nj] == 'G')
+			{
+				calculate(ni, nj, d, graph[i][j]);
+			} else
+			{
+				break;
+			}
+
+			ni += di[d];
+			nj += dj[d];
+		}
+	}
+}
+
+bool valid(int i, int j, int step)
+{
+	return !vis[i][j] && !f[i][j][step % 4] && inside(i, j);
+}
+
+void bfs(int i, int j, int ei, int ej)
+{
+	queue<item> q;
+
+	memset(vis, 0, sizeof(vis));
+
+	q.push(item(coord(i, j), 0));
+	vis[i][j] = true;
+
+	bool find = false;
+
+	while (!q.empty() && !find)
+	{
+		item head = q.front();
+		q.pop();
+
+		coord pos = head.first;
+		int step = head.second;
+
+		for (int d = 0; d < 4; d ++)
+		{
+			int ni = pos.first + di[d];
+			int nj = pos.second + dj[d];
+
+			if (valid(ni, nj, step + 1))
+			{
+				if (ni == ei && nj == ej)
+				{
+					printf("%d\n", step + 1);
+					find = true;
+					break;
+				}
+
+				vis[ni][nj] = true;
+				q.push(item(coord(ni, nj), step + 1));
+			}
+		}
+	}
+
+	if (!find)
+	{
+		printf("impossible\n");
+	}
+}
+
+int main()
+{
+	freopen("a.txt", "r", stdin);
+	freopen("b.txt", "w", stdout);
+
+	int t;
+
+	scanf("%d", &t);
+
+	for (int kase = 1; kase <= t; kase ++)
+	{
+		printf("Case #%d: ", kase);
+
+		scanf("%d%d", &m, &n);
+
+		for (int i = 0; i < m; i ++)
+		{
+			scanf("%s", graph[i]);
+		}
+
+		memset(f, 0, sizeof(f));
+
+		int si, sj, ei, ej;
+
+		for (int i = 0; i < m; i ++)
+			for (int j = 0; j < n; j ++)
+			{
+				if (graph[i][j] == '<' ||
+					graph[i][j] == '>' ||
+					graph[i][j] == '^' ||
+					graph[i][j] == 'v')
+				{
+					preProcess(i, j);
+				}
+
+				if (graph[i][j] == 'S')
+				{
+					si = i;
+					sj = j;
+				}
+
+				if (graph[i][j] == 'G')
+				{
+					ei = i;
+					ej = j;
+				}
+			}
+
+		bfs(si, sj, ei, ej);
+	}
+}

@@ -1,0 +1,207 @@
+package fbhackup.y2015;
+
+import com.google.common.io.Resources;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.util.*;
+
+/**
+ * Created by lan on 1/11/15.
+ */
+public class LaserMaze {
+    public static final String SEP = " ";
+    public static final String TURRETS = "^>v<";
+    public static final char WALL = '#';
+    public static final int IMPOSSIBLE = -1;
+
+    private final char[][] maze;
+    private final int height;
+    private final int width;
+    private Pos start = null;
+    private Pos goal = null;
+    private List<Pos> laserTurrets = new ArrayList<>();
+    private StringBuffer sb = new StringBuffer();
+
+    public LaserMaze(char[][] maze, int height, int width) {
+        this.maze = maze;
+        this.height = height;
+        this.width = width;
+
+        for (int x = 0; x < height; x++) {
+            for (int y = 0; y < width; y++) {
+                char c = maze[x][y];
+                if ('S' == c) {
+                    start = new Pos(x, y);
+                } else if ('G' == c) {
+                    goal = new Pos(x, y);
+                } else if (TURRETS.indexOf(c) >= 0) {
+                    laserTurrets.add(new Pos(x, y));
+                }
+            }
+        }
+    }
+
+    class Pos {
+        int x;
+        int y;
+
+        public Pos(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public int hashCode() {
+            int res = 17;
+            res = res * 31 + Math.min(x, y);
+            res = res * 31 + Math.max(x, y);
+            return res;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Pos)) {
+                return false;
+            }
+
+            Pos obj1 = (Pos) obj;
+            return this.x == obj1.x && this.y == obj1.y;
+        }
+
+        @Override
+        public String toString() {
+            return x + SEP + y;
+        }
+    }
+
+    private void advanceLaser() {
+        for (Pos laser : laserTurrets) {
+            maze[laser.x][laser.y] = TURRETS.charAt((TURRETS.indexOf(maze[laser.x][laser.y]) + 1) % TURRETS.length());
+        }
+    }
+
+    private boolean confirmNoWall(Pos a, Pos b) {
+        if (a.x == b.x) {
+            int pace = (a.y > b.y) ? -1 : 1;
+            for (int y = a.y; y != b.y; y += pace) {
+                if (maze[a.x][y] == WALL) {
+                    return false;
+                }
+            }
+        } else if (a.y == b.y) {
+            int pace = (a.x > b.x) ? -1 : 1;
+            for (int x = a.x; x != b.x; x += pace) {
+                if (maze[x][a.y] == WALL) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean isSafe(Pos current) {
+        boolean safe = true;
+        for (Pos laser : laserTurrets) {
+            char l = maze[laser.x][laser.y];
+            if (laser.x == current.x) {
+                if (((laser.y < current.y && l == '>') || (laser.y > current.y && l == '<'))
+                        && confirmNoWall(laser, current)) {
+                    safe = false;
+                    break;
+                }
+            } else if (laser.y == current.y) {
+                if ((laser.x < current.x && l == 'v') || (laser.x > current.x && l == '^')
+                        && confirmNoWall(laser, current)) {
+                    safe = false;
+                    break;
+                }
+            }
+        }
+        return safe;
+    }
+
+    private String genCacheKey(Pos pos) {
+        sb.setLength(0);
+        for (Pos laser : laserTurrets) {
+            sb.append(maze[laser.x][laser.y]);
+        }
+        sb.append(pos.toString());
+        return sb.toString();
+    }
+
+    private void tryAdd(Set<Pos> next, int x, int y, Set<String> memo) {
+        if (x >= 0 && x < height && y >= 0 && y < width) {
+            if (maze[x][y] != WALL && TURRETS.indexOf(maze[x][y]) < 0) {
+                Pos t = new Pos(x, y);
+                if (isSafe(t) && !memo.contains(genCacheKey(t))) {
+                    next.add(t);
+                }
+            }
+        }
+    }
+
+    private int trySolve(Set<Pos> cs, int cnt, Set<String> memo) {
+        Set<Pos> next = new HashSet<>();
+        advanceLaser();
+        for (Pos c : cs) {
+            tryAdd(next, c.x - 1, c.y, memo);
+            tryAdd(next, c.x + 1, c.y, memo);
+            tryAdd(next, c.x, c.y - 1, memo);
+            tryAdd(next, c.x, c.y + 1, memo);
+        }
+
+        if (next.isEmpty()) {
+            return IMPOSSIBLE;
+        }
+
+        for (Pos p : next) {
+            if (p.equals(goal)) {
+                return cnt + 1;
+            }
+            memo.add(genCacheKey(p));
+        }
+
+        return trySolve(next, cnt + 1, memo);
+    }
+
+    public int solve() {
+        Set<Pos> current = new HashSet<>();
+        current.add(start);
+        Set memo = new HashSet<Pos>();
+        memo.add(start);
+        return trySolve(current, 0, memo);
+    }
+
+    public static void main(String[] args) throws FileNotFoundException {
+        long startTime = System.currentTimeMillis();
+
+        String input = "laser_maze.txt";
+        try (
+                Scanner scanner = new Scanner(new File(Resources.getResource(input).getPath()));
+                PrintStream out = new PrintStream(new FileOutputStream("output/" + input + ".out"));
+        ) {
+            int T = scanner.nextInt();
+            for (int i = 0; i < T; i++) {
+                System.out.println("processing case #" + (i + 1));
+                int height = scanner.nextInt(),
+                        width = scanner.nextInt();
+
+                scanner.nextLine();
+                char[][] maze = new char[height][width];
+                for (int n = 0; n < height; n++) {
+                    maze[n] = scanner.nextLine().toCharArray();
+                }
+
+                int n = new LaserMaze(maze, height, width).solve();
+                out.println("Case #" + (i + 1) + ":" + SEP + (n >= 0 ? n : "impossible"));
+            }
+        }
+
+        long endTime = System.currentTimeMillis();
+        long totalTime = endTime - startTime;
+        System.out.println(totalTime);
+    }
+}

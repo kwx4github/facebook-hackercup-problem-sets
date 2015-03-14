@@ -1,0 +1,296 @@
+package Qualification;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class LaserMase {
+		
+	public static void main(String[] args) throws FileNotFoundException {
+		FileInputStream stream = new FileInputStream(
+				new File(
+						"C:\\Users\\tagi1_000\\Downloads\\laser_maze.txt"));
+		Scanner scanner = new Scanner(stream);
+
+		PrintWriter outFile = new PrintWriter(
+				"C:\\Users\\tagi1_000\\Downloads\\solutions3.txt");
+		
+		int numberOfTestCases = scanner.nextInt();
+		// So, let's see. I will have n test cases, and in total around 4.5 minutes to solve everything. Overall, it means 270000 millisecond overall
+		// So, 270000/n for each search rounded down will be amount of milliseconds for each search.
+		long maximumThinkingTime = 27000000;
+		int perTestCase = 270000 / numberOfTestCases;
+
+		final String[] possibleLasers = {"^",">","v", "<"};
+		for (int i=0;i<numberOfTestCases;i++)
+		{
+			System.out.println(i);
+			int width = scanner.nextInt();
+			int height = scanner.nextInt();
+			Coordinate start = null, end = null;
+			ArrayList<Coordinate> lasers = new ArrayList<Coordinate>();
+			String[][] board = new String[width][height];
+			for (int j=0;j<width;j++)
+			{
+				String[] words = scanner.next().split("");
+				for (int k = 0;k<words.length;k++)
+				{
+					if (words[k].equalsIgnoreCase("S"))
+						start = new Coordinate(j,k);
+					if (words[k].equalsIgnoreCase("G"))
+						end = new Coordinate(j,k);
+					if (words[k].equalsIgnoreCase(possibleLasers[0]) || words[k].equalsIgnoreCase(possibleLasers[1]) || words[k].equalsIgnoreCase(possibleLasers[2]) || words[k].equalsIgnoreCase(possibleLasers[3]))
+					{
+						lasers.add(new Coordinate(j,k));
+					}
+					board[j][k] = words[k];
+				}
+			}
+			// Now, solving... Either A* or Breadth-first search. First try : Breadth-first
+			Node root = new Node(null, start, board.clone(), lasers);
+//			root.generateKids();
+//			System.out.println(root.children.size());
+			int answer = breadth_first(board, root, new Node(null,end, null, null), perTestCase);
+			if (answer != 0)
+				outFile.println("Case #" + (i+1) + ": " + answer);
+			else
+				outFile.println("Case #" + (i+1) + ": impossible");
+			
+		}
+
+		outFile.close();
+		scanner.close();
+	}
+	
+	
+	public static int breadth_first(String[][] board, Node root, Node goal, long thinkingTime)
+	{
+		// initialization of some stuff.
+		long startingTime = System.currentTimeMillis();
+		// bfs
+		Queue queue = new LinkedList();
+		queue.add(root);
+		root.visited = true;
+		int level = 0;
+		// Hmm, how to compute levels...
+		boolean possible = false;
+		while(!queue.isEmpty() && !possible) {
+//			if (System.currentTimeMillis() - startingTime > thinkingTime)
+//				break;
+			Node node = (Node)queue.remove();
+			node.generateKids();
+			Node child=null;
+			while((child=getUnvisitedChildNode(node))!=null) {
+				if (child.tmp.x == goal.tmp.x && child.tmp.y == goal.tmp.y)
+				{
+					goal = child;
+					possible = true;
+				}
+				child.visited=true;
+				queue.add(child);
+			}
+		}
+		int counter = 0;
+		while (goal.parent != null)
+		{
+			counter++;
+			goal = goal.parent;
+		}
+		// Clear visited property of nodes
+		
+		return counter;
+	}
+	
+	public static void printBoard(Node goal)
+	{
+		String[][] board = goal.board;
+		for (int i=0;i<board.length;i++)
+		{
+			for (int j=0;j<board[0].length;j++)
+			{
+				System.out.print(board[i][j]);
+			}
+			System.out.println();
+		}
+	}
+	
+	public static Node getUnvisitedChildNode(Node node)
+	{
+		for (int i=0;i<node.children.size();i++)
+		{
+			if (node.children.get(i).visited == false)
+			{
+				return node.children.get(i);
+			}
+		}
+		return null;
+	}
+	
+	public static class Node
+	{
+		Node parent;
+		ArrayList<Node> children;
+		boolean visited = false;
+		Coordinate tmp;
+		String[][] board;
+		ArrayList<Coordinate> lasers;
+		
+		public Node(Node parent, Coordinate tmp, String[][] board, ArrayList<Coordinate> lasers)
+		{
+			this.board = board;
+			this.tmp = tmp;
+			this.parent = parent;
+			children = new ArrayList<Node>();
+			this.lasers = lasers;
+		}
+		
+		public ArrayList<Node> getChildren()
+		{
+			return children;
+		}
+		
+		public Node getParent()
+		{
+			return parent;
+		}
+		
+		
+		public void generateKids()
+		{
+			// Should create all the kids. One thing : board should be updated and some checks should be done.
+			// Update the board.
+
+			rotateLasers();
+			// Now, generate all possible moves. So, check four cases.
+			// Also, check for legality of moves.
+			// Checking line : bottom, right, left, top
+			Coordinate bottom = new Coordinate(tmp.x + 1, tmp.y);
+			Coordinate right = new Coordinate(tmp.x, tmp.y + 1);
+			Coordinate top = new Coordinate(tmp.x - 1, tmp.y);
+			Coordinate left = new Coordinate(tmp.x, tmp.y - 1);
+			if (bottom.x < board.length && !board[bottom.x][bottom.y].equalsIgnoreCase("#"))
+			{
+				// So, coordinate is fine. Just check with lasers
+				if (checkAgainstLasers(bottom))
+					this.children.add(new Node(this, bottom, cloneBoard(board), lasers));
+			}
+			
+			if (right.y < board[0].length && !board[right.x][right.y].equalsIgnoreCase("#"))
+			{
+				if (checkAgainstLasers(right))
+					this.children.add(new Node(this, right, cloneBoard(board), lasers));
+			}
+			
+			if (top.x >= 0 && !board[top.x][top.y].equalsIgnoreCase("#"))
+			{
+				if (checkAgainstLasers(top))
+					this.children.add(new Node(this, top, cloneBoard(board), lasers));
+			}
+			
+			if (left.y >= 0 && !board[left.x][left.y].equalsIgnoreCase("#"))
+			{
+				if (checkAgainstLasers(left))
+					this.children.add(new Node(this, left, cloneBoard(board), lasers));
+			}
+
+		}
+		
+		public String[][] cloneBoard(String[][] board)
+		{
+			String[][] cloned = new String[board.length][board[0].length];
+			for (int i=0;i<board.length;i++)
+			{
+				for (int j=0;j<board[0].length;j++)
+				{
+					cloned[i][j] = board[i][j];
+				}
+			}
+			return cloned;
+		}
+		
+		public boolean checkAgainstLasers(Coordinate newPlace)
+		{
+			
+			for (Coordinate tmp : lasers)
+			{
+				if (board[tmp.x][tmp.y].equalsIgnoreCase("^"))
+				{
+					if (newPlace.x <= tmp.x && newPlace.y == tmp.y)
+						return false;
+				}
+				else if (board[tmp.x][tmp.y].equalsIgnoreCase(">"))
+				{
+					if (newPlace.x == tmp.x && newPlace.y >= tmp.y)
+						return false;
+				}
+				else if (board[tmp.x][tmp.y].equalsIgnoreCase("v"))
+				{
+					if (newPlace.x >= tmp.x && newPlace.y == tmp.y)
+						return false;
+				}
+				else
+				{
+					if (newPlace.x == tmp.x && newPlace.y <= tmp.y)
+						return false;
+				}
+				
+			}
+			
+			return true;
+		}
+		
+		public void rotateLasers()
+		{
+			for (Coordinate tmp : lasers)
+			{
+				if (board[tmp.x][tmp.y].equalsIgnoreCase("^"))
+				{
+					board[tmp.x][tmp.y] = ">";
+				}
+				else if (board[tmp.x][tmp.y].equalsIgnoreCase(">"))
+				{
+					board[tmp.x][tmp.y] = "v";
+				}
+				else if (board[tmp.x][tmp.y].equalsIgnoreCase("v"))
+				{
+					board[tmp.x][tmp.y] = "<";
+				}
+				else
+				{
+					board[tmp.x][tmp.y] = "^";
+				}
+			}
+		}
+	
+	}
+	
+	public static class Coordinate
+	{
+		int x,y;
+		public Coordinate(int x, int y)
+		{
+			this.x = x;
+			this.y = y;
+		}
+		
+		public int getX()
+		{
+			return x;
+		}
+		
+		public int getY()
+		{
+			return y;
+		}
+		
+		public String toString()
+		{
+			return x + " " + y;
+		}
+	}
+}

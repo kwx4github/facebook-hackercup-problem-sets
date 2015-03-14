@@ -1,0 +1,215 @@
+package cw.hack15.r1
+
+import cw.puzzle.util.PuzzleIO
+import groovy.transform.CompileStatic
+import groovy.transform.EqualsAndHashCode
+import groovy.transform.ToString
+import groovy.transform.TupleConstructor
+import groovy.transform.TypeCheckingMode
+
+@CompileStatic(TypeCheckingMode.SKIP)
+class C_LaserMaze {
+    static main(def args) {
+        PuzzleIO io = new PuzzleIO()
+        def answers = []
+
+        def input = io.read()
+        def T = input.remove(0).toInteger()
+        T.times {
+            def (int h, int w) = input.remove(0).split().collect { String str -> str.toInteger() }
+            List<List<String>> grid = []
+            h.times { def i ->
+                grid << input.remove(0).toCharArray().collect { it.toString() }
+            }
+
+            def maze = new Maze(h: h, w: w)
+            def str = maze.solve(grid)
+            println str
+            answers += str
+        }
+
+        io.write(answers)
+    }
+
+    @ToString(includePackage = false)
+    @EqualsAndHashCode
+    @TupleConstructor
+    private static class Loc {
+        int x, y
+
+        Loc plus(Loc other) {
+            new Loc(x + other.x, y + other.y)
+        }
+    }
+
+    private static enum Direction {
+        R(1, 0),
+        L(-1, 0),
+        U(0, -1),
+        D(0, 1);
+        Loc loc
+
+        Direction(int x, int y) {
+            loc = new Loc(x, y)
+        }
+    }
+
+    private static class Maze {
+        Map<MazeState, Integer> memo = [:]
+        List<Loc> laserLoc = []
+        Loc start
+        Loc end
+        int h, w
+
+        private MazeState init(List<List<String>> grid) {
+            final laserChars = ['>', 'V', '<', '^']
+            for (def i = 0; i < h; i++) {
+                for (def j = 0; j < w; j++) {
+                    def cellVal = grid[i][j]
+                    def cellLoc = new Loc(j, i)
+
+                    def laserIdx = laserChars.indexOf(cellVal)
+                    if (laserIdx > -1) {
+                        laserLoc << cellLoc
+                    } else if ('G' == cellVal) {
+                        end = cellLoc
+                    } else if ('S' == cellVal) {
+                        start = cellLoc
+                    }
+                }
+            }
+            return new MazeState(grid, start)
+        }
+
+        @ToString(includePackage = false)
+        @EqualsAndHashCode
+        private class MazeState {
+            List<List<String>> grid
+            Loc curPos
+
+            MazeState(List<List<String>> grid, Loc curPos) {
+                this.grid = grid
+                this.curPos = curPos
+            }
+
+            /**
+             * Update our pos and board state
+             * @param dir
+             * @return
+             */
+            MazeState move(Direction dir) {
+                //update pos
+                Loc newPos = curPos + dir.loc
+                def newGrid = grid.collect { new ArrayList<>(it) }
+
+                //update lasers
+                final laserPositions = ['>', 'V', '<', '^']
+                for (Loc loc : laserLoc) {
+                    def cellVal = newGrid[loc.y][loc.x]
+                    def nextIdx = (laserPositions.indexOf(cellVal) + 1) % 4
+                    newGrid[loc.y][loc.x] = laserPositions.get(nextIdx)
+                }
+
+                def newState = new MazeState(newGrid, newPos)
+                return newState
+            }
+
+            /**
+             * valid if position is within the maze, unoccupied, and not shot
+             * @param dir
+             * @return
+             */
+            boolean isValidState() {
+                //off the map?
+                if (curPos.x >= w || curPos.x < 0) {
+                    return false
+                }
+                if (curPos.y >= h || curPos.y < 0) {
+                    return false
+                }
+
+                //spot avail?
+                def availableSpots = ['.', 'S', 'G']
+                def val = grid[curPos.y][curPos.x]
+                if (!availableSpots.contains(val)) {
+                    return false
+                }
+
+                //will die by laser in row?
+                def lasersInRow = laserLoc.findAll { it.y == curPos.y }
+                for (Loc lc : lasersInRow) {
+                    def cellVal = grid[lc.y][lc.x]
+                    if (cellVal == '>' && lc.x < curPos.x) {
+                        //laser behind pointing right
+                        return false
+                    } else if (cellVal == '<' && lc.x > curPos.x) {
+                        //laser ahead pointing left
+                        return false
+                    }
+                }
+
+                //will die by laser in col?
+                def lasersInCol = laserLoc.findAll { it.x == curPos.x }
+                for (Loc lc : lasersInCol) {
+                    def cellVal = grid[lc.y][lc.x]
+                    if (cellVal == 'V' && lc.y < curPos.y) {
+                        //laser above pointing down
+                        return false
+                    } else if (cellVal == '^' && lc.y > curPos.y) {
+                        //laser below pointing up
+                        return false
+                    }
+                }
+
+                //else ok
+                return true
+            }
+        }
+
+        /**
+         * @param grid grid state for current step
+         * @param history move history so we don't repeat
+         * @return optimal amount of steps for completion from this state
+         */
+        int traverse(MazeState state, Set<MazeState> history) {
+            if (state.curPos == end) {
+                return 0
+            }
+
+            def existingSolution = memo.get(state)
+            if (existingSolution) {
+                return existingSolution
+            }
+
+            Integer minMovesFromHere
+            for (Direction direction : Direction.values()) {
+                def movedState = state.move(direction)
+                if (movedState.isValidState()) {
+                    def moveHistory = new HashSet<>(history)
+                    if (moveHistory.add(movedState)) {
+                        //new move with no solution and not in our history
+                        def dirResult = traverse(movedState, moveHistory)
+                        if (dirResult != -1) {
+                            def numMoves = 1 + dirResult
+                            if (null == minMovesFromHere || numMoves < minMovesFromHere) {
+                                minMovesFromHere = numMoves
+                            }
+                        }
+                    }
+                }
+            }
+
+            //either found an optimal solution or no solution
+            def optimalMoves = minMovesFromHere != null ? minMovesFromHere : -1
+            memo[state] = optimalMoves
+
+            return optimalMoves
+        }
+
+        String solve(List<List<String>> grid) {
+            MazeState state = init(grid)
+            def minMoves = traverse(state, new HashSet<MazeState>())
+            return minMoves == -1 ? "impossible" : "$minMoves"
+        }
+    }
+}

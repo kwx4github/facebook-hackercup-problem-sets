@@ -1,0 +1,64 @@
+import qualified Text.Parsec as Parsec
+import Control.Applicative
+
+
+data Case a = Case a [a]  deriving( Show )
+
+number :: Parsec.Parsec String () Integer
+number = read <$> Parsec.many1 Parsec.digit
+
+
+main = do
+    c <- getContents
+    let result =  Parsec.parse (parse) ""  c
+    case result of
+        Left err -> putStrLn $ show err
+        Right cs -> putStrLn $ unlines (map solve (zip [1..] cs))
+    where
+        solve (i, (Case t cs)) = "Case "++(show i)++": " ++ (ans $ isPossible t cs) 
+
+ans a
+    | a = "yes"
+    | otherwise = "no"
+
+parse = do
+    n <- number
+    Parsec.spaces
+    cs <- Parsec.count (fromInteger n) caseParser
+    return cs
+
+trippleParser :: Parsec.Parsec String () (Integer, Integer, Integer)
+trippleParser = do
+    a <- number
+    Parsec.spaces
+    b <- number
+    Parsec.spaces
+    c <- number
+    Parsec.spaces
+    return (a,b,c)
+
+caseParser = do
+    t <- trippleParser
+    c <- number
+    Parsec.spaces
+    foods <- Parsec.count (fromInteger c) trippleParser
+    Parsec.spaces
+    return $ Case t foods
+
+
+
+
+add (a1,b1,c1) (a2,b2,c2) = (a1+a2, b1+b2, c1+c2)
+
+eq (a1,b1,c1) (a2,b2,c2) = a1==a2 && b1==b2 && c1==c2
+
+leq (a1,b1,c1) (a2,b2,c2) = a1 <= a2 && b1 <= b2 && c1 <= c2
+
+isPossible t ls = isPossible' (0,0,0) t ls
+
+
+isPossible' c t ls
+            | eq c t = True
+            | (not (eq c t)) && null ls = False
+            | not (leq c t) = False
+            | otherwise = isPossible' (add c (head ls)) t (tail ls) || isPossible' c t (tail ls)

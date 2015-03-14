@@ -1,0 +1,166 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <algorithm>
+#include <iostream>
+#include <cstring>
+#include <vector>
+#include <set>
+#include <map>
+#include <cassert>
+#include <ctime>
+#include <string>
+
+using namespace std;
+
+#ifdef _WIN32
+#define LLD "%I64d"
+#else
+#define LLD "%lld"
+#endif
+
+typedef long double ld;
+typedef long long ll;
+
+ll rdtsc() {
+  ll tmp;
+  asm("rdtsc" : "=A"(tmp));
+  return tmp;
+}
+
+inline int myrand() {
+  return abs((rand() << 15) ^ rand());
+}
+
+inline int rnd(int x) {
+  return myrand() % x;
+}
+
+#define TASKNAME "text"
+#define pb push_back
+#define mp make_pair
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define sz(x) ((int)(x).size())
+
+const int INF = (int)1e9 + 1;
+const ld EPS = 1e-9;
+
+const int maxn = 100 + 10;
+char s[maxn + 1];
+
+const int maxg = 4;
+const int go[maxg][2] = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+const char chars[maxg] = {'v', '>', '^', '<'};
+
+int table[maxn][maxn];
+
+int w, h;
+
+inline bool ok(int x, int y) {
+  return 0 <= x && 0 <= y && x < w && y < h;
+}
+
+bool hit(int x, int y, int timer) {
+  for (int g = 0; g < maxg; ++g) {
+    int cx, cy;
+    for (cx = x + go[g][0], cy = y + go[g][1];
+        ok(cx, cy) && table[cx][cy] == -2; cx += go[g][0], cy += go[g][1]) ;
+    if (ok(cx, cy) && table[cx][cy] >= 0 && ((table[cx][cy] - timer) & 3) == (g ^ 2))
+      return 1;
+  }
+  return 0;
+}
+
+int st[maxn * maxn * maxg][3];
+int dist[maxn][maxn][maxg];
+
+bool solve() {
+  if (scanf("%d%d", &w, &h) < 2)
+    return 0;
+
+  pair<int, int> start(-1, -1), finish(-1, -1);
+  for (int i = 0; i < w; ++i) {
+    scanf("%s", s);
+    for (int j = 0; j < h; ++j) {
+      int &cur = table[i][j];
+      if (s[j] == 'S') {
+        s[j] = '.';
+        start = mp(i, j);
+      }
+      if (s[j] == 'G') {
+        s[j] = '.';
+        finish = mp(i, j);
+      }
+      if (s[j] == '#') {
+        cur = -1;
+        continue;
+      }
+      if (s[j] == '.') {
+        cur = -2;
+        continue;
+      }
+      if (count(chars, chars + maxg, s[j]) != 0) {
+        cur = find(chars, chars + maxg, s[j]) - chars;
+        continue;
+      }
+      assert(0);
+    }
+  }
+
+  if (start == mp(-1, -1) || finish == mp(-1, -1))
+    assert(0);
+
+  for (int i = 0; i < w; ++i)
+    for (int j = 0; j < h; ++j)
+      for (int g = 0; g < maxg; ++g) {
+        dist[i][j][g] = INF;
+      }
+
+  st[0][0] = start.first, st[0][1] = start.second, st[0][2] = 0;
+  dist[start.first][start.second][0] = 0;
+
+  for (int l = 0, r = 1; l < r; ++l) {
+    int x = st[l][0], y = st[l][1], t = st[l][2];
+    for (int g = 0; g < maxg; ++g) {
+      int nx = x + go[g][0], ny = y + go[g][1], nt = (t + 1) & 3;
+      if (!ok(nx, ny))
+        continue;
+      if (dist[nx][ny][nt] <= dist[x][y][t] + 1)
+        continue;
+      if (hit(nx, ny, nt))
+        continue;
+      dist[nx][ny][nt] = dist[x][y][t] + 1;
+      st[r][0] = nx, st[r][1] = ny, st[r][2] = nt;
+      ++r;
+    }
+  }
+
+  int res = INF;
+  for (int g = 0; g < maxg; ++g)
+    res = min(res, dist[finish.first][finish.second][g]);
+  if (res == INF)
+    printf("impossible\n");
+  else
+    printf("%d\n", res);
+  return 1;
+}
+
+int main() {
+  srand(rdtsc());
+#ifdef DEBUG
+  freopen(TASKNAME".in", "r", stdin);
+  freopen(TASKNAME".out", "w", stdout);
+#endif
+
+  int t;
+  while (scanf("%d", &t) == 1) {
+    for (int i = 0; i < t; ++i) {
+      printf("Case #%d: ", i + 1);
+      assert(solve());
+    }
+#ifdef DEBUG
+    eprintf("%.18lf\n", (double)clock() / CLOCKS_PER_SEC);
+#endif
+  }
+  return 0;
+}

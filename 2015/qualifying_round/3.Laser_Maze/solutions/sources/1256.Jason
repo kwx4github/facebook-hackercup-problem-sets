@@ -1,0 +1,270 @@
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <map>
+#include <queue>
+#include <functional>
+
+#define MAZE(d,y,x) (*(maze + ((d)&0x3)*M*N + (y)*N + (x)))
+#define IDX(d,y,x) (((d)&0x3)*M*N + (y)*N + (x))
+char rotate_laser(char c, int i)
+{
+    char dir[4]  = {'>', 'v', '<', '^'};
+    int idx = 0;
+    switch (c){
+        case '>':
+            idx = 0;
+            break;
+        case 'v':
+            idx = 1;
+            break;
+        case '<':
+            idx = 2;
+            break;
+        case '^':
+            idx = 3;
+            break;
+    }
+
+    return dir[(idx+i)&0x3];
+}
+
+inline bool is_laser(char c)
+{
+    return (c == '>') || (c == 'v') || (c == '<') || (c == '^');
+}
+
+inline bool is_free_space(char c)
+{
+    return (c == '.') || (c == 'S') || (c == 'G');
+}
+
+void print_maze(char *maze, int M, int N)
+{
+    for (int i=0; i<4; i++) {
+        printf(">> %d degree\n", 90*i);
+       
+        for (int y=0; y<M; y++) {
+            for (int x=0; x<N; x++) {
+                printf("%c", MAZE(i,y,x));
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    printf("--------------------------\n");
+}
+
+void build_graph(char *maze, int M, int N, std::map<int, std::vector<int> > &graph)
+{
+    for (int i=0; i<4; i++) {
+        for (int y=0; y<M; y++) {
+            for (int x=0; x<N; x++) {
+                if ((x+1 < N) && (MAZE(i+1,y,x+1) == '.')) {
+                    graph[IDX(i,y,x)].push_back(IDX(i+1,y,x+1));
+                }
+                if ((x-1 >= 0) && (MAZE(i+1,y,x-1) == '.')) {
+                    graph[IDX(i,y,x)].push_back(IDX(i+1,y,x-1));
+                }
+                if ((y+1 < M) && (MAZE(i+1,y+1,x) == '.')) {
+                    graph[IDX(i,y,x)].push_back(IDX(i+1,y+1,x));
+                }
+                if ((y-1 >= 0) && (MAZE(i+1,y-1,x) == '.')) {
+                    graph[IDX(i,y,x)].push_back(IDX(i+1,y-1,x));
+                }
+            }
+        }
+    }
+
+    /*
+    for (std::map<int, std::vector<int> >::iterator iter = graph.begin(); iter != graph.end(); iter++){
+        printf("%d: ", iter->first);
+        for (int i=0; i<iter->second.size(); i++) {
+            printf("%d ", iter->second[i]);
+        }
+        printf("\n");
+    }
+    printf("-----\n");
+    */
+}
+
+char* construct_maze(char map[100][101], int M, int N, std::pair<int, int> &start, std::pair<int, int> &goal) 
+{
+    char *maze = static_cast<char*>(malloc(sizeof(char)*M*N*4));
+   
+    std::vector< std::pair<int,int> > lasers;
+
+    for (int i=0; i<M; i++) {
+        for (int j=0; j<N; j++) {
+            if (is_laser(map[i][j])) {
+                std::pair<int,int> pos(i,j);
+                lasers.push_back(pos);
+                for (int k=0; k<4; k++) MAZE(k,i,j) = '#';
+            } else if (map[i][j] == 'S') {
+                start.first = i;
+                start.second = j;
+                for (int k=0; k<4; k++) MAZE(k,i,j) = '.';
+            } else if (map[i][j] == 'G') {
+                goal.first = i;
+                goal.second = j;
+                for (int k=0; k<4; k++) MAZE(k,i,j) = '.';
+            } else if (map[i][j] == '#') {
+                for (int k=0; k<4; k++) MAZE(k,i,j) = '#';
+            } else if (map[i][j] == '.') {
+                for (int k=0; k<4; k++) MAZE(k,i,j) = '.';
+            }
+        }
+    }
+
+    for (int i=0; i<4; i++) {
+        for (int j=0; j<lasers.size(); j++) {
+            switch (rotate_laser(map[lasers[j].first][lasers[j].second],i)) {
+                case '>':
+                    for (int k=lasers[j].second+1; k<N; k++) {
+                        if (is_free_space(map[lasers[j].first][k])) {
+                            MAZE(i,lasers[j].first, k) = '#';
+                        }else{
+                            break;
+                        }
+                    }
+                    break;
+                case 'v':
+                    for (int k=lasers[j].first+1; k<M; k++) {
+                        if (is_free_space(map[k][lasers[j].second])) {
+                            MAZE(i,k,lasers[j].second) = '#';
+                        }else{
+                            break;
+                        }
+                    }
+                    break;
+                case '<':
+                    for (int k=lasers[j].second-1; k>=0; k--) {
+                        if (is_free_space(map[lasers[j].first][k])) {
+                            MAZE(i,lasers[j].first, k) = '#';
+                        }else{
+                            break;
+                        }
+                    }
+                    break;
+                case '^':
+                    for (int k=lasers[j].first-1; k>=0; k--) {
+                        if (is_free_space(map[k][lasers[j].second])) {
+                            MAZE(i,k,lasers[j].second) = '#';
+                        }else{
+                            break;
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+
+    //print_maze(maze, M, N);
+    return maze;
+}
+
+struct Node {
+    int id;
+    int d;
+    int y;
+    int x;
+    unsigned int f;
+    unsigned int g;
+    Node(int _id, unsigned int _f, unsigned int _g, int _d, int _y, int _x):id(_id), f(_f), g(_g), d(_d), y(_y), x(_x) {};
+};
+
+class NodeFactory {
+public:
+    NodeFactory(int _M, int _N, std::pair<int,int> _goal): M(_M), N(_N), goal(_goal) {};
+    Node makeNode(int id, unsigned int f) {
+        int d = id / (M*N);
+        int y = (id - d*M*N) / N;
+        int x = id - d*M*N - y*N;
+        int g = abs(y  - goal.first) + abs(x - goal.second);
+        return Node(id, f, g, d, y, x);
+    }
+private:
+    int M;
+    int N;
+    std::pair<int, int> goal;
+};
+
+bool operator< (const Node &a, const Node &b) {
+    return (a.f + a.g) < (b.f + b.g);
+}
+
+bool operator> (const Node &a, const Node &b) {
+    return (a.f + a.g) > (b.f + b.g);
+}
+
+int astar(std::map<int, std::vector<int> > &graph, int M, int N, std::pair<int, int> start, std::pair<int, int> goal)
+{
+    std::map<int, bool> visited;
+
+    for (std::map<int, std::vector<int> >::iterator iter = graph.begin(); iter != graph.end(); iter++) {
+        visited[iter->first] = false;
+    }
+
+    int start_idx = IDX(0, start.first, start.second);
+    NodeFactory nf(M, N, goal);
+
+    std::priority_queue<Node, std::vector<Node>, std::greater<Node> > openlist;
+    openlist.push(nf.makeNode(start_idx, 0));
+    
+    while(!openlist.empty()) {
+
+        Node node = openlist.top();
+        openlist.pop();
+        
+        if (goal.first == node.y && goal.second == node.x) {
+            return node.f;
+        }
+
+        visited[node.id] = true;
+
+        for (int i = 0; i < graph[node.id].size(); i++) {
+            int next_id = graph[node.id][i];
+            if (!visited[next_id]) {
+                openlist.push(nf.makeNode(next_id, node.f + 1));
+            }
+        }
+    }
+
+    /*
+    for (std::map<int, unsigned int>::iterator iter = distance.begin(); iter != distance.end(); iter++) {
+        printf("%d -> %d\n", iter->first, iter->second);
+    }
+    */
+    return 0; 
+}
+
+int main (int argc, char** argv)
+{
+    int T;
+    scanf("%d", &T);
+
+    for (int i=0; i<T; i++) {
+        int M,N;
+        scanf("%d %d", &M, &N);
+        char map[100][101];
+
+        for (int j=0; j<M; j++) {
+            scanf("%s", map[j]);
+        }
+
+        std::pair<int, int> start, goal;
+        char *maze = construct_maze(map, M, N, start, goal);
+       
+        std::map<int, std::vector<int> > graph;
+        build_graph(maze, M, N, graph);
+        int cost = astar(graph, M, N, start, goal); 
+        free(maze);
+
+        if (cost > 0) {
+            printf("Case #%d: %d\n", i+1, cost);
+        }else {
+            printf("Case #%d: impossible\n", i+1);
+        }
+    }
+    return 0;
+}

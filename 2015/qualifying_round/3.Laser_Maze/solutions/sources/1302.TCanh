@@ -1,0 +1,103 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#define FI "laser_maze.txt"
+#define FO "out.txt"
+const int MAXN = 105;
+const int dx[] = {-1, 0, 1, 0};
+const int dy[] = {0, 1, 0, -1};
+const string laser = "^>v<";
+
+struct point {
+	int x, y;
+	int time, dist;
+};
+
+int T, M, N;
+string grid[MAXN];
+bool blocked[MAXN][MAXN][10], vis[MAXN][MAXN][10];
+int sx, sy, gx, gy;
+int dir, cx, cy;
+int res;
+queue<point> qu;
+
+bool inside(int, int);
+int bfs();
+
+int main() {
+	freopen(FI, "r", stdin);
+	freopen(FO, "w", stdout);
+	scanf("%d", &T);
+	for (int t = 1; t <= T; ++t) {
+		printf("Case #%d: ", t);
+		scanf("%d%d", &M, &N);
+		for (int i = 0; i < M; ++i) cin >> grid[i];
+		memset(blocked, 0, sizeof blocked);
+		for (int i = 0; i < M; ++i) {
+			for (int k = 0; k < N; ++k) {
+				if (grid[i][k] == 'S') {
+					sx = i;
+					sy = k;
+					continue;
+				}
+				if (grid[i][k] == 'G') {
+					gx = i;
+					gy = k;
+					continue;	
+				}
+				if (grid[i][k] == '.' || grid[i][k] == '#') {
+					continue;
+				}				
+				for (int d = 0; d < 4; ++d) {
+					if (grid[i][k] == laser[d]) {
+						dir = d;
+						break;
+					}
+				}	
+				for (int d = 0; d < 4; ++d) {
+					cx = i + dx[dir];
+					cy = k + dy[dir];
+					while (inside(cx, cy) && (grid[cx][cy] == '.' || grid[cx][cy] == 'S' || grid[cx][cy] == 'G')) {
+						blocked[cx][cy][1 << d] = true;
+						cx += dx[dir];
+						cy += dy[dir];
+					}
+					dir = (dir + 1) % 4;				
+				}
+			}
+		}
+		res = bfs();
+		if (res == -1) printf("impossible\n");
+		else printf("%d\n", res);
+	}			
+}
+
+bool inside(int x, int y) {
+	return (x >= 0 && x < M && y >= 0 && y < N);
+}
+
+int bfs() {
+	while (!qu.empty()) qu.pop();
+	point cur = {sx, sy, 0, 0};
+//	if (blocked[sx][sy][1]) return -1;
+	qu.push(cur);
+	memset(vis, 0, sizeof vis);
+	vis[sx][sy][1] = true;
+	int ct;
+	while (!qu.empty()) {
+		cur = qu.front();
+		qu.pop();
+		ct = (cur.time + 1) % 4;
+		for (int d = 0; d < 4; ++d) {
+			cx = cur.x + dx[d];
+			cy = cur.y + dy[d];
+			if (inside(cx, cy) && !vis[cx][cy][1 << ct] && !blocked[cx][cy][1 << ct] && (grid[cx][cy] == '.' || grid[cx][cy] == 'S' || grid[cx][cy] == 'G')) {				
+				if (cx == gx && cy == gy) return cur.dist + 1;
+				vis[cx][cy][1 << ct] = true;
+				qu.push({cx, cy, ct, cur.dist + 1});
+			}
+		}
+	}
+	return -1;
+}

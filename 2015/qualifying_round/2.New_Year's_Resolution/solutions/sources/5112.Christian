@@ -1,0 +1,72 @@
+import java.io.{BufferedWriter, File, FileWriter}
+
+import scala.io.Source
+
+/**
+ * Created on 11.01.15.
+ */
+object NewYearsResolution extends App {
+  val source = Source.fromFile("new_years_resolution.txt")
+  val sink = new BufferedWriter(new FileWriter(new File("new_years_resolution_output.txt")))
+
+  val lines = source.getLines()
+  val tests = lines.next().toInt
+
+  for (test <- 1 to tests) {
+    println(s"Work on test $test")
+    val (wantP, wantC, wantF) = {
+      val tokens = lines.next().split(" ")
+      (tokens(0).toInt, tokens(1).toInt, tokens(2).toInt)
+    }
+
+    val foodsCount = lines.next().toInt
+    val foods: Seq[Food] = for (i <- 0 until foodsCount) yield {
+      val tokens = lines.next().split(" ")
+      Food(tokens(0).toInt, tokens(1).toInt, tokens(2).toInt)
+    }
+
+    val solvable = solve(wantP, wantC, wantF, foods)
+
+    sink.write(s"Case #$test: ${if (solvable) "yes" else "no"}\n")
+  }
+
+  source.close()
+  sink.close()
+
+  def solve(wantP: Int, wantC: Int, wantF: Int, foods: Seq[Food]): Boolean = {
+    def backtrace(pos: Int, foodCounts: Seq[(Int, Food)]): Boolean = {
+      if (isSolution(foodCounts)) return true
+
+      if (pos == foodCounts.size) return false
+
+      var mult = foodCounts(pos)._1
+      val food = foodCounts(pos)._2
+      var myFoodCount = foodCounts
+
+      do {
+        if (backtrace(pos + 1, myFoodCount)) return true
+
+        mult += 1
+        myFoodCount = for (((m, f), i) <- foodCounts.zipWithIndex) yield {
+          if (i == pos) (mult, f)
+          else (m, f)
+        }
+      } while (food.protein * mult <= wantP && food.carbohydrates * mult <= wantC && food.fat * mult <= wantF)
+
+      false
+    }
+
+    def isSolution(foodCounts: Seq[(Int, Food)]) = {
+      val haveP = foodCounts.map(f => f._1 * f._2.protein).sum
+      val haveC = foodCounts.map(f => f._1 * f._2.carbohydrates).sum
+      val haveF = foodCounts.map(f => f._1 * f._2.fat).sum
+
+      if (haveP == wantP && haveC == wantC && haveF == wantF) true
+      else false
+    }
+
+    backtrace(0, foods.map(f => (0, f)))
+  }
+}
+
+case class Food(protein: Int, carbohydrates: Int, fat: Int)

@@ -1,0 +1,206 @@
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <cstdio>
+#include <cstdint>
+#include <cstring>
+#include <iostream>
+#include <string>
+#include <cassert>
+#include <cstdlib>
+#include <queue>
+using namespace std;
+
+
+vector<string> rot(vector<string>  &orig)
+{
+    vector<string> ret = orig;
+    for (int i = 0; i < ret.size(); ++i)
+    {
+        for (int j = 0; j < ret[i].size(); ++j)
+        {
+            switch (ret[i][j])
+            {
+            case '<': ret[i][j] = '^';
+                break;
+            case '^': ret[i][j] = '>';
+                break;
+            case '>': ret[i][j] = 'v';
+                break;
+            case 'v': ret[i][j] = '<';
+                break;
+            }
+        }
+    }
+    return ret;
+}
+
+void clr(vector<string> &f)
+{
+    for (int i = 0; i < f.size(); ++i)
+    {
+        for (int j = 0; j < f[i].size(); ++j)
+        {
+           if (f[i][j] == 'S' || f[i][j] == 'G')
+               f[i][j] = '.';
+        }
+    }
+    for (int i = 0; i < f.size(); ++i)
+    {
+        for (int j = 0; j < f[i].size(); ++j)
+        {
+            if (f[i][j] == '<')
+            {
+                for (int k = j - 1; k >= 0; --k)
+                {
+                    if (f[i][k] != '.' && f[i][k] != 'z')
+                        break;
+                    else f[i][k] = 'z';
+                }
+            }
+            else if (f[i][j] == '^')
+            {
+                for (int k = i - 1; k >= 0; --k)
+                {
+                    if (f[k][j] != '.' && f[k][j] != 'z')
+                        break;
+                    else f[k][j] = 'z';
+                }
+            }
+            else if (f[i][j] == '>')
+            {
+                for (int k = j + 1; k < f[i].size(); ++k)
+                {
+                    if (f[i][k] != '.' && f[i][k] != 'z')
+                        break;
+                    else f[i][k] = 'z';
+                }
+            }
+            else if (f[i][j] == 'v')
+            {
+                for (int k = i + 1; k < f.size(); ++k)
+                {
+                    if (f[k][j] != '.' && f[k][j] != 'z')
+                        break;
+                    else f[k][j] = 'z';
+                }
+            }
+        }
+    }
+    for (int i = 0; i < f.size(); ++i)
+    {
+        for (int j = 0; j < f[i].size(); ++j)
+        {
+            if (f[i][j] != '.')
+            {
+                f[i][j] = '#';
+            }
+        }
+    }
+}
+
+struct pos
+{
+    int r, f, s;
+};
+
+void upd(queue<pos>& q, int r, int f, int s, int d, vector<string>& in, vector<vector<int>>& out)
+{
+    cerr << r << " " << f << " " << s << endl;
+    if (f < 0 || f >= in.size() || s < 0 || s >= in[f].size())
+        return;
+    if (in[f][s] == '#' || out[f][s] != -1)
+        return;
+    pos tmp;
+    tmp.r = r;
+    tmp.f = f;
+    tmp.s = s;
+    q.push(tmp);
+    out[f][s] = d + 1;
+}
+
+void solve()
+{
+    vector<string> in[4];
+    int n, m;
+    cin >> n >> m;
+    in[0].resize(n);
+    for (int i = 0; i < n; ++i)
+    {
+        cin >> in[0][i];
+    }
+    for (int i = 1; i < 4; ++i)
+    {
+        in[i] = rot(in[i - 1]);
+    }
+    pair<int, int> b, e;
+    for (int i = 0; i < n; ++i)
+    {
+        for (int j = 0; j < m; ++j)
+        {
+            if (in[0][i][j] == 'S')
+            {
+                b.first = i;
+                b.second = j;
+            }
+            if (in[0][i][j] == 'G')
+            {
+                e.first = i;
+                e.second = j;
+            }
+        }
+    }
+    cerr << "tak" << endl;
+    for (int i = 0; i < 4; ++i)
+    {
+        clr(in[i]);
+    }
+
+    vector<vector<int> > out[4];
+    for (int k = 0; k < 4; ++k)
+    {
+        out[k].resize(n);
+        for (int i = 0; i < n; ++i)
+        {
+            out[k][i].resize(m);
+            std::fill(out[k][i].begin(), out[k][i].end(), -1);
+        }
+    }
+    out[0][b.first][b.second] = 0;
+    pos tmp;
+    tmp.r = 0;
+    tmp.f = b.first;
+    tmp.s = b.second;
+    queue<pos> q;
+    q.push(tmp);
+
+    while (!q.empty())
+    {
+        tmp = q.front();
+        if (tmp.f == e.first && tmp.s == e.second)
+        {
+            cerr << "tak1" << endl;
+            cout << out[tmp.r][tmp.f][tmp.s] << endl;
+            return;
+        }
+        q.pop();
+        int nr = (tmp.r + 1) % 4;
+        upd(q, nr, tmp.f - 1, tmp.s, out[tmp.r][tmp.f][tmp.s], in[nr], out[nr]);
+        upd(q, nr, tmp.f, tmp.s - 1, out[tmp.r][tmp.f][tmp.s], in[nr], out[nr]);
+        upd(q, nr, tmp.f + 1, tmp.s, out[tmp.r][tmp.f][tmp.s], in[nr], out[nr]);
+        upd(q, nr, tmp.f, tmp.s + 1, out[tmp.r][tmp.f][tmp.s], in[nr], out[nr]);
+    }
+    cout << "impossible" << endl;
+}
+
+int main(const int argc, const char** argv) {
+   int t;
+   cin >> t;
+   for (int i = 0; i < t; ++i)
+   {
+       cout << "Case #" << i + 1 << ": ";
+       solve();
+   }
+   return 0;
+}

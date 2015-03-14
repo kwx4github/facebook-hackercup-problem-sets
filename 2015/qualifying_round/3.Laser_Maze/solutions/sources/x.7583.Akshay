@@ -1,0 +1,160 @@
+package main
+
+import "fmt"
+import "math"
+
+type MazeState struct {
+	maze [][]bool
+	dist [][]int
+}
+
+type Point struct {
+	y, x int
+}
+
+type Game struct {
+	states     []MazeState
+	start, end Point
+}
+
+type Laser struct {
+	y, x int
+	d    rune
+}
+
+func initGameState(g *Game, m []string, M, N int) {
+	for i := 0; i < 4; i++ {
+		maze := make([][]bool, M)
+		dist := make([][]int, M)
+		for j := range m {
+			maze[j] = make([]bool, N)
+			dist[j] = make([]int, N)
+			for k := range m[0] {
+				maze[j][k] = true
+				dist[j][k] = math.MaxInt32
+			}
+		}
+		g.states = append(g.states, MazeState{maze, dist})
+	}
+
+	lasers := make([]Laser, 0)
+
+	for i, row := range m {
+		for j, col := range row {
+			switch col {
+			case 'S':
+				g.start = Point{i, j}
+			case 'G':
+				g.end = Point{i, j}
+			case '<':
+				fallthrough
+			case '>':
+				fallthrough
+			case '^':
+				fallthrough
+			case 'v':
+				lasers = append(lasers, Laser{i, j, col})
+				fallthrough
+			case '#':
+				g.states[0].maze[i][j] = false
+				g.states[1].maze[i][j] = false
+				g.states[2].maze[i][j] = false
+				g.states[3].maze[i][j] = false
+			}
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		state := g.states[i]
+		for l, laser := range lasers {
+			switch laser.d {
+			case '<':
+				for j := laser.x - 1; j >= 0 && state.maze[laser.y][j]; j-- {
+					state.maze[laser.y][j] = false
+				}
+				lasers[l].d = '^'
+			case '>':
+				for j := laser.x + 1; j < N && state.maze[laser.y][j]; j++ {
+					state.maze[laser.y][j] = false
+				}
+				lasers[l].d = 'v'
+			case '^':
+				for j := laser.y - 1; j >= 0 && state.maze[j][laser.x]; j-- {
+					state.maze[j][laser.x] = false
+				}
+				lasers[l].d = '>'
+			case 'v':
+				for j := laser.y + 1; j < M && state.maze[j][laser.x]; j++ {
+					state.maze[j][laser.x] = false
+				}
+				lasers[l].d = '<'
+			}
+		}
+	}
+}
+
+func smallestSteps(input []string, M, N int) int {
+	game := Game{}
+
+	initGameState(&game, input, M, N)
+
+	queue := []Point{game.start}
+
+	game.states[0].dist[game.start.y][game.start.x] = 0
+
+	prev, curr := 0, 1
+
+	for len(queue) > 0 {
+		maze, dist, prevDist := game.states[curr].maze, game.states[curr].dist, game.states[prev].dist
+		nextQueue := make([]Point, 0)
+		for _, p := range queue {
+			if p == game.end {
+				return prevDist[p.y][p.x]
+			}
+			y, x := p.y, p.x
+			newDist := prevDist[y][x] + 1
+			if x-1 >= 0 && maze[y][x-1] && dist[y][x-1] > newDist {
+				dist[y][x-1] = newDist
+				nextQueue = append(nextQueue, Point{y, x - 1})
+			}
+			if x+1 < N && maze[y][x+1] && dist[y][x+1] > newDist {
+				dist[y][x+1] = newDist
+				nextQueue = append(nextQueue, Point{y, x + 1})
+			}
+			if y-1 >= 0 && maze[y-1][x] && dist[y-1][x] > newDist {
+				dist[y-1][x] = newDist
+				nextQueue = append(nextQueue, Point{y - 1, x})
+			}
+			if y+1 < M && maze[y+1][x] && dist[y+1][x] > newDist {
+				dist[y+1][x] = newDist
+				nextQueue = append(nextQueue, Point{y + 1, x})
+			}
+		}
+		queue = nextQueue
+		prev, curr = curr, (curr+1)%4
+	}
+
+	return -1
+}
+
+func main() {
+	T := 0
+	fmt.Scanf("%d\n", &T)
+
+	for i := 0; i < T; i++ {
+		M, N := 0, 0
+		fmt.Scanf("%d %d\n", &M, &N)
+
+		input := make([]string, M)
+
+		for j := 0; j < M; j++ {
+			fmt.Scanf("%s\n", &input[j])
+		}
+
+		if k := smallestSteps(input, M, N); k < 0 {
+			fmt.Printf("Case #%d: %s\n", i+1, "impossible")
+		} else {
+			fmt.Printf("Case #%d: %d\n", i+1, k)
+		}
+	}
+}

@@ -1,0 +1,173 @@
+#include <iostream>
+
+using namespace std;
+
+int M, N;
+
+const char TMP = 'X';
+const char WALL = '#';
+const char GOAL = 'G';
+const char START = 'S';
+const char FREE = '.';
+
+const char LL = '<';
+const char LR = '>';
+const char LU = '^';
+const char LD = 'v';
+const char lasers[4] = {'<','^','>','v'};
+
+char maze[100][100][4];
+int save[100][100][4];
+
+int max_value = 400001;
+
+int Tic(int i, int j, int q, bool start)
+{
+    q %= 4;
+    
+    if (i < 0 or j < 0 or i >= M or j >= N) return max_value;
+    
+    if (save[i][j][q] == -2) return max_value;
+    if (save[i][j][q] != -1)
+        return save[i][j][q];
+    else 
+        save[i][j][q] = -2;
+    
+    if (maze[i][j][q] == GOAL) return 0;
+    if (maze[i][j][q] == WALL && !start) return max_value;
+    
+    int result = max_value, tmp;
+    
+    tmp = Tic(i+1, j, q+1, false);
+    if (result > tmp) result = tmp;
+    
+    tmp = Tic(i, j+1, q+1, false);
+    if (result > tmp) result = tmp;
+    
+    tmp = Tic(i-1, j, q+1, false);
+    if (result > tmp) result = tmp;
+    
+    tmp = Tic(i, j-1, q+1, false);
+    if (result > tmp) result = tmp;
+    
+    result += 1;
+    save[i][j][q] = result;
+    
+    return result;
+}
+
+void SetLazer(int i, int j, int num)
+{
+    maze[i][j][1] = lasers[(num+1) % 4];
+    maze[i][j][2] = lasers[(num+2) % 4];
+    maze[i][j][3] = lasers[(num+3) % 4];
+}
+
+void SetLine(int i, int j, int k, int mi, int mj)
+{
+    do 
+    {
+        if (maze[i][j][k] == FREE or maze[i][j][k] == GOAL or maze[i][j][k] == START) maze[i][j][k] = TMP;
+        i += mi;
+        j += mj;
+    }
+    while(i >= 0 and j >= 0 and i < M and j < N and maze[i][j][k] != WALL);
+}
+
+void SetWalls()
+{
+    for(int k = 0; k < 4; ++k){
+        for(int i = 0; i < M; ++i){
+            for(int j = 0; j < N; ++j)
+            {
+                switch (maze[i][j][k])
+                {
+                    case LL:
+                        SetLine(i, j, k, 0, -1);
+                        break;
+                    case LU:
+                        SetLine(i, j, k, -1, 0);
+                        break;
+                    case LR:
+                        SetLine(i, j, k, 0, 1);
+                        break;
+                    case LD:
+                        SetLine(i, j, k, 1, 0);
+                        break;
+                }
+            }
+        }
+    }
+    
+    for(int k = 0; k < 4; ++k){
+        for(int i = 0; i < M; ++i){
+            for(int j = 0; j < N; ++j)
+            {
+                if (maze[i][j][k] != FREE and maze[i][j][k] != GOAL and maze[i][j][k] != START) maze[i][j][k] = WALL;
+                save[i][j][k] = -1;
+            }
+        }
+    }
+}
+
+void RunInstance()
+{
+    int start_i, start_j;
+    
+    cin >> M >> N;
+    for(int i = 0; i < M; ++i)
+    {
+        for(int j = 0; j < N; ++j)
+        {
+            cin >> maze[i][j][0];
+            
+            switch (maze[i][j][0])
+            {
+                case LL:
+                    SetLazer(i,j,0);
+                    continue;
+                case LU:
+                    SetLazer(i,j,1);
+                    continue;
+                case LR:
+                    SetLazer(i,j,2);
+                    continue;
+                case LD:
+                    SetLazer(i,j,3);
+                    continue;
+                case START:
+                    start_i = i;
+                    start_j = j;
+                    break;
+                default:
+                    break;
+            }
+            
+            maze[i][j][1] = maze[i][j][0];
+            maze[i][j][2] = maze[i][j][0];
+            maze[i][j][3] = maze[i][j][0];
+        }
+    }
+    
+    SetWalls();
+    
+    int result = Tic(start_i, start_j, 0, true);
+    
+    if (result >= max_value) cout << "impossible";
+    else cout << result;
+}
+
+// ============================ Nothing to change here ============================ //
+
+int main() 
+{
+    int num_of_instances = 0;
+    cin >> num_of_instances;
+    
+    for (int i = 1; i <= num_of_instances; ++i) 
+    {
+        cout << "Case #" << i << ": ";
+        RunInstance();
+        cout << endl;
+    }
+}

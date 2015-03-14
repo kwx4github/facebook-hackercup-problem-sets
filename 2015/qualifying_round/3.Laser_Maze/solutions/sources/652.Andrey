@@ -1,0 +1,226 @@
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+#include <vector>
+#include <cassert>
+#include <queue>
+
+using namespace std;
+
+const long long INF = 1e9;
+
+const char lasers[4] = {'<', '^', '>', 'v'};
+
+const int dx[4] = {0, -1, 0, 1};
+const int dy[4] = {-1, 0, 1, 0};
+
+struct Position {
+    Position(int x, int y): x(x), y(y)
+    { }
+
+    Position move(int direction) {
+        return Position(x + dx[direction], y + dy[direction]);
+    }
+
+    int x, y;
+};
+
+struct Solver {
+    Solver()
+    { }
+
+    void readInput() {
+        cin >> M >> N;
+        cerr << M << " " << N << endl;
+        for (int k = 0; k < 4; ++k) {
+            isDeadly[k].assign(M, vector<char>(N, false));
+        }
+        field.resize(M);
+        for (int i = 0; i < M; ++i) {
+            string s;
+            cin >> field[i];
+            cerr << field[i] << endl;
+        }
+    }
+
+    void fillDeadly() {
+        for (int i = 0; i < M; ++i) {
+            for (int j = 0; j < N; ++j) {
+                if (isLaser(i, j)) {
+                    fillLaserDeadly(i, j);
+                }
+            }
+        }
+    }
+
+    void fillLaserDeadly(int i, int j) {
+        int type = getLaserType(i, j);
+        for (int k = 0; k < 4; ++k) {
+            int currentType = (type + k) % 4;
+
+            Position p(i, j);
+            p = p.move(currentType);
+            
+            while (isPassable(p.x, p.y)) {
+                isDeadly[k][p.x][p.y] = true;
+                p = p.move(currentType);
+            }
+        }
+    }
+
+    Position findStart() {
+        for (int i = 0; i < M; ++i) {
+            for (int j = 0; j < N; ++j) {
+                if (isStart(i, j)) {
+                    return Position(i, j);
+                }
+            }
+        }
+        throw std::logic_error("Can't find start");
+    }
+
+    string solve() {
+        fillDeadly();
+
+        Position start = findStart();
+
+        vector<vector<int>> distance[4];
+        for (int k = 0; k < 4; ++k) {
+            distance[k].assign(M, vector<int>(N, INF));
+        }
+
+        distance[0][start.x][start.y] = 0;
+        queue<Position> Q;
+        Q.push(start);
+
+        int wave = 0;
+        while (!Q.empty()) {
+            int sz = Q.size();
+            int nextWave = wave + 1;
+            int mod = wave % 4;
+            int nextMod = nextWave % 4;
+            for (int e = 0; e < sz; ++e) {
+                Position cur = Q.front(); Q.pop();
+
+                if (isGoal(cur.x, cur.y)) {
+                    return to_string(wave);
+                }
+
+                for (int dir = 0; dir < 4; ++dir) {
+                    Position next = cur.move(dir);
+
+                    if (!isPassable(next.x, next.y)) {
+                        continue;
+                    }
+
+                    if (isDeadly[nextMod][next.x][next.y]) {
+                        continue;
+                    }
+
+                    if (nextWave >= distance[nextMod][next.x][next.y]) {
+                        continue;
+                    }
+
+                    distance[nextMod][next.x][next.y] = nextWave;
+                    Q.push(next);
+                }
+            }
+            wave = nextWave;
+        }
+
+        return "impossible";
+    }
+
+    bool isValid(int i, int j) {
+        if (i < 0 || j < 0) {
+            return false;
+        }
+        if (i >= M || j >= N) {
+            return false;
+        }
+        return true;
+    }
+
+    bool isWall(int i, int j) {
+        return field[i][j] == '#';
+    }
+
+    bool isStart(int i, int j) {
+        return field[i][j] == 'S';
+    }
+
+    bool isGoal(int i, int j) {
+        return field[i][j] == 'G';
+    }
+
+    int getLaserType(int i, int j) {
+        for (int k = 0; k < 4; ++k) {
+            if (field[i][j] == lasers[k]) {
+                return k;
+            }
+        }
+        return -1;
+    }
+
+    bool isLaser(int i, int j) {
+        return getLaserType(i, j) != -1;
+    }
+
+    bool isPassable(int i, int j) {
+        return isValid(i, j) && !isWall(i, j) && !isLaser(i, j);
+    }
+
+    int M, N;
+    vector<string> field;
+    vector<vector<char>> isDeadly[4];
+};
+
+struct Test {
+    Test()
+    { }
+
+    bool answer;
+};
+
+void testSolve() {
+    /*
+    for (const auto& test : tests) {
+        if (solve(test.need, test.dishes) != test.answer) {
+            cerr << "testSolve failed" << endl;
+            cerr << "Need: " << endl;
+            test.need.print();
+            cerr << "Dishes: " << endl;
+            for (int i = 0; i < test.dishes.size(); ++i) {
+                test.dishes[i].print();
+            }
+            cerr << "Answer: " << endl;
+            cerr << test.answer << endl;
+        }
+    }
+
+    cerr << "testSolve passed" << endl;
+    */
+}
+
+void unitTests() {
+    testSolve();
+}
+
+int main() {
+    unitTests();
+    // freopen("input.txt", "r", stdin);
+    freopen("laser_maze.txt", "r", stdin);
+    // freopen("new_years_resolution.txt", "r", stdin);
+    // freopen("output.txt", "w", stdout);
+    freopen("laser_maze.out.txt", "w", stdout);
+    // freopen("new_years_resolution_out.txt", "w", stdout);
+    int T;
+    cin >> T;
+    for (int t = 0; t < T; ++t) {
+        Solver solver;
+        solver.readInput();
+        string answer = solver.solve();
+        cout << "Case #" << (t + 1) << ": " << answer << endl;
+    }
+    return 0;
+}

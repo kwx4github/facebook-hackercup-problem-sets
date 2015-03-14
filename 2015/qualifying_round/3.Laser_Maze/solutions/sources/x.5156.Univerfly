@@ -1,0 +1,236 @@
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+#include <ctime>
+using namespace std;
+
+#define OK 1
+#define ERROR 0
+#define OVERFLOW -1
+#define MAXQSIZE 40000
+#define MAXN 100
+
+typedef int Status;
+typedef struct{
+    int step;
+    int x;
+    int y;
+}QElemType;
+
+typedef struct{
+    QElemType *base;
+    int front;
+    int rear;
+}SqQueue;
+
+Status InitQueue(SqQueue &Q){
+    Q.base = (QElemType *)malloc(MAXQSIZE * sizeof(QElemType));
+    if(!Q.base) exit(OVERFLOW);
+    Q.front = Q.rear = 0;
+    return OK;
+}
+
+Status EnQueue(SqQueue &Q, QElemType e){
+    if((Q.rear + 1) % MAXQSIZE == Q.front) return ERROR;
+    Q.base[Q.rear] = e;
+    Q.rear = (Q.rear + 1) % MAXQSIZE;
+    return OK;
+}
+
+Status DeQueue(SqQueue &Q, QElemType &e){
+    if(Q.front == Q.rear) return ERROR;
+    e = Q.base[Q.front];
+    Q.front = (Q.front + 1) % MAXQSIZE;
+    return OK;
+}
+
+char maze[4][MAXN][MAXN];
+
+int main(){
+    freopen("laser_maze.txt", "r", stdin);
+    freopen("output", "w", stdout);
+    //double time = 0;
+    int T, M, N;
+    int sx, sy;
+    int gx, gy;
+    SqQueue queue;
+    InitQueue(queue);
+    QElemType t;
+    QElemType up, right, down, left;
+    cin >> T;
+    for(int ncase = 1; ncase <= T; ++ncase){
+        queue.front = queue.rear = 0;
+        cin >> M >> N;
+        getchar();
+        for(int i = 0; i < M; ++i){
+            for(int j = 0; j < N; ++j){
+                maze[0][i][j] = getchar();
+                switch(maze[0][i][j]){
+                    case 'S':
+                        sx = i;
+                        sy = j;
+                        maze[0][i][j] = maze[1][i][j] = maze[2][i][j] = maze[3][i][j] = '.';
+                        break;
+                    case 'G':
+                        gx = i;
+                        gy = j;
+                        maze[0][i][j] = maze[1][i][j] = maze[2][i][j] = maze[3][i][j] = '.';
+                        break;
+                    case '^':
+                        maze[1][i][j] = '>';
+                        maze[2][i][j] = 'v';
+                        maze[3][i][j] = '<';
+                        break;
+                    case '>':
+                        maze[1][i][j] = 'v';
+                        maze[2][i][j] = '<';
+                        maze[3][i][j] = '^';
+                        break;
+                    case 'v':
+                        maze[1][i][j] = '<';
+                        maze[2][i][j] = '^';
+                        maze[3][i][j] = '>';
+                        break;
+                    case '<':
+                        maze[1][i][j] = '^';
+                        maze[2][i][j] = '>';
+                        maze[3][i][j] = 'v';
+                        break;
+                    default:
+                        maze[1][i][j] = maze[2][i][j] = maze[3][i][j] = maze[0][i][j];
+                        break;
+                }
+            }
+            getchar();
+        }
+        for(int s = 0; s < 4; ++s){
+            for(int i = 0; i < M; ++i){
+                for(int j = 0; j < N; ++j){
+                    switch(maze[s][i][j]){
+                        case '^':
+                            for(int k = i-1; k >= 0 && maze[s][k][j] =='.'; --k)
+                                maze[s][k][j] = '#';
+                            break;
+                        case '>':
+                            for(int k = j+1; k < N && maze[s][i][k] =='.'; ++k)
+                                maze[s][i][k] = '#';
+                            break;
+                        case 'v':
+                            for(int k = i+1; k < M && maze[s][k][j] =='.'; ++k)
+                                maze[s][k][j] = '#';
+                            break;
+                        case '<':
+                            for(int k = j-1; k >= 0 && maze[s][i][k] =='.'; --k)
+                                maze[s][i][k] = '#';
+                            break;
+                    }
+                }
+            }
+        }
+        /*
+        cout << endl;
+        for(int s = 0; s < 4; ++s){
+            for(int i = 0; i < M; ++i){
+                for(int j = 0; j < N; ++j){
+                    cout << maze[s][i][j];
+                }
+                cout << endl;
+            }
+            cout << endl;
+        }
+        */
+        maze[0][sx][sy] = '.';
+        t.step = 0;
+        t.x = sx;
+        t.y = sy;
+        EnQueue(queue, t);
+        while(1){
+            if(!DeQueue(queue, t)){
+                cout << "Case #" << ncase << ": impossible" << endl;
+                //cout << "Time used = " << (double) clock() - time<< endl;
+                //time = (double) clock();
+                break;
+            }
+            if(t.x < 0 || t.x >= M || t.y < 0 || t.y >= N) continue;
+            else if(maze[t.step % 4][t.x][t.y] == '.'){
+                if(t.x == gx && t.y == gy){
+                    cout << "Case #" << ncase << ": " << t.step << endl;
+                    //cout << "Time used = " << (double) clock() - time<< endl;
+                    //time = (double) clock();
+                    break;
+                }
+                maze[t.step % 4][t.x][t.y] = '#';
+                up.step = right.step = down.step = left.step = t.step + 1;
+                up.x = t.x - 1;
+                down.x = t.x + 1;
+                up.y = down.y = t.y;
+                right.x = left.x = t.x;
+                right.y = t.y + 1;
+                left.y = t.y -1;
+                if(t.x == gx){
+                    if(t.y < gy){
+                        EnQueue(queue, right);
+                        EnQueue(queue, left);
+                        EnQueue(queue, up);
+                        EnQueue(queue, down);
+                        continue;
+                    }
+                    else{
+                        EnQueue(queue, left);
+                        EnQueue(queue, right);
+                        EnQueue(queue, up);
+                        EnQueue(queue, down);
+                        continue;
+                    }
+                }
+                else if(t.y == gy){
+                    if(t.x < gx){
+                        EnQueue(queue, down);
+                        EnQueue(queue, up);
+                        EnQueue(queue, right);
+                        EnQueue(queue, left);
+                        continue;
+                    }
+                    else{
+                        EnQueue(queue, up);
+                        EnQueue(queue, down);
+                        EnQueue(queue, right);
+                        EnQueue(queue, left);
+                        continue;
+                    }
+                }
+                else if(t.x > gx && t.y > gy){
+                    EnQueue(queue, up);
+                    EnQueue(queue, left);
+                    EnQueue(queue, down);
+                    EnQueue(queue, right);
+                    continue;
+                }
+                else if(t.x > gx && t.y < gy){
+                    EnQueue(queue, up);
+                    EnQueue(queue, right);
+                    EnQueue(queue, down);
+                    EnQueue(queue, left);
+                    continue;
+                }
+                else if(t.x < gx && t.y > gy){
+                    EnQueue(queue, down);
+                    EnQueue(queue, left);
+                    EnQueue(queue, up);
+                    EnQueue(queue, right);
+                    continue;
+                }
+                else{
+                    EnQueue(queue, down);
+                    EnQueue(queue, right);
+                    EnQueue(queue, up);
+                    EnQueue(queue, left);
+                    continue;
+                }
+                
+            }
+            else continue;
+        }
+    }
+    return 0;
+}

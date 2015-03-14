@@ -1,0 +1,98 @@
+var fs  = require('fs');
+var filename = process.argv.splice(2);
+var fileContents = fs.readFileSync(filename[0], 'UTF-8');
+var lines = fileContents.split('\n');
+
+var T = +lines[0];
+var rest = lines.slice(1);
+
+var indexRest = 0;
+
+var matrix = {};
+
+for (var i = 0; i < T; i ++) {
+  var macroLine = rest[indexRest++];
+  var macroLineParts = macroLine.split(' ').map(function(f) {return +f});
+  var gp = macroLineParts[0],
+      gc = macroLineParts[1],
+      gf = macroLineParts[2];
+  var numberFoods = +(rest[indexRest++]);
+
+  var foodItems = [];
+  for (var j = 0; j < numberFoods; j++) {
+    // read P, C, F
+    var food = rest[indexRest++];
+    var foodParts = food.split(' ').map(function(f) {return +f});
+
+    foodItems.push(foodParts);
+  }
+
+  matrix = {};
+  var found = findOut(macroLineParts, foodItems);
+  process.stdout.write('Case #' + (i+1) + ': ' + (found ? 'yes' : 'no') + '\n');
+}
+
+function isValid(target) {
+  return target[0] >= 0 && target[1] >= 0 && target[2] >= 0;
+}
+
+function findOut(target, options) {
+  //console.log(target, options);
+  // for each option we have the chance of taking it or not
+  
+  // base case
+  if (target[0] === 0 && target[1] === 0 && target[2] === 0) {
+    return true;
+  }
+
+  if (options.length === 0) {
+    return false;
+  }
+
+  // general case
+  
+  var targetKey = target.join('-');
+
+  var returnedValue = false;
+  
+  // for each option, consider taking it or not taking it
+  options.forEach(function(option, index) {
+
+    var optionKey = option.join('-');
+    if (matrix[targetKey] && optionKey in matrix[targetKey]) {
+      return matrix[targetKey][optionKey];
+    }
+
+    // always try not taking it
+    var restOfOptions2 = options.slice();
+    restOfOptions2.splice(index, 1);
+    
+
+    // is it a valid candidate?
+    if (option[0] <= target[0] &&
+        option[1] <= target[1] &&
+        option[2] <= target[2]) {
+
+      // yes, try it
+      var newTarget = target.slice();
+      newTarget[0] -= option[0];
+      newTarget[1] -= option[1];
+      newTarget[2] -= option[2];
+
+      var restOfOptions = options.slice();
+      restOfOptions.splice(index, 1);
+
+      matrix[targetKey] = matrix[targetKey] || {};
+      matrix[targetKey][optionKey] = findOut(target, restOfOptions2) || findOut(newTarget, restOfOptions);
+      returnedValue = returnedValue || matrix[targetKey][optionKey];
+    } else {
+      matrix[targetKey] = matrix[targetKey] || {};
+      matrix[targetKey][optionKey] = findOut(target, restOfOptions2);
+      returnedValue = returnedValue || matrix[targetKey][optionKey];
+    }
+
+  });
+
+  return returnedValue;
+
+}

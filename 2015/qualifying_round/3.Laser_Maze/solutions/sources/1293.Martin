@@ -1,0 +1,261 @@
+
+
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <set>
+#include <iomanip>
+#include <ios> 
+
+using namespace std;
+
+int M = 0;
+int N = 0;
+
+int StartM = 0;
+int StartN = 0;
+
+int GoalM = 0;
+int GoalN = 0;
+
+char maze[100][100];
+
+bool safe[4][100][100];
+
+typedef long long steps_t;
+const steps_t stepsMax = std::numeric_limits<steps_t>::max();
+
+steps_t reachable[4][100][100];
+
+
+
+enum {
+	Empty_Space = '.',
+	Wall = '#',
+	Starting_Position = 'S',
+	Goal = 'G',
+	Laser_L = '<',
+	Laser_R = '>',
+	Laser_U = '^',
+	Laser_D = 'v'
+};
+
+bool IsLaserBlocker(char Typ) {
+
+	switch (Typ) {
+	case Wall:
+	case Laser_L:
+	case Laser_R:
+	case Laser_U:
+	case Laser_D:
+		return true;
+		break;
+	default:
+		return false;
+		break;
+	}
+
+}
+
+void BlockWays(int div, char Laser_L, char Laser_U, char  Laser_R, char Laser_D) {
+
+	for (int m = 0; m < M; ++m) {
+		for (int n = 0; n < N; ++n) {
+
+			if (maze[m][n] == Laser_L) {
+				for (int nn = n - 1; nn >= 0; --nn) {
+					if (IsLaserBlocker(maze[m][nn])) {
+						break;
+					}
+					else {
+						safe[div][m][nn] = false;
+					}
+				}
+			}
+
+			if (maze[m][n] == Laser_R) {
+				for (int nn = n + 1; nn < N; ++nn) {
+					if (IsLaserBlocker(maze[m][nn])) {
+						break;
+					}
+					else {
+						safe[div][m][nn] = false;
+					}
+				}
+			}
+
+			if (maze[m][n] == Laser_U) {
+				for (int mm = m - 1; mm >= 0; --mm) {
+					if (IsLaserBlocker(maze[mm][n])) {
+						break;
+					}
+					else {
+						safe[div][mm][n] = false;
+					}
+				}
+			}
+
+			if (maze[m][n] == Laser_D) {
+				for (int mm = m + 1; mm < M; ++mm) {
+					if (IsLaserBlocker(maze[mm][n])) {
+						break;
+					}
+					else {
+						safe[div][mm][n] = false;
+					}
+				}
+			}
+
+
+
+		}
+	}
+}
+
+
+void Trace(int m, int n, int step) {
+
+	int div = step % 4;
+
+	if ((step > 0) && !safe[div][m][n]) {
+		return;
+	}
+
+	if (step < reachable[div][m][n]) {
+
+		reachable[div][m][n] = step;
+
+		if (m > 0) {
+			Trace(m - 1, n, step + 1);
+		}
+
+		if (n > 0) {
+			Trace(m, n - 1, step + 1);
+		}
+
+		if (m + 1 < M) {
+			Trace(m + 1, n, step + 1);
+		}
+
+		if (n + 1 < N) {
+			Trace(m, n + 1, step + 1);
+		}
+
+
+	}
+
+
+
+}
+
+
+
+
+int main(int argc, char* argv[])
+{
+	int T = 0;
+
+	cin >> T;
+
+	for (int t = 1; t <= T; ++t) {
+
+
+
+		cin >> M;
+		cin >> N;
+
+		for (int m = 0; m < M; ++m) {
+			for (int n = 0; n < N; ++n) {
+				cin >> maze[m][n];
+			}
+		}
+
+		for (int div = 0; div < 4; ++div) {
+			for (int m = 0; m < M; ++m) {
+				for (int n = 0; n < N; ++n) {
+					reachable[div][m][n] = stepsMax;
+					switch (maze[m][n]) {
+					case Empty_Space:
+						safe[div][m][n] = true;
+						break;
+					case Starting_Position:
+						safe[div][m][n] = true;
+						StartM = m;
+						StartN = n;
+						break;
+					case Goal:
+						safe[div][m][n] = true;
+						GoalM = m;
+						GoalN = n;
+						break;
+					default:
+						safe[div][m][n] = false;
+						break;
+					}
+				}
+			}
+		}
+
+		BlockWays(0, Laser_L, Laser_U, Laser_R, Laser_D);
+		BlockWays(1, Laser_D, Laser_L, Laser_U, Laser_R);
+		BlockWays(2, Laser_R, Laser_D, Laser_L, Laser_U);
+		BlockWays(3, Laser_U, Laser_R, Laser_D, Laser_L);
+
+
+		Trace(StartM, StartN, 0);
+
+		steps_t goalSteps1 = std::min(reachable[0][GoalM][GoalN], reachable[1][GoalM][GoalN]);
+		steps_t goalSteps2 = std::min(reachable[2][GoalM][GoalN], reachable[3][GoalM][GoalN]);
+		steps_t goalSteps = std::min(goalSteps1, goalSteps2);
+
+
+
+		cout << "Case #" << t << ": ";
+
+		if (goalSteps == stepsMax) {
+			cout << "impossible";
+		}
+		else {
+			cout << goalSteps;
+		}
+
+		cout << endl;
+
+		/*
+		for (int m = 0; m < M; ++m) {
+			for (int n = 0; n < N; ++n) {
+				cout << maze[m][n];
+			}
+			cout << endl;
+		}
+
+		for (int div = 0; div < 4; ++div) {
+			cout << endl;
+			for (int m = 0; m < M; ++m) {
+				for (int n = 0; n < N; ++n) {
+					if (reachable[div][m][n] == stepsMax) {
+						if (safe[div][m][n]) {
+							cout << "   . ";
+						}
+						else{
+							cout << "   X ";
+						}
+					}
+					else {
+						cout << " " << std::setw(3) << std::right << reachable[div][m][n] << " ";
+					}
+				}
+				cout << endl;
+			}
+		}
+
+		cout << "----------------------------------" << endl;
+
+		*/
+
+
+
+	}
+
+	return 0;
+}

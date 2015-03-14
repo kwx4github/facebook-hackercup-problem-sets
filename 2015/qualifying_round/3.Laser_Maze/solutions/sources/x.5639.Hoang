@@ -1,0 +1,130 @@
+const fi=''; fo=''; maxn=111;
+	h:array[0..3] of longint=(0,1,0,-1);
+    v:array[0..3] of longint=(1,0,-1,0);
+type loc=record
+	x,y:longint;
+    end;
+var m,n:longint; st,go:loc;
+	map:array[0..3,0..maxn,0..maxn]of char;
+    f:array[0..3,0..maxn,0..maxn]of longint;
+    qx,qy,qid:array[0..maxn*maxn]of longint;
+
+function is_laser(c:char):boolean;
+begin
+    exit((c='^')or(c='v')or(c='<')or(c='>'));
+end;
+
+function is_land(c:char):boolean;
+begin
+    exit((c='.')or(c='S')or(c='G'));
+end;
+
+procedure next(c:char; var i1,j1:longint);
+begin
+    if c='^' then dec(i1)
+    else if c='>' then inc(j1)
+    else if c='v' then inc(i1)
+    else dec(j1);
+end;
+
+function next_position(c:char):char;
+begin
+	if c='^' then exit('>');
+    if c='>' then exit('v');
+    if c='v' then exit('<');
+    exit('^');
+end;
+
+procedure init;
+var	id,i,j,i1,j1:longint;
+begin
+    for i:=0 to 111 do
+    for j:=0 to 3 do
+    begin
+    	map[j,i,0]:='#';
+        map[j,i,n+1]:='#';
+        map[j,0,i]:='#';
+        map[j,m+1,i]:='#';
+    end;
+    for id:=1 to 3 do
+    for i:=1 to m do
+    for j:=1 to n do if is_laser(map[0,i,j]) then map[id,i,j]:=next_position(map[id-1,i,j])
+    else map[id,i,j]:=map[0,i,j];
+
+	for id:=0 to 3 do
+    for i:=1 to m do
+    for j:=1 to n do
+    if is_laser(map[id,i,j]) then
+    begin
+    	i1:=i; j1:=j;
+    	next(map[id,i,j],i1,j1);
+        while is_land(map[id,i1,j1]) do
+        begin
+        	map[id,i1,j1]:='#';
+            next(map[id,i,j],i1,j1);
+        end;
+        map[id,i,j]:='#';
+    end;
+    //init queue
+    qx[1]:=st.x; qy[1]:=st.y; qid[1]:=0;
+    for id:=0 to 3 do
+    for i:=1 to m do
+    for j:=1 to n do f[id,i,j]:=-1;
+    f[0,st.x,st.y]:=0;
+end;
+function work:longint;
+var front,rear,aid,bid,ax,ay,bx,by,i:longint;
+begin
+    init;
+    rear:=1; front:=1;
+    while front<=rear do
+    begin
+    	ax:=qx[front]; ay:=qy[front]; aid:=qid[front]; bid:=(aid+1)mod 4;
+        for i:=0 to 3 do
+        begin
+        	bx:=ax+h[i]; by:=ay+v[i];
+        	if (is_land(map[bid,bx,by]))and(f[bid,bx,by]=-1)then
+            begin
+                inc(rear); qx[rear]:=bx; qy[rear]:=by; qid[rear]:=bid;
+                f[bid,bx,by]:=f[aid,ax,ay]+1;
+                if(bx=go.x)and(by=go.y)then exit(f[bid,bx,by]);
+            end;
+        end;
+        inc(front);
+    end;
+    exit(-1);
+end;
+procedure process;
+var f,g:text; res,i,j,t,test,id:longint;
+begin
+	assign(f,fi); reset(f);
+    assign(g,fo); rewrite(g);
+    readln(f,t);
+    for test:=1 to t do
+    begin
+    	readln(f,m,n);
+        for i:=1 to m do
+        begin
+        	for j:=1 to n do
+            begin
+            	read(f,map[0,i,j]);
+                if map[0,i,j]='S' then
+                begin
+                	st.x:=i; st.y:=j;
+                end else
+                if map[0,i,j]='G' then
+                begin
+                	go.x:=i; go.y:=j;
+                end;
+            end;
+            readln(f);
+        end;
+        res:=work;
+        if res=-1 then writeln(g,'Case #',test,': impossible')
+        else writeln(g,'Case #',test,': ',res);
+    end;
+    close(f); close(g);
+end;
+begin
+	process;
+end.

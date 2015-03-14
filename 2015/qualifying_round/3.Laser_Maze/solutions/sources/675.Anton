@@ -1,0 +1,367 @@
+//
+//  main.cpp
+//  Timus
+//
+//  Created by Anton Ovcharenko on 1/8/15.
+//  Copyright (c) 2015 Anton Ovcharenko. All rights reserved.
+//
+
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <queue>
+
+using std::vector;
+using std::map;
+using std::pair;
+using std::cin;
+using std::cout;
+using std::endl;
+using std::stable_sort;
+using std::string;
+using std::to_string;
+using std::ifstream;
+using std::ofstream;
+using std::reverse;
+using std::swap;
+using std::tuple;
+using std::clog;
+using std::make_pair;
+using std::setw;
+using std::queue;
+
+#define turrets string("<^>v")
+#define freeSpace string(".GS")
+#define noGo 1000000
+
+typedef vector<vector<char>> PlainMap;
+typedef vector<vector<vector<int>>> ExtendedMap;
+typedef pair<int, int> DirectionModifier;
+
+struct Position
+{
+    int h = 0;
+    int w = 0;
+    int state = 0;
+    
+    bool operator==(const Position &pos2)
+    {
+        return this->h == pos2.h && this->w == pos2.w && this->state == pos2.state;
+    }
+};
+
+DirectionModifier direction_modifier(char turretType, int state)
+{
+    DirectionModifier result;
+    switch (turretType) {
+        case 'v':
+            switch (state) {
+                case 0:
+                    result = make_pair(1, 0);
+                    break;
+                case 1:
+                    result = make_pair(0, -1);
+                    break;
+                case 2:
+                    result = make_pair(-1, 0);
+                    break;
+                case 3:
+                    result = make_pair(0, 1);
+                    break;
+            }
+            break;
+        case '<':
+            switch (state) {
+                case 0:
+                    result = make_pair(0, -1);
+                    break;
+                case 1:
+                    result = make_pair(-1, 0);
+                    break;
+                case 2:
+                    result = make_pair(0, 1);
+                    break;
+                case 3:
+                    result = make_pair(1, 0);
+                    break;
+            }
+            break;
+        case '^':
+            switch (state) {
+                case 0:
+                    result = make_pair(-1, 0);
+                    break;
+                case 1:
+                    result = make_pair(0, 1);
+                    break;
+                case 2:
+                    result = make_pair(1, 0);
+                    break;
+                case 3:
+                    result = make_pair(0, -1);
+                    break;
+            }
+            break;
+        case '>':
+            switch (state) {
+                case 0:
+                    result = make_pair(0, 1);
+                    break;
+                case 1:
+                    result = make_pair(1, 0);
+                    break;
+                case 2:
+                    result = make_pair(0, -1);
+                    break;
+                case 3:
+                    result = make_pair(-1, 0);
+                    break;
+            }
+            break;
+    }
+    return result;
+}
+
+template <typename T>
+void print_map(vector<vector<T>> map)
+{
+//    for (auto row : map)
+//    {
+//        for (auto square : row)
+//        {
+//            clog << setw(8) << square;
+//        }
+//        clog << endl;
+//    }
+//    clog << endl;
+}
+
+void print_extended_map(ExtendedMap map)
+{
+//    int i = 1;
+//    for (auto layer : map)
+//    {
+//        clog << "Layer #" << i << ":" << endl;
+//        print_map(layer);
+//        i++;
+//    }
+//    clog << endl;
+}
+
+ExtendedMap build_safety_map(PlainMap map)
+{
+    ExtendedMap safetyMap(4, vector<vector<int>>(map.size(), vector<int>(map[0].size())));
+    for (int h = 0; h < map.size(); h++)
+    {
+        vector<char> row = map[h];
+        for (int w = 0; w < row.size(); w++)
+        {
+            if (map[h][w] == '#')
+            {
+                for (int layer = 0; layer < 4; layer++)
+                {
+                    safetyMap[layer][h][w] = 1;
+                }
+            }
+            else if (string::npos != turrets.find(map[h][w]))
+            {
+                for (int layer = 0; layer < 4; layer++)
+                {
+                    safetyMap[layer][h][w] = 1;
+                    DirectionModifier modifier = direction_modifier(map[h][w], layer);
+                    int blastH = h + modifier.first;
+                    int blastW = w + modifier.second;
+                    while (blastH >= 0 && blastH < map.size() && blastW >=0 && blastW < row.size())
+                    {
+                        if (freeSpace.find(map[blastH][blastW]) == string::npos)
+                        {
+                            break;
+                        }
+                        safetyMap[layer][blastH][blastW] = 1;
+                        blastH += modifier.first;
+                        blastW += modifier.second;
+                    }
+                }
+            }
+        }
+    }
+    return safetyMap;
+}
+
+Position find_char(PlainMap map, char charToFind)
+{
+    Position start;
+    for (int h = 0; h < map.size(); h++)
+    {
+        for (int w = 0; w < map[h].size(); w++)
+        {
+            if (map[h][w] == charToFind)
+            {
+                start.h = h;
+                start.w = w;
+            }
+        }
+    }
+    return start;
+}
+
+bool is_valid(Position position, PlainMap &map)
+{
+    return position.h >= 0 && position.h < map.size() && position.w >=0 && position.w < map[0].size();
+}
+
+void try_to_go(Position current, DirectionModifier direction, queue<Position> &bfsQueue, ExtendedMap &roadmap, ExtendedMap &safetyMap, ExtendedMap &visited, PlainMap &map)
+{
+    Position toGo;
+    toGo.h = current.h + direction.first;
+    toGo.w = current.w + direction.second;
+    toGo.state = (current.state + 1) % 4;
+    if (is_valid(toGo, map) && safetyMap[toGo.state][toGo.h][toGo.w] == 0)
+    {
+        int dist = roadmap[current.state][current.h][current.w] + 1;
+        if (roadmap[toGo.state][toGo.h][toGo.w] > dist)
+        {
+            roadmap[toGo.state][toGo.h][toGo.w] = dist;
+        }
+        if (visited[toGo.state][toGo.h][toGo.w] == 0)
+        {
+            visited[toGo.state][toGo.h][toGo.w] = 1;
+            bfsQueue.push(toGo);
+        }
+    }
+}
+
+void solve_case(PlainMap map, int caseNumber)
+{
+//    clog << string(20, '=') << endl;
+    clog << "Solving case #" << caseNumber << endl << endl;
+    auto begin = std::chrono::high_resolution_clock::now();
+
+    print_map(map);
+    
+    ExtendedMap safetyMap = build_safety_map(map);
+    print_extended_map(safetyMap);
+    
+    ExtendedMap roadmap(4, vector<vector<int>>(map.size(), vector<int>(map[0].size(), noGo)));
+    ExtendedMap visited(4, vector<vector<int>>(map.size(), vector<int>(map[0].size())));
+    queue<Position> bfsQueue;
+
+    Position start = find_char(map, 'S');
+    roadmap[start.state][start.h][start.w] = 0;
+    visited[start.state][start.h][start.w] = 1;
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    begin = end;
+    clog << "Preparation: " << elapsed.count() << "ms" << endl;
+    bfsQueue.push(start);
+    
+    int iteationCount = 0;
+    
+    while (!bfsQueue.empty())
+    {
+        Position current = bfsQueue.front();
+        try_to_go(current, make_pair(-1, 0), bfsQueue, roadmap, safetyMap, visited, map);
+        try_to_go(current, make_pair(0, -1), bfsQueue, roadmap, safetyMap, visited, map);
+        try_to_go(current, make_pair(1, 0), bfsQueue, roadmap, safetyMap, visited, map);
+        try_to_go(current, make_pair(0, 1), bfsQueue, roadmap, safetyMap, visited, map);
+        bfsQueue.pop();
+        iteationCount++;
+//        clog << bfsQueue.size() << " ";
+    }
+    
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    begin = end;
+    clog << "Main body: " << elapsed.count() << "ms, " << elapsed.count()/double(iteationCount) << "ms per iteration" << endl;
+    
+    print_extended_map(roadmap);
+    
+    Position finish = find_char(map, 'G');
+    int result = roadmap[finish.state][finish.h][finish.w];
+    for (int i = 1; i < 4; i++)
+    {
+        if (roadmap[i][finish.h][finish.w] < result)
+        {
+            result = roadmap[i][finish.h][finish.w];
+        }
+    }
+    
+    cout << "Case #" << caseNumber << ": " << ((result == noGo) ? "impossible" : to_string(result)) << endl;
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+    begin = end;
+    clog << "Output: " << elapsed.count() << "ms" << endl << endl;
+
+}
+
+void generate_input()
+{
+    std::streambuf *buff = cout.rdbuf();
+    ofstream out("./in.txt");
+    cout.rdbuf(out.rdbuf());
+    
+    cout << 100 << endl;
+    for (int i = 0; i < 100; i++)
+    {
+        cout << 100 << " " << 100 << endl;
+        for (int j = 0; j < 100; j++)
+        {
+            for (int k = 0; k < 100; k++)
+            {
+                if (j == 0 && k == 0)
+                {
+                    cout << 'S';
+                }
+                else if (i == 99 && j == 99)
+                {
+                    cout << 'G';
+                }
+                else
+                {
+                    cout << '.';
+                }
+            }
+            cout << endl;
+        }
+    }
+    
+    cout.rdbuf(buff);
+}
+
+int main(int argc, const char * argv[])
+{
+    ifstream in("./in.txt");
+    cin.rdbuf(in.rdbuf());
+    
+    ofstream out("./out.txt");
+    cout.rdbuf(out.rdbuf());
+    
+    int n;
+    cin >> n;
+    
+    for (int i = 0; i < n; i++)
+    {
+        int height, width;
+        cin >> height >> width;
+        PlainMap mazeMap;
+        for (int h = 0; h < height; h++)
+        {
+            vector<char> row;
+            for (int w = 0; w < width; w++)
+            {
+                char currentSquare;
+                cin >> currentSquare;
+                row.push_back(currentSquare);
+            }
+            mazeMap.push_back(row);
+        }
+        solve_case(mazeMap, i + 1);
+    }
+    return 0;
+}

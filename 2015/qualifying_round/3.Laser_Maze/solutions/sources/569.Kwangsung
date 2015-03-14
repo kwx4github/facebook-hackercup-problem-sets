@@ -1,0 +1,125 @@
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <map>
+
+using namespace std;
+
+const int LIMIT = 100*100*100;
+map<tuple<int, int, int>, tuple<int,int>> cache;
+// U, R, D, L
+int ROW[] = {-1, 0, +1, 0};
+int COL[] = {0, +1, 0, -1};
+string TURRET = "^>v<";
+
+int START_R, START_C;
+
+bool is_turret_or_block(char c) {
+    if (c == '#')
+        return true;
+    return (c == TURRET[0] || c == TURRET[1] || c == TURRET[2] || c == TURRET[3]);
+}
+
+bool is_fired(int step, int r, int c, vector<string>& maze) {
+    if (step == 0)
+        return false;
+
+    for (int i = c-1; i >= 0; i--) {
+        if (maze[r][i] == TURRET[(5-(step%4)) % 4])
+            return true;
+        if (is_turret_or_block(maze[r][i]))
+            break;
+    }
+
+    for (int i = c+1; i < maze[r].size(); ++i) {
+        if (maze[r][i] == TURRET[(7-(step%4)) % 4])
+            return true;
+        if (is_turret_or_block(maze[r][i]))
+            break;
+    }
+
+    for (int i = r-1; i >=0 ; --i) {
+        if (maze[i][c] == TURRET[(6-(step%4)) % 4])
+            return true;
+        if (is_turret_or_block(maze[i][c]))
+            break;
+    }
+
+    for (int i = r+1; i < maze.size(); ++i) {
+        if (maze[i][c] == TURRET[(4-(step%4)) % 4])
+            return true;
+        if (is_turret_or_block(maze[i][c]))
+            break;
+    }
+
+    return false;
+}
+
+int solve(int step, int r, int c, vector<string>& maze) {
+    if (r < 0 || r >= maze.size() || c < 0 || c >= maze[0].size())
+        return LIMIT;
+    if (TURRET.find(maze[r][c]) != string::npos)
+        return LIMIT;
+    if (maze[r][c] == '#')
+        return LIMIT;
+
+    auto result = cache.find(make_tuple(r, c, step%4));
+
+    if (result != cache.end() && get<0>(result->second) <= step)
+        return get<1>(result->second);
+
+    auto& x = cache[make_tuple(r, c, step%4)];
+    get<0>(x) = step;
+    auto& answer = get<1>(x);
+    answer = LIMIT;
+
+    if (is_fired(step, r, c, maze))
+        return answer;
+
+    if (maze[r][c] == 'G') {
+        answer = step;
+        return step;
+    }
+
+    int futher = LIMIT;
+    for (int i = 0; i < 4; ++i) {
+        int moved = solve(step + 1, r+ROW[i], c+COL[i], maze);
+        futher = min(futher, moved);
+    }
+
+    answer = futher;
+    return futher;
+}
+
+int main() {
+    int T;
+    cin >> T;
+
+    for (int C=1; C<=T; ++C) {
+        int M, N;
+        cin >> M >> N;
+
+        cache = map<tuple<int,int,int>,tuple<int,int>>();
+
+        vector<string> maze(M);
+        for (int i = 0; i < M; ++i) {
+            cin >> maze[i];
+            auto found = maze[i].find('S');
+            if (found != string::npos) {
+                START_R = i;
+                START_C = found;
+            }
+        }
+
+        auto answer = solve(0, START_R, START_C, maze);
+        if (answer == LIMIT) 
+            printf("Case #%d: impossible\n", C);
+        else
+            printf("Case #%d: %d\n", C, answer);
+    }
+
+    return 0;
+}
+
+

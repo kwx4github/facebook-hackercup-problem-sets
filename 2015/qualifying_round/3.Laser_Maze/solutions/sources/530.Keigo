@@ -1,0 +1,188 @@
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
+#include <iostream>
+#include <queue>
+#include <list>
+#include <map>
+#include <numeric>
+#include <set>
+#include <sstream>
+#include <string>
+#include <vector>
+using namespace std;
+#define REP(i,a,n) for(int i=(a); i<(int)(n); i++)
+#define rep(i,n) REP(i,0,n)
+#define FOR(it,c) for(__typeof((c).begin()) it=(c).begin(); it!=(c).end(); ++it)
+#define ALLOF(c) (c).begin(), (c).end()
+typedef long long ll;
+
+struct ST {
+  int y, x;
+  int step;
+};
+bool operator<(const ST& a, const ST& b){
+  if(a.step == b.step){
+    if(a.y == b.y) return a.x < b.x;
+    else return a.y < b.y;
+  }
+  return a.step < b.step;
+}
+
+int vy[4] = {-1,0,1,0};
+int vx[4] = {0,-1,0,1};
+
+char type[4] = {'<','^','>','v'};
+char turn(int ang, char laser){
+  int t = 0;
+  rep(i,4) if(type[i] == laser) t = i;
+
+  return type[(t+ang)%4];
+}
+
+
+bool laser_check(const ST& now, const vector<string>& field){
+  int M = field.size();
+  int N = field[0].length();
+
+  int ang = now.step;
+  int y = now.y;
+  int x = now.x;
+  while(y < M){
+    if(field[y][x] == '#') break;
+    if(field[y][x] == '<' || field[y][x] == '^' || field[y][x] == '>' || field[y][x] == 'v'){
+      if(turn(ang, field[y][x]) == '^') return true;
+      break;
+    }
+    y++;
+  }
+
+  y = now.y;
+  x = now.x;
+  while(y >= 0){
+    if(field[y][x] == '#') break;
+    if(field[y][x] == '<' || field[y][x] == '^' || field[y][x] == '>' || field[y][x] == 'v'){
+      if(turn(ang, field[y][x]) == 'v') return true;
+      break;
+    }
+    y--;
+  }
+
+  y = now.y;
+  x = now.x;
+  while(x < N){
+    if(field[y][x] == '#') break;
+    if(field[y][x] == '<' || field[y][x] == '^' || field[y][x] == '>' || field[y][x] == 'v'){
+      if(turn(ang, field[y][x]) == '<') return true;
+      break;
+    }
+    x++;
+  }
+
+  y = now.y;
+  x = now.x;
+  while(x >= 0){
+    if(field[y][x] == '#') break;
+    if(field[y][x] == '<' || field[y][x] == '^' || field[y][x] == '>' || field[y][x] == 'v'){
+      if(turn(ang, field[y][x]) == '>') return true;
+      break;
+    }
+    x--;
+  }
+  
+  return false;
+}
+
+int solve(const vector<string>& field){
+  int M = field.size(), N = field[0].length();
+  map<ST,int> memo;
+  pair<int,int> st, gl;
+
+  rep(y, field.size()){
+    rep(x, field[y].length()){
+      if(field[y][x] == 'S'){
+        st.first = y;
+        st.second = x;
+      }
+      if(field[y][x] == 'G'){
+        gl.first = y;
+        gl.second = x;
+      }
+    }
+  }
+
+  queue<ST> que;
+  que.push((ST){st.first, st.second, 0});
+  while(!que.empty()){
+    ST now = que.front(); que.pop();
+    int step = now.step; now.step = now.step%4;
+
+    if(memo.count(now) > 0) continue;
+    memo[now] = 1;
+
+    /*
+    rep(i,M){
+      cout << " ";
+      rep(j,N){
+        if(now.y == i && now.x == j) cout << "N";
+        else cout << field[i][j];
+      }
+      cout << endl;
+    }
+    cout << "-" << endl;
+     */
+    
+    if(step > 0 && laser_check(now, field)) continue;
+    if(now.y == gl.first && now.x == gl.second) return step;
+
+    rep(i,4){
+      int nx = now.x + vx[i];
+      int ny = now.y + vy[i];
+      if(0<=nx&&nx<N && 0<=ny&&ny<M &&
+         field[ny][nx]!='#' &&
+         field[ny][nx]!='<' &&
+         field[ny][nx]!='^' &&
+         field[ny][nx]!='>' &&
+         field[ny][nx]!='v'){
+
+        ST nxt;
+        nxt.x = nx;
+        nxt.y = ny;
+        nxt.step = step + 1;
+
+        que.push(nxt);
+      }
+
+    }
+  }
+  return -1;
+}
+
+int main(){
+  int T;
+  
+  cin >> T;
+  rep(t,T){
+    int M, N;
+    string line;
+    vector<string> field;
+
+    cin >> M >> N;
+    rep(i,M){
+      cin >> line;
+      field.push_back(line);
+    }
+
+    int ret = solve(field);
+
+    cout << "Case #" << t+1 << ": ";
+    if(ret < 0){
+      cout << "impossible" << endl;
+    }else{
+      cout << ret << endl;
+    }
+  }
+  return 0;
+}

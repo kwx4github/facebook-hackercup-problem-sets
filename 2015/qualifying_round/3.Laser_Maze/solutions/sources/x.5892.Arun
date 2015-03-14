@@ -1,0 +1,346 @@
+<?php
+	global $currentPosition;
+	global $map;
+	global $goal;
+	global $plannedPaths;
+	global $visitedPoints;
+
+	function nextTurretDirection($row) {
+		if (is_array($row)) {
+			return array_map('nextTurretDirection', $row);
+		}
+		$location = $row;
+		if($location == '<') {
+			$location = '^';
+		}
+		else if($location == '^') {
+			$location = '>';
+		}
+		else if($location == '>') {
+			$location = 'v';
+		}
+		else if($location == 'v') {
+			$location = '<';
+		}
+
+		return $location;
+	}
+
+	function cleanDangerZones() {
+		global $map;
+
+		for($i =0 ; $i < count($map); $i++) {
+			for($j = 0; $j < count($map[$i]); $j++) {
+				if($map[$i][$j] == 'X')
+					$map[$i][$j] = '.';
+			}
+		}
+	}
+
+	function markDangerZones() {
+		global $map;
+
+		for($i =0 ; $i < count($map); $i++) {
+			$keys = array_keys($map[$i], '<');
+			foreach($keys as $key) {
+				for($j = $key - 1; $j >= 0 ; $j--) {
+					if($map[$i][$j] == '.' || $map[$i][$j] == 'G' || $map[$i][$j] == 'S')
+						$map[$i][$j] = 'X';
+					else
+						break;
+				}
+			}
+
+			$keys = array_keys($map[$i], '^');
+			foreach($keys as $key) {
+				for($k = $i - 1; $k >= 0 ; $k--) {
+					if($map[$k][$key] == '.' || $map[$k][$key] == 'G' || $map[$k][$key] == 'S')
+						$map[$k][$key] = 'X';
+					else
+						break;
+				}
+			}
+
+			$keys = array_keys($map[$i], 'v');
+			foreach($keys as $key) {
+				for($k = $i + 1; $k < count($map) ; $k++) {
+					if($map[$k][$key] == '.' || $map[$k][$key] == 'G' || $map[$k][$key] == 'S')
+						$map[$k][$key] = 'X';
+					else
+						break;
+				}
+			}
+
+			$keys = array_keys($map[$i], '>');
+			foreach($keys as $key) {
+				for($j = $key; $j !== count($map[$i]) ; $j++) {
+					if($map[$i][$j] == '.' || $map[$i][$j] == 'G' || $map[$i][$j] == 'S')
+						$map[$i][$j] = 'X';
+					else
+						break;
+				}
+			}
+		}
+	}
+
+	function isWalkable() {
+		global $map;
+		global $currentPosition;
+		global $visitedPoints;
+
+		if ($visitedPoints->contains((object)$currentPosition)) {
+			if($visitedPoints->offsetGet((object)$currentPosition) > 1)
+				return false;
+		}
+		if($map[$currentPosition[0]][$currentPosition[1]] == '.' || $map[$currentPosition[0]][$currentPosition[1]] == 'G') {
+			return true;
+		}
+		return false;
+	}
+
+	function isDownDangerous() {
+		global $map;
+		global $currentPosition;
+
+		if($currentPosition[0]+1 >= count($map))
+			return true;
+		if($map[$currentPosition[0]+1][$currentPosition[1]] == 'X') {
+			return true;
+		}
+		return false;
+	}
+
+	function walkDown() {
+		global $map;
+		global $currentPosition;
+
+		$currentPosition[0]++;
+		if($currentPosition[0] >= count($map)) {
+			$currentPosition[0]--;
+			return false;
+		}
+		if(!isWalkable($currentPosition)) {
+			$currentPosition[0]--;
+			return false;
+		}
+		$map[$currentPosition[0]][$currentPosition[1]] = 'S';
+		$map[$currentPosition[0] - 1][$currentPosition[1]] = '.';
+
+		return true;
+	}
+
+	function isUpDangerous() {
+		global $map;
+		global $currentPosition;
+
+		if($currentPosition[0]-1 < 0)
+			return true;
+		if($map[$currentPosition[0]-1][$currentPosition[1]] == 'X') {
+			return true;
+		}
+		return false;
+	}
+
+	function walkUp() {
+		global $map;
+		global $currentPosition;
+
+		$currentPosition[0]--;
+		if($currentPosition[0] < 0){
+			$currentPosition[0]++;
+			return false;
+		}
+		if(!isWalkable($currentPosition)) {
+			$currentPosition[0]++;
+			return false;
+		}
+		$map[$currentPosition[0]][$currentPosition[1]] = 'S';
+		$map[$currentPosition[0] + 1][$currentPosition[1]] = '.';
+
+		return true;
+	}
+
+	function isRightDangerous() {
+		global $map;
+		global $currentPosition;
+
+		if($currentPosition[1]+1 >= count($map[0])) {
+			return true;
+		}
+		if($map[$currentPosition[0]][$currentPosition[1] + 1] == 'X') {
+			return true;
+		}
+		return false;
+	}
+
+	function walkRight() {
+		global $map;
+		global $currentPosition;
+		$currentPosition[1]++;
+		if($currentPosition[1] >= count($map[0])) {
+			$currentPosition[1]--;
+			return false;
+		}
+		if(!isWalkable($currentPosition)) {
+			$currentPosition[1]--;
+			return false;
+		}
+		$map[$currentPosition[0]][$currentPosition[1]] = 'S';
+		$map[$currentPosition[0]][$currentPosition[1]-1] = '.';
+
+		return true;
+	}
+
+	function isLeftDangerous() {
+		global $map;
+		global $currentPosition;
+
+		if($currentPosition[1]-1 < 0) {
+			return true;
+		}
+		if($map[$currentPosition[0]][$currentPosition[1] - 1] == 'X') {
+			return true;
+		}
+		return false;
+	}
+
+	function walkLeft() {
+		global $map;
+		global $currentPosition;
+		$currentPosition[1]--;
+		if($currentPosition[1] < 0) {
+			$currentPosition[1]++;
+			return false;
+		}
+		if(!isWalkable($currentPosition)) {
+			$currentPosition[1]++;
+			return false;
+		}
+		$map[$currentPosition[0]][$currentPosition[1]] = 'S';
+		$map[$currentPosition[0]][$currentPosition[1]+1] = '.';
+
+		return true;
+	}
+
+	function walkTowardsGoal() {
+		global $map;
+		global $currentPosition;
+		global $goal;
+
+		if($currentPosition[0] < $goal[0] && walkDown()) {
+			return true;
+		}
+		if($currentPosition[1] > $goal[1] && walkLeft()) {
+			return true;
+		}
+		if($currentPosition[0] > $goal[0] && walkUp()) {
+			return true;
+		}
+		if($currentPosition[1] < $goal[1] && walkRight()) {
+			return true;
+		}
+
+		if(!isLeftDangerous()) {
+			if(walkLeft())
+				return true;
+		}
+		if(!isDownDangerous()) {
+			if(walkDown())
+				return true;
+		}
+		if(!isRightDangerous()) {
+			if(walkRight())
+				return true;
+		}
+		if(!isUpDangerous()) {
+			if(walkUp())
+				return true;
+		}
+
+		return false;
+	}
+
+	function printMap() {
+		global $map;
+
+		for($i =0 ; $i < count($map); $i++) {
+			for($j =0 ; $j < count($map[$i]); $j++) {
+				echo $map[$i][$j];
+			}
+			echo PHP_EOL;
+		}
+		echo PHP_EOL;
+	}
+
+	function guessPath() {
+		global $map;
+		global $currentPosition;
+		global $goal;
+		global $visitedPoints;
+		$steps = 0;
+
+		$visitedPoints = new SplObjectStorage();
+		while(1) {
+			$steps++;
+			$map = array_map('nextTurretDirection', $map);
+			markDangerZones();
+			//printMap();
+			if(!walkTowardsGoal())
+				return -1;
+			cleanDangerZones();
+
+			if($currentPosition == $goal)
+				break;
+
+			$hit = 1;
+			if($visitedPoints->contains((object)$currentPosition)) {
+				$hit = $visitedPoints->offsetGet((object)$currentPosition) + 1;
+				$visitedPoints->offsetSet((object)$currentPosition, $hit);
+			}
+			else
+				$visitedPoints->attach((object)$currentPosition, $hit);
+
+			if($steps > 1000)
+				return -1;
+			//sleep(1);
+		}
+		return $steps;
+
+	}
+
+	$currentPointer = 0;
+	// My assumption that the EOL supplied is same as PHP_EOL
+	$dataSample = explode(PHP_EOL, file_get_contents("laser_maze.txt"));
+
+	if(count($dataSample) > 0) 
+	{
+		$caseCount = (int)$dataSample[$currentPointer];
+		$currentCase = 1;
+		while($currentCase <= $caseCount) {
+			$currentPointer++;
+			$mapDimension = array_map('intval', explode(" ", $dataSample[$currentPointer]));
+			global $map;
+			$map = array();
+			$goal = array();
+			for($i = 0 ; $i < $mapDimension[0]; $i++) {
+				$map[$i] = array();
+				$currentPointer++;
+				for($j = 0; $j < $mapDimension[1]; $j++) {
+					if($dataSample[$currentPointer][$j] === 'G')
+						$goal = array($i, $j);
+					if($dataSample[$currentPointer][$j] === 'S')
+						$currentPosition = array($i, $j);
+					$map[$i][$j] = $dataSample[$currentPointer][$j];
+				}
+			}
+			//if($currentCase !== 5) {$currentCase++; continue;}
+			$steps = guessPath();
+			if($steps === -1) {
+				echo "Case #{$currentCase}: impossible" . PHP_EOL;
+				$currentCase++;
+				continue;
+			}
+			echo "Case #{$currentCase}: $steps" . PHP_EOL;
+			$currentCase++;
+		}
+	}

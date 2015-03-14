@@ -1,0 +1,223 @@
+#include <cstdio>
+#include <vector>
+#include <queue>
+#include <cassert>
+
+#define scanf(args...) scanf(args) ? : 0
+
+using namespace std;
+
+char lasers[4]={'^','>','v','<'};
+int DX[4]={-1,0,1,0};
+int DY[4]={0,1,0,-1};
+
+const int INF=1e9;
+const int MAX=115;
+
+int n,m;
+int sx,sy,gx,gy;
+
+char maze[4][MAX][MAX];
+
+vector<int> G[4*MAX*MAX];
+int res[4*MAX*MAX];
+
+bool valid(int x, int y)
+{
+	return x>=0 && x<n && y>=0 && y<m;
+}
+
+void findSG()
+{
+	for(int i=0;i<n;i++)
+		for(int j=0;j<m;j++)
+			if(maze[0][i][j]=='S')
+			{
+				sx=i;
+				sy=j;
+				maze[0][i][j]='.';
+			}
+			else if(maze[0][i][j]=='G')
+			{
+				gx=i;
+				gy=j;
+				maze[0][i][j]='.';
+			}
+}
+
+int laserN(char c)
+{
+	for(int i=0;i<4;i++)
+		if(lasers[i]==c)
+			return i;
+	return -1;
+}
+
+void input()
+{
+	scanf("%d%d",&n,&m);
+	for(int i=0;i<n;i++)
+		scanf("%s",maze[0][i]);
+}
+
+void debug(int nr)
+{
+	printf("q: %d, x: %d, y: %d\n", nr/(n*m), nr%(n*m)/m, nr%(n*m)%m);
+}
+void buildMazes()
+{
+	for(int q=1;q<4;q++)
+		for(int i=0;i<n;i++)
+		{
+			for(int j=0;j<m;j++)
+			{
+				maze[q][i][j]=maze[q-1][i][j];
+				int l=laserN(maze[q][i][j]);
+				if(l!=-1)
+					maze[q][i][j]=lasers[(l+1)%4];
+			}
+			maze[q][i][m]='\0';
+		}
+}
+
+void showMazes()
+{
+	printf("\n");
+	for(int q=0;q<4;q++)
+	{
+		for(int i=0;i<n;i++)
+			printf("%s\n",maze[q][i]);
+		printf("\n");
+	}
+}
+
+void turnOnLaser(int q, int x, int y)
+{
+	int z=laserN(maze[q][x][y]);
+	int dx=DX[z],dy=DY[z];
+	x+=dx;
+	y+=dy;
+	while(valid(x,y) && (maze[q][x][y]=='.' || maze[q][x][y]=='L'))
+	{
+		maze[q][x][y]='L';
+		x+=dx;
+		y+=dy;
+	}
+}
+
+void turnOnLasers()
+{
+	for(int q=0;q<4;q++)
+		for(int i=0;i<n;i++)
+			for(int j=0;j<m;j++)
+				if(laserN(maze[q][i][j])!=-1)
+					turnOnLaser(q,i,j);
+}
+
+int nrOfVerticle(int q, int x, int y)
+{
+	return q*n*m+x*m+y;
+}
+
+void buildGraph()
+{
+	for(int i=0;i<4*n*m;i++)
+		G[i].clear();
+	for(int q=0;q<4;q++)
+	{
+		int next=(q+1)%4;
+		for(int i=0;i<n;i++)
+			for(int j=0;j<m;j++)
+			{
+				int me=nrOfVerticle(q,i,j);
+				for(int dx=-1;dx<=1;dx++)
+					for(int dy=-1;dy<=1;dy++)
+						if(valid(i+dx,j+dy) &&
+						maze[q][i][j]=='.' &&
+						maze[next][i+dx][j+dy]=='.' && ((dx==0) ^ (dy==0))/*&&
+						maze[(q+3)%4][i+dx][j+dy]!='L'*/)
+							G[me].push_back(nrOfVerticle(next,i+dx,j+dy));
+							//printf("%d -> %d\n",me,nrOfVerticle(next,i+dx,j+dy));
+			}
+	}
+}
+
+void bfs()
+{
+	for(int i=0;i<4*n*m;i++)
+		res[i]=INF;
+	int S=nrOfVerticle(0,sx,sy);
+	res[S]=0;
+	queue<int> Q;
+	Q.push(S);
+	for(int dx=-1;dx<=1;dx++)
+		for(int dy=-1;dy<=1;dy++)
+			if(valid(sx+dx,sy+dy) && maze[1][sx+dx][sy+dy]=='.' && dx*dx+dy*dy>0)
+			{
+				S=nrOfVerticle(1,sx+dx,sy+dy);
+				res[S]=1;
+				Q.push(S);
+			}
+	while(!Q.empty())
+	{
+		int v=Q.front();
+		assert(v>=0 && v<4*n*m);
+		Q.pop();
+		for(unsigned i=0;i<G[v].size();i++)
+		{
+			int u=G[v][i];
+			if(res[v]+1<res[u])
+			{
+				res[u]=res[v]+1;
+				Q.push(u);
+			}
+		}
+	}
+}
+
+void find(int v)
+{
+	for(int i=0;i<4*n*m;i++)
+		if(res[i]==v)
+			debug(i);
+}
+
+void qdebug()
+{
+	for(int i=0;i<=6;i++)
+	{
+		printf("DIST: %d\n",i);
+		find(i);
+	}
+}
+
+int solve()
+{
+	input();
+	findSG();
+	buildMazes();
+	turnOnLasers();
+	//showMazes();
+	buildGraph();
+	bfs();
+	//qdebug();
+	int r=INF;
+	for(int i=0;i<4;i++)
+		r=min(r,res[nrOfVerticle(i,gx,gy)]);
+	return r;
+}
+
+int main()
+{
+	int t;
+	scanf("%d",&t);
+	for(int i=1;i<=t;i++)
+	{
+		printf("Case #%d: ",i);
+		int q=solve();
+		if(q==INF)
+			printf("impossible\n");
+		else
+			printf("%d\n",q);
+	}
+}

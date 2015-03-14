@@ -1,0 +1,181 @@
+#include <vector> // headers {{{
+#include <list>
+#include <queue>
+#include <set>
+#include <map>
+#include <string>
+#include <sstream>
+#include <iostream>
+#include <algorithm>
+#include <functional>
+#include <numeric>
+#include <cstdlib>
+#include <cmath>
+#include <cstdio>
+#include <fstream>
+#include <ctime>
+
+#define DEBUG(x) ::cout << #x << ": " << x << "\n"
+using namespace std; // }}}
+
+const string BAD = "impossible";
+const string S = "<^>v";
+int dx[] = {-1, 0, 1, 0};
+int dy[] = {0, -1, 0, 1};
+
+void rotate(vector<string>& v)
+{
+    for (int i = 0; i < v.size(); ++i) {
+        for (int j = 0; j < v[i].size(); ++j) {
+            char& c = v[i][j];
+            int idx = S.find(c);
+            if (idx != -1)
+                c = S[(idx + 1) % 4];
+        }
+    }
+}
+
+inline bool valid(int z, int dz)
+{
+    return 0 <= z && z < dz;
+}
+
+vector<string> evaluate(const vector<string>& v)
+{
+    int m = v.size();
+    int n = v[0].size();
+    vector<string> res(v);
+    for (int i = 0; i < res.size(); ++i) {
+        for (int j = 0; j < res[i].size(); ++j) {
+            if (S.find(res[i][j]) != -1)
+                res[i][j] = '#';
+        }
+    }
+    for (int i = 0; i < v.size(); ++i) {
+        for (int j = 0; j < v[i].size(); ++j) {
+            int idx = S.find(v[i][j]);
+            if (idx != -1) {
+                int ny = i + dy[idx];
+                int nx = j + dx[idx];
+                while (valid(ny, m) && valid(nx, n) && res[ny][nx] == '.') {
+                    res[ny][nx] = '#';
+                    ny+= dy[idx];
+                    nx+= dx[idx];
+                }
+            }
+        }
+    }
+    return res;
+}
+
+struct C
+{
+    int x, y, z;
+    C(int yy, int xx, int zz) : x(xx), y(yy), z(zz) {}
+};
+
+void print(const vector<string>& v)
+{
+    for (int i = 0; i < v.size(); ++i) {
+        cout << v[i] << endl;
+    }
+    cout << endl;
+}
+
+string result(vector<string>& v)
+{
+    int m = v.size();
+    int n = v[0].size();
+
+    int x0, y0, x1, y1;
+    for (int i = 0; i < v.size(); ++i) {
+        for (int j = 0; j < v[i].size(); ++j) {
+            char& c = v[i][j];
+            if (c == 'S') {
+                y0 = i;
+                x0 = j;
+                c = '.';
+            }
+            if (c == 'G') {
+                y1 = i;
+                x1 = j;
+                c = '.';
+            }
+        }
+    }
+
+    vector<vector<string> > V;
+    for (int i = 0; i < 4; ++i) {
+        V.push_back(evaluate(v));
+        rotate(v);
+    }
+    /*for (int i = 0; i < V.size(); ++i) {
+        print(V[i]);
+    }*/
+
+    int used[100][100][4] = {0};
+    vector<C> cur;
+    used[y0][x0][0] = 1;
+    for (int i = 0; i < 4; ++i) {
+        int ny = y0 + dy[i];
+        int nx = x0 + dx[i];
+        if (valid(ny, m) && valid(nx, n) && V[1][ny][nx] == '.') {
+            used[ny][nx][1] = 1;
+            cur.push_back(C(ny, nx, 1));
+        }
+    }
+
+    int tm = 1;
+    while (!cur.empty()) {
+        vector<C> next;
+        for (int i = 0; i < cur.size(); ++i) {
+            int y = cur[i].y;
+            int x = cur[i].x;
+            int z = cur[i].z;
+            //cout << y << " " << x << " " << z << " " << tm << endl;
+            if (y == y1 && x == x1 && V[z][y][x] == '.') {
+                stringstream ss0;
+                ss0 << tm;
+                return ss0.str();
+            }
+            int nz = (z + 1) % 4;
+            for (int j = 0; j < 4; ++j) {
+                int ny = y + dy[j];
+                int nx = x + dx[j];
+                //cout << ny << " " << nx << " " << nz << endl;
+                if (valid(ny, m) && valid(nx, n) && !used[ny][nx][nz] && V[nz][ny][nx] == '.') {
+                    used[ny][nx][nz] = 1;
+                    next.push_back(C(ny, nx, nz));
+                }
+            }
+        }
+        cur.swap(next);
+        ++tm;
+    }
+    return BAD;
+}
+
+int main()
+{
+    ifstream cin("input.txt");
+    ofstream cout("output.txt");
+    //cout.precision(6);
+    //cout.setf(ios::fixed,ios::floatfield);
+
+    int T;
+    cin >> T;
+    for (int i = 1; i <= T; ++i) {
+        //DEBUG(i);
+        int M, N;
+        cin >> M >> N;
+        vector<string> v;
+        for (int j = 0; j < M; ++j) {
+            string s;
+            cin >> s;
+            v.push_back(s);
+        }
+        cout << "Case #" << i << ": " << result(v) << endl;
+    }
+
+    return 0;
+}

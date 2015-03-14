@@ -1,0 +1,134 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+using System.Diagnostics;
+
+namespace CookTheBook
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Usage: Facebook-CookTheBook.exe <input file> <output file>");
+            if (args.Length != 2)
+            {
+                return;
+            }
+
+            System.Diagnostics.Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            CookTheBook(args[0], args[1]);
+            stopwatch.Stop();
+
+            Console.WriteLine("Execution took {0}", stopwatch.Elapsed.ToString());
+            Console.WriteLine("This is a console app.  Hit enter to exit");
+            Console.Read();
+        }
+
+        private static void CookTheBook(string inputFile, string outputFile)
+        {
+            if (File.Exists(inputFile))
+            {
+                using (StreamReader stream = File.OpenText(inputFile))
+                {
+                    using (StreamWriter outputStream = File.CreateText(outputFile))
+                    {
+                        string pszTests = stream.ReadLine();
+                        int cTests = Int32.Parse(pszTests);
+                        if ((cTests < 1) || (cTests > 20))
+                        {
+                            throw new Exception();
+                        }
+
+                        for (int i = 0; i < cTests; ++i)
+                        {
+                            String result = ProcessSingleTest(stream.ReadLine());
+                            Console.WriteLine("Case #{0}: {1}", (i + 1).ToString(), result);
+                            outputStream.WriteLine("Case #{0}: {1}", (i + 1).ToString(), result);
+                        }
+                    }
+                }
+            }
+        }
+
+        private static UInt64[] ArrayFromInt(UInt64 input)
+        {
+            UInt64[] digits = new UInt64[9];
+            for (int i = 0; i < digits.Count(); ++i)
+            {
+                digits[i] = input % 10UL;
+                input /= 10;
+            }
+            return digits;
+        }
+
+        private static UInt64 IntFromArray(UInt64[] input)
+        {
+            UInt64 result = 0;
+            for (int i = 0; i < input.Count(); ++i)
+            {
+                UInt64 temp = input[i] * (UInt64)(Math.Pow(10, i));
+                result += temp;
+            }
+            return result;
+        }
+
+        private static int FindLargestNonZero(UInt64[] input)
+        {
+            int largetNonZero = 0;
+            for (int i = 0; i < input.Count(); ++i)
+            {
+                if (input[i] != 0)
+                {
+                    largetNonZero = i;
+                }
+            }
+            return largetNonZero;
+        }
+
+        private static String ProcessSingleTest(string p)
+        {
+            UInt64 input = UInt64.Parse(p);
+            UInt64[] digits = ArrayFromInt(input);
+
+            List<UInt64> allCombos = new List<UInt64>();
+            int largestNonZero = FindLargestNonZero(digits);
+            for (int iSource = 0; iSource <= largestNonZero; ++iSource)
+            {
+                for (int iDest = 0; iDest <= largestNonZero; ++iDest)
+                {
+                    if ((iSource == largestNonZero && digits[iDest] == 0) ||
+                        (iDest == largestNonZero && digits[iSource] == 0))
+                    {
+                        // If we're gonna be swapping a zero to the largest digit then abort the swap.
+                        continue;
+                    }
+
+                    UInt64[] digitsCopy = new UInt64[9];
+                    digits.CopyTo(digitsCopy, 0);
+
+                    UInt64 swap = digitsCopy[iSource];
+                    digitsCopy[iSource] = digitsCopy[iDest];
+                    digitsCopy[iDest] = swap;
+
+                    UInt64 result = IntFromArray(digitsCopy);
+                    if (!allCombos.Contains(result))
+                    {
+                        allCombos.Add(result);
+                    }
+                }
+            }
+
+            if (allCombos.Count() == 0) // No valid swaps.  Take input as-is.
+            {
+                allCombos.Add(input);
+            }
+
+            allCombos.Sort();
+
+            return allCombos[0] + " " + allCombos[allCombos.Count - 1];
+        }
+    }
+}

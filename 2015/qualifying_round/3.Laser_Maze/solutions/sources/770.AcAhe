@@ -1,0 +1,204 @@
+#include <stdio.h>
+#include <queue>
+using namespace std;
+const int INF = 99999999;
+struct Point
+{
+    int x,y;
+    int s;
+};
+
+Point s,g;
+char omap[200][200];
+int n,m;
+char dirMap[4][200][200];
+int smap[4][200][200];
+/**
+0 up ^
+1 right >
+2 down v
+3 left <
+*/
+bool pass(int t,int x,int y){
+    if(t==-1){
+        if(omap[x][y]=='.'||omap[x][y]=='S'||omap[x][y]=='G')
+            return true;
+        return false;
+    }
+    if(dirMap[t][x][y]=='.'||dirMap[t][x][y]=='S'||dirMap[t][x][y]=='G')
+        return true;
+    return false;
+}
+void fWall(char pos,int t,int x,int y) //
+{
+
+    if(pos==0)
+    {
+        for(int i=x-1; i>0; i--)
+            if(pass(-1,i,y))
+            {
+                dirMap[t][i][y]='#';
+            }
+            else
+                break;
+    }
+    else if(pos==1)
+    {
+        for(int i=y+1; i<=m; i++)
+            if(pass(-1,x,i))
+                dirMap[t][x][i]='#';
+            else
+                break;
+    }
+    else if(pos==2)
+    {
+        for(int i=x+1; i<=n; i++)
+            if(pass(-1,i,y))
+                dirMap[t][i][y]='#';
+            else
+                break;
+    }
+    else if(pos==3)
+    {
+        for(int i=y-1; i>0; i--)
+            if(pass(-1,x,i))
+                dirMap[t][x][i]='#';
+            else
+                break;
+    }
+}
+int getNum(char s)
+{
+    if(s=='^') return 0;
+    if(s=='>') return 1;
+    if(s=='v') return 2;
+    if(s=='<') return 3;
+    return -1;
+}
+void initMap()
+{
+
+    for(int i=0; i<=n+1; i++)
+        for(int j=0; j<=m+1; j++)
+            for(int k=0; k<4; k++)
+                smap[k][i][j]=INF;
+    s.x=s.y=0;
+    g.x=g.y=0;
+    for(int i=0; i<=n+1; i++)
+    {
+        omap[i][0]='#';
+        omap[i][m+1]='#';
+    }
+    for(int j=0; j<=m+1; j++)
+    {
+        omap[0][j]='#';
+        omap[n+1][j]='#';
+    }
+    for(int z=0; z<4; z++)
+        for(int i=0; i<=n+1; i++)
+            for(int j=0; j<=m+1; j++)
+                dirMap[z][i][j]=omap[i][j];
+
+    for(int i=1; i<=n; i++)
+        for(int j=1; j<=m; j++)
+        {
+            if(getNum(omap[i][j])!=-1)
+                for(int k=0; k<4; k++)
+                {
+                    fWall((getNum(omap[i][j])+k)%4,k,i,j);
+                }
+            if(omap[i][j]=='S')
+            {
+                s.x=i,s.y=j,s.s=0;;
+            }
+            if(omap[i][j]=='G')
+            {
+                g.x=i,g.y=j;
+            }
+        }
+}
+void def(int t,Point xy)
+{
+    smap[t][xy.x][xy.y]=xy.s;
+}
+void printInfo()
+{
+
+    /*printf("xcor:%d,%d ycor:%d,%d\n\n",s.x,s.y,g.x,g.y);
+
+    printf("omap\n");
+    for(int i=0; i<=n+1; i++)
+    {
+        for(int j=0; j<=m+1; j++)
+            printf("%c",omap[i][j]);
+        printf("\n");
+    }
+    */
+    printf("\n\n");
+    for(int k=0; k<4; k++)
+    {
+        printf("time:%d\n",k);
+        for(int i=0; i<=n+1; i++)
+        {
+            for(int j=0; j<=m+1; j++)
+                printf("%c(%d)",dirMap[k][i][j],smap[k][i][j]);
+            printf("\n");
+        }
+    }
+}
+
+int X[4]= {-1,0,1,0},Y[4]= {0,1,0,-1};
+int main()
+{
+    freopen("laser_maze.txt","r",stdin);
+    freopen("laser_maze_output.txt","w",stdout);
+    int T,ans;
+    scanf("%d",&T);
+    queue<Point>Q;
+    for(int sc=1; sc<=T; sc++)
+    {
+        scanf("%d%d",&n,&m);
+        for(int i=1; i<=n; i++)
+            scanf("%s",omap[i]+1);
+        initMap();
+        //printInfo();
+        while(!Q.empty())
+            Q.pop();
+        Q.push(s);
+        def(0,s);
+        bool flag=false;
+        while(!Q.empty())
+        {
+
+            Point tt=Q.front();
+            int time=(tt.s+1)%4;
+            int tts=tt.s+1;
+            Q.pop();
+            //printf("(%d,%d,%d,%d)\n",time,tt.x,tt.y,tts-1);
+            //printInfo();
+            if(tt.x==g.x&&tt.y==g.y)
+            {
+                flag=true;
+                ans=tts-1;
+                break;
+            }
+            for(int i=0; i<4; i++)
+            {
+                int tx,ty;
+                tx=X[i]+tt.x;
+                ty=Y[i]+tt.y;
+                if(pass(time,tx,ty)==true&&smap[time][tx][ty]>tts)
+                {
+                    Point jp;
+                    jp.x=tx,jp.y=ty,jp.s=tts;
+                    def(time,jp);
+                    Q.push(jp);
+                }
+            }
+        }
+        if(flag)
+            printf("Case #%d: %d\n",sc,ans);
+        else
+            printf("Case #%d: impossible\n",sc);
+    }
+}

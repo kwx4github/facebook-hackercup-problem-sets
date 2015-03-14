@@ -1,0 +1,153 @@
+#include <cstdio>
+#include <fstream>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+
+int N, M;
+int values[105][105];
+bool blocked[105][105][4];
+int small[105][105][4];
+pair<pair<int, int>, int> list[44100];
+void block(int i, int j, int dir, int modulo){
+    blocked[i][j][modulo] = true;
+    if(dir == 1){
+        for(--i;i > 0;i--){
+            if(values[i][j]) return;
+            blocked[i][j][modulo] = true;
+        }
+    }
+    if(dir == 3){
+        for(++i;i <= M;i++){
+            if(values[i][j]) return;
+            blocked[i][j][modulo] = true;
+        }
+    }
+    if(dir == 2){
+        for(--j;j > 0;j--){
+            if(values[i][j]) return;
+            blocked[i][j][modulo] = true;
+        }
+    }
+    if(dir == 4){
+        for(++j;j <= M;j++){
+            if(values[i][j]) return;
+            blocked[i][j][modulo] = true;
+        }
+    }
+}
+
+int main(){
+    unsigned short int T;
+    ifstream fin("input.file");
+    fin >> T;
+    ofstream fout("output.file");
+    for(int a = 1; a <= T; a++){
+        memset(values, -1, sizeof values);
+        memset(blocked, 0, sizeof blocked);
+        int start[2], finish[2];
+        fin >> M >> N;
+        for(int b = 1; b <= M; b++) {
+            for(int c = 1; c <= N; c++){
+                char d;
+                fin >> d;
+                if(d == '.') values[b][c] = 0;
+                if(d == '^') values[b][c] = 1;
+                if(d == '<') values[b][c] = 2;
+                if(d == 'v') values[b][c] = 3;
+                if(d == '>') values[b][c] = 4;
+                if(d == 'S'){
+                    start[0] = b;
+                    start[1] = c;
+                    values[b][c] = 0;
+                }
+                if(d == 'G') {
+			finish[0] = b;
+			finish[1] = c;
+			values[b][c] = 0;
+                }
+            }
+        }
+        for(int i = 0;i <= M+1;i++)
+            for(int j = 0;j <= N+1;j++){
+                if(values[i][j] == -1) blocked[i][j][0] = blocked[i][j][1] = blocked[i][j][2] = blocked[i][j][3] = true;
+                if(values[i][j] == 1){
+                    block(i, j, 1, 0);
+                    block(i, j, 2, 3);
+                    block(i, j, 3, 2);
+                    block(i, j, 4, 1);
+                }
+                if(values[i][j] == 2){
+                    block(i, j, 1, 1);
+                    block(i, j, 2, 0);
+                    block(i, j, 3, 3);
+                    block(i, j, 4, 2);
+                }
+                if(values[i][j] == 3){
+                    block(i, j, 1, 2);
+                    block(i, j, 2, 1);
+                    block(i, j, 3, 0);
+                    block(i, j, 4, 3);
+                }
+                if(values[i][j] == 4){
+                    block(i, j, 1, 3);
+                    block(i, j, 2, 2);
+                    block(i, j, 3, 1);
+                    block(i, j, 4, 0);
+                }
+            }
+        int beg = 0;
+        int end = 1;
+        for(int i = 1;i <= M;i++)
+        for(int j = 1;j <= N;j++)
+            small[i][j][0] = small[i][j][1] = small[i][j][2] = small[i][j][3] = 999999999;
+        list[beg].second = 0;
+        list[beg].first.first = start[0];
+        list[beg].first.second = start[1];
+        small[start[0]][start[1]][0] = 0;
+        while(beg < end){
+            int M = list[beg].second;
+            int i = list[beg].first.first;
+            int j = list[beg].first.second;
+            int steps = small[i][j][M];
+            beg++;
+            int offset = (M+1)%4;
+            if(!blocked[i][j+1][offset] && small[i][j+1][offset] > steps+1) {
+                list[end].second = offset;
+                list[end].first.first = i;
+                list[end].first.second = j+1;
+                small[i][j+1][offset] = steps+1;
+                end++;
+            }
+            if(!blocked[i][j-1][offset] && small[i][j-1][offset] > steps+1) {
+                list[end].second = offset;
+                list[end].first.first = i;
+                list[end].first.second = j-1;
+                small[i][j-1][offset] = steps+1;
+                end++;
+            }
+            if(!blocked[i+1][j][offset] && small[i+1][j][offset] > steps+1) {
+                list[end].second = offset;
+                list[end].first.second = j;
+                list[end].first.first = i+1;
+                small[i+1][j][offset] = steps+1;
+                end++;
+            }
+            if(!blocked[i-1][j][offset] && small[i-1][j][offset] > steps+1){
+                list[end].second = offset;
+                list[end].first.second = j;
+                list[end].first.first = i-1;
+                small[i-1][j][offset] = steps+1;
+                end++;
+            }
+        }
+        int least = 999999999;
+        for(int b = 0; b < 4; b++)
+            least = min(least, small[finish[0]][finish[1]][b]);
+        fout << "Case #" << a << ": ";
+        if(least < 999999999)
+            fout << least << "\n";
+        else fout << "impossible\n";
+    }
+    return 0;
+}

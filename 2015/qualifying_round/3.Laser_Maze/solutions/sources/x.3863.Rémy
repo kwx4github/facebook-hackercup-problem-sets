@@ -1,0 +1,173 @@
+#not /usr/bin/python
+import sys
+def landmarks(m,h,w):
+	turrets_up = []
+	turrets_down = []
+	turrets_right = []
+	turrets_left = []
+	walls = []
+	starting_point = None
+	goal = None
+	
+	for i in range(h):
+		for j in range(w):
+			p = m[i][j]
+			if(p=='#'):
+				walls.append((i,j))
+			elif(p=='^'):
+				turrets_up.append((i,j))
+			elif(p=='>'):
+				turrets_right.append((i,j))
+			elif(p=='<'):
+				turrets_left.append((i,j))
+			elif(p=='v'):
+				turrets_down.append((i,j))
+			elif(p=='S'):
+				starting_point = (i,j)
+			elif(p=='G'):
+				goal = (i,j)
+	
+	wall = [[True for j in range(w)] for i in range(h)]
+	
+	for (i,j) in walls:
+		wall[i][j]=False
+	
+	
+	first_step = [[wall[i][j] for j in range(w)] for i in range(h)]
+	secon_step = [[wall[i][j] for j in range(w)] for i in range(h)]
+	third_step = [[wall[i][j] for j in range(w)] for i in range(h)]
+	fourt_step = [[wall[i][j] for j in range(w)] for i in range(h)]
+	
+	#FIRST TURRET
+	for (i,j) in turrets_up:
+		for k in range(i,-1,-1):
+			if(not wall[k][j]):
+				break
+			fourt_step[k][j]=False
+		for k in range(j,w):
+			if(not wall[i][k]):
+				break
+			first_step[i][k]=False
+		for k in range(i,h):
+			if(not wall[k][j]):
+				break
+			secon_step[k][j]=False
+		for k in range(j,-1,-1):
+			if(not wall[i][k]):
+				break
+			third_step[i][k]=False
+	
+	#SECOND TURRET (RIGHT)
+	for (i,j) in turrets_right:
+		for k in range(i,-1,-1):
+			if(not wall[k][j]):
+				break
+			third_step[k][j]=False
+		for k in range(j,w):
+			if(not wall[i][k]):
+				break
+			fourt_step[i][k]=False
+		for k in range(i,h):
+			if(not wall[k][j]):
+				break
+			first_step[k][j]=False
+		for k in range(j,-1,-1):
+			if(not wall[i][k]):
+				break
+			secon_step[i][k]=False
+	
+	#THIRD TURRET (DOWN)
+	for (i,j) in turrets_right:
+		for k in range(i,-1,-1):
+			if(not wall[k][j]):
+				break
+			secon_step[k][j]=False
+		for k in range(j,w):
+			if(not wall[i][k]):
+				break
+			third_step[i][k]=False
+		for k in range(i,h):
+			if(not wall[k][j]):
+				break
+			fourt_step[k][j]=False
+		for k in range(j,-1,-1):
+			if(not wall[i][k]):
+				break
+			first_step[i][k]=False
+	
+	for (i,j) in turrets_left:
+		for k in range(i,-1,-1):
+			if(not wall[k][j]):
+				break
+			first_step[k][j]=False
+		for k in range(j,w):
+			if(not wall[i][k]):
+				break
+			secon_step[i][k]=False
+		for k in range(i,h):
+			if(not wall[k][j]):
+				break
+			third_step[k][j]=False
+		for k in range(j,-1,-1):
+			if(not wall[i][k]):
+				break
+			fourt_step[i][k]=False
+			
+	return starting_point,goal,first_step,secon_step,third_step,fourt_step
+
+def play(h,w,starting_point,goal,first_step,secon_step,third_step,fourt_step):
+	q = []
+	d = {}
+	(si,sj) = starting_point
+	(gi,gj) = goal
+	q.append((si-1,sj,1))
+	q.append((si+1,sj,1))
+	q.append((si,sj-1,1))
+	q.append((si,sj+1,1))
+	
+	#print (si,sj)
+	while(len(q)>0):
+		(i,j,s) = q[0]
+		#print (i,j,s)
+		sm = s%4
+		if(i>=0 and j>=0 and i<h and j<w and not ((i,j,sm) in d)):
+			d[(i,j,sm)]=1
+			ok = True
+			if(sm==1):
+				ok = first_step[i][j]
+			elif(sm==2):
+				ok = secon_step[i][j]
+			elif(sm==3):
+				ok = third_step[i][j]
+			elif(sm==0):
+				ok = fourt_step[i][j]
+			if(ok):
+				if(i==gi and j==gj):
+					return s
+				else:
+					q.append((i-1,j,s+1))
+					q.append((i+1,j,s+1))
+					q.append((i,j-1,s+1))
+					q.append((i,j+1,s+1))
+		q = q[1:]
+	
+	return -1
+			
+if __name__ == "__main__":
+	F = open(sys.argv[1])
+	L = F.readlines()
+	ncases = int(L[0].rstrip('\n'))
+	F.close()
+	L = L[1:]
+	for case in range(ncases):
+		l = L[0].rstrip('\n').split()
+		h = int(l[0])
+		w = int(l[1])
+		m = [[list(L[i+1].rstrip('\n'))[j] for j in range(w)] for i in range(h)]
+		(starting_point,goal,first_step,secon_step,third_step,fourt_step) = landmarks(m,h,w)
+		r = play(h,w,starting_point,goal,first_step,secon_step,third_step,fourt_step)
+		if(r==-1):
+			print "Case %d: impossible"%(case+1)
+		else:
+			print "Case %d: %d"%(case+1,r)
+		L = L[h+1:]

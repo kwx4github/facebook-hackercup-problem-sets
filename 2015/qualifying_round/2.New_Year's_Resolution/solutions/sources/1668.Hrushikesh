@@ -1,0 +1,45 @@
+import Control.Applicative
+import Control.Monad
+import qualified Data.Foldable as F
+import Data.List
+
+
+type State = (Int, Int, Int)
+stateSum (a, b, c) (d, e, f) = (a + d, b + e, c + f)
+
+data Tree a = Node a [Tree a]
+
+instance F.Foldable Tree where
+  foldr f init (Node root subtrees) =
+    f root $ foldr (\t1 b -> F.foldr f b t1) init subtrees
+
+isPossible :: State -> [State] -> Bool
+isPossible target foods = F.any (== target) (buildTree foods)
+  where
+    buildTree = work (0, 0, 0)
+    work :: State -> [State] -> Tree State
+    work root remaining = Node root subtrees
+      where
+        subtrees :: [Tree State]
+        subtrees = map (\(x:xs) -> work (stateSum root x) xs) $ filter (not . null) (tails remaining)
+
+toState (x : (y : (z : []))) = (x, y, z)
+toState _ = undefined
+
+readState = fmap (toState . map read . words) getLine
+
+solveCase test = do
+  putStr $ "Case #" ++ show test ++ ": "
+  target <- readState
+  numFoods <- read <$> getLine
+  foodTargets <- replicateM numFoods readState
+  putStrLn $ case (isPossible target foodTargets) of
+    True -> "yes"
+    False -> "no"
+  return ()
+  
+main = do
+  numTests <- fmap read getLine
+  forM_ [1..numTests] $ \test -> do
+    solveCase test
+    

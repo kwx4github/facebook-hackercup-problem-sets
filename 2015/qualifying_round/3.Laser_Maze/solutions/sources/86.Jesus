@@ -1,0 +1,164 @@
+#include <iostream>
+#include <cstdio>
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <cctype>
+#include <stack>
+#include <bitset>
+#include <queue>
+#include <list>
+#include <vector>
+#include <map>
+#include <set>
+#include <iterator>
+#include <sstream>
+#include <stdlib.h>
+#include <cmath>
+#define FOR(i,A) for(typeof (A).begin() i = (A).begin() ; i != (A).end() ; i++)
+#define f(i,a,b) for(int i = a ; i < b ; i++)
+#define fd(i,a,b) for(int i = a ; i >= b ; i--)
+#define debug( x ) cout << #x << " = " << x << endl
+#define clr(v,x) memset( v, x , sizeof v )
+#define all(x) (x).begin() , (x).end()
+#define mp make_pair
+#define pb push_back
+#define rall(x) (x).rbegin() , (x).rend()
+#define PI acos( -1.0 )
+#define EPS 1E-9
+#define MOD 1000000007
+#define INF 2000000000
+using namespace std;
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef pair<int,int> ii;
+typedef vector<ii> vii;
+
+using namespace std;
+
+vector<vector<char> > grid;vector<vector<char> > direc;
+vii posicionlasers;
+
+const int UNO = 1;
+const int DOS = 2;
+const int TRES = 4;
+const int CUATRO = 8;
+
+void rellenar(int M, int N){
+    f(d,0,posicionlasers.size()){
+        int x = posicionlasers[d].first;
+        int y = posicionlasers[d].second;
+        int num = UNO;
+        char torre = grid[x][y];
+        if(torre == '<') num = DOS;
+        if(torre == '>') num = CUATRO;
+        if(torre == 'v') num = TRES;
+
+        for(int i = x-1; i >= 0; i--){
+            char e = grid[i][y];
+            if(e == '#' || e == '<' || e == '>' || e == '^' || e == 'v') break;
+            direc[i][y] |= num;
+        }
+
+        num = (num << 1) % 15;
+        for(int j = y+1; j < N;j++){
+            char e = grid[x][j];
+            if(e == '#' || e == '<' || e == '>' || e == '^' || e == 'v') break;
+            direc[x][j] |= num;
+        }
+
+        num = (num << 1) % 15;
+        for(int i = x+1; i < M; i++){
+            char e = grid[i][y];
+            if(e == '#' || e == '<' || e == '>' || e == '^' || e == 'v') break;
+            direc[i][y] |= num;
+        }
+
+        num = (num << 1) % 15;
+        for(int j = y-1; j >= 0;j--){
+            char e = grid[x][j];
+            if(e == '#' || e == '<' || e == '>' || e == '^' || e == 'v') break;
+            direc[x][j] |= num;
+        }
+
+    }
+
+}
+
+int dx[] = {0,0,1,-1};
+int dy[] = {1,-1,0,0};
+
+int bfs(ii inicio, int M, int N, ii fin){
+    vector<vector<vector<bool> > >visitado(M,vector<vector<bool> > (N,vector<bool> (4,false)));
+    vector<vector<vector<int> > >distancia(M,vector<vector<int> > (N,vector<int> (4,INF)));
+
+    queue< pair<ii, int> > Q;
+    Q.push(mp(inicio,0));
+    distancia[inicio.first][inicio.second][0] = 0;
+    while(!Q.empty()){
+        ii punto = Q.front().first;
+        int turn = Q.front().second;
+        Q.pop();
+        int siguiente = (1 << ((turn+1)%4));
+        for(int i = 0; i < 4; i++){
+            int nx = punto.first + dx[i];
+            int ny = punto.second + dy[i];
+            if(nx >= 0 && ny >= 0 && nx < M && ny < N && (grid[nx][ny] == '.' || grid[nx][ny] == 'S' || grid[nx][ny] == 'G')){
+                if(direc[nx][ny] & siguiente){
+                    continue;
+                }else{
+                    if(distancia[punto.first][punto.second][turn]+1 < distancia[nx][ny][(turn+1)%4]){
+                        distancia[nx][ny][(turn+1)%4] = distancia[punto.first][punto.second][turn]+1;
+                        Q.push(mp(mp(nx,ny),(turn+1)%4));
+                    }
+                }
+            }
+        }
+
+    }
+
+    int res = INF;
+    f(i,0,4){
+        res = min(res, distancia[fin.first][fin.second][i]);
+    }
+    return res;
+}
+
+int main(){
+    int T; cin >> T;
+    f(t,0,T){
+        int M, N; cin >> M >> N;
+        grid.resize(M);
+        direc.resize(M);
+        ii inicio;
+        ii fin;
+        f(i,0,M){
+            f(j,0,N){
+                char e; cin >> e;
+                grid[i].pb(e);
+                direc[i].pb(0);
+                if(e == 'S'){
+                    inicio = mp(i,j);
+                }
+                if(e == 'G'){
+                    fin = mp(i,j);
+                }
+                if(e == '<' || e == '>' || e == '^' || e == 'v'){
+                    posicionlasers.pb(mp(i,j));
+                }
+            }
+        }
+        rellenar(M,N);
+        int res = bfs(inicio,M,N,fin);
+        cout<<"Case #"<< t+1<<": ";
+        if(res == INF) cout<<"impossible"<<endl;
+        else cout<<res<<endl;
+
+
+        posicionlasers.clear();
+        grid.clear();
+        direc.clear();
+    }
+    return 0;
+}

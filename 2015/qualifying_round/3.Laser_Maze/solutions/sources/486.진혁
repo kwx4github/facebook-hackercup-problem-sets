@@ -1,0 +1,164 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+#include <string>
+
+using namespace std;
+
+#define MP make_pair
+#define REP(v, repeat) for(int v=0; v<(repeat); ++v)
+#define REPD(v, repeat) for(int v=(repeat)-1; v>=0; --v)
+#define FOR(v, pos, end) for(int v=(pos); v<=(end); ++v)
+#define FORD(v, pos, end) for(int v=(pos); v>=(end); --v)
+
+typedef vector<int> VI;
+typedef vector<VI> VVI;
+typedef vector<string> VS;
+typedef pair<int, int> PI;
+
+const int dx[] = { 1, 0, -1, 0 };
+const int dy[] = { 0, 1, 0, -1 };
+const int INF = 2000000000;
+int t, w, h, sx, sy, ex, ey;
+VS initable, table[4];
+
+class ITEM
+{
+public:
+	int x, y, state, cost;
+
+	ITEM() {}
+	ITEM(const int & _x, const int & _y, const int _cost, const int _state) : x(_x), y(_y), state(_state), cost(_cost) {}
+};
+
+void findSG()
+{
+	REP(i, h) REP(j, w)
+	{
+		if (initable[i][j] == 'S')
+		{
+			sx = j, sy = i;
+			initable[i][j] = '.';
+		}
+		else if (initable[i][j] == 'G')
+		{
+			ex = j, ey = i;
+			initable[i][j] = '.';
+		}
+	}
+}
+
+inline char nextLaser(const char & ch)
+{
+	if (ch == '^') return '>';
+	if (ch == '>') return 'v';
+	if (ch == 'v') return '<';
+	if (ch == '<') return '^';
+	return '?';
+}
+
+inline int getDirection(const char & ch)
+{
+	if (ch == '^') return 3;
+	if (ch == '>') return 0;
+	if (ch == 'v') return 1;
+	if (ch == '<') return 2;
+	return -1;
+}
+
+void constructMap()
+{
+	REP(n, 4) REP(j, h) table[n][j] = initable[j];
+	REP(n, 4)
+	{
+		REP(i, h) REP(j, w)
+		{
+			if (initable[i][j] == '#' || initable[i][j] == '.') continue;
+
+			initable[i][j] = table[n][i][j] = nextLaser(initable[i][j]);
+			int d = getDirection(initable[i][j]);
+			int x = j, y = i;
+			while (1)
+			{
+				x += dx[d]; y += dy[d];
+				if (!(0 <= x&&x < w && 0 <= y&&y < h)) break; // range validate
+				if (table[n][y][x] == '.' || table[n][y][x] == 'L') table[n][y][x] = 'L';
+				else break;
+			}
+		}
+	}
+}
+
+int BFS()
+{
+	vector <VVI> dist(4, VVI(h, VI(w, INF)));
+	queue <ITEM> q;
+	REP(n, 4) dist[n][sy][sx] = 0;
+	q.push(ITEM(sx, sy, 0, -1));
+	
+	while (q.size())
+	{
+		const int x = q.front().x;
+		const int y = q.front().y;
+		const int cost = q.front().cost;
+		const int nextState = (q.front().state + 1) % 4;
+		q.pop();
+
+		REP(d, 4)
+		{
+			int X = x + dx[d], Y = y + dy[d]; // next position
+
+			if (!(0 <= X&&X < w && 0 <= Y&&Y < h)) continue; // range validate
+			if (table[nextState][Y][X] != '.') continue;
+
+			int & target = dist[nextState][Y][X];
+
+			if (target == INF)
+			{
+				target = cost + 1;
+				q.push(ITEM(X, Y, cost + 1, nextState));
+			}
+			else if ((target - (cost + 1)) % 4 == 0) continue;
+			else if(X != ex || Y != ey) q.push(ITEM(X, Y, cost + 1, nextState));
+		}
+	}
+
+	int ret = INF;
+	REP(n, 4) ret = min(ret, dist[n][ey][ex]);
+	return ret;
+}
+
+int main()
+{
+#ifdef _CONSOLE
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w+", stdout);
+#endif
+
+	scanf("%d", &t);
+	FOR(tc, 1, t)
+	{
+		scanf("%d%d", &h, &w);
+		initable = VS(h);
+		REP(i, 4) table[i] = VS(h);
+		REP(i, h) cin >> initable[i];
+		findSG();
+		constructMap();
+
+		/*REP(i, h) cout << initable[i] << endl;
+		puts("");
+		REP(n, 4)
+		{
+			REP(i, h) cout << table[n][i] << endl;
+			puts("");
+		}*/
+
+		int ret = BFS();
+		printf("Case #%d: ", tc);
+		if (ret == INF) printf("impossible\n");
+		else printf("%d\n", ret);
+	}
+
+	return 0;
+}

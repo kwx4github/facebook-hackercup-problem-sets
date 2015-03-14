@@ -1,0 +1,229 @@
+﻿using System;
+using System.IO;
+
+public class HC2015_r0_03
+{
+    static bool debugging = false;
+
+    public static bool TreasureFound(char[,] map, int x, int y, int steps, ref int bestSteps,
+        int lastXIncr, int lastYIncr)
+    {
+        bool laserHit = false;
+
+        if (steps > bestSteps)
+            return false;  // If we have a better solution, let's crop
+
+        int width = map.GetLength(0);
+        int height = map.GetLength(1);
+
+        if (debugging)
+        {
+            for (int row = 0; row < height; row++)
+            {
+                for (int col = 0; col < width; col++)
+                    if ((x==col) && (y==row))
+                        Console.Write("o");
+                    else
+                        Console.Write(map[col, row]);
+                Console.WriteLine();
+            }
+            Console.WriteLine("({0},{1}) Steps: {2}", x, y, steps);
+        }
+
+        if ((x < 0) || (y < 0) || (x > width - 1) || (y > height - 1))
+            return false;    // Out of limits
+
+        if (map[x, y] == '#')
+            return false;    // Wall hit
+
+        if ((map[x, y] == '<') || (map[x, y] == '>') || (map[x, y] == 'v')
+                || (map[x, y] == '^'))
+            return false;    // Laser turret hit
+
+        // Otherwise, let's analyze recursively
+        // First, let's create a copy of the map
+        char[,] newMap = (char[,])map.Clone();
+
+        // Now, let's find
+        // the cells which will be affected by a laser
+        for (int r = 0; r < height; r++)
+        {
+            for (int c = 0; c < width; c++)
+            {
+                if (newMap[c, r] == 'v')
+                {
+                    laserHit = canLaserHitFromLeft(newMap, c, r, x, y);
+                    if (laserHit && lastXIncr != 0)
+                    {
+                        steps = bestSteps + 1;
+                        return false;
+                    }
+                }
+                else if (newMap[c, r] == '^')
+                {
+                    laserHit = canLaserHitFromRight(newMap, c, r, x, y);
+                    if (laserHit && lastXIncr != 0)
+                    {
+                        steps = bestSteps + 1;
+                        return false;
+                    }
+                }
+                else if (newMap[c, r] == '>')
+                {
+                    laserHit = canLaserHitFromDown(newMap, c, r, x, y);
+                    if (laserHit && lastYIncr != 0)
+                    {
+                        steps = bestSteps + 1;
+                        return false;
+                    }
+                }
+                else if (newMap[c, r] == '<')
+                {
+                    laserHit = canLaserHitFromUp(newMap, c, r, x, y);
+                    if (laserHit && lastYIncr != 0)
+                    {
+                        steps = bestSteps + 1;
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if ((map[x, y] == 'G') && (! laserHit))
+        {
+            bestSteps = steps;
+            return true;     // Goal reached
+        }
+
+
+        // Otherwise, let's tag this cell as visited
+        // and try the four cells that surround it
+        if (laserHit) // Laser-reachable cells
+        {
+            newMap[x - lastXIncr, y - lastYIncr] = '.';
+            return TreasureFound(newMap, x - lastXIncr, y - lastYIncr, steps + 1, ref bestSteps,
+                -lastXIncr, -lastYIncr);
+        }
+        else
+        {
+            newMap[x, y] = '#';
+
+            return
+                TreasureFound(newMap, x + 1, y, steps + 1, ref bestSteps, 1, 0) ||
+                TreasureFound(newMap, x, y + 1, steps + 1, ref bestSteps, 0, 1) ||
+                TreasureFound(newMap, x - 1, y, steps + 1, ref bestSteps, -1, 0) ||
+                TreasureFound(newMap, x, y - 1, steps + 1, ref bestSteps, 0, -1);
+        }
+    }
+
+    public static bool canLaserHitFromRight(char[,] map, int x, int y, int xPlayer, int yPlayer)
+    {
+        int width = map.GetLength(0);
+        map[x, y] = '>';
+        if (y != yPlayer)
+            return false;
+        x++;
+        while ((x < width) && ((map[x, y] == '.') || (map[x, y] == 'S') || (map[x, y] == 'G')))
+        {
+            if ((x == xPlayer) && (y == yPlayer))
+                return true;
+            x++;
+        }
+        return false;
+    }
+
+    public static bool canLaserHitFromLeft(char[,] map, int x, int y, int xPlayer, int yPlayer)
+    {
+        map[x, y] = '<';
+        if (y != yPlayer)
+            return false;
+        x--;
+        while ((x >= 0) && ((map[x, y] == '.') || (map[x, y] == 'S') || (map[x, y] == 'G')))
+        {
+            if ((x == xPlayer) && (y == yPlayer))
+                return true;
+            x--;
+        }
+        return false;
+    }
+
+    public static bool canLaserHitFromUp(char[,] map, int x, int y, int xPlayer, int yPlayer)
+    {
+        map[x, y] = '^';
+        if (x != xPlayer)
+            return false;
+        y--;
+        while ((y >= 0) && ((map[x, y] == '.') || (map[x, y] == 'S') || (map[x, y] == 'G')))
+        {
+            if ((x == xPlayer) && (y == yPlayer))
+                return true;
+            y--;
+        }
+        return false;
+    }
+
+    public static bool canLaserHitFromDown(char[,] map, int x, int y, int xPlayer, int yPlayer)
+    {
+        int height = map.GetLength(1);
+        map[x, y] = 'v';
+        if (x != xPlayer)
+            return false;
+        y++;
+        while ((y < height) && ((map[x, y] == '.') || (map[x, y] == 'S') || (map[x, y] == 'G')))
+        {
+            if ((x == xPlayer) && (y == yPlayer))
+                return true;
+            y++;
+        }
+        return false;
+    }
+
+
+    public static void Main(string[] args)
+    {
+        if (args.Length > 0)
+            Console.SetIn(new StreamReader(args[0]));
+
+        int amountOfCases = Convert.ToInt32(Console.ReadLine());
+
+        for (int i = 1; i <= amountOfCases; i++)
+        {
+            // First line: map size
+            string[] size = Console.ReadLine().Split(' ');
+            int height = Convert.ToInt32(size[0]);
+            int width = Convert.ToInt32(size[1]);
+
+            char[,] map = new char[width, height];
+            int startX = 0, startY = 0;
+
+            for (int r = 0; r < height; r++)
+            {
+                string mapLine = Console.ReadLine();
+                for (int c = 0; c < width; c++)
+                {
+                    map[c, r] = mapLine[c];
+                    if (mapLine[c] == 'S')
+                    {
+                        startX = c;
+                        startY = r;
+                    }
+
+                }
+            }
+
+            // And let's search
+            int steps = 0;
+            int bestSteps = height * width + 1;
+            if ((TreasureFound(map, startX+1, startY, steps+1, ref bestSteps, 0, 0)) ||
+                    (TreasureFound(map, startX, startY + 1, steps + 1, ref bestSteps, 0, 0)) ||
+                    (TreasureFound(map, startX - 1, startY, steps + 1, ref bestSteps, 0, 0)) ||
+                    (TreasureFound(map, startX, startY-1, steps+1, ref bestSteps, 0, 0)))
+                Console.WriteLine("Case #{0}: {1}", i, bestSteps);
+            else
+                Console.WriteLine("Case #{0}: {1}", i, "impossible");
+
+            if (debugging)
+                Console.WriteLine();
+        }
+    }  // Next map
+}

@@ -1,0 +1,188 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <queue>
+#include <stack>
+#include <cstdio>
+using namespace std;
+#define _CRT_SECURE_NO_WARNINGS 1
+const int N = 101;
+const int INF = 1 << 24;
+const int moves[][2] = { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+int sz[20][3];
+int Hash[N][N][4];
+int n, m, flag, ans;
+int sX, sY, eX, eY;
+
+struct laser
+{
+	int x, y, dir;
+	laser(){}
+	laser(int a, int b, int c) :x(a), y(b), dir(c){}
+};
+struct st
+{
+	int x, y, dir, step;
+	st(){}
+	st(int a, int b, int c, int d) :x(a), y(b), dir(c), step(d){}
+};
+vector <vector<string> > grid;
+vector <laser> l;
+
+void swap(int &a, int &b) { int tmp = a; a = b; b = tmp; }
+
+inline int MAX(int a, int b){ return a > b ? a : b; }
+
+void changeL(int a, char &c)
+{
+	switch (a)
+	{
+	case 0:
+		c = '^';
+		break;
+	case 1:
+		c = '>';
+		break;
+	case 2:
+		c = 'v';
+		break;
+	case 3:
+		c = '<';
+		break;
+	default:
+		break;
+	}
+}
+void init()
+{
+	cout << endl;
+	for (int k = 0; k < 4; k++)
+	{
+		for (int i = 0; i < n; i++)
+		{
+			cout << grid[k][i] << endl;
+		}
+		cout << endl;
+	}
+}
+void dfs(int x, int y, int dir, int layer)
+{
+	if (x < 0 || x >= n || y < 0 || y >= m) return;
+	char c = grid[layer][x][y];
+	if (c != '#' && c != '^' && c != '>' && c != 'v' && c != '<')
+	{
+		grid[layer][x][y] = '#';
+		dfs(x + moves[dir][0], y + moves[dir][1], dir, layer);
+	}
+}
+int bfs()
+{
+	queue <st> q;
+	q.push(st(sX, sY, 1, 0));
+	Hash[sX][sY][1] = 1;
+	while (!q.empty())
+	{
+		st cur = q.front();
+		q.pop();
+		for (int i = 0; i < 4; i++)
+		{
+			int nextX = cur.x + moves[i][0];
+			int nextY = cur.y + moves[i][1];
+			if (nextX < 0 || nextX >= n || nextY < 0 || nextY >= m) continue;
+			char cGrid = grid[cur.dir][nextX][nextY];
+			if (cGrid == '#') continue;
+
+
+			if (cGrid == 'G')
+			{
+				ans = cur.step + 1;
+				return ans;
+			}
+			if ((cGrid == '.'|| cGrid == 'S') && !Hash[nextX][nextY][cur.dir])
+			{
+				Hash[nextX][nextY][cur.dir] = 1;
+				q.push(st(nextX, nextY, (cur.dir + 1) % 4, cur.step + 1));
+			}
+		}
+	}
+	return ans;
+}
+int main()
+{
+	int t;
+
+	FILE *stream;
+	freopen_s(&stream, "laser_maze.txt", "r", stdin);
+	freopen_s(&stream, "output3.txt", "w", stdout);
+
+	cin >> t;
+	for (int m_case = 0; m_case < t; m_case++)
+	{
+		l.clear();
+		grid.resize(4);
+		for (int i = 0; i < 4; i++)
+		{
+			grid[i].clear();
+		}
+		ans = -1;
+		memset(Hash, 0, sizeof(Hash));
+
+		cin >> n >> m;
+		for (int i = 0; i < n; i++) {
+			string s; cin >> s;
+			
+			for (int j = 0; j < 4; j++)
+				grid[j].push_back(s);
+		}
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < m; j++)
+			{
+				int tmp = -1;
+				if (grid[0][i][j] == 'S')
+					sX = i, sY = j;
+				if (grid[0][i][j] == 'G')
+					eX = i, eY = j;
+				if (grid[0][i][j] == '^')
+					//l.push_back(laser(i, j, 0));
+					tmp = 0;
+				if (grid[0][i][j] == '>')
+					//l.push_back(laser(i, j, 1));
+					tmp = 1;
+				if (grid[0][i][j] == 'v')
+					//l.push_back(laser(i, j, 2));
+					tmp = 2;
+				if (grid[0][i][j] == '<')
+					//l.push_back(laser(i, j, 3));
+					tmp = 3;
+				if (tmp != -1)
+				for (int k = 0; k < 4; k++)
+				{
+					changeL((tmp+k)%4, grid[k][i][j]);
+					grid[k][i][j] = '.';
+					dfs(i, j, (tmp + k) % 4, k);
+				}
+			}
+		}
+		//changeL(0, grid[0][0][0]);
+		//init();
+		ans = bfs();
+		if (ans == -1)
+			cout << "Case #" << m_case + 1 << ": " << "impossible" << endl;
+		else
+			cout << "Case #" << m_case + 1 << ": " << ans << endl;
+	}	
+	fclose(stdin);
+	fclose(stdout);
+	//getchar();
+	//getchar();
+	return 0;
+}
+
+//5
+//5 5
+//.....
+//S...G
+//..^..
+//.....
+//.....

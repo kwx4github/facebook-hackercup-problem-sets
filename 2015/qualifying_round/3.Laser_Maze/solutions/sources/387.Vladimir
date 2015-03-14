@@ -1,0 +1,130 @@
+from collections import deque
+
+
+def read_ints(file):
+    line = file.readline().strip().split()
+    result = tuple(map(int, line))
+    if len(result) == 1:
+        result = result[0]
+    return result
+
+
+def input():
+    filename = __file__.split('.')[0] + '.in'
+    with open(filename) as file:
+        tests_count = read_ints(file)
+
+        for test_index in xrange(tests_count):
+            height, width = read_ints(file)
+            rows = []
+            for row_index in xrange(height):
+                rows.append(file.readline().strip())
+
+            yield rows
+
+
+def output():
+    filename = __file__.split('.')[0] + '.out'
+    with open(filename, 'w') as file:
+        i = 0
+        while True:
+            value = yield
+            if value is None:
+                return
+
+            i += 1
+            file.write('Case #%d: %s\n' % (i, value))
+
+
+class Map(object):
+    """
+    3-d map
+    """
+    def __init__(self, rows):
+        height = len(rows)
+        width = len(rows[0])
+
+        array = [[[-1 for k in xrange(4)] for j in xrange(width)] for i in xrange(height)]
+        start = (0, 0)
+        end = (0, 0)
+
+        for i in xrange(len(rows)):
+            for j in xrange(len(rows[0])):
+                symbol = rows[i][j]
+                if symbol == '#':  # wall
+                    for k in xrange(4):
+                        array[i][j][k] = None
+                elif symbol == 'S':  # start
+                    start = (i, j)
+                    array[i][j][0] = 0
+                elif symbol == 'G':  # goal
+                    end = (i, j)
+                elif symbol in '<>v^':  # turrets
+                    for k in xrange(4):
+                        direction = [(1, 0), (0, -1), (-1, 0), (0, 1)][(k + 'v<^>'.index(symbol)) % 4]
+                        laser_i, laser_j = i, j
+
+                        array[laser_i][laser_j][k] = None
+
+                        while True:
+                            laser_i += direction[0]
+                            laser_j += direction[1]
+
+                            if laser_i < 0 or laser_j < 0 or laser_i >= height or laser_j >= width:
+                                break
+
+                            if rows[laser_i][laser_j] in '.SG':  # empty
+                                array[laser_i][laser_j][k] = None
+                                continue
+
+                            break
+
+        self.array = array
+        self.start = start
+        self.end = end
+        self.width = width
+        self.height = height
+
+    def bfs(self):
+        queue = deque([(self.start[0], self.start[1], 0)])
+        while True:
+            try:
+                current = queue.popleft()
+            except IndexError:
+                return
+
+            i, j, k = current
+            current_value = self.array[i][j][k] or 0
+
+            next_k = (k + 1) % 4
+            neighbors = [(i + 1, j, next_k), (i - 1, j, next_k), (i, j + 1, next_k), (i, j - 1, next_k)]
+
+            for i, j, k in neighbors:
+                if 0 <= i < self.height and 0 <= j < self.width:
+                    if self.array[i][j][k] == -1:  # not visited yet
+                        self.array[i][j][k] = current_value + 1
+                        queue.append((i, j, k))
+                        if (i, j) == self.end:
+                            return current_value + 1
+
+
+def solve(rows):
+    maze = Map(rows)
+
+    result = maze.bfs()
+
+    return 'impossible' if result is None else result
+
+
+def main():
+    results = output()
+    results.next()
+
+    for rows in input():
+        results.send(solve(rows))
+
+    results.close()
+
+
+if __name__ == '__main__':
+    main()

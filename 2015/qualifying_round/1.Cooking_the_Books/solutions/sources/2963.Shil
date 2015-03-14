@@ -1,0 +1,85 @@
+import groovy.text.SimpleTemplateEngine
+import groovy.text.Template
+
+Scanner scanner = new Scanner(System.in)
+int t = scanner.nextInt()
+
+getMin = { List<Integer> digits, Map<Integer,List<Integer>> sortedIndices ->
+
+  int leftSwap = 0
+  int rightSwap = -1
+  for (int key: sortedIndices.keySet()) {
+    if (key == 0) {
+      continue
+    }
+    leftSwap = digits.findIndexOf(leftSwap) { it > key }
+    if (leftSwap > - 1){
+      int lastIndex = sortedIndices[key].last()
+      if (lastIndex > leftSwap) {
+        rightSwap = lastIndex
+        break
+      }
+    } else {
+      break
+    }
+  }
+  if (rightSwap < 0 || leftSwap > 0) {
+    Integer lastZeroIndex = sortedIndices[0]?.last()
+    Integer tailNonZeroIndex = digits.findIndexOf(1) { it != 0 }
+    if (lastZeroIndex && tailNonZeroIndex > -1 && tailNonZeroIndex < lastZeroIndex) {
+      leftSwap = tailNonZeroIndex
+      rightSwap = lastZeroIndex
+    }
+  }
+
+  return [leftSwap, rightSwap]
+}
+
+getMax = { List<Integer> digits, LinkedHashMap<Integer, List<Integer>> sortedIndices ->
+
+  int leftSwap = 0
+  int rightSwap = -1
+  sortedIndices.reverseEach { entry ->
+    if (leftSwap < 0 || rightSwap > -1) {
+      return
+    }
+    leftSwap = digits.findIndexOf { it < entry.key }
+    if (leftSwap > -1) {
+      int lastIndex = entry.value.last()
+      if (lastIndex > leftSwap){
+        rightSwap = lastIndex
+      }
+    }
+  }
+
+  return [leftSwap, rightSwap]
+}
+
+
+Template answer = new SimpleTemplateEngine().createTemplate('Case #$_case: $min $max')
+
+(1..t).each {
+  String digitString = scanner.next()
+  if (digitString.size() == 1) {
+    println answer.make(_case: it, min: digitString, max: digitString).toString()
+    return
+  }
+  List<Integer> digits = digitString.collect { it as int }
+  Map<Integer, List<Integer>> sortedIndices = (0..<digits.size()).groupBy { digits[it] }.sort { it.key }
+  List<Integer> mins = getMin(digits, sortedIndices)
+  List<Integer> maxes = getMax(digits, sortedIndices)
+  String min = null
+  String max = null
+
+  if (mins[0] > -1 && mins[1] > mins[0]) {
+    Collections.swap(digits, mins[0], mins[1])
+    min = digits.join('')
+    Collections.swap(digits, mins[0], mins[1])
+  }
+
+  if (maxes[0] > -1 && maxes[1] > maxes[0]) {
+    Collections.swap(digits, maxes[0], maxes[1])
+    max = digits.join('')
+  }
+  println answer.make(_case: it, min: min ?: digitString, max: max ?: digitString).toString()
+}

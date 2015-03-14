@@ -1,0 +1,172 @@
+package pb2;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+public class AlexFoodObsession {
+
+	private static final String CRT_RESULT = "Case #%d: %s";
+	private Food crtAllowedFood;
+	List<Food> availableFood = new ArrayList<Food>();
+	private boolean foundFood = false;
+	
+	public void computeMacronutrients() 
+			throws FileNotFoundException, IOException{
+		
+		String line;
+	    InputStream fis = new FileInputStream("src/resource/new_years_resolution.txt");
+	    InputStreamReader isr = new InputStreamReader(fis, Charset.forName("UTF-8"));
+	    BufferedReader br = new BufferedReader(isr);
+	    
+	    PrintWriter writer = new PrintWriter("src/resource/new_years_resolution_output.txt", "UTF-8");
+	    
+	    line = br.readLine();
+	    int testCases = Integer.parseInt(line);
+	    int testCaseNo = 1;
+	    while(testCases > 0) {
+	    	line = br.readLine();
+	    	Food allowedFood = new Food(line);
+	    	crtAllowedFood = allowedFood;
+	    	availableFood.clear();
+	    	foundFood = false;
+	    	line = br.readLine();
+	    	int noOfFood = Integer.parseInt(line);
+	    	while(noOfFood > 0){
+	    		line = br.readLine();
+	    		Food food = new Food(line);
+	    		availableFood.add(food);
+	    		noOfFood--;
+	    	}
+	    	String allowed = canEat(allowedFood, availableFood) ? "yes" : "no";
+	    	writer.println(String.format(CRT_RESULT, testCaseNo, allowed));
+	    	writer.flush();
+	    	testCaseNo++;
+	    	testCases--;
+	    }
+	    
+	    br.close();
+	    isr.close();
+	    fis.close();
+	    
+	    writer.close();
+	}
+	
+	
+	public boolean canEat(Food allowedFood, List<Food> availableFood){
+		
+		Set<Integer> foods = new HashSet<Integer>();
+		for(int i = 0; i < availableFood.size(); i++){
+			foods.add(Integer.valueOf(i));
+		}
+		List<List<Integer>> allFoodCombos = powerset(foods);
+		if(foundFood){
+			return true;
+		}
+		for (List<Integer> s : allFoodCombos) {
+			int totalProteins = 0, totalCarbs = 0, totalFat = 0;
+			for(Integer foodPos : s){
+				totalProteins += availableFood.get(foodPos.intValue()).getProteins();
+				totalCarbs += availableFood.get(foodPos.intValue()).getCarbs();
+				totalFat += availableFood.get(foodPos.intValue()).getFat();
+			}
+			if((totalProteins == allowedFood.getProteins())
+					&& totalCarbs == allowedFood.getCarbs()
+					&& totalFat == allowedFood.getFat()){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	
+	public boolean stillOK(List<Integer> crtVersion){
+		
+		int totalProteins = 0, totalCarbs = 0, totalFat = 0;
+		for(Integer foodPos : crtVersion){
+			totalProteins += availableFood.get(foodPos.intValue()).getProteins();
+			totalCarbs += availableFood.get(foodPos.intValue()).getCarbs();
+			totalFat += availableFood.get(foodPos.intValue()).getFat();
+			
+			if((totalProteins > crtAllowedFood.getProteins())
+					|| totalCarbs > crtAllowedFood.getCarbs()
+					|| totalFat > crtAllowedFood.getFat()){
+				return false;
+			}
+		}
+		if((totalProteins == crtAllowedFood.getProteins())
+				&& totalCarbs == crtAllowedFood.getCarbs()
+				&& totalFat == crtAllowedFood.getFat()){
+			foundFood = true;
+		}
+		
+		return true;
+	}
+	
+	public <T> List<List<T>> powerset(Collection<T> list) {
+		  List<List<T>> ps = new ArrayList<List<T>>();
+		  ps.add(new ArrayList<T>());
+		 
+		  for (T item : list) {
+		    List<List<T>> newPs = new ArrayList<List<T>>();
+		    
+		    for (List<T> subset : ps) {
+		      newPs.add(subset);     List<T> newSubset = new ArrayList<T>(subset);
+		      newSubset.add(item);
+		      if(stillOK((List<Integer>) newSubset)){
+		    	  newPs.add(newSubset);
+		      }
+		      if(foundFood == true){
+		    	  return null;
+		      } 
+		    }
+		    ps = newPs;
+		  }
+		  return ps;
+		}
+		 
+	
+	static class Food{
+		private int proteins, carbs, fat;
+		
+		public Food(String food){
+			String[] macronutrients = food.split(" ");
+			proteins = Integer.parseInt(macronutrients[0]);
+			carbs =  Integer.parseInt(macronutrients[1]);
+			fat = Integer.parseInt(macronutrients[2]);
+		}
+
+		public int getProteins() {
+			return proteins;
+		}
+		public int getCarbs() {
+			return carbs;
+		}
+		public int getFat() {
+			return fat;
+		}
+
+		@Override
+		public String toString() {
+			return "Food [proteins=" + proteins + ", carbs=" + carbs + ", fat="
+					+ fat + "]";
+		}
+	}
+	
+	public static void main(String[] args) throws Exception {
+			
+		AlexFoodObsession obsessedBehaviour = new AlexFoodObsession();
+		obsessedBehaviour.computeMacronutrients();
+	}	
+}
+

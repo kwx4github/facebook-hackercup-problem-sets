@@ -1,0 +1,231 @@
+package Main;
+
+import java.io.*;
+import java.util.*;
+
+
+public class Main {
+    public static void main(String ... args) throws IOException {
+        new Main().run();
+    }
+    Parser in;
+    PrintWriter out;
+    public void run() throws IOException {
+        in = new Parser(new FileInputStream("cooking_the_books.txt"));
+        out = new PrintWriter(new FileOutputStream("cooking_the_books_output.txt"));
+        int T;
+        int N;
+        T = in.nextInt();
+
+        for (int test = 1; test <= T; ++test) {
+            N = in.nextInt();
+
+            if (N < 10) {
+                //out.printf("Case #%d: %d %d\n", test, N, N);
+                out("Case #%d: %d %d\n", test, N, N);
+                continue;
+            }
+            if ((N < 100) && ((N % 10) == 0)) {
+                //out.printf("Case #%d: %d %d\n", test, N, N);
+                out("Case #%d: %d %d\n", test, N, N);
+                continue;
+            }
+
+            int[] array = parseDigits(N, true);
+            if (isSimple(array)) {
+                //out.printf("Case #%d: %d %d\n", test, N, N);
+                out("Case #%d: %d %d\n", test, N, N);
+                continue;
+            }
+            int[] array1 = new int[array.length];
+            System.arraycopy(array, 0, array1, 0, array1.length);
+
+            //out.printf("Case #%d: %d %d\n", test, findMin(N, array), findMax(N, array1));
+            out("Case #%d: %d %d\n", test, findMin(N, array), findMax(N, array1));
+        }
+        out.close();
+    }
+
+    void out(String format, Object... args) {
+        out.printf(format, args);
+        System.out.printf(format, args);
+    }
+
+    public int findMax(int num, int[] array) {
+        int maxIndex = findMaxIndex(array);
+        int m = array[maxIndex];
+        for(int i = 0; i < array.length; ++i) {
+            if (m > array[i]) {
+                array[maxIndex] = array[i];
+                array[i] = m;
+                break;
+            }
+        }
+        return cov(array);
+    }
+
+    public int findMin(int num, int[] array) {
+        int minIndex = findMinIndex(array);
+        int m = array[minIndex];
+        int start = 0;
+        if (m == 0) start = 1;
+        for(int i = start; i < array.length; ++i) {
+            if (m < array[i]) {
+                array[minIndex] = array[i];
+                array[i] = m;
+                break;
+            }
+        }
+        return cov(array);
+    }
+
+    public int findMinIndex(int[] array) {
+        boolean isHave = false;
+        int leftEdge = 0;
+        int index = 0;
+        while(!isHave && (leftEdge < array.length)) {
+            int min  = array[array.length-1];
+            index = array.length-1;
+            for(int i = array.length-2; i > leftEdge; --i) {
+                if (array[i] < min) {
+                    min = array[i];
+                    index = i;
+                }
+            }
+            int end = 0;
+            if (array[index] == 0) end = 1;
+            for (int i = index; i >= end; --i ) {
+                if (array[index] < array[i]) {
+                        isHave = true;
+                        break;
+                }
+            }
+            ++leftEdge;
+        }
+        ////////////////////////
+        int min  = 10;
+        for(int i = array.length-1; i > 0; --i) {
+            if ((array[i] != 0) && (array[i] < min) && (array[i] < array[0])) {
+                min = array[i];
+                index = i;
+            }
+        }
+        ////////////////////////
+        return index;
+    }
+
+    public int findMaxIndex(int[] array) {
+        boolean isHave = false;
+        int leftEdge = 0;
+        int index = 0;
+        while(!isHave && (leftEdge < array.length)) {
+            int max  = array[array.length-1];
+            index = array.length-1;
+            for(int i = array.length-2; i > leftEdge; --i) {
+                if (array[i] > max) {
+                    max = array[i];
+                    index = i;
+                }
+            }
+            for (int i = index; i >= 0; --i ) {
+                if (array[index] > array[i]) {
+                    isHave = true;
+                    break;
+                }
+            }
+            ++leftEdge;
+        }
+        return index;
+    }
+
+    public int[] parseDigits(int number, boolean sort) {
+        String st = Integer.toString(number);
+        int [] array = new int[st.length()];
+        if (sort) {
+            char [] ch = st.toCharArray();
+            for (int i = 0; i<ch.length; ++i) {
+                if (Character.isDigit(ch[i])) {
+                    array[i] = Character.getNumericValue(ch[i]);
+                }
+            }
+        } else {
+            int i = 0;
+            int x = number;
+            while (x > 0 && i<array.length) {
+                array[i] = x % 10;
+                ++i;
+                x /= 10;
+            }
+        }
+        return array;
+    }
+
+    public boolean isSimple(int[] array) {
+        if (array.length > 1) {
+            int x = array[0];
+            for (int i = 1; i < array.length; ++i) {
+                if (x != array[i]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public int cov(int[] array) {
+        String st = "";
+        for (int i =0; i<array.length; ++i) {
+            st += Integer.toString(array[i]);
+        }
+        return Integer.parseInt(st);
+    }
+
+
+}
+
+
+
+class Parser {
+    final private int BUFFER_SIZE = 1 << 16;
+    private DataInputStream din;
+    private byte[] buffer;
+    private int bufferPointer, bytesRead;
+
+    public Parser(InputStream in) {
+        din = new DataInputStream(in);
+        buffer = new byte[BUFFER_SIZE];
+        bufferPointer = bytesRead =  0;
+    }
+
+    public int nextInt() {
+        int ret =  0;
+        boolean neg;
+        try {
+            byte c = read();
+            while (c <= ' ')
+                c = read();
+            neg = c == '-';
+            if (neg)
+                c = read();
+            do {
+                ret = ret * 10 + c - '0';
+                c = read();
+            } while (c > ' ');
+
+            if (neg) return -ret;
+        } catch (Exception e) {}
+        return ret;
+    }
+
+    private void fillBuffer() {
+        try {
+            bytesRead = din.read(buffer, bufferPointer =  0, BUFFER_SIZE);
+        } catch (Exception e) {}
+        if (bytesRead == -1) buffer[ 0] = -1;
+    }
+
+    private byte read() {
+        if (bufferPointer == bytesRead) fillBuffer();
+        return buffer[bufferPointer++];
+    }
+}

@@ -1,0 +1,182 @@
+#include <cstdio>
+#include <cctype>
+
+using namespace std;
+
+const int maxh = 100;
+const int maxw = 100;
+
+const int empty = -1;
+const int wall = -2;
+const int north = -3;
+const int east = -4;
+const int south = -5;
+const int west = -6;
+
+
+const int dire[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+
+int cases, casei, h, w, ans;
+int sx, sy, gx, gy;
+int boards[4][maxh + 2][maxw + 2];
+
+int head, tail;
+int Q[maxh * maxw * 4][3];
+
+
+
+
+void printBoards() {
+	for (int b = 0; b < 4; ++b) {
+		printf("Board %d:\n", b);
+		for (int i = 0; i <= h + 1; ++i) {
+
+			for (int j = 0; j <= w + 1; ++j) {
+				printf("%d\t", boards[b][i][j]);
+			}
+			printf("\n");
+		}
+	}
+}
+
+
+void prepare() {
+	char tmpch;
+	for (int i = 1; i <= h; ++i)
+		for (int j = 1; j <= w; ++j) {
+			scanf(" %c", &tmpch);
+			tmpch = toupper(tmpch);
+			if (tmpch == 'S') {
+				sx = i; sy = j;
+				boards[0][i][j] = empty;
+			}
+			else if (tmpch == 'G') {
+				gx = i; gy = j;
+				boards[0][i][j] = empty;
+			}
+			else if (tmpch == '#') {
+				boards[0][i][j] = wall;
+			}
+			else if (tmpch == '^') {
+				boards[0][i][j] = north;
+			}
+			else if (tmpch == '>') {
+				boards[0][i][j] = east;
+			}
+			else if (tmpch == 'V') {
+				boards[0][i][j] = south;
+			}
+			else if (tmpch == '<') {
+				boards[0][i][j] = west;
+			}
+			else {
+				boards[0][i][j] = empty;
+			}
+		}
+
+	for (int b = 1; b < 4; ++b) {
+		for (int i = 1; i <= h; ++i)
+			for (int j = 1; j <= w; ++j) {
+				int cell = boards[b - 1][i][j];
+				if (cell >= west && cell <= north) {
+					if (--cell < west) cell = north;
+					boards[b][i][j] = cell;
+				}
+				else boards[b][i][j] = boards[b - 1][i][j];
+			}
+	}
+
+
+
+	//add boarders
+	for (int b = 0; b < 4; ++b) {
+		for (int i = 0; i <= h + 1; ++i) {
+			boards[b][i][0] = wall;
+			boards[b][i][w + 1] = wall;
+		}
+		for (int j = 0; j <= w + 1; ++j) {
+			boards[b][0][j] = wall;
+			boards[b][h + 1][j] = wall;
+		}
+	}
+
+	
+	for (int b = 0; b < 4; ++b) {
+		for (int i = 1; i <= h; ++i)
+			for (int j = 1; j <= w; ++j) {
+				int d = -1;
+				switch (boards[b][i][j]) {
+					case north: d = 0; break;
+					case east: d = 1; break;
+					case south: d = 2; break;
+					case west: d = 3; break;
+				}
+				if (d >= 0) {
+					int tmpx = i + dire[d][0], tmpy = j + dire[d][1];
+					while (boards[b][tmpx][tmpy] == empty) {
+						boards[b][tmpx][tmpy] = wall;
+						tmpx += dire[d][0];
+						tmpy += dire[d][1];
+					}
+				}
+			}
+	}
+	//printBoards();
+}
+
+
+
+void BFS() {
+	ans = -1;
+
+	if (boards[0][sx][sy] == empty) //is not wall 
+		boards[0][sx][sy] = 0;
+	Q[0][0] = 0; Q[0][1] = sx; Q[0][2] = sy;
+	head = -1; tail = 0;
+	while (head < tail) {
+		++head;
+		int nowb = Q[head][0];
+		int px = Q[head][1];
+		int py = Q[head][2];
+		int step = boards[nowb][px][py];
+		if (step == wall) step = 0;
+
+		//printf("\t%d %d %d\n", nowb, px, py);
+		++step;
+		if (++nowb == 4) nowb = 0;
+		for (int d = 0; d < 4; ++d) {
+			int newx = px + dire[d][0];
+			int newy = py + dire[d][1];
+			if (boards[nowb][newx][newy] == empty) {
+				if (newx == gx && newy == gy) {
+					ans = step;
+					return;
+				}
+				boards[nowb][newx][newy] = step;
+				++tail;
+				Q[tail][0] = nowb;
+				Q[tail][1] = newx;
+				Q[tail][2] = newy;
+			}
+		}
+	}
+}
+
+
+int main() {
+	scanf("%d", &cases);
+	for (casei = 1; casei <= cases; ++casei) {
+		scanf("%d%d", &h, &w);
+
+		prepare();
+		BFS();
+
+		//printBoards();
+		printf("Case #%d: ", casei);
+		if (ans == -1) printf("impossible\n");
+		else printf("%d\n", ans);
+	}
+
+	return 0;
+}
+

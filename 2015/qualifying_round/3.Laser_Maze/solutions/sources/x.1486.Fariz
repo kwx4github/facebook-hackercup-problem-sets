@@ -1,0 +1,171 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+int n, m, dist[4][111][111], dx[] = { 1, -1, 0, 0 }, dy[] = { 0, 0, 1, -1 };
+char graph1[111][111], graph2[111][111];
+bool can[4][111][111], vis[4][111][111];
+    
+struct stuff { 
+	int r, c, state;
+	stuff() {}
+	stuff( int _r, int _c, int cur ) {
+    r = _r, c = _c, state = cur;
+	}
+};
+    
+vector< pair<int, int> > checking;
+
+void impossible( int check ) {
+	for ( auto con: checking ) {
+		if ( graph2[ con.first ][ con.second ] == '^' ) {
+			pair<int, int> same = con;
+			same.first--;
+			while ( ( same.first > 0 ) 
+						and ( graph2[ same.first ][ same.second ] != '#' )
+						and ( graph2[ same.first ][ same.second ] != '^' ) 
+						and ( graph2[ same.first ][ same.second ] != '>' )
+						and ( graph2[ same.first ][ same.second ] != 'v' ) 
+						and ( graph2[ same.first ][ same.second ] != '<') ) {
+				can[ check ][ same.first ][ same.second ] = false;
+				same.first--;
+				if ( same.first == -1 )
+					break;
+			}
+		}
+		if ( graph2[ con.first ][ con.second ] == '>' ) {
+			pair<int, int> same = con;
+			same.second++;
+			while ( ( same.second < m ) 
+						and ( graph2[ same.first ][ same.second ] != '#' )
+						and ( graph2[ same.first ][ same.second ] != '^' ) 
+						and ( graph2[ same.first ][ same.second ] != '>' ) 
+						and ( graph2[ same.first ][ same.second ] != 'v' ) 
+						and ( graph2[ same.first ][ same.second ] != '<' ) ) {
+				can[ check ][ same.first ][ same.second ] = false;
+				same.second++;
+				if ( same.second == m ) 
+					break;
+			}
+		}
+		if ( graph2[ con.first ][ con.second ] == 'v' ) {
+			pair<int, int> same = con;
+			same.first++;
+			while ( ( same.first < n ) 
+						and ( graph2[ same.first ][ same.second ] != '#' )
+						and ( graph2[ same.first ][ same.second ] != '^' )
+						and ( graph2[ same.first ][ same.second ] != '>' )
+						and ( graph2[ same.first ][ same.second ] != 'v' )
+						and ( graph2[ same.first ][ same.second ] != '<' ) ) {
+				can[ check ][ same.first ][ same.second ] = false;
+				same.first++;
+				if ( same.first == n )
+					break;
+			}
+		}
+		if ( graph2[ con.first ][ con.second ] == '<' ) {
+			pair<int, int> same = con;
+			same.second--;
+			while ( ( same.second > 0 ) 
+						and ( graph2[ same.first ][ same.second ] != '#' )
+						and ( graph2[ same.first ][ same.second ] != '^' )
+						and ( graph2[ same.first ][ same.second ] != '>' )
+						and ( graph2[ same.first ][ same.second ] != 'v' )
+						and ( graph2[ same.first ][ same.second ] != '<' ) ) {
+				can[ check ][ same.first ][ same.second ] = false;
+				same.second--;
+				if ( same.second == -1 ) 
+					break;
+			}
+		}
+	}
+}
+
+void rotate() {
+	for ( auto con: checking ) {
+		if ( graph2[ con.first ][ con.second ] == '^' )
+			graph2[ con.first ][ con.second ] = '>';
+    else if ( graph2[ con.first ][ con.second ] == '>' )
+			graph2[ con.first ][ con.second ] = 'v';
+    else if ( graph2[ con.first ][ con.second ] == 'v' )
+			graph2[ con.first ][ con.second ] = '<';
+    else if ( graph2[ con.first ][ con.second ] == '<' )
+			graph2[ con.first ][ con.second ] = '^';
+	}
+}
+
+int finr, finc, inir, inic;
+
+void bfs() {
+	queue<stuff> q;
+	q.emplace( inir, inic, 0 );
+	dist[0][ inir ][ inic ] = 0;
+	while ( !q.empty() ) {
+		stuff act = q.front();
+		q.pop();
+    if ( vis[ act.state ][ act.r ][ act.c ] )
+			continue;
+    vis[ act.state ][ act.r ][ act.c ] = true;
+    for ( int i = 0; i < 4; i++ ) {
+			int cx = act.r + dx[i], cy = act.c + dy[i], ns = ( act.state + 1 ) % 4;
+			if ( ( cx < 0 ) or ( cx >= n ) or ( cy < 0 ) or ( cy >= m ) 
+					or ( vis[ns][cx][cy] ) or ( !can[ns][cx][cy] ) or ( dist[ns][cx][cy] != -1 )
+					or ( graph1[cx][cy] == '^' ) or ( graph1[cx][cy] == '>' ) 
+					or ( graph1[cx][cy] == 'v' ) or ( graph1[cx][cy] == '<' )
+					or ( graph1[cx][cy] == '#' ) )
+				continue;
+			dist[ns][cx][cy] = dist[ act.state ][ act.r ][ act.c ] + 1;
+			q.emplace( cx, cy, ns );
+    }
+	}
+	int mini = INT_MAX;
+	for ( int i = 0; i < 4; i++ )
+    if ( dist[i][ finr ][ finc ] != -1 )
+			mini = min( mini, dist[i][ finr ][ finc ] );
+  if ( mini == INT_MAX ) 
+		cout << "impossible";
+  else 
+		cout << mini;
+}
+
+int main() {
+	int cases;
+	cin >> cases;
+	for ( int tc = 1; tc <= cases; tc++ ) {
+		cin >> n >> m;
+    for ( int i = 0; i < n; i++ )
+			for ( int j = 0; j < m; j++ )
+				cin >> graph1[i][j];
+    checking.clear();
+    memset( can, true, sizeof( can ) );
+    memset( vis, 0, sizeof( vis ) );
+    memset( dist, -1, sizeof( dist ) );
+    for ( int i = 0; i < n; i++ ) {
+			for ( int j = 0; j < m; j++ ) {
+				if ( ( graph1[i][j] == '^' ) or ( graph1[i][j] == '>' ) 
+						or ( graph1[i][j] == 'v' ) or ( graph1[i][j] == '<' ) )
+					checking.emplace_back(i, j);
+				graph2[i][j] = graph1[i][j];
+				if ( graph1[i][j] == 'S' ) {
+					inir = i,
+					inic = j;
+				}
+				if ( graph1[i][j] == 'G') {
+					finr = i,
+					finc = j;
+				}
+			}
+    }
+    impossible( 0 );
+    rotate();
+    impossible( 1 );
+    rotate();
+    impossible( 2 );
+    rotate();
+    impossible( 3 );
+		cout << "Case #" << tc << ": ";
+    bfs();
+		cout << "\n";
+	}
+	return 0;
+}

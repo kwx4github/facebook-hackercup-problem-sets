@@ -1,0 +1,161 @@
+/*************************************************************************
+Author: HongYihong
+Created Time: Sun Jan 11 16:09:18 2015
+File Name: laserMaze.cpp
+Description: 
+ ************************************************************************/
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <cstdio>
+#include <cstring>
+#include <utility>
+#include <string>
+#include <fstream>
+#include <algorithm>
+using namespace std;
+
+int dirx[4] = {0, -1, 0, 1};
+int diry[4] = {-1, 0, 1, 0};
+string dir = "<^>v";
+int sx, sy, tx, ty;
+
+void update(int m, int n, vector<string> &maze, int maze_flag)
+{        
+    for (int i=0; i<m; i++)
+      for (int j=0; j<n; j++)
+      {          
+          int pos = -1;
+          switch (maze[i][j])
+          {
+              case '<': pos = (maze_flag+0)%4; break;
+              case '^': pos = (maze_flag+1)%4; break;
+              case '>': pos = (maze_flag+2)%4; break;
+              case 'v': pos = (maze_flag+3)%4; break;
+              default: pos = -1; break;
+          }
+          if (pos>=0)
+          {
+              maze[i][j] = dir[pos];
+              int nx = i + dirx[pos], ny = j+diry[pos];
+              while (nx>=0 && nx<m && ny>=0 && ny<n && (maze[nx][ny]=='.' || maze[nx][ny]=='S' || maze[nx][ny]=='G'))
+              {    
+                  maze[nx][ny] = '#';
+                  nx = nx+dirx[pos];
+                  ny = ny+diry[pos];
+              }
+          }
+      }                              
+    //for (int i=0; i<m; i++)
+    //  cout << maze[i] << endl;
+}
+
+void init(int m, int n, vector< vector<string> >  &mazes)
+{
+    vector<string> maze;
+    vector<string>().swap(maze);
+    for (int i=0; i<m; i++)
+    {
+        string s;
+        cin >> s;
+        maze.push_back(s);
+        for (int j=0; j<n; j++)
+        {
+            if (s[j]=='S') { sx = i; sy = j;}
+            if (s[j]=='G') { tx = i; ty = j;}
+        }
+    }                     
+
+    vector<string> maze0(maze);
+    update(m, n, maze0, 0);
+
+    vector<string> maze1(maze);
+    update(m, n, maze1, 1);
+
+    vector<string> maze2(maze);
+    update(m, n, maze2, 2);
+
+    vector<string> maze3(maze);
+    update(m, n, maze3, 3);
+
+    mazes.push_back(maze0);
+    mazes.push_back(maze1);
+    mazes.push_back(maze2);
+    mazes.push_back(maze3);
+}
+
+struct step
+{
+    int maze_flag, x, y, steps;
+    step(int _maze_flag, int _x, int _y, int _steps)
+    {
+        maze_flag = _maze_flag;
+        x = _x;
+        y = _y;
+        steps = _steps;
+    }
+};
+
+int doit(int m, int n, vector< vector<string> > &mazes)
+{
+    vector< vector< vector<bool> > > flag(4, vector< vector<bool> >(m, vector<bool>(n, false)));
+    queue<step> bfs;
+    bfs.push(step(0, sx, sy, 0));
+    while (!bfs.empty())
+    {
+        step now = bfs.front();
+        bfs.pop();
+        for (int i=0; i<4; i++)
+        {
+            int nx = now.x + dirx[i];
+            int ny = now.y + diry[i];
+            int new_maze_flag = (now.maze_flag+1)%4;
+
+            if (nx>=0 && nx<m && ny>=0 && ny<n)
+            {
+                /*cout << endl << endl << "start======" << endl;
+                cout << "old_maze_flag=" <<  now.maze_flag << " pos: " << now.x << " " << now.y << endl;
+                cout << "new_maze_flag=" <<  new_maze_flag << " pos: " << nx << " " << ny << " " << mazes[new_maze_flag][nx][ny] <<  endl;*/
+                if (mazes[new_maze_flag][nx][ny]=='G') return now.steps+1;
+                if ((mazes[new_maze_flag][nx][ny]=='.' || mazes[new_maze_flag][nx][ny]=='S') && (flag[new_maze_flag][nx][ny]==false))
+                {
+                    step newstep(new_maze_flag, nx, ny, now.steps+1);
+                    flag[new_maze_flag][nx][ny] = true;
+                    bfs.push(newstep);  
+                    
+                    /*cout << "===========start========" << endl;
+                    for (int ii = 0; ii<m; ii++)
+                      cout << mazes[now.maze_flag][ii] << endl;
+                    cout  << endl;
+                    cout << "old_maze_flag=" <<  now.maze_flag << " pos: " << now.x << " " << now.y << endl;
+                    for (int ii = 0; ii<m; ii++)
+                      cout << mazes[new_maze_flag][ii] << endl;
+                    cout << endl; 
+                    cout << "new_maze_flag=" <<  new_maze_flag << " pos: " << nx << " " << ny << endl;
+                    cout << "===========end==========" << endl << endl;     */
+                }
+                //cout << "end========" << endl; 
+            }
+        }
+    }     
+    return -1;
+}
+
+int main()
+{
+    int T;
+    cin >> T;
+    for (int i=1; i<=T; i++)
+    {
+        int m, n;
+        cin >> m >> n;
+        vector< vector<string> > mazes;
+        init(m, n, mazes);
+        int res = doit(m, n, mazes);
+        if (res!=-1)
+          cout << "Case #" << i << ": " << res << endl;
+        else
+          cout << "Case #" << i << ": impossible" << endl;
+    }
+    return 0;
+}

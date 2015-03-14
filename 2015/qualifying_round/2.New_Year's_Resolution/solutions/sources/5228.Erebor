@@ -1,0 +1,280 @@
+#include <iostream>
+#include <map>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+#define fori(i,a,b) for(int i=a; i<=b; ++i)
+#define ford(i,a,b) for(int i=a; i>=b; --i)
+#define rep(i,n) for(int i=0; i<n; ++i)
+#define mprint(str) cout << str << " ";
+#define dbg(str) cout << "\n" << str << endl;
+
+// Simple node struct
+struct node {
+    node () {
+        left = NULL;
+        right = NULL;
+        parent = NULL;
+        data = 0;
+    }
+
+    struct node* left;
+    struct node* right;
+    struct node* parent;
+    int data;
+};
+typedef struct node node;
+
+// base class
+class BinaryTree {
+    // Member functions
+    public:
+        BinaryTree() {
+            root = NULL;
+            n = 0;
+        }
+
+        // tree manipulation
+        virtual void insertNode(int val) = 0;
+        virtual void deleteNodeByVal(int val) = 0;
+        virtual void deleteNodeByPtr(node* ele) = 0;
+
+        // Tree traversal
+        inline void preOrderTraverse(node* root) {
+            if (NULL == root)
+                return;
+            preOrderTraverse(root->left);
+            preOrderTraverse(root->right);
+            mprint(root->data);
+        }
+
+        inline void inOrderTraverse(node* root) {
+            if (NULL == root)
+                return;
+            inOrderTraverse(root->left);
+            mprint(root->data);
+            inOrderTraverse(root->right);
+        }
+
+        inline void postOrderTraverse(node *root) {
+            if (NULL == root)
+                return;
+            mprint(root->data);
+            postOrderTraverse(root->left);
+            postOrderTraverse(root->right);
+        }
+        
+        // Getter functions
+        node* getSucessor(node *ele) {
+            if (NULL != ele->right) {
+                node *tmp = ele->right;
+                while (tmp->left != NULL)
+                    tmp = tmp->left;
+                
+                mprint("Successor of " << ele->data << " is " << tmp->data << "\n");
+                return tmp;
+            }
+            else {
+                node *curr = ele;
+                node *par = curr->parent;
+                while (par !=NULL && curr == par->right) {
+                    curr = par;
+                    par = par->parent;
+                }
+
+                /*
+                 * This scenario is hit in one of the following cases:
+                 * - No sucessor exists. Last node
+                 * - Only one node exists
+                 */
+                if (par == NULL) {
+                    mprint("Sucessor for " << ele->data << " does not exists\n");
+                    return NULL;
+                }
+                mprint("Sucessor of " << ele->data << " is " << par->data << "\n");
+                return par;
+            }
+        }
+
+        node* getPredecessor(node *ele) {
+            if (NULL != ele->left) {
+                node *tmp = ele->left;
+                while (tmp->right != NULL)
+                    tmp = tmp->right;
+
+                mprint("Predecessor of " << ele->data << " is " << tmp->data << "\n");
+                return tmp;
+            }
+            else {
+                node *curr = ele;
+                node *par = curr->parent;
+                while (NULL != par && curr == par->left) {
+                    curr = par;
+                    par = par->parent;
+                }
+
+                if (par == NULL) {
+                    mprint("Predecessor for " << ele->data << " does not exists\n");
+                    return NULL;
+                }
+
+                mprint("Predecessor for " << ele->data << " is " << par->data << "\n");
+                return par;
+            }
+        }
+
+        virtual node* getPointer(int val) = 0;
+
+    // Member variables 
+    public:
+        node *root;
+        int n; // No of elements
+};
+
+class BST: public BinaryTree {
+    public:
+        void insertNode(int val) {
+            if (NULL == root) {
+                root = new node();
+                root->data = val;
+                return;
+            }
+
+            node *head=root, *parent=NULL;
+            while (head!=NULL) {
+                parent = head;
+                if (head->data > val)
+                    head = head->left;
+                else if (head->data < val)
+                    head = head->right;
+            }
+
+            node *tmp = new node();
+            tmp->data = val;
+            tmp->parent = parent;
+            if (parent->data > val) {
+                dbg("insert " << val << " to left of " << parent->data);
+                parent->left =tmp;
+            }
+            else if (parent->data < val) {
+                dbg("insert " << val << " to right of " << parent->data);
+                parent->right = tmp;
+            }
+        }
+
+        void deleteNodeByVal(int val) {
+            node *ptr = getPointer(val);
+            deleteNodeByPtr(ptr);
+        }
+        
+        void deleteNodeByPtr(node* ele) {
+            // find the element to replace ele
+            node *y = NULL;
+            if (NULL != ele->left && NULL != ele->right) {
+                y = getSucessor(ele);
+            }
+            else
+                y = ele;
+
+            node *x = NULL;
+            if (NULL != y->right)
+                x = y->right;
+            else
+                x = y->left;
+
+            if (NULL != x) {
+                x->parent = y->parent;
+            }
+            if (y!=NULL) {
+                if (y == y->parent->left)
+                    y->parent->left = x;
+                else if (y == y->parent->right)
+                    y->parent->right = x;
+            }
+
+            // now replace ele by y if they are not same
+            if (ele != y) {
+                dbg("replacing " << ele->data << " by " << y->data);
+                if (NULL != ele->parent && ele == ele->parent->left)
+                    ele->parent->left = y;
+                else if(NULL != ele->parent && ele == ele->parent->right)
+                    ele->parent->right = y;
+                else {
+                    // ele is root node
+                    dbg("changing root value to " << y->data);
+                    root = y;
+                }
+                y->parent = ele->parent;
+                y->left = ele->left;
+                y->right = ele->right;
+            }
+        }
+
+        node* getPointer(int val) {
+            node* tmp = root;
+            while (tmp != NULL && tmp->data != val) {
+                if (tmp->data > val)
+                    tmp = tmp->left;
+                else
+                    tmp = tmp->right;
+            }
+
+            if (NULL == tmp)
+                mprint(val << " is not present in tree\n");
+            return tmp;
+        }
+
+};
+
+
+int main() {
+    BST *bst = new BST();
+    bst->insertNode(3);
+    bst->insertNode(4);
+    bst->insertNode(1);
+    bst->insertNode(2);
+    bst->insertNode(0);
+
+    dbg("Inorder traversal of tree = ");
+    bst->inOrderTraverse(bst->root);
+    dbg("Pre-order tree traversal = ");
+    bst->preOrderTraverse(bst->root);
+    dbg("Post-order tree traversal = ");
+    bst->postOrderTraverse(bst->root);
+    
+    dbg("Pointer value of 3 is " << bst->getPointer(3));
+    dbg("Pointer value of 2 is " << bst->getPointer(2));
+    dbg("Pointer value of 0 is " << bst->getPointer(0));
+
+    bst->getSucessor(bst->getPointer(3));
+    bst->getSucessor(bst->getPointer(1));
+    bst->getSucessor(bst->getPointer(4));
+
+    bst->getPredecessor(bst->getPointer(2));
+    bst->getPredecessor(bst->getPointer(4));
+    bst->getPredecessor(bst->getPointer(1));
+
+    // delete 2
+    dbg("Delete node value 2");
+    bst->deleteNodeByVal(2);
+    dbg("Inorder traversal of tree = ");
+    bst->inOrderTraverse(bst->root);
+    
+    //delete 1
+    // undo 2 delete
+    bst->insertNode(2);
+    dbg("Delete node value 1");
+    bst->deleteNodeByVal(1);
+    dbg("Inorder traversal of tree = ");
+    bst->inOrderTraverse(bst->root);
+
+    //delete 3
+    dbg("Delete node value 3");
+    bst->deleteNodeByVal(3);
+    dbg("Inorder traversal of tree = ");
+    bst->inOrderTraverse(bst->root);
+    
+    return 0;
+}

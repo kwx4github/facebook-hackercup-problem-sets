@@ -1,0 +1,399 @@
+// laserMaze.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <map>
+#include <set>
+#include <queue>
+#define MAX 100
+#define NLEVELS 4
+
+struct nodeDescription
+{
+	int level, row, column,locationType,score;
+	bool visited;
+	// location types: 0 - empty space
+	// 1 - blocked space (either by wall, turret or turret shot)
+	// 2 - start, 3 - goal
+};
+
+struct mazeGraph
+{
+	int startingNode,nNodes,nEdges;
+	std::set<int> finalNodes;
+	std::vector<nodeDescription> nodes;
+	std::vector<int> edgeDesc;
+	std::map<int,std::vector<int>> outgoingEdges; 
+	std::map<int, std::vector<int>> incomingEdges;
+	std::map<int, int> predecessorNodes; 
+	std::map<int, int> successorNodes;  
+};
+
+int createMazeGraph(int M, int N, char ***maze, mazeGraph &mGraph,nodeDescription &startingNode)
+{
+	int i, j, l;
+	mGraph.nNodes = 0;
+	mGraph.nEdges = 0;
+	mGraph.nodes.clear();
+	mGraph.finalNodes.clear();
+	mGraph.edgeDesc.clear();
+	mGraph.outgoingEdges.clear();
+	mGraph.incomingEdges.clear();
+	mGraph.successorNodes.clear();
+	mGraph.predecessorNodes.clear();
+	nodeDescription newNode;
+	int nextNodeLevel, nextNodeRow, nextNodeColumn, nextNodeCode;
+	// insert the nodes
+	//std::cout << "Adding nodes" << std::endl;
+	for (l = 0; l < NLEVELS; l++)
+	{
+		newNode.level = l;
+		for (i = 0; i < M; i++)
+		{
+			newNode.row = i;
+			for (j = 0; j < N; j++)
+			{
+		//		std::cout << mGraph.nNodes << std::endl;
+				if (i == startingNode.row && j == startingNode.column && l == startingNode.level)
+				{
+					mGraph.nodes.push_back(startingNode);
+					mGraph.startingNode = mGraph.nNodes++;
+					continue;
+				}
+				newNode.column = j;
+				newNode.visited = false;
+				newNode.score = (MAX*MAX) << 2;
+				switch (maze[l][i][j])
+				{
+				case '#':
+					newNode.locationType = 1;
+					break;
+				case '.':
+					newNode.locationType = 0;
+					break;
+				case 'G':
+					newNode.locationType = 3;
+					mGraph.finalNodes.insert(mGraph.nNodes);
+					break;
+				}
+				mGraph.nodes.push_back(newNode);
+				++mGraph.nNodes;
+			}
+		}
+	}
+	//std::cout << mGraph.nNodes << std::endl;
+	//std::cout << "Adding edges" << std::endl;
+	if (mGraph.finalNodes.empty())
+		return 0; // a zero edge graph, goal is unreachable
+	// insert the (outgoing) edges
+	for (i = 0; i < mGraph.nNodes; i++)
+	{
+		if (mGraph.nodes[i].locationType == 0 || mGraph.nodes[i].locationType == 2)
+		{
+			// reachable nodes have outgoing edges towards other reachable nodes
+			nextNodeLevel = (mGraph.nodes[i].level + 1)%NLEVELS;
+			// move ->
+			nextNodeRow = mGraph.nodes[i].row;
+			nextNodeColumn = mGraph.nodes[i].column + 1;
+			if (nextNodeColumn < N)
+			{
+				nextNodeCode = nextNodeLevel*M*N + nextNodeRow*N + nextNodeColumn;
+				if (mGraph.nodes[nextNodeCode].locationType == 0 || mGraph.nodes[nextNodeCode].locationType == 3)
+				{
+					// reachable nodes, let's connect
+					mGraph.outgoingEdges[i].push_back(mGraph.nEdges);
+					mGraph.incomingEdges[nextNodeCode].push_back(mGraph.nEdges);
+					mGraph.predecessorNodes[mGraph.nEdges] = i;
+					mGraph.successorNodes[mGraph.nEdges] = nextNodeCode;
+					++mGraph.nEdges;
+					//std::cout << mGraph.nEdges << std::endl;
+				}
+			}
+			// move <-
+			nextNodeColumn = mGraph.nodes[i].column - 1;
+			if (nextNodeColumn >= 0)
+			{
+				nextNodeCode = nextNodeLevel*M*N + nextNodeRow*N + nextNodeColumn;
+				if (mGraph.nodes[nextNodeCode].locationType == 0 || mGraph.nodes[nextNodeCode].locationType == 3)
+				{
+					// reachable nodes, let's connect
+					mGraph.outgoingEdges[i].push_back(mGraph.nEdges);
+					mGraph.incomingEdges[nextNodeCode].push_back(mGraph.nEdges);
+					mGraph.predecessorNodes[mGraph.nEdges] = i;
+					mGraph.successorNodes[mGraph.nEdges] = nextNodeCode;
+					++mGraph.nEdges;
+					//std::cout << mGraph.nEdges << std::endl;
+				}
+			}
+			// move v
+			nextNodeRow = mGraph.nodes[i].row+1;
+			nextNodeColumn = mGraph.nodes[i].column;
+			if (nextNodeRow < M)
+			{
+				nextNodeCode = nextNodeLevel*M*N + nextNodeRow*N + nextNodeColumn;
+				if (mGraph.nodes[nextNodeCode].locationType == 0 || mGraph.nodes[nextNodeCode].locationType == 3)
+				{
+					// reachable nodes, let's connect
+					mGraph.outgoingEdges[i].push_back(mGraph.nEdges);
+					mGraph.incomingEdges[nextNodeCode].push_back(mGraph.nEdges);
+					mGraph.predecessorNodes[mGraph.nEdges] = i;
+					mGraph.successorNodes[mGraph.nEdges] = nextNodeCode;
+					++mGraph.nEdges;
+			//		std::cout << mGraph.nEdges << std::endl;
+				}
+			}
+			// move ^
+			nextNodeRow = mGraph.nodes[i].row - 1;
+			if (nextNodeRow >=0)
+			{
+				nextNodeCode = nextNodeLevel*M*N + nextNodeRow*N + nextNodeColumn;
+				if (mGraph.nodes[nextNodeCode].locationType == 0 || mGraph.nodes[nextNodeCode].locationType == 3)
+				{
+					// reachable nodes, let's connect
+					mGraph.outgoingEdges[i].push_back(mGraph.nEdges);
+					mGraph.incomingEdges[nextNodeCode].push_back(mGraph.nEdges);
+					mGraph.predecessorNodes[mGraph.nEdges] = i;
+					mGraph.successorNodes[mGraph.nEdges] = nextNodeCode;
+					++mGraph.nEdges;
+				//	std::cout << mGraph.nEdges << std::endl;
+				}
+			}
+		}
+	}
+	return mGraph.nEdges;
+}
+
+int BFS(mazeGraph &mGraph)
+{
+	// perform the breadth first search starting from the starting node
+	// and finishing at one of the final nodes
+	int nodeCode,nOutgoingEdges,i,edgeCode,descNodeCode;
+	std::queue<int> bfsQueue;
+	bfsQueue.push(mGraph.startingNode);
+	while (!bfsQueue.empty())
+	{
+		nodeCode = bfsQueue.front();
+		bfsQueue.pop();
+		// is this the goal node?
+		if (mGraph.finalNodes.find(nodeCode) != mGraph.finalNodes.end())
+		{
+			//yes!
+			return mGraph.nodes[nodeCode].score;
+		}
+		// put node's descendants in the queue
+		// each node is put into the queue only once, no multiple visits are allowed 
+		nOutgoingEdges = mGraph.outgoingEdges[nodeCode].size();
+		for (i = 0; i < nOutgoingEdges; i++)
+		{
+			edgeCode = mGraph.outgoingEdges[nodeCode][i];
+			descNodeCode = mGraph.successorNodes[edgeCode];
+			if (!mGraph.nodes[descNodeCode].visited)
+			{
+				// in BFS, we put a node into queue only once, since only the first
+				// visit counts, so we mark it as visited when we put it in the queue
+				mGraph.nodes[descNodeCode].visited = true;
+				mGraph.nodes[descNodeCode].score = mGraph.nodes[nodeCode].score + 1;
+				bfsQueue.push(descNodeCode);
+			}
+		}
+	}
+	// we are unable to reach the goal
+	return 0;
+}
+
+void readFile(std::string filename,int &T, int M[], int N[], char *****mazes,nodeDescription startNodes[])
+{
+	int i, j, k,l,m,n;
+	std::ifstream inFile(filename, std::ios_base::in);
+	inFile >> T;
+	*mazes = new char ***[T];
+	for (i = 0; i < T; i++)
+	{
+		(*mazes)[i] = new char **[NLEVELS];
+		for (l = 0; l < NLEVELS; l++)
+		{
+			(*mazes)[i][l] = new char *[MAX];
+			for (j = 0; j < MAX; j++)
+			{
+				(*mazes)[i][l][j] = new char[MAX];
+			}
+		}
+	}
+	for (i = 0; i < T; i++)
+	{
+		// read the ith maze
+		//std::cout << i << std::endl;
+		inFile >> M[i];
+		inFile >> N[i];
+		startNodes[i].level = 0;
+		startNodes[i].locationType = 2;
+		startNodes[i].score = 0;
+		startNodes[i].visited = false;
+		for (j = 0; j < M[i]; j++)
+		{
+			for (k = 0; k < N[i]; k++)
+			{
+				inFile >> (*mazes)[i][0][j][k];
+				switch ((*mazes)[i][0][j][k])
+				{
+				case '>':
+					(*mazes)[i][1][j][k] = 'v';
+					(*mazes)[i][2][j][k] = '<';
+					(*mazes)[i][3][j][k] = '^';
+					break;
+				case 'v':
+					(*mazes)[i][1][j][k] = '<';
+					(*mazes)[i][2][j][k] = '^';
+					(*mazes)[i][3][j][k] = '>';
+					break;
+				case '<':
+					(*mazes)[i][1][j][k] = '^';
+					(*mazes)[i][2][j][k] = '>';
+					(*mazes)[i][3][j][k] = 'v';
+					break;
+				case '^':
+					(*mazes)[i][1][j][k] = '>';
+					(*mazes)[i][2][j][k] = 'v';
+					(*mazes)[i][3][j][k] = '<';
+					break;
+				case 'S':
+					startNodes[i].row = j;
+					startNodes[i].column = k;
+					for (l = 1; l < NLEVELS; l++)
+						(*mazes)[i][l][j][k] = '.';
+					break;
+				case 'G':
+					for (l = 1; l < NLEVELS; l++)
+						(*mazes)[i][l][j][k] = 'G';
+					break;
+				default:
+					for (l = 1; l < NLEVELS; l++)
+						(*mazes)[i][l][j][k] = (*mazes)[i][0][j][k];
+				}
+			}
+		}
+		// use the turrets to block the mazes
+		for (l = 0; l < NLEVELS; l++)
+		{
+			for (j = 0; j < M[i]; j++)
+			{
+				for (k = 0; k < N[i]; k++)
+				{
+					switch ((*mazes)[i][l][j][k])
+					{
+					case '>':
+						for (n = k + 1; n < N[i]; n++)
+						{
+							if ((*mazes)[i][l][j][n] == '>' || (*mazes)[i][l][j][n] == 'v' || (*mazes)[i][l][j][n] == '<' || (*mazes)[i][l][j][n] == '^'
+								|| (*mazes)[i][l][j][n] == '#')
+								break;
+							(*mazes)[i][l][j][n] = '#';
+						}
+						break;
+					case 'v':
+						for (m = j + 1; m < M[i]; m++)
+						{
+							if ((*mazes)[i][l][m][k] == '>' || (*mazes)[i][l][m][k] == 'v' || (*mazes)[i][l][m][k] == '<' || (*mazes)[i][l][m][k] == '^'
+								|| (*mazes)[i][l][m][k] == '#')
+								break;
+							(*mazes)[i][l][m][k] = '#';
+						}
+						break;
+					case '<':
+						for (n = k - 1; n >= 0; n--)
+						{
+							if ((*mazes)[i][l][j][n] == '>' || (*mazes)[i][l][j][n] == 'v' || (*mazes)[i][l][j][n] == '<' || (*mazes)[i][l][j][n] == '^'
+								|| (*mazes)[i][l][j][n] == '#')
+								break;
+							(*mazes)[i][l][j][n] = '#';
+						}
+						break;
+					case '^':
+						for (m = j - 1; m >= 0; m--)
+						{
+							if ((*mazes)[i][l][m][k] == '>' || (*mazes)[i][l][m][k] == 'v' || (*mazes)[i][l][m][k] == '<' || (*mazes)[i][l][m][k] == '^'
+								|| (*mazes)[i][l][m][k] == '#')
+								break;
+							(*mazes)[i][l][m][k] = '#';
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void testMazeOut(int T, int M[], int N[], char ****mazes,nodeDescription startNodes[])
+{
+	int i, j, k,l;
+	for (i = 0; i < T; i++)
+	{
+		std::cout << "Maze " << i << ": " << M[i] << " x " << N[i] << std::endl;
+		std::cout << "Starting node location: row " << startNodes[i].row << ", column " << startNodes[i].column << std::endl << std::endl;
+		for (l = 0; l < NLEVELS; l++)
+		{
+			std::cout << "Level " << l << std::endl << std::endl;
+			for (j = 0; j < M[i]; j++)
+			{
+				for (k = 0; k < N[i]; k++)
+				{
+					std::cout << mazes[i][l][j][k] << ' ';
+				}
+				std::cout << std::endl;
+			}
+			std::cout << std::endl;
+		}
+		std::cout << std::endl;
+	}
+}
+
+void fileOutput(std::ofstream &outFile, int result,int i)
+{
+	outFile << "Case #" << i << ": ";
+	if (result)
+		outFile << result << std::endl;
+	else
+		outFile << "impossible" << std::endl;
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	std::string filename="laser_maze.txt";
+	int i,j,k,l, T, M[MAX], N[MAX],result;
+	char ****mazes;
+	nodeDescription startNodes[MAX];
+	mazeGraph mGraph;
+	readFile(filename, T, M, N, &mazes,startNodes);
+	std::ofstream outF("laser_maze_output.txt", std::ios_base::out);
+	//testMazeOut(T, M, N, mazes,startNodes);
+	for (i = 0; i < T; i++)
+	{
+		result=createMazeGraph(M[i], N[i], mazes[i], mGraph, startNodes[i]);
+		if (result)
+		{
+			// goal nodes exist, let's BFS
+			result = BFS(mGraph);
+		}
+		fileOutput(outF, result, i + 1);
+	}
+	for (i = 0; i < T; i++)
+	{
+		for (l = 0; l < NLEVELS; l++)
+		{
+			for (j = 0; j < MAX; j++)
+			{
+				delete[]mazes[i][l][j];
+			}
+			delete[]mazes[i][l];
+		}
+		delete[]mazes[i];
+	}
+	delete[]mazes;
+	outF.close();
+	return 0;
+}
+

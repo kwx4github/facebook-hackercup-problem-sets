@@ -1,0 +1,106 @@
+#include <cstdio>
+#include <cstring>
+#include <algorithm>
+
+const int dx[4] = {-1, 0, 1, 0};
+const int dy[4] = {0, -1, 0, 1};
+
+int n, m;
+int dist[4][100][100];
+int que[4 * 100 * 100];
+char maze[100][101];
+
+bool safe(int row, int col, int dir)
+{
+	for (int d = 0; d < 4; ++d)
+	{
+		for (int y = row, x = col; ; )
+		{
+			if (y < 0 || y >= n || x < 0 || x >= m) break;
+			int ch = maze[y][x];
+			if (ch == '#') break;
+			if (ch >= '0' && ch <= '3')
+			{
+				if (((ch - '0') + dir + 4 - d) % 4 == 2) return false;
+				else break;
+			}
+			y += dy[d];
+			x += dx[d];
+		}
+	}
+	return true;
+}
+
+int gao()
+{
+	memset(dist, -1, sizeof(dist));
+	int sx = -1, sy = -1, tx = -1, ty = -1;
+	for (int row = 0; row < n; ++row)
+	{
+		for (int col = 0; col < m; ++col)
+		{
+			if (maze[row][col] == 'S')
+			{
+				sy = row;
+				sx = col;
+				maze[row][col] = '.';
+			}
+			if (maze[row][col] == 'G')
+			{
+				ty = row;
+				tx = col;
+				maze[row][col] = '.';
+			}
+		}
+	}
+	int st = 0, ed = 1;
+	//if (!safe(sy, sx, 0)) return -1;
+	dist[0][sy][sx] = 0;
+	que[0] = (sy << 8) + sx;
+	while (st < ed)
+	{
+		int dir = (que[st] >> 16);
+		int row = (que[st] >> 8) & 255;
+		int col = (que[st] & 255);
+		if (row == ty && col == tx) return dist[dir][row][col];
+		for (int d = 0; d < 4; ++d)
+		{
+			int y = row + dy[d];
+			int x = col + dx[d];
+			if (y < 0 || y >= n || x < 0 || x >= m) continue;
+			if (maze[y][x] != '.') continue;
+			int td = (dir + 1) % 4;
+			if (!safe(y, x, td)) continue;
+			if (dist[td][y][x] >= 0) continue;
+			dist[td][y][x] = dist[dir][row][col] + 1;
+			que[ed++] = (td << 16) + (y << 8) + x;
+		}
+		++st;
+	}
+	return -1;
+}
+
+int main()
+{
+	int t;
+	scanf("%d", &t);
+	for (int cs = 1; cs <= t; ++cs)
+	{
+		scanf("%d%d", &n, &m);
+		for (int i = 0; i < n; ++i)
+		{
+			scanf("%s", maze[i]);
+			for (int j = 0; j < m; ++j)
+			{
+				if (maze[i][j] == '<') maze[i][j] = '0';
+				if (maze[i][j] == '^') maze[i][j] = '1';
+				if (maze[i][j] == '>') maze[i][j] = '2';
+				if (maze[i][j] == 'v') maze[i][j] = '3';
+			}
+		}
+		printf("Case #%d: ", cs);
+		int ans = gao();
+		if (ans < 0) printf("impossible\n"); else printf("%d\n", ans);
+	}
+	return 0;
+}

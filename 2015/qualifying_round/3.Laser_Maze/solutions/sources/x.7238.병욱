@@ -1,0 +1,290 @@
+#include <iostream>
+#include <string>
+#include <queue>
+#include <stdio.h>
+#include <stdlib.h>
+using namespace std;
+
+enum DEGREE { UP, RIGHT, DOWN, LEFT };
+char moveType[4] = { '^', '>', 'v', '<' };
+
+// 특별한 벽에 대한 정보를 보관할 구조체
+typedef struct _point
+{
+	int x;
+	int y;
+	int degree;
+	enum { LASER, START, GOAL } type;
+} SpecialPoint;
+
+// 이동 우선순위
+typedef struct _priority
+{
+	DEGREE x;
+	DEGREE y;
+} Priority;
+
+const int MAZE_MAX_SIZE = 101;
+int n, m;
+SpecialPoint sp, ep;
+Priority priority;
+char laserMazeOrigin[MAZE_MAX_SIZE][MAZE_MAX_SIZE];
+// 레이져로 90도 회전시 마다 갈 수 없는 공간에 대한 맵
+char laserMaze[4][MAZE_MAX_SIZE][MAZE_MAX_SIZE];
+int laserMazeMin[MAZE_MAX_SIZE][MAZE_MAX_SIZE] = { 0, };
+
+char turnOnTerret(char wall)
+{
+	switch (wall)
+	{
+	case '^': return '>';
+	case '>': return 'v';
+	case 'v': return '<';
+	case '<': return '^';
+	}
+	return wall;
+}
+
+void createWall(char laserMaze[][MAZE_MAX_SIZE], int m, int n)
+{
+	for (int mi = 0; mi < m; mi++)
+	{
+		for (int ni = 0; ni < n; ni++)
+		{
+			// 매 레이져포 발견시 마다 BFS를 돌리면서 레이져포의 발사 상태를 @기호로 표시
+			if (laserMaze[mi][ni] == '^' || laserMaze[mi][ni] == '<' || laserMaze[mi][ni] == '>' || laserMaze[mi][ni] == 'v')
+			{
+				int type = 0;
+				switch (laserMaze[mi][ni])
+				{
+				case '^': type = 0; break;
+				case '>': type = 1; break;
+				case '<': type = 2; break;
+				case 'v': type = 3; break;
+				}
+				queue<int> qx;
+				queue<int> qy;
+				qx.push(ni);
+				qy.push(mi);
+				while (qx.size() > 0)
+				{
+					int x = qx.front(); qx.pop();
+					int y = qy.front(); qy.pop();
+
+					switch (type)
+					{
+					case 0:
+						if (laserMaze[y - 1][x] == '.' || laserMaze[y - 1][x] == 'S' || laserMaze[y - 1][x] == 'G')
+						{
+							laserMaze[y - 1][x] = '@';
+							qx.push(x);
+							qy.push(y - 1);
+						}
+						break;
+					case 1:
+						if (laserMaze[y][x + 1] == '.' || laserMaze[y][x + 1] == 'S' || laserMaze[y][x + 1] == 'G')
+						{
+							laserMaze[y][x + 1] = '@';
+							qx.push(x + 1);
+							qy.push(y);
+						}
+						break;
+					case 2:
+						if (laserMaze[y][x - 1] == '.' || laserMaze[y][x - 1] == 'S' || laserMaze[y][x - 1] == 'G')
+						{
+							laserMaze[y][x - 1] = '@';
+							qx.push(x - 1);
+							qy.push(y);
+						}
+						break;
+					case 3:
+						if (laserMaze[y + 1][x] == '.' || laserMaze[y + 1][x] == 'S' || laserMaze[y + 1][x] == 'G')
+						{
+							laserMaze[y + 1][x] = '@';
+							qx.push(x);
+							qy.push(y + 1);
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+}
+
+// @ : 발사된 레이져포
+// x, y 좌표에서 nMoveStep 만큼의 움직임 뒤의 레이져 상태를 체크
+// true : 이동가능, false : 이동 불가
+bool isMoveCheck(int stepX, int stepY, int nMoveStep)
+{
+	if (nMoveStep == 0) return true;
+
+	if ((stepX >= n || stepX < 0) ||
+		(stepY >= m || stepY < 0) ||
+		(laserMaze[nMoveStep % 4][stepY][stepX] == '#' ||
+		laserMaze[nMoveStep % 4][stepY][stepX] == '@' ||
+		laserMaze[nMoveStep % 4][stepY][stepX] == '^' ||
+		laserMaze[nMoveStep % 4][stepY][stepX] == '>' ||
+		laserMaze[nMoveStep % 4][stepY][stepX] == 'v' ||
+		laserMaze[nMoveStep % 4][stepY][stepX] == '<'))
+	{
+		return false;
+	}
+
+	if ((laserMazeMin[stepY][stepX] + 4) > nMoveStep)
+	{
+		if (laserMazeMin[stepY][stepX] <= nMoveStep)
+		{
+			//cout << stepX << ", " << stepY << " -> " << laserMazeMin[stepY][stepX] << " " << nMoveStep << endl;
+			return false;
+		}
+
+		if (laserMazeMin[stepY][stepX] > nMoveStep)
+			laserMazeMin[stepY][stepX] = nMoveStep;
+	}
+	else
+	{
+		return false;
+	}
+
+	return true;
+}
+
+int findRoad(int stepX, int stepY)
+{
+	// init
+	for (int i = 0; i < MAZE_MAX_SIZE; i++)
+	{
+		for (int j = 0; j < MAZE_MAX_SIZE; j++)
+		{
+			laserMazeMin[i][j] = 999999999;
+		}
+	}
+
+	// 레이져는 매 이동후 발사되며 뾰족한 부분으로 발사된다.
+	// 발사했지만 이미 도착한경우 실패로 간주한다.
+	queue<int> qDegree;
+	queue<int> qMoveStep;
+	queue<int> qX;
+	queue<int> qY;
+	qDegree.push(-1);
+	qMoveStep.push(0);
+	qX.push(stepX);
+	qY.push(stepY);
+	laserMazeMin[stepY][stepX] = 0;
+	while (qMoveStep.size() > 0)
+	{
+		int moveStep = qMoveStep.front(); qMoveStep.pop();
+		int degree = moveStep % 4;//qDegree.front(); qDegree.pop();
+		stepX = qX.front(); qX.pop();
+		stepY = qY.front(); qY.pop();
+
+		//char wall = laserMazeOrigin[stepY][stepX];
+		//if (degree >= 0) wall = laserMaze[degree][stepY][stepX];
+
+		//if (wall == 'S' || wall == 'G' || isMoveCheck(stepX, stepY, moveStep))
+		//{
+		if (laserMazeOrigin[stepY][stepX] == 'G') return moveStep;
+		//if (!isMoveCheck(stepX, stepY, moveStep)) continue;
+
+			//if (laserMazeMin[stepY][stepX] == moveStep) continue;
+			//cout << moveType[degree] << "(" << stepX << ", " << stepY << ", (" << moveStep << "))" << " → ";
+
+			if (isMoveCheck(priority.x == LEFT ? stepX - 1 : stepX + 1, stepY, moveStep + 1))
+			{
+				//if (laserMazeMin[stepY][priority.x == LEFT ? stepX - 1 : stepX + 1] <= moveStep) continue;
+				//laserMazeMin[stepY][priority.x == LEFT ? stepX - 1 : stepX + 1] = moveStep;
+				//qDegree.push(priority.x);
+				qMoveStep.push(moveStep + 1);
+				qX.push(priority.x == LEFT ? stepX - 1 : stepX + 1);
+				qY.push(stepY);
+			}
+
+			if (isMoveCheck(stepX, priority.y == DOWN ? stepY + 1 : stepY - 1, moveStep + 1))
+			{
+				//if (laserMazeMin[priority.y == DOWN ? stepY + 1 : stepY - 1][stepX] <= moveStep) continue;
+				//laserMazeMin[priority.y == DOWN ? stepY + 1 : stepY - 1][stepX] = moveStep;
+				//qDegree.push(priority.y);
+				qMoveStep.push(moveStep + 1);
+				qX.push(stepX);
+				qY.push(priority.y == DOWN ? stepY + 1 : stepY - 1);
+			}
+
+			if (isMoveCheck(priority.x == LEFT ? stepX + 1 : stepX - 1, stepY, moveStep + 1))
+			{
+				//if (laserMazeMin[stepY][priority.x == LEFT ? stepX + 1 : stepX - 1] <= moveStep) continue;
+				//laserMazeMin[stepY][priority.x == LEFT ? stepX + 1 : stepX - 1] = moveStep;
+				//qDegree.push(priority.x == LEFT ? RIGHT : LEFT);
+				qMoveStep.push(moveStep + 1);
+				qX.push(priority.x == LEFT ? stepX + 1 : stepX - 1);
+				qY.push(stepY);
+			}
+
+			if (isMoveCheck(stepX, priority.y == DOWN ? stepY - 1 : stepY + 1, moveStep + 1))
+			{
+				//if (laserMazeMin[priority.y == DOWN ? stepY - 1 : stepY + 1][stepX] <= moveStep) continue;
+				//laserMazeMin[priority.y == DOWN ? stepY - 1 : stepY + 1][stepX] = moveStep;
+				//qDegree.push(priority.y == DOWN ? UP : DOWN);
+				qMoveStep.push(moveStep + 1);
+				qX.push(stepX);
+				qY.push(priority.y == DOWN ? stepY - 1 : stepY + 1);
+			}
+		//}
+	}
+
+	return -1;
+}
+
+int main()
+{
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	int t = 0;
+	cin >> t;
+
+	for (int i = 1; i <= t; i++)
+	{
+		cin >> m >> n;
+
+		for (int mi = 0; mi < m; mi++)
+		{
+			for (int ni = 0; ni < n; ni++)
+			{
+				cin >> laserMazeOrigin[mi][ni];
+				if (laserMazeOrigin[mi][ni] == 'S')
+				{
+					sp.type = SpecialPoint::START;
+					sp.x = ni;
+					sp.y = mi;
+				}
+				if (laserMazeOrigin[mi][ni] == 'G')
+				{
+					ep.type = SpecialPoint::GOAL;
+					ep.x = ni;
+					ep.y = mi;
+				}
+				laserMaze[0][mi][ni] = laserMazeOrigin[mi][ni];
+				for (int j = 1; j < 4; j++)
+					laserMaze[j][mi][ni] = turnOnTerret(laserMaze[j - 1][mi][ni]);
+			}
+		}
+
+		createWall(laserMaze[0], m, n);
+		createWall(laserMaze[1], m, n);
+		createWall(laserMaze[2], m, n);
+		createWall(laserMaze[3], m, n);
+
+		// 탐욕 알고리즘을 위한 우선순위 셋팅
+		priority.x = (sp.x > ep.x) ? LEFT : RIGHT;
+		priority.y = (sp.y > ep.y) ? UP : DOWN;
+
+		int nMinMoveStep = findRoad(sp.x, sp.y);
+		cout << "Case #" << i << ": ";
+		if (nMinMoveStep < 0)
+			cout << "impossible" << endl;
+		else
+			cout << nMinMoveStep << endl;
+	}
+	return 0;
+}

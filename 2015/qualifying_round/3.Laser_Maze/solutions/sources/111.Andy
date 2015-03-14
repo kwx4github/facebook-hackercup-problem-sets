@@ -1,0 +1,159 @@
+// Laser Maze
+
+#include <iostream>
+#include <queue>
+using namespace std;
+
+int m, n; // height and width
+int start[2];
+int goal[2];
+char grid[105][105];
+int laser[10005][3];
+int laser_count = 0;
+bool valid[4][105][105];
+int dist[4][105][105];
+int visit[4][105][105];
+int dir[4][2] = {
+	{ -1,  0 },
+	{  0,  1 },
+	{  1,  0 },
+	{  0, -1 }
+};
+
+void valid_fill()
+{
+	for ( int i = 0; i < 4; i++ )
+	{
+		for ( int j = 0; j <= m + 1; j++ )
+		{
+			for ( int k = 0; k <= n + 1; k++ ) valid[i][j][k] = true;
+		}
+		for ( int j = 0; j < laser_count; j++ )
+		{
+			int d = ( laser[j][2] + i ) % 4;
+			int p[2] = { laser[j][0] + dir[d][0], laser[j][1] + dir[d][1] };
+			while ( grid[p[0]][p[1]] == '.' || grid[p[0]][p[1]] == 'G' || grid[p[0]][p[1]] == 'S' )
+			{
+				valid[i][p[0]][p[1]] = false;
+				p[0] += dir[d][0];
+				p[1] += dir[d][1];
+			}
+		}
+	}
+	return;
+}
+
+int main() 
+{
+	int t;
+	cin >> t;
+	for ( int h = 1; h <= t; h++ )
+	{
+		cin >> m >> n;
+		laser_count = 0;
+		for ( int i = 0; i <= m + 1; i++ ) 
+		{
+			grid[i][0] = '#';
+			grid[i][n + 1] = '#';
+		}
+		for ( int j = 0; j <= n + 1; j++ )
+		{
+			grid[0][j] = '#';
+			grid[m + 1][j] = '#';
+		}
+		for ( int i = 1; i <= m; i++ )
+		{
+			for ( int j = 1; j <= n; j++ )
+			{
+				cin >> grid[i][j];
+				if ( grid[i][j] == 'S' )
+				{
+					start[0] = i;
+					start[1] = j;
+				}
+				if ( grid[i][j] == 'G' )
+				{
+					goal[0] = i;
+					goal[1] = j;
+				}
+				if ( grid[i][j] == '^' )
+				{
+					laser[laser_count][0] = i;
+					laser[laser_count][1] = j;
+					laser[laser_count][2] = 0;
+					laser_count++;
+				}
+				else if ( grid[i][j] == '>' )
+				{
+					laser[laser_count][0] = i;
+					laser[laser_count][1] = j;
+					laser[laser_count][2] = 1;
+					laser_count++;
+				}
+				else if ( grid[i][j] == 'v' )
+				{
+					laser[laser_count][0] = i;
+					laser[laser_count][1] = j;
+					laser[laser_count][2] = 2;
+					laser_count++;
+				}
+				else if ( grid[i][j] == '<' )
+				{
+					laser[laser_count][0] = i;
+					laser[laser_count][1] = j;
+					laser[laser_count][2] = 3;
+					laser_count++;
+				}
+			}
+		}
+		valid_fill();
+		queue<int> path;
+		for ( int i = 0; i <= m + 1; i++ )
+		{
+			for ( int j = 0; j <= n + 1; j++ )
+			{
+				visit[0][i][j] = false;
+				visit[1][i][j] = false;
+				visit[2][i][j] = false;
+				visit[3][i][j] = false;
+				dist[0][i][j] = 999999999;
+				dist[1][i][j] = 999999999;
+				dist[2][i][j] = 999999999;
+				dist[3][i][j] = 999999999;
+			}
+		}
+		dist[0][start[0]][start[1]] = 0;
+		visit[0][start[0]][start[1]] = true;
+		path.push(4000 * start[0] + 4 * start[1]);
+		while ( !path.empty() && path.front() / 4 != 1000 * goal[0] + goal[1] )
+		{
+			int p1 = path.front() / 4000;
+			int q1 = ( path.front() / 4 ) % 1000;
+			int r1 = path.front() % 4;
+			for ( int i = 0; i < 4; i++ )
+			{
+				int p = p1 + dir[i][0];
+				int q = q1 + dir[i][1];
+				int r = ( r1 + 1 ) % 4;
+				if ( ( grid[p][q] == '.' || grid[p][q] == 'S' || grid[p][q] == 'G' ) && !visit[r][p][q] && valid[r][p][q] )
+				{
+					dist[r][p][q] = dist[r1][p1][q1] + 1;
+					path.push(4000 * p + 4 * q + r);
+					visit[r][p][q] = true;
+				}
+			}
+			path.pop();
+		}
+		if ( path.empty() )
+		{
+			cout << "Case #" << h << ": impossible" << endl;
+		}
+		else
+		{
+			int mn = dist[0][goal[0]][goal[1]];
+			for ( int i = 1; i < 4; i++ ) mn = ( mn < dist[i][goal[0]][goal[1]] ) ? mn : dist[i][goal[0]][goal[1]];
+			cout << "Case #" << h << ": " << mn << endl;
+		}
+	}
+	return 0;
+}

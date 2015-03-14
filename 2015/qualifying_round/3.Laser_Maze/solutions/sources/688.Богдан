@@ -1,0 +1,167 @@
+import java.io.*;
+import java.util.*;
+
+public class Main {
+
+    static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+    static PrintWriter out = new PrintWriter(System.out, true);
+    static StringTokenizer st;
+
+    public static void main(String[] args) throws Exception {
+        int tests = nextInt();
+        for (int t = 1; t <= tests; t++) {
+            int m = nextInt(), n = nextInt();
+            char[][] grid = new char[m][];
+            for (int i = 0; i < m; i++) {
+                grid[i] = nextToken().toCharArray();
+            }
+            List<Laser> lasers = new ArrayList<>();
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    if (isLaser(grid[i][j])) {
+                        lasers.add(new Laser(j, i, grid));
+                    }
+                }
+            }
+            int sx = 0, sy = 0;
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
+                    if (grid[i][j] == 'S') {
+                        sx = j;
+                        sy = i;
+                    }
+                }
+            }
+            int[][] d = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+            Queue<int[]> queue = new LinkedList<>();
+            boolean[][][] used = new boolean[n][m][4];
+            queue.add(new int[]{sx, sy, 0});
+            used[sx][sy][0] = true;
+            int res = -1;
+            while (!queue.isEmpty() && res == -1) {
+                int[] tmp = queue.poll();
+                int cx = tmp[0], cy = tmp[1], move = tmp[2];
+                for (int i = 0; i < d.length; i++) {
+                    int nx = cx + d[i][0], ny = cy + d[i][1], nmove = move + 1;
+                    if (nx < 0 || nx >= n || ny < 0 || ny >= m || !isFree(grid[ny][nx]) || used[nx][ny][nmove % 4])
+                        continue;
+                    used[nx][ny][nmove % 4] = true;
+                    boolean hit = false;
+                    for (Laser laser : lasers) {
+                        hit |= laser.isHit(nx, ny, nmove);
+                    }
+                    if (!hit) {
+                        if (grid[ny][nx] == 'G') {
+                            res = nmove;
+                            break;
+                        }
+                        queue.add(new int[]{nx, ny, nmove});
+                    }
+                }
+            }
+            out.print("Case #" + t + ": ");
+            if (res != -1) {
+                out.println(res);
+            } else {
+                out.println("impossible");
+            }
+        }
+    }
+
+    public static boolean isLaser(char c) {
+        return c == '^' || c == '>' || c == 'v' || c == '<';
+    }
+
+    public static boolean isFree(char c) {
+        return c == '.' || c == 'S' || c == 'G';
+    }
+
+    public static int nextInt() throws Exception {
+        if (st == null || !st.hasMoreTokens()) st = new StringTokenizer(in.readLine());
+        return Integer.parseInt(st.nextToken());
+    }
+
+    public static long nextLong() throws Exception {
+        if (st == null || !st.hasMoreTokens()) st = new StringTokenizer(in.readLine());
+        return Long.parseLong(st.nextToken());
+    }
+
+    public static double nextDouble() throws Exception {
+        if (st == null || !st.hasMoreTokens()) st = new StringTokenizer(in.readLine());
+        return Double.parseDouble(st.nextToken());
+    }
+
+    public static String nextToken() throws Exception {
+        if (st == null || !st.hasMoreTokens()) st = new StringTokenizer(in.readLine());
+        return st.nextToken();
+    }
+
+    static class Laser {
+        int x, y, t, r, b, l;
+        int[] dir = new int[4];
+
+        public Laser(int x, int y, char[][] g) {
+            this.x = x;
+            this.y = y;
+            init(g);
+        }
+
+        private void init(char[][] g) {
+            if (g[y][x] == '^') dir[0] = 0;
+            if (g[y][x] == '>') dir[0] = 1;
+            if (g[y][x] == 'v') dir[0] = 2;
+            if (g[y][x] == '<') dir[0] = 3;
+            for (int i = 1; i < 4; i++) {
+                dir[i] = (dir[i - 1] + 1) % 4;
+            }
+
+            for (int i = y - 1; ; i--) {
+                if (i < 0 || !isFree(g[i][x])) {
+                    t = i;
+                    break;
+                }
+            }
+
+            for (int i = x + 1; ; i++) {
+                if (i == g[0].length || !isFree(g[y][i])) {
+                    r = i;
+                    break;
+                }
+            }
+
+            for (int i = y + 1; ; i++) {
+                if (i == g.length || !isFree(g[i][x])) {
+                    b = i;
+                    break;
+                }
+            }
+
+            for (int i = x - 1; ; i--) {
+                if (i < 0 || !isFree(g[y][i])) {
+                    l = i;
+                    break;
+                }
+            }
+
+        }
+
+        public boolean isHit(int cx, int cy, int move) {
+            int currDir = dir[move % 4];
+            if (currDir == 0) {
+                return cx == x && cy < y && cy > t;
+            }
+            if (currDir == 1) {
+                return cy == y && cx < r && cx > x;
+            }
+            if (currDir == 2) {
+                return cx == x && cy > y && cy < b;
+            }
+            if (currDir == 3) {
+                return cy == y && cx < x && cx > l;
+            }
+            return false;
+        }
+
+    }
+
+}

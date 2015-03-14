@@ -1,0 +1,167 @@
+#include <iostream>
+#include <vector>
+#include <cstdio>
+#include <utility>
+#include <queue>
+#include <cassert>
+using namespace std;
+//           > v  < ^
+int dr[4]  = { 0,   1,    0, -1 };
+int dc[4]  = { 1,   0,   -1,  0 };
+char da[4] = {'<', '^', '>', 'v'};
+#define TURRET_UP 3
+#define TURRET_RIGHT 0
+#define TURRET_DOWN 1
+#define TURRET_LEFT 2
+#define WALL -1
+#define ROAD -2
+
+char spin_turret(char x, int times) {
+    int pos = -1;
+    if (x == '<') pos = 0;
+    if (x == '^') pos = 1;
+    if (x == '>') pos = 2;
+    if (x == 'v') pos = 3;
+    assert(pos != -1);
+    return da[(pos + times) % 4];
+}
+
+string spin_all_turret(string turret, int times) {
+    string ret = "";
+    for (int i=0; i<(int)turret.size(); i++) {
+        ret += spin_turret(turret[i], times);
+    }
+    return ret;
+}
+
+bool inside(int nr, int nc, int sr, int sc) {
+    bool in = true;
+    in &= nr < sr;
+    in &= nc < sc;
+    in &= nr >=0;
+    in &= nc >= 0;
+    return in;
+}
+
+bool safe(const vector<vector<int> >& area,const string& turret_state, int r, int c) {
+    int nr, nc;
+    int sr = area.size();
+    int sc = area[0].size();
+    bool ok = true;
+    for (int i=0; ok && (i<4); i++) {
+        nr = r;
+        nc = c;
+        while (ok) {
+            nr = nr + dr[i];
+            nc = nc + dc[i];
+            if (inside(nr, nc, sr,sc)) {
+                if (area[nr][nc] == WALL) {
+                    break;
+                } 
+                else if (area[nr][nc] == ROAD) {
+                    continue;
+                }
+                else {
+                    ok &= (turret_state[area[nr][nc]] != da[i]);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    return ok;
+}
+
+typedef vector<vector<vector<bool> > > Marker;
+
+int explore(const vector<vector<int> >& area, Marker& marker,string turret_state, int sr,int sc, int fr, int fc) {
+    int nr, nc, tempr, tempc, nstep;
+    queue<int> qr, qc, qstep;
+    string next_state;
+    bool found = false;
+
+    qr.push(sr);
+    qc.push(sc);
+    qstep.push(0);
+    marker[sr][sc][0] = true;
+    while (!qr.empty() && !found) {
+        tempr = qr.front(); qr.pop();
+        tempc = qc.front(); qc.pop();
+        nstep = qstep.front(); qstep.pop();
+        next_state = spin_all_turret(turret_state, nstep+1);
+        for (int i=0; !found && i<4; i++) {
+            nr = tempr + dr[i];
+            nc = tempc + dc[i];
+            if (safe(area, next_state, nr, nc)) {
+                if (nr == fr && nc == fc) {
+                    found = true;
+                    return nstep+1;
+                } else {
+                    if (inside(nr,nc,area.size(),area[0].size()))
+                    if (!marker[nr][nc][nstep % 4]) {
+                        marker[nr][nc][nstep % 4] = true;
+                        qr.push(nr);
+                        qc.push(nc);
+                        qstep.push(nstep+1);
+                    }
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+void execute(int tc) {
+    int m, n, sr, sc, fr, fc;
+    cin >> m >> n;
+    string tmp;
+    vector<vector<int> > area(m, vector<int>(n));
+    vector<pair<int, int> > turret_location;
+    string turret_state = "";
+    Marker marker(m, vector<vector<bool> >(n, vector<bool>(4,false)));
+    for (int i=0; i<m; i++) {
+        cin >> tmp;
+        for (int j=0; j<n; j++) {
+            if (tmp[j] == '#') {
+                area[i][j] = WALL;
+            }
+            if (tmp[j] == '.') {
+                area[i][j] = ROAD;
+            }
+            if (tmp[j] == 'S') {
+                sr = i;
+                sc = j;
+                area[i][j] = ROAD;
+            }
+            if (tmp[j] == 'G') {
+                fr = i;
+                fc = j;
+                area[i][j] = ROAD;
+            }
+            for (int k=0; k<4; k++) {
+                if (tmp[j] == da[k]) {
+                    turret_state += da[k];
+                    turret_location.push_back(make_pair(i,j));
+                    area[i][j] = turret_state.size()-1;
+                }
+            }
+        }
+    }
+    int answer = explore(area,marker,turret_state,sr,sc,fr,fc);
+    if (answer == -1) {
+        printf("Case #%d: impossible\n", tc);
+    } else {
+        printf("Case #%d: %d\n", tc, answer);
+    }
+    
+}
+
+
+int main() {
+    int TC;
+    cin >> TC;
+    for (int i=1; i<=TC; i++) {
+        execute(i);
+    }
+    return 0;
+}

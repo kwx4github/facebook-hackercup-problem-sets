@@ -1,0 +1,119 @@
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+using namespace std;
+typedef long long ll;
+typedef pair<int, int> pii;
+
+int T;
+int M, N;
+const int MAX_M = 100;
+const int MAX_N = 100;
+const int INF = 1 << 20;
+pii d[MAX_M][MAX_N];
+int laser[MAX_M][MAX_N];
+vector<string> maze;
+char turret[] = {'>','v','<','^'};
+
+int di[] = {0, 1, 0, -1};
+int dj[] = {1, 0, -1, 0};
+int si, sj, gi, gj;
+typedef pair<pii, int> P;
+
+int turretIdx(int c)
+{
+	for (int i = 0; i < 4; ++i) {
+		if (turret[i] == c) return i;
+	}
+	return -1;
+}
+
+int bfs()
+{
+	queue<P> que;
+	for (int i = 0; i < M; ++i) {
+		for (int j = 0; j < N; ++j) {
+			d[i][j] = make_pair<int, int>(INF, INF);
+		}
+	}
+
+	que.push(make_pair<pii, int>(pii(si, sj), 0));
+	d[si][sj].first = 0;
+	while (que.size()) {
+		P p = que.front(); que.pop();
+		pii pos = p.first;
+		int t = p.second;
+		if (pos.first == gi && pos.second == gj) break;
+		for (int k = 0; k < 4; ++k) {
+			int ni = pos.first + di[k];
+			int nj = pos.second + dj[k];
+			int nt = t + 1;
+			if (0 <= ni && ni < M && 0 <= nj && nj < N
+				&& maze[ni][nj] != '#'
+				&& turretIdx(maze[ni][nj]) < 0
+				&& ((laser[ni][nj] & (1 << (nt & 3))) == 0)
+				&& d[ni][nj].second == INF) {
+				que.push(make_pair<pii, int>(pii(ni, nj), nt));
+				if (d[ni][nj].first == INF) d[ni][nj].first = nt;
+				else d[ni][nj].second = nt;
+			}
+		}
+	}
+
+	return int(min(d[gi][gj].first, d[gi][gj].second));
+}
+
+void solve()
+{
+	memset(laser, 0, sizeof(laser));
+	for (int i = 0; i < M; ++i) {
+		for (int j = 0; j < N; ++j) {
+			int ti = turretIdx(maze[i][j]);
+			if (0 <= ti) {
+				for (int k = 0; k < 4; ++k) {
+					int dir = (ti + k) & 3;
+					int ii = i + di[dir];
+					int jj = j + dj[dir];
+					while (0 <= ii && ii < M && 0 <= jj && jj < N
+							&& maze[ii][jj] != '#'
+							&& turretIdx(maze[ii][jj]) < 0) {
+						laser[ii][jj] |= (1 << k);
+						ii += di[dir];
+						jj += dj[dir];
+					}
+				}
+			} else if (maze[i][j] == 'S') {
+				si = i;
+				sj = j;
+			} else if (maze[i][j] == 'G') {
+				gi = i;
+				gj = j;
+			}
+		}
+	}
+
+	int res = bfs();
+	if (res == INF) printf("impossible\n");
+	else printf("%d\n", res);
+
+	return;
+}
+
+int main()
+{
+	scanf("%d\n", &T);
+	for (int t = 1; t <= T; ++t) {
+		scanf("%d %d\n", &M, &N);
+		maze = vector<string>(M);
+		for (int i = 0; i < M; ++i) {
+			cin >> maze[i];
+		}
+		printf("Case #%d: ", t);
+		solve();
+	}
+	return 0;
+}

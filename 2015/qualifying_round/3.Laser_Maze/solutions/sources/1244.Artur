@@ -1,0 +1,160 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
+#include <cstring>
+#include <string>
+#include <set>
+#include <cmath>
+#include <queue>
+#include <algorithm>
+#include <tuple>
+
+using namespace std;
+
+typedef unsigned long long int ull;
+typedef long long int ll;
+
+string maze[101];
+int n, m;
+
+int death[101][101][4];
+int was[101][101][4];
+
+bool is_turret(char c)
+{
+  return c == '>' || c == '<' || c == '^' || c == 'v';
+}
+
+bool is_passable(char c)
+{
+  return !is_turret(c) && c != '#';
+}
+
+bool is_valid(int x, int y)
+{
+  return x >= 0 && x < n && y >= 0 && y < m;
+}
+
+char turn_turret(char c, int k)
+{
+  static string x = ">v<^"; 
+  int pos = x.find(c);
+  pos = (pos + k) % 4;
+  return x[pos];
+}
+
+int main()
+{
+  freopen("laser_maze.txt", "r", stdin);
+  freopen("C.txt", "wb", stdout);
+  int T;
+  cin >> T;
+
+  for (int i = 0; i < T; ++i)
+  {
+    memset(death, 0, sizeof(death));
+    memset(was, 0, sizeof(was));
+    cin >> n >> m;
+    for (int j = 0; j < n; ++j)
+      cin >> maze[j];
+
+    int start_x = 0, start_y = 0, end_x = 0, end_y = 0;
+
+    for (int k = 0; k < 4; ++k)
+    {
+      for (int i = 0; i < n; ++i)
+      {
+        for (int j = 0; j < m; ++j)
+        {
+          if (is_turret(maze[i][j]) )
+          {
+            char t = turn_turret(maze[i][j], k);
+            int dx = 0, dy = 0;
+            switch (t)
+            {
+            case '<':
+              dy = -1;
+              break;
+            case '^':
+              dx = -1;
+              break;
+            case '>':
+              dy = 1;
+              break;
+            case 'v':
+              dx = 1;
+              break;
+            }
+
+            int x = i, y = j;
+            x += dx;
+            y += dy;
+            while (is_valid(x, y) && is_passable(maze[x][y]))
+            {
+              death[x][y][k] = 1;
+              x += dx;
+              y += dy;
+            }
+          }
+          else if (maze[i][j] == 'S')
+          {
+            start_x = i;
+            start_y = j;
+          }
+          else if (maze[i][j] == 'G')
+          {
+            end_x = i;
+            end_y = j;
+          }
+        }
+      }
+    }
+
+    int best = -1;
+
+    was[start_x][start_y][0] = 1;
+    queue<tuple<int, int, int, int>> q;
+    q.push(make_tuple(start_x, start_y, 0, 0));
+
+    while (!q.empty())
+    {
+      auto t = q.front();
+      q.pop();
+
+      int x = get<0>(t);
+      int y = get<1>(t);
+      int k = get<2>(t);
+      int dist = get<3>(t);
+
+      if (x == end_x && y == end_y)
+      {
+        best = dist;
+        break;
+      }
+
+      int dx[] = {0, 1, 0, -1};
+      int dy[] = {1, 0, -1, 0};
+      int dk = (k + 1) % 4;
+
+      for (int j = 0; j < 4; ++j)
+      {
+        int new_x = x + dx[j];
+        int new_y = y + dy[j];
+
+        if (is_valid(new_x, new_y) && !was[new_x][new_y][dk] && !death[new_x][new_y][dk] && is_passable(maze[new_x][new_y]))
+        {
+          q.push(make_tuple(new_x, new_y, dk, dist + 1));
+          was[new_x][new_y][dk] = 1;
+        }
+      }
+    }
+
+    cout << "Case #" << i + 1 << ": " << (best != -1 ? to_string((ll)best) : "impossible") << endl;
+  }
+
+  fclose(stdin);
+  fclose(stdout);
+
+  return 0;
+}

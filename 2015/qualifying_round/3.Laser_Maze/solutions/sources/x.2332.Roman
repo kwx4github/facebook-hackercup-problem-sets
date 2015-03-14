@@ -1,0 +1,81 @@
+open Printf
+open Scanf
+
+external id : 'a -> 'a = "%identity"
+
+let solve () =
+  let (m, n) = scanf " %d %d" (fun m n -> m, n) in
+  let s = ref None and g = ref None in
+  let tuck a e = a := e :: !a in
+  let lasers = ref [] in
+  let maze =
+    Array.init m begin fun i ->
+      let line = scanf " %s" id in
+      let find r x =
+        match !r with
+        | Some _ -> ()
+        | None -> try r := Some (String.index line x, i) with Not_found -> ()
+      in
+      find s 'S';
+      find g 'G';
+      Array.init n begin fun j ->
+        match line.[j] with
+        | '#' -> false
+        | '<' -> tuck lasers (i, j, 0); false
+        | '^' -> tuck lasers (i, j, 1); false
+        | '>' -> tuck lasers (i, j, 2); false
+        | 'v' -> tuck lasers (i, j, 3); false
+        | _ -> true
+      end
+    end
+  in
+  let get r = match !r with Some x -> x | _ -> assert false in
+  let s = get s and g = get g in
+  let maze3d =
+    Array.init 4 begin fun z ->
+      let maze = Array.init m (fun i -> Array.copy maze.(i)) in
+      List.iter begin fun (i, j, dir) ->
+        let dir = (dir + z) mod 4 in
+        let fire i j = maze.(i).(j) <- false in
+        match dir with
+        | 0 -> for j = 0 to j do fire i j done
+        | 1 -> for i = 0 to i do fire i j done
+        | 2 -> for j = j to n - 1 do fire i j done
+        | 3 -> for i = i to m - 1 do fire i j done
+        | _ -> assert false
+      end !lasers;
+      maze
+    end
+  in
+  let bfs = Queue.create () in
+  let sx, sy = s and gx, gy = g in
+(*   printf "gx=%d gy=%d\n" gx gy; *)
+  Queue.push (sx, sy, 1, 0) bfs;
+  maze3d.(0).(sy).(sx) <- false;
+  let rec loop () =
+    match (try Some (Queue.pop bfs) with Queue.Empty -> None) with
+    | None -> printf "impossible"
+    | Some (x, y, z, c) when x = gx && y = gy -> printf "%d" c
+    | Some (x, y, z, c) ->
+(*       printf "x=%d y=%d z=%d c=%d\n" x y z c; *)
+      let go x y =
+        if maze3d.(z).(y).(x) then begin
+          Queue.push (x, y, (z + 1) mod 4, c + 1) bfs;
+          maze3d.(z).(y).(x) <- false
+        end
+      in
+      if x > 0 then go (x - 1) y;
+      if y > 0 then go x (y - 1);
+      if x < n - 1 then go (x + 1) y;
+      if y < m - 1 then go x (y + 1);
+      loop ()
+  in
+  loop ()
+
+let () =
+  let t' = scanf " %d" id in
+  for i' = 1 to t' do
+    printf "Case #%d: " i';
+    solve ();
+    printf "\n"
+  done

@@ -1,0 +1,123 @@
+#include "cstdio"
+#include "cassert"
+#include "algorithm"
+
+using namespace std;
+
+const int MAXN = 102;
+const int MAXQ = 100005;
+const int oo = (int) 1e9;
+
+char maze[ MAXN ][ MAXN ];
+bool blocked[ MAXN ][ MAXN ][ 4 ];
+int dist[ MAXN ][ MAXN ][ 4 ];
+int q[ MAXQ ];
+
+char mov[][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+char laser[] = {'^', '>', 'v', '<'};
+
+int kindOfLaser(char c) {
+	for (int k = 0; k < 4; k++) {
+		if ( c == laser[k] )
+			return k;
+	}
+	return -1;
+}
+
+int main() {
+	int ntc;
+	int n, m;
+
+	scanf("%d", &ntc);
+	for (int tc = 1; tc <= ntc; tc++) {
+		int n, m;
+		scanf("%d %d", &n, &m);
+		
+		int head = 0, tail = 0;
+		int targetRow, targetCol;
+		for (int i = 0; i < n; i++) {
+			scanf("%s", maze[ i ]);
+			for (int j = 0; j < m; j++) {
+				for (int k = 0; k < 4; k++) {
+					blocked[i][j][k] = false;
+					dist[i][j][k] = oo;
+				}
+
+				if ( maze[i][j] == 'S' ) {
+					q[ head++ ] = i;
+					q[ head++ ] = j;
+					q[ head++ ] = 0;
+
+					dist[ i ][ j ][ 0 ] = 0;
+					maze[ i ][ j ] = '.';
+				} else if ( maze[i][j] == 'G' ) {
+					targetRow = i;
+					targetCol = j;
+					maze[ i ][ j ] = '.';
+				}
+			}
+		}
+
+		for (int i = 0; i < n; i++)
+			for (int j = 0; j < m; j++)
+				for (int k = 0; k < 4; k++) {
+					if ( maze[i][j] == '.' ) {}
+					else if ( maze[i][j] == '#' ) {
+						blocked[i][j][k] = true;
+					} else {
+						int la = kindOfLaser( maze[ i ][ j ] );
+						assert(la != -1);
+
+						int dir = (la + k) % 4;
+
+						int nr = i;
+						int nc = j;
+						
+						blocked[ nr ][ nc ][ k ] = true;
+						while (true) {
+							nr += mov[dir][0];
+							nc += mov[dir][1];
+
+							if ( nr < 0 || nr >= n ) break;
+							if ( nc < 0 || nc >= m ) break;
+							if ( maze[ nr ][ nc ] != '.' ) break;
+							
+							blocked[nr][nc][k] = true;
+						}
+					}
+				}
+
+		while (head > tail) {
+			int ra = q[ tail++ ];
+			int ca = q[ tail++ ];
+			int la = q[ tail++ ];
+
+			int nl = (la + 1) % 4;
+			for (int k = 0; k < 4; k++) {
+				int nr = ra + mov[ k ][ 0 ];
+				int nc = ca + mov[ k ][ 1 ];
+
+				if ( nr < 0 || nr >= n ) continue;
+				if ( nc < 0 || nc >= m ) continue;
+				if ( blocked[ nr ][ nc ][ nl ] ) continue;
+				if ( dist[ nr ][ nc ][ nl ] != oo ) continue;
+
+				dist[nr][nc][nl] = dist[ra][ca][la] + 1;
+				
+				q[ head++ ] = nr;
+				q[ head++ ] = nc;
+				q[ head++ ] = nl;
+			}
+		}
+
+		int ans = oo;
+		for (int k = 0; k < 4; k++) {
+			ans = min( ans, dist[ targetRow ][ targetCol ][ k ] );
+		}
+
+		if ( ans == oo ) printf("Case #%d: impossible\n", tc);
+		else printf("Case #%d: %d\n", tc, ans);
+	}
+
+	return 0;
+}

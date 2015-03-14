@@ -1,0 +1,171 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct Cell
+{
+	char c;
+	int x, y;
+	struct Cell *next;
+}Cell, *Queue;
+
+Queue last = NULL;
+int move[4][2] = {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
+
+void initQueue(Queue *q)
+{
+	if (*q)
+		free(*q);
+	*q = malloc(sizeof(Cell));
+	(*q)->c = 0;
+	(*q)->next = NULL;
+	last = *q;
+}
+
+void enqueue(Queue elt)
+{
+	elt->next = NULL;
+	last->next = elt;
+	last = elt;
+}
+
+Queue dequeue(Queue q)
+{
+	Queue r = q->next;
+	q->next = q->next->next;
+	if (r == last)
+		last = q;
+	return r;
+}
+
+int getLaserIndex(char c)
+{
+	switch(c)
+	{
+		case 'v':
+			return 0;
+			break;
+		case '<':
+			return 1;
+			break;
+		case '^':
+			return 2;
+			break;
+		case '>':
+			return 3;
+			break;
+		case 'S':
+			return -1;
+		default:
+			return -2;
+			break;
+	}
+}
+
+int isInMaze(int M, int N, int x, int y)
+{
+	return x >= 0 && x < M && y >= 0 && y < N;
+}
+
+void cleanLasersAux(Cell tab[100][100], int M, int N, int x, int y, int state)
+{
+	if (tab[x][y].c != '#' && getLaserIndex(tab[x][y].c) < 0)
+	{
+		tab[x][y].c = '#';
+		if (isInMaze(M, N, x + move[state][0], y + move[state][1]))
+			cleanLasersAux(tab, M, N, x + move[state][0],
+				y + move[state][1], state);
+	}
+}
+
+void cleanLasers(Cell tab[4][100][100], int M, int N)
+{
+	for (int i = 0; i < 4; i ++)
+		for (int j = 0; j < M; j ++)
+			for (int k = 0; k < N; k ++)
+			{
+				int state = getLaserIndex(tab[i][j][k].c);
+				if (state >= 0)
+				{
+					tab[i][j][k].c = '#';
+					if (isInMaze(M, N, j + move[state][0], k + move[state][1]))
+						cleanLasersAux(tab[i], M, N, j + move[state][0],
+							k + move[state][1], state);
+				}
+			}
+}
+
+int main()
+{
+	Cell tab[4][100][100];
+	char lasers[4] = {'v', '<', '^', '>'};
+	int T;
+	int N, M;
+	int current;
+	scanf("%d\n", &T);
+	Queue q = NULL;
+	Queue tmp;
+	Cell Blank;
+	Blank.c = 0;
+	for (int i = 0; i < T; i ++)
+	{
+		scanf("%d %d\n", &M, &N);
+		current = 0;
+		initQueue(&q);
+		enqueue(&Blank);
+		for (int j = 0; j < M; j ++)
+		{
+			for (int k = 0; k < N; k ++)
+			{
+				scanf("%c", &tab[0][j][k].c);
+				int state = getLaserIndex(tab[0][j][k].c);
+				for (int l = 0; l < 4; l ++)
+				{
+					if (state == -1)
+						tab[l][j][k].c = '.';
+					else if (state < 0)
+						tab[l][j][k].c = tab[0][j][k].c;
+					else
+						tab[l][j][k].c = lasers[(state + l) % 4];
+					tab[l][j][k].x = j;
+					tab[l][j][k].y = k;
+				}
+				if (state == -1)
+					enqueue(&tab[0][j][k]);
+			}
+			scanf("\n");
+		}
+		cleanLasers(tab, M, N);
+		tmp = NULL;
+		while (q->next && q->next->next && (!tmp || tmp->c != 'W'))
+		{
+			tmp = dequeue(q);
+			if (!tmp->c)
+			{
+				current++;
+				enqueue(&Blank);
+			}
+			else
+			{
+				for (int j = 0; j < 4; j ++)
+				{
+					if (isInMaze(M, N, tmp->x + move[j][0], tmp->y + move[j][1]))
+					{
+						if (tab[current % 4][tmp->x + move[j][0]][tmp->y + move[j][1]].c == 'G')
+							tmp->c = 'W';
+						else if (tab[current % 4][tmp->x + move[j][0]][tmp->y + move[j][1]].c == '.')
+						{
+							tab[current % 4][tmp->x + move[j][0]][tmp->y + move[j][1]].c = '#';
+							enqueue(&tab[current % 4][tmp->x + move[j][0]][tmp->y + move[j][1]]);
+						}
+					}
+				}
+			}
+		}
+		printf("Case #%d: ", i + 1);
+		if (tmp->c == 'W')
+			printf("%d\n", current);
+		else
+			printf("impossible\n");
+	}
+	return 0;
+}

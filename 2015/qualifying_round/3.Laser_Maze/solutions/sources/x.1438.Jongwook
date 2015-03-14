@@ -1,0 +1,125 @@
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <functional>
+#include <string>
+#include <vector>
+#include <queue>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <iostream>
+#include <sstream>
+using namespace std;
+
+#define REP(i, n) for(int i = 0; i < (int)(n); ++ i)
+#define FOR(i, b, e) for(auto i = b; i < e; ++ i)
+#define all(x) (x).begin(), (x).end()
+
+int n, m;
+vector<string> a;
+vector<int> lx, ly, ld;
+
+struct elem { // q-elem
+	int x, y, k;
+};
+int dist[100][100][4];
+
+// ^, >, v, <
+const int dx[4] = {-1, 0, 1, 0};
+const int dy[4] = {0, 1, 0, -1};
+
+int go() {
+	// initialize lx, ly
+	lx.clear(); ly.clear(); ld.clear();
+	int sx, sy, ex, ey;
+	sx = sy = ex = ey = -1;
+
+	REP(i, n) REP(j, m) {
+		int ldd = -1;
+		switch(a[i][j]) {
+			case '^': ldd = 0; break;
+			case '>': ldd = 1; break;
+			case 'v': ldd = 2; break;
+			case '<': ldd = 3; break;
+			case 'S': sx = i, sy = j; break;
+			case 'G': ex = i, ey = j; break;
+		}
+		if(ldd >= 0) lx.push_back(i), ly.push_back(j), ld.push_back(ldd);
+	}
+
+	// bfs
+	const int INF = 987987987;
+	queue<elem> Q;
+
+	REP(i, n) REP(j, m) REP(k, 4) dist[i][j][k] = INF;
+	dist[sx][sy][0] = 0;
+	Q.push( elem{sx, sy, 0} );
+
+	auto laser_hit = [&](int x, int y, int k) -> bool {
+		/* warning: If you reach the goal, but are immediately shot by a laser,
+		 *          your efforts will have been [in vain], so make sure you reach the goal safely. */
+		for(size_t z = 0; z < lx.size(); ++ z) {
+			int li = lx[z], lj = ly[z], lk = (ld[z] + k) % 4;
+//			printf("(%d %d %d) : <%d, %d, %d|%d>\n", x, y, k, li, lj, ld[z], lk);
+
+			for(int i = li+dx[lk], j = lj+dy[lk]; ; i+=dx[lk], j+=dy[lk]) {
+				if(i < 0 || j < 0 || i >= n || j >= m) break;
+				char newa = a[i][j];
+				if(newa == '#' || newa == '^' || newa == '<' || newa == 'v' || newa == '>')
+					break;
+
+				if(i == x && j == y) {
+//					printf("hit\n");
+					return true;
+				}
+			}
+		}
+		return false;
+	};
+
+	while(not Q.empty()) {
+		int i = Q.front().x, j = Q.front().y, k = Q.front().k; Q.pop();
+		if(i == ex && j == ey)
+			return dist[i][j][k];
+
+		for(int z = 0; z < 4; ++ z) {
+			int ii = i + dx[z];
+			int jj = j + dy[z];
+			int kk = (k + 1) % 4;
+
+			if(ii < 0 || jj < 0 || ii >= n || ii >= m) continue;
+			char newa = a[ii][jj];
+			if(newa == '#') continue;
+			if(newa == '^' || newa == '<' || newa == 'v' || newa == '>') continue;
+			if(laser_hit(ii, jj, kk)) continue;
+
+			if(dist[i][j][k] + 1 < dist[ii][jj][kk]) {
+				dist[ii][jj][kk] = dist[i][j][k] + 1;
+				Q.push( elem{ii, jj, kk} );
+			}
+		}
+	}
+
+	return -1;
+}
+
+int main() {
+	int T;
+	cin >> T;
+	for(int kase = 1; kase <= T; ++ kase)
+	{
+		cin >> n >> m;
+		a.resize(n);
+		REP(i, n) cin >> a[i];
+		cout << "Case #" << kase << ": ";
+
+		int ret = go();
+		if(ret < 0) cout << "impossible";
+		else cout << ret;
+		cout << endl;
+	}
+	return 0;
+}

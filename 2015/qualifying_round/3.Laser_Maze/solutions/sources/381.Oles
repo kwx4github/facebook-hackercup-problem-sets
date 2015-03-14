@@ -1,0 +1,296 @@
+package com.lazerMaze;
+
+import java.io.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        try {
+            Scanner input = new Scanner(new InputStreamReader(
+                    new FileInputStream("src/com/lazerMaze/resources/in.txt"), "UTF-8")); //.useLocale(Locale.US);
+
+            PrintWriter output = new PrintWriter(new File("src/com/lazerMaze/resources/out.txt"));
+
+            int T = input.nextInt();
+            Solver slv = new Solver();
+
+            for (int t = 1; t <= T; t++) {
+                slv.solve(t, input, output);
+            }
+
+            output.close();
+            input.close();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+class Solver {
+    public static final int nmax = 101;
+    public static final int mmax = 101;
+
+    public final int BL_PEW   = -1;
+    public final int BL_WALL  = -2;
+    public final int BL_LEFT  = -3;
+    public final int BL_TOP   = -4;
+    public final int BL_RIGHT = -5;
+    public final int BL_DOWN  = -6;
+
+    int M, N;
+    int[][][] map;
+
+    Point start, end;
+
+    public void solve(int test, Scanner input, PrintWriter output) {
+        M = input.nextInt();
+        N = input.nextInt();
+
+        map = new int[nmax][mmax][4];
+
+        input.nextLine();
+
+        for (int i = 0; i < M; i++) {
+            String line = input.nextLine();
+            for (int j = 0; j < N; j++) {
+                if (line.charAt(j) == 'S') {
+                        start = new Point(i, j);
+                } else if (line.charAt(j) == 'G') {
+                        end = new Point(i, j);
+                } else if (line.charAt(j) == '#') {
+                    map[i][j][0] = this.BL_WALL;
+                    map[i][j][1] = this.BL_WALL;
+                    map[i][j][2] = this.BL_WALL;
+                    map[i][j][3] = this.BL_WALL;
+                } else if (line.charAt(j) == '<') {
+                    map[i][j][0] = -3;
+                    map[i][j][1] = -4;
+                    map[i][j][2] = -5;
+                    map[i][j][3] = -6;
+                } else if (line.charAt(j) == '^') {
+                    map[i][j][0] = -4;
+                    map[i][j][1] = -5;
+                    map[i][j][2] = -6;
+                    map[i][j][3] = -3;
+                } else if (line.charAt(j) == '>') {
+                    map[i][j][0] = -5;
+                    map[i][j][1] = -6;
+                    map[i][j][2] = -3;
+                    map[i][j][3] = -4;
+                } else if (line.charAt(j) == 'v') {
+                    map[i][j][0] = -6;
+                    map[i][j][1] = -3;
+                    map[i][j][2] = -4;
+                    map[i][j][3] = -5;
+                }
+            }
+        }
+
+        //pew-pew-pew
+        for (int i = 0; i < M; i++) {
+            for (int j = 0; j < N; j++) {
+                if (map[i][j][0] < -2) {
+                    pew(new Point(i, j));
+                }
+            }
+        }
+
+        int res = -1;
+
+        Deque<QueueElement> q = new ArrayDeque<QueueElement>();
+        QueueElement el = new QueueElement(0, start);
+        q.add(el);
+        el.visit();
+        while(!q.isEmpty() && res == -1) {
+            el = q.pop();
+
+            if (el.p.equalTo(end)) {
+                res = el.step;
+            } else {
+                QueueElement next;
+
+                next = new QueueElement(el.step + 1, el.p.goLeft(1));
+                if (next.validate()) {
+                    q.add(next);
+                    next.visit();
+                }
+
+                next = new QueueElement(el.step + 1, el.p.goTop(1));
+                if (next.validate()) {
+                    q.add(next);
+                    next.visit();
+                }
+
+                next = new QueueElement(el.step + 1, el.p.goRight(1));
+                if (next.validate()) {
+                    q.add(next);
+                    next.visit();
+                }
+
+                next = new QueueElement(el.step + 1, el.p.goDown(1));
+                if (next.validate()) {
+                    q.add(next);
+                    next.visit();
+                }
+            }
+        }
+
+        if (res == -1) {
+            output.println("Case #" + test + ": impossible");
+        } else {
+            output.println("Case #" + test + ": " + res);
+        }
+    }
+
+    public void pew(Point lazer) {
+        //go left
+        int step = 1;
+        boolean hasValid = true;
+
+        int[] lazerStep = new int[4];
+
+        for (int i = 0; i < 4; i++) {
+            if (map[lazer.m][lazer.n][i] == -3) {
+                lazerStep[0] = i;
+            } else if (map[lazer.m][lazer.n][i] == -4) {
+                lazerStep[1] = i;
+            } else if (map[lazer.m][lazer.n][i] == -5) {
+                lazerStep[2] = i;
+            } else if (map[lazer.m][lazer.n][i] == -6) {
+                lazerStep[3] = i;
+            }
+        }
+
+        boolean goLeft  = true;
+        boolean goTop  = true;
+        boolean goRight  = true;
+        boolean goDown  = true;
+
+        while (goLeft || goTop || goRight || goDown) {
+            //left
+            if (goLeft) {
+                Point left = lazer.goLeft(step);
+
+                if (left.validate() && left.getMapOn(0) > -2) {
+                    left.setMapOn(lazerStep[0], this.BL_PEW);
+                } else {
+                    goLeft = false;
+                }
+            }
+            //top
+            if (goTop) {
+                Point top = lazer.goTop(step);
+
+                if (top.validate() && top.getMapOn(0) > -2) {
+                    top.setMapOn(lazerStep[1], this.BL_PEW);
+                } else {
+                    goTop = false;
+                }
+            }
+
+            //right
+            if (goRight) {
+                Point right = lazer.goRight(step);
+
+                if (right.validate() && right.getMapOn(0) > -2) {
+                    right.setMapOn(lazerStep[2], this.BL_PEW);
+                } else {
+                    goRight = false;
+                }
+            }
+            //down
+            if (goDown) {
+                Point down = lazer.goDown(step);
+
+                if (down.validate() && down.getMapOn(0) > -2) {
+                    down.setMapOn(lazerStep[3], this.BL_PEW);
+                } else {
+                    goDown = false;
+                }
+            }
+
+            step++;
+        }
+    }
+
+
+    class QueueElement{
+        Point p;
+        int step;
+
+        public QueueElement(int _step, Point _p) {
+            this.p = new Point(_p);
+            this.step = _step;
+        }
+
+        public boolean validate() {
+            //valid point
+            // and no walls, pews, lazers there
+            // and has better result (current step is minimal)
+
+            //out of bounds
+            boolean r1 = p.validate();
+            //valid place
+            boolean r2 = r1 && p.getMapOn(step % 4) >= 0;
+            //better time or new place
+            boolean r3 = r2 && (p.getMapOn(step % 4) > step || p.getMapOn(step % 4) == 0);
+            //barrier zero on starting point
+            boolean r4 = r3 && !(p.equalTo(start) && step % 4 == 0);
+            return r4;
+//            return p.validate()
+//                    && p.getMapOn(step % 4) >= 0
+//                    && (p.getMapOn(step % 4) == 0 || p.getMapOn(step % 4) > step);
+        }
+
+        public void visit() {
+            p.setMapOn(this.step % 4, step);
+        }
+    }
+
+    class Point {
+        int m, n;
+
+        public Point(int a, int b) {
+            this.m = a;
+            this.n = b;
+        }
+        public Point(Point p) {
+            this.m = p.m;
+            this.n = p.n;
+        }
+
+        public boolean validate() {
+            return this.m >= 0 && this.m < M
+                    && this.n >= 0 && this.n < N;
+        }
+
+        public int getMapOn(int step) {
+            return map[this.m][this.n][step];
+        }
+
+        public int setMapOn(int step, int value) {
+            map[this.m][this.n][step] = value;
+            return map[this.m][this.n][step];
+        }
+
+        public boolean equalTo(Point p) {
+            return (this.m == p.m && this.n == p.n);
+        }
+
+        public Point goLeft(int step) {
+            return new Point(this.m, this.n - step);
+        }
+        public Point goTop(int step) {
+            return new Point(this.m -step, this.n);
+        }
+        public Point goRight(int step) {
+            return new Point(this.m, this.n+step);
+        }
+        public Point goDown(int step) {
+            return new Point(this.m +step, this.n);
+        }
+    }
+}

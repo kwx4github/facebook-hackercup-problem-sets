@@ -1,0 +1,180 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <stack>
+#include <queue>
+#include <deque>
+#include <set>
+#include <map>
+#include <algorithm>	// require sort next_permutation count __gcd reverse etc.
+#include <cstdlib>	// require abs exit atof atoi 
+#include <cstdio>		// require scanf printf
+#include <functional>
+#include <numeric>	// require accumulate
+#include <cmath>		// require fabs
+#include <climits>
+#include <limits>
+#include <cfloat>
+#include <iomanip>	// require setw
+#include <sstream>	// require stringstream 
+#include <cstring>	// require memset
+#include <cctype>		// require tolower, toupper
+#include <fstream>	// require freopen
+#include <ctime>		// require srand
+#define rep(i,n) for(int i=0;i<(n);i++)
+#define ALL(A) A.begin(), A.end()
+#define each(i,c) for(auto i=(c).begin();i!=(c).end();++i)
+#define exist(s,e) ((s).find(e)!=(s).end())
+#define clr(a) memset((a),0,sizeof(a))
+#define nclr(a) memset((a),-1,sizoef(a))
+#define sz(s) (int)((s).size())
+#define INRANGE(x,s,e) ((s)<=(x) && (x)<(e))
+#define pb push_back
+#define MP(x,y) make_pair((x),(y))
+
+using namespace std;
+
+typedef long long ll;
+typedef pair<int, int> P;
+typedef pair<P,P> PP;	// PP (P(r, c ), P(最短距離、時間) )
+
+const int dr[] = { 0,-1, 0, 1, 0 }; 
+const int dc[] = { 0, 0, 1, 0,-1 };
+const char laser[] = { '^', '>', 'v', '<' };
+int visit[4][105][105];
+char maze[4][105][105];
+
+int M, N;
+
+bool is_danger2(int cr, int cc, int ct ){
+	rep (i, M ) rep (j, N ) rep (k, 4 ) 
+		if (maze[ct%4][i][j] == laser[k] ){
+			// レーザー砲塔の射線上にいるか
+	  		if (k == 0 ){ // up
+				for (int ii = i-1; ii >= 0; ii-- ){
+					if (maze[ct%4][ii][j] == '#' ) break;
+					rep (kk, 4 ) if (maze[ct%4][ii][j] == laser[kk] ) break;
+					if (cr == ii && cc == j ) return true;
+				} // end for
+			}else
+			if (k == 1 ){ // right
+				for (int jj = j+1; jj < N; jj++ ){
+					if (maze[ct%4][i][jj] == '#' ) break;
+					rep (kk, 4 ) if (maze[ct%4][i][jj] == laser[kk] ) break;
+					if (cr == i && cc == jj ) return true;
+				} // end for
+			}else
+	  		if (k == 2 ){ // down
+				for (int ii = i+1; ii < M; ii++ ){
+					if (maze[ct%4][ii][j] == '#' ) break;
+					rep (kk, 4 ) if (maze[ct%4][ii][j] == laser[kk] ) break;
+					if (cr == ii && cc == j ) return true;
+				} // end for
+			}else
+			if (k == 3 ){ // left 
+				for (int jj = j-1; jj >= 0; jj-- ){
+					if (maze[ct%4][i][jj] == '#' ) break;
+					rep (kk, 4 ) if (maze[ct%4][i][jj] == laser[kk] ) break;
+					if (cr == i && cc == jj ) return true;
+				} // end for
+			} // end if
+		} // end if
+
+	return false;
+}
+
+void disp_maze (int t ){
+	cerr << "t: " << t << endl;
+	rep (i, M ){
+		rep (j, N ){
+			cerr << maze[t%4][i][j];
+		} // end rep
+		cerr << endl;
+	} // end rep
+}
+
+int main()
+{
+	ios_base::sync_with_stdio(0);
+	int T; cin >> T;
+	for (int tt = 1; tt <= T; tt++ ){
+		memset (maze, 0, sizeof (maze ) );
+		memset (visit, -1, sizeof (visit ) );
+		cin >> M >> N;
+		int sr = -1, sc = -1, gr = -1, gc = -1;
+		rep (i, M ) rep (j, N ) cin >> maze[0][i][j];
+		rep (i, M ) rep (j, N ) if (maze[0][i][j] == 'S' ) sr = i, sc = j;
+		rep (i, M ) rep (j, N ) if (maze[0][i][j] == 'G' ) gr = i, gc = j;
+
+		for (int k = 1; k < 4; k++ )
+		rep (i, M ) rep (j, N ) maze[k][i][j] = maze[0][i][j];
+
+		for (int k = 1; k < 4; k++ ){
+			rep (i, M ) rep (j, N ){
+				rep (l, 4 ){
+					if (maze[k][i][j] == laser[l] ){
+						maze[k][i][j] = laser[(l+k)%4];
+						break;
+					} // end if
+				} // end rep
+			} // end rep
+		} // end for
+		int res = -1;	
+		queue<PP> que;
+		que.push (PP (P (sr, sc ), P(0, 0 ) ) );
+
+		visit[0][sr][sc] = 0;
+		while (!que.empty() ){
+			PP cur = que.front(); que.pop();
+			int cr = cur.first.first;	
+			int cc = cur.first.second;
+			int cl = cur.second.first;
+			int ct = cur.second.second;
+			
+			maze[ct%4][cr][cc] = 'C';
+#if 0
+			disp_maze (ct );
+#endif
+			if (cr == gr && cc == gc ){
+				res = cl; break;
+			} // end if
+
+			for (int d = 1; d < 5; d++ ){
+				int nr = cr + dr[d];
+				int nc = cc + dc[d];
+				int nl = cl + (d != 0 );
+				int nt = ct + 1;
+				// 迷宮以外に出た
+				if (nr < 0 || nr >= M || nc < 0 || nc >= N ) continue;
+				// 壁だった
+				if (maze[nt%4][nr][nc] == '#' ) continue;
+				// レーザー砲塔だった
+				bool laser_found = false;
+				rep (kk, 4 ){
+					if (maze[nt%4][nr][nc] == laser[kk] ){
+						laser_found |= true;
+						break;
+					} // end if
+				} // end rep
+				if (laser_found ) continue;
+				// 既に来てた
+				if (visit[nt%4][nr][nc] != -1 ) continue;
+
+				// レーザー砲塔に撃たれた
+				if (is_danger2(nr, nc, nt ) ) continue;
+				que.push (PP (P(nr, nc ), P(nl, nt ) ) );
+				visit[nt%4][nr][nc] = nl;
+			} // end rep
+			if (res != -1 ) break;
+		} // end while
+
+		cout << "Case #" << tt << ": ";
+		if (res == -1 ){
+			cout << "impossible" << endl;
+		}else{
+			cout << res << endl;
+		} // end if		
+	} // end for
+ 
+	return 0;
+}

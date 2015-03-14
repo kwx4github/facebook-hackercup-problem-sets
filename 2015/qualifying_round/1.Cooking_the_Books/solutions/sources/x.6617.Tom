@@ -1,0 +1,54 @@
+(ns hackercup2015.core
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]))
+
+(defn to-int [s]
+  (Integer/parseInt s))
+
+(defn process-file [f input output]
+  (with-open [output-file (io/writer output)
+              input-file (io/reader input)]
+    (doseq [output-line
+            (map (partial format "Case #%d: %s\n" )
+                 (iterate inc 1)
+                 (pmap f (drop 1 (line-seq input-file))))]
+        (do (.write output-file output-line)
+            (print output-line)))))
+
+(defn starts-with-nonzero? [s]
+  (not= (first s) \0))
+
+(defn swap [i j s]
+  (fn [ch idx]
+    (cond (= idx j)
+          (nth s i)
+          (= idx i)
+          (nth s j)
+          :else
+          (nth s idx))))
+
+(defn shuffles [s]
+  (cons s (for [i (range (count s))
+                j (range (inc i) (count s))]
+            (apply str
+                   (map (swap i j s)
+                        s
+                        (range))))))
+
+(defn int-shuffles [s]
+  (map to-int (filter starts-with-nonzero? (shuffles s))))
+
+(defn minimise [s]
+  (if (= "0" s)
+    0
+    (reduce min 0 (int-shuffles s))))
+
+(defn maximise [s]
+  (if (= "0" s)
+    (reduce min 0 (int-shuffles s))))
+
+(defn -main []
+  (process-file #(str (minimise %) " " (maximise %))
+                "cooking_the_books.txt"
+                "cooking_the_books_output.txt")
+  (shutdown-agents))

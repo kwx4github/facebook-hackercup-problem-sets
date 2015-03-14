@@ -1,0 +1,147 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+ifstream fin("input.txt");
+ofstream fout("output.txt");
+
+#define INF 1000000000
+
+struct MatrixPos {
+  pair<int, int> pos;
+  int laserMoves;
+  MatrixPos(pair<int, int> p = {0, 0}, int lM = 0) {
+    pos = p;
+    laserMoves = lM;
+  }
+  MatrixPos next(pair<int, int> dir) {
+    MatrixPos ans;
+    ans.pos.first = pos.first + dir.first;
+    ans.pos.second = pos.second + dir.second;
+    ans.laserMoves = (laserMoves + 1) % 4;
+
+    return ans;
+  }
+  void print() {
+    printf("(%d, %d) %d\n", pos.first, pos.second, laserMoves);
+  }
+};
+
+class Problem {
+  const vector< pair<int, int> > directions = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+
+  int n, m;
+  vector<string> v;
+
+  void read() {
+    fin >> n >> m;
+    v.resize(n);
+    for (int i = 0; i < n; ++i)
+      fin >> v[i];
+  }
+  pair<int, int> getPos(char c) {
+    for (int i = 0; i < n; ++i)
+      for (int j = 0; j < m; ++j)
+        if (v[i][j] == c)
+          return {i, j};
+    return {-1, -1};
+  }
+  bool isBetween(int x, int x1, int x2) {
+    return x >= x1 && x <= x2;
+  }
+  bool isTurret(char c) {
+    return c == '<' || c == '>' || c == '^' || c == 'v';
+  }
+  bool isObstacle(char c) {
+    if (c == '#')
+      return true;
+    return isTurret(c);
+  }
+  char turretDirection(char turretDir, int turretMoves) {
+    string dirs = "^>v<";
+    int i = 0;
+    while (dirs[i] != turretDir)
+      ++i;
+
+    while (turretMoves > 0) {
+      ++i;
+      i %= 4;
+      --turretMoves;
+    }
+    return dirs[i];
+  }
+  bool posIsSafe(MatrixPos pos) {
+    if (!isBetween(pos.pos.first, 0, n - 1) || !isBetween(pos.pos.second, 0, m - 1))
+      return false;
+    if (isObstacle(v[pos.pos.first][pos.pos.second]))
+      return false;
+
+    // UP
+    for (int i = 0; i < pos.pos.first; ++i)
+      if (isTurret(v[i][pos.pos.second]) && turretDirection(v[i][pos.pos.second], pos.laserMoves) == 'v')
+        return false;
+    // DOWN
+    for (int i = pos.pos.first + 1; i < n; ++i)
+      if (isTurret(v[i][pos.pos.second]) && turretDirection(v[i][pos.pos.second], pos.laserMoves) == '^')
+        return false;
+    // LEFT
+    for (int j = 0; j < pos.pos.second; ++j)
+      if (isTurret(v[pos.pos.first][j]) && turretDirection(v[pos.pos.first][j], pos.laserMoves) == '>')
+        return false;
+    // RIGHT
+    for (int j = pos.pos.second + 1; j < m; ++j)
+      if (isTurret(v[pos.pos.first][j]) && turretDirection(v[pos.pos.first][j], pos.laserMoves) == '<')
+        return false;
+
+    return true;
+  }
+  int bellmanFord(pair<int, int> start, pair<int, int> goal) {
+    queue<MatrixPos> q;
+    vector< vector< vector<int> > > d(n, vector< vector<int> >(m, vector<int>(4, INF)));
+    q.push(MatrixPos(start, 0));
+    d[start.first][start.second][0] = 0;
+    while (!q.empty()) {
+      auto now = q.front();
+      q.pop();
+
+      if (now.pos == goal && posIsSafe(now))
+        return d[now.pos.first][now.pos.second][now.laserMoves];
+
+      for (auto dir : directions) {
+        auto next = now.next(dir);
+        if (posIsSafe(next) && d[next.pos.first][next.pos.second][next.laserMoves] > d[now.pos.first][now.pos.second][now.laserMoves] + 1) {
+          q.push(next);
+          d[next.pos.first][next.pos.second][next.laserMoves] = d[now.pos.first][now.pos.second][now.laserMoves] + 1;
+        }
+      }
+    }
+    return INF;
+  }
+
+  void writeAnswer(int testCase, int answer) {
+    fout << "Case #" << testCase << ": ";
+    if (answer == INF)
+      fout << "impossible\n";
+    else
+      fout << answer << "\n";
+  }
+
+public:
+  void solve(int testCase) {
+    read();
+    auto start = getPos('S'), goal = getPos('G');
+    writeAnswer(testCase, bellmanFord(start, goal));
+  }
+};
+
+int main() {
+  int t;
+  fin >> t;
+
+  for (int T = 1; T <= t; ++T) {
+    Problem testCase;
+    testCase.solve(T);
+  }
+
+  fin.close();
+  fout.close();
+}

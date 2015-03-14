@@ -1,0 +1,150 @@
+#include <algorithm>
+#include <bitset>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <set>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+#define is_empty jdaskjdsandkj
+
+const int MAXN = 111;
+const int DX[4] = { 1,-1, 0, 0 };
+const int DY[4] = { 0, 0, 1,-1 };
+
+struct State {
+    int x, y, rem;
+    State( int x = 0, int y = 0, int rem = 0 ) : x( x ), y( y ), rem( rem ) {};
+};
+
+int n, m;
+char field[ MAXN ][ MAXN ];
+queue< State > q;
+int mem[ MAXN ][ MAXN ][ 4 ];
+
+bool is_empty( int x, int y ) {
+    return field[x][y] == '.' ||
+           field[x][y] == 'S' ||
+           field[x][y] == 'G';
+}
+
+bool is_wall( int x, int y ) {
+    return field[x][y] == '#';
+}
+
+bool is_turrel( int x, int y ) {
+    return field[x][y] == '<' ||
+           field[x][y] == '>' ||
+           field[x][y] == '^' ||
+           field[x][y] == 'v';
+}
+
+int get_turrel_id( int x, int y ) {
+    switch( field[x][y] ) {
+        case '^':
+            return 0;
+        case '>':
+            return 1;
+        case 'v':
+            return 2;
+        case '<':
+            return 3;
+    }
+    return -1;
+}
+
+bool check_if_valid( int x, int y, int rem ) {
+    if ( x < 1 || y < 1 || x > n || y > m ) return false;
+    if ( mem[x][y][rem] != -1 ) return false;
+    if ( !is_empty(x, y) ) return false;
+    // cerr << "I'm here! 0 " << x << " " << y << " " << rem << "\n";
+    for ( int _x = x + 1; _x <= n; _x++ ) {
+        if ( is_empty( _x, y ) ) continue;
+        if ( is_wall( _x, y ) ) break;
+        int turred_id = ( get_turrel_id( _x, y ) + rem ) % 4;
+        if ( turred_id == 0 ) return false; break;
+    }
+    // cerr << "I'm here! 1 " << x << " " << y << " " << rem << "\n";
+    for ( int _x = x - 1; _x >= 1; _x-- ) {
+        if ( is_empty( _x, y ) ) continue;
+        if ( is_wall( _x, y ) ) break;
+        int turred_id = ( get_turrel_id( _x, y ) + rem ) % 4;
+        if ( turred_id == 2 ) return false; break;
+    }
+    // cerr << "I'm here! 2 " << x << " " << y << " " << rem << "\n";
+    for ( int _y = y + 1; _y <= m; _y++ ) {
+        if ( is_empty( x, _y ) ) continue;
+        if ( is_wall( x, _y ) ) break;
+        int turred_id = ( get_turrel_id( x, _y ) + rem ) % 4;
+        if ( turred_id == 3 ) return false; break;
+    }
+    // cerr << "I'm here! 3 " << x << " " << y << " " << rem << "\n";
+    for ( int _y = y - 1; _y >= 1; _y-- ) {
+        if ( is_empty( x, _y ) ) continue;
+        if ( is_wall( x, _y ) ) break;
+        int turred_id = ( get_turrel_id( x, _y ) + rem ) % 4;
+        if ( turred_id == 1 ) return false; break;
+    }
+    // cerr << "I'm here! 4 " << x << " " << y << " " << rem << "\n";
+    return true;
+}
+
+void solve( int t ) {
+    scanf("%d%d", &n, &m);
+    for ( int i = 1; i <= n; i++ ) scanf("%s", field[i] + 1);
+    memset( mem, -1, sizeof( mem ) );
+    int start_x = -1, start_y = -1;
+    int finish_x = -1, finish_y = -1;
+    for ( int i = 1; i <= n; i++ ) 
+        for ( int j = 1; j <= m; j++ ) {
+            if ( field[i][j] == 'S' ) start_x = i, start_y = j;
+            if ( field[i][j] == 'G' ) finish_x = i, finish_y = j;
+        }
+    if ( start_x == -1 || finish_x == -1 ) {
+        printf("Case #%d: impossible\n", t);
+        return;
+    }
+    mem[ start_x ][ start_y ][ 0 ] = 0;
+    q.push( State( start_x, start_y, 0 ) );
+    while ( q.size() ) {
+        State current = q.front(); q.pop();
+        // cerr << current.x << " " << current.y << " " << current.rem << "\n";
+        for ( int k = 0; k < 4; k++ ) {
+            int x = current.x + DX[k];
+            int y = current.y + DY[k];
+            int rem = ( current.rem + 1 ) % 4;
+            // cerr << " -> " << x << " " << y << " " << rem << "\n";
+            if ( !check_if_valid( x, y, rem ) ) continue;
+            mem[x][y][rem] = mem[current.x][current.y][current.rem] + 1;
+            q.push( State( x, y, rem ) );
+        }
+    }
+    int answer = -1;
+    for ( int rem = 0; rem < 4; rem++ ) {
+        if ( mem[finish_x][finish_y][rem] == -1 ) continue;
+        if ( answer == -1 )
+            answer = mem[finish_x][finish_y][rem];
+        answer = min( answer, mem[finish_x][finish_y][rem] );
+    }
+    if ( answer == -1 )
+        printf("Case #%d: impossible\n", t);
+    else
+        printf("Case #%d: %d\n", t, answer);
+
+}
+
+int main() {
+	time_t start = clock();
+	int t; scanf("%d", &t);
+        for ( int i = 1; i <= t; i++ ) solve( i );
+	fprintf( stderr, "Time: %lf\n", 1.0 * ( clock() - start ) / CLOCKS_PER_SEC );
+    return 0;
+}

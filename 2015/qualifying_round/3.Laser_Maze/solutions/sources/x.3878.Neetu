@@ -1,0 +1,243 @@
+#include<stdio.h>
+int m, n;
+
+struct position {
+	int x;
+	int y;
+	int level;
+	int val;
+};
+
+// char turrets[4] = {'<', '>', '^', 'v'}; // 0 <,1 > , 2 ^, 3 v
+
+int containsTurret(char x) {
+	if (x == '<')
+		return 0;
+	if (x == '^')
+		return 1;
+	if (x == '>')
+		return 2;
+	if (x == 'v')
+		return 3;
+	if (x == '#')
+		return 4;
+	return 5;
+}
+
+int min (int a , int b, int c, int d) {
+	if(b!= -1 && b < a)
+		a = b;
+	if (c!= -1 && c < a)
+		a = c;
+	if (d!=-1 && d < a)
+		a = d;
+	
+	return a;
+}
+
+int isPathExists(char array[m][n], int startRow, int startCol, int goalRow, int goalCol, int length, int temp[m][n]) {
+	if (temp[goalRow][goalCol]) {
+		return -1;
+	}
+	if (goalRow == startRow && goalCol == startCol) {
+		return length;
+	}
+	
+	if((goalRow < 0 || goalRow >= m) || (goalCol < 0 || goalCol >= n)) {
+		return -1;
+	}
+	
+	if (containsTurret(array[goalRow][goalCol]) <= 4 ) {
+		return -1;
+	}
+	
+	temp[goalRow][goalCol] = 1;
+	int val;
+	if((val = isPathExists(array, startRow, startCol, goalRow+1, goalCol, length+1, temp)) != -1)
+		return val;
+	if((val = isPathExists(array, startRow, startCol, goalRow-1, goalCol, length+1, temp)) != -1)
+		return val;
+	if((val = isPathExists(array, startRow, startCol, goalRow, goalCol+1, length+1, temp)) != -1)
+		return val;
+	if((val = isPathExists(array, startRow, startCol, goalRow, goalCol-1, length+1, temp)) != -1)
+		return val;
+	return -1;	
+}
+
+int canConsiderFurther(char x) {
+	if (x == 'S' || x == 'G' || x == '.')
+		return 1;
+	return 0;
+}
+
+
+int isPositionSafe(char array[m][n], struct position currPos) { // 0 <,1 ^ , 2 >, 3 v
+	int i, j, level = currPos.level, temp;
+	for (i = currPos.x-1 ; i >= 0; i--) {
+		(temp = containsTurret(array[i][currPos.y]));
+		if ( temp <= 3) {
+			temp = (temp + level) % 4;
+			if(temp == 3)
+				return 0;
+			break;
+		} else if (temp == 4)
+			break;
+	}
+	for (i = currPos.y-1 ; i >= 0; i--) {
+		(temp = containsTurret(array[currPos.x][i]));
+		if ( temp <= 3) {
+			temp = (temp + level) % 4;
+			if(temp == 2)
+				return 0;
+			break;
+		} else if (temp == 4)
+			break;
+	}
+	for (i = currPos.x+1 ; i < m; i++) {
+		(temp = containsTurret(array[i][currPos.y]));
+		if ( temp <= 3) {
+			temp = (temp + level) % 4;
+			if(temp == 1)
+				return 0;
+			break;
+		} else if (temp == 4)
+			break;
+	}
+	for (i = currPos.y+1 ; i < n; i++) {
+		(temp = containsTurret(array[currPos.x][i]));
+		if ( temp <= 3) {
+			temp = (temp + level) % 4;
+			if(temp == 0)
+				return 0;
+			break;
+		} else if (temp == 4)
+			break;
+	}
+	return 1;
+}
+
+int main() {
+	int numTestCases, iterate;
+	scanf("%d", &numTestCases);
+		
+	for(iterate = 0; iterate < numTestCases; iterate++ ) {
+		scanf("%d %d", &m, &n);
+		char array[m][n], c;
+		int row, col, i, j, laserTurrentCount = 0, q,z;
+						
+		for (row = 0; row < m; row++) {
+			scanf("%c", &c);
+			for (col = 0; col < n ; col++) {
+				scanf("%c", &array[row][col]);
+				if (array[row][col] == 'S') {
+					 i = row;
+					 j = col;
+				} 
+				else if (array[row][col] == 'G') {
+					q = row;
+					z = col;
+				}
+					
+				else if (containsTurret(array[row][col]) <= 3)	
+					laserTurrentCount++;
+			}
+		}
+		
+		//printf("%d\n ", laserTurrentCount);
+		
+		int length, temp[100][100] = {0};
+		if ((length = isPathExists(array, i, j, q, z, 0, temp)) == -1) {
+			printf("Case #%d: impossible\n", iterate+1);
+			continue;
+		} 
+		/*else {
+			if(laserTurrentCount == 0) {
+				printf("Case #%d: %d\n", iterate+1, length+1);
+				continue;;
+			}
+		}*/
+			
+		struct position queue[100000], currPos;
+		long long int start = 0, end = 1;
+	    int w = 0, reachedGoal = 0;
+		queue[0].x = i;
+		queue[0].y = j;
+		queue[0].level = 0;
+		queue[0].val = 'S';
+		
+		while(start != end) {
+			currPos = queue[start];
+						
+			if ((laserTurrentCount == 0) || isPositionSafe(array, currPos) || (currPos.val == 'S' && w == 0)) {
+				if(currPos.val == 'G'){
+					reachedGoal = 1;
+					break;
+				}
+				
+				if (currPos.x > 0 ) {
+					if (canConsiderFurther(array[currPos.x-1][currPos.y])) {
+						queue[end] = currPos;
+						queue[end].val = array[currPos.x-1][currPos.y];
+						queue[end].x= (currPos.x - 1);
+						queue[end].level= (currPos.level) + 1;
+						end = (end + 1)%100000;
+					}
+				}
+				if (currPos.x < m-1) {
+					if (canConsiderFurther(array[currPos.x+1][currPos.y])) {
+						queue[end] = currPos;
+						queue[end].val = array[currPos.x+1][currPos.y];
+						queue[end].x= (currPos.x + 1);
+						queue[end].level= (currPos.level) + 1;
+						end = (end + 1)%100000;
+					}
+				}
+				if (currPos.y > 0) {
+					if (canConsiderFurther(array[currPos.x][currPos.y-1])) {
+						queue[end] = currPos;
+						queue[end].val = array[currPos.x][currPos.y-1];
+						queue[end].y= (currPos.y - 1);
+						queue[end].level= (currPos.level) + 1;
+						end = (end + 1)%100000;
+					}	
+				}
+				if (currPos.y < n-1) {
+					if (canConsiderFurther(array[currPos.x][currPos.y+1])) {
+						queue[end] = currPos;
+						queue[end].val = array[currPos.x][currPos.y+1];
+						queue[end].y= (currPos.y + 1);
+						queue[end].level= (currPos.level) + 1;
+						end = (end + 1)%100000;
+					}
+				}
+				if (w == 0) {
+					if (end == start +1)
+						break;
+					if (currPos.val == 'S') 
+						w++;	
+				}
+			} 
+			
+			start = (start+1)%100000;
+		}
+		
+		if (currPos.val == 'G' && reachedGoal) {
+			printf("Case #%d: %d\n", iterate+1, currPos.level);
+		} else {
+			printf("Case #%d: impossible\n", iterate+1);
+		}
+	}
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+

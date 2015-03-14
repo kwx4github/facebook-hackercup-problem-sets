@@ -1,0 +1,280 @@
+#include <iostream>
+#include <stdio.h>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <string>
+#include <string.h>
+#include <math.h>
+#include <stdlib.h>
+using namespace std;
+
+typedef     long long       LL;
+typedef     pair<int, int>  pii;
+typedef     pair<LL, LL>    pll;
+typedef     pair<pii,pii>   ppi;
+typedef     vector<int>     vi;
+typedef     vector<vi>      vvi;
+typedef     vector<LL>      vl;
+typedef     vector<vl>      vvl;
+typedef     vector<string>  vs;
+typedef     vector<pii>     vii;
+
+double      EPS = 1e-9;
+int         INF = 2000000000;
+long long   INFF = 8000000000000000000LL;
+double      PI = acos(-1);
+int         dx[8] = {-1,0,0,1,-1,-1,1,1};
+int         dy[8] = {0,1,-1,0,-1,1,-1,1};
+int         hx[4] = {-1,0,1, 0};
+int         hy[4] = {0, 1,0,-1};
+
+
+#define     fi      first
+#define     se      second
+#define     mp      make_pair
+#define     pb      push_back
+#define     SIZE(v)         (int)v.size()
+#define     ALL(v)          v.begin(),v.end()
+#define     ALLA(arr,sz)    arr,arr+sz
+#define     SORT(v)         sort(ALL(v))
+#define     SORTA(arr,sz)   sort(ALLA(arr,sz))
+#define     SQR(x)          ((x) * (x))
+#define     FOR(i,s,e)      for(int (i) = (s); (i) <  (e); ++(i))
+#define     FORE(i,s,e)     for(int (i) = (s); (i) <= (e); ++(i))
+#define     FORD(i,e,s)     for(int (i) = (e); (i) >= (s); --(i))
+#define     REP(i,n)        FOR(i,0,n)
+#define     REPE(i,n)       FORE(i,1,n)
+#define     REPD(i,n)       FORD(i,n,1)
+
+
+inline string IntToString(int a){
+    char x[100];
+    sprintf(x,"%d",a); string s = x;
+    return s;
+}
+
+inline int StringToInt(string a){
+    char x[100]; int res;
+    strcpy(x,a.c_str()); sscanf(x,"%d",&res);
+    return res;
+}
+//===End of template===
+const int Nmax = 110;
+const char WALL = '#';
+const char DEAD = '*';
+string LASER = "^>v<";
+int T;
+int N,M;
+string Maze[Nmax][5];
+
+void readInput(){
+    REP(k,5) REP(i,Nmax) Maze[i][k]="";
+
+    cin >>N>>M;
+    REP(i,N){
+        cin >>Maze[i][4];
+    };
+};
+
+bool isLaser(char x){
+    return (x == '>' or x == 'v' or x == '<' or x == '^');
+};
+
+char nextLaser(char x, int k){
+    int l = 0;
+    REP(i,4) if (x == LASER[i]) l = i;
+    return LASER[(l+k+1) % 4];
+};
+
+int nextMoment(int k){ return (k+1)%4;}
+
+void shootUp(int u, int v, int k){
+    while(u--){
+        if (u<0) break;
+        if (Maze[u][k][v] == WALL || isLaser(Maze[u][k][v])) break;
+        Maze[u][k][v] = DEAD;
+    }
+};
+
+void shootRight(int u, int v, int k){
+    while(v<M){
+        v++;
+        if (v>=M) break;
+        if (Maze[u][k][v] == WALL || isLaser(Maze[u][k][v])) break;
+        Maze[u][k][v] = DEAD;
+    };
+};
+
+void shootDown(int u, int v, int k){
+    while(u<=N){
+        u++;
+        if (u>=N) break;
+        if (Maze[u][k][v] == WALL || isLaser(Maze[u][k][v])) break;
+        Maze[u][k][v] = DEAD;
+    }
+};
+
+void shootLeft(int u, int v, int k){
+    while(v--){
+        if (v<0) break;
+        if (Maze[u][k][v] == WALL || isLaser(Maze[u][k][v])) break;
+        Maze[u][k][v] = DEAD;
+    };
+};
+
+void LaserShoot(pii X, int k){
+    int u = X.first, v = X.second;
+    switch (Maze[u][k][v]){
+        case '^': shootUp(u,v,k);
+            break;
+        case '>': shootRight(u,v,k);
+            break;
+        case 'v': shootDown(u,v,k);
+            break;
+        case '<': shootLeft(u,v,k);
+            break;
+    };//switch
+};
+
+void printMaze(int k){
+    cout <<"\nMaze at moment "<<k<<":\n";
+    REP(i,N){
+        REP(j,M) cout <<Maze[i][k][j]<<" ";
+        cout <<endl;
+    }
+};
+
+void init(){
+    //printMaze(4);
+    REP(k,4){
+        REP(i,N) Maze[i][k] = Maze[i][4];
+        vii Lasers; Lasers.clear();
+        REP(i,N) REP(j,M)
+        if (isLaser(Maze[i][4][j])){
+            Maze[i][k][j] = nextLaser(Maze[i][4][j],k);
+            Lasers.pb(mp(i,j));
+        };
+        //printMaze(k);
+        // Laser shoot:
+        REP(u,SIZE(Lasers)) LaserShoot(Lasers[u],k);
+        //printMaze(k);
+    };//rep k
+};//init();
+
+
+const int Vmax = 4*Nmax*Nmax;
+
+struct Graph{
+    vi AdjOf[Vmax];
+    set<int> Starts;
+    set<int> Goals;
+
+    int idOf(int n, int m, int k){
+        return (k*N*M) + (n*M + m);
+    };
+
+    void CoorOf(int id, int &n, int &m, int &k){
+        k  = id / (N*M);
+        id = id % (N*M);
+        n  = id / M;
+        m  = id % M;
+    };
+
+    bool isGoal(int id){
+        return Goals.count(id) >0;
+    };
+
+    void reset(){
+        REP(i,Vmax) AdjOf[i].clear();
+        Goals.clear();
+        Starts.clear();
+    };
+};// struct graph
+
+Graph GG;
+
+//Make graph:
+void makeGraph(){
+    GG.reset();
+    REP(k,4) REP(i,N) REP(j,M){
+        int id = GG.idOf(i,j,k);
+        int nk = nextMoment(k);
+        int ni, nj, nid;
+        REP(d,4){
+            ni = i+hx[d], nj = j+hy[d];
+            nid = GG.idOf(ni,nj,nk);
+
+            if(ni>=0 and ni<N)
+            if(nj>=0 and nj<M){
+                if(Maze[ni][nk][nj] =='.' or Maze[ni][nk][nj]=='S' or Maze[ni][nk][nj]=='G'){
+                    GG.AdjOf[id].pb(nid);
+                    if (k==3) if (Maze[i][4][j] == 'S') GG.Starts.insert(nid);
+                };
+                if (Maze[ni][nk][nj]=='G') GG.Goals.insert(nid);
+            }
+        };// rep d
+    };// rep k i j
+};//Make Graph
+
+int BFS_Graph(){
+    if (GG.Starts.empty() or GG.Goals.empty()) return -1;
+
+    int dist[Vmax]; REP(i,Vmax) dist[i]=-1;
+    int que[Vmax];  REP(i,Vmax) que[i] =0;
+    bool visited[Vmax]; REP(i,Vmax) visited[i]=false;
+    int dq = 0, cq = -1;
+
+    //push starts:
+    for(set<int>::iterator it = GG.Starts.begin(); it != GG.Starts.end(); ++it){
+        int v = *it;
+        cq++;
+        que[cq] = v;
+        dist[v] = 1;
+        visited[v] = true;
+        if (GG.isGoal(v)) return dist[v];
+    };
+
+    //bfs:
+    while(dq<=cq){
+        int u = que[dq]; dq++;
+        REP(iv, SIZE(GG.AdjOf[u])){
+            int v = GG.AdjOf[u][iv];
+            if (visited[v]) continue;
+            cq++;
+            que[cq] = v;
+            dist[v] = dist[u] +1;
+            visited[v] = true;
+            if(GG.isGoal(v)) return dist[v];
+        };
+    };
+
+    return -1;
+}; // BFS
+
+int solveIt(){
+    init();
+    makeGraph();
+    return BFS_Graph();
+};
+
+int main()
+{
+    cin>>T;
+    FORE(t,1,T){
+        readInput();
+        int ans = solveIt();
+
+        cout <<"Case #"<<t<<": ";
+        if (ans<1) cout <<"impossible";
+        else cout <<ans;
+
+        cout <<endl;
+    };
+
+    return 0;
+}

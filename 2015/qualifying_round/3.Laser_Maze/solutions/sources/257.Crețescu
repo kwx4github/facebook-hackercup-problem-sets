@@ -1,0 +1,126 @@
+﻿#include <fstream>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <sstream>
+#include <limits>
+#include <chrono>
+#include <queue>
+#include <functional>
+#include <algorithm>
+
+using namespace std;
+	
+
+string solve(int n,int m, vector< string >& f) {
+	vector< vector< vector<bool> > > blocked = vector< vector< vector<bool> > > (4,vector < vector<bool> > (n, vector<bool>(m)));
+	const int dx[4] = { -1, 0, 1, 0 };
+	const int dy[4] = { 0, 1, 0, -1 };
+	const char* laser = "^>v<";
+	const int inf = int(1e9);
+	pair<int, int> src, dest;
+	vector< vector< vector<int> > > dist(4,vector< vector<int> >(n, vector<int>(m, inf)));
+	auto isValid = [&](const int& i, const int& j) ->bool {
+		return (0 <= i && 0 <= j && i < n && j < m);
+	};
+	
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < m; j++) {
+			if (f[i][j] == '#') {
+				for (int k = 0; k < 4; k++) {
+					blocked[k][i][j] = true;
+				}
+			} else
+			if (f[i][j] == 'S') {
+				src = { i, j };
+			} else
+			if (f[i][j] == 'G') {
+				dest = { i, j };
+			} else 
+			if (f[i][j] == '.') {
+				continue;
+			} else {
+				int d = strchr(laser, f[i][j]) - laser;
+				for (int k = 0; k < 4; k++) {
+					int x = i, y = j;
+					blocked[k][x][y] = true;
+					x += dx[d];
+					y += dy[d];
+					while (isValid(x, y) && f[x][y] != '#' && strchr(laser, f[x][y]) == NULL) {
+						blocked[k][x][y] = true;
+						x += dx[d];
+						y += dy[d];
+					}
+					d = d + 1 < 4 ? d + 1 : 0;
+				}
+			}
+		}
+	}
+	/*
+	for (int k = 0; k < 4; k++) {
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < m; j++) {
+				cout << blocked[k][i][j] << " ";
+			}
+			cout << "\n";
+		}
+		cout << "\n";
+	}
+	*/
+	dist[0][src.first][src.second] = 0;
+	queue< tuple<int, int, int> > q;
+	q.push(make_tuple(0, src.first, src.second));
+
+	while (!q.empty()) {
+		tuple<int, int, int> v = q.front();
+		int t = dist[get<0>(v)][get<1>(v)][get<2>(v)];
+		q.pop();
+		for (int k = 0; k < 4; k++) {
+			tuple<int, int, int> w = make_tuple( (t + 1) & 3, get<1>(v) +dx[k], get<2>(v) +dy[k] );
+			if (isValid(get<1>(w), get<2>(w)) && f[get<1>(w)][get<2>(w)] != '#'&&
+				strchr(laser, f[get<1>(w)][get<2>(w)]) == NULL &&
+				blocked[(t + 1) & 3][get<1>(w)][get<2>(w)] == false &&
+				dist[(t + 1)&3][get<1>(w)][get<2>(w)] > t + 1) {
+				dist[(t + 1)&3][get<1>(w)][get<2>(w)] = t + 1;
+				q.push(w);
+			}
+		}
+	}
+	int ans = inf;
+	for (int k = 0; k < 4; k++)
+		ans = min(ans, dist[k][dest.first][dest.second]);
+
+	if (ans == inf)
+		return "impossible";
+
+	ostringstream oss;
+	oss << ans;
+	return oss.str();
+
+}
+
+int main()
+{
+	ifstream cin("test.in");
+	ofstream cout("test.out");
+	int t;
+	cin >> t;
+	auto t0 = std::chrono::system_clock::now();
+	for (int i = 1;i <= t; i++) {
+		int n, m;
+		cin >> n >>  m;
+		cin.get();
+		vector<string> f(n);
+		for (int i = 0; i < n; i++) {
+			getline(cin, f[i]);
+		}
+
+		string ans = solve(n, m, f);
+		cout << "Case #" << i << ": " << ans << "\n";
+	}
+	auto t1 = std::chrono::system_clock::now();
+	auto d = std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0);
+	cerr << d.count() << "\n";
+	return 0;
+}

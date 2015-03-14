@@ -1,0 +1,123 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cstring>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <queue>
+#include <map>
+#include <climits>
+using namespace std;
+
+#define REP(i,n) for(int i=0; i<(int)(n); i++)
+#define RREP(i,n) for(int i=(int)n-1; i>=0; i--)
+#define FOR(i,c) for(__typeof((c).begin())i=(c).begin();i!=(c).end();++i)
+#define RFOR(i,c) for(__typeof((c).rbegin())i=(c).rbegin();i!=(c).rend();++i)
+#define ALL(c) (c).begin(), (c).end()
+
+typedef long long int ll;
+typedef pair<int, int> pii;
+typedef pair<int, pair<int, int> > pipii;
+typedef vector<int> vi;
+
+const int INF = 1e9;
+const int MOD = 1e9+7;
+
+char gaze[110][110];
+int missstep[110][110][4];
+int memo[110][110][4];
+int dy[4] = {1, 0, -1, 0};
+int dx[4] = {0, 1, 0, -1};
+
+int lazerdir(int step, char c){
+    string s = ">v<^";
+    int id = 0;
+    while(s[id] != c) id++;
+    return (id + step) % 4;
+}
+
+bool checklazer(char c){
+    if(c == '^') return true;
+    if(c == '>') return true;
+    if(c == 'v') return true;
+    if(c == '<') return true;
+    return false;
+}
+
+void msupdate(int step, int x, int y, int d){
+    //cout << x << ":" << y << ":" << d << endl;
+    
+    missstep[x][y][step] = 1;
+    x += dx[d]; y += dy[d];
+    //cout << x << ":" << y << ":" << d << endl;
+    if(gaze[x][y] == '#' || checklazer(gaze[x][y])) return;
+    msupdate(step, x, y, d); 
+}
+
+int solve(int x, int y, int gx, int gy){
+    priority_queue<pipii, vector<pipii>, greater<pipii> > que;
+    REP(k, 4)
+        que.push(pipii(1, pii(x + dx[k], y + dy[k])));
+    
+    while(!que.empty()){
+        pipii p = que.top(); que.pop();
+        int step = p.first % 4, px = p.second.first, py = p.second.second;
+        //cout << p.first << ":" << px << ":" << py << "      ";
+        //cout << gaze[px][py] << ":" << missstep[px][py][step] << endl;
+
+        if(memo[px][py][step]) continue;
+        if(gaze[px][py] == '#' || checklazer(gaze[px][py])) continue;
+        if(missstep[px][py][step]) continue;
+        memo[px][py][step] = 1;
+        
+        if(px == gx && py == gy) return p.first;
+        
+        REP(k, 4){
+            int nx = px + dx[k], ny = py + dy[k];
+            que.push(pipii(p.first + 1, pii(nx, ny)));
+        }
+    }
+    return -1;
+}
+
+int main(void){
+    int T; cin >> T;
+    REP(l, T){
+        REP(i, 110) REP(j, 110){
+            REP(k, 4){
+                memo[i][j][k] = 0;
+                missstep[i][j][k] = 0;
+            }
+            gaze[i][j] = '#';
+        }
+        int M, N;
+        cin >> M >> N;
+        int sx, sy, gx, gy;
+        REP(i, M)
+            REP(j, N){
+                cin >> gaze[i+1][j+1];
+                if(gaze[i+1][j+1] ==  'S'){
+                    sx = i+1; sy = j+1;
+                }
+                if(gaze[i+1][j+1] == 'G'){
+                    gx = i+1; gy = j+1;
+                }
+            }
+        REP(i, M+2){
+            REP(j, N+2){
+                if(checklazer(gaze[i][j])){
+                    REP(k, 4) msupdate(k, i, j, lazerdir(k, gaze[i][j]));
+                }
+            }
+        }
+
+        int ans = solve(sx, sy, gx, gy);
+        cout << "Case #" << l+1 << ": ";
+        if(ans != -1) cout << ans << endl;
+        else cout << "impossible" << endl;  
+    }
+    return 0;
+}
+

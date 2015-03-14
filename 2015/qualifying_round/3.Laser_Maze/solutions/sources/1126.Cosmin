@@ -1,0 +1,232 @@
+//package hackercup.problem03;
+
+import java.io.*;
+import java.util.*;
+
+/**
+* Facebook Hacker Cup 2015
+* @author Cosmin Dumitrache (cosmin.m.dumitrache@gmail.com)
+*/
+public class LaserMaze {
+
+  static class Point {
+    int x;
+    int y;
+    public Point(int x, int y) {
+      this.x = x;
+      this.y = y;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      Point point = (Point) o;
+      if (x != point.x) return false;
+      if (y != point.y) return false;
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = x;
+      result = 31 * result + y;
+      return result;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("(%d, %d)", x, y);
+    }
+  }
+
+  static class MazeState implements Comparable<MazeState> {
+
+    Point position;
+    int cycle;
+    int priority;
+
+    public MazeState(Point position, int cycle) {
+      this(position, cycle, Integer.MAX_VALUE);
+    }
+
+    public MazeState(Point position, int cycle, int priority) {
+      this.position = position;
+      this.cycle = cycle;
+      this.priority = priority;
+    }
+
+    public void setPriority(int priority) {
+      this.priority = priority;
+    }
+
+    @Override
+    public int compareTo(MazeState other) {
+      return priority - other.priority;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      MazeState mazeState = (MazeState) o;
+      if (cycle != mazeState.cycle) return false;
+      if (position != null ? !position.equals(mazeState.position) : mazeState.position != null) return false;
+
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = position != null ? position.hashCode() : 0;
+      result = 31 * result + cycle;
+      return result;
+    }
+  }
+
+  static char rotateTurretClockwise(char c) {
+    switch (c) {
+      case '<': return '^';
+      case '^': return '>';
+      case '>': return 'v';
+      case 'v': return '<';
+      default: throw new RuntimeException("Not a turret!");
+    }
+  }
+
+  static char getTurretForCycle(char turret, int cycle) {
+    for (int i=0; i<cycle; i++)
+      turret = rotateTurretClockwise(turret);
+    return turret;
+  }
+
+  static boolean isStart(char c) { return c=='S'; }
+  static boolean isGoal(char c) { return c=='G'; }
+  static boolean isWall(char c) { return c=='#'; }
+  static boolean isTurret(char c) { return c=='<' || c=='>' || c=='^' || c=='v'; }
+
+  static boolean checkValidMove(MazeState move, char[][] maze, int m, int n, ArrayList<HashSet<Point>> laserPaths) {
+    // check maze bounds
+    if (move.position.x<0 || move.position.x>m-1 || move.position.y<0 || move.position.y>n-1)
+      return false;
+    // check wall/turret hit
+    char square = maze[move.position.x][move.position.y];
+    if (isWall(square) || isTurret(square))
+      return false;
+    // check laser hit
+    if (laserPaths.get(move.cycle).contains(move.position))
+      return false;
+    return true;
+  }
+
+  static ArrayList<HashSet<Point>> getLaserPathsForCycles(char[][] maze, int m, int n, List<Point> turrets) {
+    ArrayList<HashSet<Point>> laserPaths = new ArrayList<HashSet<Point>>();
+    for (int cycle=0; cycle<4; cycle++) {
+      laserPaths.add(new HashSet<Point>());
+      for (Point turret : turrets) {
+        switch (getTurretForCycle(maze[turret.x][turret.y], cycle)) {
+          case '<':
+            for (int yPos=turret.y-1; yPos>=0 && !isWall(maze[turret.x][yPos]) && !isTurret(maze[turret.x][yPos]); yPos--)
+              laserPaths.get(cycle).add(new Point(turret.x, yPos));
+            break;
+          case '>':
+            for (int yPos=turret.y+1; yPos<n && !isWall(maze[turret.x][yPos]) && !isTurret(maze[turret.x][yPos]); yPos++)
+              laserPaths.get(cycle).add(new Point(turret.x, yPos));
+            break;
+          case '^':
+            for (int xPos=turret.x-1; xPos>=0 && !isWall(maze[xPos][turret.y]) && !isTurret(maze[xPos][turret.y]); xPos--)
+              laserPaths.get(cycle).add(new Point(xPos, turret.y));
+            break;
+          case 'v':
+            for (int xPos=turret.x+1; xPos<m && !isWall(maze[xPos][turret.y]) && !isTurret(maze[xPos][turret.y]); xPos++)
+              laserPaths.get(cycle).add(new Point(xPos, turret.y));
+            break;
+          default:
+            throw new RuntimeException("Not a turret!");
+        }
+      }
+    }
+    return laserPaths;
+  }
+
+  static List<MazeState> getValidMoves(MazeState state, char[][] maze, int m, int n, ArrayList<HashSet<Point>> laserPaths) {
+    LinkedList<MazeState> validMoves = new LinkedList<MazeState>();
+    int nextCycle = (state.cycle+1) % 4;
+    MazeState moveUp = new MazeState(new Point(state.position.x-1, state.position.y), nextCycle);
+    if (checkValidMove(moveUp, maze, m, n, laserPaths)) validMoves.add(moveUp);
+    MazeState moveDown = new MazeState(new Point(state.position.x+1, state.position.y), nextCycle);
+    if (checkValidMove(moveDown, maze, m, n, laserPaths)) validMoves.add(moveDown);
+    MazeState moveLeft = new MazeState(new Point(state.position.x, state.position.y-1), nextCycle);
+    if (checkValidMove(moveLeft, maze, m, n, laserPaths)) validMoves.add(moveLeft);
+    MazeState moveRight = new MazeState(new Point(state.position.x, state.position.y+1), nextCycle);
+    if (checkValidMove(moveRight, maze, m, n, laserPaths)) validMoves.add(moveRight);
+    return validMoves;
+  }
+
+  static int heuristic (Point source, Point destination) {
+    return Math.abs(source.x - destination.x) + Math.abs(source.y - destination.y);
+  }
+
+  static int aStarSearch(char[][] maze, int m, int n, Point start, Point goal, ArrayList<HashSet<Point>> laserPaths) {
+
+    int currentCycle = 0;
+    MazeState startState = new MazeState(start, currentCycle, 0);
+    PriorityQueue<MazeState> frontier = new PriorityQueue<MazeState>();
+    frontier.add(startState);
+    HashMap<MazeState, Integer> stepsSoFar = new HashMap<MazeState, Integer>();
+    stepsSoFar.put(startState, 0);
+
+    while (!frontier.isEmpty()) {
+      MazeState current = frontier.poll();
+      if (current.position.equals(goal)) return stepsSoFar.get(current);
+      for (MazeState next : getValidMoves(current, maze, m, n, laserPaths)) {
+        int newStepsCount = stepsSoFar.get(current) + 1;
+        if (!stepsSoFar.containsKey(next) || newStepsCount < stepsSoFar.get(next)) {
+          stepsSoFar.put(next, newStepsCount);
+          next.setPriority(newStepsCount + heuristic(next.position, goal));
+          frontier.add(next);
+        }
+      }
+    }
+
+    return -1;
+  }
+
+  public static void main(String args[]) throws IOException {
+    if (args.length != 2) {
+      System.err.printf("Usage: java %s <input file> <output file>\n", LaserMaze.class.getCanonicalName());
+      System.exit(1);
+    }
+    String inputFile = args[0];
+    String outputFile = args[1];
+    BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)));
+    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile)));
+    int t = Integer.parseInt(reader.readLine());
+    for (int i=1; i<=t; i++) {
+      String[] sizes = reader.readLine().split(" ");
+      int m = Integer.parseInt(sizes[0]);
+      int n = Integer.parseInt(sizes[1]);
+      char[][] maze = new char[m][n];
+      Point start = null;
+      Point goal = null;
+      List<Point> turrets = new LinkedList<Point>();
+      for (int j=0; j<m; j++) {
+        String line = reader.readLine();
+        for (int k=0; k<n; k++) {
+          maze[j][k] = line.charAt(k);
+          if (isTurret(maze[j][k])) turrets.add(new Point(j, k));
+          else if (isStart(maze[j][k])) start = new Point(j, k);
+          else if (isGoal(maze[j][k])) goal = new Point(j, k);
+        }
+      }
+      ArrayList<HashSet<Point>> laserPaths = getLaserPathsForCycles(maze, m, n, turrets);
+      int steps = aStarSearch(maze, m, n, start, goal, laserPaths);
+      String output = String.format("Case #%d: %s\n", i, steps>=0 ? steps : "impossible");
+      writer.write(output);
+
+    }
+    reader.close();
+    writer.close();
+  }
+
+}

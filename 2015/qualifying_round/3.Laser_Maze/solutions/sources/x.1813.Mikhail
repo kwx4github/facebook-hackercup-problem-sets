@@ -1,0 +1,93 @@
+from collections import deque
+import FBHC_helper
+
+LAZ = '^>v<'
+DIRS = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+INF = 10**5
+
+def get_level():
+	n, m = map(int, input().split())
+	extr_row = ['#'] * (m + 2)
+	str_maze = [extr_row] + [['#'] + list(input()) + ['#'] for _ in range(n)] + [extr_row]
+	return n + 2, m + 2, str_maze
+
+def find_2d(f, x):
+	'''find all occurences of x in 2d-matrix f'''
+	return sum(([(r, i) for i, c in enumerate(row) if c == x] for r, row in enumerate(f)), [])
+
+def find_2d_unique(f, x):
+	'''find the only occurence of x in 2d-matrix f or return None if it's not unique'''
+	tmp = find_2d(f, x)
+	return None if len(tmp) != 1 else tmp[0]
+
+def deep_2d_clone(f):
+	'''deep clone of 2d-matrix f'''
+	return [row[:] for row in f]
+
+def shoot_laz(f, x0, y0, dx, dy):
+	while True:
+		x0 += dx
+		y0 += dy
+		if f[x0][y0] != '.' and f[x0][y0] != '!':
+			break
+		f[x0][y0] = '!'	
+
+def replace_2d(f, x, y):
+	'''replaces all x into y in 2d-matrix f'''
+	for row in f:
+		for col in range(len(row)):
+			if row[col] == x:
+				row[col] = y
+
+def shoot_all_lazers(n, m, f, turn):
+	ret = deep_2d_clone(f)
+	for i in range(n):
+		for j in range(m):
+			d = LAZ.find(f[i][j])
+			if d != -1:
+				shoot_laz(ret, i, j, *DIRS[(d + turn) % 4])
+	replace_2d(ret, '!', '#')
+	return ret
+
+def pretty_field(f):
+	return '\n'.join(''.join(row) for row in f)
+
+def one_test():
+	n, m, f = get_level()
+	fr = find_2d_unique(f, 'S')
+	to = find_2d_unique(f, 'G')
+	assert fr != None and to != None, "not unique start or goal"
+	f[fr[0]][fr[1]] = '.'
+	f[to[0]][to[1]] = '.'
+	
+	laz_f = [shoot_all_lazers(n, m, f, turn) for turn in range(4)]
+	# print('\n'.join(map(pretty_field, laz_f)))
+
+	def is_valid(x, y, turn):
+		c = laz_f[turn][x][y]
+		return c == '.'
+
+	dist = [[[INF] * 4 for _ in range(m)] for _ in range(n)]
+	q = deque()
+	for i, dd in enumerate(DIRS):
+		x, y, d = fr[0] + dd[0], fr[1] + dd[1], i
+		if is_valid(x, y, d):
+			q.append((x, y, d))
+			dist[x][y][d] = 1
+
+	while q:
+		x, y, d = q.popleft()
+		cur_d = dist[x][y][d]
+		if (x, y) == to:
+			print(cur_d)
+			return
+		for dx, dy in DIRS:
+			cx, cy, cd = x + dx, y + dy, (d + 1) % 4
+			if is_valid(cx, cy, cd) and dist[cx][cy][cd] > cur_d + 1:
+				dist[cx][cy][cd] = cur_d + 1
+				q.append((cx, cy, cd))
+
+	print('impossible')
+
+# one_test()
+FBHC_helper.work(one_test)

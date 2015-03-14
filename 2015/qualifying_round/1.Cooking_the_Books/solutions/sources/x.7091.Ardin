@@ -1,0 +1,43 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+import System.Environment (getArgs)
+import Safe (readMay)
+import qualified Data.Text as T
+import Data.Maybe (catMaybes)
+import Data.Char
+import qualified Data.Vector as V
+
+stringToDigitList :: [String] -> [[Int]]
+stringToDigitList =  fmap $ fmap digitToInt
+
+findMinMax :: [Int] -> (Int, Int)
+findMinMax (x:xs) = findThem (x, 0) (x, 0) 1 xs
+            where 
+                findThem (_, idxMin) (_, idxMax) _ [] = (idxMin,idxMax)
+                findThem mn@(minX,_) mx@(maxX,_) n (x:xs) = findThem (if x < minX && x /= 0 then (x,n) else mn)
+                                                                       (if x > maxX then (x,n) else mx)
+                                                                       (n+1)
+                                                                       xs
+
+swapElement :: Int -> Int -> [Int] -> [Int]
+swapElement n1 n2 xs = let xsVec = V.fromList xs 
+                        in V.toList $ xsVec V.// [(n1, xsVec V.! n2), (n2, xsVec V.! n1)]
+
+listToDigits :: [Int] -> Int
+listToDigits = foldl (\acc x -> acc*10 + x) 0 
+
+cookIt :: [Int] -> (Int, Int)
+cookIt xs = let (idxMin, idxMax) = findMinMax xs 
+             in (listToDigits $ swapElement 0 idxMin xs, listToDigits $ swapElement 0 idxMax xs)
+
+printResult :: Int -> (Int, Int) -> String
+printResult n (minX, maxX) = "Case #" ++ show n ++ ": " ++ show minX ++ " " ++ show maxX
+
+main = do 
+    args <- getArgs
+    let (i:_) = args
+    input <- readFile i
+    let (digitNumberString : digitStrings) = lines input
+    let digitNumber = read digitNumberString :: Int
+    let results = fmap cookIt $ stringToDigitList digitStrings
+    putStrLn $ unlines $ fmap (uncurry printResult) $ zip [1..digitNumber + 1] results

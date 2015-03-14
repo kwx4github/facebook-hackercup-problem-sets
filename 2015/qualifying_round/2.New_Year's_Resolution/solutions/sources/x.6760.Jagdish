@@ -1,0 +1,301 @@
+<?php
+function buildInputObject( $lines ) {
+
+  $numTestCases = (int) $lines[0];
+  $testCases = array_slice( $lines, 1 );
+  $testCases = array_slice( $testCases, 0, -1 );
+  //print_r("Input Array from File : ");
+  //print_r( $testCases );
+  //print_r( "Number of test cases $numTestCases \n" );
+
+  $testCaseArr = [];
+  $i=0;
+
+  while ( count( $testCaseArr ) < $numTestCases ) {
+    $tmp = [];
+
+    $targValString = explode( " ", $testCases[$i] );
+    $targVals = [
+    "gp" => $targValString[0],
+    "gc" => $targValString[1],
+    "gf" => $targValString[2]
+    ];
+    //print_r( "\nTarget Value Array : " );
+    //print_r( $targVals );
+
+    $tmp["targ"] = $targVals;
+    $tmp["foods"] = [];
+    //print_r( "Current value of i = $i\n" );
+    $i++;
+    //print_r( "Current value of i = $i\n" );
+
+    $numTestFoods = (int) $testCases[$i];
+
+    //print_r( "\nNumber of Food sets to match : $numTestFoods\n" );
+
+    $matchTill = $i + $numTestFoods;
+
+    //print_r( "\nRead till $matchTill - " . $testCases[$matchTill]."\n" );
+
+    for ( $j=$i+1 ; $j <= $matchTill ; $j++ ) {
+      $food = $testCases[$j];
+
+      //print_r( "Food Array : $food \n" );
+
+      $foodObj = explode( " ", $food );
+
+      $fItem = [
+      "p" => $foodObj[0],
+      "c" => $foodObj[1],
+      "f" => $foodObj[2],
+      ];
+
+      $tmp["foods"][] =  $fItem ;
+    }
+
+    //print_r( $tmp );
+
+
+    $i = $matchTill + 1;
+    //print_r("Now look at $i item\n");
+    array_push( $testCaseArr, $tmp );
+  }
+  // print_r( "Available test Cases : " );
+  // print_r( $testCaseArr );
+  // print_r( "\n" );
+
+  return $testCaseArr;
+}
+
+function findValidSets( $sum, $arr ) {
+  $sets = [];
+  $numItems = count( $arr );
+  $runningTotal = 0;
+  $incompleteSets = [];
+  $completeSets = [];
+
+  // print_r( "Target sum : $sum .\nProvided Array : " );
+  print_r( $arr );
+  print_r( "\n" );
+
+  for ( $i=0; $i< $numItems; $i++ ) {
+    $el = $arr[$i];
+    if ( $el == $sum ) {
+      // print_r( "$el is same as the sum $sum. Adding to Complete Sets and continuing\n" );
+      $t = [$i];
+      $completeSets[] = $t;
+
+      continue;
+    } else {
+      // print_r( "Checking Against : ".$el."\n" );
+      // now you have one element.
+      // add element to next element and so on and make list of incomplete sets and complete sets
+      for ( $j=$i+1; $j<$numItems; $j++ ) {
+        $mEl = $arr[$j];
+        $tSum = $el + $mEl;
+        // print_r( "Sum of $el with $mEl : $tSum\n" );
+
+        if ( $tSum > $sum ) {
+          // print_r( "$tSum is greater than $sum. So Skip\n. " );
+          continue;
+        } else if ( $tSum == $sum ) {
+            // print_r( "$tSum matches $tSum. Eureka! We have a complete set of 2 els." );
+            $t = [$i, $j];
+            $completeSets[] = $t;
+            // print_r( "Complete Sets : " );
+            // print_r( $completeSets );
+          } else {
+          // print_r( "$tSum is smaller than $sum.\n" );
+
+
+          if ( count( $incompleteSets ) ) {
+            // check new element will complete any on the incomplete sets
+            foreach ( $incompleteSets as $key => &$iSet ) {
+              // print_r( "Checking if $mEl will complete incomplete set : " );
+              // print_r( $iSet );
+              // print_r( "\n" );
+              $icSum = 0;
+
+              array_walk( $iSet, function( $idx ) use ( &$icSum, $arr ) {
+                  $icSum += $arr[$idx];
+                } );
+
+              // print_r( "Sum of elements in incomplete set : $icSum\n" );
+              $nSum = $icSum + $mEl;
+              // print_r( "Sum of element with incomplete set : $nSum\n" );
+
+              if ( $nSum == $sum ) {
+                if ( array_search( $j, $iSet ) === false ) {
+                  $iSet[] = $j;
+                  sort( $iSet );
+                  $completeSets[] = $iSet;
+                  unset( $incompleteSets[$key] );
+                }
+              } else if ( $nSum < $sum ) {
+                  // print_r( "\n present incomplete set : [ ". implode( " - ", $iSet ) ."]\n" );
+                  // $copy = $iSet[];
+                  // $incompleteSets[] = $copy;
+                  // print_r( "Adding $j into [ ". implode( " - ", $iSet )." ]\n".array_search( $j, $iSet )."\n" );
+                  if ( array_search( $j, $iSet ) === false ) {
+                    $iSet[] = $j;
+                  }
+                }
+            }
+          }
+
+          $incompleteSets[] = [$i, $j];
+
+          // print_r( "\nIncomplete Sets : " );
+          // print_r( $incompleteSets );
+          // print_r( "\nComplete Sets : " );
+          // print_r( $completeSets );
+          // print_r( "\n" );
+          // else
+
+        }
+
+      }
+    }
+
+
+  }
+
+  // check if all elements are unique;
+  $stringnots = [];
+  foreach($completeSets as $index => $tmp){
+    $str = implode(",", $tmp);
+    if(array_search($str, $stringnots) === false){
+      $stringnots[] = $str;
+    } else {
+      unset($completeSets[$index]);
+    }
+  }
+
+  return $completeSets;
+
+}
+
+function checkIfTestCasehasRequiredMix( $item ) {
+  $targ = $item["targ"];
+  $foodSets = $item["foods"];
+
+  $gp = $targ["gp"];
+  $gc = $targ["gc"];
+  $gf = $targ["gf"];
+  $pa = [];
+  $ca = [];
+  $fa = [];
+  $final = [];
+
+  array_walk( $foodSets,
+    function( $item, $key, $obj ) {
+
+      $obj[0][] = $item["p"];
+      $obj[1][] = $item["c"];
+      $obj[2][] = $item["f"];
+
+    }, [&$pa, &$ca, &$fa] );
+  print_r( "Target - PA - FoodValues in Test Case : $gp " );
+  print_r( "\n- PA Food Values in sample food : ".implode( ",", $pa ) ."\n" );
+
+  $sets = findValidSets( $gp, $pa );  
+  print_r($sets);
+
+  // $psets = findValidSets( $gp, $pa );
+  // $csets = findValidSets( $gc, $ca );
+  // $fsets = findValidSets( $gf, $fa );
+
+  // if(empty($psets) || empty($csets) || empty($fsets))
+  //   return false;
+
+  // print_r( "\nReceived Sets " );
+  // // print_r( $psets );
+  // // print_r( $csets );
+  // // print_r( $fsets );
+
+  // $pstrsets = [];
+  // $cstrsets = [];
+  // $fstrsets = [];
+
+  // array_walk($psets, function($item) use(&$pstrsets){
+  //   $pstrsets[] = implode(",", $item);
+  // });
+  // array_walk($csets, function($item) use(&$cstrsets){
+  //   $cstrsets[] = implode(",", $item);
+  // });
+  // array_walk($fsets, function($item) use(&$fstrsets){
+  //   $fstrsets[] = implode(",", $item);
+  // });
+
+  // print_r($pstrsets);
+  // print_r($cstrsets);
+  // print_r($fstrsets);
+
+  // $final = array_intersect($pstrsets, $cstrsets, $fstrsets);
+
+  foreach ( $sets as $key => $potMatches ) {
+    $cSum = 0;
+    $fSum = 0;
+
+    $l = count( $potMatches );
+    print_r( "\n- CA Food Values in sample food : ".implode( ",", $ca ) );
+    print_r( "\n- FA Food Values in sample food : ".implode( ",", $fa )."\n" );
+    print_r( $potMatches );
+    for ( $i=0; $i < $l ;$i++ ) {
+      print_r( "\nIndex : ".$potMatches[$i] );
+      print_r( "\nca values : ".$ca[$i] );
+      print_r( "\nfa values : ".$fa[$i] );
+      print_r( "\n$cSum + ".$ca[$potMatches[$i]]."\n" );
+
+      $cSum += $ca[$potMatches[$i]];
+
+      print_r( "$fSum + ".$fa[$potMatches[$i]]."\n" );
+
+      $fSum += $fa[$potMatches[$i]];
+    }
+    print_r( "Corresponding cSum = $cSum against $gc\n" );
+    print_r( "Corresponding fSum = $fSum against $gf\n" );
+    if ( $cSum == $gc && $fSum == $gf ) {
+      $final[] = $potMatches;
+      print_r( $potMatches );
+      print_r( "\n" );
+      print_r( $final );
+      break;
+    }
+
+  }
+
+  return count( $final );
+}
+
+if ( count( $argv ) === 2 ) {
+  $file = $argv[1];
+} else {
+  $file = "new_years_resolution.txt";
+}
+echo "Parsing $file\n";
+$fs = fopen( $file, "r" );
+$fread = fread( $fs, filesize( $file ) );
+fclose( $fs );
+$lines = explode( "\n", $fread );
+$testCaseArr = buildInputObject( $lines );
+$numTestCases = count( $testCaseArr );
+// print_r($testCaseArr);
+
+$str = '';
+
+for ( $i = 0; $i < $numTestCases; $i++ ) {
+  $label = $i+1;
+  print_r( "Checking Test Case #".$label."\n" );
+
+
+  $match = checkIfTestCasehasRequiredMix( $testCaseArr[$i] );
+  $match = $match ? "yes" : "no" ;
+
+
+  $str .= "Case #" . $label . ": " .  $match . "\n";
+  print_r( "---------------------------------\n" );
+  print_r( "$str\n" );
+  print_r( "=================================\n" );
+}
+file_put_contents( "op.txt", $str );

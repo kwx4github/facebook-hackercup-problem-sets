@@ -1,0 +1,156 @@
+#include <iostream>
+#include <iterator>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <set>
+#include <map>
+
+using namespace std;
+
+void disableLine(const vector<string> & in,
+	vector<vector<int> > & g,
+	const pair<int, int> & start,
+	const pair<int, int> & step)
+{
+	int Y = (int)in.size(), X = (int)in[0].length();
+	int x = start.first, y = start.second;
+	int dx = step.first, dy = step.second;
+	while (true)
+	{
+		g[x][y] = -1;
+		x += dx; y += dy;
+		if (
+			(x >= X) || (x < 0) || (y >= Y) || (y < 0) ||
+			(in[y][x] != '.' &&	in[y][x] != 'S' && in[y][x] != 'G'))
+		{
+			break;
+		}
+	}
+}
+
+void make_graph(const vector<string> & in,
+	vector<vector<vector<int> > > & g,
+	pair<int, int> & start,
+	pair<int, int> & finish)
+{
+	int Y = (int)in.size(), X = (int)in[0].length();
+	for (int y = 0; y < Y; ++y)
+	{
+		for (int x = 0; x < X; ++x)
+		{
+			switch (in[y][x])
+			{
+			case '#':
+				g[0][x][y] = g[1][x][y] = g[2][x][y] = g[3][x][y] = -1;
+				break;
+			case 'S':
+				start = make_pair(x, y);
+				break;
+			case 'G':
+				finish = make_pair(x, y);
+				break;
+			case '<':
+				disableLine(in, g[0], make_pair(x, y), make_pair(-1, 0));
+				disableLine(in, g[1], make_pair(x, y), make_pair(0, -1));
+				disableLine(in, g[2], make_pair(x, y), make_pair(1, 0));
+				disableLine(in, g[3], make_pair(x, y), make_pair(0, 1));
+				break;
+			case 'v':
+				disableLine(in, g[1], make_pair(x, y), make_pair(-1, 0));
+				disableLine(in, g[2], make_pair(x, y), make_pair(0, -1));
+				disableLine(in, g[3], make_pair(x, y), make_pair(1, 0));
+				disableLine(in, g[0], make_pair(x, y), make_pair(0, 1));
+				break;
+			case '>':
+				disableLine(in, g[2], make_pair(x, y), make_pair(-1, 0));
+				disableLine(in, g[3], make_pair(x, y), make_pair(0, -1));
+				disableLine(in, g[0], make_pair(x, y), make_pair(1, 0));
+				disableLine(in, g[1], make_pair(x, y), make_pair(0, 1));
+				break;
+			case '^':
+				disableLine(in, g[3], make_pair(x, y), make_pair(-1, 0));
+				disableLine(in, g[0], make_pair(x, y), make_pair(0, -1));
+				disableLine(in, g[1], make_pair(x, y), make_pair(1, 0));
+				disableLine(in, g[2], make_pair(x, y), make_pair(0, 1));
+				break;
+			default:
+				break;
+			}
+		}
+	}
+}
+
+const int ddx[] = { -1, 0, 1, 0 };
+const int ddy[] = { 0, -1, 0, 1 };
+
+void solve()
+{
+	int n, m; cin >> n >> m;
+	vector<string> input(n);
+	for (int i = 0; i < n; ++i)
+		cin >> input[i];
+	vector<vector<vector<int> > > g(4,
+		vector<vector<int> >(m, vector<int>(n, 1000000000)));
+
+	pair<int, int> start, finish;
+	make_graph(input, g, start, finish);
+	g[0][start.first][start.second] = 0;
+	vector<pair<int, int> > q1(1, start), q2;
+	int step = 0;
+
+	while (true)
+	{
+		vector<pair<int, int> > & q_old = (step & 1) ? q2 : q1;
+		vector<pair<int, int> > & q_new = (step & 1) ? q1 : q2;
+		if (q_old.empty()) break;
+
+		q_new.clear();
+
+		int old_plane = step & 3;
+		int new_plane = (step + 1) & 3;
+
+		for (size_t i = 0; i < q_old.size(); ++i)
+		{
+			int x_old = q_old[i].first, y_old = q_old[i].second;
+			for (int j = 0; j < 4; ++j)
+			{
+				int x = x_old + ddx[j];
+				int y = y_old + ddy[j];
+
+				if (x < 0 || x >= m || y < 0 || y >= n) continue;
+				if (g[new_plane][x][y] <= step + 1) continue;
+				g[new_plane][x][y] = step + 1;
+				q_new.push_back(make_pair(x, y));
+				if (x == finish.first && y == finish.second)
+				{
+					cout << (step + 1) << endl;
+					return;
+				}
+			}
+		}
+		++step;
+	}
+	cout << "impossible" << endl;
+}
+
+int main()
+{
+	ios::sync_with_stdio(false);
+#ifdef GRANDVIC_DEBUG
+	freopen("e:/input.txt", "rt", stdin);
+	freopen("e:/output.txt", "wt", stdout);
+#endif
+	int T; cin >> T;
+	for (int t = 1; t <= T; ++t)
+	{
+		cout << "Case #" << t << ": ";
+		solve();
+	}
+
+	return 0;
+}
+

@@ -1,0 +1,233 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#include <list>
+#include <stack>
+#include <map>
+#include <set>
+#include <cmath>
+#include <sstream>
+#include <utility>
+#include <iomanip>
+using namespace std;
+                          // int =       2,147,483,647 -> 10^9
+typedef long long LL;     // 9,223,372,036,854,775,807 -> 10^21
+typedef long double LD;   // 1.18973 x 10^4932
+typedef vector<int> vint;
+typedef vector<string> vstr;
+typedef vector<bool> vbool;
+typedef pair<int,int> pint;
+
+
+
+// -------------------
+
+string rotate(string line, int N) {
+  string ret = line;
+
+  for (int i = 0; i < N; i++) {
+    if (ret[i] == '^') {
+      ret[i] = '>';
+    } else if (ret[i] == '>') {
+      ret[i] = 'v';
+    } else if (ret[i] == 'v') {
+      ret[i] = '<';
+    } else if (ret[i] == '<') {
+      ret[i] = '^';
+    }
+  }
+
+  return ret;
+}
+
+void ImaFirinMaLazer(vstr& grid, int M, int N) {
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+
+      if (grid[i][j] == '^') {
+        for (int k = i-1; k >= 0; k--) {
+          if (grid[k][j] == '.') {
+            grid[k][j] = 'L';
+          } else {
+            break;
+          }
+        }
+      } else if (grid[i][j] == 'v') {
+        for (int k = i+1; k < M; k++) {
+          if (grid[k][j] == '.') {
+            grid[k][j] = 'L';
+          } else {
+            break;
+          }
+        }
+      } else if (grid[i][j] == '<') {
+        for (int k = j-1; k >= 0; k--) {
+          if (grid[i][k] == '.') {
+            grid[i][k] = 'L';
+          } else {
+            break;
+          }
+        }
+      } else if (grid[i][j] == '>') {
+        for (int k = j+1; k < N; k++) {
+          if (grid[i][k] == '.') {
+            grid[i][k] = 'L';
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+int dp[100][100][4];
+
+void memoize(vector<vstr>& grids, int cur_grid, int curd, int curr, int endd, int endr, int steps, int M, int N) {
+  if (curd+1 < M && grids[(cur_grid+1)%4][curd+1][curr] == '.' && steps+1 < dp[curd+1][curr][(cur_grid+1)%4]) {
+
+    dp[ curd+1 ][ curr ][ (cur_grid+1) % 4 ] = steps+1;
+    memoize(grids, (cur_grid+1) % 4, curd+1, curr, endd, endr, steps+1, M, N);
+
+  }
+
+  if (curd-1 >= 0 && grids[(cur_grid+1)%4][curd-1][curr] == '.' && steps+1 < dp[curd-1][curr][(cur_grid+1)%4]) {
+
+    dp[ curd-1 ][ curr ][ (cur_grid+1) % 4 ] = steps+1;
+    memoize(grids, (cur_grid+1) % 4, curd-1, curr, endd, endr, steps+1, M, N);
+
+  }
+
+  if (curr+1 < N && grids[(cur_grid+1)%4][curd][curr+1] == '.' && steps+1 < dp[curd][curr+1][(cur_grid+1)%4]) {
+
+    dp[ curd ][ curr+1 ][ (cur_grid+1) % 4 ] = steps+1;
+    memoize(grids, (cur_grid+1) % 4, curd, curr+1, endd, endr, steps+1, M, N);
+
+  }
+
+  if (curr-1 >= 0 && grids[(cur_grid+1)%4][curd][curr-1] == '.' && steps+1 < dp[curd][curr-1][(cur_grid+1)%4]) {
+
+    dp[ curd ][ curr-1 ][ (cur_grid+1) % 4 ] = steps+1;
+    memoize(grids, (cur_grid+1) % 4, curd, curr-1, endd, endr, steps+1, M, N);
+
+  }
+}
+
+int main() {
+
+  int T, M, N, curd, curr, endd, endr;
+  string line;
+  cin >> T;
+
+  for (int case_num = 1; case_num <= T; case_num++) {
+    cin >> M >> N;
+
+    vector<vstr> grids(4, vstr());
+
+    for (int i = 0; i < M; i++) {
+      cin >> line;
+
+      for (int j = 0; j < N; j++) {
+        if (line[j] == 'S') {
+          curd = i;
+          curr = j;
+          line[j] = '.';
+        } else if (line[j] == 'G') {
+          endd = i;
+          endr = j;
+          line[j] = '.';
+        }
+      }
+
+      grids[0].push_back(line);
+      grids[1].push_back(rotate(grids[0][i], N));
+      grids[2].push_back(rotate(grids[1][i], N));
+      grids[3].push_back(rotate(grids[2][i], N));
+    }
+
+    for (int i = 0; i < 4; i++)
+      ImaFirinMaLazer(grids[i], M, N);
+
+    for (int i = 0; i < M; i++)
+      for (int j = 0; j < N; j++)
+        for (int k = 0; k < 4; k++)
+          dp[i][j][k] = 2e9;
+
+    dp[curd][curr][0] = 0;
+
+    memoize(grids, 0, curd, curr, endd, endr, 0, M, N);
+
+    int ans = min(min(min(dp[endd][endr][0], dp[endd][endr][1]), dp[endd][endr][2]), dp[endd][endr][3]);
+
+    cout << "Case #" << case_num << ": ";
+
+    if (ans == 2e9)
+      cout << "impossible" << endl;
+    else
+      cout << ans << endl;
+
+  }
+
+  return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

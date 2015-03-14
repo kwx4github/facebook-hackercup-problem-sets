@@ -1,0 +1,120 @@
+#include <iostream>
+#include <string.h>
+#include <limits.h>
+#include <algorithm>
+#include <fstream>
+
+char map[102][102];
+bool lazer[100][100][4];
+int score[100][100][4];
+
+int get_map(int y, int x)
+{
+	return map[y + 1][x + 1];
+}
+
+bool is_space(int y, int x)
+{
+	const char c = get_map(y, x);
+	return  c == '.' || c == 'S' || c == 'G';
+}
+
+bool can_move(int y, int x, int steps)
+{
+	return is_space(y, x) && !lazer[y][x][steps % 4];
+}
+
+int solve_impl(int y, int x, int steps)
+{
+	if (score[y][x][steps % 4] <= steps) return INT_MAX;
+
+	score[y][x][steps % 4] = steps;
+	if (get_map(y, x) == 'G') {
+		return steps;
+	}
+
+	steps++;
+	int	result = INT_MAX;
+	if (can_move(y - 1, x, steps)) result = std::min(result, solve_impl(y - 1, x, steps));
+	if (can_move(y, x + 1, steps)) result = std::min(result, solve_impl(y, x + 1, steps));
+	if (can_move(y + 1, x, steps)) result = std::min(result, solve_impl(y + 1, x, steps));
+	if (can_move(y, x - 1, steps)) result = std::min(result, solve_impl(y, x - 1, steps));
+	return result;
+}
+
+int solve()
+{
+	std::fill((bool*) lazer, (bool*) lazer + sizeof(lazer) / sizeof(bool), false);
+	for (int y = 0; y < 100; y++) {
+		for (int x = 0; x < 100; x++) {
+			const char c = get_map(y, x);
+			if (c == '^') {
+				for (int i = 1; is_space(y - i, x); i++) lazer[y - i][x][0] = true; // ^
+				for (int i = 1; is_space(y, x + i); i++) lazer[y][x + i][1] = true; // >
+				for (int i = 1; is_space(y + i, x); i++) lazer[y + i][x][2] = true; // v
+				for (int i = 1; is_space(y, x - i); i++) lazer[y][x - i][3] = true; // <
+			}
+			if (c == '>') {
+				for (int i = 1; is_space(y - i, x); i++) lazer[y - i][x][3] = true; // ^
+				for (int i = 1; is_space(y, x + i); i++) lazer[y][x + i][0] = true; // >
+				for (int i = 1; is_space(y + i, x); i++) lazer[y + i][x][1] = true; // v
+				for (int i = 1; is_space(y, x - i); i++) lazer[y][x - i][2] = true; // <
+			}
+			if (c == 'v') {
+				for (int i = 1; is_space(y - i, x); i++) lazer[y - i][x][2] = true; // ^
+				for (int i = 1; is_space(y, x + i); i++) lazer[y][x + i][3] = true; // >
+				for (int i = 1; is_space(y + i, x); i++) lazer[y + i][x][0] = true; // v
+				for (int i = 1; is_space(y, x - i); i++) lazer[y][x - i][1] = true; // <
+			}
+			if (c == '<') {
+				for (int i = 1; is_space(y - i, x); i++) lazer[y - i][x][1] = true; // ^
+				for (int i = 1; is_space(y, x + i); i++) lazer[y][x + i][2] = true; // >
+				for (int i = 1; is_space(y + i, x); i++) lazer[y + i][x][3] = true; // v
+				for (int i = 1; is_space(y, x - i); i++) lazer[y][x - i][0] = true; // <
+			}
+		}
+	}
+
+	int sx = 0, sy = 0;
+	while (get_map(sy, sx) != 'S' && get_map(sy, sx) != 0) {
+		while (get_map(sy, sx) != 'S' && get_map(sy, sx) != 0) {
+			sx++;
+		}
+		sy++;
+		sx = 0;
+	}
+
+	std::fill((int*) score, (int*) score + sizeof(score) / sizeof(int), INT_MAX);
+	return solve_impl(sy, sx, 0);
+}
+
+int main()
+{
+#ifdef _DEBUG
+	std::ifstream fin("example.txt");
+	std::istream& in = fin;
+#else
+	std::istream& in = std::cin;
+#endif
+	
+	int T;
+	in >> T;
+	for (int t = 0; t < T; t++) {
+		memset(map, 0, sizeof(map));
+
+		int M, N;
+		in >> M >> N;
+		for (int m = 0; m < M; m++) {
+			in >> map[m + 1] + 1;
+			map[m + 1][N + 1] = 0;
+		}
+
+		int steps = solve();
+		if (steps == INT_MAX) {
+			std::cout << "Case #" << t + 1 << ": impossible" << std::endl;
+		} else {
+			std::cout << "Case #" << t + 1 << ": " << steps << std::endl;
+		}
+	}
+	return 0;
+}

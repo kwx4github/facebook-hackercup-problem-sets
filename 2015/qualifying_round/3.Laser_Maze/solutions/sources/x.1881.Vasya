@@ -1,0 +1,148 @@
+#include <iostream>
+#include <vector>
+#include <math.h>
+#include <algorithm>
+#include <set>
+#include <queue>
+#include <memory.h>
+#include <map>
+
+using namespace std;
+
+// 0 - down
+// 1 - left
+// 2 - up
+// 3 - right
+// 4 - wall
+// 5 - empty
+// 6 - lazer
+
+int n, m;
+string s[111];
+int mp[111][111][4];
+int dist[111][111][4];
+
+int dx[] = {1,0,-1,0};
+int dy[] = {0,-1,0,1};
+
+bool is_correct(int x, int y) {
+    return x >= 0 && x < n && y >= 0 && y < m;
+}
+
+void prepare() {
+    for(int k = 0; k < 3; ++k) {
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j)
+                if (mp[i][j][k] < 4) {
+                    int x = i, y = j, dir = mp[i][j][k];
+                    while(1) {
+                        x += dx[dir];
+                        y += dy[dir];
+                        
+                        if (!is_correct(x, y)) break;
+                        if (mp[x][y][k] != 6 && mp[x][y][k] != 5) break;
+                        
+                        mp[x][y][k] = 6;
+                    }
+                }
+    }
+}
+
+void go(int x, int y) {
+    set<pair<int, pair<int,int> > > s;
+    s.insert(make_pair(0, make_pair(x, y)));
+    dist[x][y][1] = 0;
+    
+    while (!s.empty()) {
+        int x = (*s.begin()).second.first;
+        int y = (*s.begin()).second.second;
+        int step = (*s.begin()).first + 1;
+        s.erase(s.begin());
+        int ss = step % 4;
+        
+        for(int i = 0; i < 4; ++i) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
+            
+            if (!is_correct(nx, ny)) continue;
+            if (mp[nx][ny][ss] != 5) continue;
+            if (dist[nx][ny][ss] > step) {
+                s.erase(make_pair(dist[nx][ny][ss], make_pair(nx, ny)));
+                dist[nx][ny][ss] = step;
+                s.insert(make_pair(dist[nx][ny][ss], make_pair(nx, ny)));
+            }
+        }
+    }
+}
+
+int main() {
+    ios::sync_with_stdio(0);
+    freopen("input.txt", "r", stdin); freopen("output.txt", "w", stdout);
+    int t;
+    cin >> t;
+    for(int T = 0; T < t; ++T) {
+        cin >> n >> m;
+        for(int i = 0; i < n; ++i)
+            cin >> s[i];
+        
+        
+        int sx, sy, fx, fy;
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j) {
+                if (s[i][j] == 'v') {
+                    mp[i][j][0] = 0;
+                    for(int k = 1; k < 4; ++k)
+                        mp[i][j][k] = (mp[i][j][k-1]+1)%4;
+                }
+                else if (s[i][j] == '^') {
+                    mp[i][j][0] = 2;
+                    for(int k = 1; k < 4; ++k)
+                        mp[i][j][k] = (mp[i][j][k-1]+1)%4;
+                }
+                else if (s[i][j] == '>') {
+                    mp[i][j][0] = 3;
+                    for(int k = 1; k < 4; ++k)
+                        mp[i][j][k] = (mp[i][j][k-1]+1)%4;
+                }
+                else if (s[i][j] == '<') {
+                    mp[i][j][0] = 1;
+                    for(int k = 1; k < 4; ++k)
+                        mp[i][j][k] = (mp[i][j][k-1]+1)%4;
+                }
+                else if (s[i][j] == '#') {
+                    for(int k = 0; k < 4; ++k)
+                        mp[i][j][k] = 4;
+                }
+                else {
+                    for(int k = 0; k < 4; ++k)
+                        mp[i][j][k] = 5;
+                    
+                    if (s[i][j] == 'S')
+                        sx = i, sy = j;
+                    if (s[i][j] == 'G')
+                        fx = i, fy = j;
+                }
+            }
+        
+        prepare();
+        
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j)
+                for(int k = 0; k < 4; ++k)
+                    dist[i][j][k] = 1e9;
+        
+        go(sx, sy);
+        
+        cout << "Case #" << T+1 << ": ";
+        
+        int ans = 1e9;
+        for(int k = 0; k < 4; ++k)
+            ans = min(ans, dist[fx][fy][k]);
+        
+        if (ans == 1e9)
+            cout << "impossible\n";
+        else
+            cout << ans << "\n";
+    }
+    return 0;
+}

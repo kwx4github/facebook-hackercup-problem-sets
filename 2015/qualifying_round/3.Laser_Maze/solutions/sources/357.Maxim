@@ -1,0 +1,191 @@
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Locale;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.FileInputStream;
+import java.io.File;
+import java.util.StringTokenizer;
+import java.io.FilenameFilter;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "laser.*maze.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("lasermaze.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		FastScanner in = new FastScanner(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		LaserMaze solver = new LaserMaze();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class LaserMaze {
+	public void solve(int testNumber, FastScanner in, PrintWriter out) {
+		final int infinity = 1000000000;
+		final int[] dr = {-1, 0, 1, 0};
+		final int[] dc = {0, -1, 0, 1};
+		int height = in.nextInt();
+		int width = in.nextInt();
+		char[][] s = new char[height][];
+		int sr = -1;
+		int sc = -1;
+		int fr = -1;
+		int fc = -1;
+		for (int r = 0; r < height; r++) {
+			s[r] = in.next().toCharArray();
+			for (int c = 0; c < width; c++) {
+				if (s[r][c] == 'S') {
+					sr = r;
+					sc = c;
+					s[r][c] = '.';
+				}
+				if (s[r][c] == 'G') {
+					fr = r;
+					fc = c;
+					s[r][c] = '.';
+				}
+			}
+		}
+		// laser[m][r][c] = true if the cell (r, c) is hit by a laser at time T such that T % 4 = m.
+		boolean[][][] laser = new boolean[4][height][width];
+		for (int r = 0; r < height; r++) {
+			for (int c = 0; c < width; c++) {
+				int sm = "^<v>".indexOf(s[r][c]);
+				if (sm < 0) {
+					continue;
+				}
+				for (int m = 0; m < 4; m++) {
+					int rr = r;
+					int cc = c;
+					int dir = (sm + 3*m) % 4; // the turret rotates clockwise
+					while (true) {
+						rr += dr[dir];
+						cc += dc[dir];
+						if (rr < 0 || rr >= height || cc < 0 || cc >= width) {
+							break;
+						}
+						if (s[rr][cc] != '.') {
+							break;
+						}
+						laser[m][rr][cc] = true;
+					}
+				}
+			}
+		}
+		int[] qr = new int[4*height*width]; // row
+		int[] qc = new int[4*height*width]; // col
+		int[] qm = new int[4*height*width]; // mod
+		int[][][] dist = new int[4][height][width];
+		for (int i = 0; i < 4; i++) {
+			for (int j = 0; j < height; j++) {
+				Arrays.fill(dist[i][j], infinity);
+			}
+		}
+		int qt = 0;
+		int qh = 1;
+		qr[0] = sr;
+		qc[0] = sc;
+		qm[0] = 0;
+		dist[qm[0]][qr[0]][qc[0]] = 0;
+		int ans = -1;
+		while (qt < qh) {
+			int r = qr[qt];
+			int c = qc[qt];
+			int m = qm[qt];
+			++qt;
+			if (r == fr && c == fc) {
+				ans = dist[m][r][c];
+				break;
+			}
+			for (int dir = 0; dir < 4; dir++) {
+				int nr = r + dr[dir];
+				int nc = c + dc[dir];
+				int nm = (m + 1) % 4;
+				if (nr < 0 || nr >= height || nc < 0 || nc >= width) {
+					continue;
+				}
+				if (s[nr][nc] != '.') {
+					continue;
+				}
+				if (laser[nm][nr][nc]) {
+					continue;
+				}
+				if (dist[nm][nr][nc] > 1 + dist[m][r][c]) {
+					dist[nm][nr][nc] = 1 + dist[m][r][c];
+					qr[qh] = nr;
+					qc[qh] = nc;
+					qm[qh] = nm;
+					++qh;
+				}
+			}
+		}
+		out.print("Case #" + testNumber + ": ");
+		if (ans < 0) {
+			out.println("impossible");
+		} else {
+			out.println(ans);
+		}
+	}
+
+}
+
+class FastScanner {
+
+	private BufferedReader in;
+	private StringTokenizer st;
+
+	public FastScanner(InputStream stream) {
+		in = new BufferedReader(new InputStreamReader(stream));
+	}
+
+	public String next() {
+		while (st == null || !st.hasMoreTokens()) {
+			try {
+				st = new StringTokenizer(in.readLine());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return st.nextToken();
+	}
+
+	public int nextInt() {
+		return Integer.parseInt(next());
+	}
+
+}
+

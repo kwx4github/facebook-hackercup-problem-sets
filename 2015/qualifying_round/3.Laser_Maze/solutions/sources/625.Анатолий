@@ -1,0 +1,170 @@
+#include<string.h>
+#include<assert.h>
+#include<iostream>
+
+using namespace std;
+
+const int MAXN = 110;
+
+typedef char maze[MAXN][MAXN];
+
+int M, N;
+int SR, SC, GR, GC;
+maze orig_maze;
+maze maze_turns[4];
+
+char rotate(char c)
+{
+	switch(c)
+	{
+	case '^': return '>';
+	case '>': return 'v';
+	case 'v': return '<';
+	case '<': return '^';
+	default: return c;
+	}
+}
+
+void next_turn(int n)
+{
+	for(int i = 0; i < M; ++i)
+		for(int j = 0; j < N; ++j)
+			orig_maze[i][j] = rotate(orig_maze[i][j]);
+	for(int i = 0; i < M; ++i)
+		for(int j = 0; j < N; ++j)
+			maze_turns[n][i][j] = '.';
+	for(int i = 0; i < M; ++i)
+		for(int j = 0; j < N; ++j)
+		{
+			char ch = orig_maze[i][j];
+			if(ch == '.')
+				continue;
+			if(ch == '#')
+			{
+				maze_turns[n][i][j] = '#';
+				continue;
+			}
+			int dr, dc;
+			switch(ch)
+			{
+			case '>':
+				dr = 0;
+				dc = 1;
+				break;
+			case 'v':
+				dr = 1;
+				dc = 0;
+				break;
+			case '<':
+				dr = 0;
+				dc = -1;
+				break;
+			case '^':
+				dr = -1;
+				dc = 0;
+				break;
+			default:
+				cerr << i << " "<< j << " " << ch << "\n";
+				assert(0);
+			}
+			int cr = i, cc = j;
+			maze_turns[n][i][j] = '#';
+			cr += dr;
+			cc += dc;
+			while(cr >= 0 && cc >= 0 && cr < M && cc < N && !strchr("#^>v<", orig_maze[cr][cc]))
+			{
+				maze_turns[n][cr][cc] = '#';
+				cr += dr;
+				cc += dc;
+			}
+		}
+	for(int i = 0; i < M; ++i)
+		maze_turns[n][i][N] = '\0';
+	
+//	cerr << "\n";
+//	for(int i = 0; i < M; ++i)
+//		cerr << maze_turns[n][i] << "\n";
+}
+
+void setGS()
+{
+	for(int r = 0; r < M; ++r)
+		for(int c = 0; c < N; ++c)
+		{
+			if(orig_maze[r][c] == 'S')
+			{
+				orig_maze[r][c] = '.';
+				SR = r;
+				SC = c;
+			}
+			if(orig_maze[r][c] == 'G')
+			{
+				orig_maze[r][c] = '.';
+				GR = r;
+				GC = c;
+			}
+		}
+}
+
+struct state
+{
+	state() {}
+	state(int _r, int _c, int _t, int _steps): r(_r), c(_c), t(_t), steps(_steps) {}
+
+	int r, c, t;
+	int steps;
+};
+
+state q[100000];
+bool visited[MAXN][MAXN][4];
+
+const int DR[4] = {1, -1, 0, 0};
+const int DC[4] = {0, 0, 1, -1};
+
+void solve(int t)
+{
+	int b = 0, e = 1;
+	q[0] = state(SR, SC, 0, 0);
+	memset(visited, 0, sizeof(visited));
+	visited[SR][SC][0] = true;
+	while(b < e)
+	{
+		state &cur = q[b++];
+		if(cur.r == GR && cur.c == GC)
+		{
+			cout << "Case #" << t << ": " << cur.steps << "\n";
+			return;
+		}
+		int nt = (cur.t + 1) % 4;
+		for(int i = 0; i < 4; ++i)
+		{
+			int nr = cur.r + DR[i];
+			int nc = cur.c + DC[i];
+			if(nr >= 0 && nc >= 0 && nr < M && nc < N && !visited[nr][nc][nt] && maze_turns[cur.t][nr][nc] == '.')
+			{
+				visited[nr][nc][nt] = true;
+				q[e++] = state(nr, nc, nt, cur.steps + 1);
+			}
+		}
+	}
+	cout << "Case #" << t << ": impossible\n";
+}
+
+int main()
+{
+	int T;
+	cin >> T;
+	for(int t = 0; t < T; ++t)
+	{
+		cin >> M >> N;
+		cerr << "Solving #" << t + 1 << " " << M << " " << N << "\n";
+		for(int i = 0; i < M; ++i)
+			cin >> orig_maze[i];
+		setGS();
+		for(int i = 0; i < 4; ++i)
+			next_turn(i);
+		solve(t + 1);
+	}
+	return 0;
+}
+

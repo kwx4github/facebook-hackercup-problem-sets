@@ -1,0 +1,203 @@
+def main():
+	results = list()
+
+	with open("laser_maze.txt") as f:
+		number_of_mazes = int(f.readline())
+		for i in range(0, number_of_mazes):
+			maze_size = map(lambda x : int(x), f.readline().split())
+			maze_string_list = list()
+			# read the maze
+			for j in range(0, maze_size[0]):
+				line = f.readline()
+				maze_string_list.append(list(line))
+			maze = Maze(maze_string_list)
+
+			# find possible solution
+			result = minimum_steps(maze)
+			results.append(str(result) if result >= 0 else 'impossible')
+
+	with open("laser_maze_output.txt", 'w+') as f:
+		for i in range(0, len(results)):
+			line = 'Case #' + str(i + 1) + ': ' + results[i] + '\n'
+			f.write(line)
+
+def minimum_steps(maze):
+	interested_location_list_next = []
+	# init numberOfStep
+	stepsInMaze = StepsInMaze(maze.get_maze_size())
+	stepsInMaze.set_steps_list(maze.get_start_point(), [0])
+	#find the start point
+	interested_location_list_next.append(maze.get_start_point())
+	# loop
+	while len(interested_location_list_next) != 0:
+		interested_location_list_current = unique_list_of_location(interested_location_list_next)
+		interested_location_list_next = []
+		for old_location in interested_location_list_current:
+			already_moved_steps_list = map(lambda x : x + 1, stepsInMaze.get_steps_list(old_location))
+			# possible new location
+			new_location_list = move_to_new_locations(old_location, maze.get_maze_size())
+			for new_location in new_location_list:
+				for steps_moved in already_moved_steps_list:
+					# could move to that location? i.e. won't hit wall, or hurt by lazer
+					if maze.could_move_to_location(new_location, steps_moved):
+						# if this is a 'new path'
+						if stepsInMaze.is_new(new_location, steps_moved):
+							interested_location_list_next.append(new_location)
+							stepsInMaze.update_at_location(new_location, steps_moved)
+	steps_list_to_end_point = sorted(stepsInMaze.get_steps_list(maze.get_end_point()))
+	if len(steps_list_to_end_point) == 0:
+		return -1
+	else:
+		return steps_list_to_end_point[0]
+
+def unique_list_of_location(li):
+	list_of_tuple = [tuple(x) for x in li]
+	set_of_tuple = set(list_of_tuple)
+	return [list(x) for x in set_of_tuple]
+
+class StepsInMaze(object):
+	"""StepsInMaze is a 2D array of lists of possible steps number to that point """
+	def __init__(self, size):
+		super(StepsInMaze, self).__init__()
+		self.steps = [[[] for x in range(size[1])] for x in range(size[0])]
+		self.period = 4
+
+	def get_steps_list(self, location):
+		return self.steps[location[0]][location[1]]
+
+	def set_steps_list(self, location, steps_list):
+		self.steps[location[0]][location[1]] = steps_list
+
+	def is_new(self, location, steps):
+		for i in self.get_steps_list(location):
+			if steps >= i and (steps - i) % self.period == 0:
+				return False
+		return True 
+
+	def update_at_location(self, location, steps):
+		if self.is_new(location, steps):
+			steps_list = self.get_steps_list(location)
+			for i in range(len(steps_list)):
+				# if has lesser steps:
+				if steps < steps_list[i] and (steps_list[i] - steps) % self.period == 0:
+					steps_list[i] = steps
+					set_steps_list(location, steps_list)
+					return
+			# steps is new
+			steps_list.append(steps)
+			self.set_steps_list(location, steps_list)
+			return
+
+class Maze(object):
+	"""docstring for Maze"""
+	def __init__(self, maze_string_list):
+		super(Maze, self).__init__()
+		self.maze = maze_string_list
+		self.period = 4
+
+	def get_maze_height(self):
+		return len(self.maze)
+
+	def get_maze_width(self):
+		return len(self.maze[0])
+
+	def get_maze_size(self):
+		return [self.get_maze_height(), self.get_maze_width()]
+
+	def get_object_at(self, location):
+		return self.maze[location[0]][location[1]]
+
+	def get_start_point(self):
+		for i in range(len(self.maze)):
+			for j in range(len(self.maze[0])):
+				if self.is_start_point_at([i, j]):
+					return [i, j]
+
+	def get_end_point(self):
+		for i in range(len(self.maze)):
+			for j in range(len(self.maze[0])):
+				if self.is_end_point_at([i, j]):
+					return [i, j]
+
+	def is_empty_at(self, location):
+		return self.get_object_at(location) == '.'
+
+	def is_wall_at(self, location):
+		return self.get_object_at(location) == '#'
+
+	def is_start_point_at(self, location):
+		return self.get_object_at(location) == 'S'
+
+	def is_end_point_at(self, location):
+		return self.get_object_at(location) == 'G'
+
+	def is_turret_at(self, location):
+		return self.get_object_at(location) == '>' \
+		or self.get_object_at(location) == 'v' \
+		or self.get_object_at(location) == '^' \
+		or self.get_object_at(location) == '<'
+
+	def get_turret_direction_at(self, location, steps_moved):
+		if not self.is_turret_at(location):
+			return -1
+		if self.get_object_at(location) == '>':
+			initial_direction = 0
+		elif self.get_object_at(location) == 'v':
+			initial_direction = 1
+		elif self.get_object_at(location) == '<':
+			initial_direction = 2
+		elif self.get_object_at(location) == '^':
+			initial_direction = 3
+		current_direction = (initial_direction + steps_moved) % self.period
+		if current_direction == 0:
+			return 'right'
+		if current_direction == 1:
+			return 'down'
+		if current_direction == 2:
+			return 'left'
+		if current_direction == 3:
+			return 'up'
+
+
+
+	def could_move_to_location(self, location, steps_moved):
+		if self.is_wall_at(location) or self.is_turret_at(location):
+			return False
+		# left
+		if location[1] > 0:
+			for loc in [[location[0], y] for y in range(0, location[1])]:
+				if self.is_turret_at(loc) and self.get_turret_direction_at(loc, steps_moved) == 'right':
+					return False
+		# right
+		if location[1] < self.get_maze_width() - 1:
+			for loc in [[location[0], y] for y in range(location[1] + 1, self.get_maze_width())]:
+				if self.is_turret_at(loc) and self.get_turret_direction_at(loc, steps_moved) == 'left':
+					return False
+		# up
+		if location[0] > 0:
+			for loc in [[x, location[1]] for x in range(0, location[0])]:
+				if self.is_turret_at(loc) and self.get_turret_direction_at(loc, steps_moved) == 'down':
+					return False
+		# down
+		if location[0] < self.get_maze_height() - 1:
+			for loc in [[x, location[1]] for x in range(location[0] + 1, self.get_maze_height())]:
+				if self.is_turret_at(loc) and self.get_turret_direction_at(loc, steps_moved) == 'up':
+					return False
+
+		return True
+
+
+def move_to_new_locations(old_location, maze_size):
+	directions = [[0,1], [1,0], [0,-1], [-1,0]]
+	new_location_list = []
+	for direction in directions:
+		new_location_list.append(add(old_location, direction))
+	new_location_list = filter(lambda loc : loc[0] >= 0 and loc[1] >= 0 and loc[0] < maze_size[0] and loc[1] < maze_size[1], new_location_list)
+
+	return new_location_list
+
+def add(x, y):
+	return map(lambda a, b : a + b, x, y)
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,176 @@
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cmath>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#include <queue>
+#include <stack>
+#include <map>
+#include <set>
+#include <fstream>
+
+#define REP(I, N) for (int I = 0; I < (N); ++I)
+#define PER(I, N) for (int I = (N); I >= 0; --I)
+#define PERR(I, A, B) for (int I = (A); I >= (B); --I)
+#define REPP(I, A, B) for (int I = (A); I <  (B); ++I)
+#define REPN(I, A, B) for (int I = (A); I <= (B); ++I)
+#define REPC(I, A, C) for (int I = (A); (C); ++I)
+#define REPPP(I, A, B, C) for (int I = (A); I <  (B); I += C)
+#define RI(X) scanf("%d", &(X))
+#define RII(X, Y) scanf("%d%d", &(X), &(Y))
+#define RIII(X, Y, Z) scanf("%d%d%d", &(X), &(Y), &(Z))
+#define RIIII(X, Y, Z, W) scanf("%d%d%d%d", &(X), &(Y), &(Z), &(W))
+#define DRI(X) int (X); scanf("%d", &X)
+#define DRII(X, Y) int X, Y; scanf("%d%d", &X, &Y)
+#define DRIII(X, Y, Z) int X, Y, Z; scanf("%d%d%d", &X, &Y, &Z)
+#define DRIIII(X, Y, Z, W) int X, Y, Z, W; scanf("%d%d%d%d", &X, &Y, &Z, &W)
+#define RS(X) scanf("%s", (X))
+#define LEN(X) int(strlen(X))
+#define SZ(X) int((X).size())
+#define SUM(X, N) accumulate(X, X + (N), 0)
+#define MS0(X) memset((X), 0, sizeof(X))
+#define MSI(X) memset((X), 0xFF, sizeof(X))
+#define F first
+#define S second
+#define MP make_pair
+#define PB push_back
+
+#ifdef DK
+const int MAX = 100 + 11;
+#else
+const int MAX = 1e5 + 11;
+#endif
+
+using namespace std;
+
+int N, M, D[MAX][MAX][4], sx, sy, ex, ey;
+char A[MAX][MAX];
+
+const int dx[] = { -1, +1, +0, +0 };
+const int dy[] = { -0, +0, +1, -1 };
+
+typedef pair<int, int> pii;
+typedef pair<pii, pii> ppi;
+
+static int is_turret(int x, int y) {
+  return A[x][y] == '<' ||
+    A[x][y] == '>' ||
+    A[x][y] == '^' ||
+    A[x][y] == 'v';
+}
+
+static int is_wall(int x, int y) {
+  return A[x][y] == '#';
+}
+
+static int is_inside(int x, int y) {
+  return 0 <= x && x < N && 0 <= y && y < M;
+}
+
+static pii get_direction(char d) {
+  switch (d) {
+    case 'v':
+      return MP(+1, +0);
+    case '>':
+      return MP(+0, +1);
+    case '<':
+      return MP(+0, -1);
+    case '^':
+      return MP(-1, +0);
+    default:
+      return MP(0, 0);
+  }
+}
+
+static char *directions = "^>v<";
+
+static char next_direction(char d) {
+  REP(i, 4) {
+    if (d == directions[i]) {
+      return directions[(i + 1) % 4];
+    }
+  }
+  return 'v';
+}
+
+static void init() {
+  REP(i, N) {
+    REP(j, M) {
+      if (A[i][j] == 'S') {
+        sx = i;
+        sy = j;
+      } else if (A[i][j] == 'G') {
+        ex = i;
+        ey = j;
+      }
+    }
+  }
+  REP(i, N) {
+    REP(j, M) {
+      if (!is_turret(i, j)) continue;
+      char dir = A[i][j];
+      REP(t, 4) {
+        if (t > 0) {
+          dir = next_direction(dir);
+        }
+        REPP(z, 1, max(N, M)) {
+          auto dn = get_direction(dir);
+          int nx = i + z * dn.F;
+          int ny = j + z * dn.S;
+          if (!is_inside(nx, ny)) break;
+          if (is_wall(nx, ny)) break;
+          if (is_turret(nx, ny)) break;
+          D[nx][ny][t] = 1;
+        }
+      }
+    }
+  }
+}
+
+static int solve() {
+  queue<ppi> Q;
+  Q.push(MP(MP(sx, sy), MP(0, 0)));
+  while (!Q.empty()) {
+    auto p = Q.front();
+    Q.pop();
+    int cx = p.F.F, cy = p.F.S, ct = p.S.F, cl = p.S.S;
+    if (cx == ex && cy == ey) {
+      return ct;
+    }
+    REP(i, 4) {
+      int nx = cx + dx[i];
+      int ny = cy + dy[i];
+      if (!is_inside(nx, ny)) continue;
+      if (is_wall(nx, ny)) continue;
+      if (is_turret(nx, ny)) continue;
+      if (D[nx][ny][(ct + 1) % 4]) continue;
+      Q.push(MP(MP(nx, ny), MP(ct + 1, cl + 1)));
+    }
+  }
+  return -1;
+}
+
+int main() {
+#ifdef DK
+  freopen("in.txt", "r", stdin);
+  freopen("out.txt", "w", stdout);
+#endif
+  DRI(T);
+  REP(t, T) {
+    RII(N, M);
+    REP(i, N) RS(A[i]);
+    MS0(D);
+    init();
+    int res = solve();
+    if (res != -1) {
+      printf("Case #%d: %d\n", t + 1, res);
+    } else {
+      printf("Case #%d: impossible\n", t);
+    }
+  }
+  return 0;
+}

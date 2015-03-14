@@ -1,0 +1,173 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace NewYears {
+	class Program {
+
+		static void Main(string[] args) {
+
+			var input = new InputFile(System.IO.File.ReadAllLines("input.txt"));
+			var outputs = new Outputs();
+
+			foreach (var testCase in input.Cases) {
+				outputs.Add(CalcOutput(testCase));
+			}
+
+			outputs.WriteOutput();
+		}
+
+		public static Output CalcOutput(TestCase testCase) {
+
+			var calc = new FoodCalculator();
+			var output = new Output();
+			output.Possible = calc.IsPossible(testCase);
+			return output;
+		}
+
+
+
+
+	}
+
+	public class FoodCalculator {
+
+		public bool IsPossible(TestCase testCase) {
+
+			// Filter 
+			testCase.Foods.RemoveAll(a => BeyondRange(a, testCase.Goal));
+
+			for (int i = 0; i < testCase.Foods.Count; i++) {
+				var combinations = testCase.Foods.Combine(i+1);
+
+				if (TestCombinations(combinations, testCase.Goal))
+					return true;
+			}
+
+			return false;
+		}
+
+		private bool TestCombinations(IEnumerable<IEnumerable<Food>> combinations, Food goal) {
+			foreach (var combination in combinations) {
+				Food sumFood = AddFoods(combination);
+				if (sumFood.CompareTo(goal) == 0)
+					return true;
+			}
+			return false;
+		}
+
+		private Food AddFoods(IEnumerable<Food> combination) {
+			var food = new Food();
+
+			food.Carb = combination.Select(a => a.Carb).Sum();
+			food.Protein = combination.Select(a => a.Protein).Sum();
+			food.Fat = combination.Select(a => a.Fat).Sum();
+
+			return food;
+		}
+
+		private bool BeyondRange(Food food, Food goal) {
+			return food.Carb > goal.Carb || food.Fat > goal.Fat || food.Protein > goal.Protein;
+		}
+	}
+
+	public class Outputs : List<Output> {
+		public void WriteOutput() {
+			var sb = new StringBuilder();
+			var length = this.Count();
+			for (int i = 0; i < length; i++) {
+				sb.Append(string.Format("Case #{0}: {1}", i + 1, this[i].Possible ? "yes" : "no"));
+				if (i < length - 1) sb.AppendLine();
+			}
+			System.IO.File.WriteAllText("ouput.txt", sb.ToString());
+		}
+	}
+
+	public class Output {
+		public bool Possible;
+	}
+
+	public class Food : IComparable<Food> {
+		public int Protein;
+		public int Carb;
+		public int Fat;
+
+		public Food() { }
+
+		public Food(string numbers) {
+			var nums = numbers.Split(' ').Select(a => a.ToInt()).ToArray();
+			Protein = nums[0];
+			Carb = nums[1];
+			Fat = nums[2];
+		}
+
+		#region IComparable<Food> Members
+
+		public int CompareTo(Food other) {
+			if (this.Carb == other.Carb && this.Fat == other.Fat && this.Protein == other.Protein)
+				return 0;
+			else return 1;
+		}
+
+		#endregion
+	}
+
+	public class TestCase {
+
+		public TestCase() {
+			Foods = new List<Food>();
+		}
+		public Food Goal;
+
+		public int NumFoods;
+		public List<Food> Foods;
+	}
+
+	public class InputFile {
+		public int NumRecords;
+		public List<TestCase> Cases;
+
+		public InputFile(string[] inputs) {
+			Cases = new List<TestCase>();
+			var numCases = inputs[0].ToInt();
+			for (int i = 1; i < inputs.Length; i++) {
+				var testCase = new TestCase();
+				testCase.Goal = new Food(inputs[i]);
+				i++;
+				testCase.NumFoods = inputs[i].ToInt();
+				i++;
+				for (int j = 0; j < testCase.NumFoods; j++) {
+					testCase.Foods.Add(new Food(inputs[i]));
+					i++;
+				}
+				i--;
+				Cases.Add(testCase);
+			}
+		}
+	}
+
+	public static class Extensions {
+		public static int ToInt(this string s) {
+			if (String.IsNullOrEmpty(s))
+				return 0;
+			else return Int32.Parse(s);
+		}
+
+		public static IEnumerable<IEnumerable<Food>> Combine(this IEnumerable<Food> foods, int n) {
+			if (n == 0) 
+				return new[] {new Food[0]};
+
+			return foods.SelectMany((food, index) => foods.Skip(index + 1).Combine(n - 1).Select(
+				results => {
+					var foodCombinations = new[] {food};
+					foodCombinations = foodCombinations.Concat(results).ToArray();
+					return foodCombinations;
+				}));
+		}
+
+	}
+}

@@ -1,0 +1,244 @@
+import java.awt.Point;
+import java.io.*;
+import java.util.*;
+import java.math.BigInteger;
+import static java.lang.Math.*;
+import static java.lang.Math.min;
+import static java.lang.Math.max;
+import static java.math.BigInteger.*;
+import static java.util.Arrays.*;
+
+
+public class Main{
+
+    void run(){
+        Locale.setDefault(Locale.US);
+        boolean oj;
+        oj = false;
+//        try {
+//            oj = System.getProperty("MYLOCAL") == null;
+//        } catch (Exception e) {
+//            oj = true;
+//        }
+        try{
+            if( oj ){
+//                sc  = new FastScanner( new InputStreamReader(System.in  ) );
+//                out = new PrintWriter(   new OutputStreamWriter(System.out) );
+                String str = "epic";
+                sc  = new FastScanner(new FileReader(str+".in") );
+                out = new PrintWriter(new FileWriter(str+".out") );
+            } else{
+                sc  = new FastScanner(new FileReader( "input.txt") );
+                out = new PrintWriter(new FileWriter("output.txt") );
+            }
+        } catch (Exception e) {
+            System.exit(-1);
+        }
+//        long tB = System.currentTimeMillis();
+        solve();
+//        if( !oj ) System.err.println( "Time: " + (System.currentTimeMillis()-tB)/1e3 );
+        out.flush();
+    }
+
+    class FastScanner{
+        BufferedReader br;
+        StringTokenizer st = new StringTokenizer("");
+        FastScanner( InputStreamReader a ){
+            br = new BufferedReader(a);
+        }
+        FastScanner( FileReader a ){
+            br = new BufferedReader(a);
+        }
+        String next(){
+            while( !st.hasMoreTokens() )
+                try {
+                    st = new StringTokenizer(br.readLine());
+                } catch (IOException e) {
+                    return null;
+                }
+            return st.nextToken();
+        }
+        String readLine(){
+            try {
+                return br.readLine();
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        int nextInt(){ return Integer.parseInt(next()); }
+        long nextLong(){ return Long.parseLong(next()); }
+    }
+
+    FastScanner sc;
+    PrintWriter out;
+    PrintStream err = System.err;
+
+
+
+    public static void main(String[] args){
+        new Main().run();
+//        new Thread( null, new Runnable() {
+//            @Override
+//            public void run() {
+//                new Main().run();
+//            }
+//            }, "LOL", 256L * 1024 * 1024 / 2 ).run();
+//        }, "LOL", 2000 * 1024 * 1024 ).run();
+    }
+
+
+
+    void TLE(){ for(;;); }
+
+    void MLE(){
+        int[][] arr = new int[1024 * 1024][];
+        for(int i = 0; i < arr.length; ++i)
+            arr[i] = new int[1024 * 1024];
+    }
+
+    void exit( int val ){
+        out.flush();
+        out.close();
+        System.exit(val);
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////
+    
+    class Turret{
+        int dir;
+        Point p;
+
+        public Turret(int dir, Point p) {
+            this.dir = dir;
+            this.p = p;
+        }
+        
+    }
+
+    class State{
+        Point p;
+        int shift;
+
+        public State(Point p, int shift) {
+            this.p = p;
+            this.shift = shift;
+        }
+        
+    }
+    
+    final int inf = (int)1e8;
+    int n, m;
+    char[][] grid;
+    Point beg, end;
+    ArrayList<Turret> turret;
+    Point[] dxy = {
+        new Point(-1,  0),
+        new Point( 0,  1),
+        new Point( 1,  0),
+        new Point( 0, -1),
+    };
+    String dirTur = "^>v<";
+    int[][][] dp;
+    TreeSet<State> Q;
+    
+    boolean isIn( Point p ){
+        return  0<=p.x && p.x < n &&
+                0<=p.y && p.y < m ;
+    }
+    
+    boolean isAlive(State to) {
+        for(Turret t : turret){
+            Point dir = (Point)dxy[(t.dir + to.shift) % 4].clone();
+            Point laser = (Point)t.p.clone();
+            for( ; ; ){
+                laser.translate(dir.x, dir.y);
+                if( !isIn(laser) ) break;
+                if( grid[laser.x][laser.y] == '#' ) break;
+                if( laser.equals(to.p) ) return false;
+            }
+        }
+        return true;
+    }
+
+    
+    int solveTest(){
+        n = sc.nextInt();
+        m = sc.nextInt();
+        grid = new char[n][];
+        turret = new ArrayList<>();
+        for (int i = 0; i < grid.length; i++) {
+            grid[i] = sc.next().toCharArray();
+            for(int j = 0; j < m; ++j ){
+                Point p = new Point(i, j);
+                int indexOf = dirTur.indexOf(grid[i][j]);
+                if     ( grid[i][j] == 'S' ) {
+                    beg = p;
+                    grid[i][j] = '.';
+                }
+                else if( grid[i][j] == 'G' ) {
+                    end = p;
+                    grid[i][j] = '.';
+                }
+                else if( 0 <= indexOf ){
+                    turret.add(new Turret(indexOf, p));
+                    grid[i][j] = '#';
+                }
+            }
+        }
+        
+        dp = new int[n][m][4];
+        for(int[][] i : dp) for(int[] j : i) fill(j, inf);
+        dp[beg.x][beg.y][0] = 0;
+        
+        Q = new TreeSet<>( (State a, State b) -> {
+            int res;
+            res = dp[a.p.x][a.p.y][a.shift] -
+                  dp[b.p.x][b.p.y][b.shift];
+            if( res != 0 ) return res;
+            
+            res = a.shift - b.shift;
+            if( res != 0 ) return res;
+            
+            res = a.p.x - b.p.x;
+            if( res != 0 ) return res;
+            
+            res = a.p.y - b.p.y;
+            return res;
+        });
+        Q.add(new State(beg, 0));
+        
+        while( !Q.isEmpty() ){
+            State cur = Q.pollFirst();
+            for(Point d : dxy){
+                Point toP = (Point)cur.p.clone();
+                toP.translate(d.x, d.y);
+                State to = new State( toP, (cur.shift+1) % 4);
+                if( isIn(to.p) &&
+                    isAlive(to) &&
+                    dp[to.p.x][to.p.y][to.shift] > 
+                                        dp[cur.p.x][cur.p.y][cur.shift] + 1 ){
+                    Q.remove(to);
+                    dp[to.p.x][to.p.y][to.shift] =
+                                        dp[cur.p.x][cur.p.y][cur.shift] + 1;
+                    Q.add(to);
+                }
+            }
+        }
+        
+        int ans = inf;
+        for (int shift = 0; shift < 4; shift++)
+            ans = min( ans, dp[end.x][end.y][shift] );
+        return ans;
+    }
+    
+    void solve(){
+        int test = sc.nextInt();
+        for(int i = 0; i < test; ++i){
+            int ans = solveTest();
+            String res = "" + ans;
+            if( ans == inf ) res = "impossible";
+            err.printf( "Case #%d\n", i+1 );
+            out.printf( "Case #%d: %s\n", i+1, res );
+        }
+    }
+    
+}

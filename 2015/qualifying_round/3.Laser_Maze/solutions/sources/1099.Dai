@@ -1,0 +1,126 @@
+package fhc2014.qual;
+
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.Scanner;
+import java.util.concurrent.ArrayBlockingQueue;
+
+/**
+ * Created by hama_du on 2015/01/10.
+ */
+public class Laser {
+    public static int[] dx = {1, 0, -1, 0};
+    public static int[] dy = {0, 1, 0, -1};
+    public static int[] lz = new int[256];
+
+    public static void main(String[] args) {
+        lz['>'] = 0;
+        lz['v'] = 1;
+        lz['<'] = 2;
+        lz['^'] = 3;
+
+        Scanner in = new Scanner(System.in);
+        PrintWriter out = new PrintWriter(System.out);
+
+        int numberOfCase = in.nextInt();
+        for (int c = 1 ; c <= numberOfCase ; c++) {
+            int n = in.nextInt();
+            int m = in.nextInt();
+            in.nextLine();
+            char[][] maze = new char[n][m];
+            int sx = -1;
+            int sy = -1;
+            int gx = -1;
+            int gy = -1;
+            for (int i = 0; i < n; i++) {
+                maze[i] = in.nextLine().toCharArray();
+                for (int j = 0 ; j < m ; j++) {
+                    if (maze[i][j] == 'S') {
+                        sy = i;
+                        sx = j;
+                        maze[i][j] = '.';
+                    } else if (maze[i][j] == 'G') {
+                        gy = i;
+                        gx = j;
+                        maze[i][j] = '.';
+                    }
+                }
+            }
+            int ans = solve(maze, sy, sx, gx, gy);
+            String ln = ans == -1 ? "impossible" : (ans + "");
+            out.println(String.format("Case #%d: %s", c, ln));
+        }
+        out.flush();
+    }
+
+    private static int solve(char[][] maze, int sy, int sx, int gx, int gy) {
+        int n = maze.length;
+        int m = maze[0].length;
+
+        int[][] safeMap = new int[n][m];
+        for (int i = 0 ; i < n ; i++) {
+            for (int j = 0 ; j < m ; j++) {
+                safeMap[i][j] = (maze[i][j] == '.') ? 15 : 0;
+            }
+        }
+
+
+        for (int i = 0 ; i < n ; i++) {
+            for (int j = 0 ; j < m ; j++) {
+                if (maze[i][j] == '.' || maze[i][j] == '#') {
+                    continue;
+                }
+                int baseDir = lz[maze[i][j]];
+                for (int d = 0 ; d < 4 ; d++) {
+                    int dir = (baseDir + d) % 4;
+                    int ni = i;
+                    int nj = j;
+                    do {
+                        safeMap[ni][nj] &= (15-(1<<d));
+                        ni += dy[dir];
+                        nj += dx[dir];
+                    } while (ni >= 0 && ni < n && nj >= 0 && nj < m && maze[ni][nj] == '.');
+                }
+            }
+        }
+
+        int[][][] dp = new int[4][n][m];
+        for (int d = 0 ; d < 4 ; d++) {
+            for (int i = 0; i < n; i++) {
+                Arrays.fill(dp[d][i], Integer.MAX_VALUE);
+            }
+        }
+
+        Queue<Integer> q = new ArrayBlockingQueue<>(1000000);
+        q.add(sy);
+        q.add(sx);
+        q.add(0);
+        dp[0][sy][sx] = 0;
+        while (q.size() >= 1) {
+            int ni = q.poll();
+            int nj = q.poll();
+            int time = q.poll();
+            for (int d = 0 ; d < 4 ; d++) {
+                int ti = ni + dy[d];
+                int tj = nj + dx[d];
+                int ttime = time+1;
+                int timeD = ttime % 4;
+                if (ti >= 0 && ti < n && tj >= 0 && tj < m && maze[ti][tj] == '.' && (safeMap[ti][tj] & (1<<timeD)) >= 1) {
+                    if (dp[timeD][ti][tj] > ttime) {
+                        dp[timeD][ti][tj] = ttime;
+                        q.add(ti);
+                        q.add(tj);
+                        q.add(ttime);
+                    }
+                }
+            }
+        }
+
+        int min = Integer.MAX_VALUE;
+        for (int d = 0; d < 4; d++) {
+            min = Math.min(min, dp[d][gy][gx]);
+        }
+        return min == Integer.MAX_VALUE ? -1 : min;
+    }
+}

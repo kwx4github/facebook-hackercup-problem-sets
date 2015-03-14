@@ -1,0 +1,116 @@
+#include <stdio.h>              
+#include <string.h>
+#include <stdlib.h>
+
+int p, c, f;
+int t;	
+
+int cp[20], cc[20], cf[20];
+
+struct Sum {
+	unsigned int mask;
+	unsigned int parent;
+	Sum *prev;
+};
+
+Sum *solp[1010], *solc[1010], *solf[1010];
+
+void push(Sum *&dest, Sum *top) {
+	top->prev= dest;
+	dest = top;
+}
+
+void knapsack(Sum **solutions, int *counts, int max) {
+	memset(solutions, 0, sizeof(solutions[0]) * 1010);
+
+	Sum *zero = new Sum;
+	zero->mask = 0;
+	zero->parent = 0;
+	zero->prev = NULL;
+
+	push(solutions[0], zero);
+
+
+	for (int i = 0; i < t; ++i) {
+		for (int j = max - 1; j >= 0; --j) { 
+			if (solutions[j] != NULL) {
+				int np = j + counts[i];
+				if (np <= max) {
+					Sum *ns = new Sum;
+					ns->mask = i;
+					ns->parent = j;
+					push(solutions[np], ns);
+				}
+			}
+		}
+	}
+}
+
+void buildsol(Sum **solutions, int idx, int mask, int *solvec, int &solcnt) {
+	if (0 == idx) {
+		solvec[solcnt] = mask;
+		solcnt++;
+		return;
+	}
+
+	for (Sum *tmp = solutions[idx]; tmp != NULL; tmp = tmp->prev) {
+		buildsol(solutions, tmp->parent, mask | tmp->mask, solvec, solcnt);
+	}
+}
+
+bool buildsol2(Sum **solutions, int idx, int icc, int icf) {
+	if ((icc < 0) || (icf < 0)) {
+		return false;
+	}
+
+	if (0 == idx) {
+		return (icc == 0) && (icf == 0);
+	}
+
+	for (Sum *tmp = solutions[idx]; tmp != NULL; tmp = tmp->prev) {
+		if (buildsol2(solutions, tmp->parent, icc - cc[tmp->mask], icf - cf[tmp->mask])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+int maskp[2000000], maskc[2000000], maskf[2000000];
+int countp, countc, countf;
+
+int cmpint(const void *pa, const void *pb) {
+	return *(int *)pa - *(int *)pb;
+}
+
+bool solve(FILE *fin, FILE *fout) {
+	fscanf(fin, "%d %d %d", &p, &c, &f);
+	fscanf(fin, "%d", &t);
+
+	for (int i = 0; i < t; ++i) {
+		fscanf(fin, "%d %d %d", &cp[i], &cc[i], &cf[i]);
+	}
+	
+	knapsack(solp, cp, p);
+	knapsack(solc, cc, c);
+	knapsack(solf, cf, f);
+
+	memset(maskp, 0, sizeof(maskp));	
+	countp = 0;
+	return buildsol2(solp, p, c, f);
+	
+}
+
+int main() {
+	FILE *fin = fopen("input.txt", "rt");
+	FILE *fout = fopen("output.txt", "wt");
+	int n;
+
+	fscanf(fin, "%d\n", &n);
+	for (int i = 1; i <= n; ++i) {
+		fprintf(fout, "Case #%d: %s\n", i, solve(fin, fout) ? "yes" : "no");
+	}
+
+	fclose(fout);
+	fclose(fin);
+	return 0;
+}

@@ -1,0 +1,125 @@
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class fbq3 {
+	public static void main(String[] args) {
+		Scanner in = new Scanner(System.in);
+		int cases = in.nextInt();
+
+		final String DIRS = "<^>v";
+		final int[][] DELTAS = { { 0, -1 }, { -1, 0 }, { 0, 1 }, { 1, 0 } };
+
+		int cn = 0;
+		while (cn++ < cases) {
+			int rows = in.nextInt();
+			int cols = in.nextInt();
+
+			boolean[][] blocked = new boolean[rows][cols];
+
+			Queue<Integer> laserBuilder = new ArrayDeque<Integer>();
+			int sr = 0, sc = 0, gr = 0, gc = 0;
+			for (int r = 0; r < rows; r++) {
+				char[] row = in.next().toCharArray();
+				for (int c = 0; c < cols; c++) {
+					if (row[c] == 'S') {
+						sr = r;
+						sc = c;
+					} else if (row[c] == 'G') {
+						gr = r;
+						gc = c;
+					} else if (row[c] == '#') {
+						blocked[r][c] = true;
+					} else if (row[c] != '.') {
+						blocked[r][c] = true;
+						laserBuilder.add(r);
+						laserBuilder.add(c);
+						laserBuilder.add(DIRS.indexOf(row[c]));
+					}
+				}
+			}
+
+			int[][] lasers = buildLaserMask(DELTAS, rows, cols, blocked, laserBuilder);
+			int[][][] best = runBFS(DIRS, DELTAS, rows, cols, blocked, sr, sc, lasers);
+
+			int answer = Integer.MAX_VALUE;
+			for (int d = 0; d < DIRS.length(); d++) {
+				answer = Math.min(answer, best[d][gr][gc]);
+			}
+
+			System.out.printf("Case #%d:", cn);
+			if (answer == Integer.MAX_VALUE)
+				System.out.println("impossible");
+			else
+				System.out.println(answer);
+		}
+	}
+
+	private static int[][][] runBFS(final String DIRS, final int[][] DELTAS, int rows, int cols,
+			boolean[][] blocked, int sr, int sc, int[][] lasers) {
+		int[][][] best;
+		best = new int[4][rows][cols];
+		for (int[][] is : best) {
+			for (int[] is2 : is) {
+				Arrays.fill(is2, Integer.MAX_VALUE);
+			}
+		}
+
+		Queue<Integer> bfs = new ArrayDeque<Integer>(rows * cols);
+		best[0][sr][sc] = 0;
+		bfs.add(sr);
+		bfs.add(sc);
+		bfs.add(0);
+
+		while (bfs.size() > 0) {
+			int r = bfs.poll();
+			int c = bfs.poll();
+			int d = bfs.poll();
+
+			int nd = (d + 1) % DIRS.length();
+			for (int[] delta : DELTAS) {
+				int nr = r + delta[0];
+				int nc = c + delta[1];
+
+				if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && !blocked[nr][nc]) {
+					if ((lasers[nr][nc] & (1 << nd)) == 0) {
+						if (best[nd][nr][nc] == Integer.MAX_VALUE) {
+							best[nd][nr][nc] = best[d][r][c] + 1;
+							bfs.add(nr);
+							bfs.add(nc);
+							bfs.add(nd);
+						}
+					}
+				}
+			}
+		}
+		return best;
+	}
+
+	private static int[][] buildLaserMask(final int[][] DELTAS, int rows, int cols,
+			boolean[][] blocked, Queue<Integer> laserBuilder) {
+
+		int[][] lasers = new int[rows][cols];
+		while (laserBuilder.size() > 0) {
+			int r = laserBuilder.poll();
+			int c = laserBuilder.poll();
+			int startDirection = laserBuilder.poll();
+
+			for (int i = 0; i < DELTAS.length; i++) {
+				int[] delta = DELTAS[(i + startDirection) % DELTAS.length];
+				int beamR = delta[0] + r;
+				int beamC = delta[1] + c;
+
+				while (beamR >= 0 && beamR < rows && beamC >= 0 && beamC < cols
+						&& !blocked[beamR][beamC]) {
+					lasers[beamR][beamC] |= (1 << i);
+					beamR += delta[0];
+					beamC += delta[1];
+				}
+			}
+		}
+
+		return lasers;
+	}
+}

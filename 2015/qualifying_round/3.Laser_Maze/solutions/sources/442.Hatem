@@ -1,0 +1,167 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <queue>
+using namespace std;
+
+bool *** blocked; // [M][N][4]
+bool *** visited; // [M][N][4]
+int startRow=-1, startCol=-1;
+int goalRow=-1, goalCol=-1;
+
+struct Node{
+	int row;
+	int col;
+	int steps;
+	int state;
+	Node(int row, int col, int steps, int state){
+		this->row = row, this->col=col;
+		this->steps = steps, this->state = state;
+	}
+};
+
+void preprocess(string * maze, int M, int N)
+{
+	blocked = new bool**[M];
+	visited = new bool**[M];
+	for (int m=0; m<M; m++)
+	{
+		blocked[m] = new bool*[N];
+		visited[m] = new bool*[N];
+		for (int n=0; n<N; n++)
+		{
+			blocked[m][n] = new bool[4];
+			visited[m][n] = new bool[4];
+			for (int s=0; s<4; s++)
+			{
+				blocked[m][n][s] = false;
+				visited[m][n][s] = false;
+			}
+		}
+	}
+
+	for (int state=0; state<4; state++)
+	{
+		for (int i=0; i<M; i++)
+		{
+			for (int j=0; j<N; j++)
+			{
+				if (maze[i][j] == 'S') // start
+				{
+					startRow = i;
+					startCol = j;
+				}
+				else if (maze[i][j] == 'G') // goal
+				{
+					goalRow = i;
+					goalCol = j;
+				}
+				else if (maze[i][j] == '<') // laser left
+				{
+					blocked[i][j][state] = true;
+					for (int k=j-1; k>=0; k--)
+					{
+						if (maze[i][k]=='<' || maze[i][k]=='>' || maze[i][k]=='^' || maze[i][k]=='v' || maze[i][k]=='#')
+							break;
+						blocked[i][k][state] = true;
+					}
+					maze[i][j] = '^';
+				}
+				else if (maze[i][j] == '>') // laser right
+				{
+					blocked[i][j][state] = true;
+					for (int k=j+1; k<N; k++)
+					{
+						if (maze[i][k]=='<' || maze[i][k]=='>' || maze[i][k]=='^' || maze[i][k]=='v' || maze[i][k]=='#')
+							break;
+						blocked[i][k][state] = true;
+					}
+					maze[i][j] = 'v';
+				}
+				else if (maze[i][j] == '^') // laser up
+				{
+					blocked[i][j][state] = true;
+					for (int k=i-1; k>=0; k--)
+					{
+						if (maze[k][j]=='<' || maze[k][j]=='>' || maze[k][j]=='^' || maze[k][j]=='v' || maze[k][j]=='#')
+							break;
+						blocked[k][j][state] = true;
+					}
+					maze[i][j] = '>';
+				}
+				else if (maze[i][j] == 'v') // laser down
+				{
+					blocked[i][j][state] = true;
+					for (int k=i+1; k<M; k++)
+					{
+						if (maze[k][j]=='<' || maze[k][j]=='>' || maze[k][j]=='^' || maze[k][j]=='v' || maze[k][j]=='#')
+							break;
+						blocked[k][j][state] = true;
+					}
+					maze[i][j] = '<';
+				}
+				else if (maze[i][j] == '#') // wall
+				{
+					blocked[i][j][state] = true;
+				}
+			}
+		}
+	}
+}
+
+int search(string * maze, int M, int N)
+{
+	preprocess(maze, M, N);
+	Node start(startRow, startCol, 0, 0);
+	queue<Node> Q;
+	Q.push(start);
+	while (!Q.empty())
+	{
+		Node current = Q.front();
+		Q.pop();
+		int i=current.row;
+		int j=current.col;
+		if (i == goalRow && j == goalCol)
+			return (current.steps);
+		int state = (current.state+1)%4;
+		if (i<M-1 && !blocked[i+1][j][state] && !visited[i+1][j][state]){
+			Q.push(Node(i+1, j, current.steps+1, state));
+			visited[i+1][j][state] = true;
+		}
+		if (i>0 && !blocked[i-1][j][state] && !visited[i-1][j][state]){
+			Q.push(Node(i-1, j, current.steps+1, state));
+			visited[i-1][j][state] = true;
+		}
+		if (j<N-1 && !blocked[i][j+1][state] && !visited[i][j+1][state]){
+			Q.push(Node(i, j+1, current.steps+1, state));
+			visited[i][j+1][state] = true;
+		}
+		if (j>0 && !blocked[i][j-1][state] && !visited[i][j-1][state]){
+			Q.push(Node(i, j-1, current.steps+1, state));
+			visited[i][j-1][state] = true;
+		}
+	}
+	return -1;
+}
+
+ifstream fin("laser_maze.txt");
+ofstream fout("laser_maze_output.txt");
+
+int main()
+{
+	int T=0;
+	fin >> T;
+	for (int t=1; t<=T; t++)
+	{
+		int M=0, N=0;
+		fin >> M >> N;
+		string * maze = new string[M];
+		for (int i=0; i<M; i++)
+			fin >> maze[i];
+		int result = search(maze, M, N);
+		fout << "Case #" << t << ": ";
+		if (result == -1) fout << "impossible\n";
+		else fout << result << "\n";
+	}
+	return 0;
+}

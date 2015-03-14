@@ -1,0 +1,139 @@
+//
+//  main.m
+//  NewYearsResolution
+//
+//  Created by Rakesh Balasubramanian on 1/8/15.
+//  Copyright (c) 2015 zerog. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface Food : NSObject
+@property (strong,nonatomic)  NSArray * test;
+@property (strong,nonatomic) NSMutableArray *availableFood;
+
+-(instancetype)initWithAvailableFood:(NSMutableArray *)availableFood andTest:(NSArray *)test;
+-(BOOL)checkIfEatable;
+@end
+@implementation Food
+
+- (instancetype)initWithAvailableFood:(NSMutableArray *)availableFood andTest:(NSArray *)test
+{
+    self = [super init];
+    if (self) {
+        self.test = test;
+        self.availableFood = [@[] mutableCopy];
+        for (NSInteger i = 0; i< availableFood.count; i++) {
+            NSMutableArray *items= [[availableFood[i] componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] mutableCopy];
+            for (int i =0 ; i < items.count; i++) {
+                items[i] = @([items[i] integerValue]);
+            }
+            [self.availableFood addObject:items];
+        }
+    }
+    return self;
+}
+
+-(BOOL)checkIfEatable{
+    
+    for (NSInteger i = 0; i<self.availableFood.count; i++) {
+        if ([self addNutrientsWithSum:@[@(0),@(0),@(0)] andIndex:i]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+
+
+-(BOOL)addNutrientsWithSum:(NSArray *)sumArray andIndex:(NSInteger)index{
+    if (index >= self.availableFood.count) {
+        return NO;
+    }
+    
+    NSInteger p = [self.availableFood[index][0] integerValue];
+    NSInteger c = [self.availableFood[index][1] integerValue];
+    NSInteger f = [self.availableFood[index][2] integerValue];
+    NSInteger testP = [self.test[0] integerValue];
+    NSInteger testC = [self.test[1] integerValue];
+    NSInteger testF = [self.test[2] integerValue];
+    
+    if (p==testP && c== testC && f==testF) {
+        return YES;
+    }
+    
+    if (p>testP || c>testC || f>testF){
+        return NO;
+    }else{
+        
+        NSInteger newP = [sumArray[0] integerValue]+p;
+        NSInteger newC = [sumArray[1] integerValue]+c;
+        NSInteger newF = [sumArray[2] integerValue]+f;
+        if (newP>testP || newC>testC || newF > testF) {
+            return [self addNutrientsWithSum:sumArray andIndex:index+1];
+        }else if(newP == testP && newC == testC && newF == testF){
+            return YES;
+        }else{
+            for (NSInteger i = index+1; i<self.availableFood.count; i++) {
+                if ([self addNutrientsWithSum:@[@(newP),@(newC),@(newF)] andIndex:i] == YES) {
+                    return YES;
+                }else{
+                    continue;
+                }
+            }
+            
+        }
+    }
+    
+    return false;
+}
+
+@end
+
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        NSFileHandle *input;
+        if (argc == 1) {
+            input = [NSFileHandle fileHandleWithStandardInput];
+        }else{
+            
+            NSString *basePath = [[NSFileManager defaultManager] currentDirectoryPath];
+            NSString *filePath = [basePath stringByAppendingPathComponent:[NSString stringWithCString:argv[1] encoding:NSUTF8StringEncoding]];
+            input = [NSFileHandle fileHandleForReadingAtPath:filePath];
+        }
+        
+        NSData *inputData = [NSData dataWithData:[input availableData]];
+        NSString *inputString = [[NSString alloc] initWithData:inputData encoding:NSUTF8StringEncoding];
+        
+        
+        NSMutableArray *lines = [[inputString componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]] mutableCopy];
+        
+        
+        NSInteger numTestCases = [lines[0] integerValue];
+    
+        
+        
+        NSInteger startingIndex = 1;
+        for (int i=0; i<numTestCases; i++) {
+            NSMutableArray *test = [[lines[startingIndex] componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] mutableCopy];
+            for (int i = 0; i<test.count; i++) {
+                test[i] = @([test[i] integerValue]);
+            }
+            
+            NSInteger numFoodItems = [lines[startingIndex+1] integerValue];
+            
+            NSMutableArray *foodItemsArray = [@[] mutableCopy];
+            NSRange range;
+            range.location= startingIndex+2;
+            range.length = numFoodItems;
+            [foodItemsArray addObjectsFromArray:[lines subarrayWithRange:range]];
+            Food *food = [[Food alloc]initWithAvailableFood:foodItemsArray andTest:test];
+            printf("Case #%d: %s\n",i+1,[food checkIfEatable]?"yes":"no");
+            startingIndex += 2+numFoodItems;
+        }
+        
+        
+        
+    }
+    return 0;
+}

@@ -1,0 +1,90 @@
+# Name: Laser Maze
+# Level: 2
+# Category: Graph,Shortest path,BFS
+# Note:
+
+# Remember current position and step%4.
+# Never have to consider the situation that enter the
+# cell in same step (mod 4) as previous entrance.
+# Then just perform BFS with checking laser.
+#
+# O(MN(M+N))
+
+require 'set'
+
+def solve
+  n = gets.to_i
+  n.times do |i|
+    res = yield
+    puts "Case ##{i+1}: #{res}"
+  end
+end
+
+DR = [0, 1, 0, -1].freeze
+DC = [1, 0, -1, 0].freeze
+TURRET = "<^>v".freeze
+
+def lazer_safe?(field, org_r, org_c, turn)
+  h = field.size
+  w = field[0].size
+
+  4.times do |d|
+    r, c = org_r, org_c
+    while (0...h).include?(r) && (0...w).include?(c)
+      if field[r][c] == TURRET[(-turn+d)%4]
+        return false
+      elsif "##{TURRET}".include?(field[r][c])
+        break
+      end
+      r += DR[d]
+      c += DC[d]
+    end
+  end
+  true
+end
+
+solve do
+  h, w = gets.split.map(&:to_i)
+  field = h.times.map{gets.chomp.chars}
+  q = []
+  field.each_with_index do |row, r|
+    row.each_with_index do |ch, c|
+      if ch == "S"
+        q << [r, c]
+      end
+    end
+  end
+
+  memo = Set.new
+  turn = 1
+  res = "impossible"
+  catch(:found) do
+    while !q.empty?
+      nq = []
+      q.each do |cur|
+        4.times do |d|
+          nr = cur[0] + DR[d]
+          nc = cur[1] + DC[d]
+          if nr < 0 || nr >= h || nc < 0 || nc >= w
+            next
+          end
+          if field[nr][nc] == "#"
+            next
+          end
+          key = [nr, nc, turn % 4]
+          if !memo.include?(key) && lazer_safe?(field, nr, nc, turn)
+            memo << key
+            nq << [nr, nc]
+            if field[nr][nc] == "G"
+              res = turn
+              throw :found
+            end
+          end
+        end
+      end
+      turn += 1
+      q = nq
+    end
+  end
+  res
+end

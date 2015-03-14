@@ -1,0 +1,262 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.TreeSet;
+public class Main {
+	public static int gp;
+	public static int gc;
+	public static int gf;
+	public static int[][] foods;
+	public static int n;
+	public static void main(String[] args) throws NumberFormatException, IOException{
+		ContestScanner in = new ContestScanner("input.dat");
+		StringBuilder sb = new StringBuilder();
+		int t = in.nextInt();
+		for(int i=0; i<t; i++){
+			gp = in.nextInt();
+			gc = in.nextInt();
+			gf = in.nextInt();
+			n = in.nextInt();
+			foods = new int[n][3];
+			for(int j=0; j<n; j++){
+				foods[j][0] = in.nextInt();
+				foods[j][1] = in.nextInt();
+				foods[j][2] = in.nextInt();
+			}
+			boolean ok = false;
+			for(int j=0; j<n; j++){
+				for(int k=0; k<n-j; k++){
+					int[] g = {
+						0, 0, 0	
+					};
+					if(dfs(g, k, j)){
+						sb.append("Case #"+(i+1)+": yes\n");
+//						System.out.println("Case #"+i+": yes");
+						ok = true;
+						break;
+					}
+				}
+				if(ok) break;
+			}
+			if(!ok){
+				sb.append("Case #"+(i+1)+": no\n");
+//				System.out.println("Case #"+i+": no");
+			}
+		}
+		PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter("output.dat")));
+		pw.print(sb.toString());
+		pw.close();
+	}
+	
+	public static boolean dfs(int g[], int sIdx, int rest){
+		g[0] += foods[sIdx][0];
+		g[1] += foods[sIdx][1];
+		g[2] += foods[sIdx][2];
+		if(rest == 0){
+			if(g[0] == gp && g[1] == gc && g[2] == gf){
+				return true;
+			}else return false;
+		}else{
+			for(int i=sIdx+1; i<n-rest+1; i++){
+				if(dfs(g.clone(), i, rest-1)) return true;
+			}
+			return false;
+		}
+	}
+}
+
+class MyComp implements Comparator<int[]>{
+	public int compare(int[] a, int[] b) {
+		return a[0] - b[0];
+	}
+}
+
+
+class Reverse implements Comparator<Integer>{
+	public int compare(Integer arg0, Integer arg1) {
+		return arg1 - arg0;
+	}
+}
+
+class Node{
+	int id;
+	List<Node> edge = new ArrayList<Node>();
+	public Node(int id){
+		this.id = id;
+	}
+	public void createEdge(Node node){
+		edge.add(node);
+	}
+}
+
+
+class NodeW{
+	int id;
+	List<NodeW> edge = new ArrayList<NodeW>();
+	List<Integer> costList = new ArrayList<Integer>();
+	public NodeW(int id) {
+		this.id = id;
+	}
+	public void createEdge(NodeW node, int cost) {
+		edge.add(node);
+		costList.add(cost);
+	}
+}
+
+class Range<T extends Comparable<T>> implements Comparable<Range<T>>{
+	T start;
+	T end;
+	public Range(T start, T end){
+		this.start = start;
+		this.end = end;
+	}
+	public boolean inRange(T val){
+		if(start.compareTo(val) <= 0 && end.compareTo(val) >= 0){
+			return true;
+		}
+		return false;
+	}
+	public boolean isCommon(Range<T> range){
+		if(inRange(range.start) || inRange(range.end) || range.inRange(start)){
+			return true;
+		}
+		return false;
+	}
+	public Range<T> connect(Range<T> range){
+		if(!isCommon(range)) return null;
+		Range<T> res = new Range<T>(start.compareTo(range.start) <= 0 ? start : range.start,
+				end.compareTo(range.end) >= 0 ? end : range.end);
+		return res;
+	}
+	public boolean connectToThis(Range<T> range){
+		if(!isCommon(range)) return false;
+		start = start.compareTo(range.start) <= 0 ? start : range.start;
+		end = end.compareTo(range.end) >= 0 ? end : range.end;
+		return true;
+	}
+	@Override
+	public int compareTo(Range<T> range) {
+		int res = start.compareTo(range.start);
+		if(res == 0) return end.compareTo(range.end);
+		return res;
+	}
+	public String toString(){
+		return "["+start+","+end+"]";
+	}
+}
+
+class RangeSet<T extends Comparable<T>>{
+	TreeSet<Range<T>> ranges = new TreeSet<Range<T>>();
+	public void add(Range<T> range){
+		Range<T> con = ranges.floor(range);
+		if(con != null){
+			if(con.connectToThis(range))
+				range = con;
+		}
+		con = ranges.ceiling(range);
+		while(con != null && range.connectToThis(con)){
+			ranges.remove(con);
+			con = ranges.ceiling(range);
+		}
+		ranges.add(range);
+	}
+	public String toString(){
+		StringBuilder bld = new StringBuilder();
+		for(Range<T> r: ranges){
+			bld.append(r+"\n");
+		}
+		return bld.toString();
+	}
+}
+
+
+class MyMath{
+	public final static double PIhalf = Math.PI/2.0;
+	public static double pAngle(double x, double y){
+		// ƒxƒNƒgƒ‹(1, 0)‚Æ(x, y)‚Æ‚Ì‚È‚·Šp‚ð•Ô‚·(rad:0 to 2pi)
+		if(x == 0){
+			if(y == 0){
+				System.err.println("pAngle error: zero vector.");
+				return 0;
+			}else if(y < 0){
+				return PIhalf*3.0;
+			}else{
+				return PIhalf;
+			}
+		}
+		double rad = Math.atan(y/x);
+		if(rad < 0){
+			rad += Math.PI*2.0;
+		}
+		return rad;
+	}
+	public static long fact(long n){
+		long res = 1;
+		while(n > 0){
+			res *= n--;
+		}
+		return res;
+	}
+	public static long[][] pascalT(int n){
+		long[][] tri = new long[n][];
+		for(int i=0; i<n; i++){
+			tri[i] = new long[i+1];
+			for(int j=0; j<i+1; j++){
+				if(j == 0 || j == i){
+					tri[i][j] = 1;
+				}else{
+					tri[i][j] = tri[i-1][j-1] + tri[i-1][j];
+				}
+			}
+		}
+		return tri;
+	}
+
+	// Å‘åŒö–ñ”
+	static int gcd(int a, int b){
+		return b == 0 ? a : gcd(b, a % b);
+	}
+
+	// Å¬Œö”{”
+	static int lcm(int a, int b){
+		return a * b / gcd(a, b);
+	}
+}
+
+class ContestScanner{
+	private BufferedReader reader;
+	private String[] line;
+	private int idx;
+	public ContestScanner() throws FileNotFoundException{
+		reader = new BufferedReader(new InputStreamReader(System.in));
+	}
+
+	public ContestScanner(String filename) throws FileNotFoundException{
+		reader = new BufferedReader(new InputStreamReader(new FileInputStream(filename)));
+	}
+	
+	public String nextToken() throws IOException{
+		if(line == null || line.length <= idx){
+			line = reader.readLine().trim().split(" ");
+			idx = 0;
+		}
+		return line[idx++];
+	}
+	public long nextLong() throws IOException, NumberFormatException{
+		return Long.parseLong(nextToken());
+	}
+	public int nextInt() throws NumberFormatException, IOException{
+		return (int)nextLong();
+	}
+	public double nextDouble() throws NumberFormatException, IOException{
+		return Double.parseDouble(nextToken());
+	}
+}

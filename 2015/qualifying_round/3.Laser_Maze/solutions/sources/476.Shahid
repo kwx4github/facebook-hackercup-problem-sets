@@ -1,0 +1,122 @@
+#include<stdio.h>
+#include<string.h>
+#define Get getchar()
+#define mSize 105
+#define INF 1000000009
+
+int M,N,safe[4][mSize][mSize],dp[4][mSize][mSize],startX,startY,endX,endY;
+char A[mSize][mSize];
+
+int isValid(char c) {
+	return (c=='.' || c=='S' || c=='G' || c=='#' || c=='<' || c=='>' || c=='^' || c=='v');
+}
+
+void readGrid() {
+	int i=0,j=0; char c;
+	while(i<M) {
+		c=Get;
+		if(isValid(c)) {
+			A[i][j]=c;
+			if(c=='S') { startX=i; startY=j; } else if(c=='G') { endX=i; endY=j; }
+			if(j==N-1) { i++; j=0; }
+			else j++;
+		}
+	}
+}
+
+char rotate(int m,char c) {
+	char r[5] = ">v<^";
+	int i; for(i=0;i<4;i++) if(r[i]==c) { m+=i; break; }
+	if(m>=4) m-=4;
+	return r[m];
+}
+
+void applySafe(int m,int x,int y) {
+	if(A[x][y]=='S'||A[x][y]=='G'||A[x][y]=='.') return;
+	safe[m][x][y]=0;
+	if(A[x][y]=='#') return;
+	char c=rotate(m,A[x][y]);
+	int i,j;
+	if(c=='>') {
+		for(j=y+1;j<N;j++)
+			if(A[x][j]=='S'||A[x][j]=='G'||A[x][j]=='.') safe[m][x][j]=0;
+			else break;
+	} else if(c=='<') {
+		for(j=y-1;j>=0;j--)
+			if(A[x][j]=='S'||A[x][j]=='G'||A[x][j]=='.') safe[m][x][j]=0;
+			else break;
+	} else if(c=='^') {
+		for(i=x-1;i>=0;i--)
+			if(A[i][y]=='S'||A[i][y]=='G'||A[i][y]=='.') safe[m][i][y]=0;
+			else break;
+	} else if(c=='v') {
+		for(i=x+1;i<M;i++)
+			if(A[i][y]=='S'||A[i][y]=='G'||A[i][y]=='.') safe[m][i][y]=0;
+			else break;
+	}
+}
+
+void prepare() {
+	int m,i,j;
+	for(m=0;m<4;m++) for(i=0;i<M;i++) for(j=0;j<N;j++) safe[m][i][j]=1;
+	for(m=0;m<4;m++) for(i=0;i<M;i++) for(j=0;j<N;j++) applySafe(m,i,j);
+}
+
+int isValidAndSafe(int m,int x,int y) {
+	return (x>=0 && x<M && y>=0 && y<N && safe[m][x][y]);
+}
+
+int moveFrom(int m,int x,int y,int t) {
+	int good=0, mn=m+1; if(mn>=4) mn-=4;
+	if(isValidAndSafe(mn,x-1,y)) if(dp[mn][x-1][y] > t+1) { dp[mn][x-1][y]=t+1; good=1; }
+	if(isValidAndSafe(mn,x+1,y)) if(dp[mn][x+1][y] > t+1) { dp[mn][x+1][y]=t+1; good=1; }
+	if(isValidAndSafe(mn,x,y-1)) if(dp[mn][x][y-1] > t+1) { dp[mn][x][y-1]=t+1; good=1; }
+	if(isValidAndSafe(mn,x,y+1)) if(dp[mn][x][y+1] > t+1) { dp[mn][x][y+1]=t+1; good=1; }
+	return good;
+}
+
+int getMin(int x,int y) {
+	int m,min=INF;
+	for(m=0;m<4;m++) if(dp[m][x][y]<min) min=dp[m][x][y];
+	return min;
+}
+
+int Print(int m) {
+	printf("m: %d\n", m);
+	int i,j;
+	for(i=0;i<M;i++) {
+		for(j=0;j<N;j++) if(dp[m][i][j]==INF) printf("I "); else printf("%d ",dp[m][i][j]); printf("\n");
+	}
+}
+
+void solve() {
+	prepare();
+	int m,i,j;
+	for(m=0;m<4;m++) for(i=0;i<M;i++) for(j=0;j<N;j++) dp[m][i][j]=INF;
+	int betterMove=moveFrom(0,startX,startY,0), Time=0; m=0;
+	while(betterMove) {
+		betterMove=0; Time++; m++; if(m>=4) m-=4;
+		//Print(m);
+		for(i=0;i<M;i++) for(j=0;j<N;j++)
+			if(safe[m][i][j] && dp[m][i][j]<INF)
+				if(moveFrom(m,i,j,Time)) betterMove=1;
+		if(getMin(endX,endY)!=INF) break;
+	}
+	int res=getMin(endX,endY);
+	if(res==INF) printf("impossible");
+	else printf("%d",res);
+}
+
+int main()
+{
+	int tt,T;
+	scanf("%d",&T);
+	for(tt=1;tt<=T;tt++) {
+		scanf("%d%d",&M,&N);
+		readGrid();
+		printf("Case #%d: ",tt);
+		solve();
+		printf("\n");
+	}
+	return 0;
+}

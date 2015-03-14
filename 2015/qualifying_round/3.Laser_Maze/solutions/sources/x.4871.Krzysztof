@@ -1,0 +1,102 @@
+#include <cassert>
+#include <iostream>
+#include <queue>
+#include <vector>
+using namespace std;
+typedef pair<int, int> PII;
+const int dx[4] = {-1, 0, 1, 0};
+const int dy[4] = {0, 1, 0, -1};
+bool isWall(char ch) {
+  return ch != '.' && ch != 'S' && ch != 'G';
+}
+bool isLaser(char ch) {
+  return isWall(ch) && ch != '#';
+}
+int getLaserDirection(char ch) {
+  switch (ch) {
+    case '^':
+      return 0;
+    case '>':
+      return 1;
+    case 'v':
+      return 2;
+    case '<':
+      return 3;
+    default:
+      assert(0);
+  }
+}
+bool isInside(PII p, int m, int n) {
+  return p.first >= 0 && p.second >= 0 && p.first < m && p.second < n;
+}
+int main() {
+  int tc;
+  cin >> tc;
+  for (int t = 0; t < tc; t++) {
+    int m, n;
+    cin >> m >> n;
+    vector<string> lab(m);
+    vector<vector<int> > safe(m, vector<int>(n, 0));
+    PII start, end;
+    for (int i = 0; i < m; i++) {
+      cin >> lab[i];
+      for (int j = 0; j < n; j++) {
+        if (!isWall(lab[i][j])) {
+          safe[i][j] = 15;
+          if (lab[i][j] == 'S') {
+            start = PII(i, j);
+          } else {
+            end = PII(i, j);
+          }
+        }
+      }
+    }
+    for (int i = 0; i < m; i++) {
+      for (int j = 0; j < n; j++) {
+        if (isLaser(lab[i][j])) {
+          int d = getLaserDirection(lab[i][j]);
+          for (int dt = 0; dt < 4; dt++) {
+            for (int k = 1; ; k++) {
+              PII p(i + dx[(d + dt) % 4] * k, j + dy[(d + dt) % 4] * k);
+              if (!isInside(p, m, n) || isWall(lab[p.first][p.second])) {
+                break;
+              }
+              safe[p.first][p.second] &= 15 ^ (1 << dt);
+            }
+          }
+        }
+      }
+    }
+    queue<pair<PII, int> > q;
+    q.push(make_pair(start, 0));
+    safe[start.first][start.second] ^= 1;
+    int best = -1;
+    while (!q.empty()) {
+      PII act = q.front().first;
+      int nSteps = q.front().second;
+      q.pop();
+      if (act == end) {
+        best = nSteps;
+        break;
+      }
+      int r = (nSteps + 1) % 4;
+      for (int d = 0; d < 4; d++) {
+        PII next(act.first + dx[d], act.second + dy[d]);
+        if (isInside(next, m, n) && !isWall(lab[next.first][next.second])) {
+          if (safe[next.first][next.second] & (1 << r)) {
+            safe[next.first][next.second] ^= 1 << r;
+            q.push(make_pair(next, nSteps + 1));
+          }
+        }
+      }
+    }
+    cout << "Case #" << t + 1 << ": ";
+    if (best != -1) {
+      cout << best;
+    } else {
+      cout << "impossible";
+    }
+    cout << endl;
+  }
+  return 0;
+}

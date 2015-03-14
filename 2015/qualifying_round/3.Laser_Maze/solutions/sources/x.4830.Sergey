@@ -1,0 +1,149 @@
+from itertools import cycle
+import sys
+
+
+def listReplace(lst, find, repl):
+    return [repl if x == find else x for x in lst]
+
+
+class Labyrinth:
+    def __init__(self, columns, cells, lazersDirections):
+        self.columns = columns
+        self.cells = cells
+        self.size = len(cells)
+        self.rows = self.size//columns
+        self.fillLazers(lazersDirections)
+        self.visitedCells = set()
+        #self.print()
+
+    def fillLazers(self, lazersDirections):
+        newCells = self.cells[:]
+        for idx, cell in enumerate(self.cells):
+            if cell in lazersDirections:
+                self.getLazerWall(idx, lazersDirections[cell], newCells)
+        self.cells = newCells
+
+    def getLazerWall(self, idx, direction, cells):
+        cells[idx] = '#'
+        row = idx // self.columns
+        col = idx % self.columns
+        if direction == -1 or direction == 1:
+            while True:
+                idx += direction
+                if idx // self.columns != row:
+                    return
+                cells[idx] = '#'
+        else:
+            while True:
+                idx += direction
+                if idx<0 or idx>=self.size:
+                    return
+                cells[idx] = '#'
+
+    def getPossibleMoves(self, cell):
+        result = []
+        #try up
+        if self.isEmpty(cell - self.columns):
+            result.append(cell - self.columns)
+        #try down
+        if self.isEmpty(cell + self.columns):
+            result.append(cell + self.columns)
+        #try left
+        if cell%self.columns!=0 and self.isEmpty(cell-1):
+            result.append(cell-1)
+        #try right
+        if (cell+1)%self.columns!=0 and self.isEmpty(cell+1):
+            result.append(cell+1)
+        return result
+
+    def isEmpty(self, idx):
+        if idx < 0 or idx >= self.size:
+            return None
+        return self.cells[idx] == '.'
+
+    def setVisited(self, cells):
+        self.visitedCells.update(cells)
+
+    def print(self):
+        print("({}x{})".format(self.rows, self.columns))
+        for row in range(self.rows):
+            start = self.columns*row
+            end = self.columns*(row+1)
+            print("".join(self.cells[start:end]))
+
+
+class Case:
+    @classmethod
+    def parse(cls, stream):
+        dimenisions = next(stream).strip().split(' ')
+        rows = int(dimenisions[0])
+        columns = int(dimenisions[1])
+        cells = []
+        for r in range(rows):
+            cells += list(next(stream).strip())
+
+        return cls(columns, cells)
+
+    def __init__(self, columns, cells):
+        self.columns = columns
+        self.cells = cells
+
+    def solve(self):
+        self.getStartGoal()
+        self.buildLabyrinths()
+
+        wave = {self.start}
+        for step, labyr in enumerate(cycle(self.labyrinths)):
+            wave = self.buildNewWave(wave, labyr)
+            if self.goal in wave:
+                return step+1
+            if len(wave) == 0:
+                return None
+            labyr.setVisited(wave)
+
+    def getStartGoal(self):
+        self.start = self.cells.index('S')
+        self.goal  = self.cells.index('G')
+
+    def buildLabyrinths(self):
+        cells = self.cells[:]
+        cells = listReplace(cells, 'S', '.')
+        cells = listReplace(cells, 'G', '.')
+        self.labyrinths = []
+
+        lasers = {'<':-self.columns, '>':self.columns, "^":+1, "v":-1 }
+        self.labyrinths.append( Labyrinth(self.columns, cells, lasers) )
+
+        lasers = {'<':+1, '>':-1, "^":self.columns, "v":-self.columns }
+        self.labyrinths.append( Labyrinth(self.columns, cells, lasers) )
+
+        lasers = {'<':self.columns, '>':-self.columns, "^":-1, "v":+1 }
+        self.labyrinths.append( Labyrinth(self.columns, cells, lasers) )
+
+        lasers = {'<':-1, '>':+1, "^":-self.columns, "v":self.columns }
+        self.labyrinths.append( Labyrinth(self.columns, cells, lasers) )
+
+    def buildNewWave(self, wave, labyr):
+        newWave = set()
+        for cell in wave:
+            newWave.update(labyr.getPossibleMoves(cell))
+        newWave.difference_update(labyr.visitedCells)
+        return newWave
+
+def main(fin, fout):
+    fin = open(fin)
+    fout = open(fout, 'w')
+    count = int(next(fin).strip())
+    for i in range(count):
+        case = Case.parse(fin)
+        solution = case.solve() or "impossible"
+        out_line = "Case #{}: {}".format(i+1, solution)
+        print(out_line, file=fout)
+        print(out_line)
+
+if __name__ == '__main__':
+    if len(sys.argv)<3:
+        print("Usage:", __file__, "<input file> <output file>")
+        exit()
+    main(sys.argv[1], sys.argv[2])
+    print("Done!")

@@ -1,0 +1,149 @@
+import os
+import itertools
+import numpy as np
+
+
+class Problem(object):
+    status = False
+    foods = []
+
+    def __init__(self, N, pid):
+        super(Problem, self).__init__()
+        self.N = N
+        self.pid = pid
+
+
+class Problems(object):
+    T = 0
+    problems = []
+
+    def __init__(self, input_file, output_file):
+        super(Problems, self).__init__()
+        self.input_file = input_file
+        self.output_file = output_file
+
+    def parse_line(self, line, separator):
+        return map(int, line.split(separator))
+
+    def open_file(self):
+        """open_file"""
+
+        f = open(self.input_file, 'r')
+        T = int(f.readline())
+
+        if (T < 1) or (T > 20):
+            raise Exception('T parameter out of range')
+        else:
+            self.T = T
+            for test in range(self.T):
+                Gp, Gc, Gf = self.parse_line(f.readline(), " ")
+                if (Gp < 10) or (Gp > 1000):
+                    raise Exception('Gp parameter out of range')
+                if (Gc < 10) or (Gc > 1000):
+                    raise Exception('Gc parameter out of range')
+                if (Gf < 10) or (Gf > 1000):
+                    raise Exception('Gf parameter out of range')
+
+                N = int(f.readline())
+                if (N < 1) or (N > 20):
+                    raise Exception('N parameter out of range')
+                else:
+                    self.problems.append(Problem(N, test+1))
+                    self.problems[-1].Gp = Gp
+                    self.problems[-1].Gc = Gc
+                    self.problems[-1].Gf = Gf
+                    self.problems[-1].foods = list()
+                    for food in range(N):
+                        P, C, F = self.parse_line(f.readline(), " ")
+                        if (P < 10) or (P > 1000):
+                            raise Exception('P parameter out of range')
+                        if (C < 10) or (C > 1000):
+                            raise Exception('C parameter out of range')
+                        if (F < 10) or (F > 1000):
+                            raise Exception('F parameter out of range')
+                        self.problems[-1].foods.append(np.array([P, C, F]))
+        f.close()
+    
+    def save_file(self):
+        """save_file"""
+        f = open(self.output_file, 'w')
+        for test in self.problems:
+            f.write('Case #{0}: {1}\n'.format(test.pid, "yes" if test.status
+                                              else "no"))
+        f.close()
+    
+    def pack(self, items, sizeLimit):
+        P = {}
+
+        def recurse(nItems,limite):
+            lim = map(tuple, limite)
+            
+            if (nItems,lim) not in P:
+                if nItems == 0:
+                    P[nItems,lim] = 0
+                elif (items[nItems-1] > limite).any():
+                    P[nItems,lim] = recurse(nItems-1,limite)
+                else:
+                    P[nItems,lim] = np.maximum(recurse(nItems-1,limite),
+                        recurse(nItems-1,limite-items[nItems-1]) +
+                        items[nItems-1])
+            return P[nItems,lim]
+        return recurse(len(items),sizeLimit)
+        
+        
+
+    def eat_macronutrient(self, test):
+        """can eat macronutrient?"""
+        status = True
+
+        eat_P = 0
+        eat_C = 0
+        eat_F = 0
+
+        Pl = []
+        Cl = []
+        Fl = []
+        for food in test.foods:
+            Pl.append(food[0])
+            Cl.append(food[1])
+            Fl.append(food[2])
+        P = np.array(Pl)
+        C = np.array(Cl)
+        F = np.array(Fl)
+
+        eat_P = np.sum(P)
+        eat_C = np.sum(C)
+        eat_F = np.sum(F)
+
+        if eat_P < test.Gp:
+            status = False
+            return status
+        if eat_C < test.Gc:
+            status = False
+            return status
+        if eat_F < test.Gf:
+            status = False
+            return status
+
+        if len(Pl) > 1:
+            max_food = self.pack(test.foods, np.array([test.Gp, test.Gc, test.Gf]))
+            if (max_food < np.array([test.Gp, test.Gc, test.Gf])).any():
+                status = False
+                return status
+
+        return status
+
+    def new_years_resolution(self):
+        """run cooking_the_books"""
+        for test in self.problems:
+            test.status = self.eat_macronutrient(test)
+
+
+        
+if __name__ == "__main__":
+    nyr = Problems("new_years_resolution.txt", 
+                                    "new_years_resolution_output.txt")
+
+    nyr.open_file()
+    nyr.new_years_resolution()
+    nyr.save_file()

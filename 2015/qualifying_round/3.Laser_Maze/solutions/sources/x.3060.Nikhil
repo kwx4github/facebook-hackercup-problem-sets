@@ -1,0 +1,234 @@
+#include<bits/stdc++.h>
+
+using namespace std;
+
+
+#define pb push_back
+#define mp make_pair
+
+#define cin fin
+#define cout fout
+
+
+struct graph
+{
+    char c;
+    bool visited;
+}g[5][102][102];
+
+int m,n;
+int dist[103][103];
+
+
+void dfs(pair<int,int> start,pair<int,int> dest,int chance);
+int shortest_peth(pair<int,int> s,pair<int,int> e,int chance);
+void initialize();
+
+
+int main()
+{
+    ifstream fin;
+    ofstream fout;
+    fin.open("laser_maze.txt");
+    fout.open("lii.txt");
+    int test_case,t=1;
+    cin>>test_case;
+    while(test_case--)
+    {
+        initialize();
+        cin>>m>>n;
+        string str;
+        vector<pair<int,int> > v[4];
+        for(int i=0;i<m;i++)
+        {
+            cin>>str;
+            for(int j=0;j<n;j++)
+            {
+                if(str[j]=='<') v[0].pb(mp(i,j));
+                else if(str[j]=='>') v[2].pb(mp(i,j));
+                else if(str[j]=='^') v[1].pb(mp(i,j));
+                else if(str[j]=='v') v[3].pb(mp(i,j));
+                g[0][i][j].c=str[j];
+            }
+        }
+
+        pair<int,int> s,e;
+        for(int i=0;i<m;i++)
+        {
+            for(int j=0;j<n;j++)
+            {
+                if(g[0][i][j].c=='S') s=mp(i,j);
+                else if(g[0][i][j].c=='G') e=mp(i,j);
+                else if(g[0][i][j].c=='#' || g[0][i][j].c=='>' || g[0][i][j].c=='<' || g[0][i][j].c=='^' || g[0][i][j].c=='v')
+                {
+                    g[1][i][j].c='n';
+                    g[2][i][j].c='n';
+                    g[3][i][j].c='n';
+                    g[4][i][j].c='n';
+                }
+            }
+        }
+
+        for(int i=1;i<=4;i++)
+        {
+            for(int j=0;j<v[0].size();j++)
+            {
+                int idx=v[0][j].second-1;
+                while(idx>=0 && g[i][v[0][j].first][idx].c!='n')
+                g[i][v[0][j].first][idx--].c='n';
+            }
+            for(int j=0;j<v[2].size();j++)
+            {
+                int idx=v[2][j].second+1;
+                while(idx<n && g[i][v[2][j].first][idx].c!='n')
+                g[i][v[2][j].first][idx++].c='n';
+            }
+            for(int j=0;j<v[1].size();j++)
+            {
+                int idx=v[1][j].first-1;
+                while(idx>=0 && g[i][idx][v[1][j].second].c!='n')
+                g[i][idx--][v[1][j].second].c='n';
+            }
+            for(int j=0;j<v[3].size();j++)
+            {
+                int idx=v[3][j].first+1;
+                while(idx<m && g[i][idx][v[3][j].second].c!='n')
+                g[i][idx++][v[3][j].second].c='n';
+            }
+            vector<pair<int,int> > temp;
+            temp=v[0];
+            v[0]=v[1];
+            v[1]=v[2];
+            v[2]=v[3];
+            v[3]=temp;
+        }
+
+
+        dfs(s,e,1);    // check if path is possible
+
+        bool tag=false;
+        for(int i=1;i<5;i++)
+            if(g[i][e.first][e.second].visited)
+            tag=true;
+        for(int i=0;i<m;i++)
+        for(int j=0;j<n;j++)
+        for(int k=0;k<5;k++)
+        g[k][i][j].visited=false;
+        dist[s.first][s.second]=0;
+        if(!tag)
+        {
+            cout<<"Case #"<<t++<<": Impossible\n";
+        }
+        else
+        {
+            cout<<"Case #"<<t++<<": "<<shortest_peth(s,e,1)<<"\n";
+        }
+    }
+    return 0;
+}
+
+
+
+void dfs(pair<int,int> start,pair<int,int> dest,int chance)
+{
+    g[chance][start.first][start.second].visited=true;
+    chance++;
+    if(chance==5) chance=1;
+    if(start.first>0 && g[chance][start.first-1][start.second].c=='y' && !g[chance][start.first-1][start.second].visited)
+    {
+        pair<int,int> temp=start;
+        temp.first--;
+        dfs(temp,dest,chance);
+    }
+    if(start.first<m-1 && g[chance][start.first+1][start.second].c=='y' && !g[chance][start.first+1][start.second].visited)
+    {
+        pair<int,int> temp=start;
+        temp.first++;
+        dfs(temp,dest,chance);
+    }
+    if(start.second>0 && g[chance][start.first][start.second-1].c=='y' && !g[chance][start.first][start.second-1].visited)
+    {
+        pair<int,int> temp=start;
+        temp.second--;
+        dfs(temp,dest,chance);
+    }
+    if(start.second<n-1 && g[chance][start.first][start.second+1].c=='y' && !g[chance][start.first][start.second+1].visited)
+    {
+        pair<int,int> temp=start;
+        temp.second++;
+        dfs(temp,dest,chance);
+    }
+}
+
+
+
+
+
+int shortest_peth(pair<int,int> s,pair<int,int> e,int chance)
+{
+    queue<pair<pair<int,int>,int> > q;
+    q.push(mp(s,chance));
+    g[chance][s.first][s.second].visited=true;
+    dist[s.first][s.second]=0;
+    while(!q.empty())
+    {
+        pair<pair<int,int>,int> temp=q.front();
+        //cout<<temp.first.first<<" "<<temp.first.second<<" "<<dist[temp.first.first][temp.first.second]<<"\n";
+        q.pop();
+        if(temp.first==e) return dist[temp.first.first][temp.first.second];
+        chance=temp.second+1;
+        if(chance==5) chance=1;
+        if(temp.first.first<m-1 && !g[chance][temp.first.first+1][temp.first.second].visited && g[chance][temp.first.first+1][temp.first.second].c=='y')
+        {
+            g[chance][temp.first.first+1][temp.first.second].visited=true;
+            dist[temp.first.first+1][temp.first.second]=1+dist[temp.first.first][temp.first.second];
+            pair<pair<int,int>,int> p;
+            p=temp;
+            p.first.first=temp.first.first+1;
+            p.second=chance;
+            q.push(p);
+        }
+        if(temp.first.first>0 && !g[chance][temp.first.first-1][temp.first.second].visited && g[chance][temp.first.first-1][temp.first.second].c=='y')
+        {
+            g[chance][temp.first.first-1][temp.first.second].visited=true;
+            dist[temp.first.first-1][temp.first.second]=1+dist[temp.first.first][temp.first.second];
+            pair<pair<int,int>,int> p;
+            p=temp;
+            p.first.first=temp.first.first-1;
+            p.second=chance;
+            q.push(p);
+        }
+        if(temp.first.second>0 && !g[chance][temp.first.first][temp.first.second-1].visited && g[chance][temp.first.first][temp.first.second-1].c=='y')
+        {
+            g[chance][temp.first.first][temp.first.second-1].visited=true;
+            dist[temp.first.first][temp.first.second-1]=1+dist[temp.first.first][temp.first.second];
+            pair<pair<int,int>,int> p;
+            p=temp;
+            p.first.second=temp.first.second-1;
+            p.second=chance;
+            q.push(p);
+        }
+        if(temp.first.second<n-1 && !g[chance][temp.first.first][temp.first.second+1].visited && g[chance][temp.first.first][temp.first.second+1].c=='y')
+        {
+            g[chance][temp.first.first][temp.first.second+1].visited=true;
+            dist[temp.first.first][temp.first.second+1]=1+dist[temp.first.first][temp.first.second];
+            pair<pair<int,int>,int> p;
+            p=temp;
+            p.first.second=temp.first.second+1;
+            p.second=chance;
+            q.push(p);
+        }
+    }
+}
+
+
+void initialize()
+{
+    for(int i=0;i<5;i++)
+        for(int j=0;j<103;j++)
+        for(int k=0;k<103;k++)
+        g[i][j][k].visited=false,g[i][j][k].c='y';
+    for(int i=0;i<103;i++)
+        for(int j=0;j<103;j++)
+        dist[i][j]=999999;
+}

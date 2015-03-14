@@ -1,0 +1,288 @@
+/*
+ * Main.cpp
+ *
+ *  Created on: Jan 11, 2015
+ *      Author: pxp943
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void printmap(int m, int n);
+
+int map[4][100][100];
+
+int main() {
+	int t;
+	int m, n;
+	int si, sj, gi, gj;
+	char init[100][100], tmp;
+
+
+	int focus_i,focus_j;
+
+	int current_state,next_state;
+	int queue[2][10000][2];
+	int current_queue_state;
+	int next_queue_state;
+	int queuenum[2];
+	int result=-1;
+	int cur_steps;
+
+	FILE *fp, *fo;
+	fp = fopen("data.txt", "r");
+	fo = fopen("output.txt", "w");
+	fscanf(fp, "%d", &t);
+
+	for (int tc = 0; tc < t; ++tc) {
+		result=-1;
+		fscanf(fp, "%d %d", &m, &n);
+		//printf("%d %d start\n",m,n);
+		for (int i = 0; i < m; ++i) {
+			for (int j = 0; j < n; ++j) {
+				fscanf(fp, " %c", &init[i][j]);
+				if (init[i][j] == 'S') {
+					si = i;
+					sj = j;
+				} else if (init[i][j] == 'G') {
+					gi = i;
+					gj = j;
+				}
+				//printf("%c", init[i][j]);
+			}
+			//printf("\n");
+		}
+		//printf("end\n\n\n");
+
+		//build state maps
+		for (int state = 0; state < 4; ++state) {
+			//begin copy map into each state as well as rotate turrets
+			for (int i = 0; i < m; ++i) {
+				for (int j = 0; j < n; ++j) {
+					if(state == 0)
+					{
+						switch (init[i][j]) {
+						case '.': map[state][i][j] = -10;break;
+						case '#': map[state][i][j] = -11;break;
+						case '^': map[state][i][j] = -1;break;
+						case '>': map[state][i][j] = -2;break;
+						case 'v': map[state][i][j] = -3;break;
+						case '<': map[state][i][j] = -4;break;
+						default : map[state][i][j] = -10;break;
+						}
+					}
+					else if(state == 1)
+					{
+						switch (init[i][j]) {
+						case '.': map[state][i][j] = -10;break;
+						case '#': map[state][i][j] = -11;break;
+						case '^': map[state][i][j] = -2;break;
+						case '>': map[state][i][j] = -3;break;
+						case 'v': map[state][i][j] = -4;break;
+						case '<': map[state][i][j] = -1;break;
+						default : map[state][i][j] = -10;break;
+						}
+					}
+					else if(state == 2)
+					{
+						switch (init[i][j]) {
+						case '.': map[state][i][j] = -10;break;
+						case '#': map[state][i][j] = -11;break;
+						case '^': map[state][i][j] = -3;break;
+						case '>': map[state][i][j] = -4;break;
+						case 'v': map[state][i][j] = -1;break;
+						case '<': map[state][i][j] = -2;break;
+						default : map[state][i][j] = -10;break;
+						}
+					}
+					else if(state == 3)
+					{
+						switch (init[i][j]) {
+						case '.': map[state][i][j] = -10;break;
+						case '#': map[state][i][j] = -11;break;
+						case '^': map[state][i][j] = -4;break;
+						case '>': map[state][i][j] = -1;break;
+						case 'v': map[state][i][j] = -2;break;
+						case '<': map[state][i][j] = -3;break;
+						default : map[state][i][j] = -10;break;
+						}
+					}
+				}
+
+			}
+
+
+			//begin to build a path of a laser
+			for (int i = 0; i < m; ++i) {
+				for (int j = 0; j < n; ++j) {
+					if(map[state][i][j]==-1)
+					{
+						for(int k=i-1; k>=0 && (map[state][k][j]== -10 || map[state][k][j] == -12); --k)
+							map[state][k][j] = -12;
+					}
+					else if(map[state][i][j]==-2)
+					{
+						for(int k=j+1; k<n && (map[state][i][k]== -10 || map[state][i][k] == -12); ++k)
+							map[state][i][k] = -12;
+					}
+					else if(map[state][i][j]==-3)
+					{
+						for(int k=i+1; k<m && (map[state][k][j]== -10 || map[state][k][j] == -12); ++k)
+							map[state][k][j] = -12;
+					}
+					else if(map[state][i][j]==-4)
+					{
+						for(int k=j-1; k>=0 && (map[state][i][k]== -10 || map[state][i][k] == -12); --k)
+							map[state][i][k] = -12;
+					}
+				}
+			}
+
+		}
+
+
+	//begin the first step
+	//start at si sj
+		current_state = 0;
+		next_state = 1;
+		current_queue_state = current_state%2;
+		next_queue_state = next_state%2;
+
+		queuenum[next_queue_state]=0;
+		if(si-1 >= 0 && map[next_state][si-1][sj] == -10)
+		{
+			map[next_state][si-1][sj] = 1;
+			// 0 for i
+			queue[next_queue_state][queuenum[next_queue_state]][0] = si-1;
+			// 1 for j
+			queue[next_queue_state][queuenum[next_queue_state]][1] = sj;
+			queuenum[next_queue_state]++;
+
+		}
+		if(si+1 < m && map[next_state][si+1][sj] == -10)
+		{
+			map[next_state][si+1][sj] = 1;
+			// 0 for i
+			queue[next_queue_state][queuenum[next_queue_state]][0] = si+1;
+			// 1 for j
+			queue[next_queue_state][queuenum[next_queue_state]][1] = sj;
+			queuenum[next_queue_state]++;
+		}
+		if(sj-1 >= 0 && map[next_state][si][sj-1] == -10)
+		{
+			map[next_state][si][sj-1] = 1;
+			// 0 for i
+			queue[next_queue_state][queuenum[next_queue_state]][0] = si;
+			// 1 for j
+			queue[next_queue_state][queuenum[next_queue_state]][1] = sj-1;
+			queuenum[next_queue_state]++;
+		}
+		if(sj+1 < n && map[1][si][sj+1] == -10)
+		{
+			map[next_state][si][sj+1] = 1;
+			// 0 for i
+			queue[next_queue_state][queuenum[next_queue_state]][0] = si;
+			// 1 for j
+			queue[next_queue_state][queuenum[next_queue_state]][1] = sj+1;
+			queuenum[next_queue_state]++;
+		}
+
+
+		if(map[next_state][gi][gj]>0)result=map[next_state][gi][gj];
+
+		while(result<0 && queuenum[next_queue_state] >0)
+		{
+			current_state = next_state;
+			next_state = (next_state + 1)%4;
+			current_queue_state = current_state%2;
+			next_queue_state = next_state%2;
+			queuenum[next_queue_state]=0;
+			for(int i=0; i<queuenum[current_queue_state] && result<0 ; ++i)
+			{
+				focus_i = queue[current_queue_state][i][0];
+				focus_j = queue[current_queue_state][i][1];
+				cur_steps = map[current_state][focus_i][focus_j];
+
+				if(focus_i-1 >= 0 && map[next_state][focus_i-1][focus_j] == -10)
+				{
+					map[next_state][focus_i-1][focus_j] = cur_steps+1;
+					// 0 for i
+					queue[next_queue_state][queuenum[next_queue_state]][0] = focus_i-1;
+					// 1 for j
+					queue[next_queue_state][queuenum[next_queue_state]][1] = focus_j;
+					queuenum[next_queue_state]++;
+
+				}
+				if(focus_i+1 < m &&  map[next_state][focus_i+1][focus_j] == -10)
+				{
+					map[next_state][focus_i+1][focus_j] = cur_steps+1;
+					// 0 for i
+					queue[next_queue_state][queuenum[next_queue_state]][0] = focus_i+1;
+					// 1 for j
+					queue[next_queue_state][queuenum[next_queue_state]][1] = focus_j;
+					queuenum[next_queue_state]++;
+				}
+				if(focus_j-1 >= 0 && map[next_state][focus_i][focus_j-1] == -10)
+				{
+					map[next_state][focus_i][focus_j-1] = cur_steps+1;
+					// 0 for i
+					queue[next_queue_state][queuenum[next_queue_state]][0] = focus_i;
+					// 1 for j
+					queue[next_queue_state][queuenum[next_queue_state]][1] = focus_j-1;
+					queuenum[next_queue_state]++;
+				}
+				if(focus_j+1 < n &&  map[next_state][focus_i][focus_j+1] == -10)
+				{
+					map[next_state][focus_i][focus_j+1] = cur_steps+1;
+					// 0 for i
+					queue[next_queue_state][queuenum[next_queue_state]][0] = focus_i;
+					// 1 for j
+					queue[next_queue_state][queuenum[next_queue_state]][1] = focus_j+1;
+					queuenum[next_queue_state]++;
+				}
+
+				if(map[next_state][gi][gj]>0)result=map[next_state][gi][gj];
+
+			}
+		}
+
+		if(result>0)fprintf(fo,"Case #%d: %d\n",(tc+1),result);
+		else fprintf(fo,"Case #%d: impossible\n",(tc+1));
+
+
+	}
+	fclose(fo);
+	fclose(fp);
+
+	return 0;
+}
+
+void printmap(int m, int n)
+{
+
+	for(int state=0;state<4;++state)
+	{
+	printf("state %d\n",state);
+	for (int i = 0; i < m; ++i)
+	{
+		for (int j = 0; j < n; ++j)
+		{
+			switch(map[state][i][j])
+			{
+				case -10 : printf(".");break;
+				case -11 : printf("#");break;
+				case -12 : printf("+");break;
+				case -1 : printf("^");break;
+				case -2 : printf(">");break;
+				case -3 : printf("v");break;
+				case -4 : printf("<");break;
+				default : printf("%d",map[state][i][j]);break;
+			}
+		}
+	printf("\n");
+	}
+	printf("\n");
+	}
+
+}

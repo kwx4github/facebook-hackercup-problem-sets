@@ -1,0 +1,145 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#include <stack>
+#include <numeric>
+#include <cstdio>
+#include <cmath>
+#include <map>
+#include <climits>
+#include <set>
+#include <string>
+#include <sstream>
+#include <fstream>
+#define FOR(i,a,b) for(__typeof(b) i=a; i<(b); ++i)
+#define FOR0(i,b) for(__typeof(b) i=0; i<(b); ++i)
+#define TRAV(it,c) for(__typeof((c).begin()) it=(c).begin(); it!=(c).end(); ++it)
+#define RTRAV(it,c) for(__typeof((c).rbegin()) it=(c).rbegin(); it!=(c).rend(); ++it)
+using namespace std;
+typedef pair<int, int> pii;
+typedef vector<int> vi;
+typedef vector<bool> vb;
+typedef vector<vb> vbb;
+typedef vector<vi> vii;
+typedef vector<pii> vpii;
+typedef long long ll;
+
+char v[110][110];
+bool an[10010][5];
+
+vii adj;
+vector<pii> d = { {1,0}, {0,1}, {-1,0}, {0,-1} };
+
+
+int src, tgt, n, m;
+
+bool is_laser(char c){
+	return ( c=='<' || c=='>' || c == 'v' || c == '^' );
+}
+
+void mark_laser_targets(){
+	FOR0(i,n) FOR0(j,m) FOR0(k,4) an[ i*m + j ][k] = true;
+
+	FOR0(i,n) FOR0(j,m) if( is_laser(v[i][j]) ){
+		vi ord;	// U, R, D, L
+		switch (v[i][j]){
+			case '<' : ord = {1, 2, 3, 0}; break;
+			case '>' : ord = {3, 0, 1, 2}; break;
+			case 'v' : ord = {2, 3, 0, 1}; break;
+			case '^' : ord = {0, 1, 2, 3}; break;
+			default : break;
+		}
+		for(int x = i-1; x>=0; --x){
+			if( is_laser(v[x][j]) || v[x][j] == '#' ) break;
+			an[ x*m + j ][ ord[0] ] = false;
+		}
+		FOR(y,j+1, m){
+			if( is_laser(v[i][y]) || v[i][y] == '#' ) break;
+			an[ i*m + y ][ ord[1] ] = false;
+		}
+		FOR(x,i+1,n){
+			if( is_laser(v[x][j]) || v[x][j] == '#' ) break;
+			an[ x*m + j ][ ord[2] ] = false;
+		}
+		for(int y = j-1; y>= 0; --y){
+			if( is_laser(v[i][y]) || v[i][y] == '#' ) break;
+			an[ i*m + y ][ ord[3] ] = false;
+		}
+	}
+}
+
+int solve(){
+	vi d(n*m+10, 1000000000);
+	d[src] = 0;
+	queue<int> q;
+	q.push(src);
+
+	while( !q.empty() ){
+		bool neib = false;
+
+		TRAV(it, adj[q.front()]){
+			int mod1 = (d[q.front()]+1)%4;
+			neib |= an[*it][mod1];
+			if( d[*it] == 1000000000 && an[*it][mod1]){
+					d[*it] = d[q.front()] + 1;
+					q.push(*it);
+			}
+		}
+
+		if(neib){
+			TRAV(it, adj[q.front()]){
+				int mod3 = (d[q.front()]+3)%4;
+				if( d[*it] == 1000000000 && an[*it][mod3]){
+						d[*it] = d[q.front()] + 3;
+						q.push(*it);
+				}
+			}
+		}
+
+		q.pop();
+	}
+
+	return d[tgt];
+}
+
+int main(){
+	ios::sync_with_stdio(false);
+	int tests; cin >> tests;
+	FOR(t,1,tests+1){
+		cin >> n >> m;
+
+		FOR0(i,n) FOR0(j,m){
+			cin >> v[i][j];
+			if( v[i][j] == 'S' ){
+				src = i*m + j;
+				v[i][j] = '.';
+			}
+			else if( v[i][j] == 'G' ){
+				tgt = i*m + j;
+				v[i][j] = '.';
+			}
+		}
+
+		mark_laser_targets();
+
+		adj.clear(); adj.resize(n*m + 10);
+
+		FOR0(i,n) FOR0(j,m) if( v[i][j] == '.' ){
+			int nhash = i*m + j;
+			TRAV(it, d){
+				pii p = { i+it->first, j + it->second };
+				if( p.first >= 0 && p.first < n && p.second >= 0 && p.second < m && v[p.first][p.second] == '.'){
+					int phash = p.first*m + p.second;
+					adj[nhash].push_back(phash);
+				}
+			}
+		}
+
+		int ans = solve();
+		if(ans==1000000000) cout << "Case #" << t << ": impossible\n";
+		else cout << "Case #" << t << ": " << ans << "\n"; 
+	}
+
+	return 0;
+}

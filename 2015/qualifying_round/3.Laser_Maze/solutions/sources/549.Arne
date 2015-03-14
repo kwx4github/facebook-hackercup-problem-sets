@@ -1,0 +1,291 @@
+#include <iostream>
+#include <queue>
+using namespace std;
+
+//#define DEBUG
+
+void printSolution( int testCase, int steps )
+{
+	cout << "Case #" << testCase << ": " << ( steps == -1 ? "impossible" : to_string( steps ) ) << endl;
+}
+
+enum MazeTiles
+{
+	WALKABLE,
+	WALL,
+	N_TURRET,
+	E_TURRET,
+	S_TURRET,
+	W_TURRET,
+	VISITED
+};
+
+inline int calcIndex( int row, int column, int columns )
+{
+	return row * columns + column;
+}
+
+inline int calcIndexInTime( int row, int column, int rows, int columns, int step )
+{
+	return columns * rows * ( step % 4 )  + calcIndex( row, column, columns );
+}
+
+void printMaze( MazeTiles* maze, int rows, int columns )
+{
+	for ( int row = 0; row < rows; ++row )
+	{
+		for ( int column = 0; column < columns; ++column )
+		{
+			MazeTiles tile = maze[ calcIndex( row, column, columns ) ];
+			switch ( tile )
+			{
+				case WALKABLE:
+					cout << ".";
+					break;
+				case WALL:
+					cout << "#";
+					break;
+				case VISITED:
+					cout << "O";
+					break;
+			}
+		}
+		cout << endl;
+	}
+}
+
+void copyWallsAndTurrets( MazeTiles* orig, MazeTiles* copy, int size )
+{
+	for ( int i = 0; i < size; ++i )
+	{
+		if ( orig[i] == WALKABLE )
+		{
+			copy[i] = WALKABLE;
+		} else 
+		{
+			copy[i] = WALL;
+		}
+	}
+}
+
+void shootTurret( MazeTiles* orig, MazeTiles* current, int row, int column, int rows, int columns, int timestep )
+{
+	int direction[4][2] = { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+	int dRow, dColumn;
+
+	MazeTiles turret = orig[ calcIndex( row, column, columns ) ];
+	int i;
+	switch( turret )
+	{
+		case N_TURRET:
+		  	i = timestep % 4;
+			dRow = direction[i][0]; 
+			dColumn = direction[i][1]; 
+			break;
+		case E_TURRET:
+			i = ( 1 + timestep ) % 4;
+			dRow = direction[i][0]; 
+			dColumn = direction[i][1]; 
+			break;
+		case S_TURRET:
+			i = ( 2 + timestep ) % 4;
+			dRow = direction[i][0]; 
+			dColumn = direction[i][1]; 
+			break;
+		case W_TURRET:
+			i = ( 3 + timestep ) % 4;
+			dRow = direction[i][0]; 
+			dColumn = direction[i][1]; 
+			break;
+	}
+
+	row += dRow;
+	column += dColumn;
+
+	while ( row >= 0 && row < rows && column >= 0 && column < columns ) 
+	{
+		int index = calcIndex( row, column, columns );
+
+	  	if ( orig[ index ] != WALKABLE )
+		{
+			break;
+		}
+
+		current[ index ] = WALL;
+
+		row += dRow;
+		column += dColumn;
+	}
+}
+
+void createTimeExpandedMaze( int timestep,
+    			     int rows, int columns,
+			     MazeTiles* originalMaze,
+			     MazeTiles* timeExpandedMaze
+			   )
+{
+	int nofTiles = rows * columns;
+	MazeTiles* currentMaze = timeExpandedMaze + nofTiles * timestep;
+	copyWallsAndTurrets( originalMaze, currentMaze, nofTiles );
+
+	for ( int row = 0; row < rows; ++row )
+	{
+		for ( int column = 0; column < columns; ++column )
+		{
+			if ( originalMaze[ calcIndex( row, column, columns ) ] != WALKABLE && originalMaze[ calcIndex( row, column, columns) ] != WALL )
+			{
+				shootTurret( originalMaze, currentMaze, row, column, rows, columns, timestep );
+			}
+		}		
+	}
+}
+
+void explore( MazeTiles* currentMaze, int rows, int columns, int row, int column, queue< pair< int, int > >& toVisit )
+{
+	int directions[4][2] = { { -1, 0 }, { 0, 1 }, { 1, 0 }, { 0, -1 } };
+
+	for ( int i = 0; i < 4; ++i )
+	{
+		int nRow = row + directions[i][0];
+		int nColumn = column + directions[i][1];
+
+		if ( nRow >= 0 && nRow < rows && nColumn >= 0 && nColumn < columns && currentMaze[ calcIndex( nRow, nColumn, columns ) ] == WALKABLE )
+		{
+			toVisit.push( make_pair( nRow, nColumn ) );
+		}
+	}
+}
+
+int bfs( MazeTiles* timeExpandedMazes, int start[2], int goal[2], int rows, int columns )
+{
+  	int startRow = start[0], startColumn = start[1];
+	int goalRow = goal[0], goalColumn = goal[1];
+	int currentStep = 0;
+	
+	queue< pair< int, int > > toVisit;
+	toVisit.push( make_pair( startRow, startColumn ) );
+
+	while ( !toVisit.empty() )
+	{
+		queue< pair< int, int > > toVisitNextStep;
+		int nextStep = currentStep + 1;
+
+		int goalInTime = calcIndexInTime( goalRow, goalColumn, rows, columns, currentStep );
+
+		while ( !toVisit.empty() )
+		{
+			pair< int, int > t = toVisit.front(); toVisit.pop();
+			
+			int row = t.first, column = t.second;
+			int i = calcIndexInTime( row, column, rows, columns, currentStep );
+			if ( i == goalInTime )
+			{
+				return currentStep;
+			} else if ( timeExpandedMazes[i] != VISITED )
+			{
+				timeExpandedMazes[i] = VISITED;
+				explore( timeExpandedMazes + calcIndexInTime( 0, 0, rows, columns, nextStep ), rows, columns, row, column, toVisitNextStep );
+			}
+		}
+#ifdef DEBUG		
+		cout << "------------------------" << endl << endl;
+		cout << "Timestep " << currentStep;
+		for ( int i = 0; i < 4; ++i )
+		{
+	  		cout << endl << "Maze @ " << i << ":" << endl;
+			printMaze( timeExpandedMazes + i * rows * columns, rows, columns );
+		}
+#endif
+		toVisit = toVisitNextStep;
+		currentStep = nextStep;
+	}
+
+	return -1;
+}
+
+void runExclamationMark( int testCase )
+{
+	int rows, columns;
+	cin >> rows >> columns;
+
+	int start[2];
+	int goal[2];
+
+	MazeTiles originalMaze[rows*columns];
+	for ( int row = 0; row < rows; ++row )
+	{
+		for ( int column = 0; column < columns; ++column )
+		{
+			char t;
+			cin >> t;
+
+			int index = calcIndex( row, column, columns );
+
+			switch ( t )
+			{
+			case '#':
+				originalMaze[ index ] = WALL;
+				break;
+			case '.':
+				originalMaze[ index ] = WALKABLE;
+				break;
+			case 'S':
+				originalMaze[ index ] = WALKABLE;
+				start[0] = row;
+				start[1] = column;
+				break;
+			case 'G':
+				originalMaze[ index ] = WALKABLE;
+				goal[0] = row;
+				goal[1] = column;
+				break;
+			case '^':
+				originalMaze[ index ] = N_TURRET;
+				break;
+			case '>':
+				originalMaze[ index ] = E_TURRET;
+				break;
+			case 'v':
+				originalMaze[ index ] = S_TURRET;
+				break;
+			case '<':
+				originalMaze[ index ] = W_TURRET;
+				break;
+			default:
+				cerr << "Unknown character " << t << endl;
+				exit( 1 );
+				break;
+			}
+		}
+	}
+
+	MazeTiles timeExpandedMazes[ 4 * rows * columns ];
+	for ( int i = 0; i < 4; ++i )
+	{
+		createTimeExpandedMaze( i, rows, columns, originalMaze, timeExpandedMazes );
+	}
+
+#ifdef DEBUG
+	cout << "====================" << endl;
+	cout << "Test " << testCase    << endl;
+	cout << "====================" << endl;
+	cout << "Time expanded mazes:" << endl;
+	for ( int i = 0; i < 4; ++i )
+	{
+	  	cout << endl << "Maze @ " << i << ":" << endl;
+		printMaze( timeExpandedMazes + i * rows * columns, rows, columns );
+	}
+#endif
+
+	printSolution( testCase, bfs( timeExpandedMazes, start, goal, rows, columns ) );
+}
+
+int main( int argc, char** argv )
+{
+	int T;
+	cin >> T;
+
+	for ( int i = 1; i <= T; ++i ) runExclamationMark( i );
+
+	return 0;
+}

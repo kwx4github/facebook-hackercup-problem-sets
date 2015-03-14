@@ -1,0 +1,265 @@
+import sys
+def main():
+
+	def laser(maze,turret):
+		m = len(maze)
+		n= len(maze[0])
+		if maze[turret[0]][turret[1]] == "v":
+			#we want to find the first wall
+			for row in xrange(turret[0],m):
+				if maze[row][turret[1]] == "#":
+					return (row, turret[1])
+			return (m, turret[1])
+
+		elif maze[turret[0]][turret[1]] == "^":
+			
+			for row in xrange(turret[0],-1,-1):
+				if maze[row][turret[1]] == "#":
+					return (row, turret[1])
+			return (-1, turret[1])
+
+		if maze[turret[0]][turret[1]] == ">":
+			for col in xrange(turret[1],n):
+				if maze[turret[0]][col] == "#":
+					return (turret[0],col)
+			return (turret[0], n)
+
+		if maze[turret[0]][turret[1]] == "<":
+			for col in xrange(turret[1],-1,-1):
+				if maze[turret[0]][col] == "#":
+					return (turret[0], col)
+			return (turret[0], -1)
+
+	def dead(maze,turrets,you):
+		for turret in turrets:
+			#if same row, we check col
+			yrow, ycol = you[0],you[1]
+			trow, tcol = laser(maze,turret)
+			if trow == yrow and min(tcol, turret[1]) <= ycol <= max(tcol,turret[1]):
+				return True
+			elif tcol == ycol and min(trow, turret[0]) <= yrow <= max(trow, turret[0]):
+				return True
+
+		return False
+
+	def shift(maze,turrets):
+		for turret in turrets:
+			if maze[turret[0]][turret[1]] == "v":
+				maze[turret[0]][turret[1]] = "<"
+			elif maze[turret[0]][turret[1]] == "<":
+				maze[turret[0]][turret[1]] = "^"
+			elif maze[turret[0]][turret[1]] == "^":
+				maze[turret[0]][turret[1]] = ">"
+			elif maze[turret[0]][turret[1]] == ">":
+				maze[turret[0]][turret[1]] = "v"
+
+	def printmaze(maze):
+		for em in xrange(m):
+			for en in xrange(n):
+				pass
+				#print maze[em][en],
+			#print 
+	#	print 
+
+	def move(maze,turrets,you,move):
+		you[0] += move[0]
+		you[1] += move[1]
+		shift(maze,turrets)
+		#printmaze(maze)
+
+	def unmove(maze,turrets,you,move):
+		you[0] -= move[0]
+		you[1] -= move[1]
+		shift(maze,turrets)
+		shift(maze,turrets)
+		shift(maze,turrets)
+
+
+
+	def test(maze):
+		m = len(maze)
+		n = len(maze[0])
+		#print m,n
+		turrets = []
+		you = [None,None]
+		goal = [None,None]
+
+		for em in xrange(m):
+			for en in xrange(n):
+				#print maze[em][en],
+				if maze[em][en] in ["v","<",">","^"]:
+					turrets.append((em,en))
+				elif maze[em][en] == "S":
+					you[0]=em
+					you[1]=en
+				elif maze[em][en] == "G":
+					goal[0], goal[1] = em,en
+			#print 
+	#	print 
+
+	#	print turrets, you, goal
+		assert(you != [None,None])
+		assert(goal != [None,None])
+
+		moveset = [(1,0),(0,-1),(0,1),(-1,0)]
+		nomoves = 0
+		path = []
+		visited = set()
+		def solve(maze, turrets, you,path,tempo,depth):
+			visited.add((tuple(you), tempo))
+			tempo = (tempo+1)%4
+			#print path
+			m,n = len(maze), len(maze[0])
+			if depth >= 50:
+				return 42
+			#base case: death, wall, success
+			if dead(maze,turrets, you):
+				return False
+			if (tuple(you),tempo) in visited:
+				return False
+			if maze[you[0]][you[1]] == "#":
+				return False
+			if you[0] == goal[0] and you[1] == goal[1]:
+				return path
+
+			#recursive case
+			else:
+				for move in moveset:
+					move(maze,turrets,you,move)
+					result = solve(maze,turrets,you,path,tempo,depth+1)
+					if result == False:
+						unmove(maze,turrets,you,move)
+
+
+
+				return False
+		ans = solve(maze,turrets,you,path,tempo=0,depth=0)
+		#print ans
+		return ans
+
+	def dgraph(maze):
+		m = len(maze)
+		n = len(maze[0])
+		graph = dict()
+		moveset = [(-1,0),(1,0),(0,1),(0,-1)]
+		for em in xrange(m):
+			for en in xrange(n):
+				if maze[em][en]=="." or maze[em][en] == "S" or maze[em][en] == "G":
+					neighbours = []
+					for move in moveset:
+						if 0 <= em+move[0] < m and 0 <= en+move[1] < n and maze[em+move[0]][en+move[1]] in [".","S","G"]:
+							neighbours.append(move)
+					graph[(em,en)] = neighbours
+		return graph
+
+
+	def test(maze):
+		#setup
+		m = len(maze)
+		n = len(maze[0])
+		#print m,n
+		turrets = []
+		you = [None,None]
+		goal = [None,None]
+
+		for em in xrange(m):
+			for en in xrange(n):
+			#	print maze[em][en],
+				if maze[em][en] in ["v","<",">","^"]:
+					turrets.append((em,en))
+				elif maze[em][en] == "S":
+					you[0]=em
+					you[1]=en
+				elif maze[em][en] == "G":
+					goal[0], goal[1] = em,en
+		#	print 
+		#print 
+
+	#	print turrets, you, goal
+		assert(you != [None,None])
+		assert(goal != [None,None])
+
+		moveset = [(1,0),(0,-1),(0,1),(-1,0)]
+
+		tempo = 0
+		graph = dgraph(maze)
+		#print graph
+		q = []
+		checked = []
+		q.append((you[0],you[1],tempo))
+		while not len(q) == 0:
+			deade = False
+			if tempo >= 50: return False
+			v=[None,None]
+			(v[0],v[1],tempo) = q.pop(0)
+
+
+			#basecase: dead
+			if tempo !=0:
+				for i in xrange(tempo%4):
+					shift(maze,turrets)
+
+
+				if dead(maze,turrets,v):
+					deade = True
+					checked.append((v[0],v[1],tempo))
+				for i in xrange(4-tempo%4):
+					shift(maze,turrets)
+				
+			#basecase: win
+			if v[0] == goal[0] and v[1]==goal[1] and not deade:
+				#print tempo, "tempo"
+				#print tempo, "tempo"
+				return tempo
+
+
+			#else, we check current state and add to queue
+			if (v[0],v[1],tempo%4) not in checked:
+				for edge in graph[tuple(v)]:
+					if (v[0],v[1],(tempo+1)%4) not in checked:
+						#print q
+						q.append((v[0]+edge[0],v[1]+edge[1],tempo+1))
+				checked.append((v[0],v[1],tempo%4))
+			#if its in checked, we ignore and move on.
+		return False
+
+
+
+
+
+
+
+	inputstuff = open(sys.argv[1])
+	T = int(inputstuff.readline())
+	output=""
+	
+	for eachtest in xrange(T):
+		mazedims = inputstuff.readline().strip().split(" ")
+		m,n = int(mazedims[0]), int(mazedims[1])
+		maze= [[0]*n for i in xrange(m)]
+
+		for eachm in xrange(m):
+			charlist = inputstuff.readline().strip()
+			
+			for i in xrange(len(charlist)):
+				maze[eachm][i] = charlist[i]
+
+		result = test(maze)
+		if result == False: result = "impossible"
+		if type(result)==int: result = result
+		output+="Case #%d: %s\n" % (eachtest+1, result)
+	f = open('cans.txt','w')
+	f.write(output)
+	f.close()
+	print output
+
+	#g = open("new_years_resolution_example_output.txt", "r")
+	#sample = g.read()
+	#assert(output==sample)
+	#print repr(output)
+	#print repr(sample)
+
+
+
+
+main()

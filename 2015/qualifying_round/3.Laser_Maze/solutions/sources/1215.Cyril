@@ -1,0 +1,206 @@
+// Facebook Hacker Cup 2015
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <queue>
+#include <tuple>
+
+using namespace std;
+
+char table[4];
+char
+convert(char c,int state)
+{
+	int idx=-1;
+	if(table[0]==c)idx=0;
+	else if(table[1]==c)idx=1;
+	else if(table[2]==c)idx=2;
+	else if(table[3]==c)idx=3;
+	else return ' ';
+	idx=(idx+state)%4;
+	return table[idx];
+}
+
+bool
+isGd(vector<vector<char> > &maze,int i,int j)
+{
+	if(i<0||i>=maze.size()||j<0||j>=maze[0].size())return false;
+	if(maze[i][j]=='#'||maze[i][j]=='>'||maze[i][j]=='<'||maze[i][j]=='v'||maze[i][j]=='^')return false;
+	return true;
+}
+
+int
+solve(vector<vector<char> > &maze,vector<vector<vector<char> > > &exposures,int si,int sj)
+{
+	// initializations
+	int visited[4][105][105];
+	for(int i=0;i<4;i++)
+		for(int j=0;j<105;j++)
+			for(int k=0;k<105;k++)
+				visited[i][j][k]=0;
+	queue<int> lfron;
+	lfron.push(0);
+	queue<int> ifron;
+	ifron.push(si);
+	queue<int> jfron;
+	jfron.push(sj);
+	// run BFS
+	while(!lfron.empty())
+	{
+		// pop state
+		int l=lfron.front(),i=ifron.front(),j=jfron.front();
+		lfron.pop();
+		ifron.pop();
+		jfron.pop();
+		// check for losing state
+		bool le=convert(exposures[i][j][0],l)=='>';
+		bool re=convert(exposures[i][j][1],l)=='<';
+		bool ue=convert(exposures[i][j][2],l)=='v';
+		bool de=convert(exposures[i][j][3],l)=='^';
+		if((le||re||ue||de)&&l>0)continue;
+		// check for winning state
+		if(maze[i][j]=='G')return l;
+		// push all possible children
+		if(isGd(maze,i-1,j)&&visited[(l+1)%4][i-1][j]==0)
+		{
+			visited[(l+1)%4][i-1][j]=1;
+			lfron.push(l+1);
+			ifron.push(i-1);
+			jfron.push(j);
+		}
+		if(isGd(maze,i+1,j)&&visited[(l+1)%4][i+1][j]==0)
+		{
+			visited[(l+1)%4][i+1][j]=1;
+			lfron.push(l+1);
+			ifron.push(i+1);
+			jfron.push(j);
+		}
+		if(isGd(maze,i,j-1)&&visited[(l+1)%4][i][j-1]==0)
+		{
+			visited[(l+1)%4][i][j-1]=1;
+			lfron.push(l+1);
+			ifron.push(i);
+			jfron.push(j-1);
+		}
+		if(isGd(maze,i,j+1)&&visited[(l+1)%4][i][j+1]==0)
+		{
+			visited[(l+1)%4][i][j+1]=1;
+			lfron.push(l+1);
+			ifron.push(i);
+			jfron.push(j+1);
+		}
+	}
+	return -1;
+}
+
+bool
+isCh(char c)
+{
+	if(c=='#'||c=='^'||c=='v'||c=='<'||c=='>')return true;
+	return false;
+}
+
+int
+main()
+{
+	// initializations
+	table[0]='^';
+	table[1]='>';
+	table[2]='v';
+	table[3]='<';
+	ifstream cin;
+	cin.open("lm_in.txt");
+	ofstream cout;
+	cout.open("lm_out.txt");
+	// test cases
+	int T;
+	cin>>T;
+	// solve T test cases
+	for(int t=1;t<=T;t++)
+	{
+		// store the input
+		int M,N;
+		cin>>M>>N;
+		vector<vector<char> > maze(M);
+		int srci=-1,srcj=-1;
+		for(int i=0;i<M;i++)
+		{
+			vector<char> line(N);
+			for(int j=0;j<N;j++)
+			{
+				char a;
+				cin>>a;
+				if(a=='S')
+				{
+					srci=i;
+					srcj=j;
+				}
+				line[j]=a;
+			}
+			maze[i]=line;
+		}
+		// get the exposures
+		vector<vector<vector<char> > > exposures(M);
+		for(int i=0;i<maze.size();i++)
+		{
+			vector<vector<char> > line(N);
+			for(int j=0;j<maze[i].size();j++)
+			{
+				vector<char> pos(4);
+				pos[0]='e';
+				pos[1]='e';
+				pos[2]='e';
+				pos[3]='e';
+				// first left
+				for(int k=j-1;k>=0;k--)
+				{
+					char c=maze[i][k];
+					if(isCh(c))
+					{
+						pos[0]=c;
+						break;
+					}
+				}
+				// first right
+				for(int k=j+1;k<N;k++)
+				{
+					char c=maze[i][k];
+					if(isCh(c))
+					{
+						pos[1]=c;
+						break;
+					}
+				}
+				// first up
+				for(int k=i-1;k>=0;k--)
+				{
+					char c=maze[k][j];
+					if(isCh(c))
+					{
+						pos[2]=c;
+						break;
+					}
+				}
+				// first left
+				for(int k=i+1;k<M;k++)
+				{
+					char c=maze[k][j];
+					if(isCh(c))
+					{
+						pos[3]=c;
+						break;
+					}
+				}
+				line[j]=pos;
+			}
+			exposures[i]=line;
+		}
+		// solve
+		cout<<"Case #"<<t<<": ";
+		int moves=solve(maze,exposures,srci,srcj);
+		if(moves==-1)cout<<"impossible"<<endl;
+		else cout<<moves<<endl;
+	}
+	return 0;
+}

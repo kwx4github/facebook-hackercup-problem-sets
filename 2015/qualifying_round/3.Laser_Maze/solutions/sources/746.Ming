@@ -1,0 +1,125 @@
+#include <cstdio>
+#include <queue>
+#include <cstring>
+using namespace std;
+
+// u r d l
+const int dx[] = {-1, 0, 1, 0};
+const int dy[] = {0, 1, 0, -1};
+
+const int N = 105;
+bool safe[4][N][N];
+char raw[N][N];
+int m, n;
+
+int get_dir(char c)
+{
+    switch (c) {
+        case '^':
+            return 0;
+        case '>': 
+            return 1;
+        case 'v':
+            return 2;
+        case '<':
+            return 3;
+        default:
+            return -1;
+    }
+}
+
+bool is_passable(char c)
+{
+    return c == '.' || c == 'S' || c == 'G';
+}
+
+bool is_turret(char c)
+{
+    return get_dir(c) >= 0;
+}
+
+void read()
+{
+    scanf("%d%d\n", &m, &n);
+    for (int i = 1; i <= m; ++i) fgets(raw[i] + 1, N-1, stdin);
+    m += 2;
+    n += 2;
+    for (int i = 0; i < m; ++i) 
+        raw[i][0] = raw[i][n - 1] = '#';
+    for (int j = 0; j < n; ++j) 
+        raw[0][j] = raw[m - 1][j] = '#';
+}
+
+void build_safemap(int offset)
+{
+    for (int i = 0; i < m; ++i) for (int j = 0; j < n; ++j) 
+        safe[offset][i][j] = true;
+    for (int i = 0; i < m; ++i) for (int j = 0; j < n; ++j) {
+        if (is_turret(raw[i][j])) {
+            int d = (get_dir(raw[i][j]) + offset) & 3;
+            int i2 = i + dx[d], j2 = j + dy[d];
+            while (is_passable(raw[i2][j2])) {
+                safe[offset][i2][j2] = false;
+                i2 += dx[d];
+                j2 += dy[d];
+            }
+        }
+    }
+}
+
+struct Entry {
+    int o, x, y;
+};
+int bfs()
+{
+    queue<Entry> Q;
+    static int dist[4][N][N];
+    memset(dist, 0x3f, sizeof(dist));
+    for (int i = 0; i < m; ++i) for (int j = 0; j < n; ++j) {
+        if (raw[i][j] == 'S') {
+            Entry e = {0, i, j};
+            dist[e.o][e.x][e.y] = 0;
+            Q.push(e);
+        }
+    }
+    while (!Q.empty()) {
+        Entry e = Q.front();
+        Q.pop();
+        for (int dir = 0; dir < 4; ++dir) {
+            Entry e2 = {(e.o + 1) & 3, e.x + dx[dir], e.y + dy[dir]};
+            if (is_passable(raw[e2.x][e2.y]) && safe[e2.o][e2.x][e2.y] &&
+                    dist[e2.o][e2.x][e2.y] > 1e9) {
+                dist[e2.o][e2.x][e2.y] = dist[e.o][e.x][e.y] + 1;
+                Q.push(e2);
+            }
+        }
+    }
+    int ans = 0x3f3f3f3f;
+    for (int i = 0; i < m; ++i) for (int j = 0; j < n; ++j) {
+        if (raw[i][j] == 'G') for (int o = 0; o < 4; ++o) {
+            ans = min(ans, dist[o][i][j]);
+        }
+    }
+    return ans;
+}
+
+void work()
+{
+    read();
+    for (int offset = 0; offset < 4; ++offset) build_safemap(offset);
+    int ans = bfs();
+    static int ttt = 0;
+    printf("Case #%d: ", ++ttt);
+    if (ans > 1e9) {
+        printf("impossible\n");
+    } else {
+        printf("%d\n", ans);
+    }
+}
+
+int main()
+{
+    int T;
+    scanf("%d\n", &T);
+    while (T--) work();
+}

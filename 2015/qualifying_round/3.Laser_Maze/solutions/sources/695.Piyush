@@ -1,0 +1,98 @@
+#include <bits/stdc++.h>
+#define MP make_pair
+#define PB push_back
+#define X first
+#define Y second
+#define LL long long int
+#define PII pair<int,int>
+
+using namespace std;
+
+const int oo = (1 << 30) ;
+const long long int OO = (1LL << 62); 
+
+#define trace1(x) cerr << #x << ": " << x << "\n";
+#define trace2(x,y) cerr << #x << ": " << x << " | " << #y << ": " << y << "\n";
+#define trace3(x,y,z) cerr << #x << ": " << x << " | " << #y << ": " << y << " | " << #z << ": " << z << "\n";
+#define trace4(a,b,c,d) cerr << #a << ": " << a << " | " << #b << ": " << b << " | " << #c << ": " << c << " | " <<  #d << ": " << d << "\n";
+#define trace5(a,b,c,d,e) cerr << #a << ": " << a << " | " << #b << ": " << c << " | " << #c << ": " <<  c << " | " << #d << ": " << d << " | " << #e << ": " << e << "\n";
+#define trace6(a,b,c,d,e,f) cerr << #a << ": " << a << " | " << #b << ": " << c << " | " << #c << ": " << c << " | " << #d << ": " << d  << " | " << #e << ": " << e << " | " << #f << ": " << f << "\n";
+
+char Grid[120][120];
+int T,N,M;
+
+bool IsValid[4][120][120];
+bool Vis[4][120][120];
+int Dis[4][120][120];
+
+int Moves[][2] = {{0,1},{1,0},{-1,0},{0,-1}};
+char Seq[] = {'^', '>', 'v', '<'};
+map<char,int> Rseq = {{'^',0},{'>',1},{'v',2},{'<',3}};
+
+bool IsTurret(char c) {
+	return c != '#' and c != '.' ;
+}
+
+bool IsPosValid(int idx, int i, int j) {
+	return i>=0 and i<N and j>=0 and j<M and IsValid[idx][i][j] and !Vis[idx][i][j];
+}
+
+void ComputeIsValid(int idx) {
+	for(int i=0;i<N;i++) {
+		for(int j=0;j<M;j++) {
+			if(Grid[i][j] == '.') continue;
+			IsValid[idx][i][j] = false;
+			if(!IsTurret(Grid[i][j])) continue;
+			char c = Seq[(Rseq[Grid[i][j]]+idx)%4];
+			if(c == '^') for(int k=i-1;k>=0 and Grid[k][j]=='.';k--) IsValid[idx][k][j] = false;
+			else if(c == 'v') for(int k=i+1;k<N and Grid[k][j]=='.';k++) IsValid[idx][k][j] = false;
+			else if(c == '>') for(int k=j+1;k<M and Grid[i][k]=='.';k++) IsValid[idx][i][k] = false;
+			else for(int k=j-1;k>=0 and Grid[i][k]=='.';k--) IsValid[idx][i][k] = false;
+		}
+	}
+}
+
+int main() {
+	scanf("%d",&T);
+	for(int I=1;I<=T;I++) {
+		pair<int,int> st,en;
+		scanf("%d%d",&N,&M);
+		for(int i=0;i<N;i++) for(int j=0;j<M;j++) {
+			scanf("%1s",&Grid[i][j]);
+			if(Grid[i][j] == 'S') st.X = i, st.Y = j, Grid[i][j] = '.';
+			if(Grid[i][j] == 'G') en.X = i, en.Y = j, Grid[i][j] = '.';
+		}
+		memset(IsValid, 1, sizeof(IsValid));
+		memset(Vis, 0, sizeof(Vis));
+		memset(Dis, -1, sizeof(Dis));
+		for(int i=0;i<4;i++) {
+			ComputeIsValid(i);
+		}
+		using triple = tuple<int,int,int>;
+		queue<triple> Q;
+		Q.push(triple{0,st.X,st.Y});
+		Vis[0][st.X][st.Y] = true;
+		Dis[0][st.X][st.Y] = 0;
+		while(!Q.empty()) {
+			const triple &t = Q.front();
+			if(get<1>(t) == en.X and get<2>(t) == en.Y) break;
+			Q.pop();
+			//trace4(get<0>(t),get<1>(t),get<2>(t),Dis[get<0>(t)][get<1>(t)][get<2>(t)]);
+			for(int i=0;i<4;i++) {
+				triple p{(get<0>(t)+1)%4, get<1>(t)+Moves[i][0], get<2>(t)+Moves[i][1]};
+				if(IsPosValid(get<0>(p), get<1>(p), get<2>(p))) {
+					Vis[get<0>(p)][get<1>(p)][get<2>(p)] = true;
+					Dis[get<0>(p)][get<1>(p)][get<2>(p)] = Dis[get<0>(t)][get<1>(t)][get<2>(t)] + 1;
+					Q.push(std::move(p));
+				}
+			}
+		}
+		int ans = oo;
+		for(int i=0;i<4;i++) {
+			if(Dis[i][en.X][en.Y] > 0) ans = min(ans, Dis[i][en.X][en.Y]);
+		}
+		if(ans != oo)  printf("Case #%d: %d\n", I, ans);
+		else printf("Case #%d: impossible\n", I);
+	}
+	return 0;
+}

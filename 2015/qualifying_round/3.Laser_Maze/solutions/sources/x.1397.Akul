@@ -1,0 +1,132 @@
+#include <bits/stdc++.h>
+using namespace std;
+typedef pair<int,int> pii;
+typedef pair<pii,int> ppi;
+int dr[]={0,0,1,-1},dc[]={1,-1,0,0};
+//things i'll need to memset everytime
+char maze[105][105];
+bool vis[105][105][4],laser_hit[105][105][4];
+int dist[105][105][4];
+//
+int m,n;
+bool is_valid(int r, int c, int mod)
+{
+	if(maze[r][c]=='#' || laser_hit[r][c][mod] || dist[r][c][mod]!=-1)
+		return false;
+	return true;
+}
+void laser_process(int r,int c,int mod,char laser_type)
+{
+	if(mod==4)
+		return;
+	int nr,nc;
+	char next_type;
+	if(laser_type=='<')
+	{
+		nr=0;
+		nc=-1;
+		next_type='^';
+	}
+	else if(laser_type=='^')
+	{
+		nr=-1;
+		nc=0;
+		next_type='>';
+	}
+	else if(laser_type=='>')
+	{
+		nr=0;
+		nc=1;
+		next_type='v';
+	}
+	else if(laser_type=='v')
+	{
+		nr=1;
+		nc=0;
+		next_type='<';
+	}
+	else
+	{
+		//hopefully i never reach here
+		assert(false);
+	}
+	int org_r=r,org_c=c;
+	while(maze[r][c]!='#')
+	{
+		laser_hit[r][c][mod]=true;
+		r+=nr;
+		c+=nc;
+	}
+	laser_process(org_r,org_c,mod+1,next_type);
+}
+int main()
+{
+	// freopen("input.txt", "r", stdin);
+	freopen("C_in.txt", "r", stdin);
+	freopen("C_out.txt", "w", stdout);
+	// ios_base::sync_with_stdio(false);
+	int t;
+	scanf("%d", &t);
+	for (int case_num = 1; case_num <= t; ++case_num)
+	{
+		scanf("%d %d", &m, &n);
+		//all memsets
+		memset(maze, '#', sizeof maze);
+		memset(vis, false, sizeof vis);
+		memset(laser_hit, false, sizeof laser_hit);
+		memset(dist, -1, sizeof dist);
+		//
+		for (int i = 1; i <= m; ++i)
+		{
+			scanf("%s", maze[i]+1);
+			maze[i][n+1]='#';
+		}
+		pii start_point,end_point;
+		for(int i = 1; i <= m; ++i)
+		{
+			for (int j = 1; j <= n; ++j)
+			{
+				if(maze[i][j]=='S')
+				{
+					start_point=pii(i,j);
+					dist[i][j][0]=0;
+				}
+				if(maze[i][j]=='G')
+					end_point=pii(i,j);
+				if(maze[i][j]=='<' || maze[i][j]=='^' || maze[i][j]=='>' || maze[i][j]=='v')
+					laser_process(i,j,0,maze[i][j]);
+			}
+		}
+		queue <ppi> bfs;
+		bfs.push(ppi(start_point,0));
+		while(!bfs.empty())
+		{
+			ppi top=bfs.front();
+			bfs.pop();
+			if(top.first==end_point)
+				break;
+			int r=top.first.first,c=top.first.second,cmod=top.second;
+			for (int i = 0; i < 4; ++i)
+			{
+				int nmod=(1+cmod)%4;
+				if(is_valid(r+dr[i],c+dc[i],nmod))
+				{
+					bfs.push(ppi(pii(r+dr[i],c+dc[i]),nmod));
+					dist[r+dr[i]][c+dc[i]][nmod]=1+dist[r][c][cmod];
+				}
+			}
+		}
+		int ans=-1;
+		for (int i = 0; i < 4; ++i)
+		{
+			if(dist[end_point.first][end_point.second][i]!=-1)
+				if(ans==-1 || (dist[end_point.first][end_point.second][i] < ans))
+					ans=dist[end_point.first][end_point.second][i];
+		}
+		if(ans==-1)
+			printf("Case #%d: impossible\n", case_num);
+		else
+			printf("Case #%d: %d\n", case_num, ans);
+	}
+	return 0;
+}

@@ -1,0 +1,223 @@
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+
+/**
+ * Created by mahefa on 09.01.15.
+ */
+public class Pb03 {
+
+
+    ProblemHelper ph;
+    char[][] maze;
+    ArrayList<char[][]> breadthMaze = null;
+
+    public Pb03 () {
+        ph = new ProblemHelper("laser_maze.txt");
+    }
+
+    class State {
+        int x, y, imaze, depth;
+
+        public State(int x, int y, int imaze, int depth) {
+            this.x = x;
+            this.y = y;
+            this.imaze = imaze % 4;
+            this.depth = depth;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if(!(o instanceof State))
+                return false;
+            State other = (State) o;
+            if (other.x != x || other.y != y || other.imaze%4 != imaze)
+                return false;
+            return true;
+        }
+
+        public boolean isGoal() {
+            boolean b = Pb03.this.maze[x][y] == 'G';
+            return b;
+        }
+
+        public ArrayList<State> nexts() {
+            ArrayList<State> nxt = new ArrayList<>();
+            int nimaze = (imaze + 1) % 4;
+            if (isValideMove(nimaze, x+1, y)) nxt.add(new State(x+1, y, nimaze, depth+1));
+            if (isValideMove(nimaze, x-1, y)) nxt.add(new State(x-1, y, nimaze, depth+1));
+            if (isValideMove(nimaze, x, y+1)) nxt.add(new State(x, y+1, nimaze, depth+1));
+            if (isValideMove(nimaze, x, y-1)) nxt.add(new State(x, y-1, nimaze, depth+1));
+            return nxt;
+        }
+
+        public boolean isValideMove(int imaze, int x, int y) {
+            char[][] m = Pb03.this.breadthMaze.get(imaze);
+            if (x < 0 || x >= m.length || y < 0 || y >= m[0].length) return false;
+            if (m[x][y] != '#' && m[x][y] != 'X') return true;
+            else return false;
+        }
+
+        public String toString() {
+            return x + ", "+ y + ", "+ imaze +": "+ depth;
+        }
+    }
+
+    public void solve() {
+        int T = Integer.valueOf(ph.nextLine());
+        String line;
+        while ((line = ph.nextLine()) != null) {
+//            System.out.println("*********************");
+            boolean[][][] stateSpace = new boolean[100][100][4];
+            int[] mn = ph.parseToInts(line);
+            maze = new char[mn[0]][mn[1]];
+            for (int i = 0; i < mn[0]; i++) {
+                maze[i] = ph.nextLine().toCharArray();
+            }
+            int startx = -1, starty = -1;
+            for (int i = 0; i < maze.length; i++) {
+                for (int j = 0; j < maze[0].length; j++) {
+                    if (maze[i][j] == 'S') {
+                        startx = i;
+                        starty = j;
+                    }
+                }
+            }
+            breadthMaze = new ArrayList<>();
+//            System.out.println("Adjusting the shoot");
+            lazerShoot();
+//            for (char[][] m : breadthMaze) {
+//                System.out.println("mm");
+//                System.out.println(printMaze(m));
+//            }
+            boolean goal = false;
+            LinkedList<State> q = new LinkedList<>();
+            State s = new State(startx, starty, 0, 0);
+            q.addLast(s);
+//            System.out.println("Starting bfs");
+            while (!q.isEmpty()) {
+                s = q.removeFirst();
+//                System.out.println("Exploring: "+ s);
+                if (stateSpace[s.x][s.y][s.imaze]){
+//                    System.out.println("Seen");
+                    continue;
+                }
+                if (s.isGoal()) {
+                    goal = true;
+//                    System.out.println("Goal");
+                    break;
+                }
+                stateSpace[s.x][s.y][s.imaze] = true;
+//                System.out.println("Nexts: ");
+                for (State ss : s.nexts()) {
+//                    System.out.println("-- "+ss);
+                    q.addLast(ss);
+                }
+            }
+//            if (!goal) System.out.println("IMPOSSIBLE");
+//            else System.out.println("Answer: "+s.depth);
+            if (!goal) ph.writeAnswer("impossible");
+            else ph.writeAnswer(s.depth);
+        }
+        ph.closeFile();
+    }
+
+    public void lazerShoot() {
+        // X - line shot by lazer
+        char[][] m0 = new char[maze.length][];
+        char[][] m1 = new char[maze.length][];
+        char[][] m2 = new char[maze.length][];
+        char[][] m3 = new char[maze.length][];
+        for (int i = 0; i < maze.length; i++) {
+            m0[i] = Arrays.copyOf(maze[i], maze[i].length);
+            m1[i] = Arrays.copyOf(maze[i], maze[i].length);
+            m2[i] = Arrays.copyOf(maze[i], maze[i].length);
+            m3[i] = Arrays.copyOf(maze[i], maze[i].length);
+        }
+
+        for (int i = 0; i < maze.length; i++) {
+            for (int j = 0; j < maze[0].length; j++) {
+                char c = maze[i][j];
+                if (isLazer(c)) {
+                    m1[i][j] = switchLazer(c, 1);
+                    m2[i][j] = switchLazer(c, 2);
+                    m3[i][j] = switchLazer(c, 3);
+                }
+            }
+        }
+
+        breadthMaze.add(m0);
+        breadthMaze.add(m1);
+        breadthMaze.add(m2);
+        breadthMaze.add(m3);
+
+//        System.out.println("Fire!");
+        for (int i = 0; i < maze.length; i++) {
+            for (int j = 0; j < maze[0].length; j++) {
+                char c = maze[i][j];
+                if (isLazer(c)) {
+                    for (char[][] maze : breadthMaze) {
+                        shoot(maze, i, j);
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean isLazer(char c) {
+        return c == '<' || c == '>' || c == '^' || c == 'v';
+    }
+
+    public char switchLazer(char c, int count) {
+        while (count > 0) {
+            switch (c) {
+                case '<' : c = '^'; break;
+                case '^' : c = '>'; break;
+                case '>' : c = 'v'; break;
+                case 'v' : c = '<'; break;
+            }
+            count--;
+        }
+        return c;
+    }
+
+    public void shoot(char[][] m, int i, int j) {
+        int du = 0, dr = 0;
+        char c = m[i][j];
+        switch (c) {
+            case '<':
+                dr = -1;
+                break;
+            case '^':
+                du = -1;
+                break;
+            case '>':
+                dr = +1;
+                break;
+            case 'v':
+                du = +1;
+                break;
+        }
+        i += du;
+        j += dr;
+        while (i >= 0 && i < m.length && j >= 0 && j < m[0].length && m[i][j] != '#' && !isLazer(m[i][j])) {
+            m[i][j] = 'X';
+            i += du;
+            j += dr;
+        }
+    }
+
+    public String printMaze(char[][] m) {
+        StringBuilder str = new StringBuilder();
+        for (char[] mm : m) {
+            str.append(mm);
+            str.append('\n');
+        }
+        return str.toString();
+    }
+
+    public static void main(String[] args) {
+        Pb03 p = new Pb03();
+        p.solve();
+    }
+}

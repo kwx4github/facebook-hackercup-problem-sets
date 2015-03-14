@@ -1,0 +1,79 @@
+import scala.collection.{Set, mutable}
+import scala.io.Source
+//import scala.collection.mutable.MutableList
+/**
+ * Created by etsvigun on 11/01/15.
+ */
+object LaserMaze {
+
+  case class Maze(m:Int, n:Int, cells: Vector[Vector[Vector[Boolean]]], start:(Int,Int), goal:(Int,Int))
+
+  case class State(y: Int, x: Int, step: Int)
+
+  def checkBounds(m: Int, n: Int)(y: Int, x: Int): Boolean ={
+    y >= 0 && x >= 0 && y < m && x < n
+  }
+
+  val dyx = Vector((-1,0),(0,1),(1,0),(0,-1))
+
+  def bfs(maze: Maze, fringe: Set[State], scanned: Set[State], step: Int): Int ={
+//    println(fringe)
+    if(fringe.exists{s => (s.y, s.x) == maze.goal && maze.cells(s.y)(s.x)(s.step)}){
+      step
+    } else {
+      val nextFringe = fringe.map { state =>
+        dyx.map {
+          case (dy, dx) => State(state.y + dy, state.x + dx, (state.step + 1) % 4)
+        }.filter { s => checkBounds(maze.m, maze.n)(s.y, s.x) && !scanned.contains(s) && maze.cells(s.y)(s.x)(s.step)}
+      }.flatten
+      if(nextFringe.nonEmpty){
+        bfs(maze, nextFringe, scanned ++ fringe, step + 1)
+      } else {-1}
+    }
+  }
+
+  def readMaze(lines:Iterator[String]): Maze = {
+    val Array(m,n) = lines.next().split(" ").map{_.toInt}
+    val raw = for(_ <- 0 until m) yield lines.next()
+    val maze = mutable.MutableList.fill(m,n,4)(true)
+    val wall = mutable.MutableList.fill(4)(false)
+    def bounds = checkBounds(m,n)_
+    val turrets = "^>v<"
+    var s = (0,0)
+    var g = (0,0)
+    for(y <- 0 until m;
+        x <- 0 until n){
+      raw(y)(x) match {
+        case '#' => maze(y)(x) = wall
+        case t if turrets.contains(t) => {
+          maze(y)(x) = wall
+          val turn = turrets.indexOf(t)
+          for(step <- 0 until 4){
+            val (dy, dx) = dyx((step + turn) % 4)
+            var (i,j) = (y + dy, x + dx)
+            while(bounds(i,j) && !(turrets + '#').contains(raw(i)(j))){
+              maze(i)(j)(step) = false
+              i += dy
+              j += dx
+            }
+          }
+        }
+        case 'S' => s = (y,x)
+        case 'G' => g = (y,x)
+        case _ =>
+      }
+    }
+    Maze(m,n, Vector.tabulate(m,n){(i,j) => maze(i)(j).toVector}, s,g)
+  }
+
+  def main(args: Array[String]) {
+    val lines = Source.stdin.getLines()
+    val T = lines.next().toInt
+    (1 to T) foreach { caseNumber =>
+      val maze = readMaze(lines)
+      val shortestPathLength = bfs(maze, Set(State(maze.start._1, maze.start._2, 0)), Set.empty[State], 0)
+      val answer = if(shortestPathLength > 0){shortestPathLength.toString()} else {"impossible"}
+      println(s"Case #$caseNumber: $answer")
+    }
+  }
+}

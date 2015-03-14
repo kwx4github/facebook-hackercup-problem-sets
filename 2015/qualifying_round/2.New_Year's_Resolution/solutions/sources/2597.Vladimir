@@ -1,0 +1,122 @@
+#! /usr/bin/python
+
+# By Vladimir Svoboda
+
+import sys
+from argparse import ArgumentParser, FileType
+
+class Food(object):
+    def __init__(self, p, c, f):
+        self.p = p
+        self.c = c
+        self.f = f
+
+    def __str__(self):
+        return "Proteins: {p}, Carbohydrates: {c}, Fat: {f}" \
+               "".format(p=self.p, c=self.c, f=self.f)
+
+
+class ProblemInstance(object):
+    def __init__(self, gp, gc, gf):
+        self.gp = gp
+        self.gc = gc
+        self.gf = gf
+        self.foodList = list()
+
+    def addFood(self, food):
+        self.foodList.append(food)
+
+    def __str__(self):
+        return "Proteins: {p}, Carbohydrates: {c}, Fat: {f} - {food}" \
+               "".format(p=self.gp, c=self.gc, f=self.gf,
+                         food=";".join(map(str, self.foodList)))
+
+
+def parseInput(inFile):
+    nbOfProblems = int(inFile.readline().strip())
+    iList = list()
+    pList = list()
+
+    for line in inFile.readlines():
+        iList.extend(map(int, line.split()))
+
+    idx = 0
+
+    for i in range(nbOfProblems):
+        p = ProblemInstance(iList[idx], iList[idx+1], iList[idx+2])
+        nbOfFood = iList[idx+3]
+        idx += 4
+
+        for j in range(nbOfFood):
+            p.addFood(Food(iList[idx], iList[idx+1], iList[idx+2]))
+            idx += 3
+
+        pList.append(p)
+
+    return pList
+
+
+class Solver(object):
+    def __init__(self, pb):
+        self.pb = pb
+
+    def _backTrack(self, foodId, totalP, totalC, totalF):
+        pb = self.pb
+        quantity = self.quantity
+
+        if pb.gp == totalP and pb.gc == totalC and pb.gf == totalF:
+            return True
+        elif foodId >= len(pb.foodList):
+            return False
+        elif totalP > pb.gp or totalC > pb.gc or totalF > pb.gf:
+            return False
+        else:
+            food = pb.foodList[foodId]
+            newP = totalP
+            newC = totalC
+            newF = totalF
+
+            if self._backTrack(foodId+1, newP, newC, newF):
+                return True
+
+            quantity[foodId] += 1
+
+            newP += food.p
+            newC += food.c
+            newF += food.f
+
+            if self._backTrack(foodId+1, newP, newC, newF):
+                return True
+
+            quantity[foodId] = 0
+
+        return False
+
+    def solve(self):
+        self.quantity = [0 for i in range(len(self.pb.foodList))]
+
+        return self._backTrack(0, 0, 0, 0)
+
+
+def getCommandLineParser():
+    parser = ArgumentParser(description='New Year\'s resolution solver.')
+    parser.add_argument('inFile', nargs=1, type=FileType('r'),
+                        help='Input file')
+
+    return parser
+
+
+def main(args):
+    pbList = parseInput(args.inFile[0])
+
+    for i in range(len(pbList)):
+        solver = Solver(pbList[i])
+
+        print("Case {i}: {answer}"
+              "".format(i=i+1, answer='yes' if solver.solve() else 'no'))
+
+
+if __name__ == "__main__":
+    parser = getCommandLineParser()
+
+    main(parser.parse_args())

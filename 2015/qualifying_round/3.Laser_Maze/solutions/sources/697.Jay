@@ -1,0 +1,94 @@
+from collections import deque
+
+
+marks = [1, 2, 4, 8]
+
+def update_forbiden(x, y, d, max_x, max_y):
+    forbiden[x][y] = 15
+    mark = marks[d]
+    for i in xrange(y - 1, -1, -1):
+        if maze[x][i] not in ('.', 'S', 'G'):
+            break
+        forbiden[x][i] |= mark
+    mark = marks[(d + 1) & 3]
+    for i in xrange(x - 1, -1, -1):
+        if maze[i][y] not in ('.', 'S', 'G'):
+            break
+        forbiden[i][y] |= mark
+    mark = marks[(d + 2) & 3]
+    for i in xrange(y + 1, max_y):
+        if maze[x][i] not in ('.', 'S', 'G'):
+            break
+        forbiden[x][i] |= mark
+    mark = marks[(d + 3) & 3]
+    for i in xrange(x + 1, max_x):
+        if maze[i][y] not in ('.', 'S', 'G'):
+            break
+        forbiden[i][y] |= mark
+
+def update_path(x, y, step):
+    if min_steps and step >= min_steps:
+        return
+    if forbiden[x][y] & marks[step & 3]:
+        return
+    if x == end_x and y == end_y:
+        return step
+    if flag[x][y] & marks[step & 3]:
+        return
+    flag[x][y] |= marks[step & 3]
+    update_queue.append((x, y, step))
+
+cases = int(raw_input())
+for case in xrange(1, cases + 1):
+    max_x, max_y = map(int, raw_input().split())
+    maze = []
+    forbiden = []
+    flag = []
+    start_x, start_y = -1, -1
+    end_x, end_y = -1, -1
+    for row in xrange(max_x):
+        forbiden.append([0] * max_y)
+        flag.append([0] * max_y)
+        maze.append(raw_input())
+        if start_y == -1:
+            start_y = maze[-1].find('S')
+            if start_y != -1:
+                start_x = row
+        if end_y == -1:
+            end_y = maze[-1].find('G')
+            if end_y != -1:
+                end_x = row
+    for row in xrange(max_x):
+        for column, c in enumerate(maze[row]):
+            if c == '^':
+                update_forbiden(row, column, 3, max_x, max_y)
+            elif c == '>':
+                update_forbiden(row, column, 2, max_x, max_y)
+            elif c == 'v':
+                update_forbiden(row, column, 1, max_x, max_y)
+            elif c == '<':
+                update_forbiden(row, column, 0, max_x, max_y)
+            elif c == '#':
+                forbiden[row][column] = 15
+    if forbiden[end_x][end_y] == 15 or forbiden[start_x][start_y] == 15:
+        print "Case #%s: impossible" % case
+        continue
+    update_queue = deque()
+    update_queue.append((start_x, start_y, 0))
+    flag[start_x][start_y] = 1
+    min_steps = None
+    while update_queue:
+        x, y, step = update_queue.popleft()
+        if x > 0:
+            min_steps = update_path(x - 1, y, step + 1) or min_steps
+        if x < max_x - 1:
+            min_steps = update_path(x + 1, y, step + 1) or min_steps
+        if y > 0:
+            min_steps = update_path(x, y - 1, step + 1) or min_steps
+        if y < max_y - 1:
+            min_steps = update_path(x, y + 1, step + 1) or min_steps
+    if not min_steps:
+        print "Case #%s: impossible" % case
+    else:
+        print "Case #%s: %s" % (case, min_steps)
+    

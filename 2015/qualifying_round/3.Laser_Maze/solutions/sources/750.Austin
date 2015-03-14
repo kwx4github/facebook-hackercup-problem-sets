@@ -1,0 +1,277 @@
+import java.util.*;
+
+public class Main
+{
+	public static void main(String[] args)
+	{
+		Scanner sc = new Scanner(System.in);
+		
+		int cases = sc.nextInt();
+		Block[][] board = new Block[100][100];
+		
+		for (int cNum = 1; cNum <= cases; cNum++)
+		{
+
+			int height = sc.nextInt(), width = sc.nextInt();
+			LinkedList<Block> lasers = new LinkedList<Block>();
+			Block startBlock = null;
+			
+			for (int row = 0; row < height; row++)
+			{
+				String charRow = sc.next();
+				for (int col = 0; col < width; col++)
+				{
+					char currChar = charRow.charAt(col);
+					
+					if (board[row][col] == null)
+					{
+						board[row][col] = new Block(currChar, row, col, lasers);
+					}
+					else
+					{
+						board[row][col].initialize(currChar, row, col, lasers);
+					}
+					
+					if (currChar == 'S')
+					{
+						startBlock = board[row][col];
+					}
+				}
+			}
+			
+			traverseLaserBeams(board, lasers, height, width);
+			
+			int minStepsInPath = findShortestPath(startBlock, board, height, width);
+			
+			System.out.println("Case #" + cNum + ": " + ((minStepsInPath != -1) ? minStepsInPath : "impossible")); 
+		}
+	}
+	
+	
+	public static boolean inBounds(int row, int col, int height, int width)
+	{
+		return row >= 0 && row < height && col >= 0 && col < width;
+	}
+	
+	// -1 if impossible
+	public static int findShortestPath(Block startBlock,Block[][] board, int height, int width)
+	{
+		Queue<Block> currLevel = new LinkedList<Block>();
+		Queue<Block> nextLevel = new LinkedList<Block>();
+		
+		int stepsSoFar = 0;
+		
+		currLevel.offer(startBlock);
+		
+		do
+		{
+			if (!nextLevel.isEmpty())
+			{
+				stepsSoFar++;
+				currLevel = nextLevel;
+				nextLevel = new LinkedList<Block>();
+			}
+				
+			while (!currLevel.isEmpty())
+			{
+				Block curr = currLevel.poll();
+				
+				if (curr.goal)
+				{
+					return stepsSoFar;
+				}
+				
+				// Up
+				if ( inBounds(curr.row - 1, curr.col, height, width) && board[curr.row - 1][curr.col].isValidMove(stepsSoFar))
+				{
+					nextLevel.offer(board[curr.row - 1][curr.col]);
+				}
+				
+				// Right
+				if ( inBounds(curr.row, curr.col + 1, height, width) && board[curr.row][curr.col + 1].isValidMove(stepsSoFar))
+				{
+					nextLevel.offer(board[curr.row][curr.col + 1]);
+				}
+				
+				// Down
+				if ( inBounds(curr.row + 1, curr.col, height, width) && board[curr.row+1][curr.col].isValidMove(stepsSoFar))
+				{
+					nextLevel.offer(board[curr.row+1][curr.col]);
+				}
+				
+				// Left
+				if ( inBounds(curr.row, curr.col - 1, height, width) && board[curr.row][curr.col - 1].isValidMove(stepsSoFar))
+				{
+					nextLevel.offer(board[curr.row][curr.col - 1]);
+				}
+			}
+		} while (!nextLevel.isEmpty());
+		
+		return -1;
+	}
+	
+	public static void traverseLaserBeams(Block[][] board, LinkedList<Block> lasers, int height, int width)
+	{
+		for (Block laser : lasers)
+		{
+			for (int steps = 0; steps < 4; steps++)
+			{
+				int currDir = (laser.startDir + steps) % 4;
+				int currCol = laser.col;
+				int currRow = laser.row;
+				
+				// Walk up until you reach end of board or a wall/laser, marking willDie
+				// Up
+				if (currDir == 0)
+				{
+					currRow--;
+					while (currRow >= 0)
+					{
+						if (board[currRow][currCol].canWalk)
+						{
+							board[currRow][currCol].willDie[steps] = true;
+							
+						}
+						else
+						{
+							break;
+						}
+						currRow--;
+					}
+				}
+				// Right
+				else if (currDir == 1)
+				{
+					currCol++;
+					while (currCol < width)
+					{
+						if (board[currRow][currCol].canWalk)
+						{
+							board[currRow][currCol].willDie[steps] = true;
+
+						}
+						else
+						{
+							break;
+						}
+						currCol++;
+					}
+					
+				}
+				// Down
+				else if (currDir == 2)
+				{
+					currRow++;
+					while (currRow < height)
+					{
+						if (board[currRow][currCol].canWalk)
+						{
+							board[currRow][currCol].willDie[steps] = true;	
+						}
+						else
+						{
+							break;
+						}
+						currRow++;
+					}
+				}
+
+				// Left
+				else if (currDir == 3 )
+				{
+					currCol--;
+					while (currCol >= 0)
+					{
+						if (board[currRow][currCol].canWalk)
+						{
+							board[currRow][currCol].willDie[steps] = true;	
+						}
+						else
+						{
+							break;
+						}
+						currCol--;
+					}
+				}
+					
+			}
+		}
+	}
+	
+	static class Block
+	{
+		public boolean[] willDie;
+		public boolean[] visited;
+		public boolean canWalk;
+		public boolean start;
+		public boolean goal;
+		public int row;
+		public int col;
+		
+		// -1: not a laser, 0 - up, 1 - right, 2 -  down, 3 - left
+		public int startDir;
+		
+		public Block( char sym, int r, int c, LinkedList<Block> lasers )
+		{
+			initialize(sym, r, c, lasers);
+		}
+		
+		public void initialize(char sym, int r, int c, LinkedList<Block> lasers)
+		{
+			willDie = new boolean[4];
+			visited = new boolean[4];
+			canWalk = false;
+			start = false;
+			goal = false;
+			startDir = -1;
+			row = r;
+			col = c;
+			
+			switch(sym)
+			{
+				case '#':
+					break;
+				case '^':
+					startDir = 0;
+					break;
+				case '>':
+					startDir = 1;
+					break;
+				case 'v':
+					startDir = 2;
+					break;
+				case '<':
+					startDir = 3;
+					break;
+				case '.':
+					canWalk = true;
+					break;
+				case 'S':
+					canWalk = true;
+					start = true;
+					break;
+				case 'G':
+					canWalk = true;
+					goal = true;
+					break;
+			}
+			
+			if (startDir != -1)
+			{
+				lasers.add(this);
+			}
+		}
+		
+		public boolean isValidMove(int stepsSoFar)
+		{
+			stepsSoFar = (stepsSoFar + 1) % 4;
+			boolean retval =  !(visited[stepsSoFar] || willDie[stepsSoFar] || !canWalk);
+			if (retval) 
+			{
+				visited[stepsSoFar] = true;
+			}
+			return retval;
+		}
+	}
+}
+	

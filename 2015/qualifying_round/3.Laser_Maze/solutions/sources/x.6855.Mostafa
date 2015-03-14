@@ -1,0 +1,141 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.awt.*;
+
+import static java.lang.Integer.*;
+import static java.lang.Math.*;
+
+@SuppressWarnings("unused")
+class triple {
+	int x, y, time;
+
+	public triple(int x, int y, int time) {
+		this.x = x;
+		this.y = y;
+		this.time = time;
+	}
+}
+
+public class ProblemC {
+
+	static int r, c;
+	static char graph[][];
+	static HashSet<Point>[] dangerous = new HashSet[4];
+	static char[] directions = new char[] { '^', '>', 'v', '<' };
+	static int[] dx = new int[] { 1, -1, 0, 0 };
+	static int[] dy = new int[] { 0, 0, 1, -1 };
+
+	public static char getNext(char cur, int disp) {
+		for (int i = 0; i < 4; ++i)
+			if (directions[i] == cur)
+				return directions[(i + disp) % 4];
+		return ' ';
+	}
+
+	public static void computedangerous() {
+		for (int i = 0; i < 4; ++i)
+			dangerous[i] = new HashSet<Point>();
+		for (int dir = 1; dir <= 4; ++dir) {
+			for (int i = 0; i < r; ++i) {
+				for (int j = 0; j < c; ++j) {
+					if (graph[i][j] == '>' || graph[i][j] == '<'
+							|| graph[i][j] == '^' || graph[i][j] == 'v') {
+						char next = getNext(graph[i][j], dir);
+						if (next == '>')
+							for (int k = j + 1; k < c; ++k)
+								dangerous[dir - 1].add(new Point(i, k));
+						if (next == '<')
+							for (int k = j - 1; k >= 0; --k)
+								dangerous[dir - 1].add(new Point(i, k));
+						if (next == '^')
+							for (int k = i - 1; k >= 0; --k)
+								dangerous[dir - 1].add(new Point(k, j));
+						if (next == 'v') {
+							for (int k = i + 1; k < r; ++k) {
+								dangerous[dir - 1].add(new Point(k, j));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	public static int runBFS() {
+		int sx = -1, sy = -1, tx = -1, ty = -1;
+		for (int i = 0; i < r; ++i) {
+			for (int j = 0; j < c; ++j) {
+				if (graph[i][j] == 'S') {
+					sx = i;
+					sy = j;
+					graph[i][j] = '.';
+				}
+				if (graph[i][j] == 'G') {
+					tx = i;
+					ty = j;
+					graph[i][j] = '.';
+				}
+			}
+		}
+		Queue<triple> bfs = new LinkedList<triple>();
+		bfs.offer(new triple(sx, sy, 0));
+		boolean vis[][][] = new boolean[r + 1][c + 1][5];
+		boolean first = true;
+		while (!bfs.isEmpty()) {
+			triple cur = bfs.poll();
+			int x = cur.x;
+			int y = cur.y;
+			int time = cur.time;
+			if (x == tx && y == ty)
+				return time;
+			if (!first) {
+				if (vis[x][y][(time - 1) % 4])
+					continue;
+				vis[x][y][(time - 1) % 4] = true;
+			}
+			if (first)
+				first = !first;
+			for (int t = 0; t < 4; ++t) {
+				int nx = x + dx[t];
+				int ny = y + dy[t];
+				if (nx < 0 || ny < 0 || nx >= r || ny >= c
+						|| graph[nx][ny] != '.')
+					continue;
+				if (dangerous[time % 4].contains(new Point(nx, ny)))
+					continue;
+				bfs.offer(new triple(nx, ny, (time + 1)));
+			}
+		}
+		return -1;
+	}
+
+	public static void main(String[] args) throws Exception {
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		FileWriter out = new FileWriter(new File("output.txt"));
+		int T = parseInt(br.readLine());
+		String[] use = null;
+		int no = 0;
+		while (T-- > 0) {
+			++no;
+			use = br.readLine().split(" ");
+			r = parseInt(use[0]);
+			c = parseInt(use[1]);
+			graph = new char[r][c];
+			for (int i = 0; i < r; ++i)
+				graph[i] = br.readLine().toCharArray();
+			computedangerous();
+			int ans = runBFS();
+			if (ans == -1)
+				out.write("Case #" + no + ": impossible" + (T != 0 ? "\n" : ""));
+			else
+				out.write("Case #" + no + ": " + ans + (T != 0 ? "\n" : ""));
+		}
+		out.flush();
+		out.close();
+	}
+}

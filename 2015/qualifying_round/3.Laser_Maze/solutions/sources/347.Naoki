@@ -1,0 +1,95 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <tuple>
+using namespace std;
+
+const int DR[] = {-1, 0, 1, 0};
+const int DC[] = {0, 1, 0, -1};
+const int INF = 1000000000;
+
+int c2dir(char c) {
+  if (c == '^') return 0;
+  if (c == '>') return 1;
+  if (c == 'v') return 2;
+  if (c == '<') return 3;
+  return -1;
+}
+
+int solve(vector<string> maze) {
+  int H = maze.size(), W = maze[0].size();
+  int sr, sc, gr, gc;
+  for (int r=0; r<H; r++) for (int c=0; c<W; c++) {
+    if (maze[r][c] == 'S') {
+      sr = r;
+      sc = c;
+      maze[r][c] = '.';
+    }
+    if (maze[r][c] == 'G') {
+      gr = r;
+      gc = c;
+      maze[r][c] = '.';
+    }
+  }
+  vector<string> lazered[4];
+  for (int i=0; i<4; i++) {
+    lazered[i] = maze;
+    for (int r=0; r<H; r++) for (int c=0; c<W; c++) {
+      int dir = c2dir(lazered[i][r][c]);
+      if (dir == -1) continue;
+      dir = (dir + i) % 4;
+      int nr = r + DR[dir];
+      int nc = c + DC[dir];
+      while (nr >= 0 && nr < H && nc >= 0 && nc < W) {
+        if (lazered[i][nr][nc] == '.' || lazered[i][nr][nc] == 'x')
+          lazered[i][nr][nc] = 'x';
+        else
+          break;
+        nr += DR[dir];
+        nc += DC[dir];
+      }
+    }
+  }
+
+  vector<vector<vector<int>>> dist(H, vector<vector<int>>(W, vector<int>(4, INF)));
+  queue<tuple<int, int, int>> que;
+  dist[sr][sc][0] = 0;
+  que.push(make_tuple(sr, sc, 0));
+
+  while (!que.empty()) {
+    int r = get<0>(que.front());
+    int c = get<1>(que.front());
+    int t = get<2>(que.front());
+    que.pop();
+    for (int k=0; k<4; k++) {
+      int nr = r + DR[k];
+      int nc = c + DC[k];
+      int nt = (t + 1) % 4;
+      if (nr < 0 || nr >= H || nc < 0 || nc >= W) continue;
+      if (lazered[nt][nr][nc] != '.') continue;
+      if (nr == gr && nc == gc)
+        return dist[r][c][t] + 1;
+      if (dist[nr][nc][nt] == INF) {
+        dist[nr][nc][nt] = dist[r][c][t] + 1;
+        que.push(make_tuple(nr, nc, nt));
+      }
+    }
+  }
+  return -1;
+}
+
+int main() {
+  int T; cin >> T;
+  for (int t=0; t<T; t++) {
+    int H, W; cin >> H >> W;
+    vector<string> maze(H, string(W, '.'));
+    for (int i=0; i<H; i++) for (int j=0; j<W; j++) cin >> maze[i][j];
+    int ans = solve(maze);
+    cout << "Case #" << (t+1) << ": ";
+    if (ans == -1)
+      cout << "impossible" << endl;
+    else
+      cout << ans << endl;
+  }
+}

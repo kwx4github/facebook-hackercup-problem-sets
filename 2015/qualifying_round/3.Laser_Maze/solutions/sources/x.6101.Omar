@@ -1,0 +1,313 @@
+/* 
+ * File:   main.cpp
+ * Author: Rechard3
+ *
+ * Created on January 10, 2015, 5:40 PM
+ */
+
+#include <vector>
+#include <algorithm>
+#include <string>
+#include <cstring>
+#include <deque>
+#include <queue>
+#include <map>
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+
+#define repi(i,f,l) for(int i=f ; i<(l) ; ++i)
+#define repd(i,f,l) for(int i=f ; i>=(l) ; --i)
+#define CONCAT(x,y) x##y
+#define UNIQUENAME(x, y) CONCAT(x, y)
+#define forall(i,n) int UNIQUENAME(_size_,__LINE__) = (n).size(); repi(i,0,UNIQUENAME(_size_,__LINE__))
+#define all(s) (s).begin(), (s).end()
+#define OO 0x7fffffff
+#define clr(memory, val) memset(memory,val, sizeof(memory))
+#define read(file) freopen(file, "r", stdin)
+#define write(file) freopen(file, "w", stdout)
+#define IO(In, Out) freopen(In, "r", stdin); freopen(Out, "w", stdout)
+#define xx first
+#define yy second
+#define setBit(x,i)  ((x)|=(1<<i))
+#define clrBit(x,i)  ((x)&=(~(1<<i)))
+#define chkBit(x,i)  ((x)&(1<<i))
+
+
+using namespace std;
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<pair<int, int> >  vii;
+
+#define MAXWIDTH 101
+#define MAXHEIGHT 101
+#define STATECOUNT 4
+bool visited[MAXHEIGHT][MAXWIDTH][STATECOUNT] = {0};
+char maze[MAXHEIGHT][MAXWIDTH][STATECOUNT] = {0};
+char originalMaze[MAXHEIGHT][MAXWIDTH] = {0};
+
+// Create the maze states :
+void setMaze(int width, int height)
+{
+    repi(curState, 0, STATECOUNT)
+    {
+        repi(i, 0, height)
+        {
+            repi(j, 0, width)
+            {
+                if(maze[i][j][curState] == '<')
+                {
+                    for(int jj=j-1 ; jj>=0 ; --jj)
+                    {
+                        if(originalMaze[i][jj] == '.')
+                            maze[i][jj][curState] = '#';
+                        else if(originalMaze[i][jj] == 'S')
+                            maze[i][jj][curState] = '#';
+                        else if(originalMaze[i][jj] == 'G')
+                            maze[i][jj][curState] = '#';
+                        else
+                            break;
+                    }
+                }
+                else if(maze[i][j][curState] == '>')
+                {
+                    for(int jj=j+1 ; jj<width ; ++jj)
+                    {
+                        if(originalMaze[i][jj] == '.')
+                            maze[i][jj][curState] = '#';
+                        else if(originalMaze[i][jj] == 'S')
+                            maze[i][jj][curState] = '#';
+                        else if(originalMaze[i][jj] == 'G')
+                            maze[i][jj][curState] = '#';
+                        else
+                            break;
+                    }
+                }
+                else if(maze[i][j][curState] == '^')
+                {
+                    for(int ii=i-1 ; ii>=0 ; --ii)
+                    {
+                        if(originalMaze[ii][j] == '.')
+                            maze[ii][j][curState] = '#';
+                        else if(originalMaze[ii][j] == 'S')
+                            maze[ii][j][curState] = '#';
+                        else if(originalMaze[ii][j] == 'G')
+                            maze[i][j][curState] = '#';
+                        else
+                            break;
+                    }
+                }
+                else if(maze[i][j][curState] == 'v')
+                {
+                    for(int ii=i+1 ; ii<height ; ++ii)
+                    {
+                        if(originalMaze[ii][j] == '.')
+                            maze[ii][j][curState] = '#';
+                        else if(originalMaze[ii][j] == 'S')
+                            maze[ii][j][curState] = '#';
+                        else if(originalMaze[ii][j] == 'G')
+                            maze[i][j][curState] = '#';
+                        else
+                            break;
+                    }
+                }
+                
+                // Set the current turret into a block :
+                switch(maze[i][j][curState])
+                {
+                    case '<':
+                    case '^':
+                    case '>':
+                    case 'v':
+                        maze[i][j][curState] = '#';
+                }
+            }
+        }
+    }
+}
+
+class node
+{
+public:
+    pair<int, int> pos;
+    int state;
+    int level;
+    node() : pos(make_pair(0,0)), state(0), level(0) {}
+    node(const pair<int, int>& pii, int s, int l) {pos = pii; state = s, level = l;}
+};
+
+
+int BFS(int width, int height)
+{
+    // Find the start position :
+    bool found = false;
+    int sx=0, sy=0;
+    repi(i,0, height)
+    {
+        repi(j,0,width)
+        {
+            if(originalMaze[i][j] == 'S')
+            {
+                found = true;
+                sx = j; sy = i;
+                break;
+            }
+        }
+        if(found) break;
+    }
+    
+    // Algorithm :
+    node start = node(make_pair(sx,sy), 0, 0); // Create the first node.
+    
+    deque<node> dq; // Create the BFS queue.
+    dq.push_back(start);
+    visited[start.pos.yy][start.pos.xx][0] = true; // Set the start as visited.
+    
+    node cur;
+    // BFS loop :
+    while(!dq.empty())
+    {
+        cur = dq.front();
+        dq.pop_front();
+        
+        // Check if this is the target :
+        if(originalMaze[cur.pos.yy][cur.pos.xx] == 'G')
+        {
+            return cur.level;
+        }
+        
+        // Push back adjacent nodes :
+        // Push Up :
+        if(cur.pos.yy >0 && maze[cur.pos.yy-1][cur.pos.xx][(cur.state+1)%STATECOUNT] != '#')
+        {
+            if(! visited[cur.pos.yy-1][cur.pos.xx][(cur.state+1)%STATECOUNT])
+            {
+                 visited[cur.pos.yy-1][cur.pos.xx][(cur.state+1)%STATECOUNT] = true;
+                 dq.push_back(node(make_pair(cur.pos.xx, cur.pos.yy-1), (cur.state+1)%STATECOUNT, cur.level+1));
+            }
+        }
+        // Push Down :
+        if(cur.pos.yy < height-1 && maze[cur.pos.yy+1][cur.pos.xx][(cur.state+1)%STATECOUNT] != '#')
+        {
+            if(! visited[cur.pos.yy+1][cur.pos.xx][(cur.state+1)%STATECOUNT])
+            {
+                 visited[cur.pos.yy+1][cur.pos.xx][(cur.state+1)%STATECOUNT] = true;
+                 dq.push_back(node(make_pair(cur.pos.xx, cur.pos.yy+1), (cur.state+1)%STATECOUNT, cur.level+1));
+            }
+        }
+        // Push Left :
+        if(cur.pos.xx > 0 && maze[cur.pos.yy][cur.pos.xx-1][(cur.state+1)%STATECOUNT] != '#')
+        {
+            if(! visited[cur.pos.yy][cur.pos.xx-1][(cur.state+1)%STATECOUNT])
+            {
+                 visited[cur.pos.yy][cur.pos.xx-1][(cur.state+1)%STATECOUNT] = true;
+                 dq.push_back(node(make_pair(cur.pos.xx-1, cur.pos.yy), (cur.state+1)%STATECOUNT, cur.level+1));
+            }
+        }
+        // Push Right :
+        if(cur.pos.xx < width-1 && maze[cur.pos.yy][cur.pos.xx+1][(cur.state+1)%STATECOUNT] != '#')
+        {
+            if(! visited[cur.pos.yy][cur.pos.xx+1][(cur.state+1)%STATECOUNT])
+            {
+                 visited[cur.pos.yy][cur.pos.xx+1][(cur.state+1)%STATECOUNT] = true;
+                 dq.push_back(node(make_pair(cur.pos.xx +1, cur.pos.yy), (cur.state+1)%STATECOUNT, cur.level+1));
+            }
+        }
+    }
+    
+    return -1;
+}
+
+void debugOutput(int width, int height)
+{
+    // Print the original maze :
+    repi(i,0,height)
+    {
+        repi(j,0,width)
+        {
+            cerr << originalMaze[i][j];
+        }
+        cerr << endl;
+    }
+    
+    // Print the maze states :
+    repi(curState, 0, STATECOUNT)
+    {
+        cerr << "Maze state :" << curState << endl;
+        repi(i,0,height)
+        {
+            repi(j,0,width)
+            {
+                cerr << maze[i][j][curState];
+            }
+            cerr << endl;
+        }
+    }
+    cerr.flush();
+}
+
+/*
+ * 
+ */
+int main(int argc, char** argv) {
+
+    // Input :
+    ios::sync_with_stdio(false);
+    IO("laser_maze.txt", "output.txt");
+    
+    int c=0; cin >> c; c++;
+    int width=0, height=0;
+    repi(cc, 1, c)
+    {
+        cin >> height >> width;
+        repi(i,0,height)
+        {
+            repi(j,0,width)
+            {
+                cin >> originalMaze[i][j];
+            }
+        }
+        
+        // Initialize the visited/maze arrays :
+        repi(i,0,height)
+        {
+            repi(j,0,width)
+            {
+                repi(curState,0,STATECOUNT)
+                {
+                    visited[i][j][curState] = false;
+                    maze[i][j][curState] = originalMaze[i][j];
+                    
+                }
+                repi(curState,0,STATECOUNT)
+                {
+                    if(maze[i][j][curState] == '^')
+                        maze[i][j][(curState+1)%STATECOUNT] = '>';
+                    else if(maze[i][j][curState] == '>')
+                        maze[i][j][(curState+1)%STATECOUNT] = 'v';
+                    else if(maze[i][j][curState] == 'v')
+                        maze[i][j][(curState+1)%STATECOUNT] = '<';
+                    else if(maze[i][j][curState] == '<')
+                        maze[i][j][(curState+1)%STATECOUNT] = '^';
+                }
+            }
+        }
+        
+        // Algorithm :
+        setMaze(width, height);
+        
+        // debugOutput(width, height);
+        
+        cout << "Case #" << cc << ": " ;
+        int z = BFS(width, height);
+        if(z > 0)
+        {
+            cout << z << endl;
+        }
+        else
+        {
+            cout << "impossible" << endl;
+        }
+    }
+    return 0;
+}

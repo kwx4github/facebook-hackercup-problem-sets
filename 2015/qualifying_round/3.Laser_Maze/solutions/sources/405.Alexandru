@@ -1,0 +1,157 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <queue>
+#include <cstring>
+using namespace std;
+
+ifstream F("p.in");
+ofstream G("p.out");
+
+const int N = 110;
+
+int t,n,m,a[4][N][N],d[4][N][N];
+
+char next[400];
+int dx[400],dy[400];
+char b[N][N];
+
+int x,y,xf,yf;
+int xx[4] = { 0 , 0 , -1 , 1 };
+int yy[4] = { -1 , 1 , 0 , 0 };
+int zz[4] = { 1 , 2 , 3 , 0 };
+
+void precomp()
+{
+    next['^'] = '>';
+    next['>'] = 'v';
+    next['v'] = '<';
+    next['<'] = '^';
+    next['.'] = '.';
+    next['#'] = '#';
+
+    dx['>'] = dx['<'] = 0;
+    dy['v'] = dy['^'] = 0;
+    dy['>'] = 1; dy['<'] = -1;
+    dx['v'] = 1; dx['^'] = -1;
+}
+
+int good(int x,int y)
+{
+    if ( x < 1 || y < 1 || x > n || y > m ) return 0;
+    return (b[x][y] == '.');
+}
+
+void build_matrix()
+{
+    memset(a,0,sizeof(a));
+    for (int st=0;st<4;++st)
+    {
+        for (int i=1;i<=n;++i)
+            for (int j=1;j<=m;++j)
+            {
+                if ( b[i][j] != '.' && b[i][j] != '#' )
+                {
+                    int x = i, y = j;
+                    int px = dx[b[i][j]];
+                    int py = dy[b[i][j]];
+                    a[st][x][y] = 1;
+                    for(;good(x+px,y+py);x+=px,y+=py)
+                        a[st][x+px][y+py] = 1;
+                }
+                if ( b[i][j] == '#' )
+                    a[st][i][j] = 1;
+                if ( b[i][j] == '.' && !a[st][i][j] )
+                    a[st][i][j] = 0;
+            }
+
+        for (int i=1;i<=n;++i)
+            for (int j=1;j<=m;++j)
+                b[i][j] = next[b[i][j]];
+    }
+}
+
+struct state {
+    int l,x,y;
+};
+
+state mk(int l,int x,int y)
+{
+    state s;
+    s.l = l;
+    s.x = x;
+    s.y = y;
+    return s;
+}
+
+int good(state k)
+{
+    if ( k.x < 1 || k.x > n || k.y < 1 || k.y > m ) return 0;
+    return (a[k.l][k.x][k.y] == 0);
+}
+
+int main()
+{
+    F>>t;
+    precomp();
+    for (int tt=1;tt<=t;++tt)
+    {
+        F>>n>>m;
+        for (int i=1;i<=n;++i)
+            F>>(b[i]+1);
+        for (int i=1;i<=n;++i)
+            for (int j=1;j<=m;++j)
+            {
+                if ( b[i][j] == 'S' )
+                {
+                    x = i;
+                    y = j;
+                    b[i][j] = '.';
+                }
+                if ( b[i][j] == 'G' )
+                {
+                    xf = i;
+                    yf = j;
+                    b[i][j] = '.';
+                }
+            }
+
+        build_matrix();
+
+       /* if ( a[0][x][y] == 1 )
+        {
+            G<<"Case #"<<tt<<": impossible\n";
+            continue;
+        } */
+
+        queue< state > q;
+        q.push( mk(0,x,y) );
+        memset(d,0,sizeof(d));
+        d[0][x][y] = 1;
+
+        while ( !q.empty() )
+        {
+            state now = q.front();
+            q.pop();
+
+            for (int i=0;i<4;++i)
+            {
+                state nxt = mk(zz[now.l],now.x+xx[i],now.y+yy[i]);
+                if ( d[nxt.l][nxt.x][nxt.y] == 0 && good(nxt) )
+                {
+                    d[nxt.l][nxt.x][nxt.y] = d[now.l][now.x][now.y] + 1;
+                    q.push( nxt );
+                }
+            }
+        }
+
+        int ans = 1<<30;
+        for (int st=0;st<4;++st)
+            if ( d[st][xf][yf] )
+                ans = min(ans,d[st][xf][yf]-1);
+        if ( ans == 1<<30 )
+            G<<"Case #"<<tt<<": impossible\n";
+        else
+            G<<"Case #"<<tt<<": "<<ans<<"\n";
+    }
+}

@@ -1,0 +1,234 @@
+// FMI - Grupa 135 - Semigrupa 2 - Hareza Andrei
+// Include
+#include <fstream>
+#include <queue>
+#include <vector>
+using namespace std;
+
+// Definitii
+#define ppiii pair<pair<int, int>, int>
+#define mp make_pair
+#define pb push_back
+
+#define x first.first
+#define y first.second
+#define timer second
+
+#define direction second
+#define up 0
+#define right 1
+#define down 2
+#define left 3
+
+// Functii
+int solve();
+bool alive(vector<ppiii> lasers, int X, int Y, int timer);
+bool killed(ppiii laser, int X, int Y, int timer);
+
+// Variabile
+ifstream in("fbh.in");
+ofstream out("fbh.out");
+
+int tests;
+
+int visited[102][102];
+int goX[4] = {0, 1, 0, -1};
+int goY[4] = {1, 0, -1, 0};
+
+// Main
+int main()
+{
+	in >> tests;
+	for(int i=1 ; i<=tests ; ++i)
+	{
+		int ans = solve();
+		if(ans == -1)
+			out << "Case #" << i << ": " << "impossible" << '\n';
+		else
+			out << "Case #" << i << ": " << ans << '\n';
+	}
+	
+	in.close();
+	out.close();
+	return 0;
+}
+
+int solve()
+{
+	memset(visited, 0, sizeof(visited));
+	
+	int lines, columns;
+	in >> lines >> columns;
+	for(int i=1 ; i<=lines ; ++i)
+		visited[i][0] = visited[i][columns+1] = 31;
+	for(int i=1 ; i<=columns ; ++i)
+		visited[0][i] = visited[lines+1][i] = 31;
+	
+	queue<ppiii> myQueue;
+	vector<ppiii> lasers;
+	ppiii goal;
+	goal.timer = -1;
+	
+	char current;
+	for(int i=1 ; i<=lines ; ++i)
+	{
+		for(int j=1 ; j<=columns ; ++j)
+		{
+			in >> current;
+			switch(current)
+			{
+				case '#':
+				{
+					visited[i][j] = 31;
+					break;
+				}
+				case 'S':
+				{
+					visited[i][j] = 1;
+					myQueue.push(mp(mp(i, j), 0));
+					break;
+				}
+				case 'G':
+				{
+					goal.first = mp(i, j);
+					break;
+				}
+				case '^':
+				{
+					lasers.pb(mp(mp(i, j), 0));
+					visited[i][j] = 31;
+					break;
+				}
+				case '>':
+				{
+					lasers.pb(mp(mp(i, j), 1));
+					visited[i][j] = 31;
+					break;
+				}
+				case 'v':
+				{
+					lasers.pb(mp(mp(i, j), 2));
+					visited[i][j] = 31;
+					break;
+				}
+				case '<':
+				{
+					lasers.pb(mp(mp(i, j), 3));
+					visited[i][j] = 31;
+					break;
+				}
+			}
+		}
+	}
+	
+	while(!myQueue.empty() && goal.timer == -1)
+	{
+		ppiii current = myQueue.front();
+		myQueue.pop();
+		
+		for(int dir=0 ; dir<4 ; ++dir)
+		{
+			ppiii next = mp(mp(current.x+goX[dir], current.y+goY[dir]), current.timer+1);
+			int nextTime = next.timer & 3;
+			if(visited[next.x][next.y] & (1<<nextTime))
+				continue;
+			visited[next.x][next.y] |= (1<<nextTime);
+			
+			if(!alive(lasers, next.x, next.y, nextTime))
+				continue;
+			
+			myQueue.push(next);
+			if(next.first == goal.first)
+			{
+				goal.timer = next.timer;
+				break;
+			}
+		}
+	}
+	
+	return goal.timer;
+}
+
+bool alive(vector<ppiii> lasers, int X, int Y, int timer)
+{
+	vector<ppiii>::iterator it, end=lasers.end();
+	for(it=lasers.begin() ; it!=end ; ++it)
+		if(killed(*it, X, Y, timer))
+			return false;
+
+	
+	return true;
+}
+
+bool killed(ppiii laser, int X, int Y, int timer)
+{
+	laser.direction += timer;
+	laser.direction &= 3;
+	
+	switch(laser.direction)
+	{
+		case 0: // up
+		{
+			if(laser.y != Y)
+				return false;
+			if(laser.x < X)
+				return false;
+			
+			for(int i=laser.x-1 ; ; --i)
+			{
+				if(visited[i][Y] == 31)
+					return false;
+				if(i == X)
+					return true;
+			}
+			
+		}
+		case 1: // right
+		{
+			if(laser.x != X)
+				return false;
+			if(Y < laser.y)
+				return false;
+			
+			for(int i=laser.y+1 ; ; ++i)
+			{
+				if(visited[X][i] == 31)
+					return false;
+				if(i == Y)
+					return true;
+			}
+		}
+		case 2: // down
+		{
+			if(laser.y != Y)
+				return false;
+			if(X < laser.x)
+				return false;
+			
+			for(int i=laser.x+1 ; ; ++i)
+			{
+				if(visited[i][Y] == 31)
+					return false;
+				if(i == X)
+					return true;
+			}
+		}
+		case 3: // left
+		{
+			if(laser.x != X)
+				return false;
+			if(laser.y < Y)
+				return false;
+			
+			for(int i=laser.y-1 ; ; --i)
+			{
+				if(visited[X][i] == 31)
+					return false;
+				if(i == Y)
+					return true;
+			}
+		}
+	}
+	
+	return false;
+}

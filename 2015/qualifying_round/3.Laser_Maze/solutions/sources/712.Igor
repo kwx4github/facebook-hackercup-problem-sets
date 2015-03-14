@@ -1,0 +1,142 @@
+#include <iostream>
+#include <string>
+#include <queue>
+#include <string.h>
+using namespace std;
+
+int dx[] = {-1, 0, 1, 0};
+int dy[] = {0, -1, 0, 1};
+
+int dp[4][100][100];
+string g[100];
+string shot[4][100];
+string turrets = "<^>v";
+
+typedef pair<int, pair<int, int> > PII;
+
+bool can(int y, int x, int len, int n, int m)
+{
+    if (y < 0 || x < 0 || y == n || x == m || g[y][x] != '.' || shot[len % 4][y][x] == '*') return false;
+    return true;
+}
+
+void rotateTurrets(int n, int m)
+{
+    for (int i = 0; i < n; ++i)
+    {
+        for (int j = 0; j < m; ++j)
+        {
+            int k = turrets.find(g[i][j]);
+
+            if (k != string::npos)
+            {
+                g[i][j] = turrets[(k + 1) % 4];
+            }
+        }
+    }
+}
+
+void generateShots(int n, int m)
+{
+    for (int d = 0; d < 4; ++d)
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            shot[d][i] = string(m, '.');
+        }
+
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = 0; j < m; ++j)
+            {
+                int k = turrets.find(g[i][j]);
+                if (k == string::npos) continue;
+
+                int y = i + dy[k], x = j + dx[k];
+                while (y >= 0 && x >= 0 && y < n && x < m && g[y][x] == '.')
+                {
+                    shot[d][y][x] = '*';
+                    y += dy[k];
+                    x += dx[k];
+                }
+            }
+        }
+
+        rotateTurrets(n, m);
+    }
+}
+
+void solve(int test)
+{
+    int m, n, inf;
+    cin >> n >> m;
+
+    int ys, xs, yg, xg;
+    for (int i = 0; i < n; ++i)
+    {
+        cin >> g[i];
+        for (int j = 0; j < m; ++j)
+        {
+            if (g[i][j] == 'S')
+            {
+                ys = i, xs = j;
+                g[i][j] = '.';
+            }
+            if (g[i][j] == 'G')
+            {
+                yg = i, xg = j;
+                g[i][j] = '.';
+            }
+        }
+    }
+
+    generateShots(n, m);
+    memset(dp, 100, sizeof(dp));
+    inf  = dp[0][0][0];
+    dp[0][ys][xs] = 0;
+
+    queue<PII> q;
+    q.push(make_pair(0, make_pair(ys, xs)));
+
+    while (!q.empty())
+    {
+        PII el = q.front();
+        q.pop();
+
+        int x = el.second.second, y = el.second.first, len = el.first;
+        for (int i = 0; i < 4; ++i)
+        {
+            int xn = x + dx[i], yn = y + dy[i], lenn = len + 1;
+            if (!can(yn, xn, lenn, n, m)) continue;
+            if (dp[lenn % 4][yn][xn] > lenn)
+            {
+                dp[lenn % 4][yn][xn] = lenn;
+                q.push(make_pair(lenn, make_pair(yn, xn)));
+            }
+        }
+    }
+
+    int res = inf;
+    for (int i = 0; i < 4; ++i)
+    {
+        res = min(res, dp[i][yg][xg]);
+    }
+
+    cout << "Case #" << test << ": ";
+    if (res == inf) cout << "impossible";
+    else cout << res;
+    cout << endl;
+}
+
+int main()
+{
+    int t;
+    cin >> t;
+
+    for (int test = 1; test <= t; ++test)
+    {
+        solve(test);
+    }
+
+    return 0;
+}

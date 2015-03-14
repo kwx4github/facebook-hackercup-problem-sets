@@ -1,0 +1,148 @@
+<?php
+
+$fin = fopen('laser_maze.txt','r');
+$fout = fopen('data.txt', 'w');
+$countCase = 0;
+$maxNumber = 0;
+$fase = 1;
+$lineCount = 0;
+$moveRulesFile = [
+    [0,1,0,0],
+    [0,0,1,0],
+    [0,0,1,0],
+    [0,0,0,-1],
+    [-1,0,0,0],
+    [0,0,0,1],
+    [-1,0,0,0],
+    [0,1,0,0],
+];
+
+function process_matrix($matrix,$moveRulesFile,$matrixLimits,$points){
+    echo "<pre>";
+    $moveRulesSelected = 0;
+    $coordPlayer = $points['S'];
+    $loopFlag = false;
+    $startCount = null;
+    $matrix = rotate_laser($matrix,$matrixLimits);
+
+    $coordPlayerOld = $coordPlayer;
+    $countStep = 0;
+    $i =0;
+    do{
+        $i++;
+        if($moveRulesSelected >= count($moveRulesFile)) $moveRulesSelected = 0;
+        if(!is_null($startCount) && $startCount == $moveRulesSelected)
+        {
+            $loopFlag = true;
+        }
+        if(is_null($startCount))
+        {
+            $startCount = $moveRulesSelected;
+        }
+        if($loopFlag === true){
+            return 'impossible';
+        }
+        $deltaX = (int)$moveRulesFile[$moveRulesSelected][1]+(int)$moveRulesFile[$moveRulesSelected][3];
+        $deltaY = (int)$moveRulesFile[$moveRulesSelected][0]+(int)$moveRulesFile[$moveRulesSelected][2];
+
+        $coordPlayer = $coordPlayerOld;
+
+        $coordPlayer[0] = ( $deltaY+$coordPlayer[0] >= 0 && $deltaY+$coordPlayer[0] < $matrixLimits[0])?$deltaY+$coordPlayer[0]:-1;
+        $coordPlayer[1] = ( $deltaX+$coordPlayer[1] >= 0 && $deltaX+$coordPlayer[1] < $matrixLimits[1])?$deltaX+$coordPlayer[1]:-1;
+
+        if($coordPlayer[0] == -1 || $coordPlayer[1] == -1){
+            $moveRulesSelected++;
+        }  else if($matrix[$coordPlayer[0]][$coordPlayer[1]] == '.'){
+            $coordPlayerOld = [$coordPlayer[0],$coordPlayer[1]];
+            $countStep++;
+        } else if($matrix[$coordPlayer[0]][$coordPlayer[1]] == 'S'){
+            return $countStep+1;
+        } else{
+            $moveRulesSelected++;
+        }
+    } while(true);
+}
+
+function rotate_laser($matrix,$matrixLimits){
+    $laserPool = [];
+    foreach($matrix as $i => $row){
+        foreach($row as $j => $element){
+            if(in_array($element,['<','>','^','v'])){
+                $laserPool[] = [$element, $i,$j];
+            } elseif ($element == 'x'){
+                $matrix[$i][$j] = '.';
+            }
+        }
+    }
+    foreach($laserPool as $laserCoord){
+        if($laserCoord[0] == '<' ){
+            $matrix[$laserCoord[1]][$laserCoord[2]] = '^';
+            for($i = $laserCoord[2]-1; $i >= 0;$i-- ){
+                if(in_array($matrix[$laserCoord[1]][$i],['#','S','G','<','>','^','v'])) break;
+                if($matrix[$laserCoord[1]][$i]== '.') $matrix[$laserCoord[1]][$i] = 'x';
+            }
+        } elseif($laserCoord[0] == '>' ){
+            $matrix[$laserCoord[1]][$laserCoord[2]] = 'v';
+            for($i = $laserCoord[2]-1; $i >= $matrixLimits[1];$i++ ){
+                if(in_array($matrix[$laserCoord[1]][$i],['#','S','G','<','>','^','v'])) break;
+                if($matrix[$laserCoord[1]][$i]== '.') $matrix[$laserCoord[1]][$i] = 'x';
+            }
+        } elseif($laserCoord[0] == '^' ){
+            $matrix[$laserCoord[1]][$laserCoord[2]] = '>';
+            for($i = $laserCoord[1]-1; $i >= 0;$i-- ){
+                if(in_array($matrix[$laserCoord[1]][$i],['#','S','G','<','>','^','v'])) break;
+                if($matrix[$i][$laserCoord[2]]== '.') $matrix[$i][$laserCoord[2]] = 'x';
+            }
+        } elseif($laserCoord[0] == 'v' ){
+            $matrix[$laserCoord[1]][$laserCoord[2]] = '<';
+            for($i = $laserCoord[1]-1; $i >= $matrixLimits[0];$i++ ){
+                if(in_array($matrix[$laserCoord[1]][$i],['#','S','G','<','>','^','v'])) break;
+                if($matrix[$i][$laserCoord[2]]== '.') $matrix[$i][$laserCoord[2]] = 'x';
+            }
+        }
+    }
+    return $matrix;
+}
+
+while ($line = fgets($fin)) {
+    $lineCount++;
+    if($countCase == 0){
+        $maxNumber = (int) $line;
+        $countCase++;
+        continue;
+    }
+    if($fase == 1)
+    {
+        $status = false;
+        $matrixLimits = explode(' ',$line);
+        $matrix = [];
+        $points = [];
+        $row = 0;
+        $fase = 2;
+        $countStep = 0;
+        continue;
+    } elseif ($fase == 2)
+    {
+        for($i=0;$i<$matrixLimits[1];$i++){
+            $matrix[$row][$i] = $line[$i];
+            if(in_array($line[$i],['S','G'])){
+                $points[$line[$i]] = [$row,$i];
+            }
+        }
+
+        $row++;
+        if($row == $matrixLimits[0] && $i == $matrixLimits[1])
+        {
+            $status = process_matrix($matrix, $moveRulesFile,$matrixLimits,$points);
+            $response = "Case #{number}: {response}".PHP_EOL;
+            $response = str_replace(['{number}','{response}'],[$countCase,$status],$response);
+            fwrite($fout, $response);
+            $countCase++;
+            $fase = 1;
+        }
+        continue;
+    }
+}
+
+fclose($fin);
+fclose($fout);

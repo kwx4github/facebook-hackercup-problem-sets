@@ -1,0 +1,89 @@
+import networkx as nx
+import itertools
+import heapq as hq
+
+
+T = int(raw_input())
+
+def fill_danger(mat, danger, e, i, j):
+	m = len(mat)
+	n = len(mat[0])
+	if e == "^": cnt_up = 0
+	if e == "<": cnt_up = 1
+	if e == "v": cnt_up = 2
+	if e == ">": cnt_up = 3
+	for u in range(max(i-1,0),-1,-1):
+		if mat[u][j] in ["<",">","^","v","#"]: break
+		if cnt_up not in danger[u][j]: danger[u][j].append(cnt_up)
+	for d in range(min(i+1,m-1),m):
+		if mat[d][j] in ["<",">","^","v","#"]: break
+		if (cnt_up+2)%4 not in danger[d][j]: danger[d][j].append((cnt_up+2)%4)
+	for l in range(max(j-1,0),-1,-1):
+		if mat[i][l] in ["<",">","^","v","#"]: break
+		if (cnt_up+3)%4 not in danger[i][l]: danger[i][l].append((cnt_up+3)%4)
+	for l in range(min(j+1,n-1),n):
+		if mat[i][l] in ["<",">","^","v","#"]: break
+		if (cnt_up+1)%4 not in danger[i][l]: danger[i][l].append((cnt_up+1)%4)
+
+for t in range(T):
+	m,n = map(int, raw_input().strip().split())
+	G = nx.Graph()
+	danger = [[[] for i in range(n)] for j in range(m)]
+	gmat = []
+	for i in range(m):
+		row = raw_input().strip()
+		gmat.append(row)
+	start = None
+	goal = None
+	for i,row in enumerate(gmat):
+		for j,e in enumerate(row):
+			#print e
+			if e in ["^",">","v","<"]: 
+				#danger[i][j] = 0
+				fill_danger(gmat, danger, e, i, j)
+			if e == "S": 
+				start = (i,j)
+				G.add_node(start)
+			if e in [".","S","G"]:
+				#print i,
+				if i > 0 and gmat[i-1][j] in [".","S","G"]: G.add_edge((i,j),(i-1,j))
+				if i < m-1 and gmat[i+1][j] in [".","S","G"]: G.add_edge((i,j),(i+1,j))
+				if j > 0 and gmat[i][j-1] in [".","S","G"]: G.add_edge((i,j),(i,j-1))
+				if j < n-1 and gmat[i][j+1] in [".","S","G"]: G.add_edge((i,j),(i,j+1))
+			if e == "G": 
+				goal = (i,j)
+				G.add_node(goal)
+	#print G.nodes()
+	#print danger
+	queue = [(0,start)]
+	seen = {}
+	#if danger[start[0]][start[1]] >= 0: 
+	#	print "impossible"
+	#	continue
+	finalCost = -1
+	while queue:
+		cost, node = hq.heappop(queue)
+		#print cost, node
+		if seen.has_key((cost%4,node)) and seen[(cost%4,node)] <= cost: continue
+		#path = path + [node]
+		if node == goal: 
+			finalCost = cost
+			break
+		#print "child:",
+		for child in G.neighbors(node):
+			#print child,
+			isDanger = False
+			for lcnt in danger[child[0]][child[1]]:	
+				if (cost+1 - lcnt)%4==0: 
+					isDanger = True
+					break
+			#print lcnt
+			if isDanger: 
+				#print "Danger path:",path
+				continue
+			if ((cost+1)%4,child) not in seen:
+				hq.heappush(queue, (cost+1, child))
+		seen[(cost%4, node)] = cost
+	if finalCost < 0: print "Case #%d: impossible"%(t+1)
+	else: print "Case #%d:"%(t+1), finalCost
+	

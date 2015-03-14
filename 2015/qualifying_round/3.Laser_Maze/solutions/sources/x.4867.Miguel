@@ -1,0 +1,99 @@
+import copy
+import heapq
+
+class Point(object):
+    def __init__(self, t, i, j):
+        self.t = t
+        self.i = i
+        self.j = j
+
+class Maze(object):
+    turret = list('<^>v')
+    def __init__(maze):
+        maze.M, maze.N = map(int, raw_input().split())
+        maze.grid = [[list(raw_input()) for i in xrange(maze.M)]]
+        maze.find_start_end()
+        maze.time_tell_no_lies()
+        maze.fire_ALL_the_lasers() 
+
+    def find_start_end(maze):
+        for i in xrange(len(maze.grid[0])):
+            for j in xrange(len(maze.grid[0][i])):
+                char = maze.grid[0][i][j]
+                if char == 'S':
+                    maze.S = Point(0, i, j)
+                    maze.grid[0][i][j] = '.'
+                elif char == 'G':
+                    maze.G = Point(0, i, j)
+                    maze.grid[0][i][j] = '.'
+
+    def time_tell_no_lies(maze):
+        for i in xrange(1, 4):
+            maze.grid.append(copy.deepcopy(maze.grid[0]))
+
+    def fire_ALL_the_lasers(maze):
+        for t in xrange(len(maze.grid)):
+            for i in xrange(len(maze.grid[0])):
+                for j in xrange(len(maze.grid[0][i])):
+                    if maze.grid[t][i][j] in maze.turret:
+                        maze.there_you_are(t, i, j)
+
+    def walkable(maze, t, i, j):
+        return i >= 0 and i < maze.M and j >= 0 and j < maze.N and maze.grid[t%4][i][j] == '.'
+
+    def there_you_are(maze, t, i, j):
+        def fire(i, j, di, dj):
+            if di:
+                while maze.walkable(t, i+di, j):
+                    maze.grid[t][i+di][j] = 'x'
+                    i += di
+            if dj:
+                while maze.walkable(t, i, j+dj):
+                    maze.grid[t][i][j+dj] = 'x'
+                    j += dj
+        direction = {
+                '<': {'di':  0, 'dj': -1},
+                '>': {'di':  0, 'dj':  1},
+                '^': {'di': -1, 'dj':  0},
+                'v': {'di':  1, 'dj':  0},
+                }
+        args = direction.get(maze.grid[t][i][j])
+        maze.grid[(t+1)%4][i][j] = maze.turret[(maze.turret.index(maze.grid[t][i][j])+1)%4]
+        fire(i, j, **args)
+
+    def is_goal(maze, p):
+        return p.i == maze.G.i and p.j == maze.G.j
+
+    def h(maze, p):
+        return abs(p.i - maze.G.i) + abs(p.j - maze.G.j)
+
+    def solve(maze):
+        q = []
+        closed = {}
+        heapq.heappush(q, (maze.h(maze.S), maze.S))
+        while q:
+            h, p = heapq.heappop(q)
+            closed[p.t%4, p.i, p.j] = True
+            if maze.is_goal(p):
+                return p.t
+            for i in [-1, 1]:
+                if maze.walkable(p.t+1, p.i+i, p.j) and not closed.get(((p.t+1)%4, p.i+i, p.j), None):
+                    np = Point(p.t+1, p.i+i, p.j)
+                    heapq.heappush(q, (np.t + maze.h(np), np))
+            for j in [-1, 1]:
+                if maze.walkable(p.t+1, p.i, p.j+j) and not closed.get(((p.t+1)%4, p.i, p.j+j), None):
+                    np = Point(p.t+1, p.i, p.j+j)
+                    heapq.heappush(q, (np.t + maze.h(np), np))
+        return 'impossible'
+
+    def __str__(maze):
+        for t in maze.grid:
+            for i in t:
+                print i
+        return ''
+
+t = int(raw_input())
+for x in xrange(1,t+1):
+    maze = Maze()
+    #print maze
+    print "Case #{0}: {1}".format(x, maze.solve())

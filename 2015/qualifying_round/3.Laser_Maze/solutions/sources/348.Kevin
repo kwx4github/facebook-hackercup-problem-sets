@@ -1,0 +1,118 @@
+#!/usr/bin/python
+import sys
+
+dx = (1, 0, -1, 0)
+dy = (0, 1, 0, -1)
+pt = {'>':0, 'v':1, '<':2, '^':3}
+passable = ".SG"
+
+def neighbors(r, c, t, mazes):
+  output = []
+  for i in xrange(4):
+    nr = r+dy[i]
+    nc = c+dx[i]
+    nt = (t+1)%4
+    if mazes[nt][nr][nc] in passable:
+      output.append((nr, nc, nt))
+  return output
+
+def solve():
+  def convert(maze, t):
+    output = [list(row) for row in maze]
+
+    # check rows left to right
+    for r, row in enumerate(maze):
+      fire = False
+      for c, cell in enumerate(row):
+        if fire:
+          if cell in passable:
+            output[r][c] = '#'
+          else:
+            fire = False
+        if cell in pt and (pt[cell]+t)%4 == 0:
+          fire = True
+      fire = False
+      for c in xrange(len(row)-1, -1, -1):
+        cell = row[c]
+        if fire:
+          if cell in passable:
+            output[r][c] = '#'
+          else:
+            fire = False
+        if cell in pt and (pt[cell]+t)%4 == 2:
+          fire = True
+    for c in xrange(len(maze[0])):
+      fire = False
+      for r in xrange(len(maze)):
+        cell = maze[r][c]
+        if fire:
+          if cell in passable:
+            output[r][c] = '#'
+          else:
+            fire = False
+        if cell in pt and (pt[cell]+t)%4 == 1:
+          fire = True
+      fire = False
+      for r in xrange(len(maze)-1, -1, -1):
+        cell = maze[r][c]
+        if fire:
+          if cell in passable:
+            output[r][c] = '#'
+          else:
+            fire = False
+        if cell in pt and (pt[cell]+t)%4 == 3:
+          fire = True
+    return output
+
+  M, N = map(int, sys.stdin.readline().split()) # h, w
+  H = M+2
+  W = N+2
+  zeromaze = []
+  zeromaze.append("#"*W)
+  for r in xrange(M):
+    zeromaze.append("#"+sys.stdin.readline().lstrip()[:N]+"#")
+  zeromaze.append("#"*W)
+  mazes = [convert(zeromaze, t) for t in xrange(4)]
+ 
+  """
+  # DEBUG
+  for t, mz in enumerate(mazes):
+    print "t=",t
+    print "\n".join("".join(row) for row in mz)
+    print ""
+  return
+  """
+    
+
+  # BFS
+  # State = (r, c, t)
+  # Find start
+  start = None
+  for r, row in enumerate(zeromaze):
+    if "S" in row:
+      start = (r, row.index("S"), 0)
+      break
+  assert start is not None
+  curQ = [start]
+  visited = set()
+  visited.add(start)
+  dist = 0
+  while curQ:
+    nxtQ = []
+    for r, c, t in curQ:
+      assert t == dist%4
+      if mazes[t][r][c] == "G":
+        return dist
+      for adjState in neighbors(r, c, t, mazes):
+        assert adjState[2] == (dist+1)%4
+        if adjState not in visited:
+          visited.add(adjState)
+          nxtQ.append(adjState)
+    curQ = nxtQ
+    dist += 1
+  return "impossible"
+
+T = int(sys.stdin.readline())
+for testcase in xrange(1, T+1):
+  answer = solve()
+  print "Case #{0}: {1}".format(testcase, answer)

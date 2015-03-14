@@ -1,0 +1,103 @@
+#include <algorithm>
+#include <iostream>
+#include <cstdio>
+#include <utility>
+#include <queue>
+#include <cstring>
+#include <map>
+#define MAX 110
+#define IN(x) ((x) == '<' || (x) == '>' || (x) == '^' || (x) == 'v')
+#define RANGE(x, n) (0 <= (x) && (x) < (n))
+using namespace std;
+
+char tabla[4][MAX][MAX], usado[4][MAX][MAX];
+
+void imprime(int n, char t[MAX][MAX]){
+	printf("================\n");
+	for(int i = 0; i < n; i++)
+		printf("%s\n", t[i]);
+	printf("================\n");
+	return;
+}
+
+void llena(int n, int m, char t[MAX][MAX]){
+	for(int i = 0; i < n; i++)
+		for(int j = 0; j < m; j++)
+			switch(t[i][j]){
+				case '<':{
+					for(int k = j-1; k >= 0 && t[i][k] != '#' && !IN(t[i][k]); k--)
+						t[i][k] = '*';
+				}break;
+				case '>':{
+					for(int k = j+1; k < m && t[i][k] != '#' && !IN(t[i][k]); k++)
+						t[i][k] = '*';
+				}break;
+				case '^':{
+					for(int k = i-1; k >= 0 && t[k][j] != '#' && !IN(t[k][j]); k--)
+						t[k][j] = '*';
+				}break;
+				case 'v':{
+					for(int k = i+1; k < n && t[k][j] != '#'  && !IN(t[k][j]); k++)
+						t[k][j] = '*';
+				}break;
+				default:break;
+			}
+	return;
+}
+
+int solve(int n, int m){
+	map<char, char> next;
+	next['<'] = '^', next['^'] = '>', next['>'] = 'v', next['v'] = '<';
+	next['.'] = '.', next['S'] = 'S', next['G'] = 'G', next['#'] = '#';
+	queue<pair<int, pair<int, int> > > q;
+	memset(usado, 1, sizeof(usado));
+	for(int k = 1; k < 4; k++)
+		for(int i = 0; i < n; i++)
+			for(int j = 0; j < m; j++)
+				tabla[k][i][j] = next[tabla[k-1][i][j]];
+	for(int i = 0; i < n; i++)
+		for(int j = 0; j < m; j++)
+			if(tabla[0][i][j] == 'S'){
+				q.push(make_pair(0, make_pair(i, j)));
+				usado[0][i][j] = 0;
+			}
+	for(int i = 0; i < 4; i++){
+//		cout << "---------- Tablero "<<i<<"-----------------"<<endl;
+		llena(n, m, tabla[i]);
+//		imprime(n, tabla[i]);
+	}
+	static int sig[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+	while(!q.empty()){
+		pair<int, pair<int, int> > current = q.front();
+		q.pop();
+//		printf("%d %d %d %d\n", current.first, current.second.first, current.second.second, current.first%4);
+		int tablero = (current.first+1)%4;
+		for(int i = 0; i < 4; i++){
+			int x = current.second.first+sig[i][0], y = current.second.second+sig[i][1];
+			if(RANGE(x, n) && RANGE(y, m) && usado[tablero][x][y]
+			&& (tabla[tablero][x][y] == '.' || tabla[tablero][x][y] == 'G' || tabla[tablero][x][y] == 'S')){
+				if(tabla[tablero][x][y] == 'G')
+					return current.first+1;
+				usado[tablero][x][y] = 0;
+				q.push(make_pair(current.first+1, make_pair(x, y)));
+			}
+		}
+	}
+	return -1;
+}
+
+int main(){
+	int n, m, casos;
+	scanf("%d", &casos);
+	for(int i = 1; i <= casos; i++){
+		scanf("%d%d", &n, &m);
+		for(int j = 0; j < n; j++)
+			scanf("%s", tabla[0][j]);
+		int resp = solve(n, m);
+		if(resp < 0)
+			printf("Case #%d: impossible\n", i);
+		else
+			printf("Case #%d: %d\n", i, resp);
+	}
+	return 0;
+}

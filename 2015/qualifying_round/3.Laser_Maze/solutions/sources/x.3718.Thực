@@ -1,0 +1,210 @@
+package hackercup;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.StringTokenizer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class HackerCup {
+    public static void main(String[] args) {
+//            InputStream inputStream = System.in;
+        InputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(new File("input.txt"));
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(HackerCup.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+//        OutputStream outputStream = System.out;
+        OutputStream outputStream = null;
+        try {
+            outputStream = new FileOutputStream(new File("output.txt"));
+        } catch (FileNotFoundException ex) {
+            Logger.getLogger(HackerCup.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        InputReader in = new InputReader(inputStream);
+        PrintWriter out = new PrintWriter(outputStream);
+
+        
+        int ntest = in.nextInt();
+        for (int i = 1; i <= ntest; ++i) {
+            TaskC solver = new TaskC();
+            solver.solve(i, in, out);
+        }
+        out.close();
+    }
+}
+
+class TaskC {
+    int row, col, rowStart, colStart, rowGoal, colGoal;
+    String[] maze = new String[100];
+    boolean isOk[][][] = new boolean[4][100][100];
+    int dis[][][] = new int[4][100][100];
+    boolean pass[][][] = new boolean[4][100][100];
+    
+    static final int INF = (int) 1e9;
+    static final String DIR = "<^>v";
+    static final int dx[] = {0, -1, 0, 1};
+    static final int dy[] = {-1, 0, 1, 0};
+           
+    public TaskC() {
+        for (int i = 0; i < 4; ++i) {
+            for (int j = 0; j < 100; ++j) {
+                for (int t = 0; t < 100; ++t) {
+                    dis[i][j][t] = -1; // not yet!
+                    isOk[i][j][t] = true;
+                }
+            }
+        }
+    }
+    
+    static boolean isDirSign(Character c) {
+        return DIR.indexOf(c) >= 0;
+    }
+    
+    private void getInput(InputReader in, PrintWriter out) {
+        row = in.nextInt(); col = in.nextInt();
+        for (int i = 0; i < row; ++i) {
+            maze[i] = in.next();
+            int colPost = maze[i].indexOf('S');
+            if (colPost >= 0) {
+                rowStart = i;
+                colStart = colPost;
+            }
+            
+            colPost = maze[i].indexOf('G');
+            if (colPost >= 0) {
+                rowGoal = i;
+                colGoal = colPost;
+            }
+        }
+        
+//        out.println(rowStart + " " + colStart + " " + rowGoal + " " + colGoal);
+    }
+    
+    private void prepare() {
+        for (int state = 0; state < 4; ++state) {
+            for (int r = 0; r < row; ++r) {
+                for (int c = 0; c < col; ++c) {
+                    Character cur = maze[r].charAt(c);
+                    if (cur.equals('#')) { 
+                        isOk[state][r][c] = false; continue; 
+                    }
+                    int pos = DIR.indexOf(cur);
+                    if (pos < 0) continue;
+                    isOk[state][r][c] = false;
+                    int newDir = (pos + state) % 4;
+                    int px = dx[newDir], py = dy[newDir];
+                    int curr = r, curc = c;
+                    do {
+                        curr += px;
+                        curc += py;
+                        if (curr >= 0 && curr < row && curc >= 0 && curc < col) {
+                            Character ch = maze[curr].charAt(curc);
+                            if (ch.equals('.') || ch.equals('S') || ch.equals('G')) {
+                                isOk[state][curr][curc] = false;
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    } while (true);
+                }
+            }
+        }
+        
+        // debug
+//        for (int state = 0; state < 4; ++state) {
+//            for (int r = 0; r < row; ++r) {
+//                for (int c = 0; c < col; ++c) {
+//                    System.out.print(isOk[state][r][c] ? '.' : '#');
+//                }
+//                System.out.println("");
+//            }
+//            System.out.println("--------------");
+//        }
+    }
+    
+    private int go(int state, int rx, int cx) {
+        if (dis[state][rx][cx] >= 0) {
+            return dis[state][rx][cx];
+        }
+        
+        if (cx == colGoal && rx == rowGoal && isOk[state][rx][cx]) {
+            dis[state][rx][cx] = 0;
+            return 0;
+        }
+        
+        int nextState = (state + 1) % 4;
+        
+        // assume dis[state][rx][cx] = -1; // not yet!
+        int min = INF;
+//        if (isOk[nextState][rx][cx] && dis[nextState][rx][cx] < INF && !pass[nextState][rx][cx]) {
+//            pass[nextState][rx][cx] = true;
+//            go(nextState, rx, cx);
+//            min = Math.min(min, 1 + dis[nextState][rx][cx]);
+//            pass[nextState][rx][cx] = false;
+//        }
+        
+        for (int i = 0; i < 4; ++i) {
+            int nr = rx + dx[i];
+            int nc = cx + dy[i];
+            if (nr >= 0 && nr < row && nc >= 0 && nc < col && isOk[nextState][nr][nc] && dis[nextState][nr][nc] < INF && !pass[nextState][nr][nc]) {
+                pass[nextState][nr][nc] = true;
+                go(nextState, nr, nc);
+                pass[nextState][nr][nc] = false;
+                min = Math.min(min, 1 + dis[nextState][nr][nc]);
+            }
+        }
+        dis[state][rx][cx] = (min >= INF ? INF : min);
+        return dis[state][rx][cx];
+    }
+    
+    
+    
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        getInput(in, out);
+        prepare();
+        
+        go(0, rowStart, colStart);
+        
+        out.println("Case #" + testNumber + ": " + (dis[0][rowStart][colStart] >= INF ? "impossible" : dis[0][rowStart][colStart]));
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+}

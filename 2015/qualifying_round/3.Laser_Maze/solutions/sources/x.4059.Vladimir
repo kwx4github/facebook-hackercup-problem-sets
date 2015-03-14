@@ -1,0 +1,276 @@
+<?php
+	class LaserMaze
+	{
+		private $empty = '-2';
+		private $wall = '-1';
+		private $laser_left = '-3';
+		private $laser_top = '-4';
+		private $laser_right = '-5';
+		private $laser_bottom = '-6';
+		private $laser_beam = '-7';
+
+		private $startGoal = array();
+
+		private $input = 'lazer_maze.txt';
+		private $output = 'output.txt';
+
+		private $input_handler = null;
+		private $output_handler = null;
+
+		private $mazes = array();
+
+		public function __construct($input = 'input.txt', $output = 'output.txt')
+		{
+			$this->input = $input;
+			$this->output = $output;
+
+			$this->input_handler = fopen($this->input, 'r');
+			$this->output_handler = fopen($this->output, 'w');
+		}
+
+		public function init()
+		{
+			$test_case_count = substr(fgets($this->input_handler), 0, -1);
+
+			for($tc = 1; $tc <= $test_case_count; $tc++) {
+				$maze_dimension = fgets($this->input_handler); if (!$maze_dimension) return;
+
+				$maze_dimension = substr($maze_dimension, 0, -1);
+				$maze_dimension = preg_replace('|\s+|', ' ', $maze_dimension);
+				$maze_dimension = explode(' ', $maze_dimension);
+
+				$mazes[$tc] = array();
+				$mazes_dims[$tc] = $maze_dimension;
+				$this->startGoal[$tc] = array();
+
+				for ($i = 1; $i <= $maze_dimension[0]; $i++) {
+					$maze_row = fgets($this->input_handler); if (!$maze_row) return;
+					$mazes[$tc][$i] = array();
+					for ($j = 1; $j <= $maze_dimension[1]; $j++) {
+						if ($maze_row[$j - 1] == 'S') {
+							$this->startGoal[$tc]['start'] = array($i, $j);
+							$mazes[$tc][$i][$j] = $this->empty;
+							continue;
+						}
+						if ($maze_row[$j - 1] == 'G') {
+							$this->startGoal[$tc]['goal'] = array($i, $j);
+							$mazes[$tc][$i][$j] = $this->empty;
+							continue;
+						}
+						$mazes[$tc][$i][$j] = $this->convertMazeElement($maze_row[$j - 1]);
+					}
+				}
+
+				$tmp_maze = $mazes[$tc];
+				foreach($tmp_maze as $key_r=>$row) {
+					foreach($row as $key_i=>$item) {
+						if ($item == $this->laser_bottom) {
+							$tmp = $key_r + 1;
+							while(isset($tmp_maze[$tmp])) {
+								if ($tmp_maze[$tmp][$key_i] == $this->wall ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_bottom ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_left ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_top ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_right) {
+									break;
+								}
+								$tmp_maze[$tmp][$key_i] = $this->laser_beam;
+								$tmp++;
+							}
+						} else if ($item == $this->laser_left) {
+							$tmp = $key_i - 1;
+							while(isset($tmp_maze[$key_r][$tmp])) {
+								if ($tmp_maze[$key_r][$tmp] == $this->wall ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_bottom ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_left ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_top ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_right) {
+									break;
+								}
+								$tmp_maze[$key_r][$tmp] = $this->laser_beam;
+								$tmp--;
+							}
+						} else if ($item == $this->laser_right) {
+							$tmp = $key_i + 1;
+							while(isset($tmp_maze[$key_r][$tmp])) {
+								if ($tmp_maze[$key_r][$tmp] == $this->wall ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_bottom ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_left ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_top ||
+									$tmp_maze[$key_r][$tmp] == $this->laser_right) {
+									break;
+								}
+								$tmp_maze[$key_r][$tmp] = $this->laser_beam;
+								$tmp++;
+							}
+						} else if ($item == $this->laser_top) {
+							$tmp = $key_r - 1;
+							while(isset($tmp_maze[$tmp])) {
+								if ($tmp_maze[$tmp][$key_i] == $this->wall ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_bottom ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_left ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_top ||
+									$tmp_maze[$tmp][$key_i] == $this->laser_right) {
+									break;
+								}
+								$tmp_maze[$tmp][$key_i] = $this->laser_beam;
+								$tmp--;
+							}
+						}
+					}
+				}
+
+				$path = $this->findShortestPath($mazes[$tc], $mazes_dims[$tc], $this->startGoal[$tc], 0);
+				if (!$path) {
+					$path = $this->findShortestPath($mazes[$tc], $mazes_dims[$tc], $this->startGoal[$tc], 2);
+				}
+
+				if (!$path) {
+					fputs($this->output_handler, sprintf("Case #%d: impossible\n", $tc));
+				} else {
+					fputs($this->output_handler, sprintf("Case #%d: %d\n", $tc, $path));
+				}
+			}
+		}
+
+		private function clearLaserBeam($maze)
+		{
+			foreach($maze as $y=>$maze_row_value) {
+				foreach($maze_row_value as $x=>$val) {
+					if($val == $this->laser_beam) {
+						$maze[$y][$x] = $this->empty;
+					}
+				}
+			}
+			return $maze;
+		}
+
+		private function updateMaze($maze)
+		{
+			//$maze = $this->mazes[$test_case];
+			$maze = $this->clearLaserBeam($maze);
+
+			foreach($maze as $y=>$maze_row_value) {
+				foreach($maze_row_value as $x=>$val) {
+					if($val == $this->laser_bottom) {
+						$maze[$y][$x] = $this->laser_left;
+						$left = $x - 1;
+						while(isset($maze[$y][$left])) {
+							if ($maze[$y][$left] == $this->empty) {
+								$maze[$y][$left] = $this->laser_beam;
+							} else {
+								break;
+							}
+							$left = $left - 1;
+						}
+					} elseif($val == $this->laser_left) {
+						$maze[$y][$x] = $this->laser_top;
+						$top = $y - 1;
+						while(isset($maze[$top][$x])) {
+							if ($maze[$top][$x] == $this->empty) {
+								$maze[$top][$x] = $this->laser_beam;
+							} else {
+								break;
+							}
+							$top = $top - 1;
+						}
+					} elseif($val == $this->laser_top) {
+						$maze[$y][$x] = $this->laser_right;
+						$right = $x + 1;
+						while(isset($maze[$y][$right])) {
+							if ($maze[$y][$right] == $this->empty) {
+								$maze[$y][$right] = $this->laser_beam;
+							} else {
+								break;
+							}
+							$right = $right + 1;
+						}
+					} elseif($val == $this->laser_right) {
+						$maze[$y][$x] = $this->laser_bottom;
+						$bottom = $y + 1;
+						while(isset($maze[$bottom][$x])) {
+							if ($maze[$bottom][$x] == $this->empty) {
+								$maze[$bottom][$x] = $this->laser_beam;
+							} else {
+								break;
+							}
+							$bottom = $bottom + 1;
+						}
+					}
+				}
+			}
+
+			return $maze;
+		}
+
+		private function findShortestPath($maze, $mazes_dims, $startGoal, $dd = 0)
+		{
+			$dx  = array(1, 0, -1, 0);
+			$dy = array(0, 1, 0, -1);
+			$d = null;
+			$x = null;
+			$y = null;
+			$k = null;
+
+			$d = $dd;
+
+			$maze[$startGoal['start'][0]][$startGoal['start'][1]] = $dd;
+
+			if ($dd != 0) {
+				$maze = $this->updateMaze($maze);
+				$maze = $this->clearLaserBeam($maze);
+			}
+
+			do {
+				$stop = true;
+				for ($y = 1; $y <= $mazes_dims[0]; ++$y) {
+					for ($x = 1; $x <= $mazes_dims[1]; ++$x) {
+						if ($maze[$y][$x] == $d) {
+							$maze = $this->updateMaze($maze);
+
+							for ($k = 0; $k < 4; ++$k) {
+								if (!isset($maze[$y + $dy[$k]])) continue;
+								if (!isset($maze[$y + $dy[$k]][$x + $dx[$k]])) continue;
+								if ($maze[$y + $dy[$k]][$x + $dx[$k]] == $this->empty) {
+									$stop = false;
+									$maze[$y + $dy[$k]][$x + $dx[$k]] = $d + 1;
+								}
+							}
+						}
+					}
+				}
+				$d++;
+			} while (!$stop && $maze[$startGoal['goal'][0]][$startGoal['goal'][1]] == $this->empty);
+
+			if ($maze[$startGoal['goal'][0]][$startGoal['goal'][1]] <= 0) return false;
+
+			return $maze[$startGoal['goal'][0]][$startGoal['goal'][1]];
+		}
+
+		public function __destruct()
+		{
+			fclose($this->input_handler);
+			fclose($this->output_handler);
+		}
+
+		private function convertMazeElement($element)
+		{
+			switch($element) {
+				case '.':
+					return $this->empty;
+				case '#':
+					return $this->wall;
+				case '>':
+					return $this->laser_right;
+				case '<':
+					return $this->laser_left;
+				case '^':
+					return $this->laser_top;
+				case 'v':
+					return $this->laser_bottom;
+			}
+		}
+	}
+
+	$lm = new LaserMaze('laser_maze.txt', 'output.txt');
+	$lm->init();

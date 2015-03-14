@@ -1,0 +1,158 @@
+import java.util.*;
+import java.io.*;
+
+public class LaserMaze {
+  public static char[][] copy(char[][] thing) {
+    char[][] c = new char[thing.length][thing[0].length];
+    for(int i = 0; i < thing.length; i++) {
+      for(int j = 0; j < thing[0].length; j++) {
+        c[i][j] = thing[i][j];
+      }
+    }
+    return c;
+  }
+  
+  public static void spinLasers(char[][] raw) {
+    for(int i = 0; i < raw.length; i++) {
+      for(int j = 0; j < raw[0].length; j++) {
+        if(raw[i][j] == '^') raw[i][j] = '>';
+        else if(raw[i][j] == '>') raw[i][j] = 'v';
+        else if(raw[i][j] == 'v') raw[i][j] = '<';
+        else if(raw[i][j] == '<') raw[i][j] = '^';
+      }
+    }
+  }
+  
+  public static void printIt(char[][] raw) {
+    for(int i = 0; i < raw.length; i++) {
+      for(int j = 0; j < raw[0].length; j++) {
+        System.out.print(raw[i][j]);
+      }
+      System.out.println();
+    }
+  }
+  
+  public static void fireLasers(char[][] raw) {
+    for(int i = 0; i < raw.length; i++) {
+      for(int j = 0; j < raw[0].length; j++) {
+        if(raw[i][j] != '.' && raw[i][j] != '#') {
+          int dr = 0;
+          int dc = 0;
+          if(raw[i][j] == '^') dr = -1;
+          if(raw[i][j] == 'v') dr = 1;
+          if(raw[i][j] == '<') dc = -1;
+          if(raw[i][j] == '>') dc = 1;
+          for(int k = 1; k < 100; k++) {
+            // Check that in bounds
+            if(i + dr * k < 0 || i + dr * k >= raw.length || j + dc * k < 0 || j + dc * k >= raw[0].length)
+              break;
+            if(raw[i + dr * k][j + dc * k] != '.' && raw[i + dr * k][j + dc * k] != 'l')
+              break;
+            raw[i + dr * k][j + dc * k] = 'l';
+          }
+        }
+      }
+    }
+    for(int i = 0; i < raw.length; i++) {
+      for(int j = 0; j < raw[0].length; j++) {
+        if(raw[i][j] == 'l') raw[i][j] = '#';
+      }
+    }
+  }
+  
+  public static void main(String[] args) throws IOException {
+    Scanner s = new Scanner(new FileInputStream("laser_maze.txt"));
+    PrintStream out = new PrintStream(new FileOutputStream("lazer_maze_output.txt"));
+    
+    int cases = Integer.parseInt(s.nextLine());
+    for(int c = 0; c < cases; c++) {
+      String dim[] = s.nextLine().split(" ");
+      int m = Integer.parseInt(dim[0]);
+      int n = Integer.parseInt(dim[1]);
+      int gr = 0, gc = 0;
+      int sr = 0, sc = 0;
+      char raw[][] = new char[m][n];
+      char grid[][][] = new char[4][m][n];
+      for(int i = 0; i < m; i++) {
+        raw[i] = s.nextLine().toCharArray();
+        for(int j = 0; j < n; j++) {
+          if(raw[i][j] == 'S') {
+            sr = i;
+            sc = j;
+            raw[i][j] = '.';
+          } else if(raw[i][j] == 'G') {
+            gr = i;
+            gc = j;
+            raw[i][j] = '.';
+          }
+        }
+      }
+      for(int i = 0; i < 4; i++) {
+        grid[i] = copy(raw);
+        fireLasers(grid[i]);
+        spinLasers(raw);
+      }
+      Queue<Point> q = new LinkedList<Point>();
+      ArrayList<Point> v = new ArrayList<Point>();
+      q.add(new Point(sr, sc, 0, 0));
+      boolean impossible = true;
+      while(!q.isEmpty()) {
+        Point p = q.poll();
+        if(!p.valid(grid) && p.s != 0)
+          continue;
+        // Check that not visited
+        boolean visited = false;
+        for(Point other : v) {
+          if(p.r == other.r && p.c == other.c && p.t == other.t) {
+            visited = true;
+          }
+        }
+        if(visited)
+          continue;
+        v.add(p);
+        
+        if(p.r == gr && p.c == gc) {
+          out.println("Case #" + (c + 1) + ": " + p.s);
+          impossible = false;
+          break;
+        }
+        q.addAll(p.nextMoves());
+      }
+      if(impossible) {
+        out.println("Case #" + (c + 1) + ": impossible");
+      }
+    }
+  }
+}
+
+class Point {
+  public int r, c, t, s;
+  
+  public Point(int r, int c, int t, int s) {
+    this.r = r;
+    this.c = c;
+    this.t = t;
+    this.s = s;
+  }
+  
+  public boolean valid(char[][][] grid) {
+    if(r >= 0 && c >= 0 && r < grid[0].length && c < grid[0][0].length) {
+      if(grid[t][r][c] == '.') {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  public List<Point> nextMoves() {
+    ArrayList<Point> moves = new ArrayList<Point>();
+    for(int dr = -1; dr <= 1; dr++) {
+      for(int dc = -1; dc <= 1; dc++) {
+        if(dr * dr + dc * dc == 1) {
+          moves.add(new Point(r + dr, c + dc, (t + 1) % 4, s + 1));
+        }
+      }
+    }
+    return moves;
+  }
+}

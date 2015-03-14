@@ -1,0 +1,77 @@
+import networkx as nx
+from itertools import *
+
+LASERS = ('<', '^', '>', 'v')
+LASER_BLOCKS = ('#',) + LASERS
+
+with open('laser_maze.txt') as f:
+#with open('lasermaze_badinput.txt') as f:
+	T = int(f.readline())
+	for case in xrange(1, T+1):
+		M, N = tuple(int(n) for n in f.readline().split())
+		G = nx.DiGraph()
+		G.add_nodes_from(product(xrange(M), xrange(N), xrange(4)))
+
+		for m in xrange(M):
+			for n in xrange(N):
+				for i in xrange(4):
+					if m > 0:
+						G.add_edge((m, n, i), (m - 1, n, (i + 1) % 4))
+					if m < M - 1:
+						G.add_edge((m, n, i), (m + 1, n, (i + 1) % 4))
+					if n > 0:
+						G.add_edge((m, n, i), (m, n - 1, (i + 1) % 4))
+					if n < N - 1:
+						G.add_edge((m, n, i), (m, n + 1, (i + 1) % 4))
+
+		G.add_node('source')
+		G.add_node('target')
+		lasers = []
+		for m in xrange(M):
+			for n, tile in enumerate(f.readline().strip()):
+				if tile == 'S':
+					for node in G.successors((m, n, 0)):
+						G.add_edge('source', node)
+					source = (m, n, 0)
+				if tile == 'G':
+					for i in xrange(4):
+						G.add_edge((m, n, i), 'target')
+				if tile == '#':
+					for i in xrange(4):
+						G.remove_edges_from(G.in_edges((m, n, i)))
+				if tile in LASERS:
+					lasers.append((m,n))
+				G.node[(m, n, 0)]['tile'] = tile
+
+		for (m, n) in lasers:
+			index = LASERS.index(G.node[(m, n, 0)]['tile'])
+			order = LASERS[index:] + LASERS[:index]
+			G.node[(m, n, 0)]['tile'] = 'a'
+			for i, laser in enumerate(order):
+				if laser == '^':
+					mm = m
+					while mm >= 0 and not G.node[(mm, n, 0)]['tile'] in LASER_BLOCKS:
+						G.remove_edges_from(G.in_edges((mm, n, i)))
+						mm -= 1
+				if laser == 'v':
+					mm = m
+					while mm < M and not G.node[(mm, n, 0)]['tile'] in LASER_BLOCKS:
+						G.remove_edges_from(G.in_edges((mm, n, i)))
+						mm += 1
+				if laser == '<':
+					nn = n
+					while nn >= 0 and not G.node[(m, nn, 0)]['tile'] in LASER_BLOCKS:
+						G.remove_edges_from(G.in_edges((m, nn, i)))
+						nn -= 1
+				if laser == '>':
+					nn = n
+					while nn < N and not G.node[(m, nn, 0)]['tile'] in LASER_BLOCKS:
+						G.remove_edges_from(G.in_edges((m, nn, i)))
+						nn += 1
+			G.node[(m, n, 0)]['tile'] = '#'
+
+		try:
+			steps = nx.shortest_path_length(G, 'source', 'target') - 1
+			print 'Case #%d: %d' % (case, steps)
+		except nx.NetworkXNoPath:
+			print 'Case #%d: impossible' % (case,)

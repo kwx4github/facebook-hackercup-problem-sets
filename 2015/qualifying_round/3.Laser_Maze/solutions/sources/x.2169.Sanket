@@ -1,0 +1,143 @@
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <utility>
+using namespace std;
+struct node{
+	int index;
+	vector <int> nbrs;
+};
+struct triple{
+	int a,b,c;
+	triple(int x,int y, int z)
+	{
+		a=x;
+		b=y;
+		c=z;
+	}
+};
+void print(vector <vector <vector <int> > >&visited)
+{
+	for (int i = 0; i < visited.size(); ++i)
+	{
+		for(int j=0;j<visited[0].size();j++)
+		{
+			for(int k=0;k<4;k++)cout<<visited[visited.size()-i-1][j][k]<<" ";
+			cout<<"               ";
+		}
+		cout<<endl;
+	}
+}
+long long int bfs(int i,int j,int tx,int ty,vector <vector <vector <int> > >&visited,vector <vector <vector <int> > >&dist,queue <triple> &q)
+{
+	int toggle=0;
+	q.push(triple(i,j,0));
+	dist[i][j][0]=0;
+	long long int count=0;
+	while(!q.empty())
+	{
+		i=q.front().a;
+		j=q.front().b;
+		toggle=q.front().c;
+		// cout<<count<<" yolo "<<i<<" "<<j<<" "<<toggle<<endl;
+		if(i == tx && j ==ty)return dist[i][j][toggle];
+		if((i+1) < visited.size() && visited[i+1][j][(toggle+1)%4] == 0){
+			dist[i+1][j][(toggle+1)%4] = dist[i][j][toggle]+1;
+			visited[i+1][j][(toggle+1)%4] = 5;
+			q.push(triple(i+1,j,(toggle+1)%4));
+		}
+		if((j+1) < visited[0].size() && visited[i][j+1][(toggle+1)%4] == 0){
+			dist[i][j+1][(toggle+1)%4] = dist[i][j][toggle]+1;
+			visited[i][j+1][(toggle+1)%4] = 5;
+			q.push(triple(i,j+1,(toggle+1)%4));
+		}
+		if((i-1) >=0 && visited[i-1][j][(toggle+1)%4] == 0){
+			dist[i-1][j][(toggle+1)%4] = dist[i][j][toggle]+1;
+			visited[i-1][j][(toggle+1)%4] = 5;
+			q.push(triple(i-1,j,(toggle+1)%4));
+		}
+		if((j-1) >=0 && visited[i][j-1][(toggle+1)%4] == 0){
+			dist[i][j-1][(toggle+1)%4] = dist[i][j][toggle]+1;
+			visited[i][j-1][(toggle+1)%4] = 5;
+			q.push(triple(i,j-1,(toggle+1)%4));
+		}
+		if(dist[i][j][toggle] > count)
+		{
+			count++;
+			toggle=(toggle+1)%4;
+		}
+		q.pop();
+		// print(visited);
+	}
+	return -1;
+}
+void update(vector <vector <vector <int> > >	 &visited,int i,int j,int toggle)
+{
+	int count=1;
+	while(count + i < visited.size() && visited[count+i][j][toggle] < 10){visited[count+i][j][toggle] = 5;count++;}
+	count=1;toggle++;toggle%=4;
+	while(count + j < visited[0].size() && visited[i][count+j][toggle] < 10){visited[i][count+j][toggle] = 5;count++;}
+	count=1;toggle++;toggle%=4;
+	while( i-count >=0 && visited[i-count][j][toggle] < 10){visited[i-count][j][toggle] = 5;count++;}
+	count=1;toggle++;toggle%=4;
+	while(j-count >=0 && visited[i][j-count][toggle] < 10){visited[i][j-count][toggle] = 5;count++;}
+}
+int main()
+{
+	int t;
+	cin>>t;
+	int count=1;
+	while(t--)
+	{
+	int n,m;
+	cin>>n>>m;
+	vector <vector <vector <int> > > visited(n,(vector <vector <int> >(m,vector <int> (4,0))));
+	vector <vector <vector <int> > > dist(n,(vector <vector <int> >(m,vector <int> (4,-1))));
+	//assuming strarting index =0
+	//and undirected
+	/*for (int i = 0; i < m; ++i)
+	{
+		int a,b;
+		cin>>a>>b;
+		v[a]->nbrs.push_back(b);
+		v[b]->nbrs.push_back(a);
+	}*/
+	vector <string> v(n);
+	for (int i = 0; i < n; ++i)
+	{
+		cin>>v[n-i-1];
+	}
+	int sx,sy,tx,ty;
+	for (int i = 0; i < n; ++i)
+	{
+		for(int j=0;j<m;j++)
+		{
+			if(v[i][j] == '^'){for(int k=0;k<4;k++)visited[i][j][k] = 50;}
+			else if(v[i][j] == 'v'){for(int k=0;k<4;k++)visited[i][j][k] = 51;}
+			else if(v[i][j] == '<'){for(int k=0;k<4;k++)visited[i][j][k] = 52;}
+			if(v[i][j] == '>'){for(int k=0;k<4;k++)visited[i][j][k] = 53;}
+			if(v[i][j] == 'S'){visited[i][j][0] = 100;sx=i;sy=j;}
+			if(v[i][j] == 'G'){tx=i;ty=j;}
+			if(v[i][j] == '#'){for(int k=0;k<4;k++)visited[i][j][k] = 20;}
+		}
+	}
+	for (int i = 0; i < n; ++i)
+	{
+		for(int j=0;j<m;j++)
+		{
+			if(v[i][j] == '^'){update(visited,i,j,0);}
+			else if(v[i][j] == 'v'){update(visited,i,j,2);}
+			else if(v[i][j] == '<'){update(visited,i,j,1);}
+			else if(v[i][j] == '>'){update(visited,i,j,3);}
+		}
+	}
+	queue <triple>q;
+	int val=bfs(sx,sy,tx,ty,visited,dist,q);
+	if(val == -1)cout<<"Case #"<<count<<": "<< "impossible"<<endl;
+	else cout<<"Case #"<<count<<": "<< val<<endl;
+	count++;
+	}
+	return 0;
+}

@@ -1,0 +1,200 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+
+public class Maze {
+
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+        final int testCaseCount = Integer.parseInt(br.readLine());
+
+        for (int t = 1; t <= testCaseCount; t++) {
+
+            String[] tokens = br.readLine().split(" ");
+
+            int height = Integer.parseInt(tokens[0]);
+            int width = Integer.parseInt(tokens[1]);
+
+            MazePoint[][] maze = new MazePoint[height][width];
+            List<TurretPoint> turrets = new ArrayList<TurretPoint>();
+            Step start = null;
+
+            for (int i = 0; i < height; i++) {
+                char[] line = br.readLine().toCharArray();
+
+                for (int j = 0; j < width; j++) {
+                    MazePoint p = null;
+
+                    switch (line[j]) {
+                        case '.':
+                            p = new EmptyPoint();
+                            break;
+                        case '#':
+                            p = new WallPoint();
+                            break;
+                        case 'S':
+                            start = new Step(0, i, j);
+                            p = new EmptyPoint();
+                            break;
+                        case 'G':
+                            p = new GoalPoint();
+                            break;
+                        case '<':
+                            p = new TurretPoint(TurretPoint.Direction.LEFT, i, j);
+                            turrets.add((TurretPoint) p);
+                            break;
+                        case '>':
+                            p = new TurretPoint(TurretPoint.Direction.RIGHT, i, j);
+                            turrets.add((TurretPoint) p);
+                            break;
+                        case 'v':
+                            p = new TurretPoint(TurretPoint.Direction.DOWN, i, j);
+                            turrets.add((TurretPoint) p);
+                            break;
+                        case '^':
+                            p = new TurretPoint(TurretPoint.Direction.UP, i, j);
+                            turrets.add((TurretPoint) p);
+                            break;
+                    }
+
+                   maze[i][j] = p;
+                }
+            }
+
+            Queue<Step> queue = new ArrayDeque<Step>();
+            queue.add(start);
+            int result = -1;
+
+            while (!queue.isEmpty()) {
+
+                Step s = queue.poll();
+
+                // check if s is within maze
+                if (!s.isWithinMaze(height, width)) continue;
+
+                MazePoint p = maze[s.x][s.y];
+
+                if (p instanceof WallPoint || p instanceof TurretPoint) continue;
+
+                if (p instanceof GoalPoint) {
+                    if (checkTurrets(maze, width, height, turrets, s)) continue;
+
+                    result = s.cnt;
+                    break;
+                }
+
+                if (p instanceof EmptyPoint) {
+                    if (checkTurrets(maze, width, height, turrets, s)) continue;
+
+                    // walk in all four directions
+                    queue.add(new Step(s.cnt + 1, s.x + 1, s.y));
+                    queue.add(new Step(s.cnt + 1, s.x - 1, s.y));
+                    queue.add(new Step(s.cnt + 1, s.x, s.y + 1));
+                    queue.add(new Step(s.cnt + 1, s.x, s.y - 1));
+                }
+
+                if (queue.size() > 1000000) break;
+            }
+
+            if (result > 0) {
+                System.out.println("Case #" + t + ": " + result);
+            } else {
+                System.out.println("Case #" + t + ": impossible");
+            }
+
+
+        }
+    }
+
+    /**
+     *
+     * @return {@code true} when given given is would be hit by any turret
+     */
+    private static boolean checkTurrets(MazePoint[][] maze, int width, int height, List<TurretPoint> turrets, Step step) {
+        for (TurretPoint t : turrets) {
+            if (t.inRange(maze, width, height, step.x, step.y, step.cnt)) return true;
+        }
+
+        return false;
+    }
+
+    private static class Step {
+        private int cnt;
+        private int x;
+        private int y;
+
+        private Step(int cnt, int x, int y) {
+            this.cnt = cnt;
+            this.x = x;
+            this.y = y;
+        }
+
+        public boolean isWithinMaze(int height, int width) {
+            return !(x >= height || x < 0 || y >= width || y < 0);
+        }
+    }
+
+    private static interface MazePoint {}
+
+    private static class EmptyPoint implements MazePoint {}
+    private static class WallPoint implements MazePoint {}
+    private static class GoalPoint implements MazePoint {}
+
+    private static class TurretPoint implements MazePoint {
+
+        enum Direction {
+            LEFT, UP, RIGHT, DOWN
+        }
+
+        private Direction direction;
+        private int x;
+        private int y;
+
+        private TurretPoint(Direction direction, int x, int y) {
+            this.direction = direction;
+            this.x = x;
+            this.y = y;
+        }
+
+        public boolean inRange(MazePoint[][] maze, int width, int height, int x, int y, int stepCnt){
+
+            // don't shoot on start
+            if (stepCnt == 0) return false;
+
+            int dir = (direction.ordinal() + stepCnt) % 4;
+
+            int tmpX = this.x;
+            int tmpY = this.y;
+
+            while (true) {
+                switch (dir) {
+                    case 0:
+                        tmpY--;
+                        break;
+                    case 1:
+                        tmpX--;
+                        break;
+                    case 2:
+                        tmpY++;
+                        break;
+                    case 3:
+                        tmpX++;
+                }
+
+                if (!new Step(0, tmpX, tmpY).isWithinMaze(height, width)) break;
+
+                MazePoint p = maze[tmpX][tmpY];
+
+                if (p instanceof WallPoint || p instanceof TurretPoint) break;
+
+                if (tmpX == x && tmpY == y) return true;
+            }
+
+            return false;
+        }
+    }
+}

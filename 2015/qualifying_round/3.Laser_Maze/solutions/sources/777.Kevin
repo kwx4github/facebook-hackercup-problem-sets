@@ -1,0 +1,276 @@
+#!/usr/bin/perl -w
+use strict;
+use Data::Dumper;
+#use Time::Piece;
+
+# Main --------------------------------------------------------
+# I/O file
+#my $inputFile = "laser_maze_kevin_input.txt";	# Kevin
+#my $inputFile = "laser_maze_example_input.txt";	# Practice
+my $inputFile = "laser_maze.txt";	# Release
+
+open(INPUTFILE,"<$inputFile") or die("Problemo in open: $!");
+my $outPutFile = "output.txt";
+open(OUTPUTFILE,">$outPutFile") or die("Problemo in open: $!");
+
+# Mazes
+my $numberOfMazes = <INPUTFILE>;
+for (my $mazeIndex = 1; $mazeIndex <= $numberOfMazes; ++$mazeIndex) {
+	# Maze size
+	my $mazeSizeLine = <INPUTFILE>;
+	my ($height, $width) = split(" ", $mazeSizeLine);
+	
+	# Maze data
+	my $maze = [];
+	for(my $i = 0; $i < $height; ++$i) {
+		my $mazeDataLine = <INPUTFILE>;
+		my @mazeLine = split('', $mazeDataLine);
+		$maze->[$i] = \@mazeLine;
+		# Identical to previous line
+		#for(my $j=0;$j<$width;++$j) {
+			#$maze->[$i][$j] = $mazeLine[$j];
+		#}
+	}
+	#displayMaze($maze, $height, $width);
+	
+	#my $t1 = time();
+	print(OUTPUTFILE "Case #$mazeIndex: @{[isMazeFinishable($maze, $height, $width)]}\n"); # OUTPUTFILE
+	#my $t2 = time();
+	#print $t2-$t1;
+}
+
+# Cleanup
+close(INPUTFILE);
+close(OUTPUTFILE);
+
+# Logic --------------------------------------------------------
+sub displayMaze {
+	my ($maze, $height, $width) = @_;
+	for(my $row=0;$row<$height;++$row) {
+		for(my $col=0;$col<$width;++$col) {
+			print $maze->[$row][$col];
+		}
+		print "\n";
+	}
+	print "\n";
+}
+sub getCharacterPosition {
+	my ($maze, $height, $width, $char) = @_;
+	for(my $row=0;$row<$height;++$row) {
+		for(my $col=0;$col<$width;++$col) {
+			return ($row, $col) if($maze->[$row][$col] eq $char);
+		}
+	}
+	return -1;
+}
+sub getStartingPosition {
+	my ($maze, $height, $width) = @_;
+	return getCharacterPosition($maze, $height, $width, 'S');
+}
+sub getGoalPosition {
+	my ($maze, $height, $width) = @_;
+	return getCharacterPosition($maze, $height, $width, 'G');
+}
+sub getMazeAtTime {
+	my ($maze, $height, $width, $time) = @_;
+	return $maze if($time == 0);
+	my $timeMaze = [];
+	for(my $row=0;$row<$height;++$row) {
+		for(my $col=0;$col<$width;++$col) {
+			$timeMaze->[$row][$col] = $maze->[$row][$col];
+			if($timeMaze->[$row][$col] eq '>') {
+				$timeMaze->[$row][$col] = 'v' if($time == 1);
+				$timeMaze->[$row][$col] = '<' if($time == 2);
+				$timeMaze->[$row][$col] = '^' if($time == 3);
+			}
+			elsif($timeMaze->[$row][$col] eq '<') {
+				$timeMaze->[$row][$col] = '^' if($time == 1);
+				$timeMaze->[$row][$col] = '>' if($time == 2);
+				$timeMaze->[$row][$col] = 'v' if($time == 3);
+			}
+			elsif($timeMaze->[$row][$col] eq '^') {			
+				$timeMaze->[$row][$col] = '>' if($time == 1);
+				$timeMaze->[$row][$col] = 'v' if($time == 2);
+				$timeMaze->[$row][$col] = '<' if($time == 3);
+			}
+			elsif($timeMaze->[$row][$col] eq 'v') {
+				$timeMaze->[$row][$col] = '<' if($time == 1);
+				$timeMaze->[$row][$col] = '^' if($time == 2);
+				$timeMaze->[$row][$col] = '>' if($time == 3);
+			}
+		}
+	}
+	return $timeMaze;
+}
+sub getLowestScoreTileKey {
+	my ($openTiles) = @_;
+	my $minScore = 1000000;
+	my $minScoreKey = 0;	
+	foreach my $key (keys %$openTiles) {
+		if($openTiles->{$key}{'F'} < $minScore) {
+			$minScore = $openTiles->{$key}{'F'};
+			$minScoreKey = $key;			
+		}
+	}
+	return $minScoreKey;	
+}
+sub getPositionFromKey {
+	my ($key, $width) = @_;
+	my $row = int($key/$width);
+	my $col = $key%$width;
+	return ($row, $col);
+}
+sub getManhattanDistance {
+	my ($startingRow, $startingCol, $goalRow, $goalCol) = @_;
+	return abs($goalRow-$startingRow) + abs($goalCol-$startingCol);
+}
+sub isWall {
+	my ($maze, $row, $col) = @_;
+	return 1 if($maze->[$row][$col] eq '#' || $maze->[$row][$col] eq '>' || $maze->[$row][$col] eq '<' || $maze->[$row][$col] eq '^' || $maze->[$row][$col] eq 'v');
+	return 0;
+}
+sub isSafeFromLaser {
+	my ($maze, $height, $width, $row, $col) = @_;
+	
+	# Left
+	for(my $i=$col-1;$i>=0;--$i) {
+		last if($maze->[$row][$i] ne '>' && $maze->[$row][$i] ne '.' && $maze->[$row][$i] ne 'S' && $maze->[$row][$i] ne 'G');
+		return 0 if($maze->[$row][$i] eq '>');
+	}
+	# Right
+	for(my $i=$col+1;$i<$width;++$i) {
+		last if($maze->[$row][$i] ne '<' && $maze->[$row][$i] ne '.' && $maze->[$row][$i] ne 'S' && $maze->[$row][$i] ne 'G');
+		return 0 if($maze->[$row][$i] eq '<');
+	}
+	# Up
+	for(my $i=$row-1;$i>=0;--$i) {
+		last if($maze->[$i][$col] ne 'v' && $maze->[$i][$col] ne '.' && $maze->[$i][$col] ne 'S' && $maze->[$i][$col] ne 'G');
+		return 0 if($maze->[$i][$col] eq 'v');
+	}
+	# Down
+	for(my $i=$row+1;$i<$height;++$i) {
+		last if($maze->[$i][$col] ne '^' && $maze->[$i][$col] ne '.' && $maze->[$i][$col] ne 'S' && $maze->[$i][$col] ne 'G');
+		return 0 if($maze->[$i][$col] eq '^');
+	}		
+	return 1;
+}
+sub isMazeFinishable {
+	my ($maze, $height, $width) = @_;
+	
+	# Find positions of start & goal
+	my ($startingRow, $startingCol) = getStartingPosition($maze, $height, $width);
+	my ($goalRow, $goalCol) = getGoalPosition($maze, $height, $width);
+
+	# Keep copy of 4 time states of maze
+	my $mazes = [];
+	$mazes->[0] = getMazeAtTime($maze, $height, $width, 0);
+	$mazes->[1] = getMazeAtTime($maze, $height, $width, 1);
+	$mazes->[2] = getMazeAtTime($maze, $height, $width, 2);
+	$mazes->[3] = getMazeAtTime($maze, $height, $width, 3);
+	
+	# A* Pathfinding
+	my $moves = 0;
+	my $t = 0;
+	my $openTiles = {};
+	my $closedTiles = {};
+	
+	# Starting tile
+	my ($row,$col) = ($startingRow,$startingCol);
+
+	do {{
+		if($moves > 0) {
+			# Get lowest scoring tile position and G moves
+			my $tileKey = getLowestScoreTileKey($openTiles);
+			($row, $col) = getPositionFromKey($tileKey, $width);
+			$moves = $openTiles->{$tileKey}{'G'};
+			
+			# Update maze state
+			$t = $moves%4;	# Time % #moves
+			$maze = $mazes->[$t];
+		}
+	
+		# Check end condition
+		my $isSafeFromLaser = isSafeFromLaser($maze, $height, $width, $row, $col);
+		return $moves if($isSafeFromLaser && $row == $goalRow && $col == $goalCol);
+		
+		# Close current tile
+		my $key = $row*$width+$col;
+		my $closeKey = (($row*$width+$col)<<2) + $t;
+		delete($openTiles->{$key}) if($moves > 0); # Open
+		$closedTiles->{$closeKey}++;	# Close
+		
+		# Lasered
+		#print "moves $moves: LASER at $row $col\n" if(!$isSafeFromLaser && $moves>0);
+		next if(!$isSafeFromLaser && $moves>0);
+		
+		# Look around and Think ahead
+		$moves++;
+		$t = $moves%4;
+
+		# Left
+		if ($col > 0 && !isWall($maze, $row, $col-1)) {
+			#print "$moves: ($row,$col) <-\n";
+			my $leftTileKey = $row*$width+$col-1;
+			if(!exists($closedTiles->{($leftTileKey<<2) + $t})) {
+				my $distanceToGoal = getManhattanDistance($row, $col-1, $goalRow, $goalCol);
+				my $tileScore = $moves + $distanceToGoal;
+				if(!exists($openTiles->{$leftTileKey}) || $tileScore < $openTiles->{$leftTileKey}{'F'}) {
+					$openTiles->{$leftTileKey}{'G'} = $moves;
+					$openTiles->{$leftTileKey}{'H'} = $distanceToGoal;
+					$openTiles->{$leftTileKey}{'F'} = $tileScore;
+					$openTiles->{$leftTileKey}{'from'} = $key;
+				}
+			}
+		}
+		# Right
+		if ($col < $width-1 && !isWall($maze, $row, $col+1)) {
+			#print "$moves: ($row,$col) ->\n";
+			my $rightTileKey = $row*$width+$col+1;
+			if(!exists($closedTiles->{($rightTileKey<<2) + $t})) {
+				my $distanceToGoal = getManhattanDistance($row, $col+1, $goalRow, $goalCol);
+				my $tileScore = $moves + $distanceToGoal;
+				if(!exists($openTiles->{$rightTileKey}) || $tileScore < $openTiles->{$rightTileKey}{'F'}) {
+					$openTiles->{$rightTileKey}{'G'} = $moves;
+					$openTiles->{$rightTileKey}{'H'} = $distanceToGoal;
+					$openTiles->{$rightTileKey}{'F'} = $tileScore;
+					$openTiles->{$rightTileKey}{'from'} = $key;					
+				}
+			}
+		}
+		# Up
+		if ($row > 0 && !isWall($maze, $row-1, $col)) {
+			#print "$moves: ($row,$col) ^^\n";
+			my $upTileKey = ($row-1)*$width+$col;
+			if(!exists($closedTiles->{($upTileKey<<2) + $t})) {
+				my $distanceToGoal = getManhattanDistance($row-1, $col, $goalRow, $goalCol);
+				my $tileScore = $moves + $distanceToGoal;
+				if(!exists($openTiles->{$upTileKey}) || $tileScore < $openTiles->{$upTileKey}{'F'}) {
+					$openTiles->{$upTileKey}{'G'} = $moves;
+					$openTiles->{$upTileKey}{'H'} = $distanceToGoal;
+					$openTiles->{$upTileKey}{'F'} = $tileScore;
+					$openTiles->{$upTileKey}{'from'} = $key;
+				}
+			}
+		}
+		# Down
+		if ($row < $height-1 && !isWall($maze, $row+1, $col)) {
+			#print "$moves: ($row,$col) vv\n";
+			my $downTileKey = ($row+1)*$width+$col;
+			if(!exists($closedTiles->{($downTileKey<<2) + $t})) {
+			my $distanceToGoal = getManhattanDistance($row+1, $col, $goalRow, $goalCol);
+				my $tileScore = $moves + $distanceToGoal;
+				if(!exists($openTiles->{$downTileKey}) || $tileScore < $openTiles->{$downTileKey}{'F'}) {
+					$openTiles->{$downTileKey}{'G'} = $moves;
+					$openTiles->{$downTileKey}{'H'} = $distanceToGoal;
+					$openTiles->{$downTileKey}{'F'} = $tileScore;
+					$openTiles->{$downTileKey}{'from'} = $key;
+				}
+			}
+		}
+	}} while(keys %$openTiles);
+	#print Dumper($openTiles);
+	#print Dumper($closedTiles);
+	
+	return "impossible";
+}
+

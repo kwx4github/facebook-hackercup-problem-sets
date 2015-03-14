@@ -1,0 +1,62 @@
+# Solution to "Laser Maze" for Facebook Hacker Cup 2015
+# by Peter Mattsson (quantum.caffeine@gmail.com)
+import sys, heapq
+from copy import deepcopy
+
+gridKey = ".^>v<#SG"
+vectors = ((-1, 0), (0, 1), (1, 0), (0, -1))
+
+def searchMaze(space, h, w, start):
+    frontier = [(0, start)]
+    while frontier:
+        dist, (step, y, x) = heapq.heappop(frontier)
+        cell = space[step][y][x]
+        if cell == 7:
+            return dist
+        if dist > 0 and (not cell == 0):
+            continue
+        space[step][y][x] = dist + 9
+        nextStep = (step+1)%4
+        for dy, dx in vectors:
+            nexty, nextx = y + dy, x + dx
+            if not ((0 <= nexty < h) and (0 <= nextx < w)):
+                continue
+            heapq.heappush(frontier, (dist+1, (nextStep, nexty, nextx)))
+    return -1
+
+with open(sys.argv[1], 'r') as infile:
+	numCases = int(infile.readline())
+        cases = []
+        for _ in range(numCases):
+            h, w = (int(x) for x in infile.readline().split())
+            maze = [[gridKey.find(x) for x in infile.readline().rstrip('\n')]
+                    for _ in range(h)]
+            cases.append((h, w, maze))
+
+outfile = open(sys.argv[2], 'w')
+
+for caseNo, (h, w, maze) in enumerate(cases):
+    searchSpace = [deepcopy(maze) for _ in range(4)]
+    for y, mazeLine in enumerate(maze):
+        for x, cell in enumerate(mazeLine):
+            if cell == 6:
+                sy, sx = y, x
+                for step in range(4):
+                    if searchSpace[step][y][x] == 6:
+                        searchSpace[step][y][x] = 0
+            elif 0 < cell < 5:
+                for step in range(4):
+                    vy, vx = vectors[(cell+step)%4 - 1]
+                    ly, lx = y, x
+                    while True:
+                        ly, lx = ly + vy, lx + vx
+                        if not ((0 <= ly < h) and (0 <= lx < w)):
+                            break
+                        if 0 < maze[ly][lx] < 6:
+                            break
+                        searchSpace[step][ly][lx] = 8
+    result = searchMaze(searchSpace, h, w, (0, sy, sx)) 
+    answer = str(result) if result >= 0 else "impossible"
+    outfile.write("Case #%d: %s\n"%(caseNo+1, answer))
+
+outfile.close()

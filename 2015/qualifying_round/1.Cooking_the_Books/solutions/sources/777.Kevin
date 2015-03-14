@@ -1,0 +1,126 @@
+#!/usr/bin/perl -w
+use strict;
+use Data::Dumper;
+
+# Main --------------------------------------------------------
+# Input file
+#my $input_file = "cooking_the_books_example_input.txt";	# Practice
+my $input_file = "cooking_the_books.txt";	# Release
+open(INPUTFILE,"<$input_file") or die("Problemo in open: $!");
+my $numberOfLines = <INPUTFILE>;
+
+# Output file
+my $output_file = "output.txt";
+open(OUTPUTFILE,">$output_file") or die("Problemo in open: $!");
+
+# Treatment
+for (my $i = 1; $i <= $numberOfLines; ++$i) {
+	my $number = <INPUTFILE>;
+	chomp($number);
+	my @min_number = getMinNumber($number);
+	my @max_number = getMaxNumber($number);
+	print(OUTPUTFILE "Case #$i: @{[join('', @min_number)]} @{[join('', @max_number)]}\n");
+}
+
+# Cleanup
+close(INPUTFILE);
+close(OUTPUTFILE);
+
+# Logic --------------------------------------------------------
+sub convertIntToArray {
+	my ($int) = @_;
+	my @array = ();
+	my $index = 0;
+	do {
+		my $digit = $int % 10;
+		$array[$index++] = $digit;
+	} while(($int = int($int / 10)) >= 1);
+	return reverse(@array);
+}
+
+sub getMinNumber {
+	my ($number) = @_;
+	my @number = convertIntToArray($number);
+	my %min_digits = ();
+	for (my $i = 0; $i <= $#number; ++$i) {
+		$min_digits{$number[$i]} = $i;	# Left to right, erasing previous keys.
+	}
+	
+	# Debug
+	#foreach my $key (sort {$min_digits{$a} <=> $min_digits{$b}} keys %min_digits) {
+	#	print "$key => $min_digits{$key}\n";
+	#}
+	
+	my $done = 0;
+	for (my $i = 0; $i <= $#number; ++$i) {
+		for (my $min_digit = 0; $min_digit < 10; ++$min_digit) {
+			next if(($i == 0) && $min_digit == 0);
+			next if(!exists($min_digits{$min_digit}));
+			last if($number[$i] <= $min_digit);			# It's already the min digit		
+			#last if($i == $min_digits{$min_digit});	# Unnecessary?
+			next if($i > $min_digits{$min_digit});		# There is a lower digit but it's already to the left
+			
+			# Debug
+			#print "i = $i && lowest = $min_digit\n";
+			
+			# Swap
+			my $save = $number[$i];
+			$number[$i] = $number[$min_digits{$min_digit}];
+			$number[$min_digits{$min_digit}] = $save;
+			$done = 1;
+			last;
+		}
+		last if($done);
+	}
+	
+	return @number;
+}
+
+sub getMaxNumber {
+	my ($number) = @_;
+	my @number = convertIntToArray($number);
+	my %max_digits = ();
+	for (my $i = 0; $i <= $#number; ++$i) {
+		$max_digits{$number[$i]} = $i;	# Left to right, erasing previous keys.
+	}
+	
+	# Debug
+	#foreach my $key (sort {$max_digits{$a} <=> $max_digits{$b}} keys %max_digits) {
+	#	print "$key => $max_digits{$key}\n";
+	#}
+	
+	my $done = 0;
+	for (my $i = 0; $i <= $#number; ++$i) {
+		for (my $max_digit = 9; $max_digit >= 0; --$max_digit) {
+			next if(!exists($max_digits{$max_digit}));
+			last if($number[$i] >= $max_digit);		# Digit is already larger
+			next if($i > $max_digits{$max_digit});	# Larger digit is already to the left
+			
+			# Debug
+			#print "i = $i && highest = $max_digit\n";
+			
+			# Swap
+			my $save = $number[$i];
+			$number[$i] = $number[$max_digits{$max_digit}];
+			$number[$max_digits{$max_digit}] = $save;
+			$done = 1;
+			last;
+		}
+		last if($done);
+	}
+	
+	return @number;
+}
+
+# Old --------------------------------------------------------
+sub getNumberOfDigits{
+	my ($number) = @_;
+	return 1 if($number < 10);
+	return getNumberOfDigits($number/10) + 1;
+}
+# Position 0 = ones (10**0), 1 = tens (10**1), etc.
+sub getDigitAtPosition {
+	my ($number, $position) = @_;
+	return int $number / 10**($position);
+}
+

@@ -1,0 +1,111 @@
+#include <stdio.h>
+#include <string.h>
+#include <stack>
+using namespace std;
+
+int n, m;
+char maze[100][100], wall[4][100][100];
+int dx[4] = {0, -1, 0, 1};
+int dy[4] = {-1, 0, 1, 0};
+bool used[4][100][100];
+struct node
+{
+    int x, y, turn;
+};
+stack<node> bfs_queue[2];
+
+int sym_to_num(char c)
+{
+    if (c == '<') { return 0; }
+    if (c == '^') { return 1; }
+    if (c == '>') { return 2; }
+    if (c == 'v') { return 3; }
+    return -1;
+}
+
+int main()
+{
+	freopen("laser_maze.txt", "r", stdin);
+	freopen("2.txt", "w", stdout);
+	int test;
+	scanf("%d", &test);
+	for (int i = 1; i <= test; i++)
+	{
+		printf("Case #%d: ", i);
+		scanf("%d%d", &n, &m);
+		for (int i = 0; i < n; i++) { scanf("%s", maze[i]); }
+		for (int i = 0; i < 4; i++)
+        {
+            for (int j = 0; j < n; j++)
+                for (int k = 0; k < m; k++) { wall[i][j][k] = maze[j][k]; }
+            for (int j = 0; j < n; j++)
+                for (int k = 0; k < m; k++)
+                {
+                    int dir = sym_to_num(wall[i][j][k]);
+                    if (dir == -1) { continue; }
+                    dir = (dir + i) % 4;
+                    int x = j, y = k, step = 0;
+                    while ((x >= 0) && (x < n) && (y >= 0) && (y < m))
+                    {
+                        if ((wall[i][x][y] == '.') || (wall[i][x][y] == 'S') ||
+                            (wall[i][x][y] == 'L') || (wall[i][x][y] == 'G') || (step == 0))
+                        {
+                            if (step != 0) { wall[i][x][y] = 'L'; }
+                        } else { break; }
+                        x += dx[dir];
+                        y += dy[dir];
+                        step++;
+                    }
+                }
+        }
+        int x, y;
+        for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++) if (maze[i][j] == 'S') { x = i; y = j; }
+        /*if (wall[0][x][y] == 'L')
+        {
+            printf("impossible\n");
+            continue;
+        }*/
+        memset(used, false, sizeof(used));
+        used[0][x][y] = true;
+        node temp; temp.x = x; temp.y = y; temp.turn = 0;
+        bfs_queue[0].push(temp);
+        int num = 0, dir = 0;
+        bool ok = false;
+        for (int p = 0; bfs_queue[p].size() > 0; p ^= 1)
+        {
+            num++;
+            dir = (dir + 1) % 4;
+            while (bfs_queue[p].size() > 0)
+            {
+                node temp = bfs_queue[p].top();
+                bfs_queue[p].pop();
+                for (int i = 0; i < 4; i++)
+                {
+                    node new_pos = temp;
+                    new_pos.x += dx[i];
+                    new_pos.y += dy[i];
+                    if ((new_pos.x < 0) || (new_pos.x >= n) || (new_pos.y < 0) || (new_pos.y >= m)) { continue; }
+                    new_pos.turn = dir;
+                    if (wall[dir][new_pos.x][new_pos.y] == 'G') { ok = true; break; }
+                    if ((wall[dir][new_pos.x][new_pos.y] == 'G') ||
+                        (wall[dir][new_pos.x][new_pos.y] == 'S') ||
+                        (wall[dir][new_pos.x][new_pos.y] == '.'))
+                    {
+                        if (used[new_pos.turn][new_pos.x][new_pos.y]) { continue; }
+                        bfs_queue[p ^ 1].push(new_pos);
+                        used[new_pos.turn][new_pos.x][new_pos.y] = true;
+                    }
+                }
+                if (ok) { break; }
+            }
+            if (ok) { break; }
+        }
+        while (bfs_queue[0].size() > 0) { bfs_queue[0].pop(); }
+        while (bfs_queue[1].size() > 0) { bfs_queue[1].pop(); }
+
+        if (!ok) { printf("impossible\n"); }
+        else { printf("%d\n", num); }
+	}
+	return 0;
+}

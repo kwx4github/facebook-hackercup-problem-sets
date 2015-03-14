@@ -1,0 +1,187 @@
+module Main where
+
+import Control.Monad
+import Control.Monad.ST
+import Control.Monad.State
+import Data.Array
+import Data.Array.ST
+import Debug.Trace
+import Text.Printf
+import qualified Data.Set as S
+
+data Queue a = Queue { frontStack :: [a], rearStack :: [a] }
+             deriving (Show, Eq)
+
+queuePush :: a -> Queue a -> Queue a
+queuePush x (Queue fs rs) = Queue fs (x:rs)
+
+queuePop :: Queue a -> (a, Queue a)
+queuePop (Queue [] rs) = queuePop $ Queue (reverse rs) []
+queuePop (Queue (f:fs) rs) = (f, Queue fs rs)
+
+queueSingleton :: a -> Queue a
+queueSingleton x = Queue [x] []
+
+queueEmpty :: Queue a -> Bool
+queueEmpty (Queue [] []) = True
+queueEmpty _ = False
+
+type Pos = (Int, Int)
+                            
+data Dir = DirUp | DirDown | DirLeft | DirRight
+           deriving (Show, Eq)
+
+data Cell = StartCell
+          | GoalCell
+          | TurretCell Dir
+          | WallCell
+          | EmptyCell
+            deriving (Show, Eq)
+
+isStartCell, isGoalCell, isTurretCell :: Cell -> Bool
+isStartCell StartCell = True
+isStartCell _ = False
+isGoalCell GoalCell = True
+isGoalCell _ = False
+isTurretCell (TurretCell _) = True
+isTurretCell _ = False
+
+data Turret = Turret Pos Dir
+              deriving (Show, Eq)
+
+type Maze = Array (Int, Int) Cell
+type HazardMaze = Array (Int, Int) Bool
+
+nextDir :: Dir -> Dir
+nextDir DirUp    = DirRight
+nextDir DirRight = DirDown
+nextDir DirDown  = DirLeft
+nextDir DirLeft  = DirUp
+
+moveUp, moveDown, moveLeft, moveRight :: Pos -> Pos
+moveUp (row, col)    = (row - 1, col)
+moveDown (row, col)  = (row + 1, col)
+moveLeft (row, col)  = (row, col - 1)
+moveRight (row, col) = (row, col + 1)
+
+makePath :: Dir -> Pos -> (Pos -> Bool) -> [Pos]
+makePath dir pos isValidPos = takeWhile isValidPos . tail $ iterate nextPos pos
+    where nextPos = case dir of
+                      DirUp    -> moveUp
+                      DirDown  -> moveDown
+                      DirLeft  -> moveLeft
+                      DirRight -> moveRight
+
+parseCell :: Char -> Cell
+parseCell c = case c of
+                '.' -> EmptyCell
+                '#' -> WallCell
+                'S' -> StartCell
+                'G' -> GoalCell
+                '<' -> TurretCell DirLeft
+                '>' -> TurretCell DirRight
+                '^' -> TurretCell DirUp
+                'v' -> TurretCell DirDown
+                _   -> error $ "Unknown cell: " ++ show c
+
+parseMaze :: (Int, Int, [String]) -> Maze
+parseMaze (numRows, numCols, maze) = array bnds [(p, gen p) | p <- range bnds]
+    where bnds = ((1, 1), (numRows, numCols))
+          gen p@(r, c) = parseCell $ maze !! (r - 1) !! (c - 1)
+
+makeHazardMaze :: Maze -> [Turret] -> HazardMaze
+makeHazardMaze maze turrets = runSTArray $
+    do let ((minRow, minCol), (maxRow, maxCol)) = bounds maze
+
+           isValidPos (row, col) = row >= minRow &&
+                                   row <= maxRow &&
+                                   col >= minCol &&
+                                   col <= maxCol &&
+                                   emptyCell (maze ! (row, col))
+
+           emptyCell EmptyCell = True
+           emptyCell StartCell = True
+           emptyCell GoalCell  = True
+           emptyCell _ = False
+
+       array <- newArray (bounds maze) True
+       forM_ (assocs maze) $ \(pos, cell) -> do
+         when (not . emptyCell $ maze ! pos) $ writeArray array pos False
+       forM_ turrets $ \(Turret pos dir) -> do
+         let path = makePath dir pos isValidPos
+         forM_ path $ \pos -> writeArray array pos False
+       return array
+
+getStartPos, getGoalPos :: Maze -> Pos
+getStartPos maze = fst . head . filter (isStartCell . snd) $ assocs maze
+getGoalPos maze = fst . head . filter (isGoalCell . snd) $ assocs maze
+
+getTurrets :: Maze -> [Turret]
+getTurrets maze = map (\(p, TurretCell d) -> Turret p d) . filter (isTurretCell . snd) $ assocs maze
+
+rotateTurrets :: [Turret] -> [Turret]
+rotateTurrets = map rotateTurret
+    where rotateTurret (Turret p d) = Turret p (nextDir d)
+
+type Vertex   = (Pos, Int)
+type BFSState = (Queue Vertex, S.Set Vertex)
+
+solve :: (Int, Int, [String]) -> Int
+solve task =
+    let period   = 4 -- period of turrets rotation
+        maze     = parseMaze task
+        ((minRow, minCol), (maxRow, maxCol)) = bounds maze
+        turrets  = getTurrets maze
+        startPos = getStartPos maze
+        goalPos  = getGoalPos maze
+        hazards  = map (makeHazardMaze maze) . take period $ iterate rotateTurrets turrets
+
+        hasVertices :: State BFSState Bool
+        hasVertices = do
+          (q, _) <- get
+          return $ not (queueEmpty q)
+
+        nextVertex :: State BFSState Vertex
+        nextVertex = do
+          (q, s) <- get
+          let (a, q') = queuePop q
+          put (q', s)
+          return a
+
+        isValidVertex :: Vertex -> Bool
+        isValidVertex (pos@(row, col), time) = row >= minRow &&
+                                               row <= maxRow &&
+                                               col >= minCol &&
+                                               col <= maxCol &&
+                                               hazard ! pos
+            where hazard = hazards !! (time `mod` 4)
+
+        offerVertex :: Vertex -> State BFSState ()
+        offerVertex vertex@(pos, time) = do
+          let mtime = time `mod` 4
+              mvertex = (pos, mtime)
+          (q, s) <- get
+          when (isValidVertex vertex && not (S.member mvertex s)) $
+               put (queuePush vertex q, S.insert mvertex s)
+
+        bfs :: State BFSState Int
+        bfs = do hv <- hasVertices
+                 if not hv
+                 then return (-1)
+                 else do (pos, time) <- nextVertex
+                         if pos == goalPos
+                         then return time
+                         else do let nvs = map (\f -> (f pos, time + 1)) [moveUp, moveDown, moveLeft, moveRight]
+                                 mapM_ offerVertex nvs
+                                 bfs
+    in evalState bfs (queueSingleton (startPos, 0), S.empty)
+
+main :: IO ()
+main = do
+  numTests <- liftM read getLine :: IO Int
+  forM_ [1 .. numTests] $ \testNum -> do
+         (numRows:numCols:_) <- liftM (map read . words) getLine
+         maze <- replicateM numRows getLine
+         let result = solve (numRows, numCols, maze)
+         printf "Case #%d: " testNum
+         if result < 0 then putStrLn "impossible" else print result

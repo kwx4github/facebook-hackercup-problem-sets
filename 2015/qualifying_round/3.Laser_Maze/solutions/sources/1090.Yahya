@@ -1,0 +1,155 @@
+#include <bits/stdc++.h>
+#define g '0'
+#define h '1'
+#define d '2'
+#define b '3'
+using namespace std;
+int n,m;
+
+typedef struct position{
+    int x;int y;int z;
+    position(int xx,int yy,int zz){x=xx;y=yy;z=zz;};
+}position;
+string orientation="<^>v";
+
+bool block(char a){
+    return a=='#' || a==g || a==d || a==h || a==b;
+}
+bool tower(char a){
+    return a==g || a==d || a==h || a==b;
+}
+void afficher(vector<string> grid){
+cout<<"in afficher"<<endl;
+    for(int i=0;i<grid.size();i++){
+        for(int j=0;j<grid[i].size();j++){
+            if(tower(grid[i][j]))
+                grid[i][j]=orientation[grid[i][j]-'0'];
+        }
+        cout<<grid[i]<<endl;
+    }
+
+}
+vector<string> createMaze(vector<string> grid){
+vector<string> res(grid.begin(),grid.end());
+
+    for(int i=0;i<grid.size();i++){
+        for(int j=0;j<grid[i].size();j++){
+            if(!block(grid[i][j]))
+            continue;
+            //cout<<"find"<<grid[i][j];
+            if(grid[i][j]==g){
+           // cout<<"found gauche"<<endl;
+                for(int k=j-1;k>=0 && !block(grid[i][k]);k--)
+                    res[i][k]='#';
+            }
+            if(grid[i][j]==d){
+         //   cout<<"found droit"<<endl;
+                for(int k=j+1;k<grid[0].size() && !block(grid[i][k]);k++)
+                    res[i][k]='#';
+            }
+            if(grid[i][j]==h){
+       //     cout<<"in haut"<<endl;
+                for(int k=i-1;k>=0 && !block(grid[k][j]);k--){
+                    res[k][j]='#';
+                }
+            }
+            if(grid[i][j]==b){
+     //       cout<<"found bas"<<endl;
+                for(int k=i+1;k<grid.size() && !block(grid[k][j]);k++)
+                    res[k][j]='#';
+            }
+            res[i][j]='#';
+        }
+
+    }
+    //afficher(res);
+   // cout<<res[1].size();
+    return res;
+}
+vector<vector<string> > generateALl(vector<string> grid){
+    vector<vector<string> > graph;
+    graph.push_back(createMaze(grid));
+    //cout<<"maze 0"; afficher(grid);
+    for(int t=1;t<=3;t++){
+    //cout<<"maze n: "<<t<<endl;
+        for(int i=0;i<grid.size();i++){
+            for(int j=0;j<grid[i].size();j++){
+                if(tower(grid[i][j])){
+                    grid[i][j]++;
+                    if(grid[i][j]=='4')
+                        grid[i][j]='0';
+                }
+            }
+        }
+        graph.push_back(createMaze(grid));
+    }
+    return graph;
+}
+int dx[4]={0,0,1,-1};
+int dy[4]={1,-1,0,0};
+bool safe(int x,int y){
+    return x>=0 && y>=0 && x<n && y<m;
+}
+int BFS(position start,vector<vector<string> > graph){
+//cout<<"STAART"<<endl;
+    int n=graph[0].size();
+    int m=graph[0][0].size();
+    queue<pair<position,int> > q;
+    q.push(make_pair(start,0));
+    bool vis[4][n][m];
+    memset(vis,false,sizeof(vis));
+    while(!q.empty()){
+        pair<position,int> cur= q.front();
+        q.pop();
+        position curp=cur.first; int dist=cur.second;
+        //cout<<"in: layer "<<curp.z<<" x "<<curp.x<<" y "<<curp.y<<" distance "<<dist<<" graph is "<<graph[curp.z][curp.x][curp.y]<<endl;
+
+        if(graph[curp.z][curp.x][curp.y] == 'G')
+        return dist;
+        curp.z++; curp.z%=4;
+        //afficher(graph[curp.z]);
+        int z=curp.z; int x=curp.x; int y=curp.y;
+        for(int k=0;k<4;k++){
+       // cout<<"test going to layer "<<z<<" x "<<x+dx[k]<<" y "<<y+dy[k]<<endl;
+            if(safe(x+dx[k],y+dy[k]) && !vis[z][x+dx[k]][y+dy[k]] && !block(graph[z][x+dx[k]][y+dy[k]])){
+         //   cout<<"yes pushed "<<z<<" "<<x+dx[k]<<" "<<y+dy[k]<<endl;
+                q.push(make_pair(position(x+dx[k],y+dy[k],z),dist+1));
+                vis[z][x+dx[k]][y+dy[k]]=true;
+            }
+        }
+    }
+    return -1;
+}
+int main(){
+    ifstream cin("input.in");
+    ofstream cout("output.out");
+    int T;
+    cin>>T;
+    for(int t=1;t<=T;t++){
+        pair<int,int> start;
+         cin>>n>>m;
+         vector<string> grid;
+         vector<vector<string> > allGrids;
+         for(int i=0;i<n;i++){
+            string s;
+            cin>>s;
+            for(int j=0;j<s.size();j++){
+                int pos=orientation.find(s[j]);
+                if(pos!=-1)
+                    s[j]=pos+'0';
+                if(s[j]=='S')
+                start=make_pair(i,j);
+            }
+
+            grid.push_back(s);
+         }
+         //cout<<"start"<<start.first<<" "<<start.second<<endl;
+         int res = BFS(position(start.first,start.second,0),generateALl(grid));
+         //generateALl(grid);
+          //afficher(createMaze(grid));
+          if(res==-1)
+            cout<<"Case #"<<t<<": impossible"<<endl;
+          else
+            cout<<"Case #"<<t<<": "<<res<<endl;;
+    }
+}

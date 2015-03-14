@@ -1,0 +1,155 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+
+int sp(std::vector<std::vector<int>> neig, int s, std::vector<int> g){
+  std::queue<int> q;
+  std::vector<int> d(neig.size());
+  std::vector<int> par(neig.size());
+  std::vector<bool> goal(neig.size());
+  std::vector<bool> vis(neig.size());
+  for(int i=0; i<neig.size(); i++)
+    {
+      goal[i] = false;
+      vis[i] = false;
+    }
+  for(int i=0; i<g.size(); i++)
+    goal[g[i]] = true;
+  
+  int r = 0;
+  bool ok = false;
+  q.push(s);
+  d[s] = 0;
+  vis[s] = true;
+  while(!q.empty())
+    {
+      int e = q.front();
+      q.pop();
+      if(goal[e])
+	{
+	  r = d[e];
+	  ok = true;
+	  break;
+	}
+      for(int &i: neig[e])
+	{
+	  if(!vis[i])
+	    {
+	      par[i] = e;
+	      d[i] = d[e] + 1;
+	      q.push(i);
+	      vis[i] = true;
+	    }
+	}
+    }
+
+  if(!ok)
+    return -1;
+  return r;
+}
+
+int main(){
+  int T;
+  std::cin>>T;
+  for(int i=0; i<T; i++)
+    {
+      int r = -1;
+      int N, M;
+      int s;
+      
+      char c;
+      std::vector<std::vector<char>> v;
+      std::cin>>N>>M;
+      for(int j=0; j<N; j++)
+	{
+	  std::vector<char> tv;
+	  v.push_back(tv);
+	  for(int k=0; k<M; k++)
+	    {
+	      std::cin>>c;
+	      v[j].push_back(c);
+	      if(c=='S')
+		s = M*j+k;
+	    }
+	}
+      std::vector<std::vector<std::vector<char>>> vv = {v, v, v, v};
+      std::vector<char> cc = {'^', '>', 'v', '<'};
+      for(int j=0; j<N; j++)
+	for(int k=0; k<M; k++)
+	  for(int l=0; l<4; l++)
+	    if(vv[0][j][k]==cc[l])
+		for(int m=0; m<4; m++)
+		  {
+		    vv[m][j][k] = cc[(l+m)%4];
+		    if((l+m)%4==0)
+		      {
+		    	int p = j-1;
+		    	while(p>=0 && vv[m][p][k]!='#' && std::find(std::begin(cc), std::end(cc), vv[m][p][k])==std::end(cc)){
+		    	  vv[m][p][k] = '|';
+		    	  p--;
+		    	}
+		      }
+		    else if((l+m)%4==1)
+		      {
+		    	int p = k+1;
+		    	while(p<M && vv[m][j][p]!='#' && std::find(std::begin(cc), std::end(cc), vv[m][j][p])==std::end(cc)){
+		    	  vv[m][j][p] = '-';
+		    	  p++;
+		    	}
+		      }
+		    else if((l+m)%4==2)
+		      {
+		    	int p = j+1;
+		    	while(p<N && vv[m][p][k]!='#' && std::find(std::begin(cc), std::end(cc), vv[m][p][k])==std::end(cc)){
+		    	  vv[m][p][k] = '|';
+		    	  p++;
+		    	}
+		      }
+		    else
+		      {
+		    	int p = k-1;
+		    	while(p>=0 && vv[m][j][p]!='#' && std::find(std::begin(cc), std::end(cc), vv[m][j][p])==std::end(cc)){
+		    	  vv[m][j][p] = '-';
+		    	  p--;
+		    	}
+		      }
+		  }
+
+      std::vector<std::vector<int>> neig;
+      std::vector<int> g;
+      for(int j=0; j<4; j++)
+	for(int k=0; k<N; k++)
+	  for(int l=0; l<M; l++)
+	    {
+	      if(vv[j][k][l]=='G')
+		g.push_back(N*M*j+M*k+l);
+	      std::vector<int> tv;
+	      neig.push_back(tv);
+	      std::vector<char> cc = {'^', '>', 'v', '<', '#', '|', '-'};
+	      if(k+1<N && std::find(std::begin(cc), std::end(cc), vv[(j+1)%4][k+1][l])==std::end(cc))
+		neig[N*M*j+M*k+l].push_back(N*M*((j+1)%4)+M*(k+1)+l);
+	      if(k-1>=0 && std::find(std::begin(cc), std::end(cc), vv[(j+1)%4][k-1][l])==std::end(cc))
+		neig[N*M*j+M*k+l].push_back(N*M*((j+1)%4)+M*(k-1)+l);
+	      if(l+1<M && std::find(std::begin(cc), std::end(cc), vv[(j+1)%4][k][l+1])==std::end(cc))
+		neig[N*M*j+M*k+l].push_back(N*M*((j+1)%4)+M*k+(l+1));
+	      if(l-1>=0 && std::find(std::begin(cc), std::end(cc), vv[(j+1)%4][k][l-1])==std::end(cc))
+		neig[N*M*j+M*k+l].push_back(N*M*((j+1)%4)+M*k+(l-1));
+	    }
+
+      // for(int j=0; j<4; j++)
+      // 	for(int k=0; k<N; k++)
+      // 	  {
+      // 	    for(int l=0; l<M; l++)
+      // 	      std::cout<<vv[j][k][l];
+      // 	    std::cout<<'\n';
+      // 	  }
+      
+      r = sp(neig, s, g);
+
+      if (r>-1)
+	std::cout<<"Case #"<<i+1<<": "<<r<<"\n";
+      else
+	std::cout<<"Case #"<<i+1<<": impossible\n";
+    }
+}

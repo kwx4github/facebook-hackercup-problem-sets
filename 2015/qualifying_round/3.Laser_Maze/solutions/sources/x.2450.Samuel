@@ -1,0 +1,393 @@
+import java.io.BufferedInputStream;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.Scanner;
+import java.util.Set;
+import java.util.TreeSet;
+
+
+@SuppressWarnings("unused")
+public class Main {
+
+	public static void main(String[] args) throws IOException {
+
+//		long startTime = new Date().getTime();
+		
+//		InputReader in = new InputReader(System.in);
+		InputReader in = new InputReader(new FileInputStream(new File("inputs/laser_maze.txt")));
+		
+//		PrintWriter writer = new PrintWriter(System.out);
+		PrintWriter writer = new PrintWriter("outputs/laser_maze.txt");
+
+		solveTheProblem(in, writer);
+		
+//		long endTime = new Date().getTime();
+//		System.err.println("Time: " + (endTime - startTime) + " millis");
+		
+	}
+
+	public static void solveTheProblem(InputReader in, PrintWriter writer) throws IOException {
+
+		int T = in.ni();
+		
+		for (int t = 1; t <= T; t++) {
+			
+			int M = in.ni();
+			int N = in.ni();
+			
+			char[][] maze = new char[M][N];
+			for (int i = 0; i < M; i++)
+				maze[i] = in.nca(N);
+
+			// calcula onde os turrets disparam
+			boolean[][][] hits = new boolean[M][N][4];
+			char[] turr = new char[] { '<', '^', '>', 'v' };
+			int[][] dirs = new int[][] {
+					{ 0, -1 },
+					{ -1, 0 },
+					{ 0, 1 },
+					{ 1, 0 }
+			};
+			for (int i = 0; i < M; i++)
+				for (int j = 0; j < N; j++)
+					for (int k = 0; k < 4; k++)
+						if (turr[k] == maze[i][j])
+							for (int l = 0; l < 4; l++) {
+								int k2 = (k+l)%4;
+								int[] dir = dirs[k2];
+								for (int i2 = i, j2 = j; i2 >= 0 && i2 < M && j2 >= 0 && j2 < N; i2 += dir[0], j2 += dir[1]) {
+									hits[i2][j2][l] = true;
+								}
+							}
+			
+			// cria os nós
+			No[] nos = new No[M*N*4];
+			No s = null;
+			Set<No> gs = new HashSet<>();
+			for (int i = 0; i < M; i++)
+				for (int j = 0; j < N; j++)
+					if (maze[i][j] == '.' ||
+							maze[i][j] == 'S' ||
+							maze[i][j] == 'G') {
+						for (int k = 0; k < 4; k++)
+							if (!hits[i][j][k] || (maze[i][j] == 'S' && k == 0))
+								nos[i*(N*4)+j*4+k] = new No(i, j, k);
+						if (maze[i][j] == 'S')
+							s = nos[i*(N*4)+j*4+0];
+						if (maze[i][j] == 'G')
+							for (int k = 0; k < 4; k++)
+								if (nos[i*(N*4)+j*4+k] != null)
+									gs.add(nos[i*(N*4)+j*4+k]);
+					}
+			
+			int[][] ne = new int[][] {
+					{ -1, 0 },
+					{ 1, 0 },
+					{ 0, -1 },
+					{ 0, 1 }
+			};
+			
+			// vincula os nós
+			for (int i = 0; i < M; i++)
+				for (int j = 0; j < N; j++)
+					for (int k = 0; k < 4; k++) {
+						int x = i+ne[k][0];
+						int y = j+ne[k][1];
+						if (x >= 0 && y >= 0 && x < M && y < N)
+							for (int m = 0; m < 4; m++)
+								if (nos[i*(N*4)+j*4+m] != null)
+									if (nos[x*(N*4)+y*4+((m+1)%4)] != null && !hits[x][y][((m+1)%4)])
+										nos[i*(N*4)+j*4+m].vizinhos.add(nos[x*(N*4)+y*4+((m+1)%4)]);
+					}
+
+			
+			// djikstra
+			s.dist = 0;
+			
+			TreeSet<No> unvisited = new TreeSet<>(new Comparator<No>() {
+				@Override
+				public int compare(No o1, No o2) {
+					int c = Integer.compare(o1.dist, o2.dist);
+					if (c == 0) {
+						c = o1.compareTo(o2);
+					}
+					return c;
+				}
+			});
+			for (int i = 0; i < M*N*4; i++)
+				if (nos[i] != null)
+					unvisited.add(nos[i]);
+			
+			int answer = Integer.MAX_VALUE;
+			
+			while (!unvisited.isEmpty()) {
+				
+				No curr = unvisited.first();
+
+				if (gs.contains(curr)) {
+					gs.remove(curr);
+					answer = Math.min(answer, curr.dist);
+					if (gs.isEmpty())
+						break;
+				}
+				
+				if (curr.dist == Integer.MAX_VALUE) // impossible
+					break;
+				
+				for (No vizinho : curr.vizinhos)
+					if (vizinho.visited == false)
+						if (curr.dist+1 < vizinho.dist) {
+							unvisited.remove(vizinho);
+							vizinho.dist = curr.dist+1;
+							unvisited.add(vizinho);
+						}
+				
+				curr.visited = true;
+				unvisited.remove(curr);
+				
+			}
+			
+			writer.print("Case #" + t + ": ");
+			if (answer == Integer.MAX_VALUE) {
+				writer.println("impossible");
+			} else {
+				writer.println(answer);
+			}
+			
+		}
+		
+		// don't forget partial flushes!
+		writer.flush();
+		
+	}
+	
+	private static class No implements Comparable<No> {
+		
+		private int i;
+		private int j;
+		private int k;
+		private int dist = Integer.MAX_VALUE;
+		private boolean visited = false;
+
+		private Set<No> vizinhos = new TreeSet<>();
+		
+		public No(int i, int j, int k) {
+			this.i = i;
+			this.j = j;
+			this.k = k;
+		}
+
+		@Override
+		public String toString() {
+			String v = "";
+			for (No no : vizinhos)
+				v += no.i + "-" + no.j + "-" + no.k + ",";
+			return "["+i+"-"+j+"-"+k+"|v=("+v+")]";
+		}
+
+		@Override
+		public int compareTo(No o) {
+			int c = Integer.compare(i, o.i);
+			if (c == 0) {
+				c = Integer.compare(j, o.j);
+				if (c == 0) {
+					c = Integer.compare(k, o.k);
+				}
+			}
+			return c;
+		}
+		
+	}
+	
+	/** Utils **/
+
+	private static final long MOD = (long) Math.pow(10, 9)+7;
+
+	private static long mod(long n) {
+		return n % MOD;
+	}
+	
+	private static int pow(int n, int p) {
+		return (int) Math.pow(n, p);
+	}
+
+	private static long pow(long n, long p) {
+		return (long) Math.pow(n, p);
+	}
+	
+	private static class BIT {
+		
+		private int n;
+		private long[] freqs;
+		private long[] cumulativeFreqs;
+		
+		public BIT(int n) {
+			this.n = n;
+			this.freqs = new long[n];
+			this.cumulativeFreqs = new long[n];
+		}
+		
+		public void add(int idx, long v) {
+			
+			this.freqs[idx] = mod(this.freqs[idx] + v);
+			
+			int i = idx;
+			while (i < n) {
+				
+				this.cumulativeFreqs[i] = mod(this.cumulativeFreqs[i] + v);
+				
+				int lastDigit = i & -i;
+				i += lastDigit;
+				
+			}
+			
+		}
+		
+		public long getCumulativeSum(int idx) {
+			
+			long ans = 0;
+			
+			int i = idx;
+			while (i > 0) {
+				
+				ans = mod(ans + this.cumulativeFreqs[i]);
+				
+				int lastDigit = i & -i;
+				i -= lastDigit;
+				
+			}
+			
+			return ans;
+		}
+		
+	}
+	
+	private static String joinWithSpaces(Object... a) {
+		StringBuilder str = new StringBuilder();
+		if (a.length > 0) {
+			str.append(a[0]);
+			for (int i = 1; i < a.length; i++) {
+				str.append(' ');
+				str.append(a[i]);
+			}
+		}
+		return str.toString();
+	}
+
+	private static String joinWithSpaces(long[] a) {
+		StringBuilder str = new StringBuilder();
+		if (a.length > 0) {
+			str.append(a[0]);
+			for (int i = 1; i < a.length; i++) {
+				str.append(' ');
+				str.append(a[i]);
+			}
+		}
+		return str.toString();
+	}
+	
+    private static int gcd(int a, int b) {
+        return b == 0 ? a : gcd(b, a % b);
+    }
+    
+    private static long gcd(long a, long b) {
+        return b == 0 ? a : gcd(b, a % b);
+    }
+    
+    private static boolean[] createPrimeSieve(int n) {
+        boolean[] sieve = new boolean[n+1];
+        Arrays.fill(sieve, true);
+        for (int i = 2; i <= n; i++) {
+            if (sieve[i]) {
+                for (int j = i+i; j <= n; j += i)
+                    sieve[j] = false;
+            }
+        }
+        return sieve;
+    }
+    
+    private static int countPrimes(boolean[] sieve) {
+        int ans = 0;
+        for (int i = 2; i < sieve.length; i++)
+            if (sieve[i]) ans++;
+        return ans;
+    }
+
+	public static class InputReader implements Closeable {
+		
+//		private InputStream in;
+		private Scanner in;
+		private StringBuilder sb = new StringBuilder();
+		
+//		public InputReader(File file) throws FileNotFoundException {
+//			this(new FileInputStream(file));
+//		}
+//		
+//		public InputReader(InputStream wrapped) {
+//			this.in = new BufferedInputStream(wrapped);
+//		}
+
+		public InputReader(InputStream wrapped) {
+			this.in = new Scanner(wrapped);
+		}
+		
+		@Override
+		public void close() throws IOException {
+			this.in.close();
+		}
+
+		public int ni() throws IOException {
+//			sb.setLength(0);
+//		mainloop:
+//			for (;;) {
+//				int b = this.in.read();
+//				while (b == -1 || !((b >= '0' && b <= '9') || b == '-')) {
+//					if (sb.length() > 0) break mainloop;
+//					else b = this.in.read();
+//				}
+//				sb.append((char) b);
+//			}
+//			return new Integer(sb.toString());
+			return in.nextInt();
+		}
+
+		public String nstr() throws IOException {
+//			sb.setLength(0);
+//			int ans = 0;
+//		mainloop:
+//			for (;;) {
+//				int b = this.in.read();
+//				while (b == -1 || !((b >= 'a' && b <= 'z') || (b >= 'A' && b < 'Z'))) {
+//					if (sb.length() > 0) break mainloop;
+//					else b = this.in.read();
+//				}
+//				sb.append((char) b);
+//			}
+//			return sb.toString();
+			return in.next();
+		}
+		
+		public long nl() throws IOException {
+			return in.nextLong();
+		}
+		
+		public char[] nca(int n) throws IOException {
+			char[] ca = new char[n];
+			String str = nstr();
+			for (int i = 0; i < n; i++)
+				ca[i] = str.charAt(i);
+			return ca;
+		}
+		
+	}
+	
+}

@@ -1,0 +1,230 @@
+#include <iostream>
+#include <queue>
+#include <cstring>
+
+using namespace std;
+
+char a[101][101];
+int testSum = 0;
+int row = 0;
+int col = 0;
+char b[4][101][101];
+int dis[4][101][101];
+char nextDir[256];
+
+struct point {
+    int i;
+    int j;
+    int k;
+    int dis;
+};
+
+void print(point p) {
+    cout << "(" << p.j << "," << p.k << ")" << " layer:" << p.i << " dis:" << p.dis << endl;
+}
+
+bool equalPoint(point& a, point& b) {
+    return a.j == b.j && a.k == b.k;
+}
+
+void initDis() {
+    for(int i=0;i<4;i++) {
+        for(int j=0;j<row;j++) {
+            for(int k=0;k<col;k++) {
+                dis[i][j][k] = -1;
+            }
+        }
+    }
+}
+
+bool isTurret(char t) {
+    return t == '^' || t== 'v' || t=='<' || t=='>';
+}
+
+bool isPassable(char t) {
+    return t == '.' || t=='S' || t=='G';
+}
+
+void turnTurret() {
+    for(int i=0;i<row;i++) {
+        for(int j=0;j<col;j++) {
+            if(isTurret(a[i][j])) {
+                a[i][j] = nextDir[a[i][j]];
+            }
+        }
+    }
+}
+
+void convertSingleMapAtoMapB(int bIndex) {
+    for(int i=0;i<row;i++) {
+        for(int j=0;j<col;j++) {
+            b[bIndex][i][j] = a[i][j];
+        }
+    }
+    for(int i=0;i<row;i++) {
+        for(int j=0;j<col;j++) {
+            if( b[bIndex][i][j] == '>') {
+                int k = j+1;
+                while(k<col && !isTurret(b[bIndex][i][k]) && b[bIndex][i][k]!= '#') {
+                    b[bIndex][i][k] = 'x';
+                    k++;
+                }
+            }
+            else if( b[bIndex][i][j] == '<') {
+                int k = j-1;
+                while(k>=0 && !isTurret(b[bIndex][i][k]) && b[bIndex][i][k]!= '#') {
+                    b[bIndex][i][k] = 'x';
+                    k--;
+                }
+            }
+            else if( b[bIndex][i][j] == '^') {
+                int k = i-1;
+                while(k>=0 && !isTurret(b[bIndex][k][j]) && b[bIndex][k][j]!= '#') {
+                    b[bIndex][k][j] = 'x';
+                    k--;
+                }
+            }
+            else if( b[bIndex][i][j] == 'v') {
+                int k = i+1;
+                while(k<row && !isTurret(b[bIndex][k][j]) && b[bIndex][k][j]!= '#') {
+                    b[bIndex][k][j] = 'x';
+                    k++;
+                }
+            }
+        }
+    }
+}
+
+void populateB() {
+    for(int i=0;i<4;i++) {
+        convertSingleMapAtoMapB(i);
+        turnTurret();
+    }
+}
+
+int startx;
+int starty;
+int endx;
+int endy;
+
+void printB() {
+    for(int i=0;i<4;i++) {
+        for(int j=0;j<row;j++) {
+            for(int k=0;k<col;k++) {
+                cout << b[i][j][k];
+            }
+            cout << endl;
+        }
+        cout << endl;
+    }
+}
+
+int computeDis() {
+    point pstart;
+    pstart.i = 0;
+    pstart.j = startx;
+    pstart.k = starty;
+    pstart.dis = 0;
+    dis[0][startx][starty] = 0;
+    point pend;
+    pend.i = 0;
+    pend.j = endx;
+    pend.k = endy;
+    queue<point> q;
+    q.push(pstart);
+    while(!q.empty()) {
+        point top = q.front();
+        q.pop();
+        //cout << "pop" << endl;
+        //print(top);
+        int layer = (top.i + 1)%4;
+        int x = top.j;
+        int y = top.k;
+        if( x+1<row && dis[layer][x+1][y] == -1 && isPassable(b[layer][x+1][y])) {
+            dis[layer][x+1][y] = top.dis+1;
+            point tmp;
+            tmp.i = layer;
+            tmp.j = x+1;
+            tmp.k = y;
+            tmp.dis = top.dis+1;
+            if(tmp.j == endx && tmp.k == endy) {
+                return tmp.dis;
+            }
+            q.push(tmp);
+        }
+        if(x-1 >=0 && dis[layer][x-1][y] == -1 && isPassable(b[layer][x-1][y])) {
+            dis[layer][x+1][y] = top.dis+1;
+            point tmp;
+            tmp.i = layer;
+            tmp.j = x-1;
+            tmp.k = y;
+            tmp.dis = top.dis+1;
+            if(tmp.j == endx && tmp.k == endy) {
+                return tmp.dis;
+            }
+            q.push(tmp);
+        }
+        if(y-1 >=0 && dis[layer][x][y-1] == -1 && isPassable(b[layer][x][y-1])) {
+            dis[layer][x][y-1] = top.dis+1;
+            point tmp;
+            tmp.i = layer;
+            tmp.j = x;
+            tmp.k = y-1;
+            tmp.dis = top.dis+1;
+            if(tmp.j == endx && tmp.k == endy) {
+                return tmp.dis;
+            }
+            q.push(tmp);
+        }
+        if(y+1 < col && dis[layer][x][y+1] == -1 && isPassable(b[layer][x][y+1])) {
+            dis[layer][x][y+1] = top.dis+1;
+            point tmp;
+            tmp.i = layer;
+            tmp.j = x;
+            tmp.k = y+1;
+            tmp.dis = top.dis+1;
+            if(tmp.j == endx && tmp.k == endy) {
+                return tmp.dis;
+            }
+            q.push(tmp);
+        }
+    }
+    return -1;
+}
+
+
+int main(int argc, const char * argv[]) {
+    nextDir['<'] = '^';
+    nextDir['^'] = '>';
+    nextDir['>'] = 'v';
+    nextDir['v'] = '<';
+    
+    cin >> testSum;
+    for(int i=0; i< testSum;i++) {
+        cin >> row >> col;
+        for(int i1=0;i1<row;i1++) {
+            for(int i2=0;i2<col;i2++) {
+                cin >> a[i1][i2];
+                if(a[i1][i2] == 'S') {
+                    startx = i1;
+                    starty = i2;
+                } else if (a[i1][i2] == 'G') {
+                    endx = i1;
+                    endy = i2;
+                }
+            }
+        }
+        populateB();
+        //printB();
+        initDis();
+        int d = computeDis();
+        string result = to_string(d);
+        if(result == "-1") {
+            result = "impossible";
+        }
+        result = "Case #" + to_string(i+1) + ": " + result + "\n";
+        cout << result;
+    }
+    return 0;
+}
+

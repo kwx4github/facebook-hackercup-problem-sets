@@ -1,0 +1,288 @@
+package ee.hannu.nutrients;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+
+public class Alex {
+
+	private EatingModel[] foodConsuming;
+
+	private void readInput() throws Exception {
+
+		try {
+
+			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+
+			try {
+				int numberOfTestCases = Integer.parseInt(br.readLine());
+
+				if (numberOfTestCases < 1 || numberOfTestCases > 20)
+					throw new RuntimeException("1 <= T <= 20");
+
+				// initialize the BIG model
+				this.foodConsuming = new EatingModel[numberOfTestCases];
+
+				int numberOfReadTests = 0;
+				while (numberOfReadTests < numberOfTestCases) {
+
+					String line = br.readLine();
+					if (line == null || line.length() < 1)
+						throw new RuntimeException("Line has invalid value!");
+
+					// read P, C, F goals
+					String[] goals = line.split("\\s+");
+					if (goals.length != 3)
+						throw new RuntimeException("Incomplete data for eating!");
+
+					EatingModel eModel = new EatingModel();
+					eModel.goalProtein = Integer.parseInt(goals[0]);
+					eModel.goalCarbs = Integer.parseInt(goals[1]);
+					eModel.goalFat = Integer.parseInt(goals[2]);
+
+					if (!eModel.validate())
+						throw new RuntimeException("Invalid goal data!");
+
+					// read number of foods
+					int numberOfFoods = Integer.parseInt(br.readLine().trim());
+
+					if (numberOfFoods < 1 || numberOfFoods > 20)
+						throw new RuntimeException("1 <= N <= 20");
+
+					eModel.possibleFoods = new FoodModel[numberOfFoods];
+
+					int parsedFoods = 0;
+					while (parsedFoods < numberOfFoods) {
+
+						// read P, C, F data
+						String[] data = br.readLine().trim().split("\\s+");
+						if (data.length != 3)
+							throw new RuntimeException("Incomplete data for food!");
+
+						FoodModel fModel = new FoodModel();
+						fModel.protein = Integer.parseInt(data[0]);
+						fModel.carbs = Integer.parseInt(data[1]);
+						fModel.fat = Integer.parseInt(data[2]);
+
+						if (fModel.validate())
+							eModel.possibleFoods[parsedFoods] = fModel;
+						else
+							throw new RuntimeException("Invalid food data!");
+
+						parsedFoods++;
+					} // parsedFoods
+
+					this.foodConsuming[numberOfReadTests] = eModel;
+
+					numberOfReadTests++;
+				} // while testcases to read
+
+			} // try
+			catch (NumberFormatException nfe) {
+				throw nfe;
+			} // catch
+
+		} // try
+		catch (Exception ex) {
+
+			throw ex;
+		} // catch
+	} // readInput
+	
+
+	private void debug() {
+
+		for (EatingModel em : this.foodConsuming)
+			System.out.println("> " + em.toString());
+
+	} // debug
+	
+
+	private void woo() {
+
+		// do the tree magic
+		for (int i = 0; i < this.foodConsuming.length; i++) {
+			
+			this.foodConsuming[i].decide();
+			
+			System.out.println("Case #" + (i + 1) + ": " + ((this.foodConsuming[i].bPossibleToEat) ? "yes" : "no"));
+		} // for i
+
+	} // woo
+	
+
+	public static void main(String[] args) {
+		try {
+			Alex a = new Alex();
+			a.readInput();
+			a.debug();
+			a.woo();
+
+		} // try
+		catch (Exception ex) {
+			ex.printStackTrace();
+
+		} // catch
+
+	} // main
+
+	
+	private class EatingModel {
+
+		public int goalProtein = 0;
+		public int goalCarbs = 0;
+		public int goalFat = 0;
+
+		public boolean bPossibleToEat = false;
+
+		public FoodModel[] possibleFoods;
+
+		public void decide() {
+			
+			// reset impossible foods
+			for(int m = 0; m < this.possibleFoods.length; m++) {
+				
+				if(this.possibleFoods[m].protein > this.goalProtein || this.possibleFoods[m].carbs > this.goalCarbs || this.possibleFoods[m].fat > this.goalFat)
+					this.possibleFoods[m].reset();
+
+			} // for m
+			
+
+			for (int f = 0; f < this.possibleFoods.length; f++) {
+
+				//this specific node has been "reset()" already, ignore it
+				if (this.possibleFoods[f].protein == 0 && this.possibleFoods[f].carbs == 0 && this.possibleFoods[f].fat == 0)
+					continue;
+				
+				// create temporary array & reset the p
+				FoodModel[] tempPossibleFoods = new FoodModel[this.possibleFoods.length];
+				tempPossibleFoods = this.getObjectArrayCopy(this.possibleFoods);
+				tempPossibleFoods[f].reset();
+
+				// create the tree
+				this.createTree(this.possibleFoods[f].protein, this.possibleFoods[f].carbs, this.possibleFoods[f].fat, tempPossibleFoods, this.possibleFoods[f].toString());
+
+			} // for f
+
+		} // decide
+		
+
+		private void createTree(int currentProtein, int currentCarbs, int currentFat, FoodModel[] nodes, String path) {
+
+			// check for achieved targets
+			if (currentProtein == this.goalProtein && currentCarbs == this.goalCarbs && currentFat == this.goalFat) {
+				// found ->
+				this.bPossibleToEat = true;
+
+			return;
+			} // if
+
+			
+			for (int k = 0; k < nodes.length; k++) {
+
+				// this specific node has been "reset()" already, ignore it
+				if (nodes[k].protein == 0 && nodes[k].carbs == 0 && nodes[k].fat == 0)
+					continue;
+
+				// try the next iteration
+				if (currentProtein > this.goalProtein || currentCarbs > this.goalCarbs || currentFat > this.goalFat)
+					continue;
+
+				// create own temp array for each leaf & use that to calculate
+				// further
+				FoodModel[] adjustedNodes = new FoodModel[nodes.length];
+				adjustedNodes = this.getObjectArrayCopy(nodes);
+				adjustedNodes[k].reset();
+
+				String newPath = path + " > " + nodes[k].toString();
+				
+				// dig deeper
+				this.createTree(currentProtein + nodes[k].protein, currentCarbs + nodes[k].carbs, currentFat + nodes[k].fat, adjustedNodes, newPath);
+//System.out.println("path: " + newPath + "||" + (currentProtein + nodes[k].protein) + "|" + (currentCarbs + nodes[k].carbs) + "|" + (currentFat + nodes[k].fat));
+			} // for k
+
+		} // createTree
+		
+		
+		public FoodModel[] getObjectArrayCopy(FoodModel[] inputArray) {
+			
+			FoodModel[] newArray = new FoodModel[inputArray.length];
+			
+			int i = 0;
+			for(FoodModel fm : inputArray) {
+				FoodModel newFoodModel = new FoodModel();
+				newFoodModel.protein = fm.protein;
+				newFoodModel.carbs = fm.carbs;
+				newFoodModel.fat = fm.fat;
+				
+				newArray[i] = newFoodModel;
+				i++;
+
+			} // foreach foodmodel
+			
+		return newArray;
+		} // getObjectArrayCopy
+			
+
+		public boolean validate() {
+
+			if (this.goalProtein < 10 || this.goalProtein > 1000)
+				return false;
+
+			if (this.goalCarbs < 10 || this.goalCarbs > 1000)
+				return false;
+
+			if (this.goalFat < 10 || this.goalFat > 1000)
+				return false;
+
+			return true;
+		} // validate
+		
+
+		public String toString() {
+
+			String sb = "";
+			for (int k = 0; k < this.possibleFoods.length; k++)
+				sb += ("#" + k + " - " + this.possibleFoods[k].toString() + " ");
+
+			return "GP: " + this.goalProtein + ", GC: " + this.goalCarbs + ", GF: " + this.goalFat + " / " + sb.toString();
+		} // toString
+
+	} // EatingModel
+
+	private class FoodModel {
+
+		public int protein = 0;
+		public int carbs = 0;
+		public int fat = 0;
+
+		public void reset() {
+
+			this.protein = 0;
+			this.carbs = 0;
+			this.fat = 0;
+
+		} // reset
+
+		public boolean validate() {
+
+			if (this.protein < 10 || this.protein > 1000)
+				return false;
+
+			if (this.carbs < 10 || this.carbs > 1000)
+				return false;
+
+			if (this.fat < 10 || this.fat > 1000)
+				return false;
+
+			return true;
+		} // validate
+
+		public String toString() {
+
+			return "P: " + this.protein + ", C: " + this.carbs + ", F: " + this.fat;
+		} // toString
+
+	} // FoodModel
+
+}

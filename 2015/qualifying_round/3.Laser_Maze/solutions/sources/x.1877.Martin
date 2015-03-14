@@ -1,0 +1,219 @@
+import java.io.File;
+import java.io.FileReader;
+import java.io.BufferedReader;
+import java.util.PriorityQueue;
+import java.util.HashSet;
+import java.awt.Point;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+
+class R1P3{
+	public static void main(String args[]){
+		BufferedReader br = null;
+		BufferedWriter bw = null;
+		String outString="";
+		try{
+			br = new BufferedReader(new FileReader(new File(args[0])));
+		}catch(FileNotFoundException e){System.err.println("Read FileNotFound");}
+		try{
+			int runs = Integer.parseInt((br.readLine()).trim());
+			for(int i = 0; i < runs; i++){
+				outString+="Case #"+String.valueOf(i+1)+": "+solve(br)+"\n";
+			}
+		}catch(IOException e){System.err.println("Read IOException");}
+		try{
+			bw = new BufferedWriter(new FileWriter(new File("R1P3Out.txt")));
+			bw.write(outString.substring(0,outString.length()-1));
+			br.close();
+			bw.close();
+		}catch(FileNotFoundException e){System.err.println("Write FileNotFound");}
+		catch(IOException e){System.err.println("Write IOException");}
+
+	}
+	public static String solve(BufferedReader br) throws IOException{
+		Map currentMap = new Map();
+		currentMap.parseMap(br);
+		return currentMap.traverseMap();
+	}
+}
+class Map{
+	Cord[][] map;
+	Point start;
+	Point goal;
+	int rows;
+	int cols;
+	PriorityQueue<Move> candidateMoves;
+	HashSet<String> movesMade;
+
+	public String traverseMap(){
+		candidateMoves = new PriorityQueue<Move>();
+		movesMade = new HashSet<String>();
+		candidateMoves.add(new Move(start.x, start.y, 0, goal));
+		int res;
+		while((res=doNextMove())==0);
+		if(res<0)
+			return "impossible";
+		return String.valueOf(res);
+	}
+	public int doNextMove(){
+		Move currentMove = candidateMoves.poll();
+		if(currentMove==null)
+			return -1;
+		while(movesMade.contains(currentMove.toString())){
+			currentMove = candidateMoves.poll();
+			if(currentMove==null)
+				return -1;
+		}
+		if(currentMove.x==goal.x && currentMove.y==goal.y){
+			return currentMove.time;
+		}
+		movesMade.add(currentMove.toString());
+		addMove(currentMove,-1,0);
+		addMove(currentMove,1,0);
+		addMove(currentMove,0,-1);
+		addMove(currentMove,0,1);
+		return 0;
+	}
+	public void addMove(Move currentMove,int x, int y){
+		Move nM = new Move(currentMove.x+x, currentMove.y+y, currentMove.time+1, goal);
+		if(isValid(nM.x, nM.y, nM.time)&&!movesMade.contains(nM.toString())){
+			candidateMoves.add(nM);
+		}
+	}
+	public boolean isValid(int x, int y, int t){
+		return x>=0 && x<cols && y>=0 && y<rows && map[x][y].isOpen(t);
+	}
+	public void parseMap(BufferedReader br) throws IOException{
+		String dimentions = br.readLine();
+		rows = Integer.parseInt(dimentions.substring(0, dimentions.indexOf(' ')));
+		cols = Integer.parseInt(dimentions.substring(dimentions.indexOf(' ')+1, dimentions.length()));
+		map = new Cord[cols][rows];
+		for(int y = 0; y < rows; y++){
+			String row = br.readLine();
+			for(int x = 0; x < cols; x++){
+				switch(row.charAt(x)){
+					case'.':map[x][y] = new Cord(0, 0); break;
+					case'#':map[x][y] = new Cord(-1, 0); break;
+					case'^':map[x][y] = new Cord(-1, 4); break;
+					case'>':map[x][y] = new Cord(-1, 3); break;
+					case'v':map[x][y] = new Cord(-1, 2); break;
+					case'<':map[x][y] = new Cord(-1, 1); break;
+					case'S':map[x][y] = new Cord(0, 0); start = new Point(x,y); break;
+					case'G':map[x][y] = new Cord(0, 0); goal = new Point(x,y); break;
+				}
+			}
+		}
+		for(int r = 0; r < rows; r++){
+			for(int c = 0; c < cols; c++){
+				if(map[c][r].laser!=0){
+					applyLaser(c,r, map[c][r].laser);
+				}
+			}
+		}
+	}
+	private void printMap(){
+		for(int i = 0; i < 5; i++){
+			printMap(i);
+		}
+	}
+	private void printMap(int t){
+		System.out.println("\n\nMap at t="+t);
+		for(int y = 0; y< rows; y++){
+			for(int x = 0; x < cols; x++){
+				if(map[x][y].isOpen(t)){
+					System.out.print("_");
+				}
+				else{
+					System.out.print("#");
+				}
+			}
+			System.out.println();
+		}
+	}
+
+	private void applyLaser(int x, int y, int l){
+		for(int i = y-1; i>=0&&map[x][i].status>=0; i--){
+			if(map[x][i].status==(-1)){
+				break;
+			}
+			else{
+				map[x][i].status = 1;
+				map[x][i].laserThrough[l%4] = true; 
+			}
+		}
+		for(int i = x+1; i<cols&&map[i][y].status>=0; i++){
+			if(map[i][y].status==(-1)){
+				break;
+			}
+			else{
+				map[i][y].status = 1;
+				map[i][y].laserThrough[(l+1)%4] = true; 
+			}
+		}
+		for(int i = y+1; i<rows&&map[x][i].status>=0; i++){
+			if(map[x][i].status==(-1)){
+				break;
+			}
+			else{
+				map[x][i].status = 1;
+				map[x][i].laserThrough[(l+2)%4] = true; 
+			}
+		}
+		for(int i = x-1; i>=0&&map[i][y].status>=0; i--){
+			if(map[i][y].status==(-1)){
+				break;
+			}
+			else{
+				map[i][y].status = 1;
+				map[i][y].laserThrough[(l+3)%4] = true; 
+			}
+		}
+	}
+}
+class Move implements Comparable{
+	int x, y, time;
+	Point goal;
+	public Move(int x, int y, int t, Point goal){
+		this.x = x;
+		this.y = y;
+		time = t;
+		this.goal = goal;
+	}
+	public boolean equals(Object o) {
+       	if (!(o instanceof Move)){
+            return false;
+   		}
+   		Move m = (Move)o;
+   		return this.x==m.x && this.y==m.y && this.time%4==m.time%4;
+	}
+	public int distance(){
+		return Math.abs(x-goal.x)+Math.abs(y-goal.y);
+	}
+	public int compareTo(Object other){
+		return distance()-((Move)other).distance();
+	}
+	public String toString(){
+		return "x,y,t: "+x+", "+y+", "+time%4;
+	}
+}
+class Cord{
+	// 0=open, -1=blocked, 1=First, 2...
+	int status;
+	boolean[] laserThrough;
+	int laser;
+	public Cord(int s, int l){
+		status = s;
+		laser = l;
+		laserThrough = new boolean[4];
+	}
+	public boolean isOpen(int time){
+		if(status<=0){
+			return status == 0;
+		}
+		if(time>0)
+			return !laserThrough[time%4];
+		return true;
+	}
+}

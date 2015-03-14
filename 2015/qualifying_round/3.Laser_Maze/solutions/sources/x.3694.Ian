@@ -1,0 +1,232 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Scanner;
+
+class MazeNode {
+	int xLoc;
+	int yLoc;
+	byte symbol;
+	boolean visited;
+
+	public MazeNode(int x, int y, byte sym) {
+		xLoc = x;
+		yLoc = y;
+		symbol = sym;
+		visited = false;
+	}
+	
+	public String toString(){
+		byte[] str = new byte[1];	
+		str[0] = symbol;
+		return new String(str) + "(" + xLoc + "," + yLoc + ")";
+	}
+}
+
+public class MazeSolver {
+
+
+	public static void main(String args[]) throws FileNotFoundException {
+		File inputFile = new File(args[0]);
+		Scanner read = new Scanner(inputFile);
+		String numMazes = read.nextLine();
+		int mazes = Integer.parseInt(numMazes);
+
+		for (int i = 1; i <= mazes; i++) {
+			int height = Integer.parseInt(read.next().trim());
+			int width = Integer.parseInt(read.nextLine().trim());
+			MazeNode[][][] maze = new MazeNode[4][height][width];
+			ArrayList<MazeNode> turrets = new ArrayList<MazeNode>();
+			MazeNode start = null;
+			MazeNode goal = null;
+			for (int j = 0; j < height; j++) {
+				byte[] array = read.nextLine().getBytes();
+				for (int k = 0; k < width; k++) {
+					byte node = array[k];
+					MazeNode kj = new MazeNode(k, j, array[k]);
+					if (node == 83){
+						start = new MazeNode(k, j, array[k]);
+						kj.symbol = 46;
+					}
+					else if (node == 71){
+						goal = new MazeNode(k, j, array[k]);
+						kj.symbol = 46;
+					}
+					else if (node >= 60 && node != 71){
+						turrets.add(new MazeNode(k, j, array[k]));
+					}			
+					maze[0][j][k] = kj;
+				}
+			}
+			createAllStates(maze, turrets);
+			System.out.print("Case #" + i + ": ");
+			solveMaze(maze, start, goal, turrets);
+		}
+		read.close();
+	}
+
+	public static void solveMaze(MazeNode[][][] maze, MazeNode start, MazeNode goal,
+			ArrayList<MazeNode> turrets) {
+		ArrayList<MazeNode> solver = new ArrayList<MazeNode>();
+		maze[0][start.yLoc][start.xLoc].visited = true;
+		solver.add(maze[0][start.yLoc][start.xLoc]);
+		int turnCount = 0;
+		int stateNumber = 0;
+		solve(maze, solver, turnCount, stateNumber, 0, 1, goal);
+		
+	}
+	
+	public static void solve(MazeNode[][][] maze, ArrayList<MazeNode> solver, int turnCount, int stateNumber, int startIndex, int endIndex, MazeNode goal){
+		int newMoves = 0;		
+		for (int i = startIndex; i < endIndex; i++){
+			int ret = legalMoves(maze[stateNumber], solver, solver.get(i), goal);
+			if (ret < 0){
+				System.out.println(turnCount+1);
+				return;
+			}
+			else if (ret == 0){
+				System.out.println("impossible");
+				return;
+			}	
+			newMoves += ret;
+			if (i+1 == endIndex){
+				turnCount++;
+				stateNumber = turnCount%4;
+				startIndex = endIndex;
+				endIndex += newMoves;
+				newMoves = 0;
+			}
+			
+		}
+		
+	}
+
+	public static int legalMoves(MazeNode[][] maze, ArrayList<MazeNode> solver, MazeNode currNode, MazeNode goal){
+		int x = currNode.xLoc;
+		int y = currNode.yLoc;
+		int ret = 0;
+		if (valid(maze, x-1, y)){
+			if (y == goal.yLoc && x-1 == goal.xLoc){
+				return -1;
+			}
+			solver.add(maze[y][x-1]);
+			ret++;
+		}
+		if(valid(maze, x+1, y)){
+			if (y == goal.yLoc && x+1 == goal.xLoc){
+				return -1;
+			}
+			solver.add(maze[y][x+1]);
+			ret++;
+		}
+		if(valid(maze, x, y-1)){
+			if (y-1 == goal.yLoc && x == goal.xLoc){
+				return -1;
+			}
+			solver.add(maze[y-1][x]);
+			ret++;
+		}
+		if(valid(maze, x, y+1)){
+			if (y+1 == goal.yLoc && x == goal.xLoc){
+				return -1;
+			}
+			solver.add(maze[y+1][x]);
+			ret++;
+		}
+		return ret;
+	}
+
+	public static boolean valid(MazeNode[][] maze, int x, int y){
+		return x>=0 && y>=0 && x < maze[0].length && y < maze.length && (maze[y][x].symbol == 46 || maze[y][x].symbol == 71 || maze[y][x].symbol == 83) && !maze[y][x].visited;
+	}
+
+	public static void createAllStates(MazeNode[][][] maze, ArrayList<MazeNode> turrets){
+		for (int i = 0; i < 4; i++){
+			updateDeadZones(maze[i], turrets);
+			if (i+1 < 4) {
+				int height = maze[i].length;
+				int width = maze[i][0].length;
+				for (int y = 0; y < height; y++){
+					for (int x = 0; x < width; x++){
+						maze[i+1][y][x] = new MazeNode(x, y, maze[i][y][x].symbol);
+					}
+				}
+			}
+		}
+	}
+	
+	
+	public static void updateDeadZones(MazeNode[][] maze,
+			ArrayList<MazeNode> turrets) {
+		for (MazeNode n : turrets) {
+			fillSpaces(maze, n, (byte) 46); // fill with empty space
+			if (n.symbol == 60) {				
+				n.symbol = 94;
+				maze[n.yLoc][n.xLoc].symbol = 94;
+			} else if (n.symbol == 62) {
+				n.symbol = 118;
+				maze[n.yLoc][n.xLoc].symbol = 118;
+			} else if (n.symbol == 94) {
+				n.symbol = 62;
+				maze[n.yLoc][n.xLoc].symbol = 62;
+			} else {				
+				n.symbol = 60;
+				maze[n.yLoc][n.xLoc].symbol = 60;
+			}	
+			fillSpaces(maze, n, (byte) 0); // fill with laser beams
+		}
+	}
+
+	public static void fillSpaces(MazeNode[][] maze, MazeNode turret, byte character){
+		byte symbol;
+		if (turret.symbol == 60) {
+			for (int i = turret.xLoc-1; i > 0; i--){
+				symbol = maze[turret.yLoc][i].symbol;
+				if (symbol == 83 || symbol == 71){
+					continue;
+				}
+				else if (symbol > 46 || symbol == 35){
+					break;
+				}else{
+					maze[turret.yLoc][i].symbol = character;
+				}
+			}
+		} else if (turret.symbol == 62) {
+			for (int i = turret.xLoc+1; i < maze[0].length; i++){
+				symbol = maze[turret.yLoc][i].symbol;
+				if (symbol == 83 || symbol == 71){
+					continue;
+				}
+				else if (symbol > 46 || symbol == 35){
+					break;
+				}else{
+					maze[turret.yLoc][i].symbol = character;
+				}
+			}
+		} else if (turret.symbol == 94) {
+			for (int i = turret.yLoc-1; i > 0; i--){
+				symbol = maze[i][turret.xLoc].symbol;
+				if (symbol == 83 || symbol == 71){
+					continue;
+				}
+				else if (symbol > 46 || symbol == 35){
+					break;
+				}else{
+					maze[i][turret.xLoc].symbol = character;
+				}
+			}
+		} else {
+			for (int i = turret.yLoc+1; i < maze.length; i++){
+				symbol = maze[i][turret.xLoc].symbol;
+				if (symbol == 83 || symbol == 71){
+					continue;
+				}
+				else if (symbol > 46 || symbol == 35){
+					break;
+				}else{
+					maze[i][turret.xLoc].symbol = character;
+				}
+			}
+		}
+	}
+}

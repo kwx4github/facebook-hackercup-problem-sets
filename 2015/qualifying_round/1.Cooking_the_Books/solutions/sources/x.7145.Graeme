@@ -1,0 +1,75 @@
+(ns hackercup2015.core
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]))
+
+(defn swap-old [characters n]
+  (concat (take n characters)
+          [(nth characters (+ 1 n))]
+          [(nth characters n)]
+          (drop (+ 2 n) characters)))
+
+(defn swap [characters x y]
+  (concat (take x characters)
+          [(nth characters y)]
+          (take (- y (+ x 1)) (drop (+ x 1) characters))
+          [(nth characters x)]
+          (drop (+ 1 y) characters)))
+
+(defn swaps [characters]
+  (let [max-swap (count characters)]
+    (for [x (range max-swap)
+          y (range max-swap)
+          :when (and (not= (nth characters y) \0)
+                     (not= x y)
+                     (<= x y))]
+      (swap characters x y))))
+
+(swaps "01")
+
+(defn possibilities [characters]
+  (mapv #(apply str %)
+    (concat (swaps characters)
+            [(seq characters)])))
+
+(possibilities "01")
+(possibilities "31524")
+
+(defn parse-int [s]
+  (Integer/parseInt (re-find #"\d+" s )))
+
+(defn process-line [line]
+  "Accepts a line as a string and processes it."
+  (let [poss  (possibilities (str/trim line))
+        nums  (map parse-int poss)
+        least (apply min nums)
+        most  (apply max nums)]
+    (str least " " most)))
+
+(process-line "31524\n")
+
+(process-line "897\n")
+
+(process-line "123\n")
+
+(process-line "10\n")
+
+(process-line "5\n")
+
+(defn process-file [f input output]
+  (with-open [output-file (io/writer output)
+              input-file (io/reader input)]
+    (doseq [output-line (map (partial format "Case #%d: %s\n" )
+                             (iterate inc 1)
+                             (map f (drop 1 (line-seq input-file))))]
+        (do (.write output-file output-line)
+            (print output-line)
+            ))))
+
+(process-file process-line
+              "cooking_the_books.txt"
+              "cooking_output.txt")
+
+(defn- main []
+  (process-file process-line
+                "cooking_the_books.txt"
+                "cooking_output.txt"))

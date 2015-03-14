@@ -1,0 +1,244 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
+
+
+public class HackerCupTester3 {
+
+	public static void main(String[] args){
+		//args[0]: input file
+		//args[1]: output file
+		//args[2]: the gold standard output file for compare
+		
+		if(args.length >= 3){
+			File inputFile = new File(args[0]);
+			File outputFile = new File(args[1]);
+			File goldFile = new File(args[2]);
+			
+			try {
+				Scanner scan = new Scanner(inputFile);
+
+				List<String> lines = new ArrayList<String>();
+				while(scan.hasNextLine()){
+					String line = scan.nextLine();
+					lines.add(line);
+				}
+				HackerCupTester3 tester = new HackerCupTester3();
+				String[] outputArray = tester.LaserMaze(lines);
+				
+				//write result to file
+				FileWriter writer = new FileWriter(outputFile);
+				writer.write(outputArray[0]);
+				for(int i=1;i<outputArray.length;i++){
+					writer.write("\n"+outputArray[i]);
+				}
+				writer.close();
+				
+				//get and compare result
+				Scanner scanO = new Scanner(outputFile);
+				List<String> c1 = new ArrayList<String>();
+				while(scanO.hasNextLine()){
+					c1.add(scanO.nextLine());
+				}
+				
+				Scanner scanG = new Scanner(goldFile);
+				List<String> c2 = new ArrayList<String>();
+				while(scanG.hasNextLine()){
+					c2.add(scanG.nextLine());
+				}
+				
+				if(c1.size() == c2.size()){
+					for(int i=0;i<c1.size();i++){
+						System.out.println(c1.get(i)+"|"+c2.get(i));
+						if(!c1.get(i).equals(c2.get(i))){
+							System.out.println("File do not match.");
+							return;
+						}
+					}
+					System.out.println("Same result!");
+				}
+				else{
+					System.out.println("File do not match.");
+				}
+				
+			} catch ( IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+	public String[] LaserMaze(List<String> lines){
+		int testCase = Integer.parseInt(lines.get(0));
+		String[] ret = new String[testCase];
+		int index = 1;
+		for(int i=0;i<testCase;i++){
+//			System.out.println("test case: "+(i+1));
+			String[] gridLine = lines.get(index++).split("\\s+");
+			int row = Integer.parseInt(gridLine[0]);
+			int col = Integer.parseInt(gridLine[1]);
+			
+			int[][] steps = new int[row+2][col+2];
+			char[][] blok = new char[row+2][col+2];
+
+			
+			List<int[]> laser = new ArrayList<int[]>();
+			List<Integer> laserHeading = new ArrayList<Integer>();
+
+			for(int j=0;j<row+2;j++){
+				Arrays.fill(blok[j], '#');
+				Arrays.fill(steps[j], -1);
+			}
+			
+			
+			for(int j=0;j<row;j++){
+				char[] tmp = lines.get(index++).toCharArray();
+				for(int k=0;k<tmp.length;k++){
+					blok[j+1][k+1] = tmp[k];
+				}
+			}
+			
+			for(int j=1;j<=row;j++){
+				for(int k=1;k<=col;k++){
+					if(blok[j][k] == '^'){
+						laser.add(new int[]{j,k});
+						laserHeading.add(0);
+					}
+					else if(blok[j][k] == '>'){
+						laser.add(new int[]{j,k});
+						laserHeading.add(1);
+					}
+					else if(blok[j][k] == 'v'){
+						laser.add(new int[]{j,k});
+						laserHeading.add(2);
+					}
+					else if(blok[j][k] == '<'){
+						laser.add(new int[]{j,k});
+						laserHeading.add(3);
+					}
+					if(blok[j][k] == 'S'){
+						steps[j][k] = 0;
+						blok[j][k] = '.';
+					}
+				}
+			}
+			
+			
+			int f = find(steps,blok, row, col, laser, laserHeading);
+			ret[i] = "Case #"+(i+1)+": ";
+			if(f>0){
+				ret[i]+=f;
+			}
+			else{
+				ret[i]+="impossible";
+			}
+			
+		}
+		return ret;
+	}
+	
+	public int find(int[][] steps, char[][] blocks, int row, int col, List<int[]> laser, List<Integer> laserHeading){
+		for(int i=0;i<row*col*10;i++){
+			for(int j=1;j<=row;j++){
+				for(int k=1;k<=col;k++){
+					if(steps[j][k] >= 0 && steps[j][k] != Integer.MAX_VALUE){
+						if(blocks[j][k+1] == 'G'){
+							if(canMove(j,k+1,laser,laserHeading,steps[j][k],steps,blocks)){
+								return steps[j][k]+1;
+							}
+						}
+						else if(blocks[j][k-1] == 'G'){
+							if(canMove(j,k-1,laser,laserHeading,steps[j][k],steps,blocks)){
+								return steps[j][k]+1;
+							}
+						}
+						else if(blocks[j+1][k] == 'G'){
+							if(canMove(j+1,k,laser,laserHeading,steps[j][k],steps,blocks)){
+								return steps[j][k]+1;
+							}
+						}
+						else if(blocks[j-1][k] == 'G'){
+							if(canMove(j-1,k,laser,laserHeading,steps[j][k],steps,blocks)){
+								return steps[j][k]+1;
+							}
+						}
+						
+						if(blocks[j][k+1] =='.' || steps[j][k+1] >=0 && steps[j][k+1] > steps[j][k]+1){
+							if(canMove(j,k+1,laser,laserHeading,steps[j][k],steps,blocks)){
+								steps[j][k+1] = steps[j][k]+1;
+							}
+						}
+						if(blocks[j][k-1] =='.' || steps[j][k-1] >=0 && steps[j][k-1] > steps[j][k]+1){
+							if(canMove(j,k-1,laser,laserHeading,steps[j][k],steps,blocks)){
+								steps[j][k-1] = steps[j][k]+1;
+							}
+						}
+						if(blocks[j+1][k] =='.' || steps[j+1][k] >=0 && steps[j+1][k] > steps[j][k]+1){
+							if(canMove(j+1,k,laser,laserHeading,steps[j][k],steps,blocks)){
+								steps[j+1][k] = steps[j][k]+1;
+							}
+						}
+						if(blocks[j-1][k] =='.' || steps[j-1][k] >=0 && steps[j-1][k] > steps[j][k]+1){
+							if(canMove(j-1,k,laser,laserHeading,steps[j][k],steps,blocks)){
+								steps[j-1][k] = steps[j][k]+1;
+								
+							}
+						}
+						steps[j][k] = Integer.MAX_VALUE;
+					}
+				}
+			}
+		}
+		return -1;
+	}
+	
+	public boolean canMove(int r, int c, List<int[]> laser, List<Integer> heading, int step,int[][]steps,char[][] blocks){
+		for(int i=0;i<laser.size();i++){
+			int h = (heading.get(i)+step+1)%4;
+			int[] ea = laser.get(i);
+			if(r == ea[0] && (h%2 > 0)){
+				if( h == 1 && c > ea[1]){
+					if(c-ea[1]==1)return false;
+					for(int j=ea[1]+1;j<=c;j++){
+						if(steps[r][j] >= 0){
+							return false;
+						}
+					}
+				}
+				else if(h == 3 && c < ea[1]){
+					if(ea[1] - c == 1)return false;
+					for(int j=c;j<ea[1];j++){
+						if(steps[r][j] >=0){
+							return false;
+						}
+					}
+				}
+			}
+			else if(c == ea[1] && (h%2 == 0)){
+				if(h == 0 && r<ea[0]){
+					if(ea[0]-r == 1)return false;
+					for(int j=r;j<ea[0];j++){
+						if(steps[j][c] >=0){
+							return false;
+						}
+					}
+				}
+				else if(h == 2 && r > ea[0]){
+					if(r-ea[0] ==1)return false;
+					for(int j=ea[0]+1;j<=r;j++){
+						if(steps[j][c] >=0){
+							return false;
+						}
+					}
+				}
+			}
+			
+		}
+		return true;
+	}
+
+}

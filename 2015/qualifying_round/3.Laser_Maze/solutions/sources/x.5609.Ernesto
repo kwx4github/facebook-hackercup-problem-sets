@@ -1,0 +1,187 @@
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class LaserMaze {
+	
+	private static enum Cell {
+		START,
+		EMPTY,
+		WALL,
+		GOAL,
+		LEFT {
+			public Cell next() {
+				return UP;
+			}
+		},
+		UP {
+			public Cell next() {
+				return RIGHT;
+			}
+		},
+		RIGHT {
+			public Cell next() {
+				return DOWN;
+			}
+		},
+		DOWN {
+			public Cell next() {
+				return LEFT;
+			}
+		};
+		
+		public Cell next() {
+			return this;
+		}
+		
+		public boolean isLaser() {
+			switch(this) {
+			case LEFT:
+			case RIGHT:
+			case UP:
+			case DOWN:
+				return true;
+			default:
+				return false;
+			}
+		}
+	}
+	
+	private static Map<Character, Cell> toCell;
+	
+	static {
+		toCell = new HashMap<Character, Cell>();
+		toCell.put('S', Cell.START);
+		toCell.put('.', Cell.EMPTY);
+		toCell.put('#', Cell.WALL);
+		toCell.put('G', Cell.GOAL);
+		toCell.put('<', Cell.LEFT);
+		toCell.put('>', Cell.RIGHT);
+		toCell.put('^', Cell.UP);
+		toCell.put('v', Cell.DOWN);
+	}
+	
+	private static int m, n;
+	private static Cell[][] maze;
+	private static boolean[][][] visited;
+	private static boolean[][][] valid;
+	
+	private static Cell pos(int x, int y, int p) {
+		Cell cell = maze[x][y];
+		p %= 4;
+		while (p-- > 0)
+			cell = cell.next();
+		return cell;
+	}
+	
+	private static boolean isValid(int x, int y, int p) {
+		// Check laser from below
+		int x1 = x;
+		while (x1 < m && maze[x1][y] != Cell.WALL) {
+			if (maze[x1][y].isLaser() && pos(x1, y, p) == Cell.UP)
+				return false;
+			x1++;
+		}
+
+		// Check laser from above
+		x1 = x;
+		while (x1 >= 0 && maze[x1][y] != Cell.WALL) {
+			if (maze[x1][y].isLaser() && pos(x1, y, p) == Cell.DOWN)
+				return false;
+			x1--;
+		}
+
+		// Check laser from the left
+		int y1 = y;
+		while (y1 >= 0 && maze[x][y1] != Cell.WALL) {
+			if (maze[x][y1].isLaser() && pos(x, y1, p) == Cell.RIGHT)
+				return false;
+			y1--;
+		}
+
+		// Check laser from the right
+		y1 = y;
+		while (y1 < n && maze[x][y1] != Cell.WALL) {
+			if (maze[x][y1].isLaser() && pos(x, y1, p) == Cell.LEFT)
+				return false;
+			y1++;
+		}
+		
+		return true;
+	}
+	
+	private static final int[][] offsets = new int[][] {
+			{0, 1},
+			{0, -1},
+			{1, 0},
+			{-1, 0}
+	};
+	
+	private static int map(int x, int y, int p) {
+		return (x << 23) | (y << 16) | p;
+	}
+	
+	private static int getMoves(int x0, int y0) {
+		Queue<Integer> q = new LinkedList<Integer>();
+		q.add(map(x0, y0, 0));
+
+		while (!q.isEmpty()) {
+			int value = q.poll();
+			int x = (value >> 23) & ((1 << 7) - 1);
+			int y = (value >> 16) & ((1 << 7) - 1);
+			int p = value & ((1 << 16) - 1);
+			
+			if (maze[x][y] == Cell.GOAL && valid[x][y][p % 4])
+				return p;
+			
+			for (int[] offset : offsets)
+				if (0 <= x + offset[0] && x + offset[0] < m &&
+						0 <= y + offset[1] && y + offset[1] < n &&
+						valid[x + offset[0]][y + offset[1]][(p + 1) % 4] &&
+						!visited[x + offset[0]][y + offset[1]][(p + 1) % 4]) {
+					visited[x + offset[0]][y + offset[1]][(p + 1) % 4] = true;
+					q.add(map(x + offset[0], y + offset[1], p + 1));
+				}
+		}
+
+		return Integer.MAX_VALUE;
+	}
+	
+	public static void main(String[] args) {
+		Scanner sc = new Scanner(System.in);
+		int T = sc.nextInt();
+		for (int caze = 1; caze <= T; caze++) {
+			m = sc.nextInt();
+			n = sc.nextInt();
+
+			int x = -1;
+			int y = -1;
+			maze = new Cell[m][n];
+			for (int i = 0; i < m; i++) {
+				char[] line = sc.next().toCharArray();
+				for (int j = 0; j < n; j++) {
+					maze[i][j] = toCell.get(line[j]);
+					if (maze[i][j] == Cell.START) {
+						x = i;
+						y = j;
+					}
+				}
+			}
+
+			visited = new boolean[m][n][4];
+			valid = new boolean[m][n][4];
+			for (int i = 0; i < m; i++)
+				for (int j = 0; j < n; j++)
+					for (int p = 0; p < 4; p++) {
+						valid[i][j][p] = isValid(i, j, p);
+					}
+			
+			int moves = getMoves(x, y);
+			System.out.printf("Case #%d: %s\n", caze, moves != Integer.MAX_VALUE ? String.valueOf(moves) : "impossible");
+		}
+		sc.close();
+	}
+
+}

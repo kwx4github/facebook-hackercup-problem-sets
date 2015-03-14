@@ -1,0 +1,276 @@
+#include<iostream>
+#include<vector>
+#include<algorithm>
+
+using namespace std;
+
+#define NUM_RANGLES 4
+#define MAX_M_N 100
+
+enum material
+{
+	empty,
+	wall,
+	lauret
+};
+
+enum dir
+{
+	up,
+	rig,
+	dow,
+	lef
+};
+
+	
+struct cell_partr
+{
+	enum material m;
+	enum dir d;
+	int poss_to_stay;	
+	int visited;
+};
+	
+struct cell_partr input[MAX_M_N][MAX_M_N][NUM_RANGLES];
+
+struct bfs_tripl
+{
+	int i;
+	int j;
+	int k;
+	int level;
+};
+
+int S_i, S_j, G_i, G_j;
+
+void take_input(int M, int N)
+{
+	int i,j,k,l;
+	string s;
+ 
+	for(i=0;i<M;i++)
+	{
+		s.clear();
+		cin >> s;
+		cin.ignore();
+		for(j=0;j<N;j++)
+		{
+			for(k=0;k<NUM_RANGLES;k++)
+			{
+				input[i][j][k].visited = 0;
+				input[i][j][k].poss_to_stay = 1;
+				switch(s[j])
+				{
+					case '#':
+						input[i][j][k].m = wall;
+						break;
+					case '.':
+						input[i][j][k].m = empty;
+						break;
+					case 'S':
+						input[i][j][k].m = empty;
+						S_i = i;
+						S_j = j;
+						break;
+					case 'G':
+						input[i][j][k].m = empty;
+						G_i = i;
+						G_j = j;
+						break;
+					case '^':
+						input[i][j][k].m = lauret;
+						input[i][j][k].d = up;
+						break;
+					case 'v':
+						input[i][j][k].m = lauret;
+						input[i][j][k].d = dow;
+						break;
+					case '<':
+						input[i][j][k].m = lauret;
+						input[i][j][k].d = lef;
+						break;		
+					case '>':
+						input[i][j][k].m = lauret;
+						input[i][j][k].d = rig;
+						break;
+				}
+			}
+		}
+	}
+	
+	for(k=0;k<NUM_RANGLES;k++)
+	{
+		for(i=0;i<M;i++)
+		{
+			//to right
+			for(j=0;j<N;j++)
+			{
+				if((input[i][j][k].m==lauret)&&(((input[i][j][k].d+k)%4)==rig))
+				{
+					l = j+1;
+					while((l<N)&&(input[i][l][k].m==empty))
+					{
+						input[i][l][k].poss_to_stay = 0;
+						l++;
+					}					
+				}
+			}
+			//to left
+			for(j=(N-1);j>=0;j--)
+			{				
+				if((input[i][j][k].m==lauret)&&(((input[i][j][k].d+k)%4)==lef))
+				{
+					l = j-1;
+					while((l>=0)&&(input[i][l][k].m==empty))
+					{
+						input[i][l][k].poss_to_stay = 0;
+						l--;
+					}
+				}
+			}
+		}
+		for(j=0;j<N;j++)
+		{
+			//to up
+			for(i=(M-1);i>=0;i--)
+			{
+				if((input[i][j][k].m==lauret)&&(((input[i][j][k].d+k)%4)==up))
+				{
+					l = i-1;
+					while((l>=0)&&(input[l][j][k].m==empty))
+					{
+						input[l][j][k].poss_to_stay = 0;
+						l--;
+					}
+				}
+			}
+			//to down
+			for(i=0;i<M;i++)
+			{
+				if((input[i][j][k].m==lauret)&&(((input[i][j][k].d+k)%4)==dow))
+				{
+					l = i+1;
+					while((l<M)&&(input[l][j][k].m==empty))
+					{
+						input[l][j][k].poss_to_stay = 0;
+						l++;
+					}
+				}
+			}
+		}	
+	}
+}
+
+int bfs (int M, int N)
+{
+	vector<struct bfs_tripl> bfs_queue;
+	int cur_index;
+	struct bfs_tripl cur_trip, new_trip;
+	struct cell_partr cur_cell;
+
+	cur_trip.i = S_i;
+	cur_trip.j = S_j;
+	cur_trip.k	= 0;
+	cur_trip.level = 0;
+	cur_index = 0;
+	bfs_queue.push_back(cur_trip);
+	input[S_i][S_j][0].visited = 1;
+
+	while(cur_index<((int)bfs_queue.size()))
+	{
+		cur_trip = bfs_queue[cur_index];
+		if(cur_trip.i>0)
+		{
+			cur_cell = input[cur_trip.i-1][cur_trip.j][(cur_trip.k+1)%4];
+			if((cur_cell.poss_to_stay==1)&&(cur_cell.visited==0))
+			{	
+				new_trip.i = cur_trip.i-1;
+				new_trip.j = cur_trip.j;
+				new_trip.k = (cur_trip.k+1)%4;
+				new_trip.level = cur_trip.level+1;
+				if((new_trip.i==G_i)&&(new_trip.j==G_j))
+				{
+					return new_trip.level;
+				}
+				input[cur_trip.i-1][cur_trip.j][(cur_trip.k+1)%4].visited = 1;
+				bfs_queue.push_back(new_trip);
+			}
+		}
+		if(cur_trip.i<(M-1))
+		{
+			cur_cell = input[cur_trip.i+1][cur_trip.j][(cur_trip.k+1)%4];
+			if((cur_cell.poss_to_stay==1)&&(cur_cell.visited==0))
+			{	
+				new_trip.i = cur_trip.i+1;
+				new_trip.j = cur_trip.j;
+				new_trip.k = (cur_trip.k+1)%4;
+				new_trip.level = cur_trip.level+1;
+				if((new_trip.i==G_i)&&(new_trip.j==G_j))
+				{
+					return new_trip.level;
+				}
+				input[cur_trip.i+1][cur_trip.j][(cur_trip.k+1)%4].visited = 1;
+				bfs_queue.push_back(new_trip);
+			}
+
+		}
+		if(cur_trip.j>0)
+		{
+			cur_cell = input[cur_trip.i][cur_trip.j-1][(cur_trip.k+1)%4];
+			if((cur_cell.poss_to_stay==1)&&(cur_cell.visited==0))
+			{	
+				new_trip.i = cur_trip.i;
+				new_trip.j = cur_trip.j-1;
+				new_trip.k = (cur_trip.k+1)%4;
+				new_trip.level = cur_trip.level+1;
+				if((new_trip.i==G_i)&&(new_trip.j==G_j))
+				{
+					return new_trip.level;
+				}
+				input[cur_trip.i][cur_trip.j-1][(cur_trip.k+1)%4].visited = 1;
+				bfs_queue.push_back(new_trip);
+			}
+		}
+		if(cur_trip.j<(N-1))
+		{	
+			cur_cell = input[cur_trip.i][cur_trip.j+1][(cur_trip.k+1)%4];
+			if((cur_cell.poss_to_stay==1)&&(cur_cell.visited==0))
+			{	
+				new_trip.i = cur_trip.i;
+				new_trip.j = cur_trip.j+1;
+				new_trip.k = (cur_trip.k+1)%4;
+				new_trip.level = cur_trip.level+1;
+				if((new_trip.i==G_i)&&(new_trip.j==G_j))
+				{
+					return new_trip.level;
+				}
+				input[cur_trip.i][cur_trip.j+1][(cur_trip.k+1)%4].visited = 1;
+				bfs_queue.push_back(new_trip);
+			}
+		}
+		cur_index++;
+	}
+	return -1;
+}
+
+int main()
+{
+	int T, M, N, i,res;
+	cin >> T;
+	for(i=0;i<T;i++)
+	{
+		cin >> M >> N;
+		take_input (M,N);
+		res = bfs(M,N);
+		if(res == -1)
+		{
+			cout << "Case #" << (i+1) << ": impossible\n";
+		}
+		else
+		{
+			cout << "Case #" << (i+1) << ": " << res << "\n";
+		} 	
+	}
+	return 0;
+}
+	 

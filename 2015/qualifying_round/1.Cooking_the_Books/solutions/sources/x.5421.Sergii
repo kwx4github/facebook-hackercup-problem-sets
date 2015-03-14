@@ -1,0 +1,138 @@
+#include <QCoreApplication>
+#include <QFile>
+#include <QStringList>
+#include <QTextStream>
+#include <QDebug>
+#include <QtGlobal>
+
+#define ARRAY_LENGTH 4
+
+bool is_debug = false;
+
+QString getAnswer(QString Line) {
+    if (is_debug) {
+        qDebug() << "start getAnswer " << Line;
+    }
+    QString Small = "", Large = "";
+    int Ln = Line.length(), CN, SN = Line.mid(0, 1).toInt(), MN = SN, sidx = 0, midx = 0, zidx = 0;
+    bool zero_exists = false;
+
+    if (Ln == 1) {
+        return Line + " " + Line;
+    }
+
+    for (int i = 0; i < Ln; ++i) {
+        CN = Line.mid(i, 1).toInt();
+        if (is_debug) {
+            qDebug() << "loop1 idx " << i << "value" << CN;
+        }
+        if (CN == 0) {
+            zero_exists = true;
+            zidx = i;
+            continue;
+        }
+        if (CN <= SN) {
+            SN = CN;
+            sidx = i;
+        }
+
+        if (CN >= MN) {
+            MN = CN;
+            midx = i;
+        }
+    }
+
+    int SNA, MNA, MaxToChange = -1, MinToChange = -1;
+    bool max_changed = false, min_changed = false;
+    for (int i = 0; i < Ln; ++i) {
+        CN = Line.mid(i, 1).toInt();
+        if (is_debug) {
+            qDebug() << "loop2 idx " << i << "value" << CN << " MinValue" << SN << "MIN IDX" << sidx;
+        }
+        SNA = CN;
+        MNA = CN;
+
+        if (!min_changed && CN != SN && i < sidx) {
+            MinToChange = CN;
+            SNA = SN;
+            min_changed = true;
+            if (is_debug) {
+                qDebug() << "min to change idx " << i << "value" << CN << " MinValue" << SN << "MIN IDX" << sidx;
+            }
+        }
+
+        if (i == 0 && zero_exists) {
+            SN = 0;
+            sidx = zidx;
+        }
+
+        if (i == sidx && MinToChange != -1) {
+            SNA = MinToChange;
+        }
+
+        if (!max_changed && CN != MN && i < midx) {
+            MaxToChange = CN;
+            MNA = MN;
+            max_changed = true;
+        }
+
+        if (i == midx && MaxToChange != -1) {
+            MNA = MaxToChange;
+        }
+
+
+        Small.append(QString::number(SNA));
+        Large.append(QString::number(MNA));
+    }
+
+    return //Line + " " +
+            Small + " " + Large;
+}
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+
+    QStringList params = QCoreApplication::arguments();
+    if (params.count() < 3) {
+        return 1;
+    }
+
+    qDebug() << params;
+    qDebug() << params.at(1);
+    QFile file_in(params.at(1));
+    if (!file_in.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return 2;
+    }
+
+    QTextStream in(&file_in);
+
+    QFile file_out(params.at(2));
+    if (!file_out.open(QIODevice::WriteOnly)) {
+        return 3;
+    }
+
+    is_debug = params.count() > 3 && params.at(3).compare("debug") == 0;
+
+    QTextStream out(&file_out);
+    QString line;
+    int Idx = -1;
+    int CaseNum = 0;
+
+    while (!in.atEnd()) {
+        line = in.readLine();
+        if (++Idx == 0) {
+            if (is_debug) qDebug() << "Input case count " << line;
+            continue;
+        }
+        if (is_debug) {
+            qDebug() << "Current index " << Idx;
+        }
+
+        out << "Case #" << ++CaseNum << ": " << getAnswer(line.trimmed());
+        endl(out);
+
+    }
+    return 0;
+    //return a.exec();
+}

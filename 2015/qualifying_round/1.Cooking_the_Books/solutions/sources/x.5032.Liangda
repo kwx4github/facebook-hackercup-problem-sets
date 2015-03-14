@@ -1,0 +1,112 @@
+#include <iostream>
+#include <vector>
+using namespace std;
+
+// Figures out the digigts of a positive integer number and saves these digits
+// into a vector.
+// For example, 123 -> {1, 2, 3}.
+vector<int> int2digits(int number) {
+  vector<int> v;
+  while (number > 0) {
+    v.insert(v.begin(), number % 10);
+    number = number / 10;
+  }
+  return v;
+}
+// Computes the power 10^n
+int power10(int n) {
+  int value = 1;
+  for(int i = 1; i <= n; ++i)
+    value = value * 10;
+  return value;
+}
+// Use counting sort to sort the vector v but we need to save the original index
+// in the sorted output. keep in mind that counting sort is stable. The entry of
+// the output is a pair of integers where the first is the value in v and the
+// second is the original index of the value in v.
+vector<pair<int, int> > counting_sort(const vector<int> &v) {
+  // The digit is 0, 1, ..., 9. So a counting array of size 10 is enough.
+  int count[10] = {0};
+  for (int i = 0; i < v.size(); ++i)
+    ++count[v[i]];
+  // start_index is the starting index of a key v[i] in the sorted output.
+  int start_index = 0;
+  for (int i = 0; i <= 9; ++i) {
+    int count_for_key_i = count[i];
+    count[i] = start_index;
+    start_index += count_for_key_i;
+  }
+  vector<pair<int, int> > output(v.size());
+  for (int i = 0; i < v.size(); ++i) {
+    output[count[v[i]]] = make_pair(v[i], i);
+    ++count[v[i]];
+  }
+  return output;
+}
+// Finds the smallest number after one swap.
+int smallest_after_swap(int number, const vector<int> &v,
+                        const vector<pair<int, int> > &output) {
+  int i = 0;
+  while(i < output.size() && output[i].first == 0)
+    ++i;
+  int index_to_swap = 0;
+  while(i < output.size() && index_to_swap < v.size()) {
+    if (output[i].first == v[index_to_swap]) {
+      ++i;
+      ++index_to_swap;
+    } else if (output[i].first > v[index_to_swap]) {
+      ++index_to_swap;
+      while(i < output.size() && output[i].second <= index_to_swap)
+        ++i;
+    } else {
+      int j = i;
+      while (j < output.size() && output[j].first == output[i].first)
+        ++j;
+      --j;
+      int number_difference = v[index_to_swap] - output[j].first;
+      number -= number_difference * power10(v.size() -1 - index_to_swap);
+      number += number_difference * power10(v.size() -1 - output[j].second);
+      return number;
+    }
+  }
+  return number;
+}
+// Finds the biggest number after one swap
+int biggest_after_swap(int number, const vector<int> &v,
+                       const vector<pair<int, int> > &output) {
+  int i = output.size() -1;
+  int index_to_swap = 0;
+  while(i >= 0  && index_to_swap < v.size()) {
+    if (output[i].first == v[index_to_swap]) {
+      --i;
+      ++index_to_swap;
+    } else if (output[i].second <= index_to_swap) {
+      break;
+    } else {
+      int number_difference = output[i].first - v[index_to_swap];
+      number += number_difference * power10(v.size() -1 - index_to_swap);
+      number -= number_difference * power10(v.size() -1 - output[i].second);
+      return number;
+    }
+  }
+  return number;
+}
+
+int main() {
+  int T;
+  cin >> T;
+  for (int i = 1 ; i <= T; ++i) {
+    int number;
+    cin >> number;
+    if (number == 0) {
+      cout << "Case #" << i << ": " << 0 << " " << 0 <<endl;
+      continue;
+    }
+    const vector<int> v = int2digits(number);
+    const vector<pair<int, int> > output = counting_sort(v);
+    int smallest = smallest_after_swap(number, v, output);
+    int biggest = biggest_after_swap(number, v, output);
+    cout << "Case #" << i << ": " << smallest << " " << biggest <<endl;
+  }
+}
+

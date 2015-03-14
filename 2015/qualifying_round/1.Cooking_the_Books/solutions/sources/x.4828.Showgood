@@ -1,0 +1,153 @@
+//132 ==> 123, 312
+//31524 ==> 13524, 51324
+//897==> 798, 987
+//542==>245, 542
+//645 ==> 465, 654
+
+// so basically the logic is 
+// * first we try to swap the largest digit with first digit (MSB)
+// if they are not equal
+// * otherwise try next digit
+// * this will give us the larget number
+// * then do the same thing but this time swap the smallest digit with MSB
+// 
+// so in order to use this algorithm, we need to:
+// * dissect number into vector of digits
+// 
+// basically we need to know the biggest/smallest number for a particular digit on its right side
+// actually we can still make use of the solution of NGE problem
+// what we do is create a vector(let's call it NGEVector) which will store the index of its NGE index
+// for example, if digit is 31524, then NGEVector will look like:
+// [2, 2, 2, 4, 4]
+// what that means is for element at index 0 (which is digit 3), it's NGE element is 5 which is at index 2
+// and for element at index 1 which is digit 1, its NGE is also 5 which is at index 2
+// so this actually form a implicit chain and follow that chain we can find the greatest element for a particular
+// element and we only need to process the vector once
+// 
+// we can do the similar thing for smallest element
+// and probably we can do the same thing in one loop
+// so now the plan is:
+// * dissect number into digits of vector
+// * loop through digit vector to create the NGE and NLE vector
+// * loop through digit vector
+// - find the greatest element on its right side if any
+// - swap the current element with greatest element, break
+// * reconstruct the number
+// * also needs to pay attention we can not swap the first digit with 0
+// * if 0 is the smallest number we find
+// 
+// * introduce notation
+// - digits -- vector of digits
+// - nge - next greater element vector
+// - nle - next less element vector
+// - minNum - minimum number can produce
+// - maxNum - max number can produce
+// 
+// coding started 10/01/2015 2:43:56 PM
+// 
+// update: 10/01/2015 3:51:43 PM
+// got RE because I forgot to check if j != -1
+// when we try to swap digits.. it could happen if
+// the first element in nge or nle has value -1.
+// for example, if n is 132, then first element of nle will be -1
+// or if number is 958, then first element of nge will be -1
+// another thing is I forgot to return value for function BuildNGEOrNLE().
+// strange clang on windows compile the code happily..
+#include <vector>
+#include <deque>
+#include <stack>
+#include <sstream>
+#include <string>
+using namespace std;
+
+vector<int> BuildNGEOrNLE(const deque<int>& digits, bool nge)
+{
+    int i = 0;
+    stack<int> s;
+    vector<int> result(digits.begin(), digits.end());
+    while(i < digits.size())
+    {
+        if (s.empty())
+        {
+            s.push(i++);
+        }
+        else if ((nge && digits[s.top()] >= digits[i])
+                 || (!nge && digits[s.top()] <= digits[i]))
+        {
+            s.push(i++);
+        }
+        else
+        {
+            int t = s.top();
+            s.pop();
+            result[t] = i;
+        }
+    }
+
+    while(!s.empty())
+    {
+        result[s.top()] = -1;
+        s.pop();
+    }
+
+	return result;
+}
+
+int ToNumber(deque<int>& digits)
+{
+    int result = digits[0];
+    for (int i = 1; i < digits.size(); ++i)
+    {
+        result = result * 10 + digits[i];
+    }
+
+    return result;
+}
+
+int NumberAfterSwap(deque<int> digits, vector<int>& refs)
+{
+    int j = 0;
+
+    for (int i = 0; i < digits.size() -1; ++i)
+    {
+        j = refs[i];
+        while(j < refs.size() && refs[j] != -1)
+        {
+            j = refs[j];
+        }
+        if (j != i && j != -1)
+        {
+            swap(digits[i], digits[j]);
+            return ToNumber(digits);
+        }
+    }
+
+    return ToNumber(digits);
+}
+
+string CookBook(int n)
+{
+    stringstream ss;
+    if (n <= 10)
+    {
+        ss << n << " " << n;
+        return ss.str();
+    }
+
+    deque<int> digits;
+
+    while(n > 0)
+    {
+        digits.push_front(n%10);
+        n /= 10;
+    }
+
+    vector<int> nge = BuildNGEOrNLE(digits, true);
+    vector<int> nle = BuildNGEOrNLE(digits, false);
+
+    ss << NumberAfterSwap(digits, nle) << " " << NumberAfterSwap(digits, nge);
+
+    return ss.str();
+}
+
+// done coding at 10/01/2015 3:32:48 PM

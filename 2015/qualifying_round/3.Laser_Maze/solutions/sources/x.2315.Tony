@@ -1,0 +1,173 @@
+
+#include <cassert>
+#include <iostream>
+#include <set>
+#include <string>
+#include <vector>
+#define MAXN 100
+#define MAXV (4 * MAXN * MAXN)
+#define INF (1 << 30)
+
+using namespace std;
+
+typedef pair <int, int> pii;
+
+const char dir[] = {'V', '<', '^', '>'};
+
+int m, n;
+string g[MAXN];
+
+bool is_valid[MAXV];
+vector <int> adj[MAXV];
+int dist[MAXV];
+
+bool is_turret(char c) {
+    for (int k = 0; k < 4; k++)
+        if (dir[k] == c)
+            return true;
+    return false;
+}
+
+char rotate_cell(char c, int d) {
+    // returns (c) rotated by (d) if turret
+    for (int k = 0; k < 4; k++)
+        if (dir[k] == c)
+            return dir[(k + d) % 4];
+    return c;
+}
+
+bool check_cell(int i, int j, int d, char c) {
+    // returns true if (i, j) rotated by (d) is (c)
+    return rotate_cell(g[i][j], d) == c;
+}
+
+bool is_blocking(int i, int j) {
+    return g[i][j] == '#' || is_turret(g[i][j]);
+}
+
+bool check_valid(int i, int j, int d) {
+    for (int ii = i - 1; ii >= 0; ii--)
+        if (is_blocking(ii, j)) {
+            if (check_cell(ii, j, d, 'V'))
+                return false;
+            break;
+        }
+    for (int ii = i + 1; ii < m; ii++)
+        if (is_blocking(ii, j)) {
+            if (check_cell(ii, j, d, '^'))
+                return false;
+            break;
+        }
+    for (int jj = j - 1; jj >= 0; jj--)
+        if (is_blocking(i, jj)) {
+            if (check_cell(i, jj, d, '>'))
+                return false;
+            break;
+        }
+    for (int jj = j + 1; jj < n; jj++)
+        if (is_blocking(i, jj)) {
+            if (check_cell(i, jj, d, '<'))
+                return false;
+            break;
+        }
+    return true;
+}
+
+int get_state(int i, int j, int d) {
+    return 4 * (i * n + j) + d;
+}
+
+void add_state_if_valid(int s, int i, int j, int d) {
+    // adds (i, j, d) to adj[s] if it's valid
+    if (i < 0 || i >= m || j < 0 || j >= n)
+        return;
+
+    int next = get_state(i, j, d % 4);
+    if (is_valid[next])
+        adj[s].push_back(next);
+}
+
+int solve() {
+    int si = 0, sj = 0;
+    int gi = 0, gj = 0;
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (g[i][j] == 'S')
+                si = i, sj = j;
+            if (g[i][j] == 'G')
+                gi = i, gj = j;
+        }
+    }
+    int src = get_state(si, sj, 0);
+
+    for (int l = 0; l < 4 * m * n; l++) {
+        is_valid[l] = false;
+        adj[l].clear();
+        dist[l] = INF;
+    }
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (is_blocking(i, j))
+                continue;
+            for (int k = 0; k < 4; k++)
+                if (check_valid(i, j, k))
+                    is_valid[get_state(i, j, k)] = true;
+        }
+    }
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < n; j++)
+            for (int k = 0; k < 4; k++) {
+                int s = get_state(i, j, k);
+                if (!is_valid[s] && s != src)
+                    continue;
+                add_state_if_valid(s, i - 1, j, k + 1);
+                add_state_if_valid(s, i + 1, j, k + 1);
+                add_state_if_valid(s, i, j - 1, k + 1);
+                add_state_if_valid(s, i, j + 1, k + 1);
+            }
+
+    set <int> dst;
+    for (int k = 0; k < 4; k++) {
+        int s = get_state(gi, gj, k);
+        if (is_valid[s])
+            dst.insert(s);
+    }
+
+    vector <pair <int, int>> q;
+    dist[src] = 0;
+    q.push_back({0, src});
+    for (int at = 0; at < q.size(); at++) {
+        int cur_dist = q[at].first;
+        int u = q[at].second;
+        // cerr << u << " " << cur_dist << " " << adj[u].size() << endl;
+        if (cur_dist > dist[u])
+            continue;
+        if (dst.count(u))
+            return cur_dist;
+        for (int v : adj[u])
+            if (cur_dist + 1 < dist[v]) {
+                dist[v] = cur_dist + 1;
+                q.push_back({cur_dist + 1, v});
+            }
+    }
+    return -1;
+}
+
+int main() {
+    int T;
+    cin >> T;
+    for (int t = 1; t <= T; t++) {
+        cin >> m >> n;
+        for (int i = 0; i < m; i++)
+            cin >> g[i];
+
+        cout << "Case #" << t << ": ";
+
+        int r = solve();
+        if (r == -1)
+            cout << "impossible";
+        else
+            cout << r;
+        cout << endl;
+    }
+}

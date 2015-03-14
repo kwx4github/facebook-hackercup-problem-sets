@@ -1,0 +1,200 @@
+#include <cstdio>
+#include <queue>
+using namespace std;
+
+#define D(x) 
+
+const int MAX_X = 105;
+const int MAX_Y = MAX_X;
+const int INF = 0x3f3f3f3f;
+
+struct Point
+{
+	int x, y;
+	Point()
+	{}
+	Point(int x, int y):x(x), y(y)
+	{}
+	Point operator + (const Point &a)
+	{
+		return Point(x + a.x, y + a.y);
+	}
+	bool operator == (const Point &a) const
+	{
+		return x == a.x && y == a.y;
+	}
+};
+
+Point dir[4] = {Point(1, 0), Point(0, 1), Point(-1, 0), Point(0, -1)};
+bool vis[4][MAX_X][MAX_Y];
+int dis[4][MAX_X][MAX_Y];
+int row_num, col_num;
+char dir_name[] = "v>^<";
+char grid[4][MAX_X][MAX_Y];
+Point start, end;
+
+void visit(int d, Point a)
+{
+	vis[d][a.x][a.y] = true;
+}
+
+bool out(Point a)
+{
+	return a.x < 0 || a.y < 0 || a.x >= row_num || a.y >= col_num;
+}
+
+bool visited(int d, Point a)
+{
+	return vis[d][a.x][a.y];
+}
+
+void input()
+{
+	scanf("%d%d", &row_num, &col_num);
+	for (int i = 0; i < row_num; i++)
+	{
+		scanf("%s", grid[0][i]);
+	}
+	for (int i = 0; i < row_num; i++)
+	{
+		for (int j = 0; j < col_num; j++)
+		{
+			if (grid[0][i][j] == 'S')
+			{
+				start = Point(i, j);
+				grid[0][i][j] = '.';
+			}
+			if (grid[0][i][j] == 'G')
+			{
+				end = Point(i, j);
+				grid[0][i][j] = '.';
+			}
+			for (int k = 1; k < 4; k++)
+				grid[k][i][j] = grid[0][i][j];
+		}
+	}
+}
+
+void make(int x, int y)
+{
+	int a = -1;
+	for (int i = 0; dir_name[i]; i++)
+	{
+		if (grid[0][x][y] == dir_name[i])
+		{
+			a = i;
+			break;
+		}
+
+	}
+	if (a == -1)
+	{
+		return;
+	}
+	for (int d = 0; d < 4; d++)
+	{
+		Point v = Point(x, y) + dir[(a - d + 4) % 4];
+		D(printf("v %d %d\n", v.x, v.y));
+		D(puts("***"));
+		while(!out(v) && grid[d][v.x][v.y] == '.')
+		{
+			D(printf("	v %d %d\n", v.x, v.y));
+			grid[d][v.x][v.y] = '#';
+			v = v + dir[(a - d + 4) % 4];
+		}
+		D(puts("***"));
+	}
+}
+
+void init()
+{
+	for (int k = 0; k < 4; k++)
+	{
+		for (int i = 0; i < row_num; i++)
+		{
+			for (int j = 0; j < col_num; j++)
+			{
+				vis[k][i][j] = false;
+				dis[k][i][j] = INF;
+			}
+		}
+	}
+	for (int i = 0; i < row_num; i++)
+	{
+		for (int j = 0; j < col_num; j++)
+		{
+			make(i, j);
+		}
+	}
+}
+
+int bfs()
+{
+	init();
+	queue<pair<int, Point> > q;
+	q.push(make_pair(0, start));
+	dis[0][start.x][start.y] = 0;
+	while (!q.empty())
+	{
+		Point u = q.front().second;
+		int du = q.front().first;
+		q.pop();
+		if (u == end)
+		{
+			return dis[du][u.x][u.y];
+		}
+		if (visited(du, u))
+		{
+			continue;
+		}
+		visit(du, u);
+		int dv = (du + 1) % 4;
+		for (int i = 0; i < 4; i++)
+		{
+			Point v = u + dir[i];
+			if (out(v) || grid[dv][v.x][v.y] != '.')
+			{
+				continue;
+			}
+			if (dis[du][u.x][u.y] + 1 < dis[dv][v.x][v.y])
+			{
+				dis[dv][v.x][v.y] = dis[du][u.x][u.y] + 1;
+				q.push(make_pair(dv, Point(v.x, v.y)));
+			}
+		}
+	}
+	return -1;
+}
+
+void output()
+{
+	for (int k = 0; k < 4; k++)
+	{
+		for (int i = 0; i < row_num; i++)
+		{
+			printf("%s\n", grid[k][i]);
+		}
+	}
+}
+
+int main()
+{
+	int t;
+	scanf("%d", &t);
+	for (int i = 0; i < t; i++)
+	{
+		printf("Case #%d: ", i + 1);
+		input();
+		init();
+		D(output());
+		int ans = bfs();
+		if (ans == -1)
+		{
+			puts("impossible");
+		}else
+		{
+			printf("%d\n", ans);
+		}
+	}
+	return 0;
+}

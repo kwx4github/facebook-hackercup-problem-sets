@@ -1,0 +1,108 @@
+#include <iostream>
+#include <queue>
+using namespace std;
+
+const int N = 111;
+char maz[N][N];
+int map[N][N];
+int steps[N][N][4];
+bool danger[N][N];
+int n, m;
+
+const int dx[] = {-1, 0, 1, 0};
+const int dy[] = {0, 1, 0, -1};
+
+bool inmat(int x, int y) {
+    return x >= 0 && x < n && y >= 0 && y < m && map[x][y] == 4;
+}
+
+int laser2int(char ch) {
+    if (ch == '^') return 0;
+    if (ch == '>') return 1;
+    if (ch == 'v') return 2;
+    return 3;
+}
+
+void get_danger(int t) {
+    memset(danger, false, sizeof(danger));
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            if (map[i][j] < 4) {
+                int x = i, y = j;
+                int z = (map[x][y] + t) % 4;
+                while (true) {
+                    x += dx[z];
+                    y += dy[z];
+                    if (!inmat(x, y)) break;
+                    danger[x][y] = true;
+                }
+            }
+        }
+    }
+}
+
+void convert() {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            if (maz[i][j] == '.' || maz[i][j] == 'S' || maz[i][j] == 'G') map[i][j] = 4;
+            else if (maz[i][j] == '#') map[i][j] = 5;
+            else {
+                map[i][j] = laser2int(maz[i][j]);
+            }
+        }
+    }
+}
+
+int solve() {
+    int sx, sy;
+    int tx, ty;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            if (maz[i][j] == 'S') sx = i, sy = j;
+            if (maz[i][j] == 'G') tx = i, ty = j;
+        }
+    }
+    convert();
+    queue<int> que;
+    //get_danger(0); if (danger[sx][sy]) return -1;
+    //cout << sx << " " << sy << endl;
+    memset(steps, -1, sizeof(steps));
+    steps[sx][sy][0] = 0;
+    que.push(sx); que.push(sy); que.push(0);
+    while (!que.empty()) {
+        int x = que.front(); que.pop();
+        int y = que.front(); que.pop();
+        int z = que.front(); que.pop();
+        //cout << x << " " << y << " " << z << endl;
+        int nz = (z + 1) % 4;
+        if (x == tx && y == ty) return steps[x][y][z];
+        for (int i = 0; i < 4; i++) {
+            int nx = x + dx[i], ny = y + dy[i];
+            if (inmat(nx, ny) && steps[nx][ny][nz] == -1) {
+                get_danger(nz);
+                if (!danger[nx][ny]) {
+                    steps[nx][ny][nz] = steps[x][y][z] + 1;
+                    que.push(nx); que.push(ny); que.push(nz);
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    int T, Case = 1;
+    cin >> T;
+    while (T--) {
+        cin >> n >> m;
+        for (int i = 0; i < n; i++) cin >> maz[i];
+        int ans = solve();
+        cout << "Case #" << Case++ << ": ";
+        if (ans == -1) cout << "impossible" << endl;
+        else cout << ans << endl;
+    }
+    return 0;
+}
+
+

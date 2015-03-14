@@ -1,0 +1,181 @@
+#include <algorithm>
+#include <assert.h>
+#include <climits>
+#include <cstring>
+#include <string>
+#include <vector>
+#include <stack>
+#include <queue>
+#include <set>
+#include <map>
+#include <list>
+#include <cmath>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <numeric>
+#include <limits>
+#include <iomanip>
+using namespace std;
+
+#define sz(a) ((int)a.size())
+#define all(a) a.begin(), a.end()
+#define LL long long
+#define LD long double
+#define vi vector<int>
+#define vl vector<LL>
+#define vs vector<string>
+#define vb vector<bool>
+#define ii pair<int, int>
+#define vii vector<ii>
+#define SET(v, i) (v | (1 << i))
+#define TEST(v, i) (v & (1 << i))
+#define TOGGLE(v, i) (v ^ (1 << i))
+
+enum DIR {
+  NORTH = 0,
+  EAST = 1,
+  SOUTH = 2,
+  WEST = 3
+};
+
+bool IsTurret(char c) {
+  return c == '<' || c == '>' || c == '^' || c == 'v';
+}
+
+bool IsBlock(char c) {
+  return IsTurret(c) || c == '#';
+}
+
+DIR CharToDir(char c) {
+  if (c == '<') return WEST;
+  if (c == '>') return EAST;
+  if (c == '^') return NORTH;
+  if (c == 'v') return SOUTH;
+
+  assert(false);
+}
+
+int GetDiffToDir(char c, DIR req_dir) {
+  DIR d = CharToDir(c);
+  int diff = (req_dir - d < 0 ? req_dir - d + 4 : req_dir - d);
+  return diff;
+}
+
+struct Node {
+  int r;
+  int c;
+  int steps;
+};
+
+int BFS(const vs& maze, const vector<vector<set<int> > >& hazards) {
+  int n = sz(maze), m = sz(maze[0]);
+  int sr = 0, sc = 0;
+  for (; sr < n; ++sr) {
+    bool ok = false;
+    for (sc = 0; sc < m; ++sc) {
+      if (maze[sr][sc] == 'S') {
+        ok = true;
+        break;
+      }
+    }
+    if (ok) break;
+  }
+
+  queue<Node> q;
+  q.push({sr, sc, 0});
+
+  vector<vector<vb > > visited(n, vector<vb> (m, vb(4)));
+  visited[sr][sc][0] = true;
+
+  int dr[] = { 1, -1, 0, 0  };
+  int dc[] = { 0, 0, 1, -1 };
+  while (!q.empty()) {
+    Node top = q.front();
+    q.pop();
+    for (int i = 0; i < 4; ++i) {
+      int nr = top.r + dr[i];
+      int nc = top.c + dc[i];
+      int ns = (top.steps + 1) % 4;
+      if (nr < 0 || nc < 0 || nr >= n || nc >= m ||
+          visited[nr][nc][ns] || IsBlock(maze[nr][nc]))
+        continue;
+
+      if (hazards[nr][nc].find(ns) != hazards[nr][nc].end()) continue;
+      if (maze[nr][nc] == 'G') return top.steps + 1;
+
+      visited[nr][nc][ns] = true;
+      q.push({nr, nc, top.steps + 1});
+    }
+  }
+  return -1;
+}
+
+int Solve(const vs& maze) {
+  int n = sz(maze), m = sz(maze[0]);
+  vector<vector<set<int> > > hazards(n, vector<set<int> >(m));
+  for (int i = 0; i < n; ++i) {
+    for (int j = 0; j < m; ++j) {
+      if (IsBlock(maze[i][j]))
+        continue;
+
+      // Check North.
+      for (int k = -1; k + i >= 0; --k) {
+        if (maze[i + k][j] == '#') break;
+        if (IsTurret(maze[i + k][j])) {
+          hazards[i][j].insert(GetDiffToDir(maze[i + k][j], SOUTH));
+          break;
+        }
+      }
+
+      // Check South.
+      for (int k = 1; k + i < n; ++k) {
+        if (maze[i + k][j] == '#') break;
+        if (IsTurret(maze[i + k][j])) {
+          hazards[i][j].insert(GetDiffToDir(maze[i + k][j], NORTH));
+          break;
+        }
+      }
+
+      // Check East.
+      for (int k = 1; k + j < m; ++k) {
+        if (maze[i][k + j] == '#') break;
+        if (IsTurret(maze[i][k + j])) {
+          hazards[i][j].insert(GetDiffToDir(maze[i][k + j], WEST));
+          break;
+        }
+      }
+
+      // Check West.
+      for (int k = -1; k + j >= 0; --k) {
+        if (maze[i][k + j] == '#') break;
+        if (IsTurret(maze[i][k + j])) {
+          hazards[i][j].insert(GetDiffToDir(maze[i][k + j], EAST));
+          break;
+        }
+      }
+    }
+  }
+
+  return BFS(maze, hazards);
+}
+
+int main() {
+  int t;
+  cin >> t;
+  for (int test = 1; test <= t; ++test) {
+    int m, n;
+    cin >> n >> m;
+    vector<string> maze(n);
+    for (int i = 0; i < n; ++i)
+      cin >> maze[i];
+
+    int ret = Solve(maze);
+    printf("Case #%d: ", test);
+    if (ret == -1)
+      printf("impossible\n");
+    else
+      printf("%d\n", ret);
+  }
+  return 0;
+}

@@ -1,0 +1,115 @@
+#include <map>
+#include <set>
+#include <queue>
+#include <vector>
+#include <cstdio>
+#include <iostream>
+
+using namespace std;
+
+typedef pair<int, int> pp;
+
+int n, m;
+char mat[4][111][111];
+bool can[4][111][111];
+int go[4][2] = {{1,0},{0,-1},{-1,0},{0,1}};
+map<char, int> rev = {{0,'v'},{1,'<'},{2,'^'},{3,'>'}};
+map<char, int> dir = {{'v',0},{'<',1},{'^',2},{'>',3}};
+
+bool valid(int x, int y) {
+    return (0 <= x && x < n) && (0 <= y && y < m);
+}
+
+int get(int i, int j, int t) {
+    return i*400+j*4+t;
+}
+
+char next(int t, char c) {
+    return rev[(dir[c]+t)%4];
+}
+
+int main() {
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+
+    int T;
+    scanf("%d", &T);
+    for(int r = 0; r < T; r++) {
+        scanf("%d %d", &n, &m);
+        for(int i = 0; i < n; i++) {
+            scanf("%s", mat[0][i]);
+        }
+
+        for(int t = 0; t < 4; t++) {
+            for(int i = 0; i < n; i++) {
+                for(int j = 0; j < m; j++) {
+                    mat[t][i][j] = mat[0][i][j];
+                    if(dir.count(mat[0][i][j])) {
+                        mat[t][i][j] = next(t, mat[0][i][j]);
+                    }
+                    can[t][i][j] = 1;
+                }
+            }
+        }
+
+        for(int t = 0; t < 4; t++) {
+            for(int i = 0; i < n; i++) {
+                for(int j = 0; j < m; j++) {
+                    if(dir.count(mat[t][i][j])) {
+                        int x = i, y = j;
+                        int q = dir[mat[t][i][j]];
+                        while(valid(x, y) && mat[t][x][y] != '#') {
+                            x += go[q][0];
+                            y += go[q][1];
+                            can[t][x][y] = 0;
+                        }
+                    }
+                    if(mat[t][i][j] == '#') {
+                        can[t][i][j] = 0;
+                    }
+                }
+            }
+        }
+
+        int ans = -1;
+        map<int, int> vis;
+        priority_queue<pp, vector<pp>, greater<pp> > q;
+        for(int i = 0; i < n; i++)
+            for(int j = 0; j < m; j++) {
+                if(mat[0][i][j] == 'S') {
+                    q.push({0, get(i, j, 0)});
+                    vis[get(i, j, 0)] = 0;
+                }
+            }
+
+        while(q.size() > 0) {
+            auto v = q.top(); q.pop();
+
+            int d = v.first;
+            int i = v.second/400;
+            int j = (v.second-i*400)/4;
+            int t = (v.second-i*400-j*4);
+
+            if(mat[t][i][j] == 'G') {
+                ans = d;
+                break;
+            }
+
+            for(int k = 0; k < 4; k++) {
+                int x = i+go[k][0], y = j+go[k][1];
+                if(can[(t+1)%4][x][y] && valid(x, y)) {
+                    int u = get(x, y, (t+1)%4);
+                    if(vis.count(u) == 0 || vis[u] > d+1) {
+                        q.push({d+1, u});
+                        vis[u] = d+1;
+                    }
+                }
+            }
+        }
+
+        printf("Case #%d: %d\n", r+1, ans);
+    }
+
+    return 0;
+}
+

@@ -1,0 +1,165 @@
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+import java.util.Scanner;
+
+
+public class LaserMaze {
+    static List<Integer> laserX;
+    static List<Integer> laserY;
+    static int N, M;
+    
+    public static class State {
+        char[][] maze;
+        int cX, cY;
+        int steps;
+        
+        public State(char[][] maze, int cX, int cY, int steps) {
+            this.maze = maze;
+            this.cX = cX;
+            this.cY = cY;
+            this.steps = steps;
+        }
+        
+        public String toString() {
+            StringBuilder builder = new StringBuilder();
+            for(int i=0; i<M; i++) {
+                builder.append(maze[i]);
+            }
+            return builder.toString();
+        }
+        
+        public void set(char c) {
+            maze[cX][cY] = c;
+        }
+        
+        public boolean safe() {
+            for(int i=cX+1; i<M; i++) {
+                if(maze[i][cY] == '^') return false;
+                if(maze[i][cY] != 'G' && maze[i][cY] != '.') break;
+            }
+            for(int i=cX-1; i>=0; i--) {
+                if(maze[i][cY] == 'v') return false;
+                if(maze[i][cY] != 'G' && maze[i][cY] != '.') break;
+            }
+            for(int i=cY+1; i<N; i++) {
+                if(maze[cX][i] == '<') return false;
+                if(maze[cX][i] != 'G' && maze[cX][i] != '.') break;
+            }
+            for(int i=cY-1; i>=0; i--) {
+                if(maze[cX][i] == '>') return false;
+                if(maze[cX][i] != 'G' && maze[cX][i] != '.') break;
+            }
+            return true;
+        }
+        
+        public void moveLaser() {
+            for (int i=0; i<laserX.size(); i++) {
+                int x = laserX.get(i);
+                int y = laserY.get(i);
+                if(maze[x][y] == '<') maze[x][y] = '^';
+                else if(maze[x][y] == '^') maze[x][y] = '>';
+                else if(maze[x][y] == '>') maze[x][y] = 'v';
+                else maze[x][y] = '<';
+            }
+        }
+        
+        public boolean goal() {
+            if(maze[cX][cY] == 'G') {
+                return true;
+            }
+            return false;
+        }
+        
+        public State advance(int newCX, int newCY) {
+            if(newCX < 0 || newCY < 0 || newCX >= M || newCY >= N) return null;
+            if(maze[newCX][newCY] != 'G' && maze[newCX][newCY] != '.') return null;
+            char[][] newMaze = new char[M][N];
+            for(int i=0; i<M; i++) {
+                for(int j=0; j<N; j++) {
+                    newMaze[i][j] = maze[i][j];
+                }
+            }
+            if(newMaze[newCX][newCY] != 'G') newMaze[newCX][newCY] = 'S';
+            newMaze[cX][cY] = '.';
+            State newState = new State(newMaze, newCX, newCY, steps+1);
+            newState.moveLaser();
+            if(newState.safe()) return newState;
+            return null;
+        }
+        
+        public State up() {
+            return advance(cX-1, cY);
+        }
+        
+        public State rigth() {
+            return advance(cX, cY+1);
+        }
+        
+        public State down() {
+            return advance(cX+1, cY);
+        }
+        
+        public State left() {
+            return advance(cX, cY-1);
+        }
+    }
+    
+    public static void visit(Queue q, HashSet<String> visited, State st) {
+        if(st != null && !visited.contains(st.toString())){
+            visited.add(st.toString());
+            q.add(st);
+        }
+    }
+    
+    public static int explore(char maze[][], int cX, int cY) {
+        
+        Queue<State> q = new LinkedList<>();
+        q.add(new State(maze, cX, cY, 0));
+        HashSet<String> visited = new HashSet<>();
+        visited.add(q.peek().toString());
+        
+        while (!q.isEmpty()) {
+            State st = q.poll();
+            if(st.goal()) return st.steps;
+            visit(q, visited, st.left());
+            visit(q, visited, st.rigth());
+            visit(q, visited, st.up());
+            visit(q, visited, st.down());
+        }
+        return -1;
+    }
+    
+    public static void main(String[] args) {
+        Scanner in = new Scanner(System.in);
+        int T = in.nextInt();
+        
+        for(int i=0; i<T; i++) {
+            M = in.nextInt();
+            N = in.nextInt();
+            char[][] maze = new char[M][];
+            laserX = new LinkedList<>();
+            laserY = new LinkedList<>();
+            int sX = 0, sY = 0;
+            for (int j=0; j<M; j++) {
+                String line = in.next();
+                maze[j] = line.toCharArray();
+                for (int k=0; k<N; k++) {
+                    char curr = maze[j][k];
+                    if(curr == 'S') {sX = j; sY = k; }
+                    if(curr == '<' || curr == '>' || curr == '^' || curr == 'v') {
+                        laserX.add(j);
+                        laserY.add(k);
+                    }
+                }
+            }
+            int steps = explore(maze, sX, sY);
+            if(steps < 0)
+                System.out.println("Case #"+(i+1)+": impossible");
+            else
+                System.out.println("Case #"+(i+1)+": " + steps);
+        }
+        in.close();
+    }
+}

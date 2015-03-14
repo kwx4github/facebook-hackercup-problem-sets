@@ -1,0 +1,63 @@
+import fileinput
+from collections import deque
+
+def parseInt(line):
+    values = [int(token) for token in line.strip().split(' ')]
+    return values
+
+turrets = '^>v<'
+rotations = {'^':0, '>':1, 'v':2, '<':3}
+directions = {'^':(-1,0), '>':(0,1), 'v':(1,0), '<':(0,-1)}
+def rotateTurret(turret,time):
+    return turrets[(rotations[turret]+time) % 4]
+
+def free((G,M,N),(i,j)):
+    return i >= 0 and j >= 0 and i < M and j < N and G[i][j] in '.SG'
+
+def locate((G,M,N),what):
+    for i in xrange(M):
+        for j in xrange(N):
+            if G[i][j] == what:
+                return (i,j)
+    return None
+
+def deathMap((G,M,N),time):
+    D = [[False]*N for i in xrange(M)]
+    for i in xrange(M):
+        for j in xrange(N):
+            if G[i][j] in turrets:
+                turret = rotateTurret(G[i][j],time)
+                di,dj = directions[turret]
+                k = 1
+                while free((G,M,N),(i+k*di,j+k*dj)):
+                    D[i+k*di][j+k*dj] = True
+                    k += 1
+    return D
+
+# BFS on state space O(4*M*N)
+def solve(G):
+    DM = [deathMap(G,t) for t in xrange(4)]
+    visited = {}
+    queue = deque([(locate(G,'S'),0)])
+    goal = locate(G,'G')
+    while len(queue) > 0:
+        ((i,j),time) = queue.popleft()
+        time += 1
+        for di,dj in directions.values():
+            (ni,nj) = pos = (i+di,j+dj)
+            if free(G,pos) and not (pos,time%4) in visited and not DM[time%4][ni][nj]:
+                if pos == goal:
+                    return time
+                else:
+                    queue.append((pos,time))
+                    visited[(pos,time%4)] = True
+    return 'impossible'
+
+input = fileinput.input()
+i = 0
+[T] = parseInt(input[i])
+for t in xrange(1,T+1):
+    [M,N] = parseInt(input[i+1])
+    G = [input[i+2+k].strip() for k in xrange(M)]
+    i += M+1
+    print "Case #{0}: {1}".format(t,solve((G,M,N)))

@@ -1,0 +1,134 @@
+package qualy;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class C {
+	private  static class State {
+		int posi, posj;
+		int rotation;
+		
+		public State(int posi, int posj, int rotation) {
+			this.posi = posi;
+			this.posj = posj;
+			this.rotation = rotation;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + posi;
+			result = prime * result + posj;
+			result = prime * result + rotation;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			State other = (State) obj;
+			if (posi != other.posi)
+				return false;
+			if (posj != other.posj)
+				return false;
+			if (rotation != other.rotation)
+				return false;
+			return true;
+		}
+		
+		public boolean amIAliveAndInValidPosition(char[][] maze, List<State> turrets) {
+			if (!(0 <= posi && posi < maze.length && 0 <= posj && posj < maze[0].length)) return false;
+			for (State turret : turrets) {
+				int dir = (turret.rotation + this.rotation) % 4;
+				int posi = turret.posi + di[dir], posj = turret.posj + dj[dir];
+				while (0 <= posi && posi < maze.length && 0 <= posj && posj < maze[0].length) {
+					if (posi == this.posi && posj == this.posj) return false;
+					if (maze[posi][posj] != '.') break;
+					posi += di[dir]; posj += dj[dir]; 
+				}
+			}
+			return true;
+		}
+		
+		public boolean positionEquals(State other) {
+			return other.posi == posi && other.posj == posj;
+		}
+	}
+	// < ^ > v
+	private static final int[] di = {0, -1, 0, 1};
+	private static final int[] dj = {-1, 0, 1, 0};
+	
+	private static int getDirection(char v) {
+		switch (v) {
+			case '<':
+				return 0;
+			case '^':
+				return 1;
+			case '>':
+				return 2;
+			case 'v':
+				return 3;
+			default:
+				return -1;
+		}
+	}
+	
+	public static void main(String[] args) {
+		Scanner sc = new Scanner(System.in);
+		int cases = sc.nextInt();
+		for (int caze = 1; caze <= cases; caze++) {
+			int m = sc.nextInt();
+			int n = sc.nextInt();
+			char[][] maze = new char[m][];
+			for (int i = 0; i < maze.length; i++) {
+				maze[i] = sc.next().toCharArray();
+			}
+			State init = null, end = null;
+			List<State> turrets =new ArrayList<State>();
+			for (int i=0;i<m;i++) for (int j=0;j<n;j++) {
+				if (maze[i][j] == 'S') {
+					init = new State(i, j, 0);
+					maze[i][j] = '.';
+				} else if (maze[i][j] == 'G') {
+					end = new State(i, j, 0);
+					maze[i][j] = '.';
+				} else if (getDirection(maze[i][j]) != -1) {
+					turrets.add(new State(i, j, getDirection(maze[i][j])));
+				}
+			}
+			Queue<State> queue = new ArrayDeque<State>();
+			Map<State, Integer> dist = new HashMap<State, Integer>();
+			queue.add(init);
+			dist.put(init, 0);
+			int answer = -1;
+			while (!queue.isEmpty()) {
+				State cur = queue.poll();
+				int curDist = dist.get(cur);
+				if (end.positionEquals(cur)) {
+					answer = curDist;
+					break;
+				}
+				for (int k = 0; k < 4; k++) {
+					State next = new State(cur.posi + di[k], cur.posj + dj[k], (cur.rotation + 1) % 4);
+					if (next.amIAliveAndInValidPosition(maze, turrets) && !dist.containsKey(next)) {
+						queue.add(next);
+						dist.put(next, curDist + 1);
+					}
+				}
+			}
+			
+			System.out.println("Case #" + caze + ": " + (answer >= 0 ? answer + "" : "impossible"));
+		}
+	}
+}

@@ -1,0 +1,130 @@
+﻿#include <cstdio>
+#include <cstring>
+#include <algorithm>
+#include <queue>
+#define MP(a, b, c) make_pair(a, make_pair(b, c))
+
+using namespace std;
+
+const int INF=987654321;
+const int dx[]={ 0, -1, 0, 1};
+const int dy[]={-1,  0, 1, 0};
+int T, row, col, cache[4][110][110];
+char data[110][110];
+bool possibleWay[4][110][110];
+
+int turretsDirect(const char& ch)
+{
+	if(ch=='<') return 0;
+	else if(ch=='^') return 1;
+	else if(ch=='>') return 2;
+	else if(ch=='v') return 3;
+	else if(ch=='#') return 4;
+
+	return -1;
+}
+
+void fillPossibleWay()
+{
+	for(int rotate=0 ; rotate<4 ; rotate++)
+	{
+		for(int i=0 ; i<row ; i++)
+		{
+			for(int j=0 ; j<col ; j++)
+			{
+				int direct=turretsDirect(data[i][j]);
+				if(direct==-1) continue;
+				else if(direct==4) possibleWay[rotate][i][j]=false;
+				else
+				{
+					int curRotate=(direct+rotate)%4;
+					possibleWay[rotate][i][j]=false;
+					int nextX=i+dx[curRotate], nextY=j+dy[curRotate];
+					while(1)
+					{
+						if(nextX==-1 || nextX==row || nextY==-1 || nextY==col) break;
+
+						int cur=turretsDirect(data[nextX][nextY]);
+						if(0<=cur && cur<=4) break;
+
+						possibleWay[rotate][nextX][nextY]=false;
+						nextX=nextX+dx[curRotate];
+						nextY=nextY+dy[curRotate];
+					}
+				}
+			}
+		}
+	}
+}
+
+bool isPossible(int x, int y, int r)
+{
+	if(x==-1 || y==-1 || x==row || y==col || !possibleWay[r][x][y]) return false;
+	return true;
+}
+
+int solution(const pair<int, int>& s, const pair<int, int>& g)
+{
+	int ret=INF;
+	priority_queue< pair<int, pair<int, int> > > pq;
+	pq.push(MP(0, s.first, s.second));
+	cache[0][s.first][s.second]=0;
+
+	while(pq.size())
+	{
+		pair<int, int> here=pq.top().second;
+		int cost=-pq.top().first, rotate=cost%4;
+		if(g==here) ret=min(ret, cost);
+		pq.pop();
+
+		if(cache[rotate][here.first][here.second]<cost) continue;
+
+		for(int i=0 ; i<4 ; i++)
+		{
+			int nextX=here.first+dx[i], nextY=here.second+dy[i], nextRotate=(rotate+1)%4, nextCost=cost+1;
+			if(!isPossible(nextX, nextY, nextRotate)) continue;
+
+			if(cache[nextRotate][nextX][nextY]>nextCost)
+			{
+				cache[nextRotate][nextX][nextY]=nextCost;
+				pq.push(MP(-nextCost, nextX, nextY));
+			}
+		}
+	}
+
+	return ret;
+}
+
+int main(void)
+{
+#ifdef _CONSOLE
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w+", stdout);
+#endif
+	scanf("%d", &T);
+	for(int t=1 ; t<=T ; t++)
+	{
+		memset(possibleWay, true, sizeof(possibleWay));
+		for(int i=0 ; i<4 ; i++) for(int j=0 ; j<110 ; j++) for(int k=0 ; k<110 ; k++) cache[i][j][k]=INF;
+
+		scanf("%d%d", &row, &col);
+		for(int i=0 ; i<row ; i++) scanf("%s", data[i]);
+		fillPossibleWay();
+
+		pair<int, int> s, g;
+		for(int i=0 ; i<row ; i++)
+		{
+			for(int j=0 ; j<col ; j++)
+			{
+				if(data[i][j]=='S') s=make_pair(i, j);
+				else if(data[i][j]=='G') g=make_pair(i, j);
+			}
+		}
+
+		int sol=solution(s, g);
+
+		printf("Case #%d: ", t);
+		if(sol==INF) puts("impossible");
+		else printf("%d\n", sol);
+	}
+}

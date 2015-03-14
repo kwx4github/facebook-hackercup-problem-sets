@@ -1,0 +1,128 @@
+#include <iostream>
+#include <map>
+#include <queue>
+#include <string>
+
+using namespace std;
+
+typedef pair<int,int> Square;
+typedef vector<string> Grid; 
+typedef vector<vector<bool>> Blocks;
+
+int dr[4] = {0, 1, 0, -1};
+int dc[4] = {1, 0, -1, 0};
+
+map<char, int> direction;
+
+#define INSIDE_GRID(r, c, grid) r < grid.size() &&  \
+    r >= 0 && c >= 0 && c < grid[0].size()
+
+Blocks get_blocks(const vector<string> &grid, const int rot) {
+    Blocks bl(grid.size(), vector<bool>(grid[0].size()));
+    for (int i = 0; i < grid.size(); ++i) {
+        for (int j = 0; j < grid[0].size(); ++j) {
+            if (grid[i][j] != '.' && grid[i][j] != '#') {
+                const int dir = (direction[grid[i][j]] + rot) % 4;
+                int cr = i;
+                int cc = j;
+                for (;;) {
+                    cr += dr[dir];
+                    cc += dc[dir];
+                    if (INSIDE_GRID(cr,cc,grid) && grid[cr][cc] == '.') {
+                        bl[cr][cc] = true;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    for (int i = 0; i < grid.size(); ++i) {
+        for (int j = 0; j < grid[0].size(); ++j) {
+            if (grid[i][j] != '.') bl[i][j] = true;
+        }
+    }
+    return bl;
+}
+
+struct State {
+    pair<int,int> point;
+    int dist;
+    State(pair<int,int> p, int d) { point = p; dist = d; }
+};
+
+int solve() {
+    direction['>'] = 0;
+    direction['v'] = 1;
+    direction['<'] = 2;
+    direction['^'] = 3;
+    int R, C;
+    cin >> R >> C;
+    vector<string> grid;
+    Square goal, start;
+    for (int i = 0; i < R; ++i) {
+        string row;
+        cin >> row;
+        for (int j = 0; j < row.size(); ++j) {
+            if (row[j] == 'S') {
+                start.first = i;
+                start.second = j;
+                row[j] = '.';
+            } else if (row[j] == 'G') {
+                goal.first = i;
+                goal.second = j;
+                row[j] = '.';
+            }
+        }
+        grid.push_back(row);
+    }
+
+    vector<Blocks> grids;
+    for (int i = 0; i < 4; ++i) {
+        grids.push_back(get_blocks(grid, i));
+    }
+
+    vector<vector<vector<int>>> dist(grid.size(), vector<vector<int>>(grid[0].size(), vector<int>(4, -1)));
+
+    queue<State> q;
+    q.push(State(start, 0));
+    dist[start.first][start.second][0] = 0;
+
+    while (!q.empty()) {
+        State cur = q.front();
+        q.pop();
+
+        if (cur.point == goal) {
+            return dist[cur.point.first][cur.point.second][cur.dist % 4];
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            int nr = cur.point.first + dr[i];
+            int nc = cur.point.second + dc[i];
+            int nd = dist[cur.point.first][cur.point.second][cur.dist % 4] + 1;
+
+            const Blocks &next_grid = grids[(cur.dist + 1)%4];
+            if (INSIDE_GRID(nr, nc, grid) && !next_grid[nr][nc] && 
+                    dist[nr][nc][(cur.dist + 1) % 4] == -1) {
+                q.push(State(make_pair(nr, nc), cur.dist + 1));
+                dist[nr][nc][(cur.dist + 1) % 4] = cur.dist + 1;
+            }
+        }
+    }
+    return -1;
+}
+
+int main() {
+    int T;
+    cin >> T;
+    for (int i = 0; i < T; ++i) {
+        int ans = solve();
+        cout << "Case #" << (i+1) << ": ";
+        if (ans == -1) {
+            cout << "impossible";
+        } else {
+            cout << ans;
+        }
+        cout << endl;
+    }
+}

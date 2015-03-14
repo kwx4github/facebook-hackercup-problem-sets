@@ -1,0 +1,101 @@
+let solve () = Scanf.scanf "%d %d\n" (fun n m ->
+    let input = Array.init n (fun _ -> Scanf.scanf "%s\n" (fun x -> x)) in
+    let safe = Array.init n (fun _ -> Array.init m (fun _ -> Array.make 4 true))
+    and dist = Array.init n (fun _ -> Array.init m (fun _ -> Array.make 4 None))
+    and isok x y = (0 <= x) && (x < n) && (0 <= y) && (y < m)
+    and isturr x y = match input.(x).[y] with
+        | '^' | '>' | '<' | 'v' -> true
+        | _ -> false
+    and turrid x y id = 
+        let aux = function
+            | '^' -> 0
+            | '>' -> 1
+            | 'v' -> 2
+            | '<' -> 3
+        in (aux input.(x).[y] + id) mod 4
+
+    and isempty x y = match input.(x).[y] with
+        | '.' | 'G' | 'S' -> true
+        | _ -> false
+
+    and diffs = [(-1, 0); (0, 1); (1, 0); (0, -1)] in
+
+    for i = 0 to n - 1 do
+        for j = 0 to m - 1 do
+            if isturr i j then
+                for id = 0 to 3 do
+                    let di, dj = List.nth diffs (turrid i j id) in
+                    let ci, cj = ref (i + di), ref (j + dj) in
+
+                    while isok !ci !cj && isempty !ci !cj && safe.(!ci).(!cj).(id) do
+                        safe.(!ci).(!cj).(id) <- false;
+                        ci := !ci + di;
+                        cj := !cj + dj
+                    done
+                done
+        done
+    done;
+    (*
+    for id = 0 to 3 do
+        Printf.printf "ID = %d\n" 3;
+        for i = 0 to n - 1 do
+            for j = 0 to m - 1 do
+                if isempty i j && not safe.(i).(j).(id) then
+                    Printf.printf "%c" '*'
+                else
+                    Printf.printf "%c" input.(i).[j]
+            done;
+            Printf.printf "\n"
+        done
+    done;
+    *)
+    let resx, resy = ref (-1), ref (-1) in
+
+    let queue = Queue.create () in
+    input |> Array.iteri (fun i ->
+        String.iteri (fun j elem ->
+            if elem = 'S' then
+            begin
+                Queue.add (i, j, 0) queue;
+                dist.(i).(j).(0) <- Some 0;
+            end
+            else if elem = 'G' then
+            begin
+                resx := i;
+                resy := j
+            end
+            )
+        );
+
+    while not (Queue.is_empty queue) do
+        let (i, j, id) = Queue.take queue in
+        List.iter (fun (dx, dy) ->
+            let ni, nj, nid, Some mydist = i + dx, j + dy, (id + 1) mod 4, dist.(i).(j).(id) in
+            if isok ni nj && safe.(ni).(nj).(nid) && dist.(ni).(nj).(nid) = None then
+            begin
+                dist.(ni).(nj).(nid) <- Some (mydist + 1);
+                Queue.add (ni, nj, nid) queue
+            end
+            )
+            diffs
+    done;
+
+    let min_option x y =
+        match (x, y) with
+        | (Some xx, Some yy) -> Some (min xx yy)
+        | (Some xx, _) -> Some xx
+        | (_, Some yy) -> Some yy
+        | _ -> None
+
+    in
+    Array.fold_left min_option None dist.(!resx).(!resy)
+);;
+
+Scanf.scanf "%d\n" (fun t -> 
+    for i = 1 to t do
+        Printf.printf "Case #%d: " i;
+        match solve () with
+            | Some x -> Printf.printf "%d\n" x
+            | None -> Printf.printf "impossible\n"
+    done
+);;

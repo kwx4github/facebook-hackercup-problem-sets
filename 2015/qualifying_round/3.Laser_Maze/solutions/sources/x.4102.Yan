@@ -1,0 +1,160 @@
+#include <cstdio>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#include <list>
+#include <stack>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
+#include <set>
+#include <cmath>
+#include <sstream>
+using namespace std;
+struct laser{
+    int x;
+    int y;
+    int direction=0;// 
+    laser(int a, int b, int c):x(a), y(b), direction(c){}
+};
+struct statePoint{
+    int x;
+    int y;
+    int state;
+    statePoint(int a, int b, int c):x(a), y(b), state(c){}
+};
+vector<vector<vector<bool>>> getSafety(vector<laser> &laserset, vector<vector<char>> &mymap, vector<vector<bool>> &raw_safemap){
+    int row = mymap.size();
+    int col = mymap[0].size();
+    vector<vector<vector<bool>>> ret;
+    for(int i=0;i<4;i++){
+        vector<vector<bool>> curmap = raw_safemap;
+        for(int j=0;j<laserset.size();j++) // check each laser
+        {
+            int xx = laserset[j].x; 
+            int yy = laserset[j].y;
+            int dir =(laserset[j].direction + i)%4;
+            if(dir==0)//up
+            {
+                int newx = xx-1, newy = yy;
+                while(newx>=0 && (mymap[newx][newy]=='.' || mymap[newx][newy]=='G'))
+                    curmap[newx--][newy] = false;
+            }
+            else if(dir==2)//down
+            {
+                int newx = xx+1, newy = yy;
+                while(newx< row && (mymap[newx][newy]=='.' || mymap[newx][newy]=='G'))
+                    curmap[newx++][newy] = false;
+            }
+            else if(dir==3)//left
+            {
+                int newx = xx, newy = yy-1;
+                while(newy>=0 && (mymap[newx][newy]=='.' || mymap[newx][newy]=='G'))
+                    curmap[newx][newy--] = false;
+            }
+            else{// right
+                int newx = xx, newy = yy+1;
+                while(newy<col && (mymap[newx][newy]=='.' || mymap[newx][newy]=='G'))
+                    curmap[newx][newy++] = false;             
+            }
+        }
+        ret.push_back(curmap);
+    }
+  //  printsafemap(ret);
+    return ret;
+}
+vector<statePoint> getNeighbors2(statePoint &p, vector<vector<vector<bool>>> &safemap, int level, vector<vector<vector<bool>>> &visited){
+    int row = safemap[0].size();
+    int col = safemap[0][0].size();
+    vector<statePoint> ret;
+    vector<pair<int, int>> offset = {{-1, 0}, {1, 0}, {0, 1}, {0, -1}};
+    for(int i=0;i<offset.size();i++){
+        statePoint cand(p.x + offset[i].first, p.y + offset[i].second, (level+1)%4);
+        if(cand.x < 0 || cand.y<0 || cand.x>=row || cand.y >=col) // out of range
+            continue;
+        if(visited[(level+1)%4][cand.x][cand.y])//visited
+            continue;
+        if(safemap[(level+1)%4][cand.x][cand.y]) // safe?
+            ret.push_back(cand);        
+    }
+    return ret;
+}
+
+int findPath2(vector<vector<char>> &mymap, vector<vector<vector<bool>>> &safemap, int startx, int starty, int destx, int desty){
+    int row = mymap.size();
+    int col = mymap[0].size();
+    queue<statePoint> cur, next;
+    vector<vector<vector<bool>>> visited(4, vector<vector<bool>>(row, vector<bool>(col, false)));
+    statePoint tmp(startx, starty, 0);
+    cur.push(tmp);
+    int level = 0;
+    while(!cur.empty()){
+        statePoint p = cur.front();
+        visited[p.state][p.x][p.y] = true;
+        cur.pop();
+        vector<statePoint> neighbors = getNeighbors2(p, safemap, level, visited);
+        for(auto ptr:neighbors){
+            if(ptr.x == destx && ptr.y == desty)
+                return level+1;
+            next.push(ptr);
+        }
+        if(cur.empty()){
+            swap(cur, next);
+            level++;
+        }
+    }
+    return -1;
+ }
+int main(int argc, char** argv) {
+    freopen("laser_maze_example_input.txt","r",stdin);//redirects standard input
+    int n;
+    char tmp;
+    scanf("%d\n", &n);
+    for(int cnt=0;cnt<n;cnt++){
+        int row, col;
+        scanf("%d %d\n", &row, &col);
+        vector<vector<char>> mymap(row, vector<char>(col, '.'));
+        vector<vector<bool>> raw_safemap(row, vector<bool>(col, true));
+        int startx, starty, destx, desty;
+        vector<laser> laserset;
+        for(int i=0;i<row;i++){
+            for(int j=0;j<col;j++){
+                if(j<col-1) scanf("%c", &tmp);
+                else scanf("%c\n", &tmp);
+                mymap[i][j] = tmp;
+                if(tmp == 'S'){
+                    startx = i;starty = j;
+                }
+                else if(tmp=='G'){
+                    destx = i;desty = j;
+                }
+                else if(tmp == '#'){
+                    raw_safemap[i][j] = false;
+                }
+                else if(tmp=='<' || tmp=='>' || tmp=='^' || tmp == 'v'){
+                    raw_safemap[i][j] = false;
+                    int dir;
+                    if(tmp=='^')
+                        dir = 0; // up
+                    else if(tmp=='>')
+                        dir = 1; //right;
+                    else if(tmp == 'v') // down
+                        dir = 2;
+                    else if(tmp == '<') // left
+                        dir = 3;
+                    laser l = laser(i,j,dir);
+                    laserset.push_back(l);
+                }
+            }
+        }
+      //  cout<<"startx="<<startx<<", startx="<<starty<<"destx="<<destx<<"desty="<<desty<<endl;
+        vector<vector<vector<bool>>> safemap = getSafety(laserset, mymap, raw_safemap);
+        int steps = findPath2(mymap, safemap, startx, starty, destx, desty);
+        if(steps>0)
+            cout<<"Case #"<<cnt+1<<" "<<steps<<endl;
+        else
+            cout<<"Case #"<<cnt+1<<" impossible"<<endl;
+    }
+}

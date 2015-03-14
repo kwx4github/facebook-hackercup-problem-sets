@@ -1,0 +1,112 @@
+#include<bits/stdc++.h>
+using namespace std ;
+
+const int MAXN = 100;
+const int dr[] = {-1, 0, 1,  0};
+const int dc[] = { 0, 1, 0, -1};
+
+#define within(i, j) (i >= 0 && j >= 0 && i < n && j < m)
+
+#define UP 0
+#define RIGHT 1
+#define DOWN 2
+#define LEFT 3
+
+typedef pair<int,int> Cell;
+#define i first
+#define j second
+
+string dirSymbols = "^>v<";
+bool unsafe[4][MAXN+5][MAXN+5];
+char grid[MAXN+5][MAXN+5];
+int n,m;
+
+Cell source, sink;
+
+bool isLaser(char ch) {
+    return dirSymbols.find(ch) != string::npos;
+}
+
+int direction(char ch) {
+    return dirSymbols.find(ch);
+}
+
+void markUnsafe(int i, int j, int tim, int dir) {
+    for (i += dr[dir], j += dc[dir]; within(i,j) && grid[i][j] == '.';i += dr[dir], j += dc[dir])
+        unsafe[tim][i][j] = true;
+}
+
+void calcUnsafePositions() {
+    memset(unsafe, 0, sizeof(unsafe));
+    for (int tim = 0; tim < 4; tim++) {
+        for (int i=0;i<n;i++) {
+            for (int j=0;j<m;j++) {
+                if (isLaser(grid[i][j])) {
+                    markUnsafe(i, j, tim, direction(grid[i][j]) + tim & 3);
+                }
+            }
+        }
+    }
+}
+
+struct Node {
+    Cell cell;
+    int tim;
+    Node() {}
+    Node(Cell cell, int tim) : cell(cell), tim(tim) {}
+};
+int path[4][MAXN+5][MAXN+5];
+
+int solve() {
+    memset(path, -1, sizeof(path));
+    queue<Node> q;
+    q.push(Node(source, 0));
+    path[0][source.i][source.j] = 0;
+    while (!q.empty()) {
+        Node cur = q.front();
+        q.pop();
+        const Cell& cell = cur.cell;
+        const int tim = cur.tim;
+        if (cell == sink) return path[tim][cell.i][cell.j];
+        for (int d=0;d<4;d++) {
+            Node nex(Cell(cell.i + dr[d], cell.j + dc[d]), tim + 1 & 3);
+            if (!within(nex.cell.i, nex.cell.j)) continue;
+            if (grid[nex.cell.i][nex.cell.j] != '.') continue;
+            if (~path[nex.tim][nex.cell.i][nex.cell.j]) continue;
+            if (unsafe[nex.tim][nex.cell.i][nex.cell.j]) continue;
+            path[nex.tim][nex.cell.i][nex.cell.j] = path[tim][cell.i][cell.j] + 1;
+            q.push(nex);
+        }
+    }
+    return -1;
+}
+
+int main() {
+    freopen("maze.in","r",stdin);
+    FILE* out = fopen("maze.out", "w");
+    int c,c2;
+    int tests;
+    scanf("%d",&tests);
+    for (int test=1;test<=tests;test++) {
+        scanf("%d%d",&n,&m);
+        for (c=0;c<n;c++) {
+            for (c2=0;c2<m;c2++) {
+                scanf(" %c", &grid[c][c2]);
+                if (grid[c][c2] == 'S') {
+                    source = Cell(c,c2);
+                    grid[c][c2] = '.';
+                } else if (grid[c][c2] == 'G') {
+                    sink = Cell(c,c2);
+                    grid[c][c2] = '.';
+                }
+            }
+        }
+        calcUnsafePositions();
+        printf("Case #%d\n",test);
+        fprintf(out, "Case #%d: ",test);
+        int ret = solve();
+        if (~ret) fprintf(out, "%d\n",ret);
+        else fprintf(out, "impossible\n");
+    }
+    return 0;
+}

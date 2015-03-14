@@ -1,0 +1,131 @@
+#include<bits/stdc++.h>
+using namespace std;
+#define MAXN 106
+char grid[MAXN][MAXN];
+int dist[MAXN][MAXN][4];
+int nxt[MAXN][MAXN][4];
+int xdir[] = {-1,0,1,0};
+int ydir[] = {0,1,0,-1};
+struct ss
+{
+    int x,y,m;
+    ss() {}
+    ss(int _x, int _y, int _m) {x=_x, y=_y, m=_m;}
+};
+void setSG(int N, int M, pair < int , int > &S, pair < int , int > &G)
+{
+    int i,j;
+    for (i=1; i<=N; ++i)
+    {
+        for (j=1; j<=M; ++j)
+        {
+            if (grid[i][j] == 'S') S = make_pair(i,j);
+            if (grid[i][j] == 'G') G = make_pair(i,j);
+        }
+    }
+}
+int laserdir(char ch)
+{
+    if (ch == '^') return 0;
+    if (ch == '>') return 1;
+    if (ch == 'v') return 2;
+    if (ch == '<') return 3;
+    return -1;
+}
+bool islaser(char ch)
+{
+    return (laserdir(ch) >= 0);
+}
+void prep(int N, int M)
+{
+    int i,j,p,x,y;
+    memset(nxt, -1, sizeof(nxt));
+    for (i=1; i<=N; ++i)
+    {
+        for (j=1; j<=M; ++j)
+        {
+            if (grid[i][j] == '#' || islaser(grid[i][j])) continue;
+            for (p=0; p<4; ++p)
+            {
+                x = i, y = j;
+                x += xdir[p], y += ydir[p];
+                while (x >= 1 && x <= N && y >= 1 && y <= M)
+                {
+                    if (grid[x][y] == '#') break;
+                    if (islaser(grid[x][y]))
+                    {
+                        if ((p&1) == 0) nxt[i][j][p] = x;
+                        else nxt[i][j][p] = y;
+                        break;
+                    }
+                    x += xdir[p], y += ydir[p];
+                }
+            }
+        }
+    }
+}
+bool poss(int x, int y, int m)
+{
+    int p,xx,yy,n;
+    for (p=0; p<4; ++p)
+    {
+        if (nxt[x][y][p] == -1) continue;
+        if ((p&1) == 0) xx = nxt[x][y][p], yy = y;
+        else xx = x, yy = nxt[x][y][p];
+        n = laserdir(grid[xx][yy]);
+        n = (n+m) % 4;
+        if (p == (n+2)%4) return false;
+    }
+    return true;
+}
+int run(int N, int M)
+{
+    pair < int , int > S,G;
+    setSG(N,M,S,G);
+    prep(N,M);
+    int sx = S.first, sy = S.second;
+    int gx = G.first, gy = G.second;
+    queue < ss > Q;
+    memset(dist, -1, sizeof(dist));
+    Q.push(ss(sx,sy,0));
+    dist[sx][sy][0] = 0;
+    ss node;
+    int p,x,y,m,xx,yy,mm;
+    while (!Q.empty())
+    {
+        node = Q.front();
+        Q.pop();
+        x = node.x, y = node.y, m = node.m;
+        if (x == gx && y == gy) return dist[x][y][m];
+        mm = (m+1)%4;
+        for (p=0; p<4; ++p)
+        {
+            xx = x + xdir[p], yy = y + ydir[p];
+            if (xx < 1 || xx > N || yy < 1 || yy > M || grid[xx][yy] == '#' || islaser(grid[xx][yy])) continue;
+            if (dist[xx][yy][mm] == -1 && poss(xx,yy,mm))
+            {
+                dist[xx][yy][mm] = dist[x][y][m]+1;
+                Q.push(ss(xx,yy,mm));
+            }
+        }
+    }
+    return -1;
+}
+int main()
+{
+    freopen("laser_maze.txt", "r", stdin);
+    freopen("out.txt", "w", stdout);
+    int t,T;
+    int N,M,i;
+    scanf("%d", &T);
+    for (t=1; t<=T; ++t)
+    {
+        scanf("%d %d", &N, &M);
+        for (i=1; i<=N; ++i) scanf("%s", grid[i]+1);
+        printf("Case #%d: ", t);
+        i = run(N,M);
+        if (i == -1) puts("impossible");
+        else printf("%d\n", i);
+    }
+    return 0;
+}

@@ -1,0 +1,191 @@
+"""
+This script may use libraries publicly available at: https://github.com/grokit/dcore.
+"""
+
+import dcore.gcj_boot as boot
+
+import copy
+
+class Problem:
+    pass
+
+class Maze:
+
+    TurretTurn = {'^': '>', '>': 'v', 'v': '<', '<': '^'}
+    TurretShootDir = {'^': (-1, 0), '>': (0, 1), 'v': (1, 0), '<': (0,-1)}
+
+    def __init__(self, sl):
+        # s is a list of string, in per line of the maze
+        self.sl = sl
+        self.sl = [list(x) for x in sl]
+
+    def get(self, y, x):
+        if y < 0 or x < 0 or y >= len(self.sl) or x >= len(self.sl[y]):
+            return None
+
+        return self.sl[y][x]
+
+    def set(self, y, x, v):
+        if y < 0 or x < 0 or y >= len(self.sl) or x >= len(self.sl[y]):
+            raise Exception("Out of bounds: %s." % locals())
+
+        self.sl[y][x] = v
+
+    def iterAll(self):
+        for y in range(len(self.sl)):
+            for x in range(len(self.sl[y])):
+                yield (y, x, self.get(y,x))
+
+    def findStart(self):
+        for y,x,v in self.iterAll():
+            if v == 'S':
+                return (y,x)
+        raise Exception("No start")
+
+    def getWalkable(self, y, x):
+
+        if self.get(y,x) is not '.':
+            return []
+            #raise Exception("Does not start by walkable: %s." % self.get(y,x))
+
+        P = []
+        P.append( (y+1,x) )
+        P.append( (y-1,x) )
+        P.append( (y,x+1) )
+        P.append( (y,x-1) )
+        P = [p for p in P if self.get(*p) is not None and (self.get(*p) == '.' or self.get(*p) == 'G' or self.get(*p) == '%')]
+
+        return P
+    
+    def mutateStart(self):
+        for i,l  in enumerate(self.sl):
+            nl = []
+            for c in l:
+                if c == 'S':
+                    c = '.'
+                nl.append(c)
+            self.sl[i] = nl
+
+    def mutateTurretShoot(self, y, x, dy, dx):
+        x = x + dx
+        y = y + dy
+
+        t = self.get(y, x) # start at delta since (y,x) is the turret pos
+        while t is not None:
+            if t == '.':
+                self.set(y, x, '%')
+            elif t == 'S' or t == 'G':
+                # I think it's OK to leave as a wall: can't finish this turn anyways...
+                self.set(y, x, '%')
+            else:
+                break
+
+            x = x + dx
+            y = y + dy
+            t = self.get(y, x)
+
+    def mutateTurretTurn(self):
+        for i,l  in enumerate(self.sl):
+            nl = []
+            for c in l:
+                if c in Maze.TurretTurn:
+                    c = Maze.TurretTurn[c]
+                nl.append(c)
+            self.sl[i] = nl
+            
+    def getTurretShootDirs(self):
+        shoots = [] # 0: (y,x) pos, 1: (dy, dx) shoot direction
+        for y,x,s in self.iterAll():
+            if s in Maze.TurretShootDir:
+                dy, dx = Maze.TurretShootDir[s]
+                shoots.append( (y,x, dy, dx) )
+        return shoots
+
+    def __str__(self):
+        S = []
+        for s in self.sl:
+            S.append("".join(s))
+        return "\n".join(S)
+
+def readProblem(fh):
+
+    m, n = [int(x) for x in fh.readline().strip().split()]
+
+    S = []
+    for i in range(m):
+        S.append(fh.readline().strip())
+
+    p = Problem()
+    p.maze = Maze(S)
+    return p
+
+NMazes = 4
+
+def mapBoardDim(i, M):
+    if i == 0:
+        return 0
+    
+    i = i % len(M)
+    if i == 0:
+        return 1
+
+    return i
+
+def solve(p):
+    maze = p.maze
+    start = maze.findStart()
+    maze.mutateStart()
+
+    initMaze = copy.deepcopy(maze)
+
+    M = [initMaze]
+    for i in range(NMazes):
+        maze.mutateTurretTurn()
+        M.append(copy.deepcopy(maze))
+
+        mt = M[-1]
+        tshoot = mt.getTurretShootDirs()
+        for t in tshoot:
+            mt.mutateTurretShoot(*t)
+
+    for m in M:
+        #print('-'*40)
+        #print(m)
+        pass
+
+    iBoard = 0
+    H = set()
+    Pos = [(start[0], start[1], 0)]
+    H.add(Pos[0])
+    while len(Pos) > 0:
+        # Generate all places you can go considering current maze.
+        #print('time', iBoard)
+        NewPos = []
+        for p in Pos:
+            #print('considering walkable from', p, 'at time', iBoard)
+            np = M[mapBoardDim(iBoard, M)].getWalkable(p[0], p[1])
+            for npp in np:
+                #print('walkable:', npp)
+                nPos = (npp[0], npp[1], mapBoardDim(iBoard+1, M))
+                t = M[mapBoardDim(iBoard+1, M)].get(npp[0], npp[1])
+                if t == 'G':
+                    return iBoard+1 
+                elif t == '.':
+                    if nPos not in H:
+                        NewPos.append(nPos)
+                        #print('adding to hash', nPos)
+                        H.add(nPos)
+                    else:
+                        pass
+                        #print('skipping %s because already visited' % str(nPos))
+                        ##print(H)
+                else:
+                    #print('die positions:', npp, t)
+                    pass
+
+        iBoard = iBoard + 1
+        Pos = NewPos
+
+    return 'impossible' 
+
+boot.solve(solve, readProblem, '.*lazer')

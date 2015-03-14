@@ -1,0 +1,195 @@
+#include <iostream>
+#include <map>
+#include <vector>
+#include <cstring>
+#include <cctype>
+#include <cstdio>
+#include <climits>
+#include <cmath>
+#include <sstream>
+#include <utility>
+#include <queue>
+#include <stack>
+#include <algorithm>
+#include <cstdlib>
+#include <set>
+#define lld long long int
+using namespace std;
+class node{
+public:
+	vector<string> board;
+	int step,r,c;
+	node (vector<string> v,int a,int b, int d){
+		board=v;
+		step =a;
+		r=b;
+		c=d;
+	}
+};
+vector<string> getNext(vector<string> v, int gx, int gy){
+	int n= v.size();
+	vector<string> output(n);
+	for(int i=0;i<v.size();i++){
+		output[i]=v[i];
+	}
+	for(int i=0;i<v.size();i++){
+		for(int j=0;j<v[i].length();j++){
+			if(v[i][j]=='-')
+				output[i][j]='.';
+			else if(v[i][j]=='<')
+				output[i][j]='^';
+			else if(v[i][j]=='^')
+				output[i][j]='>';
+			else if(v[i][j]=='>')
+				output[i][j]='v';
+			else if(v[i][j]=='v')
+				output[i][j]='<';
+		}
+	}
+	output[gx][gy]='G';
+	return output;
+}
+
+vector<string> makeLaser(vector<string> v){
+	int n= v.size();
+	vector<string> output(n);
+	for(int i=0;i<v.size();i++){
+		output[i]=v[i];
+	}
+	for(int i=0;i<v.size();i++){
+		for(int j=0;j<v[i].length();j++){
+			if(v[i][j]=='<'){
+				for(int k=j-1;k>=0 && v[i][k]!='#' && v[i][k]!='^' && v[i][k]!='>' && v[i][k]!='v' && v[i][k]!='<';k--)
+					output[i][k]='-';
+			}
+			else if(v[i][j]=='>'){
+				for(int k=j+1;k<v[i].length() && v[i][k]!='#' && v[i][k]!='^' && v[i][k]!='>' && v[i][k]!='v' && v[i][k]!='<';k++)
+					output[i][k]='-';
+			}
+			else if(v[i][j]=='^'){
+				for(int k=i-1;k>=0 && v[k][j]!='#' && v[k][j]!='^' && v[k][j]!='>' && v[k][j]!='v' && v[k][j]!='<';k--)
+					output[k][j]='-';
+			}
+			else if(v[i][j]=='v'){
+				for(int k=i+1;k<v.size() && v[k][j]!='#' && v[k][j]!='^' && v[k][j]!='>' && v[k][j]!='v' && v[k][j]!='<';k++)
+					output[k][j]='-';
+			}
+		}
+	}
+	return output;
+}
+
+vector<string> makeLeft(vector<string> v, int r,int c){
+	v[r][c-1]='S';
+	v[r][c]='.';
+	return v;
+}
+
+vector<string> makeRight(vector<string> v, int r,int c){
+	v[r][c+1]='S';
+	v[r][c]='.';
+	return v;
+}
+
+vector<string> makeUp(vector<string> v, int r,int c){
+	v[r-1][c]='S';
+	v[r][c]='.';
+	return v;
+}
+vector<string> makeDown(vector<string> v, int r,int c){
+	v[r+1][c]='S';
+	v[r][c]='.';
+	return v;
+}
+
+int main(){
+	int t,c;
+	cin>>t;
+	c=t;
+	while(t--){
+		int n,m,gx,gy,row,col;
+		cin>>n>>m;
+		vector<string> v(n);
+		for(int i=0;i<n;i++)
+			cin>>v[i];
+		for(int i=0;i<n;i++){
+			for(int j=0;j<m;j++){
+				if(v[i][j]=='S'){
+					row=i;
+					col=j;
+				}
+				else if(v[i][j]=='G'){
+					gx=i;
+					gy=j;
+				}
+			}
+		}
+		vector<string> v1 = makeLaser(v);
+		map<vector<string>,bool> M;
+		M[v1]=true;
+		queue<node> q;
+		q.push(node(v1,0,row,col));
+		bool found=false;
+		int steps=0;
+		while(!q.empty()){
+			node temp = q.front();
+			vector<string> n1 = getNext(temp.board,gx,gy);
+			vector<string> next = makeLaser(n1);
+			row=temp.r;
+			col=temp.c;
+			if(row>0 && next[row-1][col]=='.'){
+				vector<string> mU= makeUp(next,row,col);
+				if(!M[mU]){
+					q.push(node(mU,temp.step+1,row-1,col));
+					M[mU]=true;
+				}
+			}
+			else if(row>0 && next[row-1][col]=='G'){
+				found=true;
+				steps = temp.step+1;
+				break;
+			}
+			if(row<n-1 && next[row+1][col]=='.'){
+				vector<string> mD = makeDown(next,row,col);
+				if(!M[mD]){
+					q.push(node(mD,temp.step+1,row+1,col));
+					M[mD]=true;
+				}
+			}
+			else if(row<n-1 && next[row+1][col]=='G'){
+				found=true;
+				steps = temp.step+1;
+				break;
+			}
+			if(col>0 && next[row][col-1]=='.'){
+				vector<string> mL = makeLeft(next,row,col);
+				if(!M[mL]){
+					q.push(node(mL,temp.step+1,row,col-1));
+					M[mL]=true;
+				}
+			}
+			else if(col>0 && next[row][col-1]=='G'){
+				found=true;
+				steps = temp.step+1;
+				break;
+			}
+			if(col<m-1 && next[row][col+1]=='.'){
+				vector<string> mR = makeRight(next,row,col);
+				if(!M[mR]){
+					q.push(node(mR,temp.step+1,row,col+1));
+					M[mR]=true;
+				}
+			}
+			else if(col<m && next[row][col+1]=='G'){
+				found=true;
+				steps = temp.step+1;
+				break;
+			}
+			q.pop();
+		}
+		if(!found)
+			cout<<"Case #"<<c-t<<": "<<"impossible"<<endl;
+		else
+			cout<<"Case #"<<c-t<<": "<<steps<<endl;
+	}
+}

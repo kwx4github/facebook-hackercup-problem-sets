@@ -1,0 +1,98 @@
+import sys
+import copy
+import networkx as nx
+from itertools import product
+
+def print_maze(maze):
+    #What the fuck is this mess??
+    #I am starting to suspect that I am really bad at python, lol
+    print("\n".join(list(map("".join,maze))))
+
+
+def turret_direction(turret, time):
+    dirs = [(-1,0),(0,1),(1,0),(0,-1)]
+    td = {'>': 1, '<': 3, '^': 0, 'v': 2}
+    i = (td[turret] + time) % 4
+    return dirs[i]
+
+def add_dimensions(maze):
+    m = len(maze)
+    n = len(maze[0])
+    td = {'>': 1, '<': 3, '^': 0, 'v': 2}
+
+    turret_positions = [(y,x) for (y,x) in product(range(m),range(n)) if maze[y][x] in td]
+
+    dimensions = list()
+    for dim in range(4):
+        mazedim = copy.deepcopy(maze)
+        for (y,x) in turret_positions:
+            dy, dx = turret_direction(maze[y][x],dim)
+            cy, cx = y, x
+            mazedim[cy][cx] = '#'
+            cy, cx = cy + dy, cx + dx
+            while 0<=cy<m and 0<=cx<n and maze[cy][cx] in ['.','S','G']:
+                mazedim[cy][cx] = '#'
+                cy, cx = cy + dy, cx + dx
+        dimensions.append(mazedim)
+    return dimensions
+
+def adj(maze, p):
+    m = len(maze[0])
+    n = len(maze[0][0])
+
+    dim, y, x = p
+    adjdim = (dim + 1) % 4
+
+    adjl = list()
+    for (dy,dx) in [(-1,0),(0,1),(1,0),(0,-1)]:
+        adjy, adjx = dy + y, dx + x
+        if 0<=adjy<m and 0<=adjx<n:
+            if maze[adjdim][adjy][adjx] in ['.','S']:
+                yield (adjdim,adjy,adjx)
+            elif maze[adjdim][adjy][adjx] == 'G':
+                yield (0,adjy,adjx)
+
+def find_sg(maze):
+    m = len(maze)
+    n = len(maze[0])
+
+    s = (0,0,0)
+    g = (0,0,0)
+    for (y,x) in product(range(m),range(n)):
+        if maze[y][x] == 'S':
+            s = (0,y,x)
+        elif maze[y][x] == 'G':
+            g = (0,y,x)
+
+    return (s,g)
+    
+
+def shortest(maze, s, g):
+    m = len(maze[0])
+    n = len(maze[0][0])
+
+    nodes = product(range(4),range(m),range(n))
+
+    adj_dict = dict()
+    for node in nodes:
+        adj_dict[node] = list(adj(maze,node))
+
+    graph = nx.DiGraph()
+    nx.from_dict_of_lists(adj_dict,create_using=graph)
+    return nx.shortest_path_length(graph,s,g)
+
+if __name__ == "__main__":
+    t = int(sys.stdin.readline())
+    mazes = list()
+    for i in range(t):
+        m, n = map(int,sys.stdin.readline().split())
+        mazes.append([list(sys.stdin.readline())[:-1] for x in range(m)])
+
+    for (i,m) in enumerate(mazes):
+        s, g = find_sg(m)
+        dm = add_dimensions(m)
+        try:
+            sp = shortest(dm,s,g)
+            print("Case #" + str(i+1) + ": " + str(sp))
+        except nx.NetworkXNoPath:
+            print("Case #" + str(i+1) + ": impossible")

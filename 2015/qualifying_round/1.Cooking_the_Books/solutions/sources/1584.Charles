@@ -1,0 +1,130 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CookingTheBooks {
+	class Program {
+		
+		static void Main(string[] args) {
+
+			var input = new InputFile(System.IO.File.ReadAllLines("input.txt").ToList());
+			var outputs = new Outputs();
+
+			foreach (var number in input.Numbers) {
+				outputs.Add(CalcOutput(number));
+			}
+
+			outputs.WriteOutput();
+		}
+
+		public static Output CalcOutput(int number) {
+			
+			var cooker = new BookCooker(number);
+
+			return cooker.Calculate();
+			
+		}
+
+		
+		
+
+	}
+
+	public class BookCooker {
+		
+		private int Number;
+
+		public BookCooker(int number) {
+			this.Number = number;
+		}
+
+
+
+		public Output Calculate() {
+			var output = new Output();
+
+			if (NotSwitchable()) {
+				output.Biggest = Number;
+				output.Smallest = Number;
+			}
+
+			var possibilities = new List<int>();
+			possibilities.Add(Number);
+
+			int[] digits = Number.ToString().Select(a => int.Parse(a.ToString())).ToArray();
+
+			for (int i = 0; i < digits.Length - 1; i++) {
+				for (int j = i+1; j < digits.Length; j++) {
+
+					var swappedDigits = SwapDigits(digits.Select(a=> a).ToArray(), i, j);
+					
+					// Filter Starting with 0
+					if (swappedDigits[0] != 0) {
+						var swappedNumber = swappedDigits.Select(a => a.ToString()).Aggregate((a, b) => a + b).ToInt();
+						possibilities.Add(swappedNumber);
+					}
+				}
+			}
+
+			possibilities.Sort();
+
+			output.Biggest = possibilities.Last();
+			output.Smallest = possibilities.First();
+
+			return output;
+		}
+
+		private int[] SwapDigits(int[] digits, int i, int j) {
+			int temp = digits[i];
+			digits[i] = digits[j];
+			digits[j] = temp;
+
+			return digits;
+		}
+		
+		public bool NotSwitchable() {
+			if (Number < 10 || (Number < 100 && Number%10 == 0))
+				return true;
+			return false;
+
+		}
+
+	}
+
+	public class Outputs : List<Output> {
+		public void WriteOutput() {
+			var sb = new StringBuilder();
+			var length = this.Count();
+			for (int i = 0; i < length; i++) {
+				sb.Append(string.Format("Case #{0}: {1} {2}", i + 1, this[i].Smallest, this[i].Biggest));
+				if (i < length - 1) sb.AppendLine();
+			}
+			System.IO.File.WriteAllText("ouput.txt", sb.ToString());
+		}
+	}
+
+	public class Output {
+		public int Biggest;
+		public int Smallest;
+	}
+
+	public class InputFile {
+		public int NumRecords;
+		public List<int> Numbers;
+
+		public InputFile(List<string> inputs) {
+			NumRecords = inputs.First().ToInt();
+			Numbers = inputs.Skip(1).Select(a => a.ToInt()).ToList();
+		}
+	}
+
+	public static class Extensions {
+		public static int ToInt(this string s) {
+			if (string.IsNullOrEmpty(s))
+				return 0;
+			else return int.Parse(s);
+		}
+	}
+}

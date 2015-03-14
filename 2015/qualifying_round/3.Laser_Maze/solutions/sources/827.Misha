@@ -1,0 +1,306 @@
+package com.mishadoff.cup.fb;
+
+import java.io.*;
+
+/**
+ * @author mishadoff
+ */
+public class LazerMaze {
+
+    public static void main(String[] args) throws Exception {
+
+        String input = "/Users/mishadoff/Downloads/laser_maze-3.txt";
+        String output = "/Users/mishadoff/Downloads/output3_my.txt";
+
+        BufferedReader br = new BufferedReader(new FileReader(input));
+        BufferedWriter bw = new BufferedWriter(new FileWriter(output));
+
+
+        String line = br.readLine().trim();
+        System.out.println(line);
+        int count = Integer.parseInt(line);
+
+        for (int c = 1; c <= count; c++) {
+            String[] sizes = br.readLine().split(" ");
+            int m = Integer.parseInt(sizes[0].trim());
+            int n = Integer.parseInt(sizes[1].trim());
+
+            StringBuilder builder = new StringBuilder();
+            for (int mazeLine = 0; mazeLine < m; mazeLine++) {
+                builder.append(br.readLine() + "\n");
+            }
+
+
+//            String mazeString = "S....\n" +
+//                    ".....\n" +
+//                    ".>v..\n" +
+//                    ".^<..\n" +
+//                    "....G";
+            int[][] maze = mazeFromString(builder.toString());
+            int result = solveForMaze(maze);
+
+            String resultString = result == -1 ? "impossible" : "" + result;
+            String outputCase = String.format("Case #%d: %s\n", c, resultString);
+            System.out.print(outputCase);
+            bw.write(outputCase);
+
+        }
+        br.close();
+        bw.close();
+
+    }
+
+    private static int solveForMaze(int[][] maze) {
+        int M = maze.length;
+        int N = maze[0].length;
+
+        // maze codes
+        // 0 = Starting number
+        // 1..n = number of steps to reach this cell
+        // -1 = empty point
+        // -2 = wall
+        // -3 = goal
+        // -100 ^ laser
+        // -200 > laser
+        // -300 v laser
+        // -400 < laser
+
+        int goal_i = -1;
+        int goal_j = -1;
+
+        for (int i = 0; i < M; i++) {
+            for (int j = 0; j < N; j++) {
+                if (maze[i][j] == -3) {
+                    goal_i = i;
+                    goal_j = j;
+                }
+            }
+        }
+
+        // process maze
+
+        //increment numbers
+        int turn = 0;
+        while (true) {
+            turn++;
+
+            // debug
+//            if (M == 11 && N == 93) {
+//                printMaze(maze);
+//            }
+
+            int[][] newMaze = copyMaze(maze);
+            for (int i = 0; i < M; i++) {
+                for (int j = 0; j < N; j++) {
+                    int cell = maze[i][j];
+                    if (cell >= 0) { // process increment
+                        processNeighbor(newMaze, i + 1, j, cell);
+                        processNeighbor(newMaze, i - 1, j, cell);
+                        processNeighbor(newMaze, i, j + 1, cell);
+                        processNeighbor(newMaze, i, j - 1, cell);
+                    }
+
+
+                }
+            }
+
+            // turn each laser and cleanup what he destroys
+            for (int i = 0; i < M; i++) {
+                for (int j = 0; j < N; j++) {
+                    if (maze[i][j] == -100) {
+                        newMaze[i][j] = -200;
+                        for (int k = j + 1; k < N; k++) {
+                            if (validForLaser(newMaze[i][k])) {
+                                newMaze[i][k] = -1;
+                            } else if (newMaze[i][k] == 0) {
+                                // do not clear start
+                            } else {
+                                // stop clearing after
+                                break;
+                            }
+                        }
+                    }
+                    if (maze[i][j] == -200) {
+                        newMaze[i][j] = -300;
+                        for (int k = i + 1; k < M; k++) {
+                            if (validForLaser(newMaze[k][j])) {
+                                newMaze[k][j] = -1;
+                            } else if (newMaze[k][j] == 0) {
+                                // do not clear start
+                            } else {
+                                // stop clearing after
+                                break;
+                            }
+                        }
+                    }
+                    if (maze[i][j] == -300) {
+                        newMaze[i][j] = -400;
+                        for (int k = j - 1; k >= 0; k--) {
+                            if (validForLaser(newMaze[i][k])) {
+                                newMaze[i][k] = -1;
+                            } else if (newMaze[i][k] == 0) {
+                                // do not clear start
+                            } else {
+                                // stop clearing after
+                                break;
+                            }
+                        }
+                    }
+                    if (maze[i][j] == -400) {
+                        newMaze[i][j] = -100;
+                        for (int k = i - 1; k >= 0; k--) {
+                            if (validForLaser(newMaze[k][j])) {
+                                newMaze[k][j] = -1;
+                            } else if (newMaze[k][j] == 0) {
+                                // do not clear start
+                            } else {
+                                // stop clearing after
+                                break;
+                            }
+                        }
+                    }
+
+                    // laser turned and can process until wall, border or laser
+
+                }
+            }
+
+            // cleanup other numbers
+            for (int i = 0; i < M; i++) {
+                for (int j = 0; j < N; j++) {
+                    if (maze[i][j] >= 0 && newMaze[i][j] != turn) {
+                        newMaze[i][j] = -1;
+                    }
+                }
+            }
+
+            // restore goal???
+
+            // check for goal
+            if (newMaze[goal_i][goal_j] > 0) {
+                return newMaze[goal_i][goal_j];
+            }
+
+            // FIXME check for impossible
+            if (turn > N * M * 4) {
+                return -1;
+            }
+
+            maze = newMaze;
+        }
+    }
+
+    private static boolean validForLaser(int cell) {
+        return (cell > 0 || cell == -1 || cell == -3);
+    }
+
+    private static int[][] mazeFromString(String mazeString) {
+        int[][] maze;
+        String[] lines = mazeString.split("\n");
+        maze = new int[lines.length][];
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i];
+            maze[i] = new int[line.length()];
+            for (int j = 0; j < line.length(); j++) {
+                char c = line.charAt(j);
+                if (c == '.') {
+                    maze[i][j] = -1;
+                }
+                if (c == 'S') {
+                    maze[i][j] = 0;
+                }
+                if (c == 'G') {
+                    maze[i][j] = -3;
+                }
+                if (c == '#') {
+                    maze[i][j] = -2;
+                }
+                if (c == '^') {
+                    maze[i][j] = -100;
+                }
+                if (c == '>') {
+                    maze[i][j] = -200;
+                }
+                if (c == 'v') {
+                    maze[i][j] = -300;
+                }
+                if (c == '<') {
+                    maze[i][j] = -400;
+                }
+            }
+        }
+        return maze;
+    }
+
+    private static void printMaze(int[][] maze) {
+        for (int i = 0; i < maze.length; i++) {
+            for (int j = 0; j < maze[0].length; j++) {
+                int cell = maze[i][j];
+                switch (cell) {
+                    case 0: {
+                        System.out.print("S");
+                        break;
+                    }
+                    case -1: {
+                        System.out.print(".");
+                        break;
+                    }
+                    case -2: {
+                        System.out.print("#");
+                        break;
+                    }
+                    case -3: {
+                        System.out.print("G");
+                        break;
+                    }
+                    case -100: {
+                        System.out.print("^");
+                        break;
+                    }
+                    case -200: {
+                        System.out.print(">");
+                        break;
+                    }
+                    case -300: {
+                        System.out.print("v");
+                        break;
+                    }
+                    case -400: {
+                        System.out.print("<");
+                        break;
+                    }
+                    default: {
+                        System.out.print(cell);
+                        break;
+                    }
+                }
+            }
+            System.out.println("");
+        }
+        System.out.println("");
+    }
+
+    // TODO fix bug here
+    private static void processNeighbor(int[][] maze, int i, int j, int cell) {
+        if (i < maze.length && i >= 0 &&
+                j < maze[0].length && j >= 0) {
+            if (maze[i][j] == -1 || maze[i][j] == -3) { // empty or goal
+                maze[i][j] = cell + 1;
+            } else if (maze[i][j] >= 0) {
+                maze[i][j] = Math.min(cell+1, maze[i][j]);
+                             //cell + 1;
+            }
+
+        }
+    }
+
+    private static int[][] copyMaze(int[][] origin) {
+        int[][] copy = new int[origin.length][origin[0].length];
+        for (int i = 0; i < origin.length; i++) {
+            for (int j = 0; j < origin[0].length; j++) {
+                copy[i][j] = origin[i][j];
+            }
+        }
+        return copy;
+    }
+}

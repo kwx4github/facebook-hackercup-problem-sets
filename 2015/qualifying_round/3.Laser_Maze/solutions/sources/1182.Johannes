@@ -1,0 +1,153 @@
+
+import sys
+import heapq
+
+DOT, POS, GOAL, WALL, T_RIGHT, T_UP, T_DOWN, T_LEFT = range(8)
+MAP = {".": DOT,
+       "S": POS,
+       "G": GOAL,
+       "#": WALL,
+       ">": T_RIGHT,
+       "^": T_UP,
+       "v": T_DOWN,
+       "<": T_LEFT}
+
+def problem_instances(filename):
+    f = open(filename)
+    num_instances = int(f.readline())
+    for i in range(num_instances):
+        r, c = map(int, f.readline().split())
+        rows = []
+        for i in range(r):
+            rows.append(tuple([MAP[x] for x in f.readline().strip()]))
+
+        yield r, c, tuple(rows)
+
+def find_pos(rows):
+    for i, row in enumerate(rows):
+        if POS in row:
+            return i, row.index(POS)
+    raise ValueError("NoPos")
+
+def heur(rows):
+    sx, sy, gx, gy = -1, -1, -1, -1
+    for idx, row in enumerate(rows):
+        if POS in row:
+            sy, sx = idx, row.index(POS)
+        if GOAL in row:
+            gy, gx = idx, row.index(GOAL)
+    return abs(sx-gx) + abs(sy-gy) if gx >= 0 else 0
+
+TURRET_ROT = {T_RIGHT: T_DOWN, T_DOWN: T_LEFT, T_LEFT: T_UP, T_UP: T_RIGHT}
+BLOCKING = TURRET_ROT.keys() + [WALL]
+
+def rotate(rows):
+    for y, x in TURRET_COORDS:
+        rows[y][x] = TURRET_ROT[rows[y][x]]
+
+def is_shot(rows, y, x):
+    for i in range(y, -1, -1):
+        if rows[i][x] == T_DOWN:
+            return True
+        elif rows[i][x] in BLOCKING:
+            break
+    for i in range(y, ROWS):
+        if rows[i][x] == T_UP:
+            return True
+        elif rows[i][x] in BLOCKING:
+            break
+    for i in range(x, -1, -1):
+        if rows[y][i] == T_RIGHT:
+            return True
+        elif rows[y][i] in BLOCKING:
+            break
+    for i in range(x, COLS):
+        if rows[y][i] == T_LEFT:
+            return True
+        elif rows[y][i] in BLOCKING:
+            break
+    return False
+
+
+def successors(rows):
+    succs = []
+    r, c = find_pos(rows)
+    for y, x in ((r, c+1), (r, c-1), (r+1, c), (r-1, c)):
+        if 0 <= y < ROWS and 0 <= x < COLS and rows[y][x] not in BLOCKING:
+            succ = tuple(list(row) for row in rows)
+            succ[r][c] = DOT
+            succ[y][x] = POS
+            rotate(succ)
+            if not is_shot(succ, y, x):
+                succs.append(tuple(tuple(li) for li in succ))
+    return succs
+
+def hashable(rows):
+    return tuple(tuple(r) for r in rows)
+
+def is_goal(rows):
+    for r in rows:
+        if GOAL in r:
+            return False
+    return True
+
+ROWS, COLS = 0, 0
+TURRET_COORDS = []
+
+def solve(instance):
+    global ROWS, COLS
+    ROWS, COLS, init_state = instance
+
+    global TURRET_COORDS
+    TURRET_COORDS = []
+    for i, row in enumerate(init_state):
+        for j, x in enumerate(row):
+            if x in TURRET_ROT.keys():
+                TURRET_COORDS.append((i, j))
+
+    closed_set = set()
+    open_set = []
+    heapq.heappush(open_set, (0, init_state))
+    came_from = {}
+
+    g_score = {init_state: 0}
+    f_score = {init_state: heur(init_state)}
+
+    while open_set:
+        _, current = heapq.heappop(open_set)
+        if is_goal(current):
+            length = 0
+            print "--------------"
+            while current in came_from:
+                #print "TRACE", current
+                current = came_from[current]
+                length += 1
+            return length
+
+        closed_set.add(current)
+        print "Open set size", len(open_set)
+        print "Closed set size", len(closed_set)
+
+        for neighbor in successors(current):
+            if neighbor in closed_set:
+                continue
+
+            tentative_g_score = g_score[current] + 1
+
+            if neighbor not in open_set or tentative_g_score < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g_score
+                f_score[neighbor] = g_score[neighbor] + heur(neighbor)
+                if neighbor not in open_set:
+                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
+    return "impossible"
+
+def main():
+    filename = sys.argv[1]
+    out = open(filename + ".out", "w")
+    for idx, instance in enumerate(problem_instances(filename), 1):
+        out.write("Case #%i: %s\n" % (idx, solve(instance)))
+
+import cProfile
+cProfile.run('main()')

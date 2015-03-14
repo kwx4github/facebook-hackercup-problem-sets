@@ -1,0 +1,109 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FBHacker.Selections
+{
+    public class NewYearsResolution : SolverBase
+    {
+        public static int[] ReadProteinAmount(StreamReader input)
+        {
+            string line = ReadLine(input);
+            // WARNING !! we assume the input is well formatted...
+            string[] splitted = line.Split(' ');
+            return new int[] { Int32.Parse(splitted[0]), Int32.Parse(splitted[1]), Int32.Parse(splitted[2]) };
+        }
+
+        #region IProblemSolver
+        public override void Solve(StreamReader input, StreamWriter output)
+        {
+            int T = ReadIntLine(input);
+            if (T < 1 || T > 20) throw new ArgumentOutOfRangeException("T must be [1,20].");
+
+            for (int i = 1; i <= T; i++)
+            {
+
+                int[] goals = ReadProteinAmount(input);
+                int N = ReadIntLine(input);
+                int[] Gp = new int[N];
+                int[] Gc = new int[N];
+                int[] Gf = new int[N];
+                for (int j = 0; j != N; j++)
+                {
+                    int [] p = ReadProteinAmount(input);
+                    Gp[j] = p[0];
+                    Gc[j] = p[1];
+                    Gf[j] = p[2];
+                }
+
+                int[][] foods = { Gp, Gc, Gf };
+                output.WriteLine(Process(goals, foods, i));
+            }
+        }
+        #endregion
+        private string Process(int[] goals, int[][] foods, int caseIndex)
+        {
+            string outputTemplate = "Case #{0}: {1}";
+            StringBuilder sa = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
+            StringBuilder sc = new StringBuilder();
+            bool a = isSubsetSum(foods[0], foods[0].Length, goals[0],sa);
+            bool b = isSubsetSum(foods[1], foods[1].Length, goals[1],sb);
+            bool c = isSubsetSum(foods[2], foods[2].Length, goals[2],sc);
+            string astr = sa.ToString();
+            string bstr = sb.ToString();
+            string cstr = sc.ToString();
+            bool yes = a && b && c;
+            return string.Format(outputTemplate, caseIndex, yes ? "yes" : "no");
+        }
+
+        // brut force solution with trace informations...enought for T=20
+        private bool isSubsetSum(int[] set, int n, int sum, StringBuilder sb )
+        {
+            // Basic Cases
+            if (sum == 0)  return true;
+            if (n-- == 0 && sum != 0) return false;
+            // If last element is greater than sum, then ignore it
+            if (set[n] > sum) return isSubsetSum(set, n, sum,sb);
+
+            if (isSubsetSum(set, n, sum - set[n],sb) )
+            {
+                sb.Append(set[n]).Append(' ');
+                return true;
+            }
+            return isSubsetSum(set, n, sum,sb);
+        }
+
+        private bool isSubsetSum0(int[] set, int n, int sum)
+        {
+            // The value of subset[i][j] will be true if there is a subset of set[0..j-1]
+            //  with sum equal to i
+            bool[,] subset = new bool[sum + 1, n + 1];
+
+            // If sum is 0, then answer is true
+            for (int i = 0; i <= n; i++)
+                subset[0,i] = true;
+
+            // If sum is not 0 and set is empty, then answer is false
+            for (int i = 1; i <= sum; i++)
+                subset[i,0] = false;
+
+            // Fill the subset table in botton up manner
+            for (int i = 1; i <= sum; i++)
+            {
+                for (int j = 1; j <= n; j++)
+                {
+                    subset[i,j] = subset[i,j - 1];
+                    if (i >= set[j - 1])
+                        subset[i,j] = subset[i,j] || subset[i - set[j - 1],j - 1];
+                }
+            }
+
+
+            return subset[sum,n];
+        }
+    }
+}

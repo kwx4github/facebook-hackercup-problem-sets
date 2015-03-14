@@ -1,0 +1,155 @@
+#include <map>
+#include <set>
+#include <cmath>
+#include <ctime>
+#include <deque>
+#include <queue>
+#include <stack>
+#include <bitset>
+#include <cctype>
+#include <cstdio>
+#include <vector>
+#include <cassert>
+#include <complex>
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <iostream>
+#include <algorithm>
+using namespace std;
+#define int long long
+
+const int dx[] = {-1, 0, 1, 0}, dy[] = {0, 1, 0, -1};
+const int N = 123;
+int rows, cols;
+string maze[N];
+vector <int> adj[N * N * N + 23];
+
+int ha(int i, int j, int dir)
+{
+	return i * N * N + j * N + dir + 1;
+}
+
+int f[N][N][4];
+map <int, int> nxt;
+
+bool valid(int x, int y, int dir)
+{
+	if (x < 0 or y < 0) return false;
+	int& ret = f[x][y][dir];
+	if (~ret) return ret;
+	if (x >= rows or y >= cols) return ret = false;
+	int wer = maze[x][y];
+	if (wer != '.' && wer != 'S' and wer != 'G') return ret = false;
+	if (wer == 'S') return ret = true;
+	ret = true;
+	for (int i = 0; i < rows and ret; i++)
+	{
+		int crow = i;
+		int ccol = y;
+		if (crow == x and ccol == y) continue;
+		int cdir = maze[crow][ccol];
+		if (cdir == '.') continue;
+		if (cdir == '#') continue;
+		if (cdir == 'S') continue;
+		if (cdir == 'G') continue;
+		for (int ii = 0; ii < dir; ii++) cdir = nxt[cdir];
+		if (crow > x and cdir == '^') ret = false;
+		if (crow < x and cdir == 'v') ret = false;
+	}
+	for (int i = 0; i < cols and ret; i++)
+	{
+		int crow = x;
+		int ccol = i;
+		if (crow == x and ccol == y) continue;
+		int cdir = maze[crow][ccol];
+		if (cdir == '.') continue;
+		if (cdir == '#') continue;
+		if (cdir == 'S') continue;
+		if (cdir == 'G') continue;
+		for (int ii = 0; ii < dir; ii++) cdir = nxt[cdir];
+		if (ccol > y and cdir == '<') ret = false;
+		if (ccol < y and cdir == '>') ret = false;
+	}
+	return ret;
+}
+
+void create()
+{
+	int end = N * N * N;
+	for (int i = 0; i < rows; i++)
+		for (int j = 0; j < cols; j++)
+		{
+			if (maze[i][j] == '#') continue;
+			if (maze[i][j] == '<') continue;
+			if (maze[i][j] == '>') continue;
+			if (maze[i][j] == '^') continue;
+			if (maze[i][j] == 'v') continue;
+			for (int cdir = 0; cdir < 4; cdir++)
+			{
+				if (!valid(i, j, cdir)) continue;;
+				int ndir = (cdir + 1) % 4;
+				for (int k = 0; k < 4; k++)
+				{
+					int ni = i + dx[k];
+					int nj = j + dy[k];
+					if (valid(ni, nj, ndir))
+						adj[ha(i, j, cdir)].push_back(ha(ni, nj, ndir));
+				}
+			}
+			if (maze[i][j] == 'G')
+				for (int cdir = 0; cdir < 4; cdir++)
+					adj[ha(i, j, cdir)].push_back(end);
+		}
+}
+
+set < pair <int, int> > qq;
+int dist[N * N * N + 23];
+
+int go()
+{
+	create();
+	int start, end = N * N * N;
+	for (int i = 0; i < rows; i++)
+		for (int j = 0; j < cols; j++)
+			if (maze[i][j] == 'S')
+				start = ha(i, j, 0);;;;
+	dist[start] = 0;;
+	qq.insert(make_pair(0, start));;
+	while (!qq.empty())
+	{
+		int cur = qq.begin() -> second;
+		qq.erase(qq.begin());;
+		for (int nxt : adj[cur])
+			if (dist[nxt] > dist[cur] + 1)
+			{
+				qq.erase(make_pair(dist[nxt], nxt));
+				dist[nxt] = dist[cur] + 1;
+				qq.insert(make_pair(dist[nxt], nxt));
+			}
+	}
+	return dist[end];
+}
+
+#undef int
+int main()
+{
+#define int long long
+	int t; cin >> t;
+	for (int tt = 1; tt <= t; tt++)
+	{
+		cout << "Case #" <<  tt << ": ";
+		cin >> rows >> cols;
+		for (int i = 0; i < rows; i++) cin >> maze[i];
+		memset(f, -1, sizeof(f));
+		nxt[nxt[nxt[nxt['<'] = '^'] = '>'] = 'v'] = '<';
+		for (int i = 0; i < N * N * N + 23; i++) adj[i].clear();
+		for (int i = 0; i < N * N * N + 23; i++) dist[i] = 1ll << 60;
+		int ans = go();
+		if (ans > (1ll << 59)) puts("impossible");
+		else cout << ans - 1 << endl;
+	}
+	return 0;
+}

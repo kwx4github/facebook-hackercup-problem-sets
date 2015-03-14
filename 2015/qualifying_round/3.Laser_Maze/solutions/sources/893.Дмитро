@@ -1,0 +1,178 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <queue>
+#include <vector>
+
+using namespace std;
+
+int T, N, M;
+char data[100][100];
+long long mask[100][100][4];
+string line;
+
+int source_i, source_j, target_i, target_j;
+
+const int neighbour_x[4] = {  0,  1,  0, -1 };
+const int neighbour_y[4] = {  1,  0, -1,  0 };
+
+void solve_bfs();
+
+char tSym[] =   { '>', 'v', '<', '^' };
+
+vector<pair<int,pair<int,int>>> laser_pos;
+
+ifstream in("laser_maze_example_input.txt");
+ofstream out("result.txt");
+
+int laser_dir(char laser) {
+	switch (laser)
+	{
+	case '>':
+		return 0;
+	case 'v':
+		return 1;
+	case '<':
+		return 2;
+	case '^':
+		return 3;
+	default:
+		return -1;
+	}
+}
+
+int main() {
+
+	in >> T;
+
+	for (int t = 1; t <= T; ++t) {
+		in >> M >> N;
+
+		for (int i = 0; i < M; ++i) {
+			for (int j = 0; j < N; ++j) {
+				for (int k = 0; k < 4; ++k) {
+					mask[i][j][k] = -1;
+				}
+			}
+		}
+
+        laser_pos.clear();
+		for (int i = 0; i < M; ++i) {
+			in >> line;
+			for (int j = 0; j < N; ++j) {
+				data[i][j] = line[j];
+				if (data[i][j] == 'S') {
+					source_i = i; source_j = j;
+				} else if (data[i][j] == 'G') {
+					target_i = i; target_j = j;
+				} else if (data[i][j] == '>' || data[i][j] == 'v' || data[i][j] == '<' || data[i][j] == '^') {
+					laser_pos.push_back(make_pair(laser_dir(data[i][j]), make_pair(i, j)));
+				}
+			}
+		}
+
+		solve_bfs();
+
+		long long result = LONG_MAX;
+		for (int k = 0; k < 4; ++k) {
+			long long value = mask[target_i][target_j][k];
+			if (value < result && value > 0) {
+				result = value;
+			}
+		}
+
+		out << "Case #" << t << ": ";
+		if (result != LONG_MAX) {
+			out << result << endl;
+		} else {
+			out << "impossible" << endl;
+		}
+
+	}
+
+	return 0;
+}
+
+bool notWall(char ch) {
+    return (ch == '.' || ch == 'S' || ch == 'G');
+}
+
+bool isSafePosition(int i, int j, int step) {
+    
+    for (int k = 0; k < laser_pos.size(); ++k) {
+        int l_i = laser_pos[k].second.first, l_j = laser_pos[k].second.second, l_t = (laser_pos[k].first + step % 4) % 4;
+        switch (l_t) {
+            case 0:
+                l_j++;
+                while (l_j < N && notWall(data[l_i][l_j])) {
+                    if (i == l_i && j == l_j)
+                        return false;
+                    l_j++;
+                }
+                break;
+            case 1:
+                l_i++;
+                while (l_i < M && notWall(data[l_i][l_j])) {
+                    if (i == l_i && j == l_j)
+                        return false;
+                    l_i++;
+                }
+                break;
+            case 2:
+                l_j--;
+                while (l_j >= 0 && notWall(data[l_i][l_j])) {
+                    if (i == l_i && j == l_j)
+                        return false;
+                    l_j--;
+                }
+                break;
+            case 3:
+                l_i--;
+                while (l_i >= 0 && notWall(data[l_i][l_j])) {
+                    if (i == l_i && j == l_j)
+                        return false;
+                    l_i--;
+                }
+                break;
+        }
+        
+    }
+    
+    return true;
+    
+}
+
+void solve_bfs() {
+
+
+	queue<pair<int,pair<int,int>>> q;
+	q.push(make_pair(0, make_pair(source_i, source_j)));
+
+	while (!q.empty()) {
+
+		pair<int, pair<int,int>> m = q.front(); q.pop();
+		
+		int ii = m.second.first, jj = m.second.second, step = m.first;
+		mask[ii][jj][step % 4] = step;
+
+		// Check if target
+		if (ii == target_i && jj == target_j) {
+			return;
+		}
+
+		for (int k = 0; k < 4; ++k) {
+			int _ii = ii + neighbour_y[k], _jj = jj + neighbour_x[k];
+			if (_ii >= 0 && _jj >= 0 && _ii < M && _jj < N && mask[_ii][_jj][(step + 1) % 4] == -1 && 
+				(data[_ii][_jj] == '.' || data[_ii][_jj] == 'S' || data[_ii][_jj] == 'G')) {
+				
+                if (isSafePosition(_ii, _jj, step + 1)) {
+                    q.push(make_pair(step + 1, make_pair(_ii, _jj)));
+                    mask[_ii][_jj][(step + 1) % 4] = step;
+                }
+			}
+		}
+
+	}
+
+
+}

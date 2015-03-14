@@ -1,0 +1,165 @@
+#include <iostream>
+#include <tuple>
+#include <map>
+#include <set>
+#include <vector>
+#include <cstring>
+#include <queue>
+
+using namespace std;
+
+int M, N;
+vector<string> maze;
+
+int is_hit[100][100][4];
+
+struct State {
+  int x, y, laser, cost;
+  bool operator<(const State& other) const {
+    if (x != other.x) {
+      return x < other.x;
+    }
+
+    if (y != other.y) {
+      return y < other.y;
+    }
+
+    return laser < other.laser;
+  }
+
+  bool is_valid() {
+    if (!(0 <= x && x < M && 0 <= y && y < N)) {
+      return false;
+    }
+
+    char m = maze[x][y];
+    return m == '.' || m == 'S' || m == 'G';
+  }
+
+  bool is_safe() {
+    return !is_hit[x][y][laser];
+  }
+
+  vector<State> get_next_states(const set<State>& visited) const {
+    int dx[] = {1, 0, -1, 0};
+    int dy[] = {0, 1, 0, -1};
+
+    vector<State> next_states;
+    for (int i = 0; i < 4; ++i) {
+      State next = {x + dx[i], y + dy[i], (laser + 1) % 4, cost + 1};
+      if (next.is_valid() && visited.find(next) == visited.end() && next.is_safe()) {
+        next_states.push_back(next);
+      }
+    }
+
+    return next_states;
+  }
+};
+
+pair<int, int> start, goal;
+
+void process(int i, int j, int dx, int dy, int state) {
+  i += dx; j += dy;
+  while (0 <= i && i < M && 0 <= j && j < N &&
+    (maze[i][j] == '.' || maze[i][j] == 'S' || maze[i][j] == 'G')) {
+      is_hit[i][j][state] = 1;
+      i += dx; j += dy;
+  }
+}
+
+void parseMaze() {
+  memset(is_hit, 0, sizeof(is_hit));
+
+  for (int i = 0; i < M; ++i) {
+    for (int j = 0; j < N; ++j) {
+      switch(maze[i][j]) {
+        case 'S':
+          start = {i, j};
+          break;
+
+        case 'G':
+          goal = {i, j};
+          break;
+
+        case '.':
+        case '#':
+          break;
+
+        case '<':
+          process(i, j,  0, -1, 0);
+          process(i, j, -1,  0, 1);
+          process(i, j,  0,  1, 2);
+          process(i, j,  1,  0, 3);
+          break;
+
+        case '^':
+          process(i, j,  0, -1, 3);
+          process(i, j, -1,  0, 0);
+          process(i, j,  0,  1, 1);
+          process(i, j,  1,  0, 2);
+          break;
+
+        case '>':
+          process(i, j,  0, -1, 2);
+          process(i, j, -1,  0, 3);
+          process(i, j,  0,  1, 0);
+          process(i, j,  1,  0, 1);
+          break;
+
+        case 'v':
+          process(i, j,  0, -1, 1);
+          process(i, j, -1,  0, 2);
+          process(i, j,  0,  1, 3);
+          process(i, j,  1,  0, 0);
+          break;
+      }
+    }
+  }
+}
+
+int testcase() {
+  maze.clear();
+  cin >> M >> N;
+  maze = vector<string>(M);
+  for (int i = 0; i < M; ++i) {
+    cin >> maze[i];
+  }
+
+  parseMaze();
+  set<State> visited;
+  State startState = {start.first, start.second, 0, 0};
+  visited.insert(startState);
+  queue<State> q;
+  q.push(startState);
+  while (!q.empty()) {
+    State front = q.front(); q.pop();
+    if (make_pair(front.x, front.y) == goal) {
+      return front.cost;
+    }
+
+    for (auto next: front.get_next_states(visited)) {
+      visited.insert(next);
+      q.push(next);
+    }
+  }
+
+  return -1;
+}
+
+int main() {
+  int T;
+  cin >> T;
+  for (int t = 0; t < T; ++t) {
+    int res = testcase();
+    cout << "Case #" << t+1 << ": ";
+    if (res == -1) {
+      cout << "impossible";
+    } else {
+      cout << res;
+    }
+
+    cout << endl;
+  }
+
+  return 0;
+}

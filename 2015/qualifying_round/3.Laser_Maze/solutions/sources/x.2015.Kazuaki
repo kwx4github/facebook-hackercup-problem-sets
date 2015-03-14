@@ -1,0 +1,165 @@
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <vector>
+#include <string>
+#include <set>
+#include <unordered_set>
+#include <map>
+#include <unordered_map>
+#include <stack>
+#include <queue>
+#include <deque>
+#include <algorithm>
+#include <functional>
+#include <iterator>
+#include <limits>
+#include <numeric>
+#include <utility>
+#include <cmath>
+#include <cassert>
+
+using namespace std; using namespace placeholders;
+
+using LL = long long;
+using ULL = unsigned long long;
+using VI = vector< int >;
+using VVI = vector< VI >;
+using VS = vector< string >;
+using SS = stringstream;
+using PII = pair< int, int >;
+using VPII = vector< PII >;
+template < typename T = int > using VT = vector<T>;
+template < typename T = int > using VVT = VT< VT<T> >;
+template < typename T = int > using LIM = numeric_limits< T >;
+
+template < typename T > inline istream& operator>>( istream &s, vector< T > &v ){ for ( T &t : v ) { s >> t; } return s; }
+template < typename T > inline ostream& operator<<( ostream &s, const vector< T > &v ){ for ( int i=0; i<v.size(); ++i ){ s << (" "+!i) << v[i]; } return s; }
+template < typename T > inline T fromString( const string &s ) { T res; istringstream iss( s ); iss >> res; return res; };
+template < typename T > inline string toString( const T &a ) { ostringstream oss; oss << a; return oss.str(); };
+
+#define REP( i, m, n ) for ( int i = ( int )( m ); i < ( int )( n ); ++i )
+#define FOR( e, c ) for ( auto &e : c )
+#define ALL( c ) ( c ).begin(), ( c ).end()
+#define AALL( a, t ) ( t* )a, ( t* )a + sizeof( a ) / sizeof( t )
+#define DRANGE( c, p ) ( c ).begin(), ( c ).begin() + p, ( c ).end()
+
+#define SZ( v ) ( (int)( v ).size() )
+#define PB push_back
+#define EM emplace
+#define EB emplace_back
+#define BI back_inserter
+
+#define EXIST( c, e ) ( ( c ).find( e ) != ( c ).end() )
+
+#define MP make_pair
+#define fst first
+#define snd second
+
+#define DUMP( x ) cerr << #x << " = " << ( x ) << endl
+
+constexpr int INF = LIM<>::max() / 2;
+
+constexpr int dy[] = { -1, 0, 1, 0 };
+constexpr int dx[] = { 0, 1, 0, -1 };
+
+string solve()
+{
+	int H, W;
+	cin >> H >> W;
+
+	auto inside = [ H, W ]( const int y, const int x ){ return 0 <= y && y < H && 0 <= x && x < W; };
+
+	VS board( H );
+	cin >> board;
+
+	int sy, sx, gy, gx;
+
+	VVI danger_turn( H, VI( W ) );
+	REP( y, 0, H )
+	{
+		REP( x, 0, W )
+		{
+			if ( board[y][x] == 'S' )
+			{
+				sy = y;
+				sx = x;
+				board[y][x] = '.';
+				continue;
+			}
+			if ( board[y][x] == 'G' )
+			{
+				gy = y;
+				gx = x;
+				board[y][x] = '.';
+				continue;
+			}
+			if ( board[y][x] == '.' || board[y][x] == '#' )
+			{
+				continue;
+			}
+
+			int d = string( "^>v<" ).find( board[y][x] );
+			REP( turn, 0, 4 )
+			{
+				for ( int cy = y, cx = x; inside( cy, cx ); cy += dy[d], cx += dx[d] )
+				{
+					danger_turn[ cy ][ cx ] |= 1 << turn;
+				}
+
+				d = ( d + 1 ) % 4;
+			}
+		}
+	}
+
+	VT< VVI > distances( H, VVI( W, VI( 4, INF ) ) );
+	distances[ sy ][ sx ][ 0 ] = 0;
+
+	queue< tuple< int, int, int > > que;
+	que.EM( sy, sx, 0 );
+
+	while ( !que.empty() )
+	{
+		const int cy = get< 0 >( que.front() );
+		const int cx = get< 1 >( que.front() );
+		const int ct = get< 2 >( que.front() );
+		que.pop();
+
+		REP( d, 0, 4 )
+		{
+			const int ny = cy + dy[d];
+			const int nx = cx + dx[d];
+			const int nt = ( ct + 1 ) % 4;
+
+			if ( !inside( ny, nx ) || board[ ny ][ nx ] != '.' || ( danger_turn[ ny ][ nx ] & 1 << nt ) )
+			{
+				continue;
+			}
+
+			if ( distances[ cy ][ cx ][ ct ] + 1 < distances[ ny ][ nx ][ nt ] )
+			{
+				distances[ ny ][ nx ][ nt ] = distances[ cy ][ cx ][ ct ] + 1;
+				que.EM( ny, nx, nt );
+			}
+		}
+	}
+
+	const int res = *min_element( ALL( distances[ gy ][ gx ] ) );
+	return res == INF ? "impossible" : toString( res );
+}
+
+int main()
+{
+	cin.tie( 0 );
+	ios::sync_with_stdio( false );
+
+	int T;
+	cin >> T;
+
+	REP( i, 0, T )
+	{
+		cout << "Case #" << i + 1 << ": " << solve() << endl;
+	}
+
+	return 0;
+}

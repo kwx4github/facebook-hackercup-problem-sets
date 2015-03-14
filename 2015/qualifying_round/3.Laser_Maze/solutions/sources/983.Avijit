@@ -1,0 +1,150 @@
+#include <bits/stdc++.h>
+
+#define FOR(i, a, b) for (i = (a); i <= (b); i++)
+#define REP(i, a) for (i = 0; i < (a); i++)
+#define ALL(v) (v).begin(), (v).end()
+#define SET(a, x) memset((a), (x), sizeof(a))
+#define SZ(a) ((int)(a).size())
+#define CL(a) ((a).clear())
+#define SORT(x) sort(ALL(x))
+#define mp make_pair
+#define pb push_back
+
+#define filer() freopen("in.txt","r",stdin)
+#define filew() freopen("out.txt","w",stdout)
+
+using namespace std;
+
+typedef long long ll;
+typedef unsigned long long llu;
+
+char g[4][101][102];
+char ok[4][101][102];
+int d[4][101][102];
+int R, C;
+char nxt[256];
+char bad[256];
+char dirInd[256];
+
+int dirx[] = {0, 1, 0, -1};
+int diry[] = {1, 0, -1, 0};
+
+void populateGrids(){
+    for ( int k = 1 ; k < 4 ; k++ ){
+        for ( int i = 0 ; i < R ; i++ ){
+            for ( int j = 0 ; j <= C ; j++ )
+                g[k][i][j] = nxt[g[k-1][i][j]];
+//            puts(g[k][i]);
+        }
+//        puts("");
+    }
+
+    for ( int k = 0 ; k < 4 ; k++ ){
+        for ( int i = 0 ; i < R ; i++ )
+            for ( int j = 0 ; j < C ; j++ )
+                ok[k][i][j] = !bad[g[k][i][j]];
+                
+        for ( int i = 0 ; i < R ; i++ )
+            for ( int j = 0 ; j < C ; j++ ){
+                if ( dirInd[g[k][i][j]] != -1 ){
+                    int ind = dirInd[g[k][i][j]];
+                    for ( int l = 1 ;  ; l++ ){
+                        int x = i + l * dirx[ind];
+                        int y = j + l * diry[ind];
+                        if ( x < 0 || x >= R || y < 0 || y >= C ) break;
+                        if ( bad[g[k][x][y]] ) break;
+                        ok[k][x][y] = 0;
+                    }
+                }
+            }
+
+        //for ( int i = 0 ; i < R ; i++ ){
+//            for ( int j = 0 ; j < C ; j++ ) printf("%d", ok[k][i][j]);
+//            puts("");
+//        }
+//        puts("");
+    }
+}
+
+struct P{
+    int p, x, y;
+    
+    P(int _p, int _x, int _y) : p(_p), x(_x), y(_y){}
+    void print(){
+        cout << p << " " << x << " " << y << endl;
+    }
+};
+
+char isSafe(P pos){
+    if ( pos.x < 0 || pos.x >= R || pos.y < 0 || pos.y >= C ) return false;
+    return ok[pos.p][pos.x][pos.y];
+}
+
+int bfs(){
+    queue<P> q;
+    
+    memset(d, 0, sizeof(d));
+    
+    for ( int i = 0 ; i < R ; i++ ){
+        for ( int j = 0 ; j < C ; j++ ){
+            if ( g[0][i][j] == 'S' ){
+                q.push(P(0, i, j));
+                break;
+            }
+        }
+    }
+    
+    while ( q.empty() == false ){
+        P u = q.front();
+        //u.print();
+        q.pop();
+        
+        for ( int ind = 0 ; ind < 4 ; ind++ ){
+            int x = u.x + dirx[ind];
+            int y = u.y + diry[ind];
+            int p = (d[u.p][u.x][u.y] + 1)&3;
+            
+            P v(p, x, y);
+            if ( isSafe(v)){
+                if(d[v.p][v.x][v.y]) continue;
+                d[v.p][v.x][v.y] = d[u.p][u.x][u.y] + 1;
+                q.push(v);
+            }
+        }
+    }
+    
+    int mn = INT_MAX;
+    for ( int k = 0 ; k < 4 ; k++ )
+        for ( int i = 0 ; i < R ; i++ )
+            for ( int j = 0 ; j < C ; j++ )
+                if ( d[k][i][j] && g[0][i][j] == 'G' ) mn = min(d[k][i][j], mn);
+
+    return mn != INT_MAX? mn : 0;
+}
+
+int main(){
+    int test;
+    
+    for ( int i = 0 ; i < 256 ; i++ ) nxt[i] = i, bad[i] = 0, dirInd[i] = -1;
+    bad['#'] = bad['>'] = bad['<'] = bad['^'] = bad['v'] = 1;
+    dirInd['>'] = 0, dirInd['v'] = 1, dirInd['<'] = 2, dirInd['^'] = 3;
+    nxt['>'] = 'v', nxt['v'] = '<', nxt['<'] = '^', nxt['^'] = '>';
+    
+    freopen("laser_maze.txt", "r", stdin);
+    freopen("out.txt", "w", stdout);
+    
+    cin >> test;
+    for ( int ks = 1 ; ks <= test ; ks++ ){
+        cin >> R >> C;
+        for ( int i = 0 ; i < R ; i++ ) cin >> g[0][i];
+        
+        populateGrids();
+        int res = bfs();
+        cout << "Case #" << ks << ": ";
+        if ( res ) cout << res;
+        else cout << "impossible";
+        cout << endl;
+    }
+
+    return 0;
+}

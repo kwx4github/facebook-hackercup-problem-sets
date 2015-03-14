@@ -1,0 +1,215 @@
+// I am back !
+
+#include <bits/stdc++.h>
+#define MAXN 11111
+#define MAXM 102
+typedef long long ll;
+using namespace std;
+int tt,M,N,sx,sy,gx,gy;
+string st[MAXM];
+static string tpos = "<^>v#";
+int tsz;
+struct node
+{
+    ll x,y;
+    ll pos; // 0 left,1 up,2 right,3 down
+} tower[MAXN];
+void change_tower()
+{
+    // rotate all the towers !!
+    for(int i=0;i<tsz;i++)
+    {
+        tower[i].pos = tower[i].pos+1;
+        tower[i].pos = tower[i].pos & 3;
+    }
+}
+ll mp[MAXM][MAXM][4];
+void pre()
+{
+    for(int i=0;i<tsz;i++)
+    {
+        ll xx = tower[i].x;
+        ll yy = tower[i].y;
+        ll j,num;
+        // for left
+        j = yy-1;
+        for(;j>=0;j--)
+        {
+            for(num=0;num<5;num++)
+                if(st[xx][j]==tpos[num])break;
+            if(num!=5)break;
+        }
+        mp[xx][yy][0] = j;
+        // for right
+        j = yy+1;
+        for(;j<N;j++)
+        {
+            for(num=0;num<5;num++)
+                if(st[xx][j]==tpos[num])break;
+            if(num!=5)break;
+        }
+        mp[xx][yy][2] = j;
+        // for up
+        j = xx-1;
+        for(;j>=0;j--)
+        {
+            for(num=0;num<5;num++)
+                if(st[j][yy]==tpos[num])break;
+            if(num!=5)break;
+        }
+        mp[xx][yy][1] = j;
+        // for down
+        j = xx+1;
+        for(;j<M;j++)
+        {
+            for(num=0;num<5;num++)
+                if(st[j][yy]==tpos[num])break;
+            if(num!=5)break;
+        }
+        mp[xx][yy][3] = j;
+    }
+}
+bool isNext(int x,int y) // checks whether its next move is Valid or not
+{
+    if(x<0 || x>=M)return 0;
+    if(y<0 || y>=N)return 0;
+    for(int i=0;i<5;i++)if(st[x][y]==tpos[i])return 0;
+    int flag = 1;
+    int xx,yy,pos,temp;
+    for(int i=0;i<tsz;i++)
+    {
+        //tower[i].pos
+        xx = tower[i].x;
+        yy = tower[i].y;
+        pos = tower[i].pos;
+        //cout<<xx<<" "<<y<<" "<<pos<<" "<<mp[xx][yy][pos]<<endl;
+        if((x!=xx)&&(y!=yy))continue;
+        if(xx==x)
+        {
+            if(pos&1)continue;
+            temp = (pos==0?((y<yy)&&(y>mp[xx][yy][pos])):((y>yy)&&(y<mp[xx][yy][pos])));
+            if(temp) return 0;
+        }
+        if(yy==y)
+        {
+            if(!(pos&1))continue;
+            temp = (pos==1?((x<xx)&&(x>mp[xx][yy][pos])):((x>xx)&&(x<mp[xx][yy][pos])));
+            if(temp)return 0;
+        }
+    }
+    //cout<<"Inside isNext:- "<<x<<" "<<y<<endl;
+    return 1;
+}
+int visited[101][101][4];
+struct xnode
+{
+    ll x,y;
+    ll dist;
+};
+ll ans;
+ll BFS()
+{
+    ll xx,yy,dist,curr,flag = 0;
+    queue<xnode> q;
+    xnode temp,xNode;
+    temp.x = sx;
+    temp.y = sy;
+    temp.dist = 0;
+    q.push(temp);
+    while(!q.empty())
+    {
+        int sz = q.size();
+        change_tower();
+        for(int i=0;i<sz;i++)
+        {
+            xNode = q.front();
+            q.pop();
+            xx = xNode.x;yy = xNode.y;dist = xNode.dist&3;curr = xNode.dist;
+            //cout<<xx<<" "<<yy<<" "<<curr<<endl;
+            if(visited[xx][yy][dist])continue;
+            visited[xx][yy][dist] = 1;
+            if(xx==gx && yy==gy)
+            {
+                flag = 1;
+                ans = curr;
+                break;
+            }
+            // push all the child // Now i m going to mess ;)
+            if(isNext(xx,yy-1))temp.x = xx,temp.y=yy-1,temp.dist=curr+1,q.push(temp);
+            if(isNext(xx-1,yy))temp.x = xx-1,temp.y=yy,temp.dist=curr+1,q.push(temp);
+            if(isNext(xx,yy+1))temp.x = xx,temp.y=yy+1,temp.dist=curr+1,q.push(temp);
+            if(isNext(xx+1,yy))temp.x = xx+1,temp.y=yy,temp.dist=curr+1,q.push(temp);
+            if(q.empty())
+            {
+                flag = 0;
+                break;
+            }
+        }
+        if(flag) break;
+    }
+    return flag;
+}
+void solve()
+{
+    cin>>M>>N;
+    memset(mp,0,sizeof(mp));
+    memset(visited,0,sizeof(visited));
+    memset(tower,0,sizeof(tower));
+    ans = 0;
+    for(int i=0;i<M;i++)cin>>st[i];
+    tsz = 0;
+    for(int i=0;i<M;i++)
+    {
+        for(int j=0;j<N;j++)
+        {
+            int k = 0;
+            for(;k<4;k++)if(st[i][j]==tpos[k])break;
+            if(k!=4)
+            {
+                tower[tsz].x = i;
+                tower[tsz].y = j;
+                tower[tsz].pos = k;
+                tsz++;
+            }
+            else
+            {
+                if(st[i][j]=='S')sx=i,sy=j;
+                if(st[i][j]=='G')gx=i,gy=j;
+            }
+        }
+    }
+    pre();
+    /*
+    for(int i=0;i<tsz;i++)
+    cout<<tower[i].x<<" "<<tower[i].y<<" "<<tower[i].pos<<" "<<endl;
+    cout<<"Yashpal"<<endl;
+    cout<<sx<<" "<<sy<<endl;
+    cout<<gx<<" "<<gy<<endl;
+    */
+    /*
+    for(int i=0;i<tsz;i++)
+    {
+        cout<<mp[tower[i].x][tower[i].y][0]<<" ";
+        cout<<mp[tower[i].x][tower[i].y][1]<<" ";
+        cout<<mp[tower[i].x][tower[i].y][2]<<" ";
+        cout<<mp[tower[i].x][tower[i].y][3]<<endl;
+    }
+    */
+    //cout<<isNext(1,2)<<endl;
+    int flag = BFS();
+    if(flag) cout<<"Case #"<<tt<<": "<<ans<<endl;
+    else cout<<"Case #"<<tt<<": impossible"<<endl;
+
+}
+int main()
+{
+    int t;
+    //freopen("laser_maze.txt","r",stdin);
+    //freopen("laser_maze_output.txt","w",stdout);
+    cin>>t;
+    for(tt=1;tt<=t;tt++)
+    {
+        solve();
+    }
+}
+

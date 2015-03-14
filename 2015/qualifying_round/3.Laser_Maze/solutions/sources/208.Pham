@@ -1,0 +1,483 @@
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.PriorityQueue;
+import java.util.Stack;
+import java.util.StringTokenizer;
+import java.util.TreeMap;
+import java.util.TreeSet;
+
+/**
+ * 4 4
+ * 1 5 3 4
+ * 1 2
+ * 1 3
+ * 2 3
+ * 3 3
+ *
+ *
+ * @author pttrung
+ */
+public class A {
+
+    public static long Mod = (long) (1e9) + 7;
+    static long[] dp;
+    static int[] X = {0, -1, 0, 1};
+    static int[] Y = {-1, 0, 1, 0};
+
+    public static void main(String[] args) throws FileNotFoundException {
+        //PrintWriter out = new PrintWriter(System.out);
+        PrintWriter out = new PrintWriter(new FileOutputStream(new File("output.txt")));
+        Scanner in = new Scanner();
+        int t = in.nextInt();
+
+        String l = "<^>v";
+        for (int z = 0; z < t; z++) {
+            int m = in.nextInt();
+            int n = in.nextInt();
+            String[] map = new String[m];
+            Entry s = null, e = null;
+            ArrayList<Entry> laser = new ArrayList();
+
+            for (int i = 0; i < m; i++) {
+                map[i] = in.next();
+                for (int j = 0; j < n; j++) {
+                    int d = l.indexOf(map[i].charAt(j));
+                    if (d >= 0) {
+                        laser.add(new Entry(i, j, d, 0, 0));
+                    } else if (map[i].charAt(j) == 'S') {
+                        s = new Entry(i, j, 0, 0, 0);
+                    } else if (map[i].charAt(j) == 'G') {
+                        e = new Entry(i, j, 0, 0, 0);
+                    }
+                }
+            }
+            int[][][] dis = new int[m][n][4];
+            for (int[][] a : dis) {
+                for (int[] b : a) {
+                    Arrays.fill(b, Integer.MAX_VALUE);
+                }
+            }
+            if (s != null && e != null) {
+                dis[s.x][s.y][0] = 0;
+                PriorityQueue<Entry> q = new PriorityQueue();
+                q.add(new Entry(s.x, s.y, 0, 0, 0));
+                while (!q.isEmpty()) {
+                    Entry p = q.poll();
+                    if (dis[p.x][p.y][p.t] == p.time) {
+                        for (int i = 0; i < 4; i++) {
+                            int x = p.x + X[i];
+                            int y = p.y + Y[i];
+                            int ti = (p.t + 1) % 4;
+
+                            if (x >= 0 && y >= 0 && x < m && y < n && (map[x].charAt(y) == '.' || map[x].charAt(y) == 'G' || map[x].charAt(y) == 'S') && 1 + p.time < dis[x][y][ti]) {
+                                if (isValid(map, laser, x, y, ti, m, n)) {
+                                    
+                                    dis[x][y][ti] = 1 + p.time;
+                                    q.add(new Entry(x, y, ti, 0, dis[x][y][ti]));
+                                }
+                            }
+                        }
+                    }
+                }
+                int re = Integer.MAX_VALUE;
+                for (int i = 0; i < 4; i++) {
+                    re = Math.min(re, dis[e.x][e.y][i]);
+                }
+                if (re == Integer.MAX_VALUE) {
+                    out.println("Case #" + (z + 1) + ": impossible");
+                } else {
+                    out.println("Case #" + (z + 1) + ": " + re);
+                }
+            }
+
+        }
+        out.close();
+    }
+
+    static boolean isValid(String[] map, ArrayList<Entry> laser, int x, int y, int t, int m, int n) {
+        for (Entry e : laser) {
+            int cur = (e.t + t) % 4;
+
+            int curX = e.x;
+            int curY = e.y;
+            for (int i = 0; i < Math.max(m, n); i++) {
+                curX += X[cur];
+                curY += Y[cur];
+                
+                if (curX < 0 || curX >= m || curY < 0 || curY >= n || (map[curX].charAt(curY) != '.' && map[curX].charAt(curY) != 'G' && map[curX].charAt(curY) != 'S')) {
+                    break;
+                } else if (curX == x && curY == y) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    static class Entry implements Comparable<Entry> {
+
+        int x, y, t, d, time;
+
+        public Entry(int x, int y, int t, int d, int time) {
+            this.x = x;
+            this.y = y;
+            this.t = t;
+            this.d = d;
+            this.time = time;
+        }
+
+        @Override
+        public String toString() {
+            return "Entry{" + "x=" + x + ", y=" + y + ", t=" + t + ", d=" + d + ", time=" + time + '}';
+        }
+
+        @Override
+        public int compareTo(Entry o) {
+            return time - o.time;
+        }
+    }
+
+    static int[] KMP(String v) {
+        int i = 0, j = -1;
+
+        int[] result = new int[v.length() + 1];
+        result[0] = -1;
+        while (i < v.length()) {
+            while (j >= 0 && v.charAt(i) != v.charAt(j)) {
+                j = result[j];
+            }
+            i++;
+            j++;
+            result[i] = j;
+        }
+        return result;
+    }
+
+    static int find(int index, int[] u) {
+        if (index != u[index]) {
+            return u[index] = find(u[index], u);
+        }
+        return index;
+    }
+
+    public static long pow(int a, int b, long mod) {
+        if (b == 0) {
+            return 1;
+        }
+        if (b == 1) {
+            return a;
+        }
+        long v = pow(a, b / 2, mod);
+        if (b % 2 == 0) {
+            return (v * v) % mod;
+        } else {
+            return (((v * v) % mod) * a) % mod;
+        }
+    }
+
+    public static int[][] powSquareMatrix(int[][] A, long p) {
+        int[][] unit = new int[A.length][A.length];
+        for (int i = 0; i < unit.length; i++) {
+            unit[i][i] = 1;
+        }
+        if (p == 0) {
+            return unit;
+        }
+        int[][] val = powSquareMatrix(A, p / 2);
+        if (p % 2 == 0) {
+            return mulMatrix(val, val);
+        } else {
+            return mulMatrix(A, mulMatrix(val, val));
+        }
+
+    }
+
+    public static int[][] mulMatrix(int[][] A, int[][] B) {
+        int[][] result = new int[A.length][B[0].length];
+        for (int i = 0; i < result.length; i++) {
+            for (int j = 0; j < result[0].length; j++) {
+                long temp = 0;
+                for (int k = 0; k < A[0].length; k++) {
+
+                    temp += ((long) A[i][k] * B[k][j] % Mod);
+                    temp %= Mod;
+                }
+                temp %= Mod;
+                result[i][j] = (int) temp;
+            }
+        }
+
+        return result;
+    }
+
+    public static boolean nextPer(int[] data) {
+        int i = data.length - 1;
+        while (i > 0 && data[i] < data[i - 1]) {
+            i--;
+        }
+        if (i == 0) {
+            return false;
+        }
+        int j = data.length - 1;
+        while (data[j] < data[i - 1]) {
+            j--;
+        }
+        int temp = data[i - 1];
+        data[i - 1] = data[j];
+        data[j] = temp;
+        Arrays.sort(data, i, data.length);
+        return true;
+
+
+
+
+    }
+
+    static class FT {
+
+        int[] data;
+
+        FT(int n) {
+            data = new int[n];
+        }
+
+        void update(int index, int val) {
+            // System.out.println("UPDATE INDEX " + index);
+            while (index < data.length) {
+                data[index] += val;
+                index += index & (-index);
+
+                //    System.out.println("NEXT " +index);
+            }
+        }
+
+        int get(int index) {
+            //  System.out.println("GET INDEX " + index);
+            int result = 0;
+            while (index > 0) {
+                result += data[index];
+                index -= index & (-index);
+                // System.out.println("BACK " + index);
+            }
+            return result;
+        }
+    }
+
+    static long gcd(long a, long b) {
+        if (b == 0) {
+            return a;
+        } else {
+            return gcd(b, a % b);
+        }
+    }
+
+    static long pow(long a, int b) {
+        if (b == 0) {
+            return 1;
+        }
+        if (b == 1) {
+            return a;
+        }
+        long val = pow(a, b / 2);
+        if (b % 2 == 0) {
+
+            return val * val % Mod;
+        } else {
+            return (val * val % Mod) * a % Mod;
+        }
+    }
+
+//    static Point intersect(Point a, Point b, Point c) {
+//        double D = cross(a, b);
+//        if (D != 0) {
+//            return new Point(cross(c, b) / D, cross(a, c) / D);
+//        }
+//        return null;
+//    }
+//
+//    static Point convert(Point a, double angle) {
+//        double x = a.x * cos(angle) - a.y * sin(angle);
+//        double y = a.x * sin(angle) + a.y * cos(angle);
+//        return new Point(x, y);
+//    }
+    static Point minus(Point a, Point b) {
+        return new Point(a.x - b.x, a.y - b.y);
+    }
+//
+//    static Point add(Point a, Point b) {
+//        return new Point(a.x + b.x, a.y + b.y);
+//    }
+//
+
+    /**
+     * Cross product ab*ac
+     *
+     * @param a
+     * @param b
+     * @param c
+     * @return
+     */
+    static double cross(Point a, Point b, Point c) {
+        Point ab = new Point(b.x - a.x, b.y - a.y);
+        Point ac = new Point(c.x - a.x, c.y - a.y);
+        return cross(ab, ac);
+    }
+
+    static double cross(Point a, Point b) {
+        return a.x * b.y - a.y * b.x;
+    }
+
+    /**
+     * Dot product ab*ac;
+     *
+     * @param a
+     * @param b
+     * @param c
+     * @return
+     */
+    static long dot(Point a, Point b, Point c) {
+        Point ab = new Point(b.x - a.x, b.y - a.y);
+        Point ac = new Point(c.x - a.x, c.y - a.y);
+        return dot(ab, ac);
+    }
+
+    static long dot(Point a, Point b) {
+        long total = a.x * b.x;
+        total += a.y * b.y;
+        return total;
+    }
+
+    static double dist(Point a, Point b) {
+        long total = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+        return Math.sqrt(total);
+    }
+
+    static long norm(Point a) {
+        long result = a.x * a.x;
+        result += a.y * a.y;
+        return result;
+    }
+
+    static double dist(Point a, Point b, Point x, boolean isSegment) {
+        double dist = cross(a, b, x) / dist(a, b);
+        // System.out.println("DIST " + dist);
+
+        if (isSegment) {
+            Point ab = new Point(b.x - a.x, b.y - a.y);
+
+            long dot1 = dot(a, b, x);
+            long norm = norm(ab);
+            double u = (double) dot1 / norm;
+            if (u < 0) {
+                return dist(a, x);
+            }
+
+            if (u > 1) {
+                return dist(b, x);
+            }
+        }
+        return Math.abs(dist);
+
+
+
+
+    }
+
+    static long squareDist(Point a, Point b) {
+        long x = a.x - b.x;
+        long y = a.y - b.y;
+        return x * x + y * y;
+    }
+
+    static class Point {
+
+        int x, y;
+
+        public Point(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "Point{" + "x=" + x + ", y=" + y + '}';
+        }
+    }
+
+    static class Scanner {
+
+        BufferedReader br;
+        StringTokenizer st;
+
+        public Scanner() throws FileNotFoundException {
+            //System.setOut(new PrintStream(new BufferedOutputStream(System.out), true));
+            //br = new BufferedReader(new InputStreamReader(System.in));
+            br = new BufferedReader(new FileReader(new File("input.txt")));
+        }
+
+        public String next() {
+
+
+            while (st == null || !st.hasMoreTokens()) {
+                try {
+                    st = new StringTokenizer(br.readLine());
+                } catch (Exception e) {
+                    throw new RuntimeException();
+                }
+            }
+            return st.nextToken();
+        }
+
+        public long nextLong() {
+            return Long.parseLong(next());
+        }
+
+        public int nextInt() {
+            return Integer.parseInt(next());
+        }
+
+        public double nextDouble() {
+            return Double.parseDouble(next());
+        }
+
+        public String nextLine() {
+            st = null;
+            try {
+                return br.readLine();
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+        }
+
+        public boolean endLine() {
+            try {
+                String next = br.readLine();
+                while (next != null && next.trim().isEmpty()) {
+                    next = br.readLine();
+                }
+                if (next == null) {
+                    return true;
+                }
+                st = new StringTokenizer(next);
+                return st.hasMoreTokens();
+            } catch (Exception e) {
+                throw new RuntimeException();
+            }
+        }
+    }
+}

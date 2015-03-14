@@ -1,0 +1,85 @@
+from heapq import *
+
+INF = 10**20
+moves = ((-1, 0), (1, 0), (0, 1), (0, -1))
+turrets = '<^>v'
+
+def n_turns(orig, dest):
+	a = turrets.index(orig)
+	b = turrets.index(dest)
+
+	return (4 + b - a) % 4
+
+
+for t in xrange(1, input()+1):
+	m, n = map(int, raw_input().split())
+	grid = [raw_input() for _ in xrange(m)]
+
+	kill = set()
+	for i in xrange(m):
+		for j in xrange(n):
+			if grid[i][j] not in 'SG.':
+				continue
+
+			for di in xrange(0, i):
+				if grid[di][j] in turrets:
+					kill.add((i, j, n_turns(grid[di][j], 'v')))
+				elif grid[di][j] not in 'SG.':
+					break
+
+			for di in xrange(i+1, m):
+				if grid[di][j] in turrets:
+					kill.add((i, j, n_turns(grid[di][j], '^')))
+				elif grid[di][j] not in 'SG.':
+					break
+
+			for dj in xrange(0, j):
+				if grid[i][dj] in turrets:
+					kill.add((i, j, n_turns(grid[i][dj], '>')))
+				elif grid[i][dj] not in 'SG.':
+					break
+
+			for dj in xrange(j+1, n):
+				if grid[i][dj] in turrets:
+					kill.add((i, j, n_turns(grid[i][dj], '<')))
+				elif grid[i][dj] not in 'SG.':
+					break
+
+	start_i = (i for i in xrange(m) if 'S' in grid[i]).next()
+	start_j = grid[start_i].index('S')
+
+	d = { (start_i, start_j, 0): 0 }
+	vis = set()
+	res = None
+	q = [(start_i, start_j, 0)]
+
+	while q:
+		q.sort(key = lambda p: d.get(p, INF))
+
+		i, j, turn = q.pop(0)
+		if (i, j, turn) in vis:
+			continue
+
+		vis.add((i, j, turn))
+
+		if grid[i][j] == 'G':
+			res = i, j, turn
+			break
+
+		for di, dj in moves:
+			ni, nj, nturn = i + di, j + dj, (turn + 1) % 4
+
+			if (ni, nj, nturn) in kill or (ni, nj, nturn) in vis:
+				continue
+
+			if ni < 0 or nj < 0 or ni == m or nj == n:
+				continue
+
+			if grid[ni][nj] == '#' or grid[ni][nj] in turrets:
+				continue
+
+			d[(ni, nj, nturn)] = min(d.get((ni, nj, nturn), INF), d[(i, j, turn)] + 1)
+
+			q.append((ni, nj, nturn))
+
+	print 'Case #%d: %s' % (t, str(d.get(res, 'impossible')))

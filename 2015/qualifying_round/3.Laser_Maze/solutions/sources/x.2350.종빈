@@ -1,0 +1,184 @@
+#include <iostream>
+#include <queue>
+#include <cstdio>
+#include <functional>
+using namespace std;
+
+struct point {
+    int dim, first, second;
+};
+typedef pair<int, point> ip;
+typedef priority_queue< ip, vector<ip>, greater<ip> > pqueue;
+const int INF = 999999999;
+
+int T, M, N;
+char board[4][102][102];
+int dist[4][102][102];
+point start, goal;
+
+bool operator<(const point &lhs, const point &rhs) {
+    if (lhs.dim < rhs.dim) { 
+        return true; 
+    }
+    else if (lhs.dim == rhs.dim) {
+        if (lhs.first < rhs.first) {
+            return true;
+        }
+        else if (lhs.first == rhs.first) {
+            if (lhs.second < rhs.second) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void mark_left(point pos) {
+    do {
+        board[pos.dim][pos.first][pos.second] = '#';
+        pos.second--;
+    } while (board[pos.dim][pos.first][pos.second] == '.');
+}
+
+void mark_right(point pos) {
+    do {
+        board[pos.dim][pos.first][pos.second] = '#';
+        pos.second++;
+    } while (board[pos.dim][pos.first][pos.second] == '.');
+}
+
+void mark_up(point pos) {
+    do {
+        board[pos.dim][pos.first][pos.second] = '#';
+        pos.first--;
+    } while (board[pos.dim][pos.first][pos.second] == '.');
+}
+
+void mark_down(point pos) {
+    do {
+        board[pos.dim][pos.first][pos.second] = '#';
+        pos.first++;
+    } while (board[pos.dim][pos.first][pos.second] == '.');
+}
+
+void dijkstra_init() {
+    for (int row = 1; row <= M; row++) {
+        for (int col = 1; col <= N; col++) {
+            for (int i = 0; i < 4; i++) {
+                dist[i][row][col] = INF;
+            }
+            if (board[0][row][col] == 'S') {
+                start = { -1, row, col };
+                for (int i = 0; i < 4; i++) {
+                    board[i][row][col] = '.';
+                }
+            }
+            else if (board[0][row][col] == 'G') {
+                goal = { -1, row, col };
+                for (int i = 0; i < 4; i++) {
+                    board[i][row][col] = '.';
+                }
+            }
+            else if (board[0][row][col] == '^') {
+                mark_up({0, row, col });
+                mark_right({1, row, col });
+                mark_down({2, row, col });
+                mark_left({3, row, col });
+            }
+            else if (board[0][row][col] == '<') {
+                mark_left({0, row, col });
+                mark_up({1, row, col });
+                mark_right({2, row, col });
+                mark_down({3, row, col });
+            }
+            else if (board[0][row][col] == 'v') {
+                mark_down({0, row, col });
+                mark_left({1, row, col });
+                mark_up({2, row, col });
+                mark_right({3, row, col });
+            }
+            else if (board[0][row][col] == '>') {
+                mark_right({0, row, col });
+                mark_down({1, row, col });
+                mark_left({2, row, col });
+                mark_up({3, row, col });
+            }
+        }
+    }
+}
+
+int dijkstra() {
+    dijkstra_init();
+
+    vector<pair<int, int>> delta
+        = { { 1, 0 }, { 0, 1 }, { -1, 0 }, { 0, -1 } };
+
+    pqueue pq;
+    for (auto d : delta) {
+        point next = { 1, start.first + d.first, start.second + d.second };
+        if (board[next.dim][next.first][next.second] != '#') {
+            dist[next.dim][next.first][next.second] = 1;
+            pq.push({ 1, next });
+        }
+    }
+
+    while (!pq.empty()) {
+        auto top = pq.top();
+        pq.pop();
+
+        point here = top.second;
+        if (dist[here.dim][here.first][here.second] < top.first) {
+            continue;
+        }
+        if (here.first == goal.first && here.second == goal.second) {
+            return top.first;
+        }
+
+        for (auto d : delta) {
+            point there = { (here.dim + 1) & 3, here.first + d.first,
+                here.second + d.second };
+            if (board[there.dim][there.first][there.second] != '#'
+                && dist[there.dim][there.first][there.second] > top.first + 1) {
+                dist[there.dim][there.first][there.second] = top.first + 1;
+                pq.push({ top.first + 1, there });
+            }
+        }
+    }
+
+    return -1;
+}
+
+int main() {
+    // freopen("laser_maze.txt", "r", stdin);
+    // freopen("laser_maze_output.txt", "w", stdout);
+
+    cin >> T;
+    for (int t = 1; t <= T; t++) {
+        cin >> M >> N;
+        for (int row = 1; row <= M; row++) {
+            scanf("%s", board[0][row] + 1);
+        }
+        for (int i = 0; i < 4; i++) {
+            for (int row = 1; row <= M; row++) {
+                board[i][row][0] = board[i][row][N + 1] = '#';
+            }
+            for (int col = 0; col <= N + 1; col++) {
+                board[i][0][col] = board[i][M + 1][col] = '#';
+            }
+            for (int row = 1; row <= M; row++) {
+                for (int col = 1; col <= N; col++) {
+                    board[i][row][col] = board[0][row][col];
+                }
+            }
+        }
+
+        int result = dijkstra();
+        // fprintf(stderr, "Case #%d completed\n", t);
+        if (result != -1) {
+            cout << "Case #" << t << ": " << result << endl;
+        }
+        else {
+            cout << "Case #" << t << ": impossible" << endl;
+        }
+    }
+}

@@ -1,0 +1,126 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <map>
+#include <algorithm>
+using namespace std;
+
+map<char, char> nd = {{'.', '.'}, {'#', '#'}, {'^', '>'},
+                      {'>', 'v'}, {'v', '<'}, {'<', '^'}};
+int n, m, si, sj, gi, gj;
+
+bool sp(const vector<string> &cb, int i, int j)
+{
+    return i >= 0 && i < n && j >= 0 && j < m && cb[i][j] == '.';
+}
+
+void fl(vector<string> &cb, int li, int lj, int di, int dj)
+{
+    cb[li][lj] = '#';
+    for (int ci = li + di, cj = lj + dj; sp(cb, ci, cj); ci += di, cj += dj)
+        cb[ci][cj] = '#';
+}
+
+void dol(vector<string> &cb)
+{
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++)
+            switch(cb[i][j]) {
+            case '^': fl(cb, i, j, -1, 0); break;
+            case '>': fl(cb, i, j, 0, 1); break;
+            case 'v': fl(cb, i, j, 1, 0); break;
+            case '<': fl(cb, i, j, 0, -1); break;
+            }
+}
+
+void tryMove(const vector<vector<string>> &b,
+             const vector<vector<vector<int>>> &bfs,
+             queue<pair<pair<int, int>, int>> &q,
+             int i, int j, int d)
+{
+    //cout << "tryMove: " << i << ',' << j << ' ' << d << "  ";
+    if (!sp(b[d % 4], i, j)) {
+        //cout << "invalid move\n";
+        return;
+    }
+    int sn = bfs[d % 4][i][j];
+    if (sn == -1 || sn > d) {
+        q.push({{i, j}, d});
+        //cout << "valid move\n";
+    } else {
+        //cout << "already reached\n";
+    }
+}
+
+void search(const vector<vector<string>> &b)
+{
+    vector<vector<vector<int>>> bfs(4, vector<vector<int>>(n, vector<int>(m, -1)));
+    queue<pair<pair<int, int>, int>> q;
+    q.push({{si, sj}, 0});
+    while (!q.empty()) {
+        int ci = q.front().first.first, cj = q.front().first.second, cd = q.front().second;
+        //cout << "q: " << ci << ',' << cj << ' ' << cd << '\n';
+        q.pop();
+        if (bfs[cd % 4][ci][cj] != -1 && bfs[cd % 4][ci][cj] <= cd)
+            continue;
+        bfs[cd % 4][ci][cj] = cd;
+        tryMove(b, bfs, q, ci - 1, cj, cd + 1);
+        tryMove(b, bfs, q, ci, cj + 1, cd + 1);
+        tryMove(b, bfs, q, ci + 1, cj, cd + 1);
+        tryMove(b, bfs, q, ci, cj - 1, cd + 1);
+    }
+
+    int val = -1;
+    for (int i = 0; i < 4; i++) {
+        int cur = bfs[i][gi][gj];
+        if (cur != -1 && (val == -1 || cur < val))
+            val = cur;
+    }
+    if (val == -1)
+        cout << "impossible";
+    else
+        cout << val;
+}
+
+void tc()
+{
+    cin >> n >> m;
+    vector<vector<string>> b(1);
+    auto& b0 = b[0];
+    b0.resize(n);
+    for (int i = 0; i < n; i++) {
+        cin >> b0[i];
+        int fj;
+        if ((fj = b0[i].find('S')) != -1)
+            si = i, sj = fj, b0[i][fj] = '.';
+        if ((fj = b0[i].find('G')) != -1)
+            gi = i, gj = fj, b0[i][fj] = '.';
+    }
+    for (int i = 1; i < 4; i++) {
+        b.push_back(b.back());
+        for (int j = 0; j < n; j++)
+            transform(b[i - 1][j].begin(), b[i - 1][j].end(), b[i][j].begin(), 
+                      [](char c) {return nd[c];});
+    }
+    for (int i = 0; i < 4; i++)
+        dol(b[i]);
+    //for (auto &cb : b) {
+    //    cout << "--\n";
+    //    for (auto &s : cb)
+    //        cout << s << '\n';
+    //}
+    search(b);
+}
+
+int main()
+{
+    ios::sync_with_stdio(false);
+    int t;
+    cin >> t;
+    for (int i = 1; i <= t; i++) {
+        cout << "Case #" << i << ": ";
+        tc();
+        cout << '\n';
+    }
+}

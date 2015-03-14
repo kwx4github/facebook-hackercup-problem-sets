@@ -1,0 +1,159 @@
+#include <queue>
+#include <stdio.h>
+
+using namespace std;
+
+char maze[1000][1000];
+bool dead[4][1000][1000];
+bool visited[4][1000][1000];
+int m, n;
+int startx, starty;
+int endx, endy;
+
+void clear()
+{
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 1000; j++) {
+			for (int k = 0; k < 1000; k++) {
+				dead[i][j][k] = false;
+				visited[i][j][k] = false;
+			}
+		}
+	}
+
+	for (int i = 0; i < 1000; i++) {
+		for (int j = 0; j < 4; j++) {
+			dead[j][i][0] = true;
+			dead[j][i][n + 1] = true;
+		}
+	}
+
+	for (int i = 0; i < 1000; i++) {
+		for (int j = 0; j < 4; j++) {
+			dead[j][0][i] = true;
+			dead[j][m + 1][i] = true;
+		}
+	}
+}
+
+bool squareBlocks(int x, int y)
+{
+	char& wall = maze[y-1][x-1];
+	return wall == '#' ||
+		wall == '>' ||
+		wall == '<' ||
+		wall == 'v' ||
+		wall == '^';
+}
+
+void addLaser(int x, int y, int turn)
+{
+	// shoot up
+	for (int i = y - 1; i > 0 && !squareBlocks(x, i); i--) {
+		dead[turn][i][x] = true;
+	}
+	// shoot right
+	for (int i = x + 1; i <= n && !squareBlocks(i, y); i++) {
+		dead[(turn + 1) % 4][y][i] = true;
+	}
+	// shoot down
+	for (int i = y + 1; i <= m && !squareBlocks(x, i); i++) {
+		dead[(turn + 2) % 4][i][x] = true;
+	}
+	// shoot left
+	for (int i = x - 1; i > 0 && !squareBlocks(i, y); i--) {
+		dead[(turn + 3) % 4][y][i] = true;
+	}
+}
+
+void initMaze()
+{
+	clear();
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			int turn = 0;
+			switch (maze[i][j]) {
+				case 'S':
+					starty = i + 1;
+					startx = j + 1;
+					break;
+				case 'G':
+					endy = i + 1;
+					endx = j + 1;
+					break;
+				case '>':
+					turn++;
+				case 'v':
+					turn++;
+				case '<':
+					turn++;
+				case '^':
+					addLaser(j + 1, i + 1, turn);
+				case '#':
+					for (int k = 0; k < 4; k++) {
+						dead[k][i + 1][j + 1] = true;
+					}
+			}
+		}
+	}
+}
+
+struct Dijk {
+	int dist;
+	int x,y,turn;
+};
+
+const struct Move {
+	int x, y;
+} moves[] = {
+	{ 1, 0 },
+	{ -1, 0 },
+	{ 0, -1 },
+	{ 0, 1 },
+};
+
+int main() {
+	int T;
+	scanf("%d", &T);
+
+	for (int t = 0; t < T; t++) {
+		scanf("%d%d", &m, &n);
+
+		for (int i = 0; i < m; i++) {
+			scanf("%s", maze[i]);
+		}
+		initMaze();
+
+		queue<Dijk> q;
+		q.push((Dijk){0, startx, starty, 0});
+
+		int result = -1;
+		while (!q.empty()) {
+			Dijk d = q.front();
+			q.pop();
+
+			if (d.x == endx && d.y == endy) {
+				result = d.dist;
+				break;
+			}
+
+			for (int i = 0; i < 4; i++) {
+				int turn = (d.turn + 1) % 4;
+				int x = d.x + moves[i].x;
+				int y = d.y + moves[i].y;
+				if (!visited[turn][y][x] && !dead[turn][y][x]) {
+					q.push((Dijk){d.dist + 1, x, y, turn});
+					visited[turn][y][x] = true;
+				}
+			}
+		}
+
+		if (result < 0) {
+			printf("Case #%d: impossible\n", t+1);
+		} else {
+			printf("Case #%d: %d\n", t+1, result);
+		}
+	}
+
+	return 0;
+}

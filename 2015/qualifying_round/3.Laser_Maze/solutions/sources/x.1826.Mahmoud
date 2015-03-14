@@ -1,0 +1,216 @@
+import java.util.Map;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream = System.in;
+		OutputStream outputStream = System.out;
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		ProbC solver = new ProbC();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class ProbC {
+
+
+    int[] dx = new int[]{0, -1, 0, 1};
+    int[] dy = new int[]{-1, 0, 1, 0};
+    int[][][] dp;
+
+    final int INF = Integer.MAX_VALUE / 2;
+
+    public void solve(int testNumber, InputReader jin, PrintWriter jout) {
+        int n = jin.int32();
+        int m = jin.int32();
+
+        Map<Character, Integer> s2i = new HashMap<Character, Integer>();
+        s2i.put('<', 0); s2i.put('^', 1); s2i.put('>', 2); s2i.put('v', 3);
+        s2i.put('.', -1); s2i.put('#', -2);
+
+        int si = -1, sj = -1;
+        int gi = -1, gj = -1;
+        int[][] grid = new int[n][m];
+        for(int i = 0; i < n; i++) {
+            char[] row = jin.token().toCharArray();
+            for(int j = 0; j < m; j++) {
+                switch(row[j]) {
+                    case 'S':
+                        si = i;
+                        sj = j;
+                        break;
+                    case 'G':
+                        gi = i;
+                        gj = j;
+                        break;
+                    default:
+                        grid[i][j] = s2i.get(row[j]);
+                        break;
+                }
+            }
+        }
+        grid[si][sj] = grid[gi][gj] = -1;
+
+        dp = new int[n][m][4];
+        ArrayUtils.init(dp, -1);
+
+        for(int i = 0; i < n; i++) {
+            for(int j = 0; j < m; j++) {
+                if(grid[i][j] >= 0) {
+                    for(int k = 0; k < 4; k++) {
+                        int d = (grid[i][j] + k) % 4;
+                        int nx = i, ny = j;
+                        while(true) {
+                            nx += dx[d]; ny += dy[d];
+                            if(nx < 0 || ny < 0) break;
+                            if(nx >= n || ny >= m) break;
+                            if(grid[nx][ny] != -1) break;
+                            dp[nx][ny][k] = INF;
+                        }
+                        dp[i][j][k] = INF;
+                    }
+                } else if(grid[i][j] == -2)  {
+                    ArrayUtils.init(dp[i][j], INF);
+                }
+            }
+        }
+
+        for(int k = 0; k < 4; k++) {
+            if(dp[gi][gj][k] == -1)
+                dp[gi][gj][k] = 0;
+        }
+        
+
+        int answer = INF;
+        for(int k = 0; k < 4; k++) {
+            answer = Math.min(answer, 1 + solve(si + dx[k], sj + dy[k], 1));
+        }
+        jout.print("Case #" + testNumber + ": ");
+        if(answer < INF) {
+            jout.println(answer);
+        } else {
+            jout.println("impossible");
+        }
+    }
+
+    private int solve(int x, int y, int c) {
+        if(x < 0 || x >= dp.length) return INF;
+        if(y < 0 || y >= dp[x].length) return INF;
+        if(dp[x][y][c] == -1) {
+            dp[x][y][c] = INF; int tVal = INF;
+            for(int k = 0; k < 4; k++) {
+                int val = 1 + solve(x + dx[k], y + dy[k], (c + 1) % 4);
+                tVal = Math.min(val, tVal);
+            }
+            dp[x][y][c] = tVal;
+        }
+        return dp[x][y][c];
+    }
+}
+
+class InputReader {
+    private static final int bufferMaxLength = 1024;
+    private InputStream in;
+    private byte[] buffer;
+    private int currentBufferSize;
+    private int currentBufferTop;
+    private static final String tokenizers = " \t\r\f\n";
+
+    public InputReader(InputStream stream) {
+        this.in = stream;
+        buffer = new byte[bufferMaxLength];
+        currentBufferSize = 0;
+        currentBufferTop = 0;
+    }
+
+    private boolean refill() {
+        try {
+            this.currentBufferSize = this.in.read(this.buffer);
+            this.currentBufferTop = 0;
+        } catch(Exception e) {}
+        return this.currentBufferSize > 0;
+    }
+
+
+    public Byte readChar() {
+        if(currentBufferTop < currentBufferSize) {
+            return this.buffer[this.currentBufferTop++];
+        } else {
+            if(!this.refill()) {
+                return null;
+            } else {
+                return readChar();
+            }
+        }
+    }
+
+    public String token()  {
+        StringBuffer tok = new StringBuffer();
+        Byte first;
+        while((first = readChar()) != null && (tokenizers.indexOf((char) first.byteValue()) != -1));
+        if(first == null) return null;
+        tok.append((char)first.byteValue());
+        while((first = readChar()) != null && (tokenizers.indexOf((char) first.byteValue()) == -1)) {
+            tok.append((char)first.byteValue());
+        }
+        return tok.toString();
+    }
+
+
+    public String next() {
+        return token();
+    }
+
+    public Integer int32() throws NumberFormatException {
+        String tok = token();
+        return tok == null? null : Integer.parseInt(tok);
+    }
+
+}
+
+class ArrayUtils {
+
+    public static void init(int[][][] arr, int val) {
+        for(int[][] subarr: arr)
+            ArrayUtils.init(subarr, val);
+    }
+
+    public static void init(int[][] arr, int val) {
+        for(int[] subarr: arr)
+            ArrayUtils.init(subarr, val);
+    }
+
+    public static void init(int[] arr, int val) {
+        Arrays.fill(arr, val);
+    }
+
+    public static int accumulate(int[] arr) {
+        int res = 0;
+        for(int xx: arr)
+            res += xx;
+        return res;
+    }
+
+    public static void init(double[][] arr, double val) {
+        for(double[] subarr: arr)
+            ArrayUtils.init(subarr, val);
+    }
+
+    private static void init(double[] arr, double val) {
+        Arrays.fill(arr, val);
+    }
+}
+

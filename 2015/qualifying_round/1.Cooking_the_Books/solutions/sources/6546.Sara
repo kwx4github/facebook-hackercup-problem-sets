@@ -1,0 +1,119 @@
+package es.hackerCup;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+public class BookCooker {
+
+	public String cookBook(final String rawBooks) {
+		List<String> numbers = parseBooks(rawBooks);
+
+		StringBuilder responseBuilder = new StringBuilder();
+		int numberIndex = 1;
+		List<String> cookedNumbers = null;
+		for (String number : numbers) {
+			cookedNumbers = cookNumber(number, false);
+
+			numberIndex = composeResult(responseBuilder, numberIndex, cookedNumbers);
+		}
+
+		return responseBuilder.toString();
+	}
+
+	private int composeResult(final StringBuilder responseBuilder, int bookIndex, final List<String> cookedNumbers) {
+		responseBuilder.append("Case #").append(bookIndex++).append(": ");
+		responseBuilder.append(cookedNumbers.get(0)).append(" ").append(cookedNumbers.get(1));
+		responseBuilder.append(String.format("%n"));
+		return bookIndex;
+	}
+
+	protected List<String> parseBooks(final String rawBooks) {
+		List<String> books = new ArrayList<String>();
+
+		String[] lines = rawBooks.split(System.getProperty("line.separator"));
+
+		int numOfBooks = Integer.parseInt(lines[0]);
+
+		for (int i = 1; i <= numOfBooks; i++) {
+			books.add(lines[i]);
+		}
+
+		return books;
+	}
+
+	protected List<String> cookNumber(final String number, final boolean couldSwapZero) {
+		int smaller = 10;
+		int bigger = -1;
+		int smallerIndex = -1;
+		int biggerIndex = -1;
+
+		char[] digits = number.toCharArray();
+
+		int firstDigit = Integer.parseInt(digits[0] + "");
+		for (int index = 0; index < digits.length; index++) {
+			int digit = Integer.parseInt(digits[index] + "");
+			if ((digit == 0) && !couldSwapZero) {
+				continue;
+			}
+			if (digit <= smaller) {
+				smallerIndex = index;
+				smaller = digit;
+			}
+			if (digit >= bigger) {
+				biggerIndex = index;
+				bigger = digit;
+			}
+		}
+
+		List<String> result = new ArrayList<String>();
+
+		if (smallerIndex > -1) {
+			if (((smallerIndex == 0) || (firstDigit == smaller)) && (number.length() > 1)) {
+				String small = number.charAt(0) + cookNumber(number.substring(1), true).get(0);
+				digits = small.toCharArray();
+			} else {
+				char tmp = digits[0];
+				digits[0] = digits[smallerIndex];
+				digits[smallerIndex] = tmp;
+			}
+		}
+		result.add(new String(digits));
+
+		if (biggerIndex > -1) {
+			if (((biggerIndex == 0) || (firstDigit == bigger)) && (number.length() > 1)) {
+				String big = number.charAt(0) + cookNumber(number.substring(1), true).get(1);
+				digits = big.toCharArray();
+			} else {
+				digits = number.toCharArray();
+				char tmp = digits[0];
+				digits[0] = digits[biggerIndex];
+				digits[biggerIndex] = tmp;
+			}
+		}
+		result.add(new String(digits));
+
+		return result;
+	}
+
+	public static void main(final String[] args) throws IOException {
+		byte[] encoded = Files.readAllBytes(Paths.get(args[0]));
+
+		String content = new String(encoded, Charset.defaultCharset());
+
+		BookCooker cooker = new BookCooker();
+		String result = cooker.cookBook(content);
+
+		System.out.println(result);
+
+		try (PrintWriter out = new PrintWriter("result.txt")) {
+			out.print(result);
+			out.flush();
+		}
+
+	}
+}

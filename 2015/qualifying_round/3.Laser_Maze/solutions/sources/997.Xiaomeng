@@ -1,0 +1,114 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <utility>
+#include <algorithm>
+
+#define X first
+#define Y second
+
+using namespace std;
+
+constexpr int MAX = 128;
+constexpr int INF = 0x3F3F3F3F;
+constexpr int dx[] = {0, -1, 0, 1};
+constexpr int dy[] = {-1, 0, 1, 0};
+
+char mat[MAX][MAX];
+bool vis[MAX][MAX][4];
+int dis[MAX][MAX][4];
+
+struct Point {
+	int x, y, d;
+} que[MAX * MAX * 8];
+
+inline bool check(int x, int y) {
+	return mat[x][y] == '.' || mat[x][y] == 'S' || mat[x][y] == 'G';
+}
+
+inline bool laser(int x, int y) {
+	return mat[x][y] == '<' || mat[x][y] == '^' || mat[x][y] == '>' || mat[x][y] == 'v';
+}
+
+void update(int x, int y, int d, int key) {
+	x += dx[d]; y += dy[d];
+	for ( ; check(x, y); x += dx[d], y += dy[d]) {
+		vis[x][y][key] = false;
+	}
+}
+
+void update(int x, int y) {
+	if (mat[x][y] == '<') {
+		for (int i = 0; i < 4; ++i) update(x, y, i, i);
+	} else if (mat[x][y] == '^') {
+		for (int i = 0; i < 4; ++i) update(x, y, (i + 1) & 3, i);
+	} else if (mat[x][y] == '>') {
+		for (int i = 0; i < 4; ++i) update(x, y, (i + 2) & 3, i);
+	} else if (mat[x][y] == 'v') {
+		for (int i = 0; i < 4; ++i) update(x, y, (i + 3) & 3, i);
+	}
+}
+
+void init(int n, int m) {
+	memset(vis, 0, sizeof(vis));
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= m; ++j) {
+			if (check(i, j)) {
+				fill(vis[i][j], vis[i][j] + 4, true);
+			}
+		}
+	}
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= m; ++j) {
+			if (laser(i, j)) {
+				update(i, j);
+			}
+		}
+	}
+}
+
+int bfs(int n, int m) {
+	Point src, dst;
+	for (int i = 1; i <= n; ++i) {
+		for (int j = 1; j <= m; ++j) {
+			if (mat[i][j] == 'S') src = Point{i, j, 0};
+			if (mat[i][j] == 'G') dst = Point{i, j, 0};
+		}
+	}
+	
+	memset(dis, 0x3F, sizeof(dis));
+	int front = 0, rear = 0;
+	que[rear++] = src; dis[src.x][src.y][src.d] = 0;
+	while (front < rear) {
+		Point cur = que[front++];
+		for (int i = 0; i < 4; ++i) {
+			Point nxt{cur.x + dx[i], cur.y + dy[i], (cur.d + 1) & 3};
+			if (vis[nxt.x][nxt.y][nxt.d] && dis[nxt.x][nxt.y][nxt.d] == INF) {
+				dis[nxt.x][nxt.y][nxt.d] = dis[cur.x][cur.y][cur.d] + 1;
+				que[rear++] = nxt;
+			}
+		}
+	}
+	int ret = *min_element(dis[dst.x][dst.y], dis[dst.x][dst.y] + 4);
+	return ret;
+}
+
+int main() {
+	int t, ct;
+
+	scanf("%d", &t);
+	for (ct = 1; ct <= t; ++ct) {
+		int n, m;
+		scanf("%d%d", &n, &m);
+		memset(mat, 0, sizeof(mat));
+		for (int i = 1; i <= n; ++i) {
+			scanf("%s", mat[i] + 1);
+		}
+		init(n, m);
+		int ans = bfs(n, m);
+		if (ans == INF) printf("Case #%d: impossible\n", ct);
+		else printf("Case #%d: %d\n", ct, ans);
+	}
+
+	return 0;
+}

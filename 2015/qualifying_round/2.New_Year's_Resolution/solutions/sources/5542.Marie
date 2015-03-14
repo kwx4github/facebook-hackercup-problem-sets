@@ -1,0 +1,151 @@
+var fs = require("fs"),
+	Combinatorics = require('js-combinatorics').Combinatorics,
+	util = require("util"),
+	EventEmitter = require('events').EventEmitter;
+
+function File (path) {
+	this.lines = [];
+
+	fs.readFileSync(path).toString().split('\n').forEach(function (line) {
+		if (line.length == 0) {
+			return;
+		}
+
+		this.lines.push(line);
+	}.bind(this));
+}
+
+File.prototype.getLines = function () {
+	return this.lines;
+} 
+
+function Tokenizer (file) {
+	if (!(file instanceof File)) {
+		throw new Error("file must be an instance of File");
+	}
+
+	this.lines = file.getLines();
+}
+
+util.inherits(Tokenizer, EventEmitter);
+Tokenizer.TOKEN_NUMBER_OF_ELEMENTS = 0;
+Tokenizer.TOKEN_GOAL_OR_FOOD = 1;
+
+Tokenizer.prototype.tokenize = function () {
+	for (var i in this.lines) {
+		var line = this.lines[i],
+			match = line.match(/^([0-9]+)$/im);
+
+		if (match != null) {
+			// line only has one number -> it is either the number of tests or a number of foods
+			this.emit(Tokenizer.TOKEN_NUMBER_OF_ELEMENTS, parseInt(line));
+		} else {
+			var matchMultipleNumbers = line.match(/^([0-9]+) ([0-9]+) ([0-9]+)$/im);
+
+			if (matchMultipleNumbers != null) {
+				//line has three numbers -> it is either the objective or a food element
+				this.emit(Tokenizer.TOKEN_GOAL_OR_FOOD, matchMultipleNumbers[1], matchMultipleNumbers[2], matchMultipleNumbers[3]);
+			} else {
+				throw new Error("Parsing error: unexpected token");
+			}
+		}
+	}
+}
+
+function Analyzer (tokenizer) {
+	if (!(tokenizer instanceof Tokenizer)) {
+		throw new Error ("token must be an instance of Tokenizer")
+	}
+
+	this.state = null;
+	this.AST = [];
+	this.expected_foods = 0;
+	this.processed_foods = 0
+}
+
+Analyzer.prototype.buildAST = function () {
+	tokenizer.on(Tokenizer.TOKEN_NUMBER_OF_ELEMENTS, this.tokenize_number_of_elements.bind(this));
+
+	tokenizer.on(Tokenizer.TOKEN_GOAL_OR_FOOD, this.tokenize_goal_or_food.bind(this));
+	
+	tokenizer.tokenize()
+
+	return this.AST;
+}
+
+Analyzer.prototype.tokenize_number_of_elements = function (number) {
+	switch (this.state) {
+			case null:
+				this.state = "BEGIN_TEST";
+			break;
+
+			case "BEGIN_FOODS":
+				this.expected_foods = number;
+				this.state = "FOOD";	
+				this.processed_foods = 0;
+			break;
+		}
+};
+
+Analyzer.prototype.tokenize_goal_or_food = function (Gp, Gc, Gf) {
+	switch (this.state) {
+		case "BEGIN_TEST":
+			this.AST.push({
+				goals: {Gp: parseInt(Gp), Gc: parseInt(Gc), Gf: parseInt(Gf)},
+				foods: []
+			});
+			this.state = "BEGIN_FOODS"
+		break;
+
+		case "FOOD":
+			this.processed_foods ++;
+			
+			if (this.processed_foods <= this.expected_foods) {
+				this.AST[this.AST.length - 1].foods.push({Gp: parseInt(Gp), Gc: parseInt(Gc), Gf: parseInt(Gf)});
+			} else {
+				this.state = "BEGIN_TEST";
+				this.tokenize_goal_or_food(Gp, Gc, Gf);
+			}
+		break;
+	}
+};
+
+function passTest (testObject) {
+	var numberOfFoods = testObject.foods.length;
+
+	for (var i = 1; i <= numberOfFoods; i ++) {
+		var combinations = Combinatorics.combination(testObject.foods, i);
+		
+		while (comb = combinations.next()) {
+			var sum_p = 0,
+				sum_c = 0,
+				sum_f = 0;
+			
+			for (var j = 0; j < comb.length; j ++) {
+				sum_p += comb[j].Gp;
+				sum_c += comb[j].Gc;
+				sum_f += comb[j].Gf;
+			}
+
+			if (sum_p == testObject.goals.Gp && sum_c == testObject.goals.Gc && sum_f == testObject.goals.Gf) {
+				return "yes";
+			}
+		}
+	}
+
+	return "no";
+}
+
+try {
+	var file = new File('./new_years_resolution.txt');
+	var tokenizer = new Tokenizer (file);
+	var analyzer = new Analyzer (tokenizer);
+	var AST = analyzer.buildAST();
+	for (var test in AST) {
+		var index = parseInt(test) + 1;
+		fs.appendFileSync("./output.txt", "Case #" + index + ": " + passTest(AST[test]) + "\n");
+	}
+	
+} catch (error) {
+	console.log(error);
+}

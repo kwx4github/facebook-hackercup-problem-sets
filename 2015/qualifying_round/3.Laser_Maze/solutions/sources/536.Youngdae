@@ -1,0 +1,176 @@
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+ifstream fin("laser_maze.txt");
+ofstream fout("output.txt");
+//////////////////////////ofstream dout("debug.txt");
+
+bool isturret(char data)
+{
+	return data=='<' || data=='>' || data=='^' || data=='v';
+}
+
+int main()
+{
+	int tt, ti;
+	fin >> tt;
+
+	for(ti=0; ti<tt; ti++)
+	{
+		int row, column;
+		char data[102][102] = {0},
+			 wall[102][102] = {0},
+			 laser[102][102][4] = {0};
+		int sr, sc, gr, gc;
+
+		char been[102][102] = {0},
+			 possible[102][102][2] = {0};
+		int step=0;
+		int updated=0, outcount=0;
+
+		int i, j;
+
+		// data 입력
+		fin >> row >> column;
+		for(i=1; i<=row; i++)
+			fin >> &data[i][1];
+
+		// wall, start, goal 추출
+		for(i=1; i<=row; i++)
+			for(j=1; j<=column; j++)
+			{
+				if(data[i][j] == 'S')
+				{
+					sr = i;
+					sc = j;
+				}
+				else if(data[i][j] == 'G')
+				{
+					gr = i;
+					gc = j;
+				}
+				else if(data[i][j] != '.')
+				{
+					wall[i][j] = 1;
+				}
+			}
+
+		// laser 추출
+		for(i=1; i<=row; i++)
+			for(j=1; j<=column; j++)
+			{
+				if(isturret(data[i][j]))
+				{
+					int top, r, c;
+
+					if(data[i][j] == '^')
+						top = 0;
+					if(data[i][j] == '<')
+						top = 1;
+					if(data[i][j] == 'v')
+						top = 2;
+					if(data[i][j] == '>')
+						top = 3;
+
+					//top
+					r=i-1;
+					c=j;
+					while(wall[r][c]==0 && r>0)
+					{
+						laser[r][c][top]=1;
+						r--;
+					}
+					//right
+					r=i;
+					c=j+1;
+					while(wall[r][c]==0 && c<=column)
+					{
+						laser[r][c][(top+1)%4]=1;
+						c++;
+					}
+					//down
+					r=i+1;
+					c=j;
+					while(wall[r][c]==0 && r<=row)
+					{
+						laser[r][c][(top+2)%4]=1;
+						r++;
+					}
+					//left
+					r=i;
+					c=j-1;
+					while(wall[r][c]==0 && c>0)
+					{
+						laser[r][c][(top+3)%4]=1;
+						c--;
+					}
+				}
+			}
+		
+		// 초기화
+		possible[sr][sc][0] = 1;
+		been[sr][sc] = 1;
+		
+		//expand
+		while(1)
+		{
+			step++;
+			updated=0;
+
+			int cur = step % 2, prev = cur ^ 1;
+
+			//make a new grid
+			for(i=1; i<=row; i++)
+				for(j=1; j<=column; j++)
+				{
+					if(laser[i][j][step%4] == 0 &&
+						wall[i][j] == 0 &&
+						(possible[i][j-1][prev] || possible[i][j+1][prev] || possible[i-1][j][prev] || possible[i+1][j][prev]))
+					{
+						possible[i][j][cur] = 1;
+						if(!been[i][j])
+						{
+							updated=1;
+							been[i][j] = 1;
+						}
+					}
+					else
+					{
+						possible[i][j][cur] = 0;
+					}
+				}
+
+			//success?
+			if(been[gr][gc])
+			{
+				fout << "Case #" << ti + 1 << ": " << step << endl;
+				////////////////////////////dout << "Case #" << ti + 1 << ": " << step << endl;
+				break;
+			}
+
+			//outcount
+			if(updated)
+				outcount=0;
+			else
+				outcount++;
+
+			//fail?
+			if(outcount == 4)
+			{
+				fout << "Case #" << ti + 1 << ": impossible" << endl;
+				////////////////////////////dout << "Case #" << ti + 1 << ": impossible" << endl;
+				break;
+			}
+		}
+
+		/*********************************************
+		//debug output
+		for(int d=1; d<=column; d++)
+			dout << &data[d][1] << endl;
+		dout << endl << endl;
+		*********************************************/
+	}
+
+	return 0;
+}

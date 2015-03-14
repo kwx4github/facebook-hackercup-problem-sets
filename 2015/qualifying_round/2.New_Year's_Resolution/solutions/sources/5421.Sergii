@@ -1,0 +1,198 @@
+#include <QCoreApplication>
+#include <QFile>
+#include <QStringList>
+#include <QTextStream>
+#include <QDebug>
+#include <QtGlobal>
+#include <QDateTime>
+
+bool is_debug = false;
+int CaseNum = 0;
+
+int needP, needC, needF;
+int sumP, sumC, sumF;
+bool Exactly;
+QList<int> arrP;
+QList<int> arrC;
+QList<int> arrF;
+int FoodCount = 0;
+
+QList<int> Way;
+
+bool checkAnswer() {
+    if (is_debug) {
+        //qDebug() << "checkAnswer" << Way;
+    }
+    int checkC = 0, checkF = 0;
+    for (int i = 0, Ln = Way.length(); i < Ln; ++i) {
+        checkC += arrC.at(Way.at(i));
+        checkF += arrF.at(Way.at(i));
+
+        if (is_debug) {
+            //qDebug() << "checkC" << checkC << "needC" << needC;
+            //qDebug() << "checkF" << checkF << "needF" << needF;
+        }
+
+        if (checkC > needC || checkF > needF) {
+            return false;
+        }
+    }
+    return checkC == needC && checkF == needF;
+}
+
+bool getAnswerEx(int sum) {
+    if (is_debug) {
+        //qDebug() << "getAnswerEx" << Way << sum;
+    }
+    if (sum > needP) {
+        return false;
+    }
+    if (sum == needP) {
+        return checkAnswer();
+    }
+
+    for (int i = 0; i < FoodCount; ++i) {
+        if (Way.indexOf(i) != -1) {
+            continue;
+        }
+        Way.append(i);
+        if (getAnswerEx(sum + arrP.at(i))) {
+            return true;
+        }
+        Way.takeLast();
+    }
+    return false;
+}
+
+QString getAnswer() {
+    if (is_debug) {
+        qDebug() << "start getAnswer " << CaseNum << needP << needC << needF;
+        qDebug() << arrP;
+        qDebug() << arrC;
+        qDebug() << arrF;
+    }
+    FoodCount = arrP.count();
+
+    if (Exactly) {
+        return "yes";
+    }
+
+    if (needP == sumP && needC == sumC && needF == sumF) {
+        return "yes";
+    }
+
+    if (needP > sumP || needC > sumC || needF > sumF) {
+        return "no";
+    }
+
+    for (int i = 0; i < FoodCount; ++i) {
+        Way.clear();
+        Way.append(i);
+        if (getAnswerEx(arrP.at(i))) {
+            return "yes";
+        }
+    }
+
+    return "no";
+}
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+
+    QStringList params = QCoreApplication::arguments();
+    if (params.count() < 3) {
+        return 1;
+    }
+
+    qDebug() << params;
+    qDebug() << params.at(1);
+    QFile file_in(params.at(1));
+    if (!file_in.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return 2;
+    }
+
+    QTextStream in(&file_in);
+
+    QFile file_out(params.at(2));
+    if (!file_out.open(QIODevice::WriteOnly)) {
+        return 3;
+    }
+
+    is_debug = params.count() > 3 && params.at(3).compare("debug") == 0;
+
+    QTextStream out(&file_out);
+    QString line;
+    int Idx = -1;
+    int LineType = 0;
+    int FoodIdx = 0;
+    int p, c, f;
+    QStringList NeedFoodCount;
+    QDateTime start = QDateTime::currentDateTime();
+    QDateTime step_start, step_finish;
+
+    while (!in.atEnd()) {
+        line = in.readLine();
+        if (++Idx == 0) {
+            if (is_debug) qDebug() << "Input case count " << line;
+            continue;
+        }
+        if (is_debug) {
+            //qDebug() << "Current index " << Idx << "LineType" << LineType;
+        }
+        if (LineType == 0) {
+            NeedFoodCount = line.split(" ");
+            needP = NeedFoodCount.at(0).toInt();
+            needC = NeedFoodCount.at(1).toInt();
+            needF = NeedFoodCount.at(2).toInt();
+            LineType = 1;
+        } else if (LineType == 1) {
+            FoodCount = line.toInt();
+            FoodIdx   = 0;
+            sumP = 0;
+            sumC = 0;
+            sumF = 0;
+            Exactly = false;
+            LineType = 2;
+
+        } else {
+            NeedFoodCount = line.split(" ");
+            p = NeedFoodCount.at(0).toInt();
+            c = NeedFoodCount.at(1).toInt();
+            f = NeedFoodCount.at(2).toInt();
+            if (p <= needP && c <= needC && f <= needF) {
+                arrP.append(p);
+                arrC.append(c);
+                arrF.append(f);
+                sumP += p;
+                sumC += c;
+                sumF += f;
+
+                if (!Exactly && p == needP && c == needC && f == needF) {
+                    Exactly = true;
+                }
+            }
+            ++FoodIdx;
+        }
+
+        if (FoodIdx == FoodCount && LineType == 2) {
+            LineType = 0;
+            step_start = QDateTime::currentDateTime();
+            out << "Case #" << ++CaseNum << ": " << getAnswer();
+            endl(out);
+            step_finish = QDateTime::currentDateTime();
+            if (is_debug) {
+                qDebug() << "step seconds:" << (step_finish.toTime_t() - step_start.toTime_t());
+            }
+            arrP.clear();
+            arrC.clear();
+            arrF.clear();
+        }
+    }
+    QDateTime finish = QDateTime::currentDateTime();
+    if (is_debug) {
+        qDebug() << "total seconds:" << (finish.toTime_t() - start.toTime_t());
+    }
+    return 0;
+    //return a.exec();
+}

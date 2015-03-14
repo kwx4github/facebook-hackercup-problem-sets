@@ -1,0 +1,229 @@
+// foodPlan.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include <string>
+#include <fstream>
+#include <vector>
+#include <iterator>
+#include <set>
+#include <iostream>
+#define MAX 1000
+#define MAXFOOD 20
+#define MIN 10
+struct Food
+{
+	int P, C, F;
+};
+
+
+void freetheTable(bool ***table, int M, int N)
+{
+	int i, j;
+	for (i = 0; i <= M; i++)
+	{
+		for (j = 0; j <= N; j++)
+		{
+			delete[]table[i][j];
+		}
+		delete[]table[i];
+	}
+	delete[]table;
+}
+
+bool evaluatePlan(int Gp, int Gc, int Gf, int N, Food foodList[])
+{
+	int i,p,c,f,nUsed,j;
+	bool usedMeal[MAXFOOD];
+	bool ***planTable;
+	// initialize the food plan table
+	planTable = new bool**[Gp+1];
+	for (i = 0; i <= Gp; i++)
+	{
+		planTable[i] = new bool*[Gc + 1];
+		for (j = 0; j <= Gc; j++)
+		{
+			planTable[i][j] = new bool[Gf + 1];
+			memset(planTable[i][j], false, (Gf + 1)*sizeof(bool));
+		}
+	}
+	memset(usedMeal, false, MAXFOOD*sizeof(bool));
+	nUsed = 0;
+	for (i = 0; i < N; i++)
+	{
+		if (foodList[i].P == Gp && foodList[i].C == Gc && foodList[i].F == Gf)
+			return true;
+		if (foodList[i].P > Gp || foodList[i].C > Gc || foodList[i].F > Gf)
+		{
+			++nUsed;
+			usedMeal[i] = true;
+			continue;
+		}
+		planTable[foodList[i].P][foodList[i].C][foodList[i].F] = true;
+	}
+	if (nUsed == N)
+		return false;
+	for (p = MIN; p <= Gp; p++)
+	{
+		for (c = MIN; c <= Gc; c++)
+		{
+			for (f = MIN; f <= Gf; f++)
+			{
+				//std::cout << p << " " << c << " " << f << std::endl;
+				if (planTable[p][c][f] == true)
+					continue;
+				for (i = 0; i < N; i++)
+				{
+					if (usedMeal[i] || p<foodList[i].P || c<foodList[i].C || f<foodList[i].F)
+						continue;
+					if (planTable[p - foodList[i].P][c - foodList[i].C][f - foodList[i].F] == true)
+						planTable[p][c][f] = true;
+				}
+			}
+		}
+	}
+	if (!planTable[Gp][Gc][Gf])
+	{
+		freetheTable(planTable, Gp, Gc);
+		return false;
+	}
+	// let's reconstruct whether we used each meal only once
+	// enumerate all the possible solutions
+	// in the following manner:
+	// start with the list containing an empty solution
+	// enter the loop
+	// for each solution (p,c,f) in the list, look through the foodList, and if i is unused and (p-P[i],c-C[i],f-F[i])
+	// is a solution, put (p-P[i],c-C[i],f-F[i]) and i in the solution list
+	std::vector<std::set<int>> solutions, nextSolutions;
+	std::vector<std::set<int>>::iterator solutionIterator;
+	std::vector<Food> solutionContent,nextSolutionContent;
+	std::vector<Food>::iterator solutionContentIterator;
+	std::set<int> expandedSolution;
+	Food content;
+	solutions.push_back(std::move(expandedSolution)); //empty set
+	content.P = Gp;
+	content.C = Gc;
+	content.F = Gf;
+	solutionContent.push_back(content);
+	while (!solutions.empty())
+	{
+		nextSolutions.clear();
+		nextSolutionContent.clear();
+		for (solutionIterator = solutions.begin(), solutionContentIterator=solutionContent.begin(); 
+			solutionIterator != solutions.end(); solutionIterator++,solutionContentIterator++)
+		{
+			for (i = 0; i < N; i++)
+			{
+				if (usedMeal[i])
+					continue;
+				expandedSolution = *solutionIterator;
+				content = *solutionContentIterator;
+				if (solutionIterator->find(i)!=solutionIterator->end())
+					continue;
+				content.P -= foodList[i].P;
+				content.C -= foodList[i].C;
+				content.F -= foodList[i].F;
+				if (!content.P && !content.C && !content.F)
+				{
+					//we have a winner!
+					solutions.clear();
+					solutions.reserve(1);
+					nextSolutions.clear();
+					nextSolutions.reserve(1);
+					freetheTable(planTable, Gp, Gc);
+					return true;
+				}
+				if (content.P < 0 || content.C < 0 || content.F < 0)
+					continue;
+				if (planTable[content.P][content.C][content.F])
+				{
+					expandedSolution.insert(i);
+					// insert expanded solution into new solutions
+					nextSolutions.push_back(std::move(expandedSolution));
+					nextSolutionContent.push_back(std::move(content));
+				}
+			}
+		}
+		// move new solutions into solutions
+		solutions = std::move(nextSolutions);
+		solutionContent = std::move(nextSolutionContent);
+	}
+	//we have a winner!
+	solutions.clear();
+	solutions.reserve(1);
+	nextSolutions.clear();
+	nextSolutions.reserve(1);
+	freetheTable(planTable, Gp, Gc);
+	return false;
+}
+
+int readInputFile(std::string filename, int Gp[], int Gc[], int Gf[], int N[], Food foodList[][MAXFOOD])
+{
+	int T,i,j;
+	std::ifstream inpFile(filename, std::ios_base::in);
+	if (!inpFile.is_open())
+		return 0;
+	inpFile >> T;
+	for (i = 0; i < T; i++)
+	{
+		inpFile >> Gp[i];
+		inpFile >> Gc[i];
+		inpFile >> Gf[i];
+		inpFile >> N[i];
+		for (j = 0; j < N[i]; j++)
+		{
+			inpFile >> foodList[i][j].P;
+			inpFile >> foodList[i][j].C;
+			inpFile >> foodList[i][j].F;
+		}
+	}
+	inpFile.close();
+	return T;
+}
+
+void testInput(int T, int Gp[], int Gc[], int Gf[], int N[], Food foodList[][MAXFOOD])
+{
+	int i, j;
+	std::cout << "Number of lists: " << T << std::endl << std::endl;
+	for (i = 0; i < T; i++)
+	{
+		std::cout << "List " << i + 1 <<": "<<Gp[i]<<", "<<Gc[i]<<", "<<Gf[i]<< std::endl;
+		std::cout << "N = " << N[i] << std::endl;
+		for (j = 0; j < N[i]; j++)
+		{
+			std::cout << foodList[i][j].P << " " << foodList[i][j].C << " "<<foodList[i][j].F << std::endl;
+		}
+		std::cout << std::endl;
+		getchar();
+	}
+}
+
+void outputSolution(std::ofstream &outF, bool solution, int iter)
+{
+	std::string sol;
+	if (solution)
+		sol = "yes";
+	else
+		sol = "no";
+	outF << "Case #" << iter << ": " << sol << std::endl;
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	int T, Gp[20], Gc[20],Gf[20], N[20],i;
+	Food foodList[MAXFOOD][MAXFOOD];
+	bool solution;
+	std::string filename="new_years_resolution.txt";
+	std::ofstream outF("newresoutput.txt", std::ios_base::out);
+	T=readInputFile(filename, Gp, Gc, Gf, N, foodList);
+	if (!T)
+		return 0;
+	for (i = 0; i < T; i++)
+	{
+		solution = evaluatePlan(Gp[i],Gc[i],Gf[i],N[i],foodList[i]);
+		outputSolution(outF, solution, i + 1);
+	}
+	outF.close();
+	return 0;
+}
+

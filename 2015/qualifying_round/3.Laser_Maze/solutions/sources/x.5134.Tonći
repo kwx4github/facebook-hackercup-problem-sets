@@ -1,0 +1,251 @@
+﻿/*
+Standard mazes lose their mystery as one grows older. But throw in some lasers, and suddenly you've got yourself a recipe for cross-generational appeal. The object in any maze is to find your way from your starting point to some goal. In a Laser Maze you must additionally contend with laser turrets.
+
+A laser turret is a stationary pillar that both blocks your movement and fires lasers from one side. Every time you take a step (either up, down, left, or right), every laser turret in the maze then rotates 90 degrees clockwise, and then shoots a momentary laser blast in the direction that it is facing. Needless to say, if you find yourself in the path of one of these lasers, you won't be around long enough to find a way out. A wall is a stationary pillar that blocks your movement, but does not fire lasers.
+
+Lasers are powerful, but they do not pass through walls or laser turrets. The laser turrets respond to your movements, so you can't stand still and wait for the turrets to turn. If you reach the goal, but are immediately shot by a laser, your efforts will have been in vain, so make sure you reach the goal safely.
+
+Input
+Input begins with an integer T, the number of mazes you'll explore. For each maze, there is first a line containing two integers, M and N, the height and width of the maze, respectively. The next M lines contain N characters each, describing the maze:
+
+. (empty space) 
+# (wall) 
+S (starting position) 
+G (goal) 
+< > ^ v (laser turrets) 
+The four symbols for laser turrets signify turrets that are initially pointing left, right, up, or down respectively before you take your first step.
+
+Output
+For the ith maze, print a line containing "Case #i: " followed by the smallest number of steps necessary to get to the exit without being hit by a laser, or the string "impossible'' if there is no way to reach the goal safely.
+
+Constraints
+1 ≤ T ≤ 100 
+1 ≤ M, N ≤ 100 
+Each maze will contain exactly one 'S' and exactly one 'G'.
+*/
+namespace LaserMaze
+{
+    using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            using (var input = new StreamReader("laser_maze.txt"))
+            using(var output = new StreamWriter("output.txt"))
+            {
+                var T = int.Parse(input.ReadLine());
+                Console.WriteLine("T = {0}", T);
+
+                for(int i = 1; i <= T; i++ )
+                {
+                    Console.WriteLine("i = {0}", i);
+                    var size = input.ReadLine().Split(' ').Select(x => int.Parse(x)).ToArray();
+
+                    var lines = new string[size[0]];
+
+                    for (int j = 0; j < size[0]; j++)
+                        lines[j] = input.ReadLine();
+
+                    var maze = new Maze(size, lines);
+
+                    var solution = maze.Solve();
+                    output.WriteLine("Case #{0}: {1}", i, solution);
+                }
+
+                Console.WriteLine("Finished");
+                Console.ReadLine();
+            }
+        }
+    }
+
+    public class Maze
+    {
+        private readonly int M;
+        private readonly int N;
+
+        private bool[,] wall;
+        private bool[,][] laser;
+        private bool[,][] visited;
+
+        private Point initialPos;
+        private Point goal;
+
+        private List<Point> turrets;
+
+        public Maze(int[] size, string[] lines)
+        {
+            this.M = size[0];
+            this.N = size[1];
+            this.wall = new bool[M, N];
+            this.turrets = new List<Point>();
+            this.laser = new bool[M, N][];
+            this.visited = new bool[M, N][];
+            Update(lines);
+
+
+        }
+
+        private void Update(string[] lines)
+        {
+            var wallsAndTurrets = new HashSet<char>() { '#', '<', '>', '^', 'v' };
+
+            for (int i = 0; i < M; i++)
+                for (int j = 0; j < N; j++)
+                {
+                    laser[i, j] = new bool[4];
+                    visited[i, j] = new bool[4];
+
+                    if (lines[i][j] == 'S')
+                        initialPos = new Point(i, j);
+                    else if (lines[i][j] == 'G')
+                        goal = new Point(i, j);
+                    else if (wallsAndTurrets.Contains(lines[i][j]))
+                    {
+                        wall[i, j] = true;
+                        if (lines[i][j] != '#')
+                            turrets.Add(new Point(i, j));
+                    }
+                }
+
+            foreach (var turret in turrets)
+                UpdateTurret(turret, lines[turret.X][turret.Y]);
+        }
+
+        private void UpdateTurret(Point turret, char orientation)
+        {
+            int initialOrientation;
+
+            switch(orientation)
+            {
+                case '^':
+                    initialOrientation = 0;
+                    break;
+                case '>':
+                    initialOrientation = 1;
+                    break;
+                case 'v':
+                    initialOrientation = 2;
+                    break;
+                case '<':
+                    initialOrientation = 3;
+                    break;
+                default:
+                    initialOrientation = -1;
+                    throw new ArgumentException("Wrong orientation!");
+            }
+
+            for (int i = 1; i <= 4; i++)
+                UpdateTurret(turret, (initialOrientation + i) % 4, i);
+        }
+
+        private void UpdateTurret(Point turrent, int orientation, int move)
+        {
+            int dx, dy;
+            switch(orientation)
+            {
+                case 0:
+                    dx = -1;
+                    dy = 0;
+                    break;
+                case 1:
+                    dx = 0;
+                    dy = 1;
+                    break;
+                case 2:
+                    dx = 1;
+                    dy = 0;
+                    break;
+                case 3:
+                    dx = 0;
+                    dy = -1;
+                    break;
+                default:
+                    dx = 0;
+                    dy = 0;
+                    throw new ArgumentException("Wrong orientation!");
+            }
+
+            int x = turrent.X;
+            int y = turrent.Y;
+
+            do
+            {
+                x += dx;
+                y += dy;
+
+                if (x < 0 || x >= M || y < 0 || y >= N)
+                    break;
+
+                laser[x, y][move % 4] = true;
+            } while (!wall[x, y]);
+        }
+
+        public string Solve()
+        {
+            var queue = new Queue<PointWithMove>();
+
+            queue.Enqueue(new PointWithMove(initialPos, 0));
+
+            while(queue.Count > 0 && queue.Count < 10000000)
+            {
+                var curr = queue.Dequeue();
+
+                if(curr.X == goal.X && curr.Y == goal.Y)
+                    return curr.Move.ToString();
+
+                visited[curr.X, curr.Y][curr.Move % 4] = true;
+
+                if (curr.X > 0 && !visited[curr.X - 1, curr.Y][(curr.Move + 1) % 4] && !laser[curr.X - 1, curr.Y][(curr.Move + 1) % 4] && !wall[curr.X - 1, curr.Y])
+                    queue.Enqueue(new PointWithMove(curr.X - 1, curr.Y, curr.Move + 1));
+
+                if (curr.X < M - 1 && !visited[curr.X + 1, curr.Y][(curr.Move + 1) % 4] && !laser[curr.X + 1, curr.Y][(curr.Move + 1) % 4] && !wall[curr.X + 1, curr.Y])
+                    queue.Enqueue(new PointWithMove(curr.X + 1, curr.Y, curr.Move + 1));
+
+                if (curr.Y > 0 && !visited[curr.X, curr.Y - 1][(curr.Move + 1) % 4] && !laser[curr.X, curr.Y - 1][(curr.Move + 1) % 4] && !wall[curr.X, curr.Y - 1])
+                    queue.Enqueue(new PointWithMove(curr.X, curr.Y -1, curr.Move + 1));
+
+                if (curr.Y < N - 1 && !visited[curr.X, curr.Y + 1][(curr.Move + 1) % 4] && !laser[curr.X, curr.Y + 1][(curr.Move + 1) % 4] && !wall[curr.X, curr.Y + 1])
+                    queue.Enqueue(new PointWithMove(curr.X, curr.Y + 1, curr.Move + 1));
+            }
+
+            return "impossible";
+        }
+
+        public struct Point
+        {
+            public int X { get; private set; }
+            public int Y { get; private set; }
+
+            public Point(int x, int y)
+                : this()
+            {
+                this.X = x;
+                this.Y = y;
+            }
+        }
+
+        public struct PointWithMove
+        {
+            public int X { get; private set; }
+            public int Y { get; private set; }
+            public int Move { get; private set; }
+
+            public PointWithMove(Point p, int move)
+                : this(p.X, p.Y, move) { }
+
+            public PointWithMove(int x, int y, int move)
+                : this()
+            {
+                this.X = x;
+                this.Y = y;
+                this.Move = move;
+            }
+        }
+
+    }
+
+}

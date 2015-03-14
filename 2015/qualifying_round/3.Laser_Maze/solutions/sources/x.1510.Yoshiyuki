@@ -1,0 +1,152 @@
+import java.io.*;
+import java.math.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.lang.ArrayIndexOutOfBoundsException;
+
+public class Main {
+	static int h, w;
+	static boolean forbidden[][][];
+	static char maze[][];
+	static final int inf = 400000000;
+	public static void main(String args[]) throws Exception{
+		
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		int t = Integer.parseInt(br.readLine());
+		for(int i = 1; i <= t; i++){
+			String[] in = br.readLine().split(" ");
+			h = Integer.parseInt(in[0]);
+			w = Integer.parseInt(in[1]);
+			
+			maze = new char[h][w];
+			forbidden = new boolean[h][w][4];
+			boolean[][][] visited = new boolean[h][w][4];
+			int sy = 0, sx = 0;
+			
+			for(int y = 0; y < h; y++){
+				String str = br.readLine();
+				for(int x = 0; x < w; x++){
+					char c = str.charAt(x);
+					maze[y][x] = c;
+					
+					switch(c){
+						case '#':{
+							forbidden[y][x][0] = true;
+							forbidden[y][x][1] = true;
+							forbidden[y][x][2] = true;
+							forbidden[y][x][3] = true;
+							break;
+						}
+						case '^':{
+							upFill(y, x, 0, forbidden);
+							rightFill(y, x, 1, forbidden);
+							downFill(y, x, 2, forbidden);
+							leftFill(y, x, 3, forbidden);
+							break;
+						}
+						case '>':{
+							rightFill(y, x, 0, forbidden);
+							downFill(y, x, 1, forbidden);
+							leftFill(y, x, 2, forbidden);
+							upFill(y, x, 3, forbidden);
+							break;
+						}
+						case 'v':{
+							downFill(y, x, 0, forbidden);
+							leftFill(y, x, 1, forbidden);
+							upFill(y, x, 2, forbidden);
+							rightFill(y, x, 3, forbidden);
+							break;
+						}
+						case '<':{
+							leftFill(y, x, 0, forbidden);
+							upFill(y, x, 1, forbidden);
+							rightFill(y, x, 2, forbidden);
+							downFill(y, x, 3, forbidden);
+							break;
+						}
+						case 'S':{
+							sy = y;
+							sx = x;
+							break;
+						}
+					}
+				}
+			}
+			int ans = -1;
+			visited[sy][sx][0] = true;
+			ArrayDeque<Integer> qy = new ArrayDeque<Integer>();
+			ArrayDeque<Integer> qx = new ArrayDeque<Integer>();
+			ArrayDeque<Integer> qcnt = new ArrayDeque<Integer>();
+			qy.addLast(sy);
+			qx.addLast(sx);
+			qcnt.addLast(0);
+			// --
+			while(qy.size() != 0){
+				int y = qy.pollFirst(), x = qx.pollFirst(), cnt = qcnt.pollFirst();
+				if(maze[y][x] == 'G'){
+					ans = cnt;
+					break;
+				}
+				for(int k = 0; k < 4; k++){
+					int ny = y + vy[k], nx = x + vx[k];
+					int ncnt_mod = (cnt + 1) % 4;
+					try{
+						// System.out.println("(" + ny + "," + nx + ") count=" + cnt + " forbidden " + forbidden[ny][nx][cnt%4]);;
+					}catch(Exception e){}
+					if(inside(ny, nx) && !forbidden[ny][nx][ncnt_mod] && !visited[ny][nx][ncnt_mod]){
+						visited[ny][nx][ncnt_mod] = true;
+						qy.addLast(ny);
+						qx.addLast(nx);
+						qcnt.addLast(cnt+1);
+					}
+				}
+			}
+			// --
+			System.out.print("Case #" + i + ": ");
+			System.out.println(ans == -1 ? "impossible" : ans);
+		}
+	}
+	
+	static int[] vy = {1, -1, 0, 0}, vx = {0, 0, -1, 1};
+	static int dfs(int y, int x, int cnt, boolean[][][] visited){
+		System.out.println("dfs (" + y + ", " + x + ") count=" + cnt);
+		if(maze[y][x] == 'G'){
+			return cnt;
+		}
+		int min_cnt = inf;
+		for(int k = 0; k < 4; k++){
+			int ny = y + vy[k], nx = x + vx[k];
+			int ncnt_mod = (cnt + 1) % 4;
+			try{
+				// System.out.println("(" + ny + "," + nx + ") count=" + cnt + " forbidden " + forbidden[ny][nx][cnt%4]);;
+			}catch(Exception e){}
+			if(inside(ny, nx) && !forbidden[ny][nx][ncnt_mod] && !visited[ny][nx][ncnt_mod]){
+				visited[ny][nx][ncnt_mod] = true;
+				min_cnt = Math.min(min_cnt, dfs(ny, nx, cnt+1, visited));
+				visited[ny][nx][ncnt_mod] = false;
+			}
+		}
+		return min_cnt;
+	}
+	
+	static boolean inside(int y, int x){return 0 <= y && y <= (h-1) && 0 <= x && x <= (w-1);};
+
+
+	static void upFill(int y, int x, int i, boolean[][][] forbidden){
+		for(;y >= 0; y--) forbidden[y][x][i] = true;
+	}
+	
+	static void rightFill(int y, int x, int i, boolean[][][] forbidden){
+		for(;x < forbidden[y].length; x++) forbidden[y][x][i] = true;
+	}
+	
+	static void downFill(int y, int x, int i, boolean[][][] forbidden){
+		for(;y < forbidden.length; y++) forbidden[y][x][i] = true;
+	}
+	
+	static void leftFill(int y, int x, int i, boolean[][][] forbidden){
+		for(;x >= 0; x--) forbidden[y][x][i] = true;
+	}
+}

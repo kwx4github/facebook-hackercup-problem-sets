@@ -1,0 +1,360 @@
+#include <map>
+#include <set>
+#include <cmath>
+#include <deque>
+#include <limits>
+#include <vector>
+#include <cassert>
+#include <string>
+#include <iostream>
+#include <cinttypes>
+#include <algorithm>
+#include <unordered_map>
+
+using namespace std;
+typedef int64_t LL;
+
+
+struct Size
+{
+    LL l;
+    LL r;
+};
+
+struct Position
+{
+    LL l;
+    LL r;
+
+    bool isInside(Size const & s) const
+    {
+        return l >= 0 && r >= 0 && l < s.l && r < s.r;
+    }
+
+    friend ostream & operator<<(
+      ostream & out,
+      Position const & p)
+    {
+        return out << "P{l=" << p.l << ", r=" << p.r << "}";
+    }
+};
+
+struct Direction
+{
+    LL dl;
+    LL dr;
+};
+
+
+map<char, Direction> dirs;
+vector<Direction> moves;
+
+Position operator+(
+  Position const & p,
+  Direction const & d)
+{
+    return Position{p.l + d.dl, p.r + d.dr};
+}
+
+LL makeVertexId(
+    Size const & s,
+    Position const & p,
+    LL const & r
+)
+{
+    assert(r >= 0);
+    assert(r < 4);
+    assert(p.isInside(s));
+    return p.l * s.r * 4 + p.r * 4 + r;
+}
+
+
+typedef vector<string> Maze;
+typedef vector<Position> Lasers;
+typedef vector<vector<LL>> Graph;
+
+char const & getMaze(
+  Maze const & maze,
+  Position const & p
+)
+{
+    assert(p.l >= 0);
+    assert(p.r >= 0);
+    assert(p.l < maze.size());
+    assert(p.r < maze[0].size());
+    return maze[p.l][p.r];
+}
+
+void putMaze(
+  Maze & maze,
+  Position const & p,
+  char const & v
+)
+{
+    assert(p.l >= 0);
+    assert(p.r >= 0);
+    assert(p.l < maze.size());
+    assert(p.r < maze[0].size());
+    maze[p.l][p.r] = v;
+}
+
+
+void printMaze(
+  Maze const & maze
+)
+{
+    for (auto const & i : maze)
+    {
+        /*
+        cerr << i << endl;
+        */
+    }
+}
+
+
+void fireAll(
+  Maze & maze
+, Lasers const & lasers)
+{
+    LL M = maze.size();
+    LL N = maze[0].size();
+    Size size{M, N};
+
+    for (LL laser = 0; laser < lasers.size(); ++laser)
+    {
+        Position const & p = lasers[laser];
+        Direction const & d = dirs[getMaze(maze, p)];
+        Position np = p + d;
+        while (np.isInside(size) && '.' == getMaze(maze, np))
+        {
+            putMaze(maze, np, 'f');
+            np = np + d;
+        }
+    }
+}
+
+
+void rotateAll(
+  Maze & maze
+, Lasers const & lasers)
+{
+    LL M = maze.size();
+    LL N = maze[0].size();
+    Size size{M, N};
+
+    for (LL laser = 0; laser < lasers.size(); ++laser)
+    {
+        Position const & p = lasers[laser];
+        switch (getMaze(maze, p))
+        {
+            case '>': putMaze(maze, p, 'v'); break;
+            case 'v': putMaze(maze, p, '<'); break;
+            case '<': putMaze(maze, p, '^'); break;
+            case '^': putMaze(maze, p, '>'); break;
+        }
+    }
+}
+
+
+LL findPath(
+    Graph const & graph,
+    LL const & start,
+    LL const & goal
+)
+{
+    /*
+    cerr
+        << "start=" << start << ", "
+        << "goal=" << goal << ", "
+        << endl;
+    */
+
+    deque<LL> q;
+    q.push_back(start);
+    LL n = graph.size();
+    vector<bool> used(n);
+    vector<LL> d(n, 0);
+    used[start] = true;
+
+    while (!q.empty())
+    {
+        LL v = q.front(); q.pop_front();
+        /*
+        cerr << "v=" << v << endl;
+        */
+
+        for (LL i = 0; i < graph[v].size(); ++i)
+        {
+            LL to = graph[v][i];
+            if (!used[to])
+            {
+                /*
+                cerr
+                    << "pushes: "
+                    << "to=" << to << ", "
+                    << endl;
+                */
+                used[to] = true;
+                q.push_back(to);
+
+                d[to] = d[v] + 1;
+            }
+        }
+    }
+
+    /*
+    cerr << "found: " << d[goal] << endl;
+    */
+    return d[goal];
+}
+
+
+LL solve(
+  Maze & maze
+)
+{
+    LL M = maze.size();
+    LL N = maze[0].size();
+    Size size{M, N};
+    Position goal;
+    Position start;
+    vector<Position> lasers;
+    Graph graph;
+    graph.resize(M * N * 4);
+
+    for (LL l = 0; l < size.l; ++l)
+    {
+        for (LL r = 0; r < size.r; ++r)
+        {
+            Position p{l, r};
+            switch (getMaze(maze, p))
+            {
+                case '<':
+                case '>':
+                case '^':
+                case 'v':
+                    lasers.push_back(p);
+                    break;
+
+                case 'S':
+                    start = p;
+                    break;
+
+                case 'G':
+                    goal = p;
+                    break;
+            }
+        }
+    }
+    putMaze(maze, start, '.');
+    putMaze(maze, goal, '.');
+
+    for (LL rotate = 0; rotate < 4; ++rotate)
+    {
+        Maze current = maze;
+        //fireAll(current, lasers);
+        rotateAll(maze, lasers);
+        Maze next = maze;
+        fireAll(next, lasers);
+
+        /*
+        cerr << "current: " << endl;
+        */
+        printMaze(current);
+        /*
+        cerr << "next: " << endl;
+        */
+        printMaze(next);
+
+        for (LL l = 0; l < size.l; ++l)
+            for (LL r = 0; r < size.r; ++r)
+            {
+                Position p{l, r};
+                LL cv = makeVertexId(size, p, rotate);
+
+                if ('.' == getMaze(current, p))
+                {
+                    /*
+                    cerr
+                        << "checking: "
+                        << "p=" << p << ", "
+                        << "cv=" << cv << ", "
+                        << endl;
+                    */
+                    for (auto const & move : moves)
+                    {
+                        Position np = p + move;
+                        if (np.isInside(size) && '.' == getMaze(next, np))
+                        {
+                            LL nv = makeVertexId(
+                              size, np, (rotate + 1) % 4);
+                            /*
+                            cerr
+                                << "moving: "
+                                << "np=" << np << ", "
+                                << "nv=" << nv << ", "
+                                << endl;
+                            */
+                            graph[cv].push_back(nv);
+                        }
+                    }
+                }
+            }
+    }
+
+    LL startV = makeVertexId(size, start, 0);
+    vector<LL> results;
+    for (LL rotate = 0; rotate < 4; ++rotate)
+    {
+        LL goalV = makeVertexId(size, goal, rotate);
+        LL result = findPath(graph, startV, goalV);
+        if (result > 0) results.push_back(result);
+    }
+    sort(results.begin(), results.end());
+
+    return results.empty() ? 0 : results.front();
+}
+
+
+int main(int, char**)
+{
+    dirs['>'] = Direction{0, 1};
+    dirs['<'] = Direction{0, -1};
+    dirs['^'] = Direction{-1, 0};
+    dirs['v'] = Direction{1, 0};
+
+    moves.push_back(Direction{0, 1});
+    moves.push_back(Direction{0, -1});
+    moves.push_back(Direction{1, 0});
+    moves.push_back(Direction{-1, 0});
+
+    ios_base::sync_with_stdio(false);
+    cin.tie(NULL);
+
+    LL T;
+    cin >> T;
+
+    for (LL t = 1; t <= T; ++t)
+    {
+        LL M, N;
+        cin >> M >> N;
+        Maze maze;
+        for (LL m = 0; m < M; ++m)
+        {
+            maze.push_back("");
+            cin >> maze.back();
+        }
+
+        LL result = solve(maze);
+
+        cout << "Case #" << t << ": ";
+        if (result > 0)
+            cout << result;
+        else
+            cout << "impossible";
+        cout << endl;
+    }
+
+    return 0;
+}
+

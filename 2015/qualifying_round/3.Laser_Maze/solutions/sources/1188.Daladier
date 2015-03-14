@@ -1,0 +1,197 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.IO;
+
+namespace LaserMaze
+{
+    public class Cell
+    {
+        public Int16 F, G, H, X, Y;
+        public Cell Parent;
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            StreamReader sr = new StreamReader("laser_maze.txt");
+            StreamWriter sw = new StreamWriter("output.txt");
+            Int16 T = Int16.Parse(sr.ReadLine());
+            for (Int16 i = 0; i < T; i++)
+            {
+                string[] data = sr.ReadLine().Split(' ');
+                Int16 M = Int16.Parse(data[0]);
+                Int16 N = Int16.Parse(data[1]);
+                char[][][] mazes = new char[4][][];
+                Cell start = new Cell();
+                Cell goal = new Cell();
+                List<Cell> turrets = new List<Cell>();
+                List<Cell> toCheck = new List<Cell>();
+                List<Cell> cells = new List<Cell>();
+                for (Int16 j = 0; j < 4; j++)
+                {
+                    mazes[j] = new char[M][];
+                }
+                for (Int16 j = 0; j < M; j++)
+                {
+                    mazes[0][j] = sr.ReadLine().ToCharArray();
+                    mazes[1][j] = new char[N];
+                    mazes[0][j].CopyTo(mazes[1][j], 0);
+                    mazes[2][j] = new char[N];
+                    mazes[0][j].CopyTo(mazes[2][j], 0);
+                    mazes[3][j] = new char[N];
+                    mazes[0][j].CopyTo(mazes[3][j], 0);
+                    for(Int16 k = 0; k < N; k++)
+                    {
+                        if(mazes[0][j][k] == 'S')
+                        {
+                            start.G = 0;
+                            start.X = k;
+                            start.Y = j;
+                            mazes[0][j][k] = '.';
+                            mazes[1][j][k] = '.';
+                            mazes[2][j][k] = '.';
+                            mazes[3][j][k] = '.';
+                        }
+                        else if (mazes[0][j][k] == 'G')
+                        {
+                            goal.X = k;
+                            goal.Y = j;
+                            mazes[0][j][k] = '.';
+                            mazes[1][j][k] = '.';
+                            mazes[2][j][k] = '.';
+                            mazes[3][j][k] = '.';
+                        }
+                        else if (mazes[0][j][k] != '.' && mazes[0][j][k] != '#')
+                        {
+                            Cell turret = new Cell();
+                            turret.X = k;
+                            turret.Y = j;
+                            turrets.Add(turret);
+                        }
+                    }
+                }
+                start.H = (Int16)(Math.Abs(start.X - goal.X) + Math.Abs(start.Y - goal.Y));
+                start.F = (Int16)(start.G + start.H);
+                cells.Add(start);
+                toCheck.Add(start);
+                foreach(Cell turret in turrets)
+                {
+                    Int16[] currentAdvance = new Int16[2];
+                    if(mazes[0][turret.Y][turret.X] == '^')
+                    {
+                        currentAdvance[0] = -1;
+                        currentAdvance[1] = 0;
+                    }
+                    else if (mazes[0][turret.Y][turret.X] == '>')
+                    {
+                        currentAdvance[0] = 0;
+                        currentAdvance[1] = 1;
+                    }
+                    else if (mazes[0][turret.Y][turret.X] == 'v')
+                    {
+                        currentAdvance[0] = 1;
+                        currentAdvance[1] = 0;
+                    }
+                    else if (mazes[0][turret.Y][turret.X] == '<')
+                    {
+                        currentAdvance[0] = 0;
+                        currentAdvance[1] = -1;
+                    }
+                    for (Int16 j = 0; j < 4; j++)
+                    {
+                        Int16 X = (Int16)(turret.X + currentAdvance[1]);
+                        Int16 Y = (Int16)(turret.Y + currentAdvance[0]);
+                        while (X >= 0 && Y >= 0 && X < N && Y < M && (mazes[j][Y][X] == '.' || mazes[j][Y][X] == 'L'))
+                        {
+                            mazes[j][Y][X] = 'L';
+                            X = (Int16)(X + currentAdvance[1]);
+                            Y = (Int16)(Y + currentAdvance[0]);
+                        }
+                        currentAdvance = NextClockwiseAdvance(currentAdvance);
+                    }
+                }
+                Int16 solvedSteps = -1;
+                while(toCheck.Count > 0 && solvedSteps == -1)
+                {
+                    Cell cell = toCheck[0];
+                    if (cell.X == goal.X && cell.Y == goal.Y)
+                    {
+                        solvedSteps = cell.G;
+                    }
+                    else
+                    {
+                        Int16[] currentAdvance = new Int16[2];
+                        currentAdvance[0] = -1;
+                        currentAdvance[1] = 0;
+                        for (Int16 j = 0; j < 4; j++)
+                        {
+                            Int16 X = (Int16)(cell.X + currentAdvance[1]);
+                            Int16 Y = (Int16)(cell.Y + currentAdvance[0]);
+                            if (X >= 0 && Y >= 0 && X < N && Y < M && mazes[(cell.G + 1) % 4][Y][X] == '.')
+                            {
+                                List<Cell> existing = cells.Where(x => x.X == X && x.Y == Y && x.G % 4 == (cell.G + 1) % 4).ToList();
+                                if(existing.Count > 0)
+                                {
+                                    if(existing[0].G > cell.G + 1)
+                                    {
+                                        existing[0].G = (Int16)(cell.G + 1);
+                                        existing[0].F = (Int16)(existing[0].G + existing[0].H);
+                                        existing[0].Parent = cell;
+                                        if(!toCheck.Contains(existing[0]))
+                                        {
+                                            toCheck.Add(existing[0]);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Cell newCell = new Cell();
+                                    newCell.X = X;
+                                    newCell.Y = Y;
+                                    newCell.G = (Int16)(cell.G + 1);
+                                    newCell.H = (Int16)(Math.Abs(newCell.X - goal.X) + Math.Abs(newCell.Y - goal.Y));
+                                    newCell.F = (Int16)(newCell.G + newCell.H);
+                                    newCell.Parent = cell;
+                                    toCheck.Add(newCell);
+                                    cells.Add(newCell);
+                                }
+                            }
+                            currentAdvance = NextClockwiseAdvance(currentAdvance);
+                        }
+                        toCheck.Remove(cell);
+                        toCheck = toCheck.OrderBy(x => x.F).ThenBy(x => x.H).ToList();
+                    }
+                }
+                sw.WriteLine("Case #" + (i + 1) + ": " + ((solvedSteps >= 0) ? solvedSteps.ToString() : "impossible"));
+            }
+            sr.Close();
+            sw.Flush();
+            sw.Close();
+        }
+
+        static Int16[] NextClockwiseAdvance(Int16[] currentAdvance)
+        {
+            Int16[] nextAdvance = new Int16[2];
+            if (currentAdvance[0] == 0)
+                nextAdvance[0] = currentAdvance[1];
+            else
+                nextAdvance[0] = 0;
+            if (currentAdvance[1] == 0)
+                nextAdvance[1] = (Int16)(currentAdvance[0]*(-1));
+            else
+                nextAdvance[1] = 0;
+            return nextAdvance;
+        }
+
+        static void PrintMaze(char[][] maze)
+        {
+            for(Int16 i = 0; i < maze.Length; i++)
+            {
+                Console.WriteLine(maze[i]);
+            } 
+        }
+    }
+}

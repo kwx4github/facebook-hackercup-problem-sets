@@ -1,0 +1,87 @@
+import argparse
+import itertools
+import threading
+
+
+class Feed(threading.Thread):
+    def __init__(self, goal, foods, parentThread):
+        threading.Thread.__init__(self)
+        self.foods = foods
+        self.goal = goal
+        self.parentThread = parentThread
+
+    def sumTuplesAtIndex(self, tupleList, index):
+        sum = 0
+        for tuple in tupleList:
+            sum = sum + tuple[index]
+
+        return sum
+
+    def sumTuplesEqualsGoal(self, tupleList):
+        return self.sumTuplesAtIndex(tupleList, 0) == self.goal[0] and \
+            self.sumTuplesAtIndex(tupleList, 1) == self.goal[1] and \
+            self.sumTuplesAtIndex(tupleList, 2) == self.goal[2]
+
+    def choose(self):
+        if self.goal == (0, 0, 0):
+            return 'yes'
+
+        for i in range(1, len(self.foods) + 1):
+            for combination in itertools.combinations(self.foods, i):
+                if self.sumTuplesEqualsGoal(combination):
+                    return 'yes'
+
+        return 'no'
+
+    def run(self):
+        result = self.choose()
+        print "Thread for case %s started" % self.getName()
+        self.parentThread.addResult(self.getName(), result)
+        print "Thread for case %s finished with result %s" % (self.getName(), result)
+
+
+
+class NewYearsResolution():
+    def __init__(self):
+        self.results = {}
+
+    def addResult(self, key, val):
+        with threading.RLock():
+            self.results[key] = val
+
+    def main(self):
+        argparser = argparse.ArgumentParser(description='Facebook Hacker Cup 2014 - New Year\'s Resolution')
+        argparser.add_argument("-i", type=str, help="input file name", default='example_input.txt')
+        argparser.add_argument("-o", type=str, help="output file name", default='output.txt')
+        args = argparser.parse_args()
+
+        with open(args.i, 'r') as input, open(args.o, 'w') as output:
+            t = int(input.readline())
+            threadHandles = []
+            for case in range(1, t + 1):
+                values = input.readline().split()
+                goal = (int(values[0]), int(values[1]), int(values[2]))
+
+                foods = []
+
+                for _i in range(0, int(input.readline())):
+                    line = input.readline().split()
+                    foods.append((int(line[0]), int(line[1]), int(line[2])))
+
+                thread = Feed(goal, foods, self)
+                thread.daemon = False
+                thread.setName(str(case))
+                thread.start()
+                threadHandles.append(thread)
+
+            for thread in threadHandles:
+                thread.join()
+
+            for case in range(1, t + 1):
+                output.write('Case #%d: %s\n' % (case, self.results[str(case)]))
+
+
+if __name__ == "__main__":
+    NewYearsResolution().main()
+
+

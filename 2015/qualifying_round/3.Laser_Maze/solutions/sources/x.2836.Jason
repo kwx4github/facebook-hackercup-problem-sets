@@ -1,0 +1,355 @@
+/*******************************************************************************
+Laser Maze
+55 points
+
+Standard mazes lose their mystery as one grows older. But throw in some lasers,
+and suddenly you've got yourself a recipe for cross-generational appeal. The
+object in any maze is to find your way from your starting point to some goal.
+In a Laser Maze you must additionally contend with laser turrets.
+
+A laser turret is a stationary pillar that both blocks your movement and fires
+lasers from one side. Every time you take a step (either up, down, left, or
+right), every laser turret in the maze then rotates 90 degrees clockwise, and
+then shoots a momentary laser blast in the direction that it is facing.
+Needless to say, if you find yourself in the path of one of these lasers, you
+won't be around long enough to find a way out. A wall is a stationary pillar
+that blocks your movement, but does not fire lasers.
+
+Lasers are powerful, but they do not pass through walls or laser turrets. The
+laser turrets respond to your movements, so you can't stand still and wait for
+the turrets to turn. If you reach the goal, but are immediately shot by a laser,
+your efforts will have been in vain, so make sure you reach the goal safely.
+
+Input
+Input begins with an integer T, the number of mazes you'll explore. For each
+maze, there is first a line containing two integers, M and N, the height and
+width of the maze, respectively. The next M lines contain N characters each,
+describing the maze:
+
+. (empty space) 
+# (wall) 
+S (starting position) 
+G (goal) 
+< > ^ v (laser turrets) 
+The four symbols for laser turrets signify turrets that are initially pointing
+left, right, up, or down respectively before you take your first step.
+
+Output
+For the ith maze, print a line containing "Case #i: " followed by the smallest
+number of steps necessary to get to the exit without being hit by a laser, or
+the string "impossible'' if there is no way to reach the goal safely.
+
+Constraints
+1 <= T <= 100 
+1 <= M, N <= 100 
+Each maze will contain exactly one 'S' and exactly one 'G'.
+*******************************************************************************/
+
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <sstream>
+
+void DrawBoard(const char* board, int w, int h)
+{
+	for (int y(0); y < h; ++y)
+	{
+		for (int x(0); x < w; ++x)
+		{
+			std::cout << board[y * w + x];
+		}
+		std::cout << std::endl;
+	}
+}
+
+static const int OPEN = 1 << 0;
+static const int CLOSED = 1 << 1;
+static const int GOAL = 1 << 2;
+static const int WALL = 1 << 3;
+
+struct Node
+{
+	int f, g, h;
+	int status;
+};
+
+int FindPath(const char* board, int w, int h, int sx, int sy, int gx, int gy)
+{
+	auto size = w * h * 4;
+	auto path = new Node[size];
+	memset(path, 0, sizeof(Node) * size);
+	
+	static const size_t HEAP_SIZE = 1024;
+	Node* heap[HEAP_SIZE];
+	int end(0);
+	memset(heap, 0, sizeof(heap));
+
+	auto push = [&heap, &end](Node* node)
+	{
+		node->status |= OPEN;
+
+		heap[end] = node;
+		auto p = end++;
+
+		while (p > 0)
+		{
+			auto parent((p - 1) / 2);
+			if (heap[p]->f < heap[parent]->f) std::swap(heap[p], heap[parent]);
+			p = parent;
+		}
+	};
+
+	auto dist = [gx, gy](int x, int y){ return abs(x - gx) + abs(y - gy); };
+
+	auto index = [w, h](int x, int y, int t){ return x + y * w + t * (w * h); };
+
+	auto X = [path, w](Node* at){ return (at - path) % w; };
+	auto Y = [path, w, h](Node* at){ return ((at - path) / w) % h; };
+	auto T = [path, w, h](Node* at){ return (at - path) / (w * h); };
+
+	int x(sx);
+	int y(sy);
+	int t(0);
+
+	path[index(x, y, t)].f = dist(x, y);
+	path[index(x, y, t)].h = dist(x, y);
+
+	for (int n(0); n < 4; ++n) path[index(gx, gy, n)].status |= GOAL;
+
+	push(path + index(x, y, t));
+
+	auto draw = [&]()
+	{
+		std::cout << "======";// << std::endl;
+		for (int q(0); q < size; ++q)
+		{
+			if (q % w == 0) std::cout << std::endl;
+			if (q % (w * h) == 0) std::cout << "-----" << std::endl;
+			std::cout << path[q].f << " ";
+		}
+		std::cout << std::endl << "======" << std::endl;
+	};
+
+	while (end > 0)
+	{
+		auto at = heap[0];
+
+		if (at->status & GOAL)
+			return at->f;
+
+		at->status |= CLOSED;
+
+		x = X(at);
+		y = Y(at);
+		t = T(at);
+
+		// Pop root
+		--end;
+		heap[0] = heap[end];
+
+		// Sort down
+		int p(0);
+		while (p < end)
+		{
+			int left(p * 2 + 1);
+			int right(left + 1);
+
+			if (left >= end)
+			{
+				break;
+			}
+			else if (right >= end)
+			{
+				if (heap[p]->f <= heap[left]->f)
+				{
+					std::swap(heap[p], heap[left]);
+					p = right;
+				}
+				break;
+			}
+			else
+			{
+				int test(heap[left]->f < heap[right]->f ? left : right);
+				if (heap[p]->f > heap[test]->f)
+				{
+					std::swap(heap[p], heap[test]);
+					p = test;
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		auto Explore = [board, path, &index, &push](Node* from, Node* to, int hCost)
+		{
+			if (to->status & CLOSED) return;
+
+			if (board[to - path] == '#') return;
+
+			auto cost(from->g + 1);
+			if (!(to->status & OPEN))
+			{
+				to->g = cost;
+				to->h = hCost;
+				to->f = to->g + to->h;
+				push(to);
+			}
+			else if (cost < to->g)
+			{
+				to->g = cost;
+				to->h = hCost;
+				to->f = to->g + to->h;
+			}
+		};
+
+		// Push neighbors
+		auto next = (t + 1) % 4;
+		if (x > 0) Explore(at, path + index(x - 1, y, next), dist(x - 1, y)); // left
+		if (x < w - 1) Explore(at, path + index(x + 1, y, next), dist(x + 1, y)); // right
+		if (y > 0) Explore(at, path + index(x, y - 1, next), dist(x, y - 1)); // up
+		if (y < h - 1) Explore(at, path + index(x, y + 1, next), dist(x, y + 1)); // down
+		//draw();
+	}
+
+	return -1;
+}
+
+void ProcessBoard(std::ifstream& in)
+{
+	std::string dims;
+	std::getline(in, dims);
+	int w, h;
+	std::stringstream(dims) >> h >> w;
+	//std::cout << w << ", " << h << std::endl;
+
+	int size = w * h;
+	auto board = new char[size * 4 + 1];
+	memset(board, '.', size * 4);
+	for (int n(0); n < h; ++n)
+	{
+		in.getline(&board[n * w], w + 1);
+	}
+
+	/*DrawBoard(board, w, h);
+	std::cout << std::endl;*/
+
+	int sx, sy, ex, ey;
+
+	for (char* a(board), *b(a + size), *c(b + size), *d(c + size); a != board + size; ++a, ++b, ++c, ++d)
+	{
+		switch (*a)
+		{
+		case 'S':
+			sx = (a - board) % w;
+			sy = (a - board) / w;
+			*a = '.';
+			*b = '.';
+			*c = '.';
+			*d = '.';
+			break;
+		case 'G':
+			ex = (a - board) % w;
+			ey = (a - board) / w;
+			*a = '.';
+			*b = '.';
+			*c = '.';
+			*d = '.';
+			break;
+		case '#':
+			*b = '#';
+			*c = '#';
+			*d = '#';
+			break;
+		case '^':
+			*b = '>';
+			*c = 'v';
+			*d = '<';
+			break;
+		case '<':
+			*b = '^';
+			*c = '>';
+			*d = 'v';
+			break;
+		case '>':
+			*b = 'v';
+			*c = '<';
+			*d = '^';
+			break;
+		case 'v':
+			*b = '<';
+			*c = '^';
+			*d = '>';
+			break;
+		}
+	}
+
+	for (char* c(board); c != board + size * 4; ++c)
+	{
+		auto p = c - board;
+		switch (*c)
+		{
+		case '^':
+			*c = '.';
+			for (auto a(c); *a == '.' && (a - board) / size >= p / size; a -= w) *a = '#';
+			break;
+		case '<':
+			*c = '.';
+			for (auto a(c); *a == '.' && (a - board) % w <= p % w; --a) *a = '#';
+			break;
+		case '>':
+			*c = '.';
+			for (auto a(c); *a == '.' && (a - board) % w >= p % w; ++a) *a = '#';
+			break;
+		case 'v':
+			*c = '.';
+			for (auto a(c); *a == '.' && (a - board) / size <= p / size; a += w) *a = '#';
+		}
+	}
+
+	auto p = FindPath(board, w, h, sx, sy, ex, ey);
+
+	/*std::cout
+		<< "Start: " << sx << ", " << sy << std::endl
+		<< "Goal: " << ex << ", " << ey << std::endl;
+	for (int n(0); n < 4; ++n)
+	{
+		DrawBoard(&board[size * n], w, h);
+		std::cout << std::endl;
+	}*/
+
+	if (p == -1)
+		std::cout << "impossible" << std::endl;
+	else
+		std::cout << p << std::endl;
+}
+
+int main(int argc, char* argv[])
+{
+	std::ifstream in("../Lazer Maze/laser_maze.txt");
+	
+	std::string line;
+	std::getline(in, line);
+	int count;
+	std::stringstream(line) >> count;
+	
+	/*std::cout
+		<< "Count: " << count << std::endl
+		<< std::endl;*/
+
+	for (int n(0); n < count; ++n)
+	{
+		std::cout << "Case #" << (n + 1) << ": ";
+		
+		ProcessBoard(in);
+		
+		/*std::cout
+			<< std::endl
+			<< "------------" << std::endl
+			<< std::endl;*/
+	}
+
+	return 0;
+}
+

@@ -1,0 +1,165 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+
+const int NumDirs = 4,
+          DirsR[NumDirs] = { 0, -1,  0,  1},
+		  DirsC[NumDirs] = {-1,  0,  1,  0},
+		  Infty = 1010101010;
+
+map<char, int> DirMap;
+
+struct SingleTest {
+	char maze[100][101];
+	bool is_blocked[4][100][101];
+	int M, N;
+	vector<vector<int>> graph;
+	vector<int> dist;
+
+	SingleTest(){
+		scanf("%d%d", &M, &N);
+		for(int i = 0; i < M; i++)
+			scanf("%s", maze[i]);
+	}
+
+	int get_id(int row, int col, int tm){
+		return tm*M*N + row*N + col;
+	}
+
+	bool is_blocking(int row, int col){
+		for(char v: vector<char>{'#', '^', '<', 'v', '>'}){
+			if(maze[row][col] == v) return true;
+		}
+		return false;
+	}
+
+	bool inside_board(int row, int col){
+		return row >= 0 && row < M && col >= 0 && col < N;
+	}
+
+	void produce_blocked(int tm){
+		for(int r = 0; r < M; r++)
+			fill(is_blocked[tm][r], is_blocked[tm][r]+N, false);
+
+		for(int r = 0; r < M; r++){
+			for(int c = 0; c < N; c++){
+				if(is_blocking(r, c))
+					is_blocked[tm][r][c] = true;
+
+				if(!DirMap.count(maze[r][c])) continue;
+				
+				int curDir = (DirMap[maze[r][c]] + tm) % 4;
+				int dirR = DirsR[curDir],
+				    dirC = DirsC[curDir];
+
+				int curR = r+dirR, curC = c+dirC;
+				while(inside_board(curR, curC) && !is_blocking(curR, curC)){
+					is_blocked[tm][curR][curC] = true;
+					curR += dirR;
+					curC += dirC;
+				}
+			}
+		}
+	}
+
+	void make_graph(){
+		graph.resize(4*M*N);
+		for(int tm = 0; tm < 4; tm++){
+			for(int r = 0; r < M; r++){
+				for(int c = 0; c < N; c++){
+					if(is_blocking(r, c)) continue;
+
+					for(int next = 0; next < 4; next++){
+						int newR = r + DirsR[next],
+						    newC = c + DirsC[next];
+						
+						if(inside_board(newR,newC) && !is_blocking(newR,newC)
+								&& !is_blocked[(tm+1)%4][newR][newC]){
+
+							graph[get_id(r,c,tm)].push_back(get_id(newR,newC,(tm+1)%4));
+						}
+					}
+				}
+			}
+		}
+	}
+
+	pair<int,int> get_pos(char ch){
+		for(int r = 0; r < M; r++){
+			for(int c = 0; c < N; c++){
+				if(maze[r][c] == ch) return make_pair(r,c);
+			}
+		}
+		throw logic_error("Starting position not found");
+	}
+
+
+	void bfs(int startId){
+		dist = vector<int>(4*M*N, Infty);
+
+		queue<int> Q;
+		Q.push(startId);
+		dist[startId] = 0;
+
+		while(!Q.empty()){
+			int v = Q.front(); Q.pop();
+			
+			for(int s: graph[v]){
+				if(dist[s] == Infty){
+					dist[s] = dist[v] + 1;
+					Q.push(s);
+				}
+			}
+		}
+	}
+
+	int run(){
+		for(int tm = 0; tm < 4; tm++){
+			produce_blocked(tm);
+		}
+		make_graph();
+		
+		int startR, startC, endR, endC;
+		tie(startR, startC) = get_pos('S');
+		tie(endR, endC)     = get_pos('G');
+
+		bfs(get_id(startR, startC, 0));
+
+		int result = Infty;
+		for(int tm = 0; tm < 4; tm++){
+			result = min(result, dist[get_id(endR,endC,tm)]);
+		}
+		return result;
+	}
+};
+
+int test(){
+	SingleTest ST;
+
+	int result = ST.run();
+	if(result == Infty)
+		return -1;
+	else
+		return result;
+}
+
+int main(){
+	int T;
+	scanf("%d", &T);
+
+	DirMap['<'] = 0;
+	DirMap['^'] = 1;
+	DirMap['>'] = 2;
+	DirMap['v'] = 3;
+
+	for(int i = 1; i <= T; i++){
+		int result = test();
+		printf("Case #%d: ", i);
+
+		if(result == -1)
+			printf("impossible\n");
+		else
+			printf("%d\n", result);
+	}
+}

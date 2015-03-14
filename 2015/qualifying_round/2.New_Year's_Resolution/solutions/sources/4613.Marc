@@ -1,0 +1,156 @@
+package de.mprengemann.fb.hackercup15.problem2;
+
+import com.google.common.collect.Lists;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Queue;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+public class Problem2 {
+    private String pathToFile;
+    private Queue<String> inputFileLines = new ArrayDeque<String>();
+
+    public Problem2(String pathToFile) {
+        this.pathToFile = pathToFile;
+    }
+
+    public void solve(String outputFile) {
+        PrintWriter out = null;
+        try {
+            inputFileLines = new ArrayDeque<String>(Files.readAllLines(Paths.get(pathToFile), UTF_8));
+            out = new PrintWriter(outputFile);
+            int testCases = Integer.parseInt(inputFileLines.poll());
+            for (int testCase = 1; testCase <= testCases; testCase++) {
+                solveTestCase(testCase, out);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (out != null) {
+                out.close();
+            }
+        }
+        System.out.println("Finished");
+    }
+
+    private void solveTestCase(int testCaseNumber, PrintWriter out) {
+        TestCase testCase = new TestCase();
+        testCase.setDesiredValues(inputFileLines.poll());
+        testCase.setMealCount(inputFileLines.poll());
+        for (int meal = 0; meal < testCase.mealCount; meal++) {
+            testCase.addMeal(meal, inputFileLines.poll());
+        }
+        boolean result = testCase.verify();
+        out.println(String.format("Case #%d: %s", testCaseNumber, (result ? "yes" : "no")));
+    }
+
+    private class TestCase {
+        int targetP;
+        int targetC;
+        int targetF;
+        int mealCount;
+        Meal[] meals;
+
+        public TestCase() {
+        }
+
+        public void setDesiredValues(String input) {
+            String[] values = input.split(" ");
+            targetP = Integer.parseInt(values[0]);
+            targetC = Integer.parseInt(values[1]);
+            targetF = Integer.parseInt(values[2]);
+        }
+
+        public void setMealCount(String input) {
+            mealCount = Integer.parseInt(input);
+            meals = new Meal[mealCount];
+        }
+
+        public void addMeal(int index, String input) {
+            String[] values = input.split(" ");
+            int P = Integer.parseInt(values[0]);
+            int C = Integer.parseInt(values[1]);
+            int F = Integer.parseInt(values[2]);
+            meals[index] = new Meal(index, P, C, F);
+        }
+
+        public boolean verify() {
+            List<List<Meal>> foundCombinations = findPCombinations(Arrays.asList(meals), targetP);
+            for (List<Meal> mealList : foundCombinations) {
+                if (verifyCSum(mealList, targetC) &&
+                    verifyFSum(mealList, targetF)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean verifyFSum(List<Meal> meals, int target) {
+            int sum = 0;
+            for (Meal meal : meals) {
+                sum += meal.F;
+            }
+            return sum == target;
+        }
+
+        private boolean verifyCSum(List<Meal> meals, int target) {
+            int sum = 0;
+            for (Meal meal : meals) {
+                sum += meal.C;
+            }
+            return sum == target;
+        }
+
+        private void findPCombinations(List<Meal> meals,
+                                       int target,
+                                       List<Meal> partial,
+                                       List<List<Meal>> suitableMeals) {
+            int s = 0;
+            for (Meal x : partial) {
+                s += x.P;
+            }
+            if (s == target)
+                suitableMeals.add(partial);
+            if (s >= target)
+                return;
+            for (int i = 0; i < meals.size(); i++) {
+                List<Meal> remaining = new ArrayList<Meal>();
+                Meal n = meals.get(i);
+                for (int j = i + 1; j < meals.size(); j++) {
+                    remaining.add(meals.get(j));
+                }
+                List<Meal> partial_rec = new ArrayList<Meal>(partial);
+                partial_rec.add(n);
+                findPCombinations(remaining, target, partial_rec, suitableMeals);
+            }
+        }
+
+        List<List<Meal>> findPCombinations(List<Meal> meals, int target) {
+            List<List<Meal>> suitableMeals = Lists.newArrayList();
+            findPCombinations(meals, target, new ArrayList<Meal>(), suitableMeals);
+            return suitableMeals;
+        }
+    }
+
+    private class Meal {
+        public final int index;
+        public final int P;
+        public final int C;
+        public final int F;
+
+        public Meal(int index, int P, int C, int F) {
+            this.index = index;
+            this.P = P;
+            this.C = C;
+            this.F = F;
+        }
+    }
+}

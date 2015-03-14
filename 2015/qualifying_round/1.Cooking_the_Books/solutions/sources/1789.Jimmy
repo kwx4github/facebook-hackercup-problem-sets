@@ -1,0 +1,105 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+
+namespace hc
+{
+	public partial class Form1 : Form
+	{
+		#region form logic
+		BackgroundWorker worker;
+		DateTime startTime;
+		Timer timer;
+		String result;
+
+		public Form1()
+		{
+			InitializeComponent();
+			worker = new BackgroundWorker();
+			worker.DoWork += new DoWorkEventHandler(PerformWork);
+			worker.ProgressChanged += new ProgressChangedEventHandler(ReportProgress);
+			worker.RunWorkerCompleted += new RunWorkerCompletedEventHandler(OnWorkerCompleted);
+
+			timer = new Timer();
+			timer.Interval = 1000;
+			timer.Tick += new EventHandler(timer_Tick);
+			timer.Start();
+		}
+
+		void timer_Tick(object sender, EventArgs e)
+		{
+			if (worker.IsBusy && startTime != null)
+			{
+				var elapsed = DateTime.Now - startTime;
+				btnProcess.Text = "Working... " + Math.Round(elapsed.TotalSeconds) + " seconds.";
+			}
+		}
+
+		void OnWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+		{
+			var elapsed = DateTime.Now - startTime;
+			btnProcess.Text = "Finished in " + elapsed.Minutes + " minutes, " + elapsed.Seconds + " seconds.";
+			txtOutput.Text = result;
+		}
+
+		void ReportProgress(object sender, ProgressChangedEventArgs e)
+		{
+			
+		}
+
+		void PerformWork(object sender, DoWorkEventArgs e)
+		{
+			startTime = DateTime.Now;
+			var text = txtInput.Text;
+			result = DoTask(text);
+		}
+
+		private void btnProcess_Click(object sender, EventArgs e)
+		{
+			worker.RunWorkerAsync();
+		}
+
+		#endregion
+
+		private String DoTask(String input)
+		{
+			var output = "";
+
+			var lines = input.Split('\n');
+			var count = Convert.ToInt32(lines[0]);
+
+			for (int i = 1; i <= count; i++)
+			{
+				var number = lines[i].Trim().ToCharArray();
+				var lowest = Convert.ToInt32(lines[i].Trim());
+				var highest = lowest;
+
+				for (int j = 0; j < number.Length; j++)
+				{
+					for (int k = j + 1; k < number.Length; k++)
+					{
+						var newnumber = (Char[])number.Clone();
+						var temp = newnumber[j];
+						newnumber[j] = newnumber[k];
+						newnumber[k] = temp;
+
+						if (newnumber[0] != '0')
+						{
+							var newint = Convert.ToInt32((new String(newnumber)));
+							if (newint > highest) { highest = newint; }
+							if (newint < lowest) { lowest = newint; }
+						}
+					}
+				}
+
+				output += "Case #" + i + ": " + lowest + " " + highest + "\r\n";
+			}
+			return output;
+		}
+	}
+}

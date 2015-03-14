@@ -1,0 +1,82 @@
+from collections import deque
+
+dir_map = {
+    '^': ['^', '>', 'v', '<'],
+    '>': ['>', 'v', '<', '^'],
+    'v': ['v', '<', '^', '>'],
+    '<': ['<', '^', '>', 'v']
+}
+
+
+def can_fire(gun, period, row, col, maze):
+    ele = dir_map[gun[2]][period]
+    gun_row, gun_col = gun[0], gun[1]
+    if ele == '^' and gun_col == col and gun_row >= row:
+        for r in range(row, gun_row):
+            if maze[r][col] not in ['.', 'S', 'G']:
+                return False
+        return True
+    if ele == '>' and gun_row == row and gun_col <= col:
+        for c in range(gun_col + 1, col + 1):
+            if maze[row][c] not in ['.', 'S', 'G']:
+                return False
+        return True
+    if ele == 'v' and gun_col == col and gun_row <= row:
+        for r in range(gun_row + 1, row + 1):
+            if maze[r][col] not in ['.', 'S', 'G']:
+                return False
+        return True
+    if ele == '<' and gun_row == row and gun_col >= col:
+        for c in range(col, gun_col):
+            if maze[row][c] not in ['.', 'S', 'G']:
+                return False
+        return True
+
+
+def valid_state(state, maze, guns):
+    for gun in guns:
+        if can_fire(gun, state[2], state[0], state[1], maze):
+            return False
+    return True
+
+dts = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+T = int(raw_input())
+for case in xrange(T):
+    rows, cols = map(int, raw_input().split(" "))
+    maze, guns = [], []
+    visited = {}
+    s_row, s_col, g_row, g_col = None, None, None, None
+    for row in xrange(rows):
+        maze.append((raw_input()))
+        for col, ele in enumerate(maze[row]):
+            if ele == 'S':
+                s_row, s_col = row, col
+            elif ele == 'G':
+                g_row, g_col = row, col
+            elif ele in ['<', '>', 'v', '^']:
+                guns.append((row, col, ele))
+    queue = deque([(s_row, s_col, 0, 0)])
+    done, min_step = False, None
+    while len(queue) > 0:
+        ele = queue.popleft()
+        for dt in dts:
+            n_row = ele[0] + dt[0]
+            n_col = ele[1] + dt[1]
+            if 0 <= n_row < rows and 0 <= n_col < cols:
+                n_period = (ele[2] + 1) % 4
+                n_step = ele[3] + 1
+                state = (n_row, n_col, n_period)
+                if state not in visited and valid_state(state, maze, guns):
+                    if n_row == g_row and n_col == g_col:
+                        done = True
+                        min_step = n_step
+                        break
+                    else:
+                        visited[state] = True
+                        queue.append((n_row, n_col, n_period, n_step))
+        if done:
+            break
+    if done:
+        print "Case #%d: %d" % (case + 1, min_step)
+    else:
+        print "Case #%d: impossible" % (case + 1)

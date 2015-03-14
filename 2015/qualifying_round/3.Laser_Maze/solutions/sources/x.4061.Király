@@ -1,0 +1,157 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 105;
+char maze[MAXN][MAXN];
+
+const int NUMDIR = 4;
+const int dr[] = {-1, 1, 0, 0};
+const int dc[] = {0, 0, -1, 1};
+int tests, n, m;
+
+struct state
+{
+    int row, col, rot;
+    state(int r=0, int c=0, int ro=0) : row(r), col(c), rot(ro) {}
+    bool operator<(const state& other) const
+    {
+        if (row != other.row) return row < other.row;
+        if (col != other.col) return col < other.col;
+        return rot < other.rot;
+    }
+};
+
+bool is_laser(char ch)
+{
+    return ch == '<' || ch == '>' || ch == 'v' || ch == '^';
+}
+
+char rotate(char ch)
+{
+    if (ch == '<') return '^';
+    if (ch == '^') return '>';
+    if (ch == '>') return 'v';
+    return '<';
+}
+
+char rotate_by(char ch, int by)
+{
+    for(int i = 0; i < by; ++i)
+        ch = rotate(ch);
+    return ch;
+}
+
+bool is_dead(const state& s)
+{
+    for(int r = s.row - 1; r >= 0; --r)
+    {
+        if (is_laser(maze[r][s.col]))
+        {
+            if (rotate_by(maze[r][s.col], s.rot) == 'v')
+                return true;
+            return false;
+        }
+        if (maze[r][s.col] == '#')
+            return false;
+    }
+    for(int r = s.row + 1; r < n; ++r)
+    {
+        if (is_laser(maze[r][s.col]))
+        {
+            if (rotate_by(maze[r][s.col], s.rot) == '^')
+                return true;
+            return false;
+        }
+        if (maze[r][s.col] == '#')
+            return false;
+    }
+    for(int c = s.col - 1; c >= 0; --c)
+    {
+        if (is_laser(maze[s.row][c]))
+        {
+            if(rotate_by(maze[s.row][c], s.rot) == '>')
+                return true;
+            return false;
+        }
+        if (maze[s.row][c] == '#')
+            return false;
+    }
+    for(int c = s.col + 1; c < m; ++c)
+    {
+        if (is_laser(maze[s.row][c]))
+        {
+            if (rotate_by(maze[s.row][c], s.rot) == '<')
+                return true;
+            return false;
+        }
+        if (maze[s.row][c] == '#')
+            return false;
+    }
+    return false;
+}
+
+int bfs(state& start, state& destination)
+{
+    queue<state> q;
+    map<state, int> dist;
+
+    q.push(start);
+    dist[start] = 0;
+
+    while(!q.empty())
+    {
+        state s = q.front(); q.pop();
+
+        if (s.row == destination.row && s.col == destination.col)
+            return dist[s];
+
+        for(int d = 0; d < NUMDIR; ++d)
+        {
+            int nr = s.row + dr[d];
+            int nc = s.col + dc[d];
+            if (nr >= 0 && nr < n && nc >= 0 && nc < m)
+            {
+                state newstate(nr, nc, (s.rot + 1) % 4);
+                if (dist.find(newstate) == dist.end() && !is_dead(newstate))
+                {
+                    q.push(newstate);
+                    dist[newstate] = dist[s] + 1;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+int main()
+{
+    state start, destination;
+
+    cin >> tests;
+    for(int test = 1; test <= tests; ++test)
+    {
+        cin >> n >> m;
+        for(int i = 0; i < n; ++i)
+            for(int j = 0; j < m; ++j)
+            {
+                cin >> maze[i][j];
+                if (maze[i][j] == 'S')
+                {
+                    start.row = i;
+                    start.col = j;
+                    start.rot = 0;
+                }
+                if (maze[i][j] == 'G')
+                {
+                    destination.row = i;
+                    destination.col = j;
+                    destination.rot = 0;
+                }
+            }
+
+        int solution = bfs(start, destination);
+        printf("Case #%d: ", test);
+        if (solution == -1) puts("impossible");
+        else printf("%d\n", solution);
+    }
+}

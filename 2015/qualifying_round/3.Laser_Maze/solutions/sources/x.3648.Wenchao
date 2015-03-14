@@ -1,0 +1,101 @@
+#include <iostream>
+#include <map>
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
+
+int tran(char l) {
+  if (l == '^') return 0;
+  else if (l == '>') return 1;
+  else if (l == 'v') return 2;
+  else return 3;
+}
+
+bool safe(vector<pair<char, int> >& laser, int x, int y, int step, int N) {
+  for (vector<pair<char, int> >::iterator it = laser.begin(); it != laser.end(); it++) {
+    int m = it->second / N, n = it->second % N;
+    int l = (tran(it->first) + step) % 4;
+    if ((l == 0 && x < m && y == n) || 
+        (l == 1 && y > n && x == m) ||
+        (l == 2 && x > m && y == n) || 
+        (l == 3 && y < n && x == m)) return false;
+  }
+  return true;
+}
+
+int f(char** maze, int M, int N) {
+  vector<pair<char, int> > laser;
+  vector<pair<int, int> > state;
+  queue<int> curr,next;
+  int S,G;
+  for (int m=0;m<M;m++) {
+    for (int n=0;n<N;n++) {
+      char c = maze[m][n];
+      int pos = m*N+n;
+      if (c == 'S') S = pos;
+      if (c == 'G') G = pos;
+      if (c == '^' || c == 'v' || c == '<' || c == '>') 
+        laser.push_back(make_pair(c,pos));
+    }
+  }
+  int step = 1;
+  curr.push(S);
+  while (true) {
+    if (curr.empty()) return 0;
+    else {
+      while (!curr.empty()) {
+        int curr_pos = curr.front();
+        int m = curr_pos / N;
+        int n = curr_pos % N;
+        vector<pair<int, int> > cand;
+        cand.push_back(make_pair(m-1,n));
+        cand.push_back(make_pair(m+1,n));
+        cand.push_back(make_pair(m,n-1));
+        cand.push_back(make_pair(m,n+1));
+        for (vector<pair<int, int> >::iterator it = cand.begin(); it != cand.end(); it++) {
+         int x = it->first, y = it->second;
+          if (x >= 0 && x < M && y >= 0 && y < N) {
+            char c = maze[x][y];
+            if (c == '.' || c == 'G' || c == 'S') {
+              if (safe(laser, x, y, step, N)) {
+                int pos = x*N+y;
+                vector<pair<int, int> >::iterator r = find(state.begin(), state.end(), make_pair(pos, step%4));
+                if (r == state.end()) {
+                  if (c == 'G') return step;
+                  else {
+                    state.push_back(make_pair(pos, step%4));
+                    next.push(pos);
+                  }
+                }
+              }
+            }
+          }
+        }
+        curr.pop();
+      }
+      swap(curr, next);
+      step++;
+    }
+  }
+}
+
+int main() {
+  int T;
+  cin >> T;
+  for (int t=0;t<T;t++) {
+    int M,N;
+    cin >> M >> N;
+    char** maze = new char*[M];
+    for (int m=0;m<M;m++) maze[m] = new char[N];
+    for (int m=0;m<M;m++) {
+      for (int n=0;n<N;n++) {
+        cin >> maze[m][n];
+      }
+    }
+    int res = f(maze, M, N);
+    cout << "Case #" << t+1 << ": ";
+    if (res == 0) cout << "impossible" << endl;
+    else cout << res << endl;
+  }
+}

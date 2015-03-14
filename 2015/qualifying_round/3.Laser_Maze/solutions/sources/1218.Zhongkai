@@ -1,0 +1,197 @@
+#include<cstdio>
+#include<cstring>
+#include<iostream>
+#include<string>
+#include<cstdlib>
+#include<vector>
+#include<deque>
+#include<set>
+using namespace std;
+
+struct point
+{
+  int x,y;
+
+  int status;
+  point(int _x, int _y, int _status): x(_x), y(_y), status(_status) {}
+
+  bool operator<(const point &o)  const {
+    if(x != o.x) return x < o.x;
+    if(y != o.y) return y < o.y;
+    return status < o.status;
+  }
+};
+
+// axis step to four directions
+int dir[4][2] = { {0, -1}, {-1, 0}, {0, 1}, {1, 0} };
+
+// map range
+int M,N;
+
+// store reached points
+set<point> reached;
+
+bool isEqual(point &op1, point &op2)
+{
+  if(op1.x != op2.x) return false;
+  if(op1.y != op2.y) return false;
+  return true;
+}
+
+bool isTurret(char in)
+{
+  switch(in) {
+  case '^':
+    return true;
+    break;
+  case '>':
+    return true;
+    break;
+  case 'v':
+    return true;
+    break;
+  case '<':
+    return true;
+    break;
+  default:
+    return false;
+  }
+}
+
+int get_base(char turret_type)
+{
+  switch(turret_type) {
+  case '<':
+    return 0;
+    break;
+  case '^':
+    return 1;
+    break;
+  case '>':
+    return 2;
+    break;
+  case 'v':
+    return 3;
+    break;
+  default:
+    break;
+  }
+  return -1;
+}
+
+bool isValid(int x, int y, int time, vector<string> &maze)
+{
+  if(maze[x][y]=='#' || isTurret(maze[x][y])) return false;
+
+  // check four direction for turret that could touch it.
+  for(int i=y-1;i>=0;--i) {
+    if(maze[x][i]=='#') break;
+    if(isTurret(maze[x][i])){
+      if((time+get_base(maze[x][i]))%4==2) return false;
+      break;
+    }
+  }
+
+  for(int i=x+1;i<M;++i) {
+    if(maze[i][y]=='#') break;
+    if(isTurret(maze[i][y])){
+      if((time+get_base(maze[i][y]))%4==1) return false;
+      break;
+    }
+  }
+
+  for(int i=y+1;i<N;++i) {
+    if(maze[x][i]=='#') break;
+    if(isTurret(maze[x][i])){
+      if((time+get_base(maze[x][i]))%4==0) return false;
+      break;
+    }
+  }
+
+  for(int i=x-1;i>=0;--i) {
+    if(maze[i][y]=='#') break;
+    if(isTurret(maze[i][y])){
+      if((time+get_base(maze[i][y]))%4==3) return false;
+      break;
+    }
+  }
+  return true;
+}
+
+// status 0,1,2,3, represent
+bool isCovered(int x, int y, int status)
+{
+  return reached.find(point(x,y,status%4))!=reached.end();
+}
+
+void cover(int x, int y, int status)
+{
+  reached.insert(point(x, y, status%4));
+}
+
+// -1 means there's no possible path
+int findPath(vector<string> &maze)
+{
+  deque<point> que;
+  
+  // find start, target.
+  point start(0,0,0);
+  point goal(0,0,0);
+  
+  for(int i=0;i<M;++i)
+    for(int j=0;j<N;++j)
+      if(maze[i][j]=='S') {
+	start.x=i;
+	start.y=j;
+      }
+      else if(maze[i][j]=='G') {
+	goal.x=i;
+	goal.y=j;
+      }
+
+  // run the bfs.
+  reached.clear();
+  que.push_back(start);
+  cover(start.x, start.y, start.status);
+  
+  while(!que.empty()) {
+    point current = que.front();
+    // printf("%d %d %d\n", current.x, current.y, current.status);
+    que.pop_front();
+    for(int i=0;i<4;++i) {
+      point cand(current.x+dir[i][0], current.y+dir[i][1], current.status + 1);
+      if(cand.x < 0 || cand.x > M-1) continue;
+      if(cand.y < 0 || cand.y > N-1) continue;
+      if(!isValid(cand.x, cand.y, cand.status, maze)) continue;
+      if(isCovered(cand.x, cand.y, cand.status)) continue;
+      if(isEqual(cand, goal)) return cand.status;
+      cover(cand.x, cand.y, cand.status);
+      que.push_back(cand);
+    }     
+  }
+
+  return -1;
+}
+
+int main()
+{
+  int T;
+  cin >> T;
+
+  for(int i=1;i<T+1;++i) {
+
+    cin >> M >> N;    
+    vector<string> maze(M);
+    for(int j=0;j<M;++j)
+      cin>>maze[j];
+
+    int answer = findPath(maze);
+
+    printf("Case #%d: ", i);
+    if(answer==-1)
+      printf("impossible\n");
+    else
+      printf("%d\n", answer);
+  }
+  return 0;
+}

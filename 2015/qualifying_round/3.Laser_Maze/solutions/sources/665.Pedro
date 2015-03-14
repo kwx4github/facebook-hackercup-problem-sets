@@ -1,0 +1,803 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef void *objeto;
+typedef unsigned char byte;
+/*No de uma lista contendo 
+um objeto e o endereço do no sucessor*/
+typedef struct no 
+{
+	objeto o; 
+	struct no *prox;	
+}no;
+
+/*estrutura de dados de lista 
+para  representar estados filhos*/
+typedef struct lista 
+{
+	int tam; 
+	no *head;
+}lista;
+
+typedef struct pos
+{   //posicao contendo linha e coluna do labirinto
+	byte l; 
+	byte c;
+}pos;
+
+typedef struct lMase //Estrutura que representa um labirinto com lasers
+{
+	//Proximos estados alcancaveis
+	lista *filhos;  
+ 	
+	struct lMase *pai;
+	int dp;
+	int idLaser;
+	byte height;  //Altura do labirinto
+	byte  width;  //Largura do Labirinto
+	byte **mase;  //matriz de bytes
+
+	pos s;        //posicao atual
+	pos g;        //objetivo
+	
+	int nl;	      //numero de lasers
+	pos *laser;   //conjunto com posição dos lasers
+}lMase;
+
+lMase *raiz=NULL;
+
+/*-------------------biblioteca de lista---------------------------*/
+lista *constroiLista()
+{
+	lista * l = (lista *)malloc(sizeof(lista));
+	if(!l){ printf("lista nao criada\n");return NULL;}
+
+	l->tam = 0;
+	l->head=NULL;
+	return l;
+}
+
+no *constroiNo(objeto o)
+{
+	no * n = (no *)malloc(sizeof(no));	
+	if(!n){ printf("No nao criado\n");return NULL;}
+
+	n->o = o;
+	n->prox=NULL;
+	return n;	
+}
+
+int tamLista(lista *l)
+{
+	return l->tam;;
+}
+
+void insereLista(lista *l,objeto o)
+{
+	no* p=constroiNo(o);
+	
+	if(tamLista(l)==0)
+		l->head=p;
+	else
+	{
+		int i=0;
+		no * aux = l->head;
+		int tam = tamLista(l);
+		for(i;i<tam-1;i++)
+			aux=aux->prox;
+		aux->prox=p;
+	}
+	l->tam=l->tam+1;
+}
+
+no *desenfila(lista *l)
+{	
+	no *aux=NULL;
+	if(tamLista(l)==0)
+		return NULL;
+	else
+	{
+		aux = l->head;
+		l->head = l->head->prox;
+	}
+	l->tam=l->tam-1;
+	return aux;
+}
+
+void insereListaProx(lista *l,objeto o)
+{
+	no* p=constroiNo(o);
+	
+	if(tamLista(l)==0)
+		l->head=p;
+	else
+	{
+		int i=0;
+		no * aux = l->head;
+		int tam = tamLista(l);
+		for(i;i<tam-1;i++)
+			aux=aux->prox;
+		aux->prox=p;
+	}
+	l->tam=l->tam+1;
+}
+
+void destroiLista(lista *l)
+{
+	if(l->head==NULL)
+	{	free(l); return;}
+
+	no *aux = l->head;
+	l->head = aux->prox;
+	l->tam = l->tam-1;
+	free(aux);
+
+	destroiLista(l);
+}
+
+/*-------------------Fim da biblioteca de lista---------------------------*/
+
+
+
+
+
+
+/*---------biblioteca de inicialização e manipulação de dados do labirinto-----------*/
+
+byte **constroiMatriz(int H,int W)
+{
+	byte **mat = (byte **)malloc(sizeof(byte*)*H);
+	
+	if(mat)
+	{
+		int i;
+		for(i=0;i<H;i++)
+			mat[i] = (byte *)malloc(sizeof(byte)*W);
+
+		return mat;
+	}
+	return NULL;
+}
+
+void destroiMatriz(byte **mat,int H)
+{
+	int i;
+	for(i=0;i<H;i++)
+		free(mat[i]);
+	free(mat);
+}
+
+lMase *constroiMase(int H,int W)
+{
+	lMase *lm = (lMase *)malloc(sizeof(lMase));	
+
+	if(lm)
+	{
+		lm->filhos = NULL;
+		lm->height = H; lm->width = W;
+		lm->mase   = constroiMatriz(H,W);
+		lm->nl     = 0;
+		lm->pai=NULL;
+		lm->laser  = NULL; 
+		
+		if(lm->mase) 
+			return lm;
+		else 
+		{ 
+			printf("Erro ao construir matriz\n"); 
+			free(lm); return NULL ; 
+		}
+	}
+	else
+	{ 
+		printf("Erro ao construir estado do labirinto\n"); 
+		return NULL; 
+	}
+}
+
+void destroiMase(lMase *lm)
+{
+	if(lm)
+	{
+		if(lm->filhos!=NULL)
+			destroiLista(lm->filhos);
+		if(lm->laser !=NULL)
+			free(lm->laser);
+		free(lm);
+	}
+	return;
+}
+
+void setPos(pos *p,int l,int c)
+{
+	p->l = l; p->c = c;
+	//printf("setPos %d %d %d %d\n",p->l,p->c,l,c);
+}
+
+int verificaTorreLaser(byte b)
+{
+	if(b=='^') return 1;
+	if(b=='>') return 2;
+	if(b=='v') return 3;
+	if(b=='<') return 4;
+	
+	return 0;
+}
+
+void laserClockwise(lMase *lm,byte l,byte c)
+{
+	if(lm->mase[l][c]=='^')
+		lm->mase[l][c]='>';
+	else if(lm->mase[l][c]=='>')
+		lm->mase[l][c]='v';
+	else if(lm->mase[l][c]=='v')
+		lm->mase[l][c]='<';
+	else if(lm->mase[l][c]=='<')
+		lm->mase[l][c]='^';
+}
+
+void atualizaLaser(lMase *lm,int opt)
+{
+	int H = lm->height;
+	int W = lm->width;
+	int L = lm->nl;
+
+	int i,j;
+	if(opt!=0) /*Apenas rotaciona os lasers em sentido horario*/
+	{
+		for(i=0;i<L;i++)
+			laserClockwise(lm,lm->laser[i].l,lm->laser[i].c);
+	}
+	else      /*Ao construir estado raiz construimos uma 
+				estrutura de dados que armazena as posicoes
+				dos lasers. 
+			  */
+	{
+		int cont = 0;
+		for(i=0;i<H;i++)
+		{
+			for(j=0;j<W;j++)
+			{
+				if(verificaTorreLaser(lm->mase[i][j])>0)
+				{	
+					lm->laser[cont].l=i; lm->laser[cont].c=j;
+					cont++;
+				}
+			}
+		}
+	}
+}
+
+lMase *constroiEstadoInicial(int H,int W)
+{
+	
+	lMase *lm = constroiMase(H,W);
+	if(lm==NULL) return NULL;
+
+	int laserQt = 0;
+	byte read;
+	int i,j;
+	for(i=0;i<H;i++)
+	{
+		for(j=0;j<W;j++)	
+		{
+			scanf("%c",&read);
+			while(read=='\n')
+				scanf("%c",&read);
+			lm->mase[i][j] = (byte)read;
+
+			if(verificaTorreLaser(lm->mase[i][j])!=0)
+				laserQt++; 
+			else if(lm->mase[i][j]=='S')
+				setPos(&lm->s,i,j);
+			else if(lm->mase[i][j]=='G')
+				setPos(&lm->g,i,j);
+		}		
+	}
+	lm->idLaser = 0;
+	lm->nl = laserQt;
+	if(laserQt>0)
+	{
+		lm->laser = (pos *)malloc(sizeof(pos)*laserQt);
+		atualizaLaser(lm,0);
+	}
+	return lm;		
+}
+
+void mostraLaserMase(lMase *lm)
+{
+	int H = lm->height;
+	int W = lm->width;
+
+	int i,j;	
+	printf("IDlaser = %d, dep = %d, s = (%d,%d), g = (%d,%d)\n",lm->idLaser,lm->dp,lm->s.l,lm->s.c,lm->g.l,lm->g.c);
+	for(i=0;i<H;i++)
+	{
+		for(j=0;j<W;j++)	
+			printf("%c",lm->mase[i][j]);
+
+		printf("\n");	
+	}
+}
+
+/*---------biblioteca de inicialização e manipulação de dados do labirinto-----------*/
+
+
+
+
+
+/*-----Biblioteca de verificação de Status e construção dos estados adjacentes-----------*/
+
+int estadoFinal(lMase *lm)
+{
+	if(lm->filhos->tam==0)
+		return 1;
+	else
+		return 0;
+}
+
+int goal(lMase *lm,byte x,byte y)
+{
+	//printf("Calculando Goal %d %d %d %d\n",x,y,lm->g.l,lm->g.c);
+	if((lm->g.l == x)&&(lm->g.c == y)) 
+		return 1;
+	else
+		return 0;
+}
+
+int atacado(lMase *lm,byte x,byte y)
+{
+	byte H = lm->height;
+	
+	int proxLinha = x+1;
+	while((proxLinha<H)&&((lm->mase[proxLinha][y]=='.')||(lm->mase[proxLinha][y]=='G')) )
+		proxLinha++;
+	if( (proxLinha<H) && (lm->mase[proxLinha][y] == '^') )
+		return 1;
+
+	proxLinha = x-1;
+	while((proxLinha>=0)&&((lm->mase[proxLinha][y]=='.')||(lm->mase[proxLinha][y]=='G')) )
+		proxLinha--;
+	if( (proxLinha>=0)&&(lm->mase[proxLinha][y] == 'v' ) )
+		return 1;
+
+	byte W = lm->width;
+
+	int proxColuna = y+1;
+	while((proxColuna<W)&&((lm->mase[x][proxColuna]=='.')||(lm->mase[x][proxColuna]=='G')) )
+		proxColuna++;
+	if( (proxColuna<W) && (lm->mase[x][proxColuna] == '<' ))
+		return 1;
+
+	proxColuna = y-1;
+	while((proxColuna>=0)&&((lm->mase[x][proxColuna]=='.')||(lm->mase[x][proxColuna]=='G')) )
+		proxColuna--;
+	if( (proxColuna>=0) && (lm->mase[x][proxColuna] == '>' ))
+		return 1;
+
+	return 0;
+}
+
+
+
+int count=1;
+
+int podeMoverParaCima(lMase *lm,byte x,byte y)
+{	
+	
+	int proxLinha = x-1;
+	if((proxLinha>=0)&&((lm->mase[proxLinha][y]=='.')||(lm->mase[proxLinha][y]=='G')) ) 
+		return 1;
+	else
+		return 0;
+}
+
+int podeMoverParaDireita(lMase *lm,byte x,byte y)
+{
+	byte W = lm->width;
+
+	int proxColuna = y+1;
+	if( (proxColuna<W) && ((lm->mase[x][proxColuna]=='.')||(lm->mase[x][proxColuna]=='G')))
+		return 1;
+	else
+		return 0;
+}
+
+int podeMoverParaBaixo(lMase *lm,byte x,byte y)
+{
+	byte H = lm->height; 
+	
+	int proxLinha = x+1;
+	if( (proxLinha<H)&&((lm->mase[proxLinha][y]=='.')||(lm->mase[proxLinha][y]=='G')) )
+		return 1;
+	else
+		return 0;
+}
+
+int podeMoverParaEsquerda(lMase *lm,byte x,byte y)
+{
+	int proxColuna = y-1;
+	if( (proxColuna>=0) && ((lm->mase[x][proxColuna]=='.')||(lm->mase[x][proxColuna]=='G')))
+		return 1;
+	else
+		return 0;
+}
+
+void movimenta(lMase *lm,int move)
+{
+	int x = lm->s.l;
+	int y = lm->s.c;
+
+	if(lm->mase[x][y]!='G')
+		lm->mase[x][y]='.';
+
+	if((move==1)&&(lm->mase[x-1][y]!='G'))
+	{	
+		lm->mase[x-1][y]='S'; 
+	}
+	else if((move==2)&&(lm->mase[x][y+1]!='G'))
+	{	
+		lm->mase[x][y+1]='S';
+	}
+	else if((move==3)&&(lm->mase[x+1][y]!='G'))
+	{	
+		lm->mase[x+1][y]='S';
+	}
+	else if((move==4)&&(lm->mase[x][y-1]!='G'))
+	{
+		lm->mase[x][y-1]='S';
+	}
+
+	if(move==1)
+		lm->s.l = lm->s.l-1;
+	else if(move==2)
+		lm->s.c = lm->s.c+1;
+	else if(move==3)
+		lm->s.l = lm->s.l+1;
+	else if(move==4)
+		lm->s.c = lm->s.c-1;
+}
+
+lMase *constroiEstadoApartirDe(lMase *pai,int move)
+{
+	int H = pai->height;
+	int W = pai->width;
+	lMase *filho = constroiMase(H,W);
+
+	//Copia matriz do pai para o filho
+	int i,j;
+	for(i=0;i<H;i++)     
+		for(j=0;j<W;j++)	
+			filho->mase[i][j]=pai->mase[i][j];
+	
+		
+	int laserQt = pai->nl;
+	filho->nl=laserQt;
+	if(laserQt>0)
+	{
+		filho->laser = (pos *)malloc(sizeof(pos)*laserQt);
+		for(i=0;i<laserQt;i++)
+		{
+			filho->laser[i].l = pai->laser[i].l;
+			filho->laser[i].c = pai->laser[i].c;
+					
+		}
+		atualizaLaser(filho,1);
+		filho->idLaser = (pai->idLaser+1)%4;  /*Isto serve para marcar os visitados*/
+	}
+	else
+		filho->idLaser = 0;
+	
+	
+	//atualiza s
+	filho->s.l = pai->s.l;
+	filho->s.c = pai->s.c;
+	movimenta(filho,move);	
+	//pos goalPos = filho->g; 
+	setPos(&filho->g,pai->g.l,pai->g.c);	
+
+	return filho;		
+}
+
+int mod(int a)
+{
+	if(a>=0)
+		return a;
+	else 
+		return -a;
+}
+
+int sub(int a, int b)
+{
+	return a-b;
+}
+
+int oiC =0;
+
+int heuDist(lMase *lm)
+{
+
+	int x 	  = lm->s.l;
+	int y     = lm->s.c;
+	int xDest = lm->g.l;
+	int yDest = lm->g.c;
+	
+	return (mod(sub(x,xDest))+mod(sub(y,yDest)));	
+}
+
+
+
+int insereListaOrdenadoPorHeuristica(lista *l,objeto o)
+{
+	no* p=constroiNo(o);
+
+	
+	if(tamLista(l)==0)
+		l->head=p;
+	else
+	{
+
+		int heu = heuDist(p->o);
+
+		int passouHead=0;
+		no * aux = l->head;
+		no *previous=aux;
+
+		//printf("Oi %d\n",oiC++);
+		for(aux;aux;aux=aux->prox)
+		{
+			if(heuDist(aux->o)>=heu)
+			{
+				if(!passouHead)
+				{
+					
+					p->prox = aux;
+					l->head = p;
+					//printf("Oi %d\n",oiC++);
+					l->tam=l->tam+1;
+					return 1;
+				}
+				else
+				{
+					p->prox = aux;
+					previous->prox = p;
+					//printf("Oi %d\n",oiC++);
+					l->tam=l->tam+1;
+					return 1;
+				}
+			}
+
+			passouHead=1;
+			previous=aux;
+		}
+
+		previous->prox = p;
+		p->prox=NULL;	
+	}
+	//printf("Oi %d\n",oiC++);
+
+	l->tam=l->tam+1; return 1;
+}
+
+lista *constroiFilhos(lMase *lm) 
+{
+	lista *filhos = constroiLista();
+	byte H = lm->height; byte W = lm->width;
+
+	//Variavel auxiliar para criação de novo filho
+	lMase *aux=NULL; 
+
+    //Posição atual
+	byte x = lm->s.l; 
+	byte y = lm->s.c;
+
+	if(lm!=raiz)  
+	{
+			/*Se foi atingido por laser ou conseguiu chegar 
+			  no objetivo retorna conjunto vazio de filhos*/
+			if( (atacado(lm,x,y)) || (goal(lm,x,y)) ) 
+				return filhos;  
+			
+			
+			if(podeMoverParaCima(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,1);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+			
+			if(podeMoverParaDireita(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,2);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+			
+			if(podeMoverParaBaixo(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,3);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+			
+			if(podeMoverParaEsquerda(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,4);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+				
+			}
+			
+	}	
+	else //No Estado Inicial os lasers nunca disparam
+	{
+			
+			if(podeMoverParaCima(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,1);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+			
+			if(podeMoverParaDireita(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,2);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+			if(podeMoverParaBaixo(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,3);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+			if(podeMoverParaEsquerda(lm,x,y))
+			{
+				aux = constroiEstadoApartirDe(lm,4);
+				insereListaOrdenadoPorHeuristica(filhos,aux);
+			}
+	}
+	return filhos;
+}
+
+void mostraFilhos(lMase *lm)
+{
+	printf("\nInicio mostrando %d Filho\n",lm->filhos->tam);
+	no *aux = lm->filhos->head;
+	for(aux;aux;aux=aux->prox)
+	{
+		lMase *filho = aux->o;
+		mostraLaserMase(filho);
+		printf("\n"); 
+	}
+	printf("Fim mostrando Filho\n\n");
+}
+
+/*------------------Fim Função de construção de estados adjacentes----------------------*/
+
+
+
+lista *visitados[4];
+
+void visita(lMase *node)
+{
+	pos *p = (pos *)malloc(sizeof(pos));
+	p->l = node->s.l;p->c = node->s.c;
+	int index = node->idLaser;
+	insereLista(visitados[index],p);	
+}
+
+int buscaPos(lista *vst,lMase *node)
+{
+	int x = node->s.l;
+	int y = node->s.c;
+	
+	pos *alvo;	
+	no *aux = vst->head;
+	for(aux;aux;aux=aux->prox)
+	{
+		alvo = aux->o;
+		if((x==alvo->l)&&(y==alvo->c))
+			return 1;
+	}
+	return 0;
+}
+
+int foiVisitado(lMase *node)
+{
+	int index = node->idLaser;
+
+	if(buscaPos(visitados[index],node))
+		return 1;
+	else 
+		return 0;
+}
+
+void mostraFila(lista *fila)
+{
+	printf("\nFila:\n");
+	no *aux = fila->head;
+	for(aux;aux;aux=aux->prox)
+		mostraLaserMase(aux->o);
+	printf("FIM Fila\n\n");
+}
+
+lista *caminho=NULL;
+
+int calculaMelhorCaminho(lMase *root)
+{
+	lista *fila=constroiLista();
+	visita(root); insereLista(fila,root);	
+	root->dp = 0;	
+	int ready;
+	no *aux=NULL;
+	lMase *estado=NULL; lMase *filho=NULL;	
+	while(fila->tam>0)
+	{
+		//mostraFila(fila);
+		estado = fila->head->o; 
+		estado->filhos = constroiFilhos(estado);
+
+		//printf("Visitando Estado:\n");
+		//mostraLaserMase(estado);
+		//printf("-----------------\n");
+		//scanf("%d\n",&ready);
+		
+		if((estadoFinal(estado))&&(goal(estado,estado->s.l,estado->s.c))&&
+		   	 (!atacado(estado,estado->s.l,estado->s.c)))
+		{
+			caminho = constroiLista();
+			insereLista(caminho,estado);
+			lMase *perc = estado->pai;
+			while(perc!=NULL)
+			{
+				insereLista(caminho,perc);
+				perc=perc->pai;
+			}
+			return estado->dp; 
+		}
+		
+		aux = estado->filhos->head;
+		for(aux;aux;aux=aux->prox)
+		{
+			filho = aux->o;
+			if(!foiVisitado(filho))
+			{
+				filho->dp=estado->dp+1;
+				filho->pai = estado;
+				visita(filho);	
+				insereLista(fila,filho);
+			}		
+		}
+		desenfila(fila);
+	}
+	return 0;
+}
+
+
+
+main()
+{
+	int T; scanf("%d",&T);
+	int M;int N;
+	int resultado=0;
+
+	
+	while(count<=T)
+	{
+		scanf("%d %d",&M,&N);
+
+		raiz = constroiEstadoInicial(M,N);
+		//mostraLaserMase(raiz);
+		int i;	
+		for(i=0;i<4;i++)
+			visitados[i]=constroiLista();
+
+		resultado = calculaMelhorCaminho(raiz);
+
+		if(resultado>0) 
+		{	printf("Case #%d: %d\n",count,resultado);		
+			//no *aux = caminho->head;
+			//for(aux;aux;aux=aux->prox)
+				//mostraLaserMase(aux->o);
+		}
+		else 
+			printf("Case #%d: impossible\n",count);		
+
+		destroiMase(raiz);
+		count++;
+	}
+}

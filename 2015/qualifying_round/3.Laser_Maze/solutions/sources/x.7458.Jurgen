@@ -1,0 +1,241 @@
+#!/usr/bin/php
+<?php
+
+function readStdInAtOnce() {
+	$stdin = fopen('php://stdin', 'r');
+
+	$result = '';
+	
+	while(!feof($stdin)) {
+		$result .= trim(fread($stdin, 4096));
+	}
+
+	fclose($stdin);
+
+	return preg_split('/\r?\n/', $result);
+}
+
+$inFile = readStdInAtOnce();
+
+$linePointer = 0;
+
+$nrOfCases = $inFile[$linePointer++];
+
+for($i = 1; $i <= $nrOfCases; $i++) {
+	$dimensions = explode(' ', $inFile[$linePointer++]);
+	
+	$height = $dimensions[0];
+	$width = $dimensions[1];
+
+	$mazeLines = array();
+	for($j = 0; $j < $height; $j++) {
+		$mazeLines[] = $inFile[$linePointer++];
+	}
+
+	$m = new MazeSolver($mazeLines);
+	$m->solve();
+
+	echo 'Case #' . $i . ': ' . ($m->isPossible()? $m->getMinimumMoves(): 'impossible') . PHP_EOL;
+}
+
+class MazeSolver {
+	//h, w (topleft = 0,0), bottomright = height-1,width-1
+	protected $mazeLines;
+	
+	protected $isPossible = null;
+	protected $moves = null;
+
+	protected $encounteredStates = array();
+
+	protected $turrets = array();
+
+	protected $doneSituations = array();
+
+	public function __CONSTRUCT($mazeLines) {
+		$this->mazeLines = $mazeLines;
+
+		$this->parseMaze();
+
+		for($i = 0; $i < count($this->mazeLines); $i++) {
+			$this->mazeLines[$i] = str_replace('S', 'x', $this->mazeLines[$i]);
+		}
+
+		$this->encounteredStates[] = implode('', $this->mazeLines);
+	}
+
+	public function solve() {
+		$this->moves = 0;
+
+		$mazes = array(array(0, $this->mazeLines));
+
+		while(count($mazes) > 0) {
+			if(strpos(implode('', $mazes[0][1]), 'G') === false) {
+				$this->moves = $mazes[0][0];
+				$this->isPossible = true;
+				return;
+			}
+
+			$test = array_shift($mazes);
+			//var_dump($test);
+			$move = $test[0];
+			$maze = $test[1];
+			
+			$thisTest = implode('', $maze);
+			if(in_array($thisTest, $this->doneSituations)) {
+				continue;
+			}
+			$this->doneSituations[] = $thisTest;
+
+			$position = $this->findPosition($maze);
+
+			$upH = $position['h'] - 1;
+			$downH = $position['h'] + 1;
+			$leftW = $position['w'] - 1;
+			$rightW = $position['w'] + 1;
+
+			$newMaze = $this->turnTurrets($maze);
+
+			$newMaze[$position['h']][$position['w']] = '.';
+			//up
+			if($upH >= 0 && strpos('#^>v<', $newMaze[$upH][$position['w']]) === false) {
+				$afterMove = $newMaze;
+				$afterMove[$upH][$position['w']] = 'x';
+
+				if(!$this->isHit($afterMove)) {
+					$mazes[] = array($move + 1, $afterMove);
+				}
+			}
+			//right
+			if($rightW < strlen($newMaze[0]) && strpos('#^>v<', $newMaze[$position['h']][$rightW]) === false) {
+				$afterMove = $newMaze;
+				$afterMove[$position['h']][$rightW] = 'x';
+
+				if(!$this->isHit($afterMove)) {
+					$mazes[] = array($move + 1, $afterMove);
+				}
+			}
+			//down
+			if($downH < count($newMaze) && strpos('#^>v<', $newMaze[$downH][$position['w']]) === false) {
+				$afterMove = $newMaze;
+				$afterMove[$downH][$position['w']] = 'x';
+
+				if(!$this->isHit($afterMove)) {
+					$mazes[] = array($move + 1, $afterMove);
+				}
+			}
+			//left
+			if($leftW >= 0 && strpos('#^>v<', $newMaze[$position['h']][$leftW]) === false) {
+				$afterMove = $newMaze;
+				$afterMove[$position['h']][$leftW] = 'x';
+
+				if(!$this->isHit($afterMove)) {
+					$mazes[] = array($move + 1, $afterMove);
+				}
+			}
+		}
+	}
+
+	public function isHit($situation) {
+		$position = $this->findPosition($situation);
+
+		for($i = 0; $i < count($this->turrets); $i++) {
+			$tH = $this->turrets[$i]['h'];
+			$tW = $this->turrets[$i]['w'];
+			$tA = $situation[$tH][$tW];
+
+			if($position['w'] == $tW) { //same column
+				if($tA == '^' && $position['h'] < $tH) {
+					for($j = $tH; $j > $position['h']; $j--) {
+						if(strpos('#^>v<', $situation[$j][$tW]) !== false) {
+							continue;
+						}
+					}
+					return true;
+				} else if ($tA == 'v' && $position['h'] > $tH) {
+					for($j = $tH; $j < $position['h']; $j++) {
+						if(strpos('#^>v<', $situation[$j][$tW]) !== false) {
+							continue;
+						}
+					}
+					return true;
+				}
+			}
+
+			if($position['h'] == $tH) { // same row
+				if($tA == '<' && $position['w'] < $tW) {
+					for($j = $tW; $j > $position['w']; $j--) {
+						if(strpos('#^>v<', $situation[$tH][$j]) !== false) {
+							continue;
+						}
+					}
+					return true;
+				} else if ($tA == '>' && $position['w'] > $tW) {
+					for($j = $tW; $j < $position['w']; $j++) {
+						if(strpos('#^>v<', $situation[$tH][$j]) !== false) {
+							continue;
+						}
+					}
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public function findPosition($maze) {
+		for($h = 0; $h < count($maze); $h++) {
+			$w = strpos($maze[$h], 'x');
+			if($w === false) {
+				continue;
+			}
+			return array('h' => $h, 'w' => $w);
+		}
+	}
+
+	public function parseMaze() {
+		for($h = 0; $h < count($this->mazeLines); $h++) {
+			for($w = 0; $w < strlen($this->mazeLines[$h]); $w++) {
+				switch($this->mazeLines[$h][$w]) {
+					case '>':
+					case 'v':
+					case '<':
+					case '^':
+						$this->turrets[] = array('h' => $h, 'w' => $w);
+						break;
+				}
+			}
+		}
+	}
+
+	public function turnTurrets($mazeLines) {
+		for($i = 0; $i < count($this->turrets); $i++) {
+			$h = $this->turrets[$i]['h'];
+			$w = $this->turrets[$i]['w'];
+
+			switch($mazeLines[$h][$w]) {
+				case '>':
+					$mazeLines[$h][$w] = 'v';
+					continue;
+				case 'v':
+					$mazeLines[$h][$w] = '<';
+					continue;
+				case '<':
+					$mazeLines[$h][$w] = '^';
+					continue;
+				case '^':
+					$mazeLines[$h][$w] = '>';
+					continue;
+			}
+		}
+
+		return $mazeLines;
+	}
+
+	public function isPossible() {
+		return $this->isPossible === null? null: $this->isPossible;
+	}
+
+	public function getMinimumMoves() {
+		return $this->moves === null? null: $this->moves;
+	}
+}

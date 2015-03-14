@@ -1,0 +1,83 @@
+text = File.read(ARGV[0])
+
+
+lines = text.split("\n")
+number_of_inputs = lines[0]
+
+lines = lines[1..-1] 
+
+def deep_dup(obj)
+	return Marshal.load(Marshal.dump(obj))
+end
+
+def permutate_foods(wanted_stats, current_stats, remaining_foods)
+	# puts "permutate_foods: #{wanted_stats} #{current_stats} #{remaining_foods}"
+	if current_stats == wanted_stats
+		return true
+	end
+	if remaining_foods == [] || current_stats[0] > wanted_stats[0]|| current_stats[1] > wanted_stats[1] || current_stats[2] > wanted_stats[2]
+		return false
+	end
+	
+	remaining_foods.each_with_index do |f, i|
+		new_stats = [current_stats[0]+f[0], current_stats[1]+f[1],current_stats[2]+f[2]]
+		next_foods_part_one = remaining_foods[0,i]
+		next_foods_part_one = [] unless next_foods_part_one
+		next_foods_part_two = remaining_foods[i+1,remaining_foods.length-1]
+		next_foods_part_two = [] unless next_foods_part_two
+
+		if permutate_foods(wanted_stats, new_stats, next_foods_part_one + next_foods_part_two)
+			return true
+		end
+	end
+	return false
+end
+
+cases = []
+
+current_case = {}
+working_pos = -1
+current_state = :is_eat_stats
+food_count = -1
+
+lines.each do |l|
+	case current_state
+	when :is_eat_stats
+		current_case[:eat] = l.split(" ").map{|e| e.to_i}
+		current_state = :food_counter
+	when :food_counter
+		food_count = l.to_i
+		current_case[:food_count] = food_count
+		current_state = :food_kind
+	when :food_kind
+		current_case[:foods] = [] unless current_case[:foods]
+		current_case[:foods] << l.split(" ").map{|e| e.to_i}
+		food_count -= 1
+		if food_count == 0
+			current_state = :is_eat_stats
+			cases << deep_dup(current_case)
+			current_case = {}
+		end
+	else
+		puts "Hey FB. Something is wrong here :( Input count not correct"
+	end
+end
+
+cases.each_with_index do |this_case, index|
+	wanted_protein       = this_case[:eat][0]
+	wanted_carbohydrates = this_case[:eat][1]
+	wanted_fat           = this_case[:eat][2]
+
+	if wanted_protein == 0 && wanted_carbohydrates == 0 && wanted_fat == 0
+		puts "Case ##{index+1}: yes"
+		next
+	end
+	
+	# Hashtag brautefaarse
+
+	if permutate_foods(this_case[:eat], [0,0,0], this_case[:foods])
+		puts "Case ##{index+1}: yes" 
+	else
+		puts "Case ##{index+1}: no"
+	end
+end

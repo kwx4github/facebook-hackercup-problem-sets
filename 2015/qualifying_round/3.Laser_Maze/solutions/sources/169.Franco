@@ -1,0 +1,147 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+
+public class LaserMaze {
+
+	static int INF = 100 * 100 * 4 * 10;
+	static int r, c;
+	static char[][] maze = new char[128][128];
+	static boolean[][][] is_available = new boolean[128][128][5];
+
+	static List<Character> turrets = Arrays.asList('<', '^', '>', 'v');
+	static int drow[] = {0, -1, 0, 1};
+	static int dcol[] = {-1, 0, 1, 0};
+	
+	static int sr, sc;
+	static int gr, gc;
+
+	static int nodeNumber(int row, int column, int time) {
+		return (time * r * c) + (c * row) + column;
+	}
+
+	static void set(int row, int column, char type) {
+		maze[row][column] = type;
+		if (type == '#' || turrets.contains(type)) {
+			for (int j = 0; j < 5; j++) {
+				is_available[row][column][j] = false;
+			}
+		} else {
+			for (int j = 0; j < 5; j++) {
+				is_available[row][column][j] = true;
+			}
+		}
+		
+		if (type == 'S') {
+			sr = row; sc = column;
+		}
+		if (type == 'G') {
+			gr = row; gc = column;
+		}
+	}
+
+	static void turretCheck(int row, int column) {
+		char type = maze[row][column];
+		if (turrets.contains(type)) {
+			int cur = turrets.indexOf(type);
+			for (int turn = 0; turn < 4; turn++) {
+				int curc = column, curr = row;
+				do {
+					is_available[curr][curc][turn] = false;
+
+					curr += drow[cur];
+					curc += dcol[cur];
+				} while (curc >= 0 && curr >= 0 && curc < c && curr < r && is_available[curr][curc][4]);
+
+				cur = (cur + 1) % 4;
+			}
+		}
+	}
+	
+	public static final class Node {
+	
+		int row, column, time;
+		int distance = INF;
+		
+		public Node(int row, int column, int time, int distance) {
+			this.row = row;
+			this.column = column;
+			this.time = time;
+			this.distance = distance;
+		}
+		
+	}
+	
+	public static final class Comp implements Comparator<Node> {
+
+		@Override
+		public int compare(Node o1, Node o2) {
+			return o2.distance - o1.distance;
+		}
+		
+	}
+
+	public static void main(String[] args) throws NumberFormatException, IOException {
+
+		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
+
+		int totalCases = Integer.parseInt(bufferedReader.readLine());
+
+		for (int caso = 0; caso < totalCases; caso++) {
+			String[] splitted = bufferedReader.readLine().split(" ");
+			r = Integer.parseInt(splitted[0]);
+			c = Integer.parseInt(splitted[1]);
+
+			for (int i = 0; i < r; i++) {
+				String line = bufferedReader.readLine();
+				for (int j = 0; j < c; j++) {
+					set(i, j, line.charAt(j));
+				}
+			}
+
+			for (int i = 0; i < r; i++) {
+				for (int j = 0; j < c; j++) {
+					turretCheck(i, j);
+				}
+			}
+
+			Queue<Node> q = new LinkedList<LaserMaze.Node>();//new Queue<Node>(r * c * 4);//, new Comp());
+			int[] dists = new int[r * c * 4];
+			for (int i = 0; i < r * c * 4; i++) {
+				dists[i] = INF;
+			}
+			q.add(new Node(sr, sc, 0, 0));
+			dists[nodeNumber(sr, sc, 0)] = 0;
+			while (!q.isEmpty()) {
+				Node top = q.poll();
+				
+				for (int i = 0;i < 4;i++) {
+					int nrow = top.row + drow[i];
+					int ncol = top.column + dcol[i];
+					int ntime = (top.time + 1) % 4;
+					if (ncol >= 0 && nrow >= 0 && ncol < c && nrow < r &&
+							is_available[nrow][ncol][ntime] && dists[nodeNumber(nrow, ncol, ntime)] == INF) {
+						dists[nodeNumber(nrow, ncol, ntime)] = top.distance + 1;
+						q.add(new Node(nrow, ncol, ntime, top.distance + 1));
+					}
+				}
+			}
+			
+			int min = INF;
+			for (int i = 0;i < 4;i++) {
+				min = Math.min(min, dists[nodeNumber(gr, gc, i)]);
+			}
+
+			System.out.println("Case #" + (caso + 1) + ": " + (min == INF? "impossible": min));
+		}
+
+		
+		
+		
+	}
+}

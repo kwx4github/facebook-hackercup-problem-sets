@@ -1,0 +1,96 @@
+#include <bits/stdc++.h>
+
+#define rep(i,n) for(int i = 0, _n = n; i < _n; ++i)
+
+using namespace std;
+
+const int N = 101;
+int dx[] = {0, 0, 1, -1};
+int dy[] = {1, -1, 0, 0};
+int n, m;
+char s[N][N];
+bool is[256];
+
+struct state{
+    int u, v, t;
+    state(int x = 0, int y = 0, int z = 0) : u(x), v(y), t(z){};
+} prv, nxt;
+
+struct current{
+    int a[N][N];
+    current(){}
+    void reset(){
+        memset(a, 0, sizeof a);
+    }
+} a[4];
+
+bool inBoard(int u, int v){
+    return (0 <= u && u < n && 0 <= v && v < m);
+}
+
+char after(char x){
+    if (x == '>') return '^';
+    if (x == '^') return '<';
+    if (x == '<') return 'v';
+    if (x == 'v') return '>';
+}
+
+deque<state> qstate;
+
+int solve(){
+    cin >> n >> m;
+    for(int i = 0; i < n; ++i) cin >> s[i];
+
+    rep(i, 4) a[i].reset();
+    rep(t, 4){
+        rep(i, n) rep(j, m) if (is[s[i][j]] || s[i][j] == '#') a[t].a[i][j] = -1;
+        rep(i, n) rep(j, m) if (is[s[i][j]]){
+            int x = i, y = j;
+            if (s[i][j] == '^') {--x; while (x >= 0 && a[t].a[x][y] != -1) {a[t].a[x][y] = -2; --x;}}
+            if (s[i][j] == 'v') {++x; while (x < n && a[t].a[x][y] != -1) {a[t].a[x][y] = -2; ++x;}}
+            if (s[i][j] == '<') {--y; while (y >= 0 && a[t].a[x][y] != -1) {a[t].a[x][y] = -2; --y;}}
+            if (s[i][j] == '>') {++y; while (y < m && a[t].a[x][y] != -1) {a[t].a[x][y] = -2; ++y;}}
+        }
+        rep(i, n) rep(j, m) if (a[t].a[i][j] < 0) a[t].a[i][j] = -1;
+        rep(i, n) rep(j, m) if (is[s[i][j]]) s[i][j] = after(s[i][j]);
+    }
+    int bx,by, ex, ey;
+    rep(i, n) rep(j, m){
+        if (s[i][j] == 'S') bx = i, by = j;
+        if (s[i][j] == 'G') ex = i, ey = j;
+    }
+
+    qstate.push_back(state(bx, by, 0));
+    a[0].a[bx][by] = 1;
+
+    while (!qstate.empty()){
+        prv = qstate.front();
+        qstate.pop_front();
+        rep(k, 4){
+            nxt = state(prv.u + dx[k], prv.v + dy[k], (prv.t + 1) % 4);
+            if (!inBoard(nxt.u, nxt.v)) continue;
+            if (a[nxt.t].a[nxt.u][nxt.v] != 0) continue;
+            qstate.push_back(nxt);
+            a[nxt.t].a[nxt.u][nxt.v] = a[prv.t].a[prv.u][prv.v] + 1;
+        }
+    }
+    int res = 111111111;
+    rep(t, 4)
+        if (a[t].a[ex][ey] > 0) res = min(res, a[t].a[ex][ey]);
+    return (res == 111111111 ? -1 : res - 1);
+}
+
+int main(){
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    is['^'] = is['v'] = is['<']  = is['>'] = true;
+    int ntest;
+    cin >> ntest;
+    for(int i = 1; i <= ntest; ++i){
+        cout << "Case #" << i << ": ";
+        int kq = solve();
+        if (kq == -1) cout << "impossible" << endl;
+        else cout << kq << endl;
+    }
+    return 0;
+}

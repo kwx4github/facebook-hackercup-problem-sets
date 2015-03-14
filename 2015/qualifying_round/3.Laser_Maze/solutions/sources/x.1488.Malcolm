@@ -1,0 +1,228 @@
+#!usr/bin/perl
+
+use strict;
+use warnings;
+
+open(IN, "<laser_maze.txt");
+open(OUT, ">output_3.txt");
+
+my $totalCases = <IN>;
+our @maze;
+my %mazeHash =();
+my $startX;
+my $startY;
+my $caseNumber = 1;
+our @informations;
+my $gameClock = 0;
+
+while(my $mazeDimensions = <IN>)
+{
+    chomp($mazeDimensions);
+    @maze = ();
+    %mazeHash = ();
+    @informations = split(' ', $mazeDimensions);
+    foreach my $lineNo (0..$informations[0] - 1)
+    {
+        my $row = <IN>;
+        chomp($row);
+        my @cells = split('', $row);
+        foreach my $cell (0..$#cells)
+        {
+            if("S" eq $cells[$cell])
+            {
+                $startX = $lineNo;
+                $startY = $cell;
+            }
+        }
+        push(@maze, \@cells);
+    }
+
+    my $result = solveMaze($startX, $startY, $gameClock);
+    if(0 == $result)
+    {
+        $result = "impossible";
+    }
+    else
+    {
+        $result --;
+    }
+    print "Case #$caseNumber: $result\n";
+    print OUT "Case #$caseNumber: $result\n";
+    $caseNumber++;
+}
+
+sub solveMaze
+{
+    my $row = shift;
+    my $col = shift;
+    my $clock = shift;
+
+
+    if($row < 0 || $row >= $informations[0] || $col < 0 || $col >= $informations[1])
+    {
+        return 0;
+    }
+
+    my $quantumKey = $row . $col . ($clock % 4);
+
+    if(!defined($mazeHash{$quantumKey}))
+    {
+        $mazeHash{$quantumKey} = -1;
+    }
+    elsif($mazeHash{$quantumKey} == -1)
+    {
+        return 0;
+    }
+    else
+    {
+        return $mazeHash{$quantumKey};
+    }
+
+    my $cellContent = ${$maze[$row]}[$col];
+    if("#" eq $cellContent || "^" eq $cellContent || ">" eq $cellContent || "v" eq $cellContent || "<" eq $cellContent)
+    {
+        return 0;
+    }
+    elsif(coastIsClear($row, $col, $clock) == 1)
+    {
+        if("G" eq $cellContent)
+        {
+            return 1;
+        }
+        else
+        {
+            my $minPath = ambulate($row, $col, $clock + 1);
+            $mazeHash{$quantumKey} = $minPath;
+            if($minPath > 0)
+            {
+                return $minPath + 1;
+            }
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+sub coastIsClear
+{
+    my $row = shift;
+    my $col = shift;
+    my $clock = shift;
+
+    if($clock == 0)
+    {
+        return 1;
+    }
+
+    my $dead = 0;
+    #check up
+    for(my $i = $row - 1; $i >= 0 && $dead != 1; $i--)
+    {
+        my $cellContent = ${$maze[$i]}[$col];
+        if($cellContent ne "." && $cellContent ne "#" && $cellContent ne "G" && $cellContent ne "S")
+        {
+            my $turretDirection = getTurretDirection($cellContent, $clock);
+            if($turretDirection eq "v")
+            {
+                $dead = 1;
+            }
+        }
+    }
+    #check right
+    for(my $i = $col + 1; $i < $informations[1] && $dead != 1; $i++)
+    {
+        my $cellContent = ${$maze[$row]}[$i];
+        if($cellContent ne "." && $cellContent ne "#" && $cellContent ne "G" && $cellContent ne "S")
+        {
+            my $turretDirection = getTurretDirection($cellContent, $clock);
+            if($turretDirection eq "<")
+            {
+                $dead = 1;
+            }
+        }
+    }
+    #check down
+    for(my $i = $row + 1; $i < $informations[0] && $dead != 1; $i++)
+    {
+        my $cellContent = ${$maze[$i]}[$col];
+        if($cellContent ne "." && $cellContent ne "#" && $cellContent ne "G" && $cellContent ne "S")
+        {
+            my $turretDirection = getTurretDirection($cellContent, $clock);
+            if($turretDirection eq "^")
+            {
+                $dead = 1;
+            }
+        }
+    }
+    #check left
+    for(my $i = $col - 1; $i >= 0 && $dead != 1; $i--)
+    {
+        my $cellContent = ${$maze[$row]}[$i];
+        if($cellContent ne "." && $cellContent ne "#" && $cellContent ne "G" && $cellContent ne "S")
+        {
+            my $turretDirection = getTurretDirection($cellContent, $clock);
+            if($turretDirection eq ">")
+            {
+                $dead = 1;
+            }
+        }
+    }
+    return $dead == 1 ? 0 : 1;
+}
+
+sub ambulate
+{
+    my $row = shift;
+    my $col = shift;
+    my $clock = shift;
+
+    my @solutions = ();
+    #go right
+    push(@solutions, solveMaze($row, $col + 1, $clock));
+    #go down
+    push(@solutions, solveMaze($row + 1, $col, $clock));
+    #go left
+    push(@solutions, solveMaze($row, $col - 1, $clock));
+    #go up
+    push(@solutions, solveMaze($row - 1, $col, $clock));
+
+    @solutions = sort{$a <=> $b}(@solutions);
+
+    my $min = $solutions[-1];
+    foreach my $value (@solutions)
+    {
+        if($value != 0 && $value < $min)
+        {
+            $min = $value;
+        }
+    }
+    return $min;
+}
+
+sub getTurretDirection
+{
+    my $turret = shift;
+    my $clock = shift;
+
+    if($clock % 4 == 0)
+    {
+        return $turret;
+    }
+
+    my @directions = ("^", ">", "v", "<");
+
+    my $currDir;
+    foreach my $direction(0..3)
+    {
+        if($directions[$direction] eq $turret)
+        {
+            $currDir = $direction;
+        }
+    }
+    return $directions[($currDir + $clock) % 4];
+}
+
+close IN;
+close OUT;

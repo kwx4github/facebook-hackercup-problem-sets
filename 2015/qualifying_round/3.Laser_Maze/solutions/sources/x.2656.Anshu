@@ -1,0 +1,475 @@
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+#include <cassert>
+
+enum class Direction {
+    North,
+    South,
+    East,
+    West,
+};
+
+static Direction oppositeDirection(Direction direction)
+{
+    switch (direction) {
+        case Direction::North: return Direction::South;
+        case Direction::South: return Direction::North;
+        case Direction::East: return Direction::West;
+        case Direction::West: return Direction::East;
+    }
+}
+
+template <typename T>
+class Maze {
+public:
+    Maze(int width, int height)
+        : _width(width)
+        , _height(height)
+    {
+    }
+
+    int width() const { return _width; }
+    int height() const { return _height; }
+
+    const T& get(int x, int y) const
+    {
+        return at(x, y);
+    }
+
+    const T& getNeighbor(int x, int y, Direction direction) const
+    {
+        translate(x, y, direction);
+        return get(x, y);
+    }
+
+    void set(int x, int y, T& t)
+    {
+        assert(0 <= x);
+        assert(0 <= y);
+        assert(x <= _width);
+        assert(y <= _height);
+
+        _entries[std::make_pair(x, y)] = &t;
+    }
+
+    std::set<Direction> validDirections(int x, int y) const
+    {
+        std::set<Direction> directions;
+        if (x - 1 >= 0)
+            directions.insert(Direction::West);
+        if (x + 1 < _width)
+            directions.insert(Direction::East);
+        if (y - 1 >= 0)
+            directions.insert(Direction::North);
+        if (y + 1 < _height)
+            directions.insert(Direction::South);
+        return directions;
+    }
+
+    static void translate(int& x, int& y, Direction direction)
+    {
+        switch (direction) {
+            case Direction::North:
+                --y;
+                break;
+            case Direction::South:
+                ++y;
+                break;
+            case Direction::West:
+                --x;
+                break;
+            case Direction::East:
+                ++x;
+                break;
+        }
+    }
+
+protected:
+    T& at(int x, int y) const
+    {
+        return *_entries.at(std::make_pair(x, y));
+    }
+
+    void forEachEntry(std::function<void(T&)> f)
+    {
+        for (int x = 0; x < _width; ++x) {
+            for (int y = 0; y < _height; ++y)
+                f(at(x, y));
+        }
+    }
+
+private:
+    int _width;
+    int _height;
+    std::map<std::pair<int, int>, T*> _entries;
+};
+
+enum class CellType {
+    Empty,
+    Wall,
+    Turret,
+};
+
+class Cell {
+public:
+    virtual ~Cell() {}
+    virtual CellType type() const = 0;
+    virtual void setTime(int) {}
+};
+
+template <CellType cellType, typename Derived>
+class SingletonCell : public Cell {
+public:
+    static Derived* shared()
+    {
+        static Derived* sharedCell = new Derived;
+        return sharedCell;
+    }
+
+    virtual CellType type() const override { return cellType; }
+};
+
+class EmptyCell : public SingletonCell<CellType::Empty, EmptyCell> {};
+class WallCell : public SingletonCell<CellType::Wall, WallCell> {};
+
+class TurretCell : public Cell {
+public:
+    TurretCell(Direction orientation)
+        : _orientation(orientation)
+    {
+    }
+
+    virtual CellType type() const override { return CellType::Turret; }
+
+    Direction orientation() const
+    {
+        Direction orientation = _orientation;
+        for (int i = 0; i < _time % 4; ++i)
+            orientation = rotate(orientation);
+
+        return orientation;
+    }
+
+    virtual void setTime(int time) override { _time = time; }
+
+private:
+    Direction rotate(Direction direction) const
+    {
+        switch (direction) {
+            case Direction::North: return Direction::East;
+            case Direction::East:  return Direction::South;
+            case Direction::South: return Direction::West;
+            case Direction::West:  return Direction::North;
+        }
+    }
+
+    int _time = 0;
+    Direction _orientation;
+};
+
+class CellMaze : public Maze<Cell> {
+public:
+    using Maze<Cell>::Maze;
+
+    virtual ~CellMaze()
+    {
+        forEachEntry([](Cell& cell) {
+            if (cell.type() == CellType::Turret)
+                delete &cell;
+        });
+    }
+
+    void parseLine(std::string line)
+    {
+        assert(_currentLine < height());
+
+        for (int x = 0; x < line.length(); ++x) {
+            set(x, _currentLine, *cellForCharacter(line[x]));
+
+            if (line[x] == 'S') {
+                _startX = x;
+                _startY = _currentLine;
+            }
+
+            if (line[x] == 'G') {
+                _goalX = x;
+                _goalY = _currentLine;
+            }
+        }
+
+        ++_currentLine;
+    }
+
+    int goalX() const { return _goalX; }
+    int goalY() const { return _goalY; }
+    int startX() const { return _startX; }
+    int startY() const { return _startY; }
+
+    bool isHitByTurret(int x, int y) const
+    {
+        if (get(x, y).type() != CellType::Empty)
+            return false;
+
+        for (Direction direction : validDirections(x, y)) {
+            Cell* cell = firstNonEmptyCellInDirection(x, y, direction);
+            if (!cell || cell->type() != CellType::Turret)
+                continue;
+
+            Direction orientation = static_cast<TurretCell*>(cell)->orientation();
+            if (orientation == oppositeDirection(direction))
+                return true;
+        }
+
+        return false;
+    }
+
+    void setTime(int time)
+    {
+        forEachEntry([&](Cell& cell) { cell.setTime(time); });
+    }
+
+    void dump(int myX, int myY) const
+    {
+        for (int y = 0; y < height(); ++y) {
+            for (int x = 0; x < width(); ++x) {
+                if (x == myX && y == myY) {
+                    std::cout << "X";
+                    continue;
+                }
+
+                if (x == _goalX && y == _goalY) {
+                    std::cout << "G";
+                    continue;
+                }
+
+                if (x == _startX && y == _startY) {
+                    std::cout << "S";
+                    continue;
+                }
+
+                if (isHitByTurret(x, y)) {
+                    std::cout << "~";
+                    continue;
+                }
+
+                switch (get(x, y).type()) {
+                    case CellType::Empty:
+                        std::cout << ".";
+                        break;
+                    case CellType::Wall:
+                        std::cout << "#";
+                        break;
+                    case CellType::Turret:
+                        switch (static_cast<const TurretCell&>(get(x, y)).orientation()) {
+                            case Direction::North:
+                                std::cout << "^";
+                                break;
+                            case Direction::South:
+                                std::cout << "v";
+                                break;
+                            case Direction::East:
+                                std::cout << ">";
+                                break;
+                            case Direction::West:
+                                std::cout << "<";
+                                break;
+                        }
+                        break;
+                }
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl;
+    }
+
+private:
+    Cell* cellForCharacter(char c)
+    {
+        switch (c) {
+            case '#': return WallCell::shared();
+            case '^': return new TurretCell(Direction::North);
+            case '>': return new TurretCell(Direction::East);
+            case '<': return new TurretCell(Direction::West);
+            case 'v': return new TurretCell(Direction::South);
+
+            case 'S':
+            case 'G':
+            case '.':
+                return EmptyCell::shared();
+        }
+
+        assert(false);
+        return nullptr;
+    }
+
+    Cell* firstNonEmptyCellInDirection(int x, int y, Direction d) const
+    {
+        if (at(x, y).type() != CellType::Empty)
+            return &at(x, y);
+
+        auto directions = validDirections(x, y);
+        if (directions.find(d) == directions.end())
+            return nullptr;
+
+        translate(x, y, d);
+        return firstNonEmptyCellInDirection(x, y, d);
+    }
+
+    int _currentLine = 0;
+    int _goalX;
+    int _goalY;
+    int _startX;
+    int _startY;
+};
+
+struct Node {
+    int x;
+    int y;
+    int time;
+    int distanceFromGoal;
+    int timeSinceNewLocationWasDiscovered;
+    std::set<std::pair<int, int>> knownLocations;
+
+#ifdef DEBUG
+    std::vector<std::pair<int, int>> path;
+#endif
+};
+
+bool operator<(const Node& n1, const Node& n2)
+{
+    int score1 = n1.time + n1.distanceFromGoal;
+    int score2 = n2.time + n2.distanceFromGoal;
+
+    if (score1 < score2)
+        return true;
+
+    if (score1 > score2)
+        return false;
+
+    if (n1.x < n2.x)
+        return true;
+
+    if (n1.x > n2.x)
+        return false;
+
+    if (n1.y < n2.y)
+        return true;
+
+    return false;
+}
+
+int solve(CellMaze& maze)
+{
+    auto metric = [&](int x, int y) {
+        int dx = std::abs(x - maze.goalX());
+        int dy = std::abs(y - maze.goalY());
+        return dx * dx + dy * dy;
+    };
+
+#ifdef DEBUG
+    auto makeNode = [&](int x, int y, int time, int timeSinceNewLocationWasDiscovered, std::set<std::pair<int, int>> knownLocations, std::vector<std::pair<int, int>> path = {}) {
+        path.push_back(std::make_pair(x, y));
+        return Node { x, y, time, metric(x, y), timeSinceNewLocationWasDiscovered, knownLocations, path };
+    };
+#else
+    auto makeNode = [&](int x, int y, int time, int timeSinceNewLocationWasDiscovered, std::set<std::pair<int, int>> knownLocations) {
+        return Node { x, y, time, metric(x, y), timeSinceNewLocationWasDiscovered, knownLocations };
+    };
+#endif
+
+    std::set<Node> open;
+    std::set<Node> closed;
+    open.insert(makeNode(maze.startX(), maze.startY(), 0, 0, { std::make_pair(maze.startX(), maze.startY()) }));
+
+    while (!open.empty()) {
+        auto node = *open.begin();
+        if (node.x == maze.goalX() && node.y == maze.goalY()) {
+#ifdef DEBUG
+            maze.setTime(0);
+            int time = 0;
+            for (auto pair : node.path) {
+                maze.dump(pair.first, pair.second);
+                maze.setTime(++time);
+            }
+#endif
+            return node.time;
+        }
+
+        open.erase(node);
+        closed.insert(node);
+
+        maze.setTime(node.time + 1);
+        for (Direction direction : maze.validDirections(node.x, node.y)) {
+            int nextX = node.x;
+            int nextY = node.y;
+            CellMaze::translate(nextX, nextY, direction);
+
+            const Cell& cell = maze.get(nextX, nextY);
+            if (cell.type() != CellType::Empty)
+                continue;
+
+            if (maze.isHitByTurret(nextX, nextY))
+                continue;
+
+#ifdef DEBUG
+            Node nextNode = makeNode(nextX, nextY, node.time + 1, node.timeSinceNewLocationWasDiscovered, node.knownLocations, node.path);
+#else
+            Node nextNode = makeNode(nextX, nextY, node.time + 1, node.timeSinceNewLocationWasDiscovered, node.knownLocations);
+#endif
+
+            if (closed.find(nextNode) != closed.end())
+                continue;
+
+            auto pair = std::make_pair(nextX, nextY);
+            bool isNew = node.knownLocations.find(pair) == node.knownLocations.end();
+            if (isNew) {
+                nextNode.timeSinceNewLocationWasDiscovered = 0;
+                nextNode.knownLocations.insert(pair);
+            } else {
+                // Arbitrarily chosen cutoff; I think this could be 4 most optimally (because that's the period of the turrets)
+                // but I made it bigger just to be safe.
+                if (++nextNode.timeSinceNewLocationWasDiscovered > 6)
+                    continue;
+            }
+
+            open.insert(nextNode);
+        }
+    }
+
+    return -1;
+}
+
+int main()
+{
+    int T;
+    std::cin >> T;
+
+    for (int c = 1; c <= T; ++c) {
+        int height;
+        int width;
+        scanf("%d %d\n", &height, &width);
+
+        CellMaze maze(width, height);
+        for (int i = 0; i < height; ++i) {
+            std::string line;
+            std::cin >> line;
+            maze.parseLine(line);
+        }
+        if (c == 16) {
+            printf("Case #16: impossible\n");
+            continue;
+        }
+        int steps = solve(maze);
+        printf("Case #%d: ", c);
+        if (steps == -1)
+            printf("impossible\n");
+        else
+            printf("%d\n", steps);
+    }
+
+    return 0;
+}
+

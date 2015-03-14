@@ -1,0 +1,175 @@
+#include <set>
+#include <map>
+#include <list> 
+#include <stack> 
+#include <cmath> 
+#include <queue> 
+#include <ctime> 
+#include <cfloat> 
+#include <vector> 
+#include <string> 
+#include <cstdio> 
+#include <bitset> 
+#include <climits> 
+#include <cstring> 
+#include <cassert> 
+#include <iomanip> 
+#include <sstream> 
+#include <utility> 
+#include <iostream> 
+#include <algorithm> 
+#include <tr1/unordered_map>
+ 
+using namespace std;  
+using namespace tr1;
+
+typedef vector < int > vi; 
+typedef long long int64; 
+typedef unsigned long long uint64; 
+    
+int x[] = {-1,0,1,0}; 
+int y[] = {0,1,0,-1}; 
+    
+#ifdef _WIN32  
+    #define getchar_unlocked getchar 
+    #define putchar_unlocked putchar 
+#endif 
+   
+inline void read( int &n ) { 
+    n = 0; 
+    register bool neg = false; 
+    register char c = getchar_unlocked(); 
+    if( c == EOF) { n = -1; return; } 
+    while (!('0' <= c && c <= '9')) { 
+        if( c == '-' ) neg = true; 
+        c = getchar_unlocked(); 
+    } 
+    while ('0' <= c && c <= '9') { 
+        n = n * 10 + c - '0'; 
+        c = getchar_unlocked(); 
+    } 
+    n = (neg ? (-n) : (n)); 
+} 
+   
+inline void writeInt(int n){ 
+    register int idx = 20; 
+    if( n < 0 ) putchar_unlocked('-'); 
+    n = abs(n); 
+    char out[21]; 
+    out[20] = ' '; 
+    do{ 
+        idx--; 
+        out[idx] = n % 10 + '0'; 
+        n/= 10; 
+    }while(n); 
+    do{ putchar_unlocked(out[idx++]); } while (out[idx] != ' '); 
+} 
+
+vector < string > aux;
+struct tri{
+    vector < string > mat;
+    int x, y, b;
+    tri( int x = 0, int y = 0, int b = 0, vector < string > mat = aux ) : x(x), y(y), b(b), mat(mat) { }
+    string get_hash(){
+        int n = mat.size();
+        string ret = "";
+        for( int i = 0; i < n; i++ ){ ret += mat[i]; ret += "o"; }
+        return ret;
+    }
+};
+
+unordered_map < string, int > memo;
+char gira[400];
+vector < pair < int, int > > lasers;
+vector < string > mat;
+int n, m;
+
+bool check_laser( tri at, tri &ret, int xx, int yy ){
+    at.x = xx;
+    at.y = yy;
+    int tam = lasers.size();
+    for( int i = 0; i < tam; i++ ){
+        int x = lasers[i].first;
+        int y = lasers[i].second;
+        at.mat[ x ][ y ] = gira[at.mat[x][y]];
+    }
+    for( int i = 0; i < n && at.x-i >= 0 && at.mat[at.x-i][at.y] != '#'; i++ ){
+        if( at.mat[at.x-i][at.y] == 'v' ) return false;
+    }
+    for( int i = 0; i < n && at.x+i < n && at.mat[at.x+i][at.y] != '#'; i++ ){
+        if( at.mat[at.x+i][at.y] == '^' ) return false;
+    }
+    for( int i = 0; i < m && at.y-i >= 0 && at.mat[at.x][at.y-i] != '#'; i++ ){
+        if( at.mat[at.x][at.y-i] == '>' ) return false;
+    }
+    for( int i = 0; i < m && at.y+i < m && at.mat[at.x][at.y+i] != '#'; i++ ){
+        if( at.mat[at.x][at.y+i] == '<' ) return false;
+    }
+    ret = at;
+    return true;
+}
+
+int bfs( int xs, int ys, int xo, int yo ){
+    queue < tri > fila;
+    fila.push(tri(xs, ys, 0, mat));
+    while( !fila.empty() ){
+        tri at = fila.front();
+        fila.pop();
+        if( at.x == xo && at.y == yo ) return at.b;
+        for( int i = 0; i < 4; i++ ){
+            int xx = at.x + x[i];
+            int yy = at.y + y[i];
+            tri cp;
+            if( xx >= 0 && xx < n && yy >= 0 && yy < m && at.mat[xx][yy] != '#' && check_laser(at, cp, xx, yy) ){
+                cp.mat[at.x][at.y] = '.';
+                cp.mat[xx][yy] = 'S';
+                cp.b++;
+                string hash = cp.get_hash();
+                if( !memo.count(hash) ){
+                    fila.push(cp);
+                    memo[hash]++;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+int main(){
+    ios::sync_with_stdio(false);
+    int t, k = 1;
+    cin >> t;
+    int xs, ys, xo, yo;
+    gira['>'] = 'v';
+    gira['v'] = '<';
+    gira['<'] = '^';
+    gira['^'] = '>';
+    while( t-- ){
+        cin >> n >> m;
+        mat.resize(n);
+        lasers.clear();
+        for( int i = 0; i < n; i++ ){
+            cin >> mat[i];
+            for( int j = 0; j < m; j++ ){
+                if( mat[i][j] == 'S' ){
+                    xs = i;
+                    ys = j;
+                }
+                else if( mat[i][j] == 'G' ){
+                    xo = i;
+                    yo = j;
+                }
+                else if( mat[i][j] == '^' || mat[i][j] == '>' || mat[i][j] == 'v' || mat[i][j] == '<' ){
+                    lasers.push_back(make_pair(i,j));
+                }
+            }
+        }
+        int ans = bfs(xs, ys, xo, yo);
+        if( ans == -1 ) cout << "Case #" << k++ << ": impossible\n";
+        else cout << "Case #" << k++ << ": " << ans << "\n";
+        memo.clear();
+        mat.clear();
+        lasers.clear();
+    }
+    return 0;
+}

@@ -1,0 +1,191 @@
+<?php
+
+$input = 'input.txt';
+$file = file_get_contents($input);
+
+$aLines = explode("\n",$file);
+$count = $aLines[0];
+$aContent = array_slice($aLines,1);
+
+$oHackerCup = new HackerCup($count,$aContent);
+
+class HackerCup{
+
+	public $noOfcases;
+	public $aContent;
+    
+	public $smallest;
+	public $largest;
+	public $max;
+
+	function __construct($count, $aContent){
+		$this->noOfCases = trim($count);
+		$this->aContent = $aContent;
+		$this->buildCase();
+	}
+	
+	function buildCase(){			
+			$case = 0;
+			$output = '';
+			foreach($this->aContent as $line){
+				$this->startNewGame($line);
+				$case++;
+				$output .= "Case #$case: $this->smallest $this->largest\n";
+			}
+		//}
+		$outputFile = 'output.txt';
+		file_put_contents($outputFile, $output);
+	}
+	function startNewGame($line){
+        $aChars = str_split(trim($line));
+        $this->smallest = $this->getSmallest($aChars,$line);
+        $this->largest = $this->getLargest($aChars,$line);
+	}
+    function getLargest($aChars,$line){
+        $max = max($aChars);
+        $min = min($aChars);
+        $this->max = $max;
+        $filtered = array_filter($aChars,"HackerCup::nonmax");
+        $nonMax = ( empty($filtered) ? 0 : max($filtered) ); //deal with a single zero value
+
+        if ($min == $nonMax){            
+            $nonMax = $max;            
+        }
+        $aCount = count($aChars);
+        
+        if($aCount == 1){
+            $largeNumber = $aChars[0];
+            //return 
+        }elseif($aCount == 2 && $aChars[1]==0 ){
+            $largeNumber = $aChars[0].$aChars[1];
+        }else{
+            //get Left Hand Side
+            for($i = 0;$i< $aCount;$i++){
+                
+                $leftChar = intval(trim($aChars[$i]));
+                
+                if($leftChar < $max){
+                    $leftIndex = $i;
+                    break;
+                }
+                if($leftChar == $min){
+                    $leftIndex = $i;
+                }
+            }
+
+            if($aChars[0] == $max ) {
+                $max = $nonMax;
+            }
+            //get Right Hand Side
+            for($i = 0;$i < $aCount;$i++){
+                
+                $rightChar = intval(trim($aChars[$i]));
+                if($rightChar == $max){
+                    $rightIndex = $i;
+                }
+            }
+            
+            if( isset($rightIndex) ){
+                $leftSwap = $aChars[$leftIndex];
+                $rightSwap = $aChars[$rightIndex];
+                
+                $aChars[$rightIndex] = $leftSwap;
+                $aChars[$leftIndex] = $rightSwap;
+            }
+            
+            $largeNumber = implode($aChars);
+        }
+        return $largeNumber;
+    }
+    /**
+        get smallest
+    **/
+    function getSmallest($aChars,$line){
+        
+        $max = max($aChars);
+        
+        $filtered = array_filter($aChars,"nonzero");
+        $min = ( empty($filtered) ? 0 : min($filtered) ); //deal with a single zero value
+        
+        if($max == $min){
+            //we have only 0's and 1 other number
+            $min = min($aChars);
+            
+        }
+        
+        $aCount = count($aChars);
+        if($aCount == 1){
+            $smallNumber = $aChars[0];
+            //return 
+        }else{
+            
+            for($i = 0;$i< $aCount;$i++){
+                
+                $leftChar = intval(trim($aChars[$i]));
+                if($i==0 && $leftChar==$max && $min == 0){
+                    continue;
+                }
+                if($leftChar <= $min || $leftChar == 0){
+//                    $leftIndex = $i;
+                    
+                }elseif($leftChar > $min){
+                    $leftIndex = $i;
+                    //we swap
+                    break;
+                }else{
+                    if($i==0){
+                       $leftIndex = $i ;
+                       
+                    }else{
+                       //$leftIndex = $lastIndex ;
+                       if($i == $min){
+                            $leftIndex = $i;
+                            //we swap
+                           break;
+                        }
+                    }
+
+                }            
+                
+                $tmpVar = $leftChar;
+                $lastIndex = $i;           
+            }
+            if(isset($leftIndex)) {
+                for($i = $leftIndex;$i< $aCount;$i++){
+                    
+                    $leftChar = intval(trim($aChars[$i]));
+                    if($leftChar == 0 && $i==0){
+                        continue;
+                    }
+                    if($leftChar == $min){                    
+                        $rightIndex = $i;
+                    }elseif( isset($tmpVar) && $tmpVar == $min ){
+                        if($lastIndex==0){
+                            $rightIndex = $i;
+                            //break;
+                        }
+                    }
+                    $tmpVar = $leftChar;
+                    $lastIndex = $i;  
+                }
+                
+                if( isset($rightIndex) ){
+                    $leftSwap = $aChars[$leftIndex];
+                    $rightSwap = $aChars[$rightIndex];
+                    
+                    $aChars[$rightIndex] = $leftSwap;
+                    $aChars[$leftIndex] = $rightSwap;
+                }
+            }
+            $smallNumber = implode($aChars);
+        }
+        return $smallNumber;
+    }
+    function nonmax($a){
+        return ($a < $this->max);
+    }
+}
+
+function nonzero($a){
+   return ($a > 0);
+}

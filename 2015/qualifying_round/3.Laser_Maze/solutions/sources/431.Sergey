@@ -1,0 +1,93 @@
+input = open('laser_maze.txt')
+output = open('laser_maze_output.txt', 'w')
+
+
+def tst_lzr(dir, M, N, frM, frN, lbr, step):
+    if frM < 0 or frN < 0 or frM >= M or frN >= N:
+        return False
+    if dir == '>':
+        for n in range(frN + 1, N):
+            if lbr[frM][n] == '<v>^'[step]:
+                return True
+            elif lbr[frM][n] != '.':
+                return False
+    elif dir == '<':
+        for n in range(frN - 1, -1, -1):
+            if lbr[frM][n] == '>^<v'[step]:
+                return True
+            elif lbr[frM][n] != '.':
+                return False
+    elif dir == 'v':
+        for m in range(frM + 1, M):
+            if lbr[m][frN] == '^<v>'[step]:
+                return True
+            elif lbr[m][frN] != '.':
+                return False
+    elif dir == '^':
+        for m in range(frM - 1, -1, -1):
+            if lbr[m][frN] == 'v>^<'[step]:
+                return True
+            elif lbr[m][frN] != '.':
+                return False
+    return False
+
+
+def move(M, N, frM, frN, lbr, step, posib_pos):
+    vrt_kill = tst_lzr('v', M, N, frM, frN, lbr, step) or tst_lzr('^', M, N, frM, frN, lbr, step)
+    hrz_kill = tst_lzr('<', M, N, frM, frN, lbr, step) or tst_lzr('>', M, N, frM, frN, lbr, step)
+    if not hrz_kill:
+        if frN < (N - 1) and lbr[frM][frN + 1] == '.' and (frM, frN + 1) not in posib_pos and not tst_lzr('^', M, N, frM, frN + 1, lbr, step)  and not tst_lzr('v', M, N, frM, frN + 1, lbr, step):
+            posib_pos.add((frM, frN + 1))
+        if frN > 0 and lbr[frM][frN - 1] == '.' and (frM, frN - 1) not in posib_pos and not tst_lzr('^', M, N, frM, frN - 1, lbr, step)  and not tst_lzr('v', M, N, frM, frN - 1, lbr, step):
+            posib_pos.add((frM, frN - 1))
+    if not vrt_kill:
+        if frM < (M - 1) and lbr[frM + 1][frN] == '.' and (frM + 1, frN) not in posib_pos and not tst_lzr('<', M, N, frM + 1, frN, lbr, step)  and not tst_lzr('>', M, N, frM + 1, frN, lbr, step):
+            posib_pos.add((frM + 1, frN))
+        if frM > 0 and lbr[frM - 1][frN] == '.' and (frM - 1, frN) not in posib_pos and not tst_lzr('<', M, N, frM - 1, frN, lbr, step)  and not tst_lzr('>', M, N, frM - 1, frN, lbr, step):
+            posib_pos.add((frM - 1, frN))
+
+
+def check_lbr(M, N, lbr):
+    tot_lbr = ''.join([''.join(row) for row in lbr])
+    fin_pos = tot_lbr.find('G')
+    fnN, fnM = fin_pos % N, fin_pos // N
+    fin = (fnM, fnN)
+    str_pos = tot_lbr.find('S')
+    spN, spM = str_pos % N, str_pos // N
+    posib_pos = {(spM, spN)}
+    lbr[fnM][fnN] = '.'
+    lbr[spM][spN] = '.'
+    step = 0
+    acycle = set()
+    while True:
+##        print(step, posib_pos)
+        step += 1
+        sav_posib_pos = posib_pos
+        posib_pos = set()
+        for pos in sav_posib_pos:
+            move(M, N, pos[0], pos[1], lbr, step % 4, posib_pos)
+        if fin in posib_pos:
+            return str(step)
+        elif len(posib_pos) == 0:
+            return 'impossible'
+        elif step > 10000:
+            cur_loc = (tuple(sorted(posib_pos)), step % 4)
+            if cur_loc in acycle:
+                return 'impossible'
+            else:
+                acycle.add(cur_loc)
+
+T = int(input.readline().strip())
+for i in range(T):
+    M, N = map(int, input.readline().split())
+    lbr = []
+    for j in range(M):
+        lbr.append(list(input.readline().strip()))
+    print('Case #{}: '.format(i + 1), end='')
+    print('Case #{}: '.format(i + 1), end='', file=output)
+    ans = check_lbr(M, N, lbr)
+    print(ans)
+    print(ans, file=output)
+
+input.close()
+output.close()

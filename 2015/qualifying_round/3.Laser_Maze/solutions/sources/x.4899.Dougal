@@ -1,0 +1,104 @@
+from __future__ import print_function
+import numpy as np
+import heapq
+from collections import defaultdict
+
+CODES = {
+    'S': 11,
+    'G': 12,
+    '#': 13,
+    '.': 10,
+    '^': 0,
+    '>': 1,
+    'v': 2,
+    '<': 3,
+}
+REV_CODES = {v: k for k, v in CODES.iteritems()}
+def display(maze):
+    if maze.ndim == 2:
+        for line in maze:
+            for c in line:
+                print(REV_CODES[c], end='')
+            print()
+    elif maze.ndim == 3:
+        for m in maze:
+            display(m)
+            print('-' * m.shape[1])
+
+
+def parse_input(lines):
+    lines = iter(lines)
+    
+    mazes = []
+    num_mazes = int(next(lines))
+    for _ in range(num_mazes):
+        rows, cols = map(int, next(lines).split())
+        mazes.append(np.array([[CODES[c] for c in next(lines).strip()] for _ in range(rows)],
+                              dtype=np.int8))
+    return mazes
+
+
+def expand_maze(maze):
+    nx, ny = maze.shape
+    
+    new = [maze.copy()]
+    lasers = maze < 10
+    lasers_pos = zip(*lasers.nonzero())
+    for i in range(3):
+        m = new[-1].copy()
+        m[m == CODES['S']] = CODES['.']
+        m[lasers] += 1
+        m[lasers] %= 4
+        new.append(m)
+    
+    barrier_codes = {CODES[c] for c in '#<^>v'}
+    deltas = {CODES['^']: (-1, 0),
+              CODES['>']: (0, 1),
+              CODES['v']: (1, 0),
+              CODES['<']: (0, -1)}
+    for copy in new:
+        for (x, y) in lasers_pos:
+            dx, dy = deltas[copy[x, y]]
+            copy[x, y] = CODES['#']
+            x += dx
+            y += dy
+            while 0 <= x < nx and 0 <= y < ny and copy[x, y] not in barrier_codes:
+                copy[x, y] = CODES['#']
+                x += dx
+                y += dy
+    
+    return np.array(new)
+
+
+def solve_maze(maze):
+    nx, ny = maze.shape
+    expanded = expand_maze(maze)
+    
+    start_loc = (0,) + zip(*(maze == CODES['S']).nonzero())[0]
+    
+    queue = [(0, start_loc)]
+    best_seen = defaultdict(lambda: float('inf'))
+    best_seen[start_loc] = 0
+    
+    while queue:
+        moves, loc = heapq.heappop(queue)
+        t, x, y = loc
+        if expanded[loc] == CODES['G']:
+            return moves
+        
+        for dx, dy in [(-1, 0), (1, 0), (0, 1), (0, -1)]:
+            new_loc = ((t + 1) % 4, x + dx, y + dy)
+            if 0 <= new_loc[1] < nx and 0 <= new_loc[2] < ny and expanded[new_loc] != CODES['#']:
+                if moves + 1 < best_seen[new_loc]:
+                    best_seen[new_loc] = moves + 1
+                    heapq.heappush(queue, (moves + 1, new_loc))
+
+    return False
+
+
+if __name__ == '__main__':
+    import sys
+    mazes = parse_input(sys.stdin)
+    for i, maze in enumerate(mazes, 1):
+        res = solve_maze(maze)
+        print("Case #{}: {}".format(i, "impossible" if res is False else res))

@@ -1,0 +1,120 @@
+#! /usr/bin/perl
+## Author: Milan Sorm <sorm@milansorm.cz>
+## Facebook Hacker Cup 2015 Qualification ROund
+
+use strict;
+use warnings;
+
+my $count = <>;
+chomp $count;
+
+if ( ! defined $count || $count !~ /^\d+$/ || $count < 1 || $count > 20 ) {
+        print "ERROR: Invalid input (violate constraints).\n";
+        exit;
+}
+
+my $counter = 0;
+while ( $count-- > 0 ) {
+        # inputs: required food amount
+        my $line = <>;
+        chomp $line;
+        if ( ! defined $line ) {
+                print "ERROR: Invalid input (violate constraints - T).\n";
+                exit;
+        }
+        my @requires = split /\s+/, $line;
+        if ( @requires != 3 ) {
+                print "ERROR: Invalid input (violate constraints - T).\n";
+                exit;
+        }
+        for ( @requires ) {
+                if ( ! defined $_ || !/^\d+$/ || $_ < 10 || $_ > 1000 ) {
+                        print "ERROR: Invalid input (violate constraints - G).\n";
+                        exit;
+                }
+        }
+
+        my @ingredients = ();
+
+        # number of ingredients
+        my $ingredients_count = <>;
+        chomp $ingredients_count;
+
+        # check violations
+        if ( ! defined $ingredients_count || $ingredients_count !~ /^\d+$/ || $ingredients_count < 1 || $ingredients_count > 20 ) {
+                print "ERROR: Invalid input (violate constraints - N).\n";
+                exit;
+        }
+
+       # load all ingredients
+        INGREDIENTS: for ( 1 .. $ingredients_count ) {
+                my $line = <>;
+                chomp $line;
+                if ( ! defined $line ) {
+                        print "ERROR: Invalid input (violate constraints - P/C/F).\n";
+                        exit;
+                }
+
+                my @sources = split /\s+/, $line;
+                if ( @sources != 3 ) {
+                        print "ERROR: Invalid input (violate constraints - P/C/F).\n";
+                        exit;
+                }
+                for ( @sources ) {
+                        if ( ! defined $_ || !/^\d+$/ || $_ < 10 || $_ > 1000 ) {
+                                print "ERROR: Invalid input (violate constraints - P/C/F).\n";
+                                exit;
+                        }
+                }
+
+                # skip food with more sources than required (optimization)
+                for ( 0 .. 2 ) {
+                        next INGREDIENTS if $sources[ $_ ] > $requires[ $_ ];
+                }
+
+                push @ingredients, \@sources;
+        }
+
+        # algorithm:
+        # all @ingredients (3 parts) pass to @requires
+        my $answer = 'no';
+
+        # naive solution: test all combination by binary combination algorithm
+        # for 5 ingredients 11111b means all parts, 11110b means all without last one
+        # we can easily start with full ones and decrement down to zero
+        # at max 20 ingredients means 20-bit number which is 2^20 (something about million combinations)
+
+        # optimalization 1:
+        # - reduce input set of food with greater source than planned consumption (reduce input set)
+        # - this can be done during loading phase [implemented]
+
+        # we create first combination by decreasing 100000b to 11111b for 5 ingredients
+        my $current = 2 ** @ingredients;
+        COMBINATION: while ( --$current > 0 ) {
+                my @sums = ( 0, 0, 0 );
+
+                # add ingredient to sum where 1 is on binary position
+                for my $position ( 0 .. $#ingredients ) {
+                        my $weight = 2 ** $position;
+                        if ( ( $current & $weight ) == $weight ) {
+                                for ( 0 .. $#sums ) {
+                                        $sums[ $_ ] += $ingredients[ $position ]->[ $_ ];
+
+                                        # too much - stop this combination test
+                                        next COMBINATION if $sums[ $_ ] > $requires[ $_ ];
+                                }
+                        }
+                }
+
+                # check if equal - if not, next ingredient please
+                for ( 0 .. $#sums ) {
+                        next COMBINATION if $sums[ $_ ] != $requires[ $_ ];
+                }
+
+                # it successfully pass - change answer and stop testing
+                $answer = 'yes';
+                last COMBINATION;
+        }
+
+        print "Case #". ( ++$counter ). ": $answer\n";
+}

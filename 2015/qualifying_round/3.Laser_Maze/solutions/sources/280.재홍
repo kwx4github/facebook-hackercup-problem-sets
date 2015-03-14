@@ -1,0 +1,117 @@
+#include <stdio.h>
+#include <memory.h>
+#include <math.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define SPACE 40000
+int pos[4][100][100];
+int dyn[4][100][100];
+int bfk[SPACE], bfx[SPACE], bfy[SPACE], bfh;
+
+char dat[100][102];
+int N, M;
+
+bool isWall(int x, int y) {
+	if (x < 0 || x >= N || y < 0 || y >= M) return true;
+
+	char c = dat[x][y];
+	if (c == '#' || c == '<' || c == '>' || c == '^' || c == 'v') return true;
+	return false;
+}
+const int dx[4] = { -1, 0, 1, 0 };
+const int dy[4] = { 0, 1, 0, -1 };
+
+void fillPos(int whenUp, int x,int y) {
+	for (int tk = 0; tk < 4; tk++) {
+		int k = (tk + whenUp) % 4;
+		int X, Y;
+		X = x, Y = y;
+		do {
+			pos[k][X][Y] = 1;
+			X += dx[tk]; Y += dy[tk];
+		} while (!isWall(X, Y));
+	}
+}
+void insertBfs(int k,int x,int y,int v) {
+	if (dyn[k][x][y] != 0) return;
+
+	dyn[k][x][y] = v;
+	bfk[bfh] = k;
+	bfx[bfh] = x;
+	bfy[bfh] = y;
+
+	bfh++;
+}
+int main() {
+	freopen("laser_maze.txt", "r", stdin);
+	freopen("laser_maze.out", "w", stdout);
+	int T;
+	scanf("%d", &T);
+	while (T-- > 0) {
+		scanf("%d %d", &N, &M);
+		for (int i = 0; i < N; i++) {
+			scanf("%s", dat[i]);
+		}
+		memset(pos, 0, sizeof(pos));
+		memset(dyn, 0, sizeof(dyn));
+		int sx, sy, gx, gy;
+		sx = sy = 0;
+		gx = gy = 0;
+		for (int i = 0; i < N; i ++ ) {
+			for (int j = 0; j < M; j++) {
+				if (dat[i][j] == '#') {
+					for (int k = 0; k < 4; k++) {
+						pos[k][i][j] = 1;
+					}
+				}
+				if (dat[i][j] == '^') fillPos(0,i,j);
+				if (dat[i][j] == '<') fillPos(1,i,j);
+				if (dat[i][j] == 'v') fillPos(2,i,j);
+				if (dat[i][j] == '>') fillPos(3,i,j);
+
+				if (dat[i][j] == 'S') {
+					sx = i;
+					sy = j;
+				}
+				if (dat[i][j] == 'G') {
+					gx = i;
+					gy = j;
+				}
+			}
+		} 
+		bfh = 0;
+		insertBfs(0, sx, sy, 1);
+
+		for (int h = 0; h < bfh; h++) {
+			int k = bfk[h];
+			int x = bfx[h];
+			int y = bfy[h];
+
+			int nk = (k + 1) % 4;
+			for (int d = 0; d < 4; d++) {
+				int nx = x + dx[d];
+				int ny = y + dy[d];
+
+				if (!isWall(nx, ny) && pos[nk][nx][ny] == 0) {
+					insertBfs(nk, nx, ny, dyn[k][x][y] + 1);
+				}
+			}
+		}
+		static int cs = 1;
+		printf("Case #%d: ", cs++);
+		int sol = -1;
+		for (int k = 0; k < 4; k++) {
+			if (dyn[k][gx][gy] != 0){
+				if (sol < 0 || sol > dyn[k][gx][gy]) {
+					sol = dyn[k][gx][gy];
+				}
+			}
+		}
+		if (sol == -1) printf("impossible");
+		else printf("%d", sol - 1);
+
+		printf("\n");
+	}
+	return 0;
+}

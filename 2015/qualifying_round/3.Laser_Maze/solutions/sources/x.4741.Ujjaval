@@ -1,0 +1,120 @@
+// directives 
+	#include <stdio.h>
+	#include <vector>
+	#include <map>
+	#include <set>
+	#include <deque>
+	#include <queue>
+	#include <algorithm>
+	#include <iostream>
+	#include <cmath>
+	#include <cstring>
+	#include <typeinfo>
+	#include <sstream>
+// 
+using namespace std;
+// macros 
+	#define FOR(i,a,b)      for(int i(a);i<b;++i)
+	#define REP(i,n)        FOR(i,0,n)
+	#define FORD(i,a,b)      for(int i(a-1);i>=b;--i)
+	#define CL(a,x)         memset(a,x,sizeof(a))
+	#define FL(a,x)			fill_n(a,sizeof(a)/sizeof(a[0]),x)
+	#define asort(a,n)		sort(a,a+n)
+	#define vsort(v,n)		sort(v.begin(), v.begin()+n)
+	#define sz(x)			x.size()
+	#define all(x)			x.begin(), x.end()
+	#define SSTR( x )		dynamic_cast< std::ostringstream & >( ( std::ostringstream() << std::dec << x ) ).str()
+	#define TI(x)		int x = rint()
+	#define TII(x,y)		int x = rint(),y = rint()
+	#define TIII(x,y,z)		int x = rint(),y = rint(),z = rint()
+// 
+
+typedef long long LL;
+typedef vector<int> vi;
+int rint() { int x; if(scanf("%d",&x)!=1) return -1; return x; }
+LL rLL() { LL x; if(scanf("%I64d",&x)!=1) return -1; return x; }
+string rstring() { static char buf[100000]; if(scanf("%s",buf)!=1) return ""; return buf; }
+
+bool blocked[100][100][4];
+bool maze[100][100];
+string dir = "<^>v";
+int inc[4][2] = {{0,-1},{-1,0},{0,1},{1,0}};
+int steps[100][100][4];
+int m,n,sx, sy, gx, gy;
+vector<pair<int,int> > turrets[4];
+
+inline bool valid(int i, int j) {
+	return i >= 0 && i < m && j >= 0 && j < n;
+}
+
+int dp(int i, int j, int rot) {
+//	printf("At %d,%d rot %d\n", i, j, rot);
+	int &r = steps[i][j][rot];
+	if (r == -1) {
+		if (i == gx && j == gy) r = 0;
+		else {
+			r = -2;
+			REP(k,4) {
+				int p = i+inc[k][0], q = j + inc[k][1];
+				if (valid(p, q) && !blocked[p][q][(rot+1)%4])
+				{
+					int x = dp(p,q, (rot + 1)%4);
+					if (x != -2) {
+						if (r == -2 || r > 1+x) r = 1+x;
+					}
+				}
+			}
+		}
+	}
+	return r;
+}
+
+int solve() {
+	return dp(sx,sy,0);
+}
+
+int main()
+{
+	TI(T);
+	REP(t,T) {
+		m = rint(), n = rint();
+		CL(blocked, false);
+		CL(maze, false);
+		CL(steps, -1);
+		REP(i,4) turrets[i].clear();
+		REP(i,m) {
+			string s = rstring();
+			REP(j,n) {
+				REP(k,4) if (s[j] == dir[k]) {
+					turrets[k].push_back(pair<int,int>(i,j));
+					maze[i][j] = true;
+					REP(l,4) blocked[i][j][l] = true;
+					break;
+				}
+				if (s[j] == '#') {
+					REP(l,4) blocked[i][j][l] = true;
+					maze[i][j] = true;
+				}
+				if (s[j] == 'S') sx = i, sy = j;
+				if (s[j] == 'G') gx = i, gy = j;
+			}
+		}
+		REP(rot,4) {
+			REP(k,4) {
+				int d = (k + rot) % 4;
+				REP(p,sz(turrets[k])) {
+					int i = turrets[k][p].first + inc[d][0], j = turrets[k][p].second + inc[d][1];
+					while (valid(i,j) && !maze[i][j]) {
+						blocked[i][j][rot] = true;
+//						printf("Blocked %d,%d for rot %d\n", i, j, rot);
+						i += inc[d][0], j+= inc[d][1];
+					}
+				}
+			}
+		}
+		int x = solve();
+		if (x == -2) printf("Case #%d: impossible\n", t+1);
+		else printf("Case #%d: %d\n", t+1, x);
+	}
+	return 0;
+}

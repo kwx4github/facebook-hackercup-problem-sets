@@ -1,0 +1,186 @@
+#include <algorithm>
+#include <cstdio>
+#include <cmath>
+#include <cstring>
+#include <deque>
+#include <fstream>
+#include <iostream>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <stack>
+#include <string>
+#include <vector>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iomanip>
+#include <climits>
+
+using namespace std;
+
+typedef pair<int, int> ii;
+typedef pair<int, ii> iii;
+typedef vector<int> vi;
+typedef vector<ii> vii;
+typedef long long ll;
+
+#define INF 1e9
+#define EPS 1e-9
+#define PI acos(-1.0)
+#define MOD 1000000007
+
+ii start, goal;
+int T, M, N;
+set<vi> visited;
+map<ii, int> m;
+char maze[110][110];
+vi state;
+int dx[] = { -1, 0, 1, 0 };
+int dy[] = { 0, 1, 0, -1 };
+
+int getNext(int c) {
+	if(c == 60) return 94;
+	if(c == 94) return 62;
+	if(c == 62) return 118;
+	if(c == 118) return 60;
+	return -1;
+}
+
+int die() {
+	// get position
+	int x = state[0];
+	int y = state[1];
+	// check for laser in left side
+	int tmp = y - 1;
+	while(tmp >= 0 && (maze[x][tmp] == '.' || maze[x][tmp] == 'G' || maze[x][tmp] == 'S'))	
+		tmp--;
+	if(tmp >= 0 && maze[x][tmp] != '#' && state[m[ii(x, tmp)]] == 62) return 1;
+	// check for laser in right side
+	tmp = y + 1;
+	while(tmp < N && (maze[x][tmp] == '.' || maze[x][tmp] == 'G' || maze[x][tmp] == 'S'))
+		tmp++;
+	if(tmp < N && maze[x][tmp] != '#' && state[m[ii(x, tmp)]] == 60) return 1;
+	// check for laser up
+	tmp = x - 1;
+	while(tmp >= 0 && (maze[tmp][y] == '.' || maze[tmp][y] == 'G' || maze[tmp][y] == 'S'))	
+		tmp--;
+	if(tmp >= 0 && maze[tmp][y] != '#' && state[m[ii(tmp, y)]] == 118) return 1;
+	// check for laser down
+	tmp = x + 1;
+	while(tmp < M && (maze[tmp][y] == '.' || maze[tmp][y] == 'G' || maze[tmp][y] == 'S'))	
+		tmp++;
+	if(tmp < M && maze[tmp][y] != '#' && state[m[ii(tmp, y)]] == 94) return 1;
+	// valid move
+	return 0;
+}
+
+int findWay() {
+	// create first state
+	// state: [start.row, start.col, ls1, ls2, ..., lsk, moves]
+	vi init = state;
+	init.push_back(0);
+
+	// create queue for BFS
+	queue<vi> q;
+	q.push(init);
+
+	// run BFS algorithm
+	while(!q.empty()) {	
+		// get next state
+		vi u = q.front();
+		q.pop();
+		// save distance
+		int d = u.back();
+		// remove distance to check for visited position
+		u.pop_back();
+
+		// check if visited
+		if(visited.find(u) != visited.end()) continue;
+		// mark as visited
+		visited.insert(u);
+
+		// iterate over all 4 possible next positions
+		for(int i = 0; i < 4; i++) {
+			// get next coordinates
+			int x = u[0] + dx[i];
+			int y = u[1] + dy[i];
+
+			// check if out of bounds
+			if(x < 0 || x >= M || y < 0 || y >= N) continue;
+			// check if empty space
+			if(maze[x][y] != '.' && maze[x][y] != 'S' && maze[x][y] != 'G') continue;
+			// create state to check if valid position
+			state = u;
+			state[0] = x;
+			state[1] = y;
+			// check if hit by laser
+			if(die()) continue; 
+			// check if goal is reached
+			if(x == goal.first && y == goal.second) return d + 1;
+			// create next BFS state
+			vi v = state;
+			// rotate lasers
+			for(int j = 2; j < (int)v.size(); j++)
+				v[j] = getNext(v[j]);
+			// add distance to state
+			v.push_back(d + 1);
+			// add state to queue
+			q.push(v);
+		}
+	}
+	// if reached this point, no way out
+	return -1;
+}
+
+int main() {		
+	// open files
+	freopen("laser_maze.txt","r",stdin);
+    freopen("laser_maze_output.txt","w",stdout);
+
+	// read number of cases
+	fscanf(stdin, "%d", &T);
+	int c = 1;
+	while(T--) {
+		// read dimensions
+		fscanf(stdin, "%d %d", &M, &N);
+				
+		// read maze
+		fgets(maze[101], 110, stdin);
+		for(int i = 0; i < M; i++)
+			fgets(maze[i], 110, stdin);
+
+		// clear variables
+		state.clear();
+		m.clear();
+		visited.clear();
+
+		// get info from maze
+		int cnt = 2;
+		for(int i = 0; i < M; i++)
+			for(int j = 0; j < N; j++)
+				if(maze[i][j] == 'S') {
+					// save start position
+					start = ii(i, j);				
+					// add start position to state
+					state.insert(state.begin(), i);
+					state.insert(state.begin() + 1, j);
+				}
+				else if(maze[i][j] == 'G') goal = ii(i, j); // save goal position
+				else if(maze[i][j] == '<' || maze[i][j] == '^' || 
+					maze[i][j] == '>' || maze[i][j] == 'v') {
+					// save positions for laser turrets
+					m.insert(make_pair(ii(i, j), cnt++)); // map pair to integer
+					state.push_back(getNext(maze[i][j])); // add to state					
+				}
+		// compute solution
+		int result = findWay();		
+		// output solution
+		fprintf(stdout, "Case #%d: ", c++);
+		if(result >= 0) fprintf(stdout, "%d\n", result);
+		else fprintf(stdout, "impossible\n");
+	}
+
+	// system ("pause");
+	return 0;
+}

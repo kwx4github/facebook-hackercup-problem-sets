@@ -1,0 +1,201 @@
+#include <iostream>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+#define FOUR (4)
+#define INF (987654321)
+
+#define BLOCKED ('#')
+#define EMPTY ('.')
+
+
+const int di[4] = { -1, 0, 1, 0 };
+const int dj[4] = { 0, 1, 0, -1 };
+void move(int direction, int &i, int& j) {
+	i += di[direction];
+	j += dj[direction];
+}
+
+int exit_i, exit_j;
+bool exit_reached(int i, int j) {
+	return i == exit_i && j == exit_j;
+}
+
+int height, width;
+bool out_of_bound(int i, int j) {
+	return i < 0 || i >= height || j < 0 || j >= width;
+}
+
+
+char mazetime[100][100][4];
+void print_mazes() {
+	for (int k = 0; k < FOUR; k++) {
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++)
+				putchar(mazetime[i][j][k]);
+			putchar('\n');
+		}
+		putchar('\n');
+	}
+}
+
+class state {
+public:
+	int i, j, k;
+
+	state(int i, int j, int k) {
+		this->i = i;
+		this->j = j;
+		this->k = k;
+	}
+
+	state move(int direction) {
+		return state(i + di[direction], j + dj[direction], (k + 1) % FOUR);
+	}
+
+	bool out_of_bound() {
+		return i < 0 || i >= height || j < 0 || j >= width;
+	}
+	bool blocked() {
+		return mazetime[i][j][k] == BLOCKED;
+	}
+	bool exit_reached() {
+		return i == exit_i && j == exit_j;
+	}
+};
+
+
+
+
+
+
+
+int main() {
+	FILE * out; fopen_s(&out, "Laser Maze out.txt", "wt");
+
+	int cases; scanf_s("%d\n", &cases);
+	for (int c = 1; c <= cases; c++) {
+		// Read a maze
+		scanf_s("%d %d\n", &height, &width);
+		char maze[101][101];
+		for (int i = 0; i < height; i++)
+			gets_s(maze[i]);
+
+
+		// Find the starting point and the exit point
+		// Change turrets to the numbers 0~3 according to their directions
+		state start(0, 0, 0);
+		for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
+
+			char& cell = maze[i][j];
+			switch (cell) {
+			case '^': cell = 0; break;
+			case '>': cell = 1; break;
+			case 'v': cell = 2; break;
+			case '<': cell = 3; break;
+
+			case 'S':
+				cell = EMPTY;
+				start.i = i;
+				start.j = j;
+				break;
+			case 'G':
+				cell = EMPTY;
+				exit_i = i;
+				exit_j = j;
+				break;
+			}
+
+		}
+
+
+		// Copy the maze
+		for (int k = 0; k < FOUR; k++)
+			for (int i = 0; i < height; i++) for (int j = 0; j < width; j++)
+				mazetime[i][j][k] = maze[i][j];
+
+
+		// Draw lazer paths to mazetime
+		const char lazer = 'l';
+		for (int k = 0; k < FOUR; k++) {
+			for (int i = 0; i < height; i++) for (int j = 0; j < width; j++) {
+				int d = mazetime[i][j][k];
+				if (d < 0 || FOUR <= d) continue; // Not a turret
+
+				mazetime[i][j][k] = EMPTY;
+				d = (d + k) % FOUR;
+				
+				int ii = i, jj = j;
+				while (!out_of_bound(ii, jj) && mazetime[ii][jj][k] == EMPTY) {
+					mazetime[ii][jj][k] = lazer;
+					
+					move(d, ii, jj);
+				}
+
+			}
+		} // k
+	
+
+		// Make lazer paths BLOCKED
+		for (int k = 0; k < FOUR; k++) {
+			for (int i = 0; i < height; i++) for (int j = 0; j < width; j++)
+				if (mazetime[i][j][k] == lazer)
+					mazetime[i][j][k] = BLOCKED;
+		}
+		//print_mazes();
+			
+
+
+
+		// Find the shortest distance to the exit by BFS
+		bool exit_found = false;
+		int depth = 1;
+		bool discovered[100][100][4]; memset(discovered, false, sizeof(discovered));
+
+		queue<state> q;
+		for (int d = 0; d < FOUR; d++)
+			q.push(start.move(d));
+		const int depth_indicator = -10;
+		q.push(state(depth_indicator, 0, depth+1));
+
+		while (q.size() > 1) { // q.size()==1 means q has only the depth indicator and has no valid state, the end of BFS
+			state here = q.front(); q.pop();
+
+			if (here.i == depth_indicator) {
+				depth++;
+				q.push(state(depth_indicator, 0, depth));
+				continue;
+			}
+
+			if (here.exit_reached()) {
+				exit_found = true;
+				break;
+			}
+
+
+			for (int d = 0; d < FOUR; d++) {
+				state there = here.move(d);
+				if (there.out_of_bound()) continue;
+				if (there.blocked()) continue;
+				if (discovered[there.i][there.j][there.k]) continue;
+
+				discovered[there.i][there.j][there.k] = true;
+				q.push(there);
+			}
+		}
+		
+
+
+		char answer[100] = "impossible";
+		if (exit_found) sprintf_s(answer, "%d", depth);
+
+		printf(      "Case #%d: %s\n", c, answer);
+		fprintf(out, "Case #%d: %s\n", c, answer);
+	}
+
+	fflush(out);
+	fclose(out);
+	return 0;
+}

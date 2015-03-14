@@ -1,0 +1,240 @@
+#include<iostream>
+#include<cstdio>
+#include<queue>
+#include<stack>
+#include<algorithm>
+#include<cstring>
+
+using namespace std;
+
+char grid[102][102];
+int block[102][102][5];
+bool visited[102][102][5];
+int M,N,numT,len;
+pair<int ,int > start;
+pair<int , int >stop;
+/*
+    0
+  3   1
+    2
+*/
+
+struct node{
+    int x;
+    int y;
+    int dir;
+
+}turret[10002];
+
+bool safe(int x,int y){
+ //cout<<"For  x:y  "<<x<<":"<<y<<endl;
+        int tx,ty,tdir;
+     if((grid[x][y]=='#' ||grid[x][y]=='^' ||grid[x][y]=='>' ||grid[x][y]=='v' ||grid[x][y]=='<'))
+        return false;
+
+        for(int i=0;i<numT;i++){
+            tx=turret[i].x;
+            ty=turret[i].y;
+            tdir=turret[i].dir;
+
+            if(tdir==0){ //up
+                if(y==ty){
+                    if(x<=tx && x>block[tx][ty][tdir]){
+                        //cout<<"0 X:"<<block[tx][ty][tdir]<<" < "<<x<<" < "<<tx<<endl;
+                       // cout<<"\n Returning 0"<<endl;
+                        return false;
+                        }
+                }
+            }
+            else if(tdir==1){
+                if(x==tx){
+                    if(y>=ty && y<block[tx][ty][tdir]){
+                        //cout<<"1 Y:"<<ty<<" < "<<y<<" < "<<block[tx][ty][tdir]<<endl;
+                        //cout<<"\n Returning 1"<<endl;
+                        return false;
+                        }
+                }
+            }
+            else if(tdir==2){
+                if(y==ty){
+                    if(x>=tx && x<block[tx][ty][tdir]){
+                        //cout<<"2 X:"<<tx<<" < "<<x<<" < "<<block[tx][ty][tdir]<<endl;
+                        //cout<<"\n Returning 2"<<endl;
+                        return false;
+                        }
+                }
+            }
+            else if(tdir==3){
+                if(x==tx){
+                    if(y<=ty && y>block[tx][ty][tdir]){
+                        //cout<<"3 Y:"<<ty<<" < "<<y<<" < "<<block[tx][ty][tdir]<<endl;
+                        //cout<<"\n Returning 3"<<endl;
+                        return false;
+                        }
+                }
+            }
+
+        }
+
+        return true;
+}
+
+
+bool bfs(){
+        int ele;
+        bool status=false;
+        node top;
+        queue<node> qq;
+        int dx[4]={-1,0,1,0};
+        int dy[4]= {0,1,0,-1};
+
+        qq.push((node){start.first,start.second,0});
+
+        while(status==false){
+                ele=qq.size();
+               // cout<<"\n\nSize :"<<ele<<endl;
+                if(ele==0)
+                    break;
+
+             for(int i=0;i<numT;i++)
+                turret[i].dir=(turret[i].dir+1)%4;
+
+                while(ele-- && !qq.empty()){
+
+                    //cout<<"Ele : "<<ele<<" Q: "<<qq.size()<<endl;
+                    top=qq.front(); qq.pop();
+
+
+
+                    if(visited[top.x][top.y][top.dir%4]==1){
+                        { //cout<<"   Contd!!!"<<ele<<endl;   //ele--
+                        continue;}
+                    }
+
+                    visited[top.x][top.y][top.dir%4]=1;
+                    if(top.x==stop.first && top.y==stop.second){
+
+                        len=top.dir;    status=true; //cout<<"  Breaking!!!!"<<endl;
+                        break;
+                    }
+
+                    //cout<<"check"<<endl;
+                    for(int i=0;i<4;i++){
+                        int x=top.x+dx[i];  int y=top.y+dy[i];
+                      if(x>=0 && x<M && y>=0 && y<N){
+                        //cout<<x<<" :: "<<y<<endl;
+                        //bool tym=safe(top.x+dx[i],top.y+dy[i]);
+                       // cout<<"Safe :  "<<tym<<endl;
+                        if(safe(top.x+dx[i],top.y+dy[i])){
+                            qq.push((node){top.x+dx[i],top.y+dy[i],top.dir+1});
+                            //cout<<"Pushing : "<<top.x+dx[i]<<" : "<<top.y+dy[i]<<" : "<<top.dir+1<<endl;
+                        }
+                      }
+                    }
+
+                    //cout<<"Empty: "<<qq.empty()<<endl;
+
+                    //ele--;
+                }//#ele_while
+               // cout<<"While Ended"<<endl;
+        }//while
+
+       // cout<<"Ret : "<<status<<endl;
+        return status;
+}
+
+
+void allocate(){
+    numT=0;
+    int x,y,pt;
+    for(int i=0;i<M;i++){
+        for(int j=0;j<N;j++){
+
+            if(grid[i][j]=='S')
+                start=make_pair(i,j);
+            else if(grid[i][j]=='G')
+                stop=make_pair(i,j);
+            else if(grid[i][j]=='^'){
+                turret[numT]=(node){i,j,0}; numT++;
+                }
+            else if(grid[i][j]=='>'){
+                turret[numT]=(node){i,j,1}; numT++;
+                }
+            else if(grid[i][j]=='v'){
+                turret[numT]=(node){i,j,2}; numT++;
+                }
+            else if(grid[i][j]=='<'){
+                turret[numT]=(node){i,j,3}; numT++;
+                }
+
+
+        }
+    }
+           // cout<<"Turret Location over to Blockage"<<endl;
+    for(int i=0;i<numT;i++){
+
+        x=turret[i].x;  y=turret[i].y;
+
+        for(pt=x-1;pt>=0;pt--)
+            if(grid[pt][y]=='#' ||grid[pt][y]=='^'||grid[pt][y]=='>'||grid[pt][y]=='v'||grid[pt][y]=='<'){break;}
+        block[x][y][0]=pt;
+
+        for(pt=y+1;pt<N;pt++)
+            if(grid[x][pt]=='#' ||grid[x][pt]=='^'||grid[x][pt]=='>'||grid[x][pt]=='v'||grid[x][pt]=='<'){break;}
+        block[x][y][1]=pt;
+
+        for(pt=x+1;pt<M;pt++)
+            if(grid[pt][y]=='#' ||grid[pt][y]=='^'||grid[pt][y]=='>'||grid[pt][y]=='v'||grid[pt][y]=='<'){break;}
+        block[x][y][2]=pt;
+
+        for(pt=y-1;pt>=0;pt--)
+            if(grid[x][pt]=='#' ||grid[x][pt]=='^'||grid[x][pt]=='>'||grid[x][pt]=='v'||grid[x][pt]=='<'){break;}
+        block[x][y][3]=pt;
+
+    }
+}
+
+
+int main(){
+
+    int T;
+    bool done;
+    //int M,N;
+
+    scanf("%d",&T);
+
+    for(int cases =1;cases<=T;cases++){
+
+        //scanf("%d %d",&M,&N);
+        cin>>M>>N;
+       // printf("M=%d N=%d\n",M,N);
+
+        len=0;
+
+        for(int i=0;i<M;i++){
+            for(int j=0;j<N;j++)
+                scanf(" %c",&grid[i][j]);
+        }
+
+           // cout<<"Allocate !!"<<endl;
+        allocate();
+            memset(visited,0,sizeof(visited));
+            //cout<<"Bfs !!"<<endl;
+        done=bfs();
+
+        if(done)
+            printf("Case #%d: %d\n",cases,len);
+        else
+            printf("Case #%d: impossible\n",cases);
+
+            //cout<<"---------------------------"<<endl;
+
+            //fflush(stdin);
+            //fflush(stdout);
+
+
+    }
+
+
+    return 0;
+}

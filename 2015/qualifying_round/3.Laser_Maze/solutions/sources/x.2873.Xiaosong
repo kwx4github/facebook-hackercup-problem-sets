@@ -1,0 +1,243 @@
+import java.io.*;
+import java.util.*;
+
+/**
+ * Created by xipan on 1/11/15.
+ */
+public class C {
+    public static BufferedReader in;
+    public static PrintWriter out;
+    public static int[][] directs = new int[][]{{0,1},{0,-1},{1,0},{-1,0}};
+    public static final String IN_FILE = "Facebook-2015-Qualification/laser_maze.txt";
+    public static final String OUT_FILE = "Facebook-2015-Qualification/laser.output";
+
+
+    public static void main(String[] args) throws IOException {
+        in = new BufferedReader(new FileReader(IN_FILE));
+        out = new PrintWriter(new FileWriter(OUT_FILE));
+
+        int cases = Integer.parseInt(in.readLine());
+
+        for (int z = 1; z <= cases; z++) {
+            String[] dummy = in.readLine().split(" ");
+            int m = Integer.parseInt(dummy[0]);
+            int n = Integer.parseInt(dummy[1]);
+
+            char[][] map = new char[m][n];
+
+            for (int i = 0; i < m; i++) {
+                String tmp = in.readLine();
+                map[i] = tmp.toCharArray();
+            }
+            int result = getPossible(map, m, n);
+
+            //System.exit(0);
+
+            out.print(String.format("Case #%d: %s%n", z, result == 0 ? "impossible" : String.valueOf(result)));
+            out.flush();
+        }
+        out.flush();
+        out.close();
+        in.close();
+    }
+
+    private static int getPossible(char[][] map, int m, int n) {
+        int sx = 0, sy = 0, ex = 0, ey = 0;
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (map[i][j] == 'S') {
+                    sx = i;
+                    sy = j;
+                } else if (map[i][j] == 'G') {
+                    ex = i;
+                    ey = j;
+                }
+            }
+        }
+
+        char[][] map1 = constructMap1(map, m, n);
+
+        char[][] map2 = constructMap2(map, m, n);
+        char[][] map3 = constructMap3(map, m, n);
+        char[][] map4 = constructMap4(map, m, n);
+
+
+        //print(map1);
+        //print(map2);
+        //print(map3);
+        //print(map4);
+
+        Map<char[][], char[][]> relation = new HashMap<char[][], char[][]>();
+        relation.put(map1, map2);
+        relation.put(map2, map3);
+        relation.put(map3, map4);
+        relation.put(map4, map1);
+
+        boolean[][] v1 = new boolean[m][n];
+        boolean[][] v2 = new boolean[m][n];
+        boolean[][] v3 = new boolean[m][n];
+        boolean[][] v4 = new boolean[m][n];
+        Map<char[][], boolean[][]> tk = new HashMap<char[][], boolean[][]>();
+        tk.put(map1, v1);
+        tk.put(map2, v2);
+        tk.put(map3, v3);
+        tk.put(map4, v4);
+
+        List<Position> list = new ArrayList<Position>();
+        int step = 1;
+        for (int[] d : directs) {
+            int newX = sx + d[0];
+            int newY = sy + d[1];
+
+            if (newX >= 0 && newX < m && newY >= 0 && newY < n) {
+                if (map1[newX][newY] == '.') {
+                    if (map[newX][newY] == 'G') return step;
+                    list.add(new Position(newX, newY, map1));
+                    v1[newX][newY] = true;
+                }
+            }
+        }
+
+        while (!list.isEmpty()) {
+            step++;
+            List<Position> tmpList = new ArrayList<Position>();
+
+            for (Position p : list) {
+                char[][] nextMap = relation.get(p.whichMap);
+                for (int[] d : directs) {
+                    int newX = p.i + d[0];
+                    int newY = p.j + d[1];
+
+                    if (newX >= 0 && newX < m && newY >= 0 && newY < n) {
+                        if (nextMap[newX][newY] == '.' && !tk.get(nextMap)[newX][newY]) {
+                            if (map[newX][newY] == 'G') return step;
+                            tmpList.add(new Position(newX, newY, nextMap));
+                            tk.get(nextMap)[newX][newY] = true;
+                        }
+                    }
+                }
+            }
+
+            list = tmpList;
+        }
+
+        return 0;
+    }
+
+    private static char[][] constructMap3(char[][] map, int m, int n) {
+        char[][] ret = new char[m][n];
+        for (int i = 0; i < m; i++) Arrays.fill(ret[i], '.');
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (map[i][j] == '#' || ret[i][j] == '#') ret[i][j] = '#';
+                else if (map[i][j] == '^') {
+                    direct(ret, i, j, m, n, 0, -1, map);
+                } else if (map[i][j] == 'v') {
+                    direct(ret, i, j, m, n, 0, 1, map);
+                } else if (map[i][j] == '<') {
+                    direct(ret, i, j, m, n, 1, 0, map);
+                } else if (map[i][j] == '>') {
+                    direct(ret, i, j, m, n, -1, 0, map);
+                } else ret[i][j] = '.';
+            }
+        }
+        return ret;
+    }
+
+    private static char[][] constructMap1(char[][] map, int m, int n) {
+        char[][] ret = new char[m][n];
+        for (int i = 0; i < m; i++) Arrays.fill(ret[i], '.');
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (map[i][j] == '#' || ret[i][j] == '#') ret[i][j] = '#';
+                else if (map[i][j] == '^') {
+                    direct(ret, i, j, m, n, 0, 1, map);
+                } else if (map[i][j] == 'v') {
+                    direct(ret, i, j, m, n, 0, -1, map);
+                } else if (map[i][j] == '<') {
+                    direct(ret, i, j, m, n, -1, 0, map);
+                } else if (map[i][j] == '>') {
+                    direct(ret, i, j, m, n, 1, 0, map);
+                } else ret[i][j] = '.';
+            }
+        }
+        return ret;
+    }
+
+    private static char[][] constructMap2(char[][] map, int m, int n) {
+        char[][] ret = new char[m][n];
+        for (int i = 0; i < m; i++) Arrays.fill(ret[i], '.');
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (map[i][j] == '#' || ret[i][j] == '#') ret[i][j] = '#';
+                else if (map[i][j] == '^') {
+                    direct(ret, i, j, m, n, 1, 0, map);
+                } else if (map[i][j] == 'v') {
+                    direct(ret, i, j, m, n, -1, 0, map);
+                } else if (map[i][j] == '<') {
+                    direct(ret, i, j, m, n, 0, 1, map);
+                } else if (map[i][j] == '>') {
+                    direct(ret, i, j, m, n, 0, -1, map);
+                } else ret[i][j] = '.';
+            }
+
+        }
+        return ret;
+    }
+
+    private static char[][] constructMap4(char[][] map, int m, int n) {
+        char[][] ret = new char[m][n];
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (map[i][j] == '#') ret[i][j] = '#';
+                else if (map[i][j] == '^') {
+                    direct(ret, i, j, m, n, -1, 0, map);
+                } else if (map[i][j] == 'v') {
+                    direct(ret, i, j, m, n, 1, 0, map);
+                } else if (map[i][j] == '<') {
+                    direct(ret, i, j, m, n, 0, -1, map);
+                } else if (map[i][j] == '>') {
+                    direct(ret, i, j, m, n, 0, 1, map);
+                } else ret[i][j] = '.';
+            }
+        }
+        return ret;
+    }
+
+    private static void direct(char[][] ret, int i, int j, int m, int n, int a, int b, char[][] map) {
+        ret[i][j] = '#';
+        i += a;
+        j += b;
+
+        while (i>= 0 && i<m && j>= 0 && j< n &&
+                (map[i][j] == 'G' || map[i][j] == 'S' || map[i][j] == '.')) {
+            ret[i][j] = '#';
+            i += a;
+            j += b;
+        }
+    }
+
+    static class Position {
+        int i, j;
+        char[][] whichMap;
+
+        public Position(int i, int j, char[][] whichMap) {
+            this.i = i;
+            this.j = j;
+            this.whichMap = whichMap;
+        }
+    }
+
+    /*
+    static void print(char[][] w) {
+        for (char[] a : w) {
+            for (char b : a) {
+                System.out.print(b);
+            }
+            System.out.println();
+        }
+    }*/
+}

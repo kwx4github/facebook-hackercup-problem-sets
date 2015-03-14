@@ -1,0 +1,182 @@
+/**
+  Aditya Gourav
+  adi.pearl
+**/
+#include<bits/stdc++.h>
+using namespace std;
+
+///scanning
+#define si(x) scanf("%d",&x)
+#define ss(x) scanf("%s",x)
+
+///debugging
+#define db1(x) cerr<<(x)<<endl;
+#define db2(x,y) cerr<<(x)<<" "<<(y)<<endl;
+#define db3(x,y,z) cerr<<(x)<<" "<<(y)<<" "<<(z)<<endl;
+
+#define FI(var,beg,end) for(int var=(beg);var<=(end);++var)
+#define FD(var,end,beg) for(int var=(end);var>=(beg);--var)
+#define F(i,n) FI(i,0,n-1)
+#define F1(i,n) FI(i,1,n)
+#define R(f) freopen(f,"r",stdin);
+#define W(f) freopen(f,"w",stdout);
+#define TEST int num_cases; cin>>num_cases;for(int case_id=1;case_id <= num_cases;++case_id)
+
+
+/** Main Code starts here :) */
+char maze[110][110];
+int m,n;
+
+struct coord{
+    int x,y;
+    coord(){}
+    coord(int a, int b):x(a), y(b){}
+    bool operator == (const coord& b){
+        if(x == b.x && y == b.y)    return true;
+        else    return false;
+    }
+}S, G;
+
+const char RIGHT = '>',
+           LEFT  = '<',
+           UP    = '^',
+           DOWN  = 'v';
+
+int blocked[110][110][4];
+int steps[110][110][4];
+int dirx[4] = {0, 0,1,-1};
+int diry[4] = {1,-1,0, 0};
+
+inline bool valid(int& x, int& y){
+    if(x < 0 || y < 0 || x >= m || y >= n)  return false;
+    return true;
+}
+inline bool occupied(int& x, int& y){
+    if(maze[x][y] == '.' || maze[x][y] == 'S' || maze[x][y] == 'G') return false;
+    return true;
+}
+
+const int MAX_STEPS = 0x01010101;
+
+int main(){
+    R("laser_maze.txt");
+    W("cout.txt");
+    TEST{
+
+        ///take the inputs
+        si(m);  si(n);
+        F(i,m){ ss(maze[i]);    getchar(); }
+        vector< coord > turrets;
+
+        //db2("CASE ",case_id);
+        printf("Case #%d: ",case_id);
+
+        ///find S, G and turrets
+        F(i,m)
+            F(j,n){
+                if(maze[i][j] == 'S')
+                    S = coord(i,j);
+                else if(maze[i][j] == 'G')
+                    G = coord(i,j);
+                else if(maze[i][j] == LEFT || maze[i][j] == RIGHT || maze[i][j] == UP ||
+                        maze[i][j] == DOWN)
+                    turrets.push_back(coord(i,j));
+            }
+
+        memset(blocked, 0, sizeof(blocked));
+
+        F(turn, 4){
+
+            ///mark the blocked cells for this turn
+            for(coord t: turrets){
+                switch(maze[t.x][t.y]){
+                case RIGHT:
+                    FI(j, t.y + 1, n-1){
+                        if(!occupied(t.x,j))
+                            blocked[t.x][j][turn] = 1;
+                        else break;
+                    }
+                    break;
+                case LEFT:
+                    FD(j, t.y-1, 0){
+                        if(!occupied(t.x,j))
+                            blocked[t.x][j][turn] = 1;
+                        else break;
+                    }
+                    break;
+                case UP:
+                    FD(i, t.x-1, 0){
+                        if(!occupied(i,t.y))
+                            blocked[i][t.y][turn] = 1;
+                        else break;
+                    }
+                    break;
+                case DOWN:
+                    FI(i, t.x+1, m-1){
+                        if(!occupied(i,t.y))
+                            blocked[i][t.y][turn] = 1;
+                        else break;
+                    }
+                    break;
+                }
+            }
+
+            ///turn the turrets clockwise
+            for(coord t: turrets){
+                switch(maze[t.x][t.y]){
+                case RIGHT:
+                    maze[t.x][t.y] = DOWN;
+                    break;
+                case DOWN:
+                    maze[t.x][t.y] = LEFT;
+                    break;
+                case LEFT:
+                    maze[t.x][t.y] = UP;
+                    break;
+                case UP:
+                    maze[t.x][t.y] = RIGHT;
+                    break;
+                }
+            }
+
+        }
+
+        ///setup done
+
+        ///Now apply BFS to search for goal
+
+        memset(steps, 1, sizeof(steps));       /// be careful in using memset!!
+        steps[S.x][S.y][0] = 0;
+        queue< pair<coord,int> > q;
+        q.push(make_pair(S, 0));
+
+        while(!q.empty()){
+            pair<coord, int> u = q.front();     q.pop();
+            F(k,4){
+                int nx = u.first.x + dirx[k],
+                    ny = u.first.y + diry[k],
+                    nturn = (u.second+1)%4;
+                if(valid(nx, ny) && !occupied(nx, ny) && !blocked[nx][ny][nturn]){
+                    if(steps[nx][ny][nturn] == MAX_STEPS){  ///unvisited node
+                        steps[nx][ny][nturn] = steps[u.first.x][u.first.y][u.second] + 1;
+                        q.push(make_pair(coord(nx,ny), nturn));
+                    }
+                    else{   ///visited node
+                        if(steps[u.first.x][u.first.y][u.second] + 1 < steps[nx][ny][nturn]){  ///found a better path
+                            steps[nx][ny][nturn] = steps[u.first.x][u.first.y][u.second] + 1;
+                            ///to update other nodes visited through this node, add it to queue
+                            q.push(make_pair(coord(nx,ny), nturn));
+                        }
+                    }
+                }
+            }
+        }
+
+        int ans = min(min(steps[G.x][G.y][0], steps[G.x][G.y][1]), min(steps[G.x][G.y][2], steps[G.x][G.y][3]));
+        if(ans == MAX_STEPS)
+            printf("impossible\n");
+        else
+            printf("%d\n",ans);
+
+    }
+}

@@ -1,0 +1,123 @@
+#include <cstdio>
+#include <algorithm>
+#include <queue>
+#include <cstring>
+using namespace std;
+
+class Point {
+public:
+    int x, y, z;
+    Point() { }
+    Point(int x, int y, int z) {
+        this -> x = x; this -> y = y; this -> z = z;
+    }
+};
+
+int T, TC, M, N;
+char turret[] = {'^', '>', 'v', '<'};
+char maze[105][105][4];
+int dist[105][105][4];
+bool visited[105][105][4];
+Point start;
+queue<Point> q;
+
+bool impenetrable(char c) {
+    return (c == '#' || c == '^' || c == '>' || c == 'v' || c == '<');
+}
+
+bool underAttack(int x, int y, int z) {
+    for (int cx = x - 1; cx >= 0; cx--) {
+        if (maze[cx][y][z] == 'v') return true;
+        if (impenetrable(maze[cx][y][z])) break;
+    }
+    for (int cx = x + 1; cx < M; cx++) {
+        if (maze[cx][y][z] == '^') return true;
+        if (impenetrable(maze[cx][y][z])) break;
+    }
+    for (int cy = y - 1; cy >= 0; cy--) {
+        if (maze[x][cy][z] == '>') return true;
+        if (impenetrable(maze[x][cy][z])) break;
+    }
+    for (int cy = y + 1; cy < N; cy++) {
+        if (maze[x][cy][z] == '<') return true;
+        if (impenetrable(maze[x][cy][z])) break;
+    }
+    return false;
+}
+
+void enqueueAdjacent(int x, int y, int z) {
+    for (int cx = x - 1; cx <= x + 1; cx++) {
+        for (int cy = y - 1; cy <= y + 1; cy++) {
+            if (cx < 0 || cy < 0 || cx >= M || cy >= N) continue;
+            if (cx == x && cy == y) continue;
+            if (cx != x && cy != y) continue;
+
+            int cz = (z + 1) % 4;
+            char c = maze[cx][cy][cz];
+            if (c == '.' || c == 'S' || c == 'G') {
+                if (!underAttack(cx, cy, cz)) {
+                    q.push(Point(cx, cy, cz));
+                    dist[cx][cy][cz] = dist[x][y][z] + 1;
+                }
+            }
+        }
+    }
+}
+
+bool visit(Point p) {
+    int x = p.x, y = p.y, z = p.z;
+    
+    if (visited[x][y][z]) return false;
+    visited[x][y][z] = true;
+
+    //printf("At point (%d, %d, %d) [%c] | %d\n", x, y, z, maze[x][y][z], dist[x][y][z]);
+
+    if (maze[x][y][z] == 'G') return true;
+    enqueueAdjacent(x, y, z);
+
+    return false;
+}
+
+void solve() {
+    while (!q.empty()) q.pop();
+    q.push(start);
+    bool found = false;
+    Point cur;
+    while (!q.empty() && !found) {
+        cur = q.front();
+        q.pop();
+        found = visit(cur);
+    }
+    printf("Case #%d: ", TC);
+    if (found) printf("%d\n", dist[cur.x][cur.y][cur.z]);
+    else printf("impossible\n");
+}
+
+int main() {
+    scanf("%d ", &T);
+    for (TC = 1; TC <= T; TC++) {
+        memset(dist, 0, sizeof dist);
+        memset(visited, 0, sizeof visited);
+        memset(maze, 0, sizeof maze);
+
+        scanf("%d %d ", &M, &N);
+        for (int i = 0; i < M; i++) {
+            for (int j = 0; j < N; j++) {
+                char c;
+                scanf("%c ", &c);
+                int p = distance(turret, find(turret, turret + 4, c));
+                if (p != 4) {
+                    for (int z = 0; z < 4; z++) {
+                        maze[i][j][z] = turret[(p + z) % 4];
+                    }
+                } else {
+                    if (c == 'S') start = Point(i, j, 0);
+                    for (int z = 0; z < 4; z++) { maze[i][j][z] = c; }
+                }
+            }
+        }
+
+        solve();
+    }
+    return 0;
+}

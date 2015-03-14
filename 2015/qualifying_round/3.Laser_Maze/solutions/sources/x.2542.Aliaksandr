@@ -1,0 +1,134 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+const int SZ = 111;
+const int mSZ = 4;
+int m, n, field[mSZ][SZ][SZ], dist[mSZ][SZ][SZ];
+int DMX;
+vector<string> table;
+
+#define LFT '<'
+#define RGT '>'
+#define DWN 'v'
+#define UP  '^'
+
+typedef tuple<int, int, int, int> State;
+
+int dx[] = {0, 1, 0, -1}, dy[] = {1, 0, -1, 0};
+
+char shift(char prev) {
+    switch(prev) {
+        case LFT:
+            return '^';
+        case UP:
+            return '>';
+        case RGT:
+            return 'v';
+        case DWN:
+            return '<';
+        default:
+            return prev;
+    }
+}
+
+void shift_table() {
+    for (auto& row : table) {
+        for (auto& val : row) {
+            val = shift(val);
+        }
+    }
+}
+
+void assign_layer(int layer) {
+    for (int row = 0; row < table.size(); ++row) {
+        for (int col = 0; col < table[0].size(); ++col) {
+            switch(table[row][col]) {
+                case '#':
+                    field[layer][row][col] = 1;
+                    break;
+                case LFT:
+                    for (int cpos = col; cpos >= 0 && table[row][cpos] != '#'; --cpos) {
+                        field[layer][row][cpos] = 1;
+                    }
+                    break;
+                case UP:
+                    for (int rpos = row; rpos >= 0 && table[rpos][col] != '#'; --rpos) {
+                        field[layer][rpos][col] = 1;
+                    }
+                    break;
+                case RGT:
+                    for (int cpos = col; cpos < n && table[row][cpos] != '#'; ++cpos) {
+                        field[layer][row][cpos] = 1;
+                    }
+                    break;
+                case DWN:
+                    for (int rpos = row; rpos < m && table[rpos][col] != '#'; ++rpos) {
+                        field[layer][rpos][col] = 1;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+int can() {
+    int startx = -1, starty = -1, finx =  -1, finy = -1;
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < n; ++j) {
+            if (table[i][j] == 'S') {startx = i, starty = j;};
+            if (table[i][j] == 'G') {finx = i, finy = j;};
+        }
+    }
+    if (startx == -1 || starty == -1 || finx == -1 || finy == -1) return -1;
+    for (int i = 0; i < mSZ; ++i) {
+        assign_layer(i);
+        shift_table();
+    }
+    priority_queue<State> q;
+    q.emplace(0, 0, startx, starty);
+    dist[0][startx][starty] = 0;
+    while (q.size()) {
+        int dst, layer, x, y;
+        tie(dst, layer, x, y) = q.top(); q.pop();
+        dst = -dst;
+        if (dst != dist[layer][x][y]) continue;
+        for (int i = 0; i < 4; ++i) {
+            int nx = x + dx[i], ny = y + dy[i], nl = (layer + 1) % mSZ;
+            if (nx >= 0 && ny >= 0 && nx < m && ny < n && !field[nl][nx][ny] && dist[nl][nx][ny] > dist[layer][x][y] + 1) {
+                dist[nl][nx][ny] = dist[layer][x][y] + 1;
+                q.emplace(-dst - 1, nl, nx, ny);
+            }
+        }
+    }
+    int ans = DMX;
+    for (int i = 0; i < mSZ; ++i) {
+        if (!field[i][finx][finy]) {
+            ans = min(ans, dist[i][finx][finy]);
+        }
+    }
+    if (ans == DMX) return -1;
+    return ans;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    int T; cin >> T;
+    for (int _ = 1; _ <= T; ++_) {
+        cin >> m >> n;
+        table.clear();
+        memset(field, 0, sizeof(field));
+        memset(dist, 63, sizeof(dist));
+        DMX = dist[0][0][0];
+        for (int rw = 0; rw < m; ++rw) {
+            string inp; cin >> inp;
+            table.push_back(inp);
+        }
+        cout << "Case #" << _ << ": ";
+        int res = can();
+        if (res >= 0) { cout << res << endl;
+        } else { cout << "impossible" << endl;}
+    }
+    return 0;
+}

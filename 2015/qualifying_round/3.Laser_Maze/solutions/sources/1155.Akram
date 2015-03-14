@@ -1,0 +1,382 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Map.Entry;
+
+
+/**
+ * @author Akram Gaballah Ahmed
+ */
+
+public class Laser_Maze {
+
+	public static void main(String[] args) {
+		
+//		double sTime = System.currentTimeMillis();
+		String dir = "C:\\Work\\practice\\";
+		US us = new US(dir + "fb3.txt", dir + "Laser_Maze.out");
+		
+
+		int T = Integer.parseInt(us.readLine());
+		int N;
+		String splt[];
+		for (int itr = 1; itr <= T; itr++) {
+			
+			splt = us.readLine().split(" ");
+			N = Integer.parseInt(splt[0]);
+			char[][] board = new char[N][];
+			for (int i = 0; i < N; i++) {
+				board[i] = us.readLine().toCharArray();
+			}
+			
+			
+			State startState = preProcess(board);
+			
+			String result = bfs(board, startState);
+			
+			us.writeLine("Case #"+itr+": "+result);
+		}
+		us.close();
+//		double eTime = System.currentTimeMillis();
+//		System.out.println(((eTime - sTime)/1000)+" sec");
+				
+	}
+	
+	
+	private static String bfs(char[][] board, State startState) {
+		
+		LinkedList<State> q = new LinkedList<State>();
+		HashSet<State> vst = new HashSet<State>();		
+		int[] nextClock;
+		int N = board.length, M = board[0].length;
+		int x, y;
+		
+		
+		x = startState.x; y = startState.y;
+		
+		nextClock = startState.advanceClock();		
+		if(x-1 >=0 && board[x-1][y] == '.' ) q.add(new State(x-1, y, nextClock, 1 + startState.stp));
+		if(x+1 < N && board[x+1][y] == '.' ) q.add(new State(x+1, y, nextClock, 1 + startState.stp));
+		if(y-1 >=0 && board[x][y-1] == '.' ) q.add(new State(x, y-1, nextClock, 1 + startState.stp));
+		if(y+1 < M && board[x][y+1] == '.' ) q.add(new State(x, y+1, nextClock, 1 + startState.stp));
+		
+		State curr;
+		
+		while(!q.isEmpty()){
+			
+			curr = q.removeFirst();
+			if(vst.contains(curr))continue;
+			vst.add(curr);
+			
+			if(!isValidState(curr, board))continue;
+			
+			if(curr.x == ei && curr.y == ej) return curr.stp + "";
+			x = curr.x; y = curr.y;
+			
+			nextClock = curr.advanceClock();		
+			if(x-1 >=0 && board[x-1][y] == '.' ) q.add(new State(x-1, y, nextClock, 1 + curr.stp));
+			if(x+1 < N && board[x+1][y] == '.' ) q.add(new State(x+1, y, nextClock, 1 + curr.stp));
+			if(y-1 >=0 && board[x][y-1] == '.' ) q.add(new State(x, y-1, nextClock, 1 + curr.stp));
+			if(y+1 < M && board[x][y+1] == '.' ) q.add(new State(x, y+1, nextClock, 1 + curr.stp));
+							
+		}
+		
+		
+		return "impossible";
+	}
+
+
+	private static boolean isValidState(State curr, char[][] board) {
+		int x,y;
+		
+		int h =board.length -1  ,w = board[0].length -1;
+		
+		x = curr.x; y = curr.y;
+		Integer tmp, id;
+		long a, b;
+		long l;
+		if( y > 0 && rowBST[x]!=null && (tmp = rowBST[x].floor(y))!= null && board[x][tmp] != '#' ){
+			a = tmp;  b = x; l = (b<<32)|a;
+			id = lazerId.get(l);
+			if (curr.dirs[id]==1) return false;
+		}		
+		if( y < w && rowBST[x]!=null && (tmp = rowBST[x].ceil(y))!= null && board[x][tmp] != '#' ){
+			a = tmp; b = x; l = (b<<32)|a;
+			id = lazerId.get(l);
+			if (curr.dirs[id]==3) return false;
+		}
+	
+		if( x > 0 && colBST[y]!=null && (tmp = colBST[y].floor(x))!= null && board[tmp][y] != '#' ){
+			a = tmp; b = y; l = (a<<32)|b;
+			id = lazerId.get(l);
+			if (curr.dirs[id]==2) return false;
+		}		
+		if( x < h && colBST[y]!=null && (tmp = colBST[y].ceil(x))!= null && board[tmp][y] != '#' ){
+			a = tmp; b = y; l = (a<<32)|b;
+			id = lazerId.get(l);
+			if (curr.dirs[id]==0) return false;
+		}		
+				
+		return true;
+	}
+
+
+	static int  ei, ej;	
+	static BST[] rowBST ;
+	static BST[] colBST ;
+	static Map<Long, Integer> lazerId;
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static State preProcess(char[][] board) {
+		
+		int N = board.length, M = board[0].length;
+		ArrayList<Integer> obstcles = new ArrayList<Integer>();
+		rowBST = new BST[N];
+		colBST = new BST[M];
+		
+		lazerId = new HashMap<Long, Integer>();
+		
+
+		int id = 0;
+		long xy = 0, a, b;
+		int si = 0, sj = 0;
+		
+		ArrayList[] tmpLists = new ArrayList[M];
+		for (int i = 0; i < tmpLists.length; i++) {
+			tmpLists[i] = new ArrayList<Integer>();
+		}
+		
+		for (int i = 0; i < N; i++) {
+			for (int j = 0; j < M; j++) {
+				if(board[i][j] == '.') continue;
+				if(board[i][j] == 'S'){si = i; sj = j; board[i][j] ='.'; continue;}
+				if(board[i][j] == 'G'){ei = i; ej = j; board[i][j] ='.'; continue;}
+				obstcles.add(j);
+				tmpLists[j].add(i);
+				if(board[i][j] == '#')continue;
+				a = i; b = j;
+				xy = (a<<32)|b;
+				lazerId.put(xy, id++);
+			}
+			if(obstcles.size() > 0){
+				rowBST[i] = new BST(obstcles);
+				obstcles.clear();
+			}
+		}
+		for (int i = 0; i < tmpLists.length; i++) {
+			if(tmpLists[i].size()>0)
+				colBST[i] = new BST(tmpLists[i]);
+		}
+		
+		int[] startLazers = new int[lazerId.size()+1];
+		
+		int x , y;
+		for(Entry<Long, Integer> en : lazerId.entrySet()){
+			xy = en.getKey();
+			x = (int) ( xy >> 32);
+			y = (int) (((1<<30)-1) & xy);
+			switch (board[x][y]) {//< > ^ v
+			case '^':
+				startLazers[en.getValue()] = 0;
+				break;
+			case '>':
+				startLazers[en.getValue()] = 1;
+				break;
+			case 'v':
+				startLazers[en.getValue()] = 2;
+				break;
+			case '<':
+				startLazers[en.getValue()] = 3;
+				break;
+			}
+		}
+		int hash = 17;
+		for (int i = 0; i < startLazers.length -1; i++) {			
+			hash = startLazers[i] + 31 * hash;
+		}			
+		startLazers[startLazers.length-1] = hash;
+		
+		State state = new State(si, sj, startLazers, 0);
+		
+		return state;
+	}
+
+
+
+	static class State{
+		
+		int x, y, dirs[];
+		int stp;
+		public State() {		
+		}
+		public State (int i, int j, int[] directions, int stpFromStart){
+			x = i; y = j; dirs = directions;			
+			stp = stpFromStart;
+		}		
+		
+		public int[] advanceClock(){
+		
+			int[] next = new int[dirs.length];
+			int hash = 17;
+			for (int i = 0; i < next.length -1; i++) {
+				next[i] = (dirs[i] + 1) % 4;
+				hash = next[i] + 31 * hash;
+			}			
+			next[next.length-1] = hash;
+			return next;
+		}
+		
+		int hash = 0;
+		@Override
+		public int hashCode() {
+			if( hash != 0) return hash;			
+			hash = 17;
+			hash = x + 31 * hash;
+			hash = y + 31 * hash;
+			hash = dirs[dirs.length - 1]+ 31 * hash;
+			return hash;
+		}
+		@Override
+		public boolean equals(Object arg0) {
+			State s = (State) arg0;
+			if(x != s.x || y!= s.y || !Arrays.equals(dirs, s.dirs))
+				return false;
+			return true;
+		}
+	}
+	
+	
+	static class BST{
+		
+		class TreeNode{
+			TreeNode left, right;
+			int val;
+			public TreeNode(int value) {
+				val = value;
+				left = null; right = null;
+			}
+		}
+		
+		public BST(ArrayList<Integer> num) {		
+			buildTree(num);
+		}
+		
+		TreeNode root;
+		public void buildTree(ArrayList<Integer> num){
+			root = buildTree(num, 0, num.size() - 1);
+		}
+		private TreeNode buildTree(ArrayList<Integer> num, int start, int end){
+			
+			if(start > end) return null;
+			
+			int mid = (int)(start + 0.5*(end - start));
+			
+			TreeNode current = new TreeNode(num.get(mid));
+			current.left = buildTree(num, start, mid -1);
+			current.right= buildTree(num, mid +1, end);
+			return current;
+		}
+		
+		public Integer floor(Integer x) {
+			TreeNode t = floor(root, x);
+			if (t == null)
+				return null;
+			return t.val;
+		}
+
+		private TreeNode floor(TreeNode h, Integer k) {
+			if (h == null)
+				return null;
+
+			Integer cmp = k.compareTo(h.val);
+			if (cmp == 0)
+				return h;
+			if (cmp < 0)
+				return floor(h.left, k);
+			TreeNode t = floor(h.right, k);
+			if (t != null)
+				return t;
+			else
+				return h;
+		}
+
+		public Integer ceil(Integer k) {
+			TreeNode x = ceil(root, k);
+			if (x == null)
+				return null;
+			return x.val;
+		}
+
+		private TreeNode ceil(TreeNode h, Integer k) {
+			if (h == null)
+				return null;
+			Integer cmp = k.compareTo(h.val);
+			if (cmp == 0)
+				return h;
+			else if (cmp > 0)
+				return ceil(h.right, k);
+			TreeNode x = ceil(h.left, k);
+			if (x != null)
+				return x;
+			else
+				return h;
+		}
+	}
+
+	
+	static class US {
+		boolean debug = false;
+		BufferedReader fin;
+		BufferedWriter fout;
+		public US(String inFile, String outFile) {
+			boolean console = false;
+			try {
+				fin  = new BufferedReader(new FileReader(inFile));
+			} catch (FileNotFoundException e) {
+				fin = new BufferedReader(new InputStreamReader(System.in));
+				console = true;
+			}						
+			try {
+				if(console) fout = new BufferedWriter(new OutputStreamWriter(System.out));
+				else fout = new BufferedWriter(new FileWriter(outFile));
+			} catch (IOException e) {
+				fout = new BufferedWriter(new OutputStreamWriter(System.out));
+			}
+		}
+		public String readLine(){
+			try {
+				return fin.readLine();
+			} catch (IOException e) {
+				return null;
+			}
+		}
+		public void writeLine(String line){
+			try {
+				fout.write(line + "\n");
+				if(debug)System.out.println(line);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		public void close(){
+			try {
+				fout.close();
+				fin.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+}

@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+import heapq
+
+turrets = ["<", "^", ">", "v"]
+directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
+next_direction = {turrets[i]: directions[(i + 1) % 4] for i in range(4)}
+
+def walkable(M, N, graph, i, j, k):
+  return 0 <= i < M and 0 <= j < N and graph[i][j][k] in {".", "S", "G"}
+
+def solve(M, N, maze):
+  # Make 4 copies of the maze with the turrets rotated and save the start position
+  start = None
+  graph = {i: {j: {k: None for k in range(4)} for j in range(N)} for i in range(M)}
+  for i in range(M):
+    for j in range(N):
+      if maze[i][j] == "S":
+        start = (i, j, 0)
+      for k in range(4):
+        c = maze[i][j]
+        if c in turrets:
+          graph[i][j][k] = turrets[(turrets.index(c) + k) % 4]
+        else:
+          graph[i][j][k] = maze[i][j]
+          
+  # Eliminate cells hit by lazers
+  for i in range(M):
+    for j in range(N):
+      for k in range(4):
+        c = graph[i][j][k]
+        if c in turrets:
+          di, dj = next_direction[c]
+          i2, j2, k2 = i + di, j + dj, (k + 1) % 4
+          while walkable(M, N, graph, i2, j2, k2):
+            graph[i2][j2][k2] = "#"
+            i2 += di
+            j2 += dj
+  
+  # Shortest path algorithm
+  i0, j0, k0 = start
+  queue = [(0, i0, j0, k0)]
+  visited = set()
+  while queue:
+    d, i, j, k = heapq.heappop(queue)
+    if graph[i][j][k] == "G":
+      return d
+    else:
+      for di, dj in directions:
+        i2, j2, k2 = i + di, j + dj, (k + 1) % 4
+        if walkable(M, N, graph, i2, j2, k2) and (i2, j2, k2) not in visited:
+          visited.add((i2, j2, k2))
+          heapq.heappush(queue, (d + 1, i2, j2, k2))
+  return "impossible"
+
+T = int(input())
+for i in range(T):
+  M, N = map(int, input().split())
+  maze = [input().strip() for i in range(M)]
+  solution = solve(M, N, maze)
+  print("Case #%d: %s" % (i + 1, solution))
+

@@ -1,0 +1,126 @@
+#include <bits/stdtr1c++.h>
+#include <ext/numeric>
+
+#define PI acos(-1)
+#define EPS 1e-9
+#define INTERSECT 1
+#define PARALLEL 2
+#define COLINEAR 3
+#define left(x) ((x<<1)+1)
+#define right(x) ((x<<1)+2)
+#define mid(x,y) (x+(y-x)/2)
+#define INF 1061109567
+
+using namespace std;
+
+typedef long long ll;
+typedef unsigned long long ull;
+typedef unsigned int ui;
+typedef pair<int,int> ii;
+typedef pair<ii,int> iii;
+typedef vector<int> vi;
+typedef vector<ii> vii;
+
+int R,C,isSafe[100][100][4],vis[100][100][4];
+vii laser;
+char maze[100][101];
+void preSafety(){
+    for (int i=0; i<R; i++)
+            for (int j=0; j<C; j++)
+                for(int turn=0; turn<4; turn++)
+                    isSafe[i][j][turn] = maze[i][j]=='.';
+
+    int dr[128],dc[128],afterOneTurn[128];
+    dr['>'] = dr['<'] = dc['^'] = dc['v'] = 0;
+    dc['>'] = dr['v'] = 1;
+    dc['<'] = dr['^'] = -1;
+    afterOneTurn['^'] = '>';
+    afterOneTurn['>'] = 'v';
+    afterOneTurn['v'] = '<';
+    afterOneTurn['<'] = '^';
+    for (int i=0, L=(int)laser.size(); i<L; i++){
+        int r = laser[i].first;
+        int c = laser[i].second;
+        char ch = maze[r][c];
+        for (int turn = 0; turn<4; turn++){
+            for (int rr=r+dr[ch], cc=c+dc[ch]; rr<R && rr>=0 && cc<C && cc>=0 && maze[rr][cc] == '.' ; rr+=dr[ch], cc+=dc[ch])
+                isSafe[rr][cc][turn] = false;
+            ch = afterOneTurn[ch];
+        }
+    }
+}
+
+bool isSafeMove(int r, int c, int turn){
+    if (r >= R || c >= C || r<0 || c<0 || maze[r][c]!='.' || !isSafe[r][c][turn] || vis[r][c][turn] != -1)
+        return false;
+    return true;
+}
+
+int main(){
+    ifstream in ("in.txt");
+    ofstream out("out.txt");
+    int T,Case=1;
+    in >> T;
+    while (T--){
+
+        laser.clear();
+        memset(vis,-1,sizeof(vis));
+        memset(isSafe,0,sizeof(isSafe));
+
+        in >> R >> C;
+
+        int startR = -1, startC = -1, goalR=-1,goalC=-1;
+        for (int i=0; i<R; i++){
+            in >> maze[i];
+            for (int j=0; j<C; j++){
+                if (maze[i][j] == 'S'){
+                    startR = i;  startC = j; maze[i][j] = '.';
+                }
+                if (maze[i][j] == 'G'){
+                    goalR = i; goalC = j; maze[i][j] = '.';
+                }
+                if (maze[i][j] == '<' || maze[i][j] == '>' || maze[i][j] == '^'  || maze[i][j] == 'v')
+                    laser.push_back(make_pair(i,j));
+            }
+        }
+
+        preSafety();
+
+        vi pos;
+        pos.push_back(startR); pos.push_back(startC); pos.push_back(0);
+        vis[startR][startC][0] = 0;
+        queue<vi> q;
+        q.push(pos);
+        int ans = -1;
+        int dr[4]={1,-1,0,0};
+        int dc[4]={0,0,1,-1};
+        while (!q.empty()){
+            pos = q.front();
+            int r = pos[0], c = pos[1], turn = pos[2];
+            if (r == goalR && c == goalC){
+                ans = vis[r][c][turn];
+                break;
+            }
+            q.pop();
+            int nextTurn = (turn+1)%4;
+            for (int i=0; i<4; i++){
+                int nextR = r+dr[i];
+                int nextC = c+dc[i];
+                if (isSafeMove(nextR, nextC, nextTurn)){
+                    vis[nextR][nextC][nextTurn] = vis[r][c][turn]+1;
+                    pos[0] = nextR; pos[1] = nextC; pos[2] = nextTurn;
+                    q.push(pos);
+                }
+            }
+        }
+        out << "Case #" << Case++ << ": ";
+        if (ans==-1)
+            out << "impossible";
+        else
+            out << ans;
+        out << "\n";
+    }
+    in.close();
+    out.close();
+    return 0;
+}

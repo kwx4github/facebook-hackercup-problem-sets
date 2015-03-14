@@ -1,0 +1,168 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+struct _entry
+{
+	int k,m,n;
+} stack[4*100*100];
+
+int depth=0;
+
+void push(int k,int m,int n)
+{
+	stack[depth].k=k;
+	stack[depth].m=m;
+	stack[depth].n=n;
+	depth++;
+}
+
+void pop(int *k,int *m,int *n)
+{
+	depth--;
+	(*k)=stack[depth].k;
+	(*m)=stack[depth].m;
+	(*n)=stack[depth].n;
+}
+
+int main()
+{
+	FILE *input,*output;
+	int t,T, n,N, m,M, n_S,m_S, n_G,m_G, n0,m0, k,k0, l, dist[4][100][100], min_dist, possible;
+	char maze0[100][100],maze[4][100][100],turret[4];
+	input=fopen("laser_maze.txt","r");
+	//input=stdin;
+	output=fopen("output.txt","w");
+	//output=stdout;
+	turret[0]='<';
+	turret[1]='^';
+	turret[2]='>';
+	turret[3]='v';
+	fscanf(input,"%d",&T);
+	for (t=1; t<=T; t++)
+	{
+		fscanf(input,"%d%d",&M,&N);
+		for (m=0; m<M; m++)
+		{
+			fscanf(input,"%s",maze0[m]);
+			for (n=0; n<N; n++)
+			{
+				if (maze0[m][n]=='S')
+				{
+					m_S=m;
+					n_S=n;
+					maze0[m][n]='.';
+				}
+				if (maze0[m][n]=='G')
+				{
+					m_G=m;
+					n_G=n;
+					maze0[m][n]='.';
+				}
+				for (k=0; k<4; k++)
+				{
+					maze[k][m][n]=maze0[m][n];
+					dist[k][m][n]=0;
+				}
+				for (l=0; l<4; l++)
+					if (maze0[m][n]==turret[l])
+						for (k=0; k<4; k++)
+							maze[k][m][n]=turret[(l+k)%4];
+			}
+		}
+		for (k=0; k<4; k++)
+			for (m=0; m<M; m++)
+				for (n=0; n<N; n++)
+				{
+					if (maze[k][m][n]=='<')
+					{
+						maze[k][m][n]='#';
+						n0=n-1;
+						while ((n0>=0)&&(maze[k][m][n0]=='.'))
+						{
+							maze[k][m][n0]='#';
+							n0--;
+						}
+					}
+					if (maze[k][m][n]=='>')
+					{
+						maze[k][m][n]='#';
+						n0=n+1;
+						while ((n0<N)&&(maze[k][m][n0]=='.'))
+						{
+							maze[k][m][n0]='#';
+							n0++;
+						}
+					}
+					if (maze[k][m][n]=='^')
+					{
+						maze[k][m][n]='#';
+						m0=m-1;
+						while ((m0>=0)&&(maze[k][m0][n]=='.'))
+						{
+							maze[k][m0][n]='#';
+							m0--;
+						}
+					}
+					if (maze[k][m][n]=='v')
+					{
+						maze[k][m][n]='#';
+						m0=m+1;
+						while ((m0<M)&&(maze[k][m0][n]=='.'))
+						{
+							maze[k][m0][n]='#';
+							m0++;
+						}
+					}
+				}
+		fprintf(output,"Case #%d: ",t);
+		/*for (k=0; k<4; k++)
+		{
+			for (m=0; m<M; m++)
+			{
+				for (n=0; n<N; n++)
+					fprintf(output,"%c",maze[k][m][n]);
+				fprintf(output,"\n");
+			}
+			fprintf(output,"\n");
+		}*/
+		push(0,m_S,n_S);
+		while (depth>0)
+		{
+			pop(&k,&m,&n);
+			k0=(k+1)%4;
+			for (l=0; l<4; l++)
+			{
+				switch (l)
+				{
+					case 0: m0=m-1; n0=n; break;
+					case 1: m0=m+1; n0=n; break;
+					case 2: m0=m; n0=n-1; break;
+					case 3: m0=m; n0=n+1; break;
+				}
+				if ((m0>=0)&&(m0<M)&&(n0>=0)&&(n0<N)&&(maze[k0][m0][n0]=='.'))
+				{
+					if ((dist[k0][m0][n0]==0)||(dist[k0][m0][n0]>dist[k][m][n]+1))
+					{
+						dist[k0][m0][n0]=dist[k][m][n]+1;
+						push(k0,m0,n0);
+					}
+				}
+
+			}
+		}
+		possible=0;
+		min_dist=0;
+		for (k=0; k<4; k++)
+			if (dist[k][m_G][n_G]>0)
+			{
+				possible=1;
+				if ((dist[k][m_G][n_G]<min_dist)||(min_dist==0))
+					min_dist=dist[k][m_G][n_G];
+			}
+		if (possible)
+			fprintf(output,"%d\n",min_dist);
+		else
+			fprintf(output,"impossible\n");
+	}
+    return 0;
+}

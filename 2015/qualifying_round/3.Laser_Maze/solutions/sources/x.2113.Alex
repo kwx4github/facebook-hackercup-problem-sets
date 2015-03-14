@@ -1,0 +1,242 @@
+import java.io.*;
+import java.util.*;
+import java.math.BigInteger;
+import java.util.Map.Entry;
+import static java.lang.Math.*;
+
+public class C {
+
+	final static String inputFileName = "laser_maze.txt";
+	final static String outputFileName = "Coutput.txt";
+
+	int inf = 1 << 20;
+
+	class State {
+		final int t, x, y;
+
+		public State(int x, int y) {
+			this(-1, x, y);
+		}
+
+		public State(int t, int x, int y) {
+			this.t = t;
+			this.x = x;
+			this.y = y;
+		}
+	}
+
+	int k = 5;
+
+	int next(int t) {
+		if (++t == k) {
+			return 1;
+		} else {
+			return t;
+		}
+	}
+
+	int solve(int n, int m, char[][] map) {
+
+		boolean[][][] can = new boolean[k][n][m];
+
+		State start = null, finish = null;
+
+		for (int x = 0; x < n; x++) {
+			for (int y = 0; y < m; y++) {
+				if ((map[x][y] == '.') || (map[x][y] == 'S') || (map[x][y] == 'G')) {
+					for (int t = 0; t < k; t++) {
+						can[t][x][y] = true;
+					}
+
+					if ((map[x][y] == 'S')) {
+						start = new State(0, x, y);
+					}
+					if ((map[x][y] == 'G')) {
+						finish = new State(x, y);
+					}
+				}
+			}
+		}
+
+		for (int t = 1; t < k; t++) {
+			for (int x = 0; x < n; x++) {
+				for (int y = 0; y < m; y++) {
+
+					if (map[x][y] == '>') {
+						map[x][y] = 'v';
+
+						int curX = x + 1;
+						while (curX < n && can[t][curX][y]) {
+							can[t][curX++][y] = false;
+						}
+
+						continue;
+					}
+					if (map[x][y] == 'v') {
+						map[x][y] = '<';
+
+						int curY = y - 1;
+						while (0 <= curY && can[t][x][curY]) {
+							can[t][x][curY--] = false;
+						}
+
+						continue;
+					}
+					if (map[x][y] == '<') {
+						map[x][y] = '^';
+
+						int curX = x - 1;
+						while (0 <= curX && can[t][curX][y]) {
+							can[t][curX--][y] = false;
+						}
+
+						continue;
+					}
+					if (map[x][y] == '^') {
+						map[x][y] = '>';
+
+						int curY = y + 1;
+						while (curY < m && can[t][x][curY]) {
+							can[t][x][curY++] = false;
+						}
+
+						continue;
+					}
+
+				}
+			}
+		}
+
+		int[] dx = new int[] { 1, 0, -1, 0 };
+		int[] dy = new int[] { 0, -1, 0, 1 };
+
+		boolean[][][] color = new boolean[k][n][m];
+		int[][][] d = new int[k][n][m];
+
+		for (int t = 0; t < k; t++) {
+			for (int x = 0; x < n; x++) {
+				for (int y = 0; y < m; y++) {
+					color[t][x][y] = true;
+					d[t][x][y] = inf;
+				}
+			}
+		}
+
+		Queue<State> queue = new ArrayDeque<State>(n * m * k);
+		queue.add(start);
+
+		color[start.t][start.x][start.y] = false;
+		d[start.t][start.x][start.y] = 0;
+
+		while (!queue.isEmpty()) {
+			State cur = queue.poll();
+
+			int t = next(cur.t);
+			for (int i = 0; i < 4; i++) {
+				int x = cur.x + dx[i], y = cur.y + dy[i];
+				int p = d[cur.t][cur.x][cur.y] + 1;
+
+				if (0 <= x && x < n && 0 <= y && y < m && color[t][x][y] && can[t][x][y]) {
+					d[t][x][y] = p;
+					color[t][x][y] = false;
+					queue.add(new State(t, x, y));
+				}
+			}
+		}
+
+		int ans = inf;
+
+		for (int t = 0; t < k; t++) {
+			ans = min(ans, d[t][finish.x][finish.y]);
+		}
+
+		return ans;
+	}
+
+	void run() {
+		int numberOfTests = nextInt();
+
+		for (int test = 1; test <= numberOfTests; test++) {
+			int n = nextInt(), m = nextInt();
+			char[][] map = new char[n][];
+			for (int i = 0; i < n; i++) {
+				map[i] = nextLine().toCharArray();
+			}
+
+			int ans = solve(n, m, map);
+
+			if (ans < inf) {
+				out.printf("Case #%d: %d%n", test, ans);
+			} else {
+				out.printf("Case #%d: %s%n", test, "impossible");
+			}
+
+		}
+	}
+
+	int[][] nextMatrix(int n, int m) {
+		int[][] matrix = new int[n][m];
+		for (int i = 0; i < n; i++)
+			for (int j = 0; j < m; j++)
+				matrix[i][j] = nextInt();
+		return matrix;
+	}
+
+	String next() {
+		while (!st.hasMoreTokens())
+			st = new StringTokenizer(nextLine());
+		return st.nextToken();
+	}
+
+	boolean hasNext() {
+		while (!st.hasMoreTokens()) {
+			String line = nextLine();
+			if (line == null) {
+				return false;
+			}
+			st = new StringTokenizer(line);
+		}
+		return true;
+	}
+
+	int[] nextArray(int n) {
+		int[] array = new int[n];
+		for (int i = 0; i < n; i++) {
+			array[i] = nextInt();
+		}
+		return array;
+	}
+
+	int nextInt() {
+		return Integer.parseInt(next());
+	}
+
+	long nextLong() {
+		return Long.parseLong(next());
+	}
+
+	double nextDouble() {
+		return Double.parseDouble(next());
+	}
+
+	String nextLine() {
+		try {
+			return in.readLine();
+		} catch (IOException err) {
+			return null;
+		}
+	}
+
+	static PrintWriter out;
+	static BufferedReader in;
+	static StringTokenizer st = new StringTokenizer("");
+	static Random rnd = new Random();
+
+	public static void main(String[] args) throws IOException {
+		in = new BufferedReader(new FileReader(inputFileName));
+		out = new PrintWriter(new File(outputFileName));
+		new C().run();
+		out.close();
+		in.close();
+	}
+}

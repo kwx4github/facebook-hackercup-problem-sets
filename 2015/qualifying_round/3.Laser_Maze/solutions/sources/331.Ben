@@ -1,0 +1,138 @@
+#include<iostream>
+#include<queue>
+using namespace std;
+const int BUF = 105;
+const int GUN = 10005;
+const int INF = 1<<30;
+
+
+class Gun {
+public:
+    int r, c, dir;
+    Gun(){}
+    Gun(int r, int c, int dir):
+        r(r), c(c), dir(dir){}
+};
+
+
+class QData {
+public:
+    int turn, r, c;
+    QData(){}
+    QData(int turn, int r, int c):
+        turn(turn), r(r), c(c){}
+};
+
+
+int row, col;
+int initR, initC;
+int goalR, goalC;
+bool wall[BUF][BUF];
+int nGun;
+Gun gun[GUN];
+
+void read() {
+    nGun = 0;
+    
+    cin >> row >> col;
+    for (int i = 0; i < row; ++i)
+        for (int j = 0; j < col; ++j) {
+            char ch;
+            cin >> ch;
+            wall[i][j] = string(".SG").find(ch) == string::npos;
+            
+            if (string("^>v<").find(ch) != string::npos)
+                gun[nGun++] = Gun(i, j, string("^>v<").find(ch));
+            
+            if (ch == 'S') {
+                initR = i;
+                initC = j;
+            }
+            
+            if (ch == 'G') {
+                goalR = i;
+                goalC = j;
+            }
+        }
+}
+
+
+void work(int cases) {
+    const int dr[] = {-1, 0, 1,  0};
+    const int dc[] = { 0, 1, 0, -1};
+
+    int cost[4][BUF][BUF];
+    for (int i = 0; i < 4; ++i)
+        for (int j = 0; j < BUF; ++j)
+            for (int k = 0; k < BUF; ++k)
+                cost[i][j][k] = INF;
+    
+    queue<QData> Q;
+    
+    Q.push(QData(0, initR, initC));
+    cost[0][initR][initC] = 0;
+    
+    while (!Q.empty()) {
+        QData cur = Q.front();
+        Q.pop();
+        
+        bool killed = false;
+        for (int i = 0; i < 4; ++i) {
+            int rr = cur.r;
+            int cc = cur.c;
+            
+            while (0 <= rr && rr < row && 0 <= cc && cc < col && !wall[rr][cc]) {
+                rr -= dr[i];
+                cc -= dc[i];
+            }
+            
+            for (int j = 0; j < nGun; ++j) {
+                if (gun[j].r == rr && gun[j].c == cc && (gun[j].dir + cur.turn) % 4 == i) {
+                    killed = true;
+                    goto _finish;
+                }
+            }
+        }
+        
+    _finish:
+        
+        if (killed && cost[cur.turn][cur.r][cur.c] != 0)
+            continue;
+        
+        if (cur.r == goalR && cur.c == goalC) {
+            cout << "Case #" << cases << ": " << cost[cur.turn][cur.r][cur.c] << endl;
+            return;
+        }
+        
+        for (int i = 0; i < 4; ++i) {
+            int nt = (cur.turn + 1) % 4;
+            int nr = cur.r + dr[i];
+            int nc = cur.c + dc[i];
+            
+            if (!(0 <= nr && nr < row && 0 <= nc && nc < col))
+                continue;
+
+            if (wall[nr][nc])
+                continue;
+
+            if (cost[nt][nr][nc] != INF)
+                continue;
+
+            cost[nt][nr][nc] = cost[cur.turn][cur.r][cur.c] + 1;
+            Q.push(QData(nt, nr, nc));
+        }
+    }
+    
+    cout << "Case #" << cases << ": impossible" << endl;
+}
+
+
+int main() {
+    int cases;
+    cin >> cases;
+    for (int i = 0; i < cases; ++i) {
+        read();
+        work(i + 1);
+    }
+    return 0;
+}

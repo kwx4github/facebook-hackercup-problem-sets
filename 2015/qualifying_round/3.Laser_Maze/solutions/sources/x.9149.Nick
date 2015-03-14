@@ -1,0 +1,197 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <string>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+char inp_grid[110][110];
+char grid[110][110][4];
+bool visited[110][110][4];
+char laserDir[4]={'<','^','>','v'};
+int laser_dir_inv[255];
+
+
+void createMatrixBFS(int n,int m)
+{
+
+    for(int i=0;i<n;i++){
+        for(int j=0;j<m;j++){
+            if(laser_dir_inv[inp_grid[i][j]]==-1){
+                for(int k=0;k<4;k++){
+                    grid[i][j][k]=inp_grid[i][j];
+                }
+            }
+            else{
+                for(int k=0;k<4;k++){
+                    grid[i][j][k]=laserDir[(laser_dir_inv[inp_grid[i][j]]+k)%4];
+                }
+            }
+        }
+    }
+    int n_i,n_j;
+    for(int k=0;k<4;k++){
+        for(int i=0;i<n;i++){
+            for(int j=0;j<m;j++){
+                n_i=i;
+                n_j=j;
+                switch(grid[i][j][k]){
+                case '^':
+                    grid[n_i][j][k]='#';
+                    n_i--;
+                    while(n_i>=0 && (inp_grid[n_i][j]=='.' || inp_grid[n_i][j]=='S' || inp_grid[n_i][j]=='G')){
+                        grid[n_i][j][k]='#';
+                        n_i--;
+                    }
+                    break;
+                case '<':
+                    grid[i][n_j][k]='#';
+                    n_j--;
+                    while(n_j>=0 && (inp_grid[i][n_j]=='.' || inp_grid[i][n_j]=='S' || inp_grid[i][n_j]=='G')){
+                        grid[i][n_j][k]='#';
+                        n_j--;
+                    }
+                    break;
+                case 'v':
+                    grid[n_i][j][k]='#';
+                    n_i++;
+                    while(n_i<n && (inp_grid[n_i][j]=='.' || inp_grid[n_i][j]=='S' || inp_grid[n_i][j]=='G')){
+                        grid[n_i][j][k]='#';
+                        n_i++;
+                    }
+                    break;
+                case '>':
+                    grid[i][n_j][k]='#';
+                    n_j++;
+                    while(n_j<m && (inp_grid[i][n_j]=='.' || inp_grid[i][n_j]=='S' || inp_grid[i][n_j]=='G')){
+                        grid[i][n_j][k]='#';
+                        n_j++;
+                    }
+                    break;
+                }
+            }
+        }
+
+    }
+
+
+}
+
+struct c_data
+{
+    int x,y,z;
+    int cnt;
+};
+
+int dx[4]={-1,0,1,0};
+int dy[4]={0,-1,0,1};
+
+bool isValidLoc(struct c_data st,int n,int m)
+{
+    if(st.x<0 || st.x>=n)
+        return false;
+    if(st.y<0 || st.y>=m)
+        return false;
+    if(grid[st.x][st.y][st.z]=='#')
+        return false;
+    return true;
+}
+
+int bfs_min(int curr_x,int curr_y,int curr_z,int goal_x,int goal_y,int n,int m)
+{
+    memset(visited,0,sizeof visited);
+    queue< struct c_data > qu;
+    struct c_data curr,c_next;
+    curr.x=curr_x;
+    curr.y=curr_y;
+    curr.z=curr_z;
+    curr.cnt=1;
+    qu.push(curr);
+    //int new_x,new_y,new_z;
+
+    while(!qu.empty()){
+        curr=qu.front();
+        if(curr.x==goal_x && curr.y==goal_y)
+            return curr.cnt;
+        qu.pop();
+        if(!visited[curr.x][curr.y][curr.z]){
+            visited[curr.x][curr.y][curr.z]=1;
+            for(int k=0;k<4;k++){
+                c_next.x=curr.x+dx[k];
+                c_next.y=curr.y+dy[k];
+                c_next.z=(curr.z+1)%4;
+                c_next.cnt=curr.cnt+1;
+                if(isValidLoc(c_next,n,m))
+                    qu.push(c_next);
+            }
+        }
+
+    }
+    return 100000000;
+}
+
+
+void print_grid(int n,int m)
+{
+    for(int k=0;k<4;k++){
+    for(int i=0;i<n;i++){
+        for(int j=0;j<m;j++){
+            cout<<grid[i][j][k]<<' ';
+        }
+        cout<<endl;
+    }
+    cout<<endl;
+    }
+}
+
+void initialize()
+{
+    laser_dir_inv['<']=0;
+    laser_dir_inv['^']=1;
+    laser_dir_inv['>']=2;
+    laser_dir_inv['v']=3;
+}
+
+
+
+int main()
+{
+    int T;
+    freopen("inp3.txt","r",stdin);
+    freopen("oup3.txt","w",stdout);
+    cin>>T;
+    memset(laser_dir_inv,-1,sizeof laser_dir_inv);
+    initialize();
+    int start_loc_x,start_loc_y,goal_loc_x,goal_loc_y;
+    for(int t=0;t<T;t++){
+        int n,m;
+        cin>>n>>m;
+        for(int i=0;i<n;i++){
+            for(int j=0;j<m;j++){
+                cin>>inp_grid[i][j];
+                if(inp_grid[i][j]=='S'){
+                    start_loc_x=i;
+                    start_loc_y=j;
+                }
+                if(inp_grid[i][j]=='G'){
+                    goal_loc_x=i;
+                    goal_loc_y=j;
+                }
+            }
+        }
+        createMatrixBFS(n,m);
+       // print_grid(n,m);
+        int final_ans=100000000;
+        for(int k=0;k<4;k++){
+            final_ans=min(final_ans,bfs_min(start_loc_x+dx[k],start_loc_y+dy[k],1,goal_loc_x,goal_loc_y,n,m));
+        }
+        if(final_ans==100000000)
+            cout<<"Case #"<<t+1<<": impossible"<<endl;
+        else
+            cout<<"Case #"<<t+1<<": "<<final_ans<<endl;
+
+    }
+
+}

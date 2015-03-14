@@ -1,0 +1,271 @@
+package com.jmc;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.TreeSet;
+
+public class LaserMaze {
+
+    static class Node implements Comparable<Node> {
+        Node(int x, int y) {this.x = x; this.y = y;}
+        int x, y, h, cost = Integer.MAX_VALUE;
+        Node parent;
+        boolean blockedByLasers;
+        boolean retriedAfterLasers;
+
+        public int coordCompare(Node o) {
+            return o.x > this.x ? -1 : (o.x < this.x ? 1 :
+                    o.y > this.y ? -1 : (o.y < this.y ? 1 : 0));
+        }
+
+        @Override
+        public int compareTo(Node o) {
+            return o.h > this.h ? -1 : (o.h < this.h ? 1 : coordCompare(o));
+        }
+
+        @Override
+        public String toString() {
+            return "(" + this.x + "," + this.y + ") cost: " + this.cost + " h: " + this.h;
+        }
+    }
+
+    static class Laser {
+        Laser(int x, int y) {this.x = x; this.y = y;}
+        int x, y;
+        int currentOrientation;
+        ArrayList<Node>[] affectedNodes = new ArrayList[4];
+    }
+
+    static void parseRow(String line, int row, char grid[][]) {
+        for (int i = 0; i < line.length(); i++) {
+            grid[i][row] = line.charAt(i);
+        }
+    }
+
+    static List<String> getLines(String fileName) throws IOException {
+        if (new File(fileName).exists()) {
+            String line;
+            ArrayList<String> lines = new ArrayList<String>();
+            BufferedReader reader = new BufferedReader(new FileReader(fileName));
+            while((line=reader.readLine()) != null) {
+                lines.add(line);
+            }
+            return lines;
+        } else {
+            return null;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String filename;
+        if (args.length < 1) {
+            filename = LaserMaze.class.getSimpleName() + ".txt";
+        } else {
+            filename = args[0];
+        }
+        System.out.println("Running with filename: " + filename);
+
+        List<String> lines = getLines(filename);
+        if (lines == null) {
+            System.out.println("Error: can't find file [" + filename + "]");
+            System.exit(0);
+        }
+
+        String outfile = filename.replace("txt", "out");
+        PrintWriter out = new PrintWriter(new FileOutputStream(outfile));
+
+        int tests = Integer.parseInt(lines.get(0));
+        int currLine = 1;
+        for (int i = 0; i < tests; i++) {
+            String[] dims = lines.get(currLine++).split(" ");
+            int numLines = Integer.parseInt(dims[0]);
+            int numCols = Integer.parseInt(dims[1]);
+
+            char[][] grid = new char[numCols][numLines];
+            for (int j = 0; j < numLines; j++) {
+                parseRow(lines.get(currLine++), j, grid);
+            }
+            int cost = findCost(grid);
+
+            out.println("Case #" + (i+1) + ": " + (cost != -1 ? String.valueOf(cost) : "impossible"));
+
+        }
+        out.close();
+        System.out.println("Output in filename: " + outfile);
+    }
+
+    static Node getNeighbor(Node[][] nodes, int x, int y, int direction) {
+        switch (direction) {
+            case 0:
+                return y > 0 ? nodes[x][y-1] : null;
+            case 1:
+                return x < nodes.length - 1 ? nodes[x + 1][y] : null;
+            case 2:
+                return y < nodes[0].length - 1 ? nodes[x][y+1] : null;
+            case 3:
+                return x > 0 ? nodes[x-1][y] : null;
+            default:
+                throw new RuntimeException("Bad direction: " + direction);
+        }
+    }
+
+    static int findCost(char grid[][]) {
+        Node[][] nodes = new Node[grid.length][grid[0].length];
+        ArrayList<Laser> lasers = new ArrayList<Laser>();
+        Node startNode = null, endNode = null;
+
+        for (int x = 0; x < grid.length; x++) {
+            for (int y = 0; y < grid[x].length; y++) {
+                char symbol = grid[x][y];
+                if (symbol == '.') {
+                    nodes[x][y] = new Node(x,y);
+                } else if (symbol == 'S') {
+                    nodes[x][y] = new Node(x,y);
+                    startNode = nodes[x][y];
+                    startNode.cost = 0;
+                } else if (symbol == 'G') {
+                    nodes[x][y] = new Node(x,y);
+                    endNode = nodes[x][y];
+                } else if (symbol == '^') {
+                    Laser laser = new Laser(x, y);
+                    laser.currentOrientation = 0;
+                    lasers.add(laser);
+                } else if (symbol == '>') {
+                    Laser laser = new Laser(x, y);
+                    laser.currentOrientation = 1;
+                    lasers.add(laser);
+                } else if (symbol == 'v') {
+                    Laser laser = new Laser(x, y);
+                    laser.currentOrientation = 2;
+                    lasers.add(laser);
+                } else if (symbol == '<') {
+                    Laser laser = new Laser(x, y);
+                    laser.currentOrientation = 3;
+                    lasers.add(laser);
+                }
+            }
+        }
+
+        if (startNode == null) {
+            throw new RuntimeException("No start node found");
+        }
+
+        if (endNode == null) {
+            throw new RuntimeException("No end node found");
+        }
+
+        for (int x = 0; x < grid.length; x++) {
+            for (int y = 0; y < grid[x].length; y++) {
+                Node n = nodes[x][y];
+                if (n != null) {
+                    n.h = Math.abs(n.x - endNode.x) + Math.abs(n.y - endNode.y);
+                }
+            }
+        }
+
+        for (int i = 0; i < lasers.size(); i++) {
+            Laser laser = lasers.get(i);
+            for (int dir = 0; dir < 4; dir++) {
+                laser.affectedNodes[dir] = new ArrayList<Node>();
+                int x = laser.x, y = laser.y;
+                Node n = null;
+                while((n=getNeighbor(nodes, x, y, dir)) != null) {
+                    laser.affectedNodes[dir].add(n);
+                    x = n.x; y = n.y;
+                }
+            }
+        }
+
+        HashSet<Node>[] laseredNodes = new HashSet[4];
+        for (int i = 0; i < 4; i++) {
+            laseredNodes[i] = new HashSet<Node>();
+            for (int j = 0; j < lasers.size(); j++) {
+                Laser laser = lasers.get(j);
+                laseredNodes[i].addAll(laser.affectedNodes[(laser.currentOrientation + i) % 4]);
+            }
+        }
+
+        if (laseredNodes[0].contains(endNode) &&
+                laseredNodes[1].contains(endNode) &&
+                laseredNodes[2].contains(endNode) &&
+                laseredNodes[3].contains(endNode)) {
+            System.out.println("End is always lasered");
+            return -1;
+        }
+
+        /** The set of nodes that have been searched through */
+        ArrayList closed = new ArrayList<Node>();
+        /** The set of nodes that we do not yet consider fully searched */
+        TreeSet<Node> open = new TreeSet<Node>();
+
+        open.add(startNode);
+
+        boolean madeIt = false;
+
+        while (!open.isEmpty()) {
+            // be the most likely to be the next step based on our heuristic
+
+            Node current = open.first();
+//            System.out.println("Examining node: " + current);
+//            System.out.println("open: " + open);
+            open.remove(current);
+            closed.add(current);
+
+            if (current == endNode) {
+                madeIt = true;
+                continue;
+            }
+
+            if (current.cost + current.h > endNode.cost) {
+                continue;
+            }
+
+            for (int dir = 0; dir < 4; dir++) {
+                // determine the location of each neighbour and evaluate it
+
+                Node neighbor = getNeighbor(nodes, current.x, current.y, dir);
+                if (neighbor != null) {
+//                    System.out.println("considering neighbor in direction: " + dir + " - " + neighbor);
+                    int nextStepCost = current.cost + 1;
+                    if (nextStepCost < endNode.cost) {
+                        HashSet<Node> nextLaseredNodes = laseredNodes[nextStepCost % 4];
+                        if (nextLaseredNodes.contains(neighbor)) {
+//                            System.out.println("neigbor is blocked by lasers: " + neighbor);
+                            current.blockedByLasers = true;
+                            if (current.parent == null || nextLaseredNodes.contains(current.parent)) {
+//                                System.out.println("Can not backtrack: " + current);
+                                continue;
+                            }
+                            nextStepCost += 2;
+                            nextLaseredNodes = laseredNodes[nextStepCost % 4];
+                            if (nextLaseredNodes.contains(neighbor)) {
+                                // can't get there right now
+                                continue;
+                            }
+                        }
+                        if (nextStepCost < neighbor.cost ||
+                                (neighbor.blockedByLasers && !neighbor.retriedAfterLasers)) {
+                            considerNode(neighbor, open, closed, nextStepCost);
+                        }
+                    }
+                }
+            }
+        }
+        return madeIt ? endNode.cost : -1;
+    }
+
+    static void considerNode(Node node, TreeSet<Node> open, ArrayList<Node> closed, int newCost) {
+        open.remove(node);
+        closed.remove(node);
+        if (node.blockedByLasers) {
+            node.blockedByLasers = false;
+            node.retriedAfterLasers = true;
+        }
+        node.cost = newCost;
+        node.parent = node;
+        open.add(node);
+    }
+
+}

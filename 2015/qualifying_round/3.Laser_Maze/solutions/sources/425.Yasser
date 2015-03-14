@@ -1,0 +1,171 @@
+package qualifications;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.PrintWriter;
+import java.util.LinkedList;
+import java.util.Queue;
+
+public class C {
+
+    final String INPUT_FILE_NAME = "input.txt";
+    final String OUTPUT_FILE_NAME = "output.txt";
+
+    final int INF = 1 << 25;
+    final char WALL = '#', SOURCE_TILE = 'S', GOAL_TILE = 'G';
+    final char[] BLOCKS_CW = { '>', 'v', '<', '^' };
+    final char[] BLOCKS = { '>', '<', 'v', '^', WALL };
+    final int[] di = { 0, 0, -1, 1 };
+    final int[] dj = { -1, 1, 0, 0 };
+    char[][] originalMap;
+    boolean[][][] grid;
+    int N, M;
+    int srci, srcj, goali, goalj;
+
+    private boolean isBlock(int i, int j) {
+	for (char c : BLOCKS)
+	    if (originalMap[i][j] == c)
+		return true;
+	return false;
+    }
+
+    private int firingBlockIndex(char tileType) {
+	for (int i = 0; i < BLOCKS_CW.length; i++)
+	    if (BLOCKS_CW[i] == tileType)
+		return i;
+	return -1;
+    }
+
+    private boolean isSafe(int i, int j) {
+
+	for (int dir = 0; dir < 4; dir++) {
+	    int tmpi = i;
+	    int tmpj = j;
+	    while (checkBounds(tmpi, tmpj)) {
+		if (isBlock(tmpi, tmpj)) {
+		    if(originalMap[tmpi][tmpj] == BLOCKS[dir])
+			return false;
+		    break;
+		}
+		tmpi += di[dir];
+		tmpj += dj[dir];
+	    }
+	}
+	return true;
+    }
+
+    private void drawGrid(int time) {
+	for (int i = 0; i < N; i++) {
+	    for (int j = 0; j < M; j++) {
+		grid[time][i][j] = !isBlock(i, j) && isSafe(i, j);
+	    }
+	}
+    }
+
+    private void rotateAll() {
+	for (int i = 0; i < N; i++)
+	    for (int j = 0; j < M; j++) {
+		int firingIndex = firingBlockIndex(originalMap[i][j]);
+		if (firingIndex != -1) {
+		    originalMap[i][j] = BLOCKS_CW[(firingIndex + 1) % 4];
+		}
+	    }
+    }
+
+    private void buildGrid(char[][] originalMap) {
+	grid = new boolean[4][N][M];
+	for (int i = 0; i < 4; i++) {
+	    drawGrid(i);
+	    rotateAll();
+	}
+    }
+
+    private void setSourceAndGoal() {
+	for (int i = 0; i < N; i++)
+	    for (int j = 0; j < M; j++) {
+		if (originalMap[i][j] == SOURCE_TILE) {
+		    srci = i;
+		    srcj = j;
+		} else if (originalMap[i][j] == GOAL_TILE) {
+		    goali = i;
+		    goalj = j;
+		}
+	    }
+    }
+
+    private boolean checkBounds(int i, int j) {
+	return (i > -1 && i < N && j > -1 && j < M);
+    }
+
+    public int bfs() {
+
+	boolean visit[][][] = new boolean[4][N][M];
+	Queue<Integer> q = new LinkedList<Integer>();
+
+	q.add(0);
+	q.add(srci);
+	q.add(srcj);
+	q.add(0);
+
+	while (!q.isEmpty()) {
+	    int time = q.poll();
+	    int x = q.poll();
+	    int y = q.poll();
+	    int stps = q.poll();
+
+	    int newTime = (time + 1) % 4;
+	    int newStps = stps + 1;
+	    for (int d = 0; d < 4; d++) {
+		int newX = x + di[d];
+		int newY = y + dj[d];
+		if (checkBounds(newX, newY) && grid[newTime][newX][newY]
+			&& !visit[newTime][newX][newY]) {
+		    visit[newTime][newX][newY] = true;
+		    if (newX == goali && newY == goalj)
+			return newStps;
+		    q.add(newTime);
+		    q.add(newX);
+		    q.add(newY);
+		    q.add(newStps);
+		}
+	    }
+	}
+	return INF;
+    }
+
+    public String solve() {
+	N = originalMap.length;
+	M = originalMap[0].length;
+
+	buildGrid(originalMap);
+	setSourceAndGoal();
+
+	int result = bfs();
+	if (result == INF)
+	    return "impossible";
+	return result + "";
+    }
+
+    public void solver() throws Exception {
+	BufferedReader in = new BufferedReader(new FileReader(INPUT_FILE_NAME));
+	PrintWriter out = new PrintWriter(new File(OUTPUT_FILE_NAME));
+	int t = Integer.parseInt(in.readLine());
+	for (int tt = 1; tt <= t; tt++) {
+	    String[] line = in.readLine().split(" ");
+	    N = Integer.parseInt(line[0]);
+	    M = Integer.parseInt(line[1]);
+	    originalMap = new char[N][M];
+	    for (int i = 0; i < N; i++)
+		originalMap[i] = in.readLine().toCharArray();
+	    out.println("Case #" + tt + ": " + (solve()));
+	}
+	in.close();
+	out.close();
+    }
+
+    public static void main(String[] args) throws Exception {
+	new C().solver();
+    }
+
+}

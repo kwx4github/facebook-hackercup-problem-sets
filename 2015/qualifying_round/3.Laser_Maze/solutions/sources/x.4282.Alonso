@@ -1,0 +1,174 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"runtime"
+	"strconv"
+	"strings"
+)
+
+const MaxInt = int(^uint(0) >> 1)
+
+var sols []string
+var invalidPos map[rune]bool
+
+func isTurrentInMyWay(pos [2]int, turrets [][2]int, maze [][]rune, deep int) (bool) {
+	for _, turrent := range turrets {
+		if turrent[0] != pos[0] && turrent[1] != pos[1] {
+			continue
+		}
+
+		turretVal := maze[turrent[0]][turrent[1]]
+		for i := 0; i < deep % 4; i++ {
+			switch turretVal {
+			case '>':
+				turretVal = 'v'
+			case 'v':
+				turretVal = '<'
+			case '<':
+				turretVal = '^'
+			case '^':
+				turretVal = '>'
+			}
+		}
+
+		switch turretVal {
+		case '>':
+			if turrent[0] == pos[0] && turrent[1] < pos[1] {
+				return true
+			}
+		case 'v':
+			if turrent[1] == pos[1] && turrent[0] < pos[0] {
+				return true
+			}
+		case '<':
+			if turrent[0] == pos[0] && turrent[1] > pos[1] {
+				return true
+			}
+		case '^':
+			if turrent[1] == pos[1] && turrent[0] > pos[0] {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func isImpossiblePos(pos [2]int, maze [][]rune, turrets [][2]int, deep int) (bool) {
+	if pos[0] < 0 || pos[1] < 0 || pos[0] >= len(maze) || pos[1] >= len(maze[0]) {
+		return true
+	}
+	_, obstacle := invalidPos[maze[pos[0]][pos[1]]]
+	return obstacle || isTurrentInMyWay(pos, turrets, maze, deep)
+}
+
+func searchSol(turrets [][2]int, visitedPos map[string]int, pos [2]int, maze [][]rune, deep int) (int) {
+	// Use BFS
+	queue := [][2]int{pos}
+	edgeTo := map[[2]int][2]int{pos: pos}
+	distTo := map[[2]int]int{pos: 0}
+	visitedNodes := map[[3]int]bool{[3]int{pos[0], pos[1], deep%4}: true}
+
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		deep := distTo[current]+1
+
+		possibleDests := [][2]int{}
+		if !isImpossiblePos([2]int{current[0]+1, current[1]}, maze, turrets, deep) {
+			possibleDests = append(possibleDests, [2]int{current[0]+1, current[1]})
+		}
+		if !isImpossiblePos([2]int{current[0]-1, current[1]}, maze, turrets, deep) {
+			possibleDests = append(possibleDests, [2]int{current[0]-1, current[1]})
+		}
+		if !isImpossiblePos([2]int{current[0], current[1]+1}, maze, turrets, deep) {
+			possibleDests = append(possibleDests, [2]int{current[0], current[1]+1})
+		}
+		if !isImpossiblePos([2]int{current[0], current[1]-1}, maze, turrets, deep) {
+			possibleDests = append(possibleDests, [2]int{current[0], current[1]-1})
+		}
+
+		for _, newPos := range possibleDests {
+			status := [3]int{newPos[0], newPos[1], deep%4}
+
+			if _, visited := visitedNodes[status]; !visited {
+				if maze[newPos[0]][newPos[1]] == 'G' {
+					return deep
+				}
+				distTo[newPos] = deep
+				edgeTo[newPos] = current
+				visitedNodes[status] = true
+				queue = append(queue, newPos)
+			}
+		}
+	}
+
+	return -1
+}
+
+func solveProblem(maze [][]rune, problem int, c chan bool) {
+	var pos [2]int
+	turrets := [][2]int{}
+	for y := 0; y < len(maze); y++ {
+		for x := 0; x < len(maze[y]); x++ {
+			if maze[y][x] == 'S' {
+				pos[0] = y
+				pos[1] = x
+				maze[y][x] = '.'
+			} else if (maze[y][x] == 'v' || maze[y][x] == '^' || maze[y][x] == '<' || maze[y][x] == '>') {
+				turrets = append(turrets, [2]int{y, x})
+			}
+		}
+	}
+	deep := searchSol(turrets, make(map[string]int), pos, maze, 0)
+
+	if deep != -1 {
+		sols[problem] = fmt.Sprintf("Case #%d: %d", problem+1, deep)
+	} else {
+		sols[problem] = fmt.Sprintf("Case #%d: impossible", problem+1)
+	}
+
+	c<-true
+	return
+}
+
+func main() {
+	invalidPos = map[rune]bool {
+		'#': true,
+		'>': true,
+		'<': true,
+		'^': true,
+		'v': true,
+	}
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	reader := bufio.NewReader(os.Stdin)
+
+	text, _ := reader.ReadString('\n')
+	problems, _ := strconv.ParseInt(text[:len(text)-1], 10, 64)
+	sols = make([]string, problems)
+	solsChan := make(chan bool)
+	for p := 0; p < int(problems); p++ {
+		text, _ = reader.ReadString('\n')
+		info := strings.Split(text[:len(text)-1], " ")
+		lines, _ := strconv.ParseInt(info[0], 10, 64)
+		maze := make([][]rune, lines)
+		for l := 0; l < int(lines); l++ {
+			line, _ := reader.ReadString('\n')
+			maze[l] = []rune(line[:len(line)-1])
+		}
+
+		go solveProblem(maze, p, solsChan)
+	}
+
+	for p := 0; p < int(problems); p++ {
+		<-solsChan
+	}
+	for p := 0; p < int(problems); p++ {
+		fmt.Println(sols[p])
+	}
+}

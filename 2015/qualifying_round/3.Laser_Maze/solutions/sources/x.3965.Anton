@@ -1,0 +1,160 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayDeque;
+import java.util.Locale;
+import java.util.Queue;
+import java.util.StringTokenizer;
+
+public class LaserMaze {
+  private int n, m, gi, gj;
+  private final String turrets = "^>v<";
+  private final String walls = "#^>v<";
+
+  private final static class State {
+    int i, j;
+    int turn;
+    State(int ai, int aj, int t) { i = ai; j = aj; turn = t; }
+  }
+
+  private void solve() {
+    n = ni();
+    m = ni();
+    char a[][][] = new char[4][n][];
+
+    for (int i = 0; i < n; ++i)
+      a[0][i] = nt().toCharArray();
+
+    Queue<State> q = new ArrayDeque<>();
+    int visited[][] = new int[n][m];
+
+    for (int i = 0; i < n; ++i)
+      for (int j = 0; j < m; ++j) {
+        if (a[0][i][j] == 'S') {
+          q.add(new State(i, j, 0));
+          visited[i][j] = 1;
+          a[0][i][j] = '.';
+        } else if (a[0][i][j] == 'G') {
+          gi = i; gj = j;
+          a[0][i][j] = '.';
+        }
+      }
+
+    for (int i = 1; i < 4; ++i)
+      a[i] = rotate(a[i - 1]);
+
+    for (int i = 0; i < 4; ++i)
+      propagate_laser_beam(a[i]);
+
+    int di[] = {-1, 0, 1, 0};
+    int dj[] = {0, 1, 0, -1};
+
+    while (!q.isEmpty()) {
+      State s = q.poll();
+      if (s.i == gi && s.j == gj) {
+        prln(s.turn);
+        return;
+      }
+
+      int next = (s.turn + 1) % 4;
+
+      for (int i = 0; i < 4; ++i) {
+        int ni = s.i + di[i];
+        int nj = s.j + dj[i];
+        if (ni < n && ni >= 0 && nj < m && nj >= 0) {
+          if (a[next][ni][nj] == '.' && visited[ni][nj] != 2) {
+            visited[ni][nj]++;
+            q.add(new State(ni, nj, s.turn + 1));
+          }
+        }
+      }
+    }
+
+    prln("impossible");
+  }
+
+  private char[][] rotate(char[][] a) {
+    char[][] res = new char[n][m];
+
+    for (int i = 0; i < n; ++i)
+      for (int j = 0; j < m; ++j) {
+        int idx = turrets.indexOf(a[i][j]);
+        if (idx != -1) {
+          res[i][j] = turrets.charAt((idx + 1) % 4);
+        } else {
+          res[i][j] = a[i][j];
+        }
+      }
+
+    return res;
+  }
+
+  private void propagate_laser_beam(char[][] a) {
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < m; ++j) {
+        int t;
+        switch (a[i][j]) {
+          case '^':
+            t = i - 1;
+            while (t >= 0 && walls.indexOf(a[t][j]) == -1) { a[t][j] = '@'; t--; }
+            break;
+          case '>':
+            t = j + 1;
+            while (t < m && walls.indexOf(a[i][t]) == -1) { a[i][t] = '@'; t++; }
+            break;
+          case 'v':
+            t = i + 1;
+            while (t < n && walls.indexOf(a[t][j]) == -1) { a[t][j] = '@'; t++; }
+            break;
+          case '<':
+            t = j - 1;
+            while (t >= 0 && walls.indexOf(a[i][t]) == -1) { a[i][t] = '@'; t--; }
+            break;
+        }
+      }
+    }
+  }
+
+  public static void main(String ... args) throws FileNotFoundException {
+    new LaserMaze().run();
+  }
+
+  private PrintWriter pw;
+  private BufferedReader br;
+  private StringTokenizer st;
+
+  private void run() throws FileNotFoundException {
+    Locale.setDefault(Locale.US);
+    pw = new PrintWriter(new File("laser_maze_output.txt"));
+    br = new BufferedReader(new FileReader("laser_maze.txt"));
+    int T = ni();
+    for (int i = 1; i <= T; ++i) {
+      pr("Case #" + i + ": ");
+      solve();
+    }
+    pw.close();
+    try {
+      br.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void pr(Object o) { pw.print(o); }
+  private void prln(Object o) {pw.println(o);}
+
+  private int ni() { return Integer.parseInt(nt()); }
+
+  private String nt() {
+    if (st == null || !st.hasMoreTokens())
+      try {
+        st = new StringTokenizer(br.readLine());
+      } catch (IOException e) {
+        System.exit(666);
+      }
+    return st.nextToken();
+  }
+}

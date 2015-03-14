@@ -1,0 +1,152 @@
+#!/usr/bin/python
+class Queue:
+    def __init__(self):
+        self.list = []
+    def push(self,item):
+        self.list.append(item)
+    def pop(self):
+        return self.list.pop()
+    def isEmpty(self):
+        return len(self.list) == 0
+
+def isGoalState(state):
+    (x,y) = state[1]
+    return (x == food_c and y == food_r)
+
+def    getSuccessors(state, r, c):
+    (x,y) = state[1]
+    newGrid = UpdateGridLaserBlock(grid, r, c)
+    
+    successors    =    [];
+    if    (x    >=0    and    x    <    c    and    y    >=    0    and    y    <    r):
+        if    (y    >=    1    and    (newGrid[y-1][x]    ==    '.' or newGrid[y-1][x] == 'G' or newGrid[y-1][x] == 'S')):
+            successors.append(([row[:] for row in newGrid],(x,y-1)));
+        if    (x    >=    1    and    (newGrid[y][x-1]    ==    '.' or newGrid[y][x-1] == 'G' or newGrid[y][x-1] == 'S')):
+            successors.append(([row[:] for row in newGrid],(x-1,y)));
+        if    (x    <    c-1    and    (newGrid[y][x+1]    ==    '.' or newGrid[y][x+1] == 'G' or newGrid[y][x+1] == 'S')):
+            successors.append(([row[:] for row in newGrid],(x+1,y)));
+        if    (y    <    r-1   and    (newGrid[y+1][x]    ==    '.' or newGrid[y+1][x] == 'G' or newGrid[y+1][x] == 'S')):
+            successors.append(([row[:] for row in newGrid],(x,y+1)));
+    return    successors;
+
+def UpdateGridLaserBlock(grid, r, c):
+    newGrid = [row[:] for row in grid]
+    return RotateLasers(newGrid, r, c)
+
+def RotateLasers(newGrid, r, c):
+    for [(i,j),x] in laserTurrets:
+        if(x == 0):
+            newGrid[i][j] = '>'
+            for jj in xrange(j+1,c):
+                if(newGrid[i][jj] == '.' or newGrid[i][jj] == 'G'
+                   or newGrid[i][jj] == 'S'):
+                    newGrid[i][jj] = '-'
+                else:
+                    break
+        if(x == 1):
+            newGrid[i][j] = 'v'
+            for ii in xrange(i+1,r):
+                if(newGrid[ii][j] == '.' or newGrid[ii][j] == 'G'
+                   or newGrid[ii][j] == 'S'):
+                    newGrid[ii][j] = '-'
+                else:
+                    break
+        if(x == 2):
+            newGrid[i][j] = '<'
+            for jj in xrange(j - 1, -1, -1):
+                if(newGrid[i][jj] == '.' or newGrid[i][jj] == 'G'
+                   or newGrid[i][jj] == 'S'):
+                    newGrid[i][jj] = '-'
+                else:
+                    break
+        if(x == 3):
+            newGrid[i][j] = '^'
+            for ii in xrange(i-1, -1, -1):
+                if(newGrid[ii][j] == '.' or newGrid[ii][j] == 'G'
+                   or newGrid[ii][j] == 'S'):
+                    newGrid[ii][j] = '-'
+                else:
+                    break
+    for i in xrange(0,len(laserTurrets)):
+        laserTurrets[i][1] = (laserTurrets[i][1] + 1)%4
+    return newGrid
+    
+def nextMove( r, c, pacman_r, pacman_c, food_r, food_c, grid, laserTurrets):
+    path = []
+    mark = []
+    x = pacman_c
+    y = pacman_r
+    state = (grid,(x,y))
+    explored = []
+    mark.append(state)
+    path.append(state[1])
+    fringe = Queue()
+    fringe.push((state,path))
+    solvable = True
+    allMarked = True
+    solution =[]
+    while(not (fringe.isEmpty())):
+        (state,path) = fringe.pop()
+        if(isGoalState(state)):
+            solution.append(path);
+        succs = getSuccessors(state, r, c)
+        if (len(succs) > 0):
+            allMarked = True
+            for succ in succs:
+                childPath = list(path)
+                if (succ) not in mark:
+                    childPath.append(succ[1])
+                    mark.append(succ)
+                    fringe.push((succ,childPath))
+                    allMarked = False
+            if(allMarked):
+                solvable = False
+                break
+        else:
+            solvable = False
+            break
+        
+        explored.append(state[1])
+
+    if (solvable or len(solution) != 0):
+        minLen = len(solution[0]);
+        for x in solution:
+            if (len(x) < minLen):
+                minLen = len(x);
+        return minLen - 1
+    else:
+        return -1
+    
+
+fo = open('laser_maze.txt');
+testCases = int(fo.readline().strip())
+for t in xrange(0, testCases):
+    [r,c] = [ int(i) for i in fo.readline().strip().split() ]
+    
+    
+    grid = []
+    for i in xrange(0, r):
+        grid.append(list(fo.readline().strip()))
+    
+    laserTurrets = []
+    for i in xrange(0, r):
+        for j in xrange(0 , c):
+            if (grid[i][j] == 'S'):
+                pacman_r = i; pacman_c = j;
+            elif (grid[i][j] == 'G'):
+                food_r = i; food_c = j;
+            elif (grid[i][j] == '^'): 
+                laserTurrets.append([(i,j),0])
+            elif (grid[i][j] == '>'):
+                laserTurrets.append([(i,j),1])
+            elif (grid[i][j] == 'v'):
+                laserTurrets.append([(i,j),2])
+            elif (grid[i][j] == '<'): 
+                laserTurrets.append([(i,j),3])
+
+    ans = nextMove(r, c, pacman_r, pacman_c, food_r, food_c, grid, laserTurrets)
+    if (ans == -1):
+        print "Case #" + str(t+1) + ": impossible"
+    else:
+        print "Case #" + str(t+1) +": " + str(ans)
+

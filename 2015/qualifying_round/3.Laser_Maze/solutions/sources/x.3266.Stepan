@@ -1,0 +1,173 @@
+#include <cstdio>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#include <utility>
+
+using namespace std;
+
+const int MAXN = 110;
+
+char field[4][MAXN][MAXN];
+
+pair<int, int> goVector[255];
+
+struct pos
+{
+    int k;
+    int x;
+    int y;
+};
+
+
+char nextDir[255];
+int dist[4][MAXN][MAXN];
+
+
+int main()
+{
+    freopen("input", "r", stdin);
+    freopen("output", "w", stdout);
+    
+    vector <pos> diff;
+    diff.push_back({1, 1, 0});
+    diff.push_back({1, -1, 0});
+    diff.push_back({1, 0, 1});
+    diff.push_back({1, 0, -1});
+    
+    for (int i = 0; i < 255; ++i)
+        goVector[i] = make_pair(0, 0);
+    
+    goVector['>'] = make_pair(0, 1);
+    goVector['<'] = make_pair(0, -1);
+    goVector['^'] = make_pair(-1, 0);
+    goVector['v'] = make_pair(1, 0);
+    
+    for (int i = 0; i < 255; ++i)
+        nextDir[i] = i;
+    
+    nextDir['>'] = 'v';
+    nextDir['v'] = '<';
+    nextDir['<'] = '^'; 
+    nextDir['^'] = '>';
+
+    int T;
+    scanf("%d", &T);
+    for (int z = 1; z <= T; ++z)
+    {
+        printf("Case #%d: ", z);
+//         printf("\n");
+        int n, m;
+        scanf("%d %d", &n, &m);
+        pair<int, int> S, G;
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = 0; j < m; ++j)
+            {
+                scanf(" %c", &field[0][i][j]);
+                if (field[0][i][j] == 'S')
+                {
+                    S = make_pair(i, j);
+                    field[0][i][j] = '.';
+                }
+                
+                if (field[0][i][j] == 'G')
+                {
+                    G = make_pair(i, j);
+                    field[0][i][j] = '.';
+                }
+                
+                for (int k = 1; k < 4; ++k)
+                {
+                    field[k][i][j] = nextDir[field[k - 1][i][j]];
+                }
+            }
+        }
+        for (int k = 0; k < 4; ++k)
+        {
+            for (int i = 0; i < n; ++i)
+            {
+                for (int j = 0; j < m; ++j)
+                {
+                    dist[k][i][j] = 1000000;
+                    if (goVector[field[k][i][j]] != make_pair(0, 0))
+                    {
+                        
+                        int dx = goVector[field[k][i][j]].first;
+                        int dy = goVector[field[k][i][j]].second;
+                        field[k][i][j] = '#';
+//                         printf("%d %d %d %d\n", i, j, dx, dy);
+                        for (int x = i + dx; x < n && x >= 0; x += dx)
+                        {
+                            bool flag = 0;
+                            for (int y = j + dy; y < m && y >= 0; y += dy)
+                            {
+                                if (field[k][x][y] == '.')
+                                {
+                                    field[k][x][y] = '$';
+                                }
+                                else
+                                {
+                                    flag = 1;
+                                    break;
+                                }
+                                if (dy == 0)
+                                    break;
+                            }
+                            if (flag)
+                                break;
+                            if (dx == 0)
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+//         for (int k = 0; k < 4; ++k)
+//         {
+//             for (int i = 0; i < n; ++i)
+//             {
+//                 for (int j = 0; j < m; ++j)
+//                 {
+//                     printf("%c", field[k][i][j]);
+//                 }
+//                 printf("\n");
+//             }
+//             printf("\n");
+//         }
+        dist[0][S.first][S.second] = 0;
+        queue<pos> q;
+        q.push({0, S.first, S.second});
+        while (q.size())
+        {
+            pos v = q.front();
+            q.pop();
+            for (auto const &u: diff)
+            {
+                int nx = v.x + u.x;
+                int ny = v.y + u.y;
+                int nk = (v.k + u.k) % 4;
+                if (nx < n && nx >= 0 &&
+                    ny < m && ny >= 0 &&
+                    (field[nk][nx][ny] == '.' || (dist[nk][nx][ny] == 0 && field[nk][nx][ny] == '$')))
+                {
+                    if (dist[nk][nx][ny] > dist[v.k][v.x][v.y] + 1)
+                    {
+                        dist[nk][nx][ny] = dist[v.k][v.x][v.y] + 1;
+                        q.push({nk, nx, ny});
+                    }
+                }
+            }
+        }
+        int ans = min(min(dist[0][G.first][G.second], dist[1][G.first][G.second]), min(dist[2][G.first][G.second], dist[3][G.first][G.second]));
+        if (ans == 1000000)
+        {
+            printf("impossible\n");
+        }
+        else
+        {
+            printf("%d\n", ans);
+        }
+    }
+    return 0;
+}

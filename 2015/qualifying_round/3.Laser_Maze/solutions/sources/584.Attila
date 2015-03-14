@@ -1,0 +1,124 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <set>
+#include <map>
+#include <cstdlib>
+#include <queue>
+#include <stack>
+#include <cmath>
+#include <cstring>
+#include <cstdio>
+
+using namespace std;
+const int MN = 102;
+
+map<char, char> nx;
+char x[MN][MN][4];
+bool used[MN][MN][4];
+int d[MN][MN][4];
+
+struct state {
+    int x, y;
+    int pos;
+};
+
+state cur;
+queue<state> q;
+int n, m;
+
+bool walk(int i, int j) {
+    return i >= 0 && i < n && j >= 0 && j < m &&
+        (x[i][j][0] == '.' || x[i][j][0] == 'S' || x[i][j][0] == 'G');
+}
+
+bool good(int i, int j, int p) {
+    if (used[i][j][p]) return false;
+    if (!walk(i,j)) return false;
+    int k = i;
+    while (walk(k,j)) k++;
+    if (k < n && x[k][j][p] == '^') return false;
+    k = i;
+    while (walk(k, j)) k--;
+    if (k >= 0 && x[k][j][p] == 'v') return false;
+    k = j;
+    while (walk(i, k)) k++;
+    if (k < m && x[i][k][p] == '<') return false;
+    k = j;
+    while (walk(i, k)) k--;
+    if (k >= 0 && x[i][k][p] == '>') return false;
+
+    return true;
+}
+
+void add(int i, int j, int p, int dist) {
+    if (good(i,j,p)) {
+        used[i][j][p] = true;
+        d[i][j][p] = dist;
+        state next;
+        next.x = i;
+        next.y = j;
+        next.pos = p;
+        q.push(next);
+    }
+}
+
+int main () {
+    int t;
+    cin >> t;
+    nx['>'] = 'v';
+    nx['v'] = '<';
+    nx['<'] = '^';
+    nx['^'] = '>';
+    nx['.'] = '.';
+    nx['S'] = 'S';
+    nx['G'] = 'G';
+    nx['#'] = '#';
+    for (int k = 0; k < t; ++k) {
+        cin >> n >> m;
+        cur.pos = 0;
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                char c;
+                cin >> c; for (int p = 0; p < 4; ++p) {
+                    used[i][j][p] = false;
+                    d[i][j][p] = -1;
+                    x[i][j][p] = c;
+                    c = nx[c];
+                }
+                if (c == 'S') {
+                    cur.x = i;
+                    cur.y = j;
+                }
+            }
+        }
+        q.push(cur);
+        used[cur.x][cur.y][cur.pos] = true;
+        d[cur.x][cur.y][cur.pos] = 0;
+        int res = -1;
+        while (!q.empty()) {
+            cur = q.front();
+            q.pop();
+            int i = cur.x,
+                j = cur.y,
+                p = (cur.pos + 1) % 4;
+            int dist = d[i][j][cur.pos]+1;
+            if (x[i][j][0] == 'G') {
+                res = dist-1;
+                break;
+            }
+            int del[2] = {-1, 1};
+            for (int x = 0; x < 2; ++x) {
+                add(del[x] + i, j, p, dist);
+                add(i, del[x] + j, p, dist);
+            }
+        }
+        while (!q.empty()) q.pop();
+        cout << "Case #" << k+1 << ": ";
+        if (res > 0) cout << res;
+        else cout << "impossible";
+        cout << endl;
+    }
+    return 0;
+}

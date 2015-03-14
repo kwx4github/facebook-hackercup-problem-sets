@@ -1,0 +1,229 @@
+#include "cmath"
+#include "cstdio"
+#include "iostream"
+#include "algorithm"
+#include "functional"
+#include "map"
+#include "numeric"
+#include "queue"
+#include "set"
+#include "list"
+#include "string"
+#include "utility"
+#include "vector"
+#include "limits"
+using namespace std;
+typedef long long i64;
+
+struct Node {
+  const string LASERS = string("<^>v");
+  int distance;
+  char value;
+  Node() { distance = numeric_limits<int>::max(); }
+  int operator>(int rhs) const {
+    return distance > rhs;
+  }
+  int operator+(int rhs) const {
+    return distance + rhs;
+  }
+  bool unvisited() const {
+    return value == '.';
+  }
+  bool walkable() const {
+    return value == '*' || value == '.';
+  }
+  bool laser() const {
+    return LASERS.find(value) != string::npos;
+  }
+  bool direction(const char & arrow, int distance) {
+    return (LASERS.find(value) - LASERS.find(arrow) + distance) % 4 == 0;
+  }
+};
+
+struct Point {
+  int x, y;
+  Point() {}
+  Point(int x, int y) : x(x), y(y) {}
+  Point(const Point& src) :  x(src.x), y(src.y) {}
+  bool operator==(const Point rhs) const {
+    return x == rhs.x && y == rhs.y;
+  }
+};
+
+typedef list<Point> Points;
+
+ostream& operator<<(ostream& os, const Point& p)
+{
+  os << '(' << p.x << ',' << p.y << ')';
+  return os;
+}
+
+ostream& operator<<(ostream& os, Points& p)
+{
+  os << '[';
+  for(Points::iterator it = p.begin(); it != p.end(); ++it)
+    os << *it << '/';
+  os << ']';
+  return os;
+}
+
+class Maze {
+  public:
+    Maze(int height, int width) : height(height), width(width) {
+      maze_data = new Node[height*width];
+    }
+    ~Maze() { delete [] maze_data; }
+    Node *node(int x, int y) { return &maze_data[width * y + x]; }
+    Node *node(const Point& point) { return node(point.x, point.y); }
+    string solve(Point& start, Point& end) {
+      Point current = start;
+      do {
+        int distance = update_neighbors(current, end);
+        if(distance) return to_string(distance);
+        current = next();
+      } while (current.x >= 0);
+      return "impossible";
+    }
+    void print (ostream& os) {
+      for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++)
+          os << node(x,y)->value;
+        os << "\t";
+        for(int x = 0; x < width; x++) {
+          if(node(x,y)->value < 10)
+            os << node(x,y)->value;
+          else
+            os << '*';
+        }
+        os << "\n";
+      }
+    }
+  private:
+    Node *maze_data;
+    int height, width;
+    Points neighbours(const Point& p) {
+      Points res;
+      if(p.x > 0) res.emplace_back(p.x - 1, p.y);
+      if(p.x < width - 1) res.emplace_back(p.x + 1, p.y);
+      if(p.y > 0) res.emplace_back(p.x, p.y - 1);
+      if(p.y < height - 1) res.emplace_back(p.x, p.y + 1);
+      return res;
+    }
+    Points unvisited(const Point& p) {
+      Points res = neighbours(p);
+      remove_if(res.begin(),
+          res.end(),
+          [&](Point& p){return !node(p)->unvisited();}
+          );
+      return res;
+    }
+    Points walkable(const Point& p) {
+      Points res = neighbours(p);
+      remove_if(res.begin(),
+          res.end(),
+          [&](Point& p){return !node(p)->walkable();}
+          );
+      return res;
+    }
+    bool alive(const Point& p, int distance) {
+      Node *n;
+      for(int x = p.x -1; x >= 0; x--) {
+        n = node(x, p.y);
+        if(!n->walkable()) {
+          if(n->laser() && n->direction('>', distance)) return false;
+          break;
+        }
+      }
+      for(int x = p.x +1; x < width; x++) {
+        n = node(x, p.y);
+        if(!n->walkable()) {
+          if(n->laser() && n->direction('<', distance)) return false;
+          break;
+        }
+      }
+      for(int y = p.y -1; y >= 0; y--) {
+        n = node(p.x, y);
+        if(!n->walkable()) {
+          if(n->laser() && n->direction('v', distance)) return false;
+          break;
+        }
+      }
+      for(int y = p.y +1; y < height; y++) {
+        n = node(p.x, y);
+        if(!n->walkable()) {
+          if(n->laser() && n->direction('^', distance)) return false;
+          break;
+        }
+      }
+      return true;
+    }
+    bool can_sidestep(const Point& p, int distance) {
+      Points w = walkable(p);
+      for(Points::iterator it = w.begin(); it != w.end(); ++it)
+        if(alive(*it, distance)) return true;
+      return false;
+    }
+    int update_neighbors(const Point& p, const Point& end) {
+      Points c = unvisited(p);
+      Node *current = node(p);
+      int distance = current->distance + 1;
+      for(Points::iterator it = c.begin(); it != c.end(); ++it) {
+        Node *n = node(*it);
+        if(n->distance > distance && alive(*it, distance)) {
+          if(end == *it) return distance;
+          n->distance = distance;
+        } else if(n->distance > distance + 2 &&
+                  alive(*it, distance + 2) &&
+                  alive(p, distance + 1) &&
+                  can_sidestep(p, distance)
+                  ) {
+          if(end == *it) return distance + 2;
+          n->distance = distance + 2;
+        }
+      }
+      current->value = '*';
+      return 0;
+    }
+    Point next() {
+      int distance = numeric_limits<int>::max();
+      int next_x = -1, next_y = -1;
+      for(int x = 0; x < width; x++)
+        for(int y = 0; y < height; y++) {
+          Node *n = node(x, y);
+          if(n->distance < distance && n->unvisited()) {
+            next_x = x; next_y = y;
+            distance = n->distance;
+          }
+        }
+      return Point(next_x, next_y);
+    }
+};
+
+string solve() {
+  int width, height; cin >> height >> width;
+  Maze maze = Maze(height, width);
+  Point start, end;
+  for(int y = 0; y < height; y++)
+    for(int x = 0; x < width; x++){
+      cin >> (maze.node(x, y)->value);
+      if(maze.node(x, y)->value == 'S') {
+        start = Point(x, y);
+        maze.node(x, y)->value = '*';
+        maze.node(x, y)->distance = 0;
+      }
+      if(maze.node(x, y)->value == 'G') {
+        end = Point(x, y);
+        maze.node(x, y)->value = '.';
+      }
+    }
+  return maze.solve(start, end);
+}
+
+int main() {
+  int T; scanf("%d", &T);
+  for (int Ti = 1; Ti <= T; ++Ti) {
+    cerr << "Case #" << Ti << " of " << T << endl;
+    cout << "Case #" << Ti << ": " << solve() << endl;
+  }
+  return 0;
+}

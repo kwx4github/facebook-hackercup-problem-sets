@@ -1,0 +1,79 @@
+var inputFile = 'new_years_resolution.txt';
+var outputFile = 'output.txt';
+
+var fs = require('fs'),
+	readline = require('readline');
+
+var input = readline.createInterface({
+	input : fs.createReadStream(inputFile),
+	output: process.stdout
+});
+var output = fs.createWriteStream(outputFile);
+
+
+var testCaseCount;
+var currentTestCase = 1;
+var target;
+var foodCount;
+var foods;
+input.on('line', function (line) {
+	if (!testCaseCount) {
+		testCaseCount = +line;
+		return;
+	}
+	if (!target) {
+		var split = line.split(' ');
+		target = {
+			prot: +split[0],
+			carb: +split[1],
+			fats: +split[2]
+		};
+		return;
+	}
+	if (!foodCount) {
+		foodCount = +line;
+		foods = [];
+		return;
+	}
+
+
+	var split = line.split(' ');
+	foods.push({
+		prot: +split[0],
+		carb: +split[1],
+		fats: +split[2]
+	});
+
+	if (!--foodCount) {
+		output.write('Case ' + currentTestCase++ + ': ' + (checkSolution() ? 'yes' : 'no') + '\n');
+		target = null;
+		foodCount = null;
+	}
+});
+
+function checkSolution() {
+	// Clean up any empty foods, because they mess up the algorithm
+	for (var i=foods.length-1; i>=0; i--) {
+		if (!foods[i].prot && !foods[i].carb && !foods[i].fats) {
+			foods.splice(i,1);
+		}
+	}
+
+	var partialTargets = [{prot: 0, carb: 0, fats: 0}];
+	while (partialTargets.length) {
+		var partialTarget = partialTargets.shift();
+		if (partialTarget.prot === target.prot && partialTarget.carb === target.carb && partialTarget.fats === target.fats) {
+			return true;
+		}
+		if (partialTarget.prot <= target.prot && partialTarget.carb <= target.carb && partialTarget.fats <= target.fats) {
+			foods.forEach(function(food){
+				partialTargets.push({
+					prot : partialTarget.prot + food.prot,
+					carb : partialTarget.carb + food.carb,
+					fats : partialTarget.fats + food.fats
+				});
+			});
+		}
+	}
+	return false;
+}

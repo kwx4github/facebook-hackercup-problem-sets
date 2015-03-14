@@ -1,0 +1,475 @@
+//Jeevanraj Angamuthu
+//New Year's Resolution
+//Facebook Hacker Cup 2015
+
+#define DEBUG 0
+#define DEEP_DEBUG 0
+#include <iostream>
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+using namespace std;
+
+int matching_array[999];
+int matching_array_index=0;
+
+struct Food_source
+{
+    int value;
+    int food_index;
+};
+
+struct State 
+{
+    Food_source v;
+    int index;
+    const State *rest;
+    
+    void dump() const 
+    {
+        if(rest) 
+        {
+            //cout << " " << v.value << "(" << v.food_index << ")";
+            matching_array[matching_array_index++] = v.food_index;
+            rest->dump();
+        } 
+        else 
+        {
+            //cout << endl;
+        }
+    }
+    
+    State() : v(), rest(0) {}
+    State(Food_source _v, const State &_rest) : v(_v), rest(&_rest) {}
+};
+
+void ss(Food_source *ip, Food_source *end, int target, const State &state) 
+{
+    if(target < 0) 
+        return; // assuming we don't allow any negatives
+    
+    if(ip==end && target==0) 
+    {
+        state.dump();
+        matching_array[matching_array_index++] = -1;
+        return;
+    }
+    
+    if(ip==end)
+        return;
+    
+    // without the first one
+    ss(ip+1, end, target, state);
+    
+    // with the first one
+    Food_source first = *ip;
+    ss(ip+1, end, target-first.value, State(first, state));
+    
+}
+
+void solve(int i);
+
+int main()
+{
+#if DEBUG
+    cout << "New Year's Resolution" << endl;
+#endif
+    
+    freopen("new_years_resolution.txt", "r" , stdin);
+    freopen("new_years_resolution_output.txt", "w", stdout);
+    
+    //get number of cases
+    int T;
+    cin >> T;
+    
+#if DEBUG
+    cout << "Number of Cases T: <" << T << ">." << endl;
+#endif
+    
+    //solve 
+    for(int i = 0; i < T; i++)
+        solve(i);
+    
+    return 0;
+}
+
+void solve(int i)
+{
+    int gp, gc, gf;
+    int N;
+    
+    int p_total(Food_source* p, int N), c_total(Food_source* c, int N), f_total(Food_source* f, int N);
+    
+    //get input values
+    cin >> gp >> gc >> gf;
+    cin >> N;
+    
+    Food_source Protein[N], Carbohydrates[N], Fat[N];
+    for(int j = 0; j < N; j++)
+    {
+        cin >> Protein[j].value >> Carbohydrates[j].value >> Fat[j].value;
+        Protein[j].food_index = Carbohydrates[j].food_index = Fat[j].food_index = j;        
+    }
+    
+#if DEBUG
+    
+    //print input
+    cout << endl << "DEEP_DEBUG: Case #" << (i+1) << ": Gp: <" << gp << ">, Gc: <" << gc << ">, Gf: <" << gf << ">. N: <" << N << ">." << endl;
+    
+    for(int j = 0; j < N; j++)
+    {
+        cout    << "\tP: <"     << Protein[j].value             << "(" << Protein[j].food_index 
+            << ")>, C: <"   << Carbohydrates[j].value       << "(" << Carbohydrates[j].food_index 
+                << ")>, F: <"   << Fat[j].value                 << "(" << Fat[j].food_index             << ")>." << endl;
+    }
+    
+#endif
+    
+    //set case as false
+    bool possible = false;
+    
+    //if only one food to evaluate
+    if(N == 1)
+    {
+        //if calories exact, case is true
+        if(gp == Protein[0].value && gc == Carbohydrates[0].value && gf == Fat[0].value)
+            possible = true;
+    }
+    else
+    {
+        //if total calories less than required calories, return false
+        if(p_total(Protein,N) < gp || c_total(Carbohydrates,N) < gp || f_total(Fat,N) < gf)
+            possible = false;
+        //else find subset sum matches
+        else
+        {
+#if DEEP_DEBUG
+            cout << endl;
+            cout << "Protein subset matches solution:" << endl;
+#endif
+            
+            //Get subsets for sum of protein required
+            matching_array_index=0;
+            Food_source* start = &Protein[0];
+            Food_source* end = start + sizeof(Protein) / sizeof(Protein[0]);
+            ss(start, end, gp, State());
+            matching_array[matching_array_index++] = -2;
+            
+            //store matching protein food combinations in 2D vector
+            vector< vector<int> > proteinMatches;
+            int index=0;
+            int row=0;            
+            while(matching_array[index] != -2)
+            {
+                vector < int > subset;
+                proteinMatches.push_back( subset );
+                
+                int col=0;
+                while(matching_array[index] != -1)
+                {
+                    proteinMatches[row].push_back( matching_array[index++] );
+                    col++;
+                }
+                row++;
+                index++;
+            }
+            
+#if DEEP_DEBUG     
+            
+            cout << "Total protein needed: <" << gp << ">." << endl;
+            
+            int total_matches = 0;
+            
+            for (size_t i = 0; i < proteinMatches.size(); i++)
+            {
+                int total = 0;
+                
+                cout << "Protein subset match #" << (i+1) << ":";
+                
+                for (size_t j = 0; j < proteinMatches[i].size(); j++)
+                {  
+                    
+                    cout << " " << Protein[proteinMatches[i][j]].value << "(" << proteinMatches[i][j] << ")";
+                    if(j != proteinMatches[i].size()-1)
+                        cout << " +";
+                    
+                    total += Protein[proteinMatches[i][j]].value;
+                }
+                
+                cout << " = <" << total << ">." << endl;
+                
+                total_matches++;
+            }
+            
+            cout << "Total matching subsets for <" << gp << "> Protein: <" << total_matches << ">." << endl;
+            
+            cout << "Food match index(protein):" << endl;
+            
+            for (int row = 0; row < proteinMatches.size(); row++)
+            {
+                for (int col = 0; col < proteinMatches[row].size(); col++)
+                {   
+                    cout << proteinMatches[row][col];
+                    if(col !=  proteinMatches[row].size()-1)
+                        cout << " "; 
+                }
+                cout << endl;
+            }
+            
+#endif     
+            //-------------------------------------------------------------------------------------------------------------------------------------------------
+            
+#if DEEP_DEBUG               
+            cout << endl;
+            cout << "Carbohydrates subset matches solution:" << endl;
+#endif
+            
+            //Get subsets for sum of carbohydrates required
+            matching_array_index = 0;
+            start = &Carbohydrates[0];
+            end = start + sizeof(Carbohydrates) / sizeof(Carbohydrates[0]);
+            ss(start, end, gc, State());
+            matching_array[matching_array_index++] = -2;
+            
+            //store matching carbohydrates food combinations in 2D vector
+            vector< vector<int> > carbohydratesMatches;
+            index=0;
+            row=0;
+            while(matching_array[index] != -2)
+            {
+                vector < int > subset;
+                carbohydratesMatches.push_back( subset );
+                
+                int col=0;
+                while(matching_array[index] != -1)
+                {
+                    carbohydratesMatches[row].push_back( matching_array[index++] );
+                    col++;
+                }
+                row++;
+                index++;
+            }
+            
+#if DEEP_DEBUG            
+            //print out carbohydrate subset stats
+            cout << "Total carbohydrates needed: <" << gc << ">." << endl;
+            total_matches = 0;
+            
+            for (size_t i = 0; i < carbohydratesMatches.size(); i++)
+            {
+                int total = 0;
+                
+                cout << "Carbohydrates subset match #" << (i+1) << ":";
+                
+                for (size_t j = 0; j < carbohydratesMatches[i].size(); j++)
+                {   
+                    cout << " " << Carbohydrates[carbohydratesMatches[i][j]].value << "(" << carbohydratesMatches[i][j] << ")";
+                    if(j != carbohydratesMatches[i].size()-1)
+                        cout << " +";
+                    total += Carbohydrates[carbohydratesMatches[i][j]].value;
+                }
+                cout << " = <" << total << ">." << endl;
+                total_matches++;
+            }
+            
+            cout << "Total matching subsets for <" << gc << "> Carbohydrates: <" << total_matches << ">." << endl;
+            
+            
+            cout << "Food match index(carbohydrates):" << endl;
+            
+            for (int row = 0; row < carbohydratesMatches.size(); row++)
+            {
+                for (int col = 0; col < carbohydratesMatches[row].size(); col++)
+                {   
+                    cout << carbohydratesMatches[row][col];
+                    if(col !=  carbohydratesMatches[row].size()-1)
+                        cout << " "; 
+                }
+                cout << endl;
+            }
+#endif
+            //-------------------------------------------------------------------------------------------------------------------------------------------------
+            
+            //check if protein & carbohydrate food subsets match
+            //compare vectors and find for match
+            
+            vector< vector<int> > protein_carbohydratesMatches;
+            int protein_carbohydrates_match_count = 0;
+            
+            for (int row = 0; row < proteinMatches.size(); row++)
+            {
+                for (int col = 0; col < carbohydratesMatches.size(); col++)
+                {   
+                    if(proteinMatches[row] == carbohydratesMatches[col])
+                    {
+                        protein_carbohydratesMatches.push_back(proteinMatches[row]);
+                        protein_carbohydrates_match_count++;
+                    }
+                }
+            }
+            
+#if DEBUG          
+            cout << "# of protein-carbohydrates matches: <" << protein_carbohydrates_match_count << ">." << endl;
+            cout << "Protein-carbohydrates matches:" << endl;
+            
+            for (int row = 0; row < protein_carbohydratesMatches.size(); row++)
+            {
+                for (int col = 0; col < protein_carbohydratesMatches[row].size(); col++)
+                {   
+                    cout << protein_carbohydratesMatches[row][col];
+                    if(col !=  protein_carbohydratesMatches[row].size()-1)
+                        cout << " "; 
+                }
+                cout << endl;
+            }
+#endif
+            
+            //-------------------------------------------------------------------------------------------------------------------------------------------------
+         
+#if DEEP_DEBUG            
+            cout << endl;
+            cout << "Fat subset matches solution:" << endl;
+#endif
+            
+            //Get subsets for sum of fat required
+            matching_array_index = 0;
+            start = &Fat[0];
+            end = start + sizeof(Fat) / sizeof(Fat[0]);
+            ss(start, end, gf, State());
+            matching_array[matching_array_index++] = -2;
+            
+            //store matching fat food combinations in 2D vector
+            vector< vector<int> > fatMatches;
+            index=0;
+            row=0;
+            while(matching_array[index] != -2)
+            {
+                vector < int > subset;
+                fatMatches.push_back( subset );
+                
+                int col=0;
+                while(matching_array[index] != -1)
+                {
+                    fatMatches[row].push_back( matching_array[index++] );
+                    col++;
+                }
+                row++;
+                index++;
+            }
+            
+#if DEEP_DEBUG             
+            cout << "Total fat needed: <" << gf << ">." << endl;
+            total_matches = 0;
+            
+            for (size_t i = 0; i < fatMatches.size(); i++)
+            {
+                int total = 0;
+                
+                cout << "Fat subset match #" << (i+1) << ":";
+                
+                for (size_t j = 0; j < fatMatches[i].size(); j++)
+                {   
+                    cout << " " << Fat[fatMatches[i][j]].value << "(" << fatMatches[i][j] << ")";
+                    if(j != fatMatches[i].size()-1)
+                        cout << " +";
+                    total += Fat[fatMatches[i][j]].value;
+                }
+                cout << " = <" << total << ">." << endl;
+                total_matches++;
+            }
+            
+            cout << "Total matching subsets for <" << gf << "> Fat: <" << total_matches << ">." << endl;
+            
+            
+            cout << "Food match index(fat):" << endl;
+            
+            for (int row = 0; row < fatMatches.size(); row++)
+            {
+                for (int col = 0; col < fatMatches[row].size(); col++)
+                {   
+                    cout << fatMatches[row][col];
+                    if(col !=  fatMatches[row].size()-1)
+                        cout << " "; 
+                }
+                cout << endl;
+            }
+#endif
+            
+            //-------------------------------------------------------------------------------------------------------------------------------------------------
+            
+            //check if protein & carbohydrate & fat food subsets match
+            //compare vectors and find for match
+            
+            vector< vector<int> > protein_carbohydrates_fatMatches;
+            int protein_carbohydrates_fat_match_count = 0;
+            
+            for (int row = 0; row < protein_carbohydratesMatches.size(); row++)
+            {
+                for (int col = 0; col < fatMatches.size(); col++)
+                {   
+                    if(protein_carbohydratesMatches[row] == fatMatches[col])
+                    {
+                        protein_carbohydrates_fatMatches.push_back(protein_carbohydratesMatches[row]);
+                        protein_carbohydrates_fat_match_count++;
+                        possible = true;
+                    }
+                }
+            }
+            
+#if DEBUG          
+            cout << "# of protein-carbohydrates-fat matches: <" << protein_carbohydrates_fat_match_count << ">." << endl;
+            cout << "Protein-carbohydrates-fat matches:" << endl;
+            
+            for (int row = 0; row < protein_carbohydrates_fatMatches.size(); row++)
+            {
+                for (int col = 0; col < protein_carbohydrates_fatMatches[row].size(); col++)
+                {   
+                    cout << protein_carbohydrates_fatMatches[row][col];
+                    if(col !=  protein_carbohydrates_fatMatches[row].size()-1)
+                        cout << " "; 
+                }
+                cout << endl << endl;
+            }
+#endif
+            
+        }
+    }
+    
+    //print output
+    cout << "Case #" << (i+1) << ": " << (possible ? "yes" : "no") << endl;
+    
+}
+
+
+int p_total(Food_source* P, int N)
+{
+    int total=0;
+    for(int k = 0; k < N; k++)
+        total += P[k].value;
+#if DEEP_DEBUG
+    cout << "Total Protein: <" << total << ">." << endl;
+#endif
+    return total;
+}
+
+int c_total(Food_source* C, int N)
+{
+    int total=0;
+    for(int k = 0; k < N; k++)
+        total += C[k].value;
+#if DEEP_DEBUG
+    cout << "Total Carbohydrates: <" << total << ">." << endl;
+#endif
+    return total;
+}
+
+int f_total(Food_source* F, int N)
+{
+    int total=0;
+    for(int k = 0; k < N; k++)
+        total += F[k].value;
+#if DEEP_DEBUG
+    cout << "Total Fat: <" << total << ">." << endl;
+#endif
+    return total;
+}

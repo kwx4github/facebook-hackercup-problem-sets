@@ -1,0 +1,154 @@
+#include <iostream>
+#include <ctime>
+#include <fstream>
+#include <cmath>
+#include <cstring>
+#include <cassert>
+#include <cstdio>
+#include <algorithm>
+#include <iomanip>
+#include <vector>
+#include <stack>
+#include <queue>
+#include <set>
+#include <map>
+#include <complex>
+#include <utility>
+#include <cctype>
+#include <list>
+#include <bitset>
+
+using namespace std;
+
+#define FORALL(i,a,b) for(int i=(a);i<=(b);++i)
+#define FOR(i,n) for(int i=0;i<(n);++i)
+#define FORB(i,a,b) for(int i=(a);i>=(b);--i)
+
+typedef long long ll;
+typedef long double ld;
+typedef complex<ld> vec;
+
+typedef pair<int,int> pii;
+typedef map<int,int> mii;
+
+#define pb push_back
+#define mp make_pair
+
+#define MAXT 4		// times taken modulo 4
+#define MAXN 102
+#define MAXM 102
+#define INF (MAXT*MAXN*MAXM+2)	// shouldn't ever need this i guess
+
+// clockwise, starting from UP
+// should've used an enum here...
+#define UP 0
+#define RIGHT 1
+#define DOWN 2
+#define LEFT 3
+#define MV 4
+int dr[MV] = {-1,0,1,0};
+int dc[MV] = {0,1,0,-1};
+
+typedef pair<int,pair<int,int> > state; // (time (mod 4)
+int dist[MAXT][MAXN][MAXM];
+bool blocked[MAXN][MAXM];
+bool dead[MAXT][MAXT][MAXN][MAXM];		// (time, direction, i, j)
+
+char A[MAXN][MAXM];
+
+// check which cells are shot from which direction (by default, time 0)!
+void init_dead(int N, int M) {
+	// up, right, down, left
+	FOR(t,MAXT) {
+		FOR(j,M) FORB(i,N-1,0) dead[t][UP][i][j] = (dead[t][UP][i][j] || (i<N-1 && !blocked[i][j] && dead[t][UP][i+1][j]));
+		FOR(i,N) FOR(j,M) dead[t][RIGHT][i][j] = (dead[t][RIGHT][i][j] || (j>0 && !blocked[i][j] && dead[t][RIGHT][i][j-1]));
+		FOR(j,M) FOR(i,N) dead[t][DOWN][i][j] = (dead[t][DOWN][i][j] || (i>0 && !blocked[i][j] && dead[t][DOWN][i-1][j]));
+		FOR(i,N) FORB(j,M-1,0) dead[t][LEFT][i][j] = (dead[t][LEFT][i][j] || (j<M-1 && !blocked[i][j] && dead[t][LEFT][i][j+1]));
+	}
+}
+
+// depending on the time (modulo 4), 
+// we can determine if cell[i][j] is dead
+bool is_dead(int t, int i, int j) {
+	return dead[t][UP][i][j] || dead[t][RIGHT][i][j] || dead[t][DOWN][i][j] || dead[t][LEFT][i][j];
+}
+
+#define kill_it(d) dead[0][d][i][j] = true, dead[1][(d+1)%4][i][j] = true, dead[2][(d+2)%4][i][j] = true, dead[3][(d+3)%4][i][j] = true
+
+int main() {
+	int TEST,N,M;
+	scanf("%d",&TEST);
+	FOR(test,TEST) {
+		//clear
+		memset(dist,-1,sizeof(dist));
+		memset(blocked,0,sizeof(blocked));
+		memset(dead,0,sizeof(dead));
+		
+		//input
+		int si=-1,sj=-1,gi=-1,gj=-1;
+		scanf("%d%d",&N,&M);
+		FOR(i,N) {
+			scanf("%s",&A[i][0]);
+			FOR(j,M) {
+				if (A[i][j] == 'S') si = i, sj = j;
+				else if (A[i][j] == 'G') gi = i, gj = j;
+				else if (A[i][j] == '.') /* do nothing */;
+				else if (A[i][j] == '^') blocked[i][j] = true, kill_it(UP);
+				else if (A[i][j] == '>') blocked[i][j] = true, kill_it(RIGHT);
+				else if (A[i][j] == 'v') blocked[i][j] = true, kill_it(DOWN);
+				else if (A[i][j] == '<') blocked[i][j] = true, kill_it(LEFT);
+				else if (A[i][j] == '#') blocked[i][j] = true;
+				else assert(false);	// this shouldn't ever happen
+			}
+			assert((int)strlen(A[i]) == M);
+		}
+		
+		init_dead(N,M);
+		
+		assert(si>=0 && sj >= 0 && gi >= 0 && gj >= 0);
+		
+		// run a bfs on the states to find shortest path from start to end
+		// there are only 4*N*M states (where the x4 comes from time, modulo 4)
+		queue<state> Q;
+		state S = mp(0,mp(si,sj));
+		dist[0][si][sj] = 0;
+		Q.push(S);
+		
+		int ans = -1;
+		while(!Q.empty()) {
+			state s = Q.front(); Q.pop();
+			int t = s.first, i = s.second.first, j = s.second.second;
+			assert(0<=t&&t<MAXT);
+			assert(dist[t][i][j] >= 0 && dist[t][i][j] <= INF);
+			
+			// check if found goal
+			if (i==gi && j==gj) {
+				ans = dist[t][i][j];
+				break;
+			}
+			
+			// try all movements
+			FOR(mv,MV) {
+				int i2 = i + dr[mv];
+				int j2 = j + dc[mv];
+				int t2 = ((t+1)%MAXT);	// modulo 4 hack
+				
+				// check whether you can walk there
+				if (i2 < 0 || i2 >= N) continue;
+				if (j2 < 0 || j2 >= M) continue;
+				if (blocked[i2][j2]) continue;
+				if (is_dead(t2,i2,j2)) continue;	// this depends on the time modulo 4 and other stuff
+				
+				// at this point... this is a valid state, try to enqueue it
+				if (dist[t][i][j] + 1 < dist[t2][i2][j2] || dist[t2][i2][j2] < 0) {
+					dist[t2][i2][j2] = dist[t][i][j] + 1;
+					Q.push(mp(t2,mp(i2,j2)));
+				}
+			}
+		}
+		
+		printf("Case #%d: ", (test+1));
+		if (ans >= 0) printf("%d\n",ans);
+		else printf("impossible\n");
+	}
+}

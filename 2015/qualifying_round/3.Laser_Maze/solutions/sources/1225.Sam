@@ -1,0 +1,286 @@
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+
+public class Maze {
+
+	class vertex
+	{
+		public vertex(int t, int h, int w)
+		{
+			this.t = t;
+			this.h = h;
+			this.w = w;
+		}
+		
+		public int t;
+		public int h;
+		public int w;
+	}
+	
+	public static void main(String[] args)  throws Exception {
+
+		Scanner scan = new Scanner(new FileReader("in.txt"));
+		FileWriter writer = new FileWriter("out.txt");
+		
+		int count = scan.nextInt();
+		
+		for (int i = 1; i <= count; i++)
+		{
+			int heigth = scan.nextInt();
+			int width = scan.nextInt();
+			String maze[] = new String[heigth];
+			
+			for  (int j = 0; j < heigth; j++)
+			{
+				maze[j] = scan.next();
+			}
+			Maze m = new Maze(heigth, width, maze);
+//			m.print();
+			
+			writer.write("Case #" + i + ": ");
+			String result = m.solve(maze);
+			writer.write(result);
+			writer.write("\n");
+			
+		
+		}
+		writer.close();
+		scan.close();
+		
+	}
+
+	String solve(String maze[]){
+		
+		int distance = runDFS();
+		
+		if (distance == -1)
+		{
+			return "impossible";
+		}
+		
+		return Integer.toString(distance);
+		
+	}
+	
+	void prepare()
+	{
+		board = new char[5][height][width];
+		distances = new int[4][height][width];
+		
+		for (int i = 0; i < 5; i++)
+		{
+			for (int h = 0; h < height; h++)
+			{
+				for (int w = 0; w < width; w++)
+				{
+					char c = mazeData[h].charAt(w);
+					if (c == 'S')
+					{
+						sh = h;
+						sw = w;
+						c = '.';
+					}
+					else if (c == 'G')
+					{
+						gh = h;
+						gw = w;
+						c = '.';
+					}
+					board[i][h][w] = c;
+					
+					if (i < 4)
+					{
+						distances[i][h][w] = -1;
+					}
+				}
+			}
+		}
+		
+
+		
+		for (int h = 0; h < height; h++)
+		{
+			for (int w = 0; w < width; w++)
+			{
+				char c = board[4][h][w];
+				
+				if (c == '^')
+				{					
+					fireUp(height, width, 0, h, w);
+					fireRight(height, width, 1, h, w);
+					fireDown(height, width, 2, h, w);
+					fireLeft(height, width, 3, h, w);
+				}
+				else if (c == '>')
+				{
+					fireUp(height, width, 3, h, w);
+					fireRight(height, width, 0, h, w);
+					fireDown(height, width, 1, h, w);
+					fireLeft(height, width, 2, h, w);
+				}
+				else if (c == 'v')
+				{
+					fireUp(height, width, 2, h, w);
+					fireRight(height, width, 3, h, w);
+					fireDown(height, width, 0, h, w);
+					fireLeft(height, width, 1, h, w);
+				}
+				else if (c == '<')
+				{
+					fireUp(height, width, 1, h, w);
+					fireRight(height, width, 2, h, w);
+					fireDown(height, width, 3, h, w);
+					fireLeft(height, width, 0, h, w);
+				}
+
+			}
+		}
+
+	}
+	int runDFS()
+	{
+		List<vertex> remaining = new ArrayList<vertex>();
+		
+		vertex start = new vertex(0, sh, sw);
+		remaining.add(start);
+		
+		while (remaining.size() > 0)
+		{
+			vertex v = remaining.remove(0);
+			int t = (v.t) % 4;
+			if (v.h < 0 || v.h >= this.height ||
+					v.w < 0 || v.w >= this.width)
+			{
+				continue;
+			}
+			
+			if (v.h == this.gh && v.w == this.gw && board[t][v.h][v.w] == '.')
+			{
+//				System.out.println("T : " + v.t + " " + v.h + ":" + v.w);
+//				System.out.println("Reached at " + v.t + " steps");
+				return v.t;
+			}
+			
+			if ((v.t == 0) || (board[t][v.h][v.w] == '.' && distances[t][v.h][v.w] == -1))
+			{
+				distances[t][v.h][v.w] = v.t;
+				vertex l = new vertex(v.t+1, v.h, v.w-1);
+				vertex r = new vertex(v.t+1, v.h, v.w+1);
+				vertex u = new vertex(v.t+1, v.h-1, v.w);
+				vertex d = new vertex(v.t+1, v.h+1, v.w);
+				
+				remaining.add(l);
+				remaining.add(r);
+				remaining.add(u);
+				remaining.add(d);
+//				System.out.println("T : " + v.t + " " + v.h + ":" + v.w);
+			}
+			
+		}
+//		System.out.println("Couldn\'t reach");
+		return -1;
+	}
+	
+	void print()
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			for (int h = 0; h < height; h++)
+			{
+				for (int w = 0; w < width; w++)
+				{
+					System.out.print(board[i][h][w]);
+				}
+				System.out.println();
+			}
+			System.out.println("==============");
+			
+		}
+		System.out.println("------------");
+
+	}
+	
+	private Maze(int height, int width, String maze[])
+	{
+		this.height = height;
+		this.width = width;
+		this.mazeData = maze;
+		prepare();
+	}
+	
+	int height;
+	int width;
+	String mazeData[];
+	char board[][][];
+	int sh;
+	int sw;
+	int gh;
+	int gw;
+	int distances[][][];
+	
+	void fireUp(int height, int width, int turn, int h, int w)
+	{
+		for (int i = h-1; i >= 0; i--)
+		{
+			if (board[4][i][w] == '.')
+			{
+				board[turn][i][w] = '^';
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+
+	void fireDown(int height, int width, int turn, int h, int w)
+	{
+		for (int i = h+1; i < height; i++)
+		{
+			if (board[4][i][w] == '.')
+			{
+				board[turn][i][w] = 'v';
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	void fireLeft(int height, int width, int turn, int h, int w)
+	{
+		for (int i = w-1; i >= 0; i--)
+		{
+			if (board[4][h][i] == '.')
+			{
+				board[turn][h][i] = '<';
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	void fireRight(int height, int width, int turn, int h, int w)
+	{
+		for (int i = w+1; i < width; i++)
+		{
+			if (board[4][h][i] == '.')
+			{
+				board[turn][h][i] = '>';
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+}

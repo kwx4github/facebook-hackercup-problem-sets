@@ -1,0 +1,86 @@
+(ns fb2015-1-1)
+
+;; Cooking the Books
+
+(defn find-optima [optima-key digits with-zeros?]
+  (let [indexed (map-indexed vector digits)
+        filtered (if with-zeros?
+                   indexed
+                   (filter #(> (second %) 0) indexed))]
+    (if (empty? filtered) nil
+        (apply optima-key second filtered))))
+
+(defn num->digits [num]
+  (map #(- (int %) 48) (str num)))
+
+(defn digits->num [digits]
+  (apply str digits))
+
+(defn swap [vec i j]
+  (let [i-value (nth vec i)
+        j-value (nth vec j)]
+    (-> vec
+        (assoc i j-value)
+        (assoc j i-value))))
+
+(defn produce-transpose-common [number optima-key optima-cmp]
+  (let [ds (num->digits number)]
+    (loop [top (first ds)
+           rest-max (rest ds)
+           result-so-far []
+           first-digit true]
+      (cond
+       (empty? rest-max)
+       (digits->num (conj result-so-far top))
+       :else
+       (let [[max-idx max-value] (find-optima optima-key rest-max (not first-digit) ) ]
+         (cond
+          (and (not (nil? max-idx))
+               (optima-cmp max-value top))
+          (let [left (vec (cons top rest-max))]
+            (digits->num 
+             (concat result-so-far (swap left 0 (inc max-idx))))
+            )
+          :else
+          (recur (first rest-max)
+                 (rest rest-max)
+                 (conj result-so-far top)
+                 false)
+          
+          ))))))
+
+(defn produce-max [number]
+  (produce-transpose-common number max-key >))
+
+(defn produce-min [number]
+  (produce-transpose-common number min-key <))
+
+
+(defn problem-1 [in out]
+  (let [data (rest (map read-string (re-seq #"\w+" (slurp in))))]
+    (loop [[n & ns] data cnt 1 outcontent []]
+      (if n
+        (let [out-case
+              (format "Case #%d: %s %s\n"
+                      cnt
+                      (produce-min n)
+                      (produce-max n))]
+          (print out-case)
+          (recur ns (inc cnt) (conj outcontent out-case)))
+        (spit out (apply str outcontent))))))
+
+
+
+
+;; 2201
+;; max - swap the largest
+;; 23 -> 32, swap
+;; 32 -> 32, not swap
+;; 33 -> 33
+;; 543210003 = min 143250003
+;; 5 [ 43210003 ] = max 543310002
+;; 
+
+
+(defn generate [file n]
+  (spit file (apply str (interpose "\n" (cons n (repeatedly n #(rand-int Integer/MAX_VALUE)))))))

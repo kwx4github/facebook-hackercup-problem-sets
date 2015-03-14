@@ -1,0 +1,252 @@
+package Y2015.Qualif.Lasers;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.util.InputMismatchException;
+import java.util.Stack;
+
+public class Main {
+	
+	// LASERS
+	static final String IMPOSSIBLE = "impossible";
+	static final int INF = 10001;
+	public static void main(String[] args) throws Exception {
+		final InputReader in = new InputReader(System.in);
+		final OutputWriter out = new OutputWriter(System.out);
+		int T = in.readInt();
+		for(int t=1;t<=T;t++){
+			int R = in.readInt(),
+				C = in.readInt();
+			String[]inmaze = new String[R];
+			for(int r=0;r<R;r++)inmaze[r]=in.readString();
+			int[]start=new int[]{-1,-1};
+			F1:
+			for(int r=0;r<R;r++){
+				for(int c=0;c<C;c++){
+					if(inmaze[r].charAt(c)=='S'){
+						start=new int[]{r,c,0};
+						break F1;
+					}
+				}
+			}
+			// create maze availability
+			int[][]maze = transformMaze(inmaze);
+			// determine best at pos
+			int[][][]best = new int[R][C][4];
+			for(int r=0;r<R;r++)
+				for(int c=0;c<C;c++)
+					for(int i=0;i<4;i++)
+						best[r][c][i]=INF;
+			// flood for best
+			Stack<int[]> todo = new Stack<int[]>();
+			todo.add(start);
+			maze[start[0]][start[1]]-=(maze[start[0]][start[1]]&1); // let's say you are safe at the start pos
+			while(!todo.isEmpty()){
+				int[]cur = todo.pop();
+				if(cur[0]<0 || cur[0]>=R || cur[1]<0 || cur[1]>=C)continue; // out of range
+				if(best[cur[0]][cur[1]][cur[2]%4]<=cur[2])continue; // not improving
+				if((maze[cur[0]][cur[1]]&(1<<(cur[2]%4))) > 0)continue; // you can not stand at this place
+				best[cur[0]][cur[1]][cur[2]%4] = cur[2]; // improve
+				cur[2]++; // extra step
+				todo.add(new int[]{cur[0]-1,cur[1],cur[2]});
+				todo.add(new int[]{cur[0],cur[1]-1,cur[2]});
+				todo.add(new int[]{cur[0]+1,cur[1],cur[2]});
+				todo.add(new int[]{cur[0],cur[1]+1,cur[2]});
+			}
+			int res = INF;
+			F2:
+			for(int r=0;r<R;r++){
+				for(int c=0;c<C;c++){
+					if(inmaze[r].charAt(c)=='G'){
+						for(int i=0;i<4;i++){
+							res = Math.min(res, best[r][c][i]);
+						}
+						break F2;
+					}
+				}
+			}
+			out.printLine("Case #"+t+": "+(res==INF?IMPOSSIBLE:res));
+		}
+		out.close();
+	}
+	
+	static int[][] transformMaze(String[] input){
+		int[][]maze = new int[input.length][input[0].length()];
+		int deadzone = 15; // 1<<0 + 1<<1 + 1<<2 + 1<<3
+		for(int r=0;r<maze.length;r++){
+			for(int c=0;c<maze[0].length;c++){
+				if(isFree(input[r].charAt(c)))continue;
+				maze[r][c]=deadzone;
+				if(input[r].charAt(c)=='#')continue; // just a wall
+				int dir = 0;
+				if(input[r].charAt(c)=='^')dir=0; // UP
+				else if(input[r].charAt(c)=='>')dir=3; // RIGHT
+				else if(input[r].charAt(c)=='v')dir=2; // DOWN
+				else if(input[r].charAt(c)=='<')dir=1; // LEFT
+				else throw new RuntimeException("invalid character");
+				// UP
+				for(int up=r-1;up>=0;up--){
+					if(!isFree(input[up].charAt(c)))break;
+					maze[up][c] |= 1<<dir;
+				}
+				// RIGHT
+				dir++;if(dir==4)dir=0;
+				for(int right=c+1;right<maze[r].length;right++){
+					if(!isFree(input[r].charAt(right)))break;
+					maze[r][right] |= 1<<dir;
+				}
+				// DOWN
+				dir++;if(dir==4)dir=0;
+				for(int down=r+1;down<input.length;down++){
+					if(!isFree(input[down].charAt(c)))break;
+					maze[down][c] |= 1<<dir;
+				}
+				// LEFT
+				dir++;if(dir==4)dir=0;
+				for(int left=c-1;left>=0;left--){
+					if(!isFree(input[r].charAt(left)))break;
+					maze[r][left] |= 1<<dir;
+				}				
+			}
+		}
+		return maze;
+	}
+	
+	static boolean isFree(char c){
+		return c == '.' || c == 'S' || c == 'G';
+	}
+	
+	static class InputReader {
+		private InputStream stream;
+		private byte[] buf = new byte[1024];
+		private int curChar;
+		private int numChars;
+
+		public InputReader(InputStream stream) {
+			this.stream = stream;
+		}
+
+		public int read() {
+			if (numChars == -1)
+				throw new InputMismatchException();
+			if (curChar >= numChars) {
+				curChar = 0;
+				try {
+					numChars = stream.read(buf);
+				} catch (IOException e) {
+					throw new InputMismatchException();
+				}
+				if (numChars <= 0)
+					return -1;
+			}
+			return buf[curChar++];
+		}
+
+		public String readLine() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			StringBuilder res = new StringBuilder();
+			do {
+				res.appendCodePoint(c);
+				c = read();
+			} while (!isEndOfLine(c));
+			return res.toString();
+		}
+
+		public String readString() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			StringBuilder res = new StringBuilder();
+			do {
+				res.appendCodePoint(c);
+				c = read();
+			} while (!isSpaceChar(c));
+			return res.toString();
+		}
+
+		public long readLong() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			int sgn = 1;
+			if (c == '-') {
+				sgn = -1;
+				c = read();
+			}
+			long res = 0;
+			do {
+				if (c < '0' || c > '9')
+					throw new InputMismatchException();
+				res *= 10;
+				res += c - '0';
+				c = read();
+			} while (!isSpaceChar(c));
+			return res * sgn;
+		}
+
+		public int readInt() {
+			int c = read();
+			while (isSpaceChar(c))
+				c = read();
+			int sgn = 1;
+			if (c == '-') {
+				sgn = -1;
+				c = read();
+			}
+			int res = 0;
+			do {
+				if (c < '0' || c > '9')
+					throw new InputMismatchException();
+				res *= 10;
+				res += c - '0';
+				c = read();
+			} while (!isSpaceChar(c));
+			return res * sgn;
+		}
+
+		public boolean isSpaceChar(int c) {
+			return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+		}
+
+		public boolean isEndOfLine(int c) {
+			return c == '\n' || c == '\r' || c == -1;
+		}
+	}
+
+	static class OutputWriter {
+		private final PrintWriter writer;
+
+		public OutputWriter(OutputStream outputStream) {
+			writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(
+					outputStream)));
+		}
+
+		public OutputWriter(Writer writer) {
+			this.writer = new PrintWriter(writer);
+		}
+
+		public void print(Object... objects) {
+			for (int i = 0; i < objects.length; i++) {
+				if (i != 0)
+					writer.print(' ');
+				writer.print(objects[i]);
+			}
+		}
+
+		public void printLine(Object... objects) {
+			print(objects);
+			writer.println();
+		}
+
+		public void close() {
+			writer.close();
+		}
+	}
+}

@@ -1,0 +1,117 @@
+#include <cstdio>
+#include <iostream>
+#include <string>
+#include <string.h>
+#include <vector>
+
+#define ERROR 1234567890
+
+using namespace std;
+
+string maze[4][111];
+int visited[4][111][111];
+int m, n;
+int startX, startY, endX, endY;
+vector<pair<int, pair<int, int> > > turrets;
+
+int pos[4][2] = {{0,-1},{-1,0},{0,1},{1,0}};
+
+int dfs(int nowX, int nowY, int rotation) {
+
+  if (visited[rotation][nowX][nowY] != -1) return visited[rotation][nowX][nowY];
+  if (nowX == endX && nowY == endY) return 0;
+
+  int &result = visited[rotation][nowX][nowY];
+  result = ERROR;
+
+  for (int i = 0; i < 4; i++) {
+    int nextX = nowX + pos[i][0];
+    int nextY = nowY + pos[i][1];
+    int nextRotation = (rotation+1)%4;
+    if ( nextX < 0 || nextX >= m) continue;
+    if ( nextY < 0 || nextY >= n) continue;
+    if ( maze[nextRotation][nextX][nextY] == '#') continue;
+    if ( maze[nextRotation][nextX][nextY] == '<' || maze[nextRotation][nextX][nextY] == '^' ||
+	 maze[nextRotation][nextX][nextY] == '>' || maze[nextRotation][nextX][nextY] == 'v' ) continue;
+
+    // cout << "nextX : " << nextX << " nextY : " << nextY << " rotation : " << nextRotation << endl;
+    result = min(result, 1 + dfs(nextX, nextY, nextRotation));
+    // cout << "nextX : " << nextX << " nextY : " << nextY << " rotation : " << nextRotation << " result : " << result << endl;
+  }
+
+  return result;
+}
+
+int main() {
+
+  int testCase;
+  cin >> testCase;
+
+  for (int tc = 1; tc <= testCase; tc++) {
+    cin >> m >> n;
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < m; j++) {
+	for (int k = 0; k < n; k++) visited[i][j][k] = -1;
+      }
+    }
+
+    for (int i = 0; i < m; i++) {
+      cin >> maze[0][i];
+      maze[1][i] = maze[0][i];
+      maze[2][i] = maze[0][i];
+      maze[3][i] = maze[0][i];
+    }
+
+    for (int i = 0; i < m; i++) {
+      for (int j = 0; j < n; j++) {
+	if (maze[0][i][j] == 'S') {
+	  startX = i;
+	  startY = j;
+	} else if (maze[0][i][j] == 'G') {
+	  endX = i;
+	  endY = j;
+	} else if (maze[0][i][j] == '<') {
+	  turrets.push_back(make_pair(0, make_pair(i, j)));
+	} else if (maze[0][i][j] == '^') {
+	  turrets.push_back(make_pair(1, make_pair(i, j)));
+	} else if (maze[0][i][j] == '>') {
+	  turrets.push_back(make_pair(2, make_pair(i, j)));
+	} else if (maze[0][i][j] == 'v') {
+	  turrets.push_back(make_pair(3, make_pair(i, j)));
+	}
+      }
+    }
+
+    for (int i = 0; i < 4; i++) {
+      int sz = (int)turrets.size();
+      for (int j = 0; j < sz; j++) {
+	int dir = (turrets[j].first + i) % 4;
+	int tx = turrets[j].second.first;
+	int ty = turrets[j].second.second;
+	while(true) {
+	  tx += pos[dir][0];
+	  ty += pos[dir][1];
+	  if (tx < 0 || tx >= m) break;
+	  if (ty < 0 || ty >= n) break;
+	  if (maze[i][tx][ty] == '#') break;
+	  if (maze[i][tx][ty] == '<' || maze[i][tx][ty] == '^'
+	      || maze[i][tx][ty] == '>' || maze[i][tx][ty] == 'v') break;
+
+	  maze[i][tx][ty] = '#';
+	}
+      }
+    }
+
+    int result = dfs(startX, startY, 0);
+
+    printf("Case #%d: ", tc);
+    if (result == ERROR) {
+      cout << "impossible" << endl;
+    } else {
+      cout << result << endl;
+    }
+    turrets.clear();
+  }
+  return 0;
+}

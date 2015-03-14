@@ -1,0 +1,104 @@
+package fhc2015.qual;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class LaserMaze {
+    private static final int[] tbl = new int[128];
+    private static final int[] di = {0, 1, 0, -1};
+    private static final int[] dj = {1, 0, -1, 0};
+
+    static {
+        Arrays.fill(tbl, Integer.MIN_VALUE);
+        tbl['>'] = 0;
+        tbl['v'] = 1;
+        tbl['<'] = 2;
+        tbl['^'] = 3;
+    }
+
+    public static void main(final String... args) throws IOException {
+        final Scanner sc = new Scanner(new FileInputStream("laser_maze.txt"));
+//        final Scanner sc = new Scanner(System.in);
+        final PrintWriter pw = new PrintWriter("laser_maze.out");
+//        final PrintWriter pw = new PrintWriter(System.out, true);
+        final int T = sc.nextInt();
+        for (int t = 1; t <= T; t++) {
+            final int M = sc.nextInt();
+            final int N = sc.nextInt();
+            final char[][] map = new char[M][];
+            for (int i = 0; i < M; i++)
+                map[i] = sc.next().toCharArray();
+            final char[][][] maps = new char[4][M][N];
+            for (int k = 0; k < 4; k++)
+                for (int i = 0; i < M; i++)
+                    for (int j = 0; j < N; j++)
+                        maps[k][i][j] = map[i][j];
+            for (int k = 0; k < 4; k++)
+                for (int i = 0; i < M; i++)
+                    for (int j = 0; j < N; j++)
+                        if (tbl[map[i][j]] >= 0) {
+                            final int d = (tbl[map[i][j]] + k) & 3;
+                            maps[k][i][j] = '#';
+                            for (int l = 1; ; l++) {
+                                final int ni = i + l * di[d];
+                                final int nj = j + l * dj[d];
+                                if (ni < 0 || M <= ni || nj < 0 || N <= nj)
+                                    break;
+                                if (map[ni][nj] != '.' && map[ni][nj] != 'S' && map[ni][nj] != 'G')
+                                    break;
+                                maps[k][ni][nj] = '#';
+                            }
+                        }
+//            for (int k = 0; k < 4; k++) {
+//                for (int i = 0; i < M; i++)
+//                    System.err.println(maps[k][i]);
+//                System.err.println();
+//            }
+            final int[][][] dist = new int[4][M][N];
+            for (int k = 0; k < 4; k++)
+                for (int i = 0; i < M; i++)
+                    for (int j = 0; j < N; j++)
+                        dist[k][i][j] = k == 0 && map[i][j] == 'S' ? 0 : Integer.MAX_VALUE;
+            final Queue<Integer> que = new ArrayDeque<>();
+            for (int i = 0; i < M; i++)
+                for (int j = 0; j < N; j++)
+                    if (map[i][j] == 'S')
+                        que.offer(i * N + j);
+            while (!que.isEmpty()) {
+//                System.err.println(que);
+                final int q = que.poll();
+                final int k = q / M / N;
+                final int i = q / N % M;
+                final int j = q % N;
+                for (int d = 0; d < 4; d++) {
+                    final int nk = (k + 1) & 3;
+                    final int ni = i + di[d];
+                    final int nj = j + dj[d];
+                    if (0 <= ni && ni < M && 0 <= nj && nj < N)
+                        if (maps[nk][ni][nj] != '#' && dist[nk][ni][nj] > dist[k][i][j] + 1) {
+                            dist[nk][ni][nj] = dist[k][i][j] + 1;
+                            que.offer(nk * M * N + ni * N + nj);
+                        }
+                }
+            }
+//            for (int k = 0; k < 4; k++) {
+//                for (int i = 0; i < M; i++)
+//                    System.err.println(Arrays.toString(dist[k][i]));
+//                System.err.println();
+//            }
+            int ans = Integer.MAX_VALUE;
+            for (int k = 0; k < 4; k++)
+                for (int i = 0; i < M; i++)
+                    for (int j = 0; j < N; j++)
+                        if (map[i][j] == 'G')
+                            ans = Math.min(ans, dist[k][i][j]);
+            pw.printf("Case #%d: %s\n", t, ans == Integer.MAX_VALUE ? "impossible" : ans);
+        }
+        pw.flush();
+    }
+}

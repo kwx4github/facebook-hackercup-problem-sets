@@ -1,0 +1,318 @@
+//
+//  main.cpp
+//  Facebook1
+//
+//  Created by Shilpi Aggarwal on 10/01/15.
+//  Copyright (c) 2015 Adobe Systems. All rights reserved.
+//
+
+#include <iostream>
+#include <algorithm>
+#include <array>
+#include <vector>
+
+long int getNumber(int *arr, int numDigits)
+{
+    long int number = 0;
+    long int multiplyFactor = 1;
+    for (int i = numDigits - 1; i >= 0; i--)
+    {
+        number = number + arr[i] * multiplyFactor;
+        multiplyFactor = multiplyFactor * 10;
+    }
+    return number;
+}
+
+void mySwap(int *a, int *b)
+{
+    *a = *a + *b;
+    *b = *a - *b;
+    *a = *a - *b;
+}
+
+struct myStruct
+{
+    int mVal;
+    int mIndex;
+    
+    myStruct(int val, int index)
+    {
+        mVal = val;
+        mIndex = index;
+    }
+};
+
+int main(int argc, const char * argv[])
+{
+    int T;
+    
+    scanf("%d\n", &T);
+    int count = 0;
+    
+    while(T-- > 0)
+    {
+        count++;
+        
+        std::string outputStr("Case #");
+        
+        char caseNum[4] = "\0";
+        
+        sprintf(caseNum, "%d", count);
+        
+        outputStr += caseNum;
+        
+        outputStr += ": ";
+        
+        char numStr[10] = "\0";
+        scanf("%s", numStr);
+        int numDigits = strlen(numStr);
+        int digitArray[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1 };
+        
+        
+//        std::cout << '\n';
+        int i = 0;
+        char c = numStr[i];
+        int minIndex = -1;
+        int maxIndex = -1;
+        int minDigit = INT32_MAX;
+        int maxDigit = INT32_MIN;
+        // get the individual digits in the entered number. while getting these digits, store the max/min digit in the given number and their index as well.
+        while(c != '\0')
+        {
+            digitArray[i] = c - '0';
+            if (digitArray[i] <= minDigit && i != 0) // don't consider highest position digit for getting minDigit
+            {
+                minDigit = digitArray[i]; // we want the minDigit of all digits while going from right to left, the first digit of all min digits (if same digit is there multiple times)
+                minIndex = i;
+            }
+            
+            if (digitArray[i] >= maxDigit)
+            {
+                maxDigit = digitArray[i]; // we want the maxDigit of all digits while going from right to left, the first digit of all max digits (if same digit is there multiple times)
+                maxIndex = i;
+            }
+            
+            i++;
+            c = numStr[i];
+        }
+        
+        // Initializing the array with reverse as we want the sorted array from right to left index
+        std::vector<myStruct> sortedArray;
+        for (int i = 0; i < numDigits; i++)
+        {
+            sortedArray.push_back(myStruct(digitArray[numDigits - i - 1], numDigits - i - 1));
+        }
+        
+        // sort using the custom lambda
+        std::sort(sortedArray.begin(), sortedArray.end(), [](myStruct a, myStruct b) {
+            return a.mVal < b.mVal;
+        });
+//        for (myStruct a : sortedArray)
+//        {
+//            std::cout << a.mVal << " ";
+//        }
+        
+        bool swapped = false;
+        long int minNumber = getNumber(digitArray, numDigits);
+        long int maxNumber = minNumber;
+        // try to get the min number by swapping two digits of the given number
+        for (int i = 0; i < numDigits; i++)
+        {
+            int currDigit = digitArray[i];
+            // if the left side digit itself is small or same as the min digit then go to next element on right.
+            if (currDigit <= minDigit)
+            {
+                int j = 1;
+                while (j < numDigits && currDigit <= sortedArray[j].mVal)
+                {
+                    j++;
+                }
+                // if the min value comes after the curr digit then only swap them
+                if (sortedArray[j].mIndex > i && j < numDigits)
+                {
+                    mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+                    long int number = getNumber(digitArray, numDigits);
+                    if (number < minNumber)
+                    {
+                        minNumber = number;
+                    }
+                    // restore to get original number back
+                    mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+
+                    swapped = true;
+                }
+                continue;
+            }
+            else
+            {
+                if (i == 0 && minDigit == 0)
+                {
+                    // check between 3 numbers
+                    // 1. continue and get the number
+                    // 2. swap minDigit (0) with the next position digit till that digit itself is > 0.
+                    // 3. non-zero next min and first number
+
+                    // get case 2. number
+                    int j = i + 1;
+                    while (j < minIndex && digitArray[j] <= minDigit)
+                    {
+                        j++;
+                        continue;
+                    }
+                    if (j < minIndex)
+                    {
+                        mySwap(&digitArray[j], &digitArray[minIndex]);
+                        long int number = getNumber(digitArray, numDigits);
+                        if (number < minNumber)
+                        {
+                            minNumber = number;
+                        }
+                        // restore to get original number back
+                        mySwap(&digitArray[j], &digitArray[minIndex]);
+                        swapped = true;
+                    }
+
+                    // get second non-zero min
+                    int k = 1;
+                    while (k < numDigits && currDigit > sortedArray[k].mVal && sortedArray[k].mVal == 0)
+                    {
+                        k++;
+                    }
+                    // if the min value comes after the curr digit then only swap them
+                    if (sortedArray[k].mIndex > i && k < numDigits)
+                    {
+                        mySwap(&digitArray[i], &digitArray[sortedArray[k].mIndex]);
+                        long int number = getNumber(digitArray, numDigits);
+                        if (number < minNumber)
+                        {
+                            minNumber = number;
+                        }
+                        // restore to get original number back
+                        mySwap(&digitArray[i], &digitArray[sortedArray[k].mIndex]);
+
+                        swapped = true;
+                    }
+                }
+                else
+                {
+                    if (i < minIndex)
+                    {
+                        // keep getting case 1 numbers, till we break;
+                        mySwap(&digitArray[i], &digitArray[minIndex]);
+                        long int number = getNumber(digitArray, numDigits);
+                        if (number <= minNumber)
+                        {
+                            minNumber = number;
+                            swapped = true;
+                            break;
+                        }
+                    }
+                    else if (i > minIndex)
+                    {
+                        // get the next min and see if we can swap it with next min
+                        int j = 1;
+                        while (j < numDigits && (currDigit <= sortedArray[j].mVal || i > sortedArray[j].mIndex))
+                        {
+                            j++;
+                        }
+                        // if the min value comes after the curr digit then only swap them
+                        if (sortedArray[j].mIndex > i && currDigit > sortedArray[j].mVal && j < numDigits)
+                        {
+                            mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+                            long int number = getNumber(digitArray, numDigits);
+                            if (number < minNumber)
+                            {
+                                minNumber = number;
+                            }
+                            // restore to get original number back
+                            mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+
+                            swapped = true;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // try to get the max number
+        // try to get the max number by swapping two digits of the given number
+        for (int i = 0; i < numDigits; i++)
+        {
+            int currDigit = digitArray[i];
+            // if the left side digit itself is greater or same as the max digit then go to next element on right.
+            if (currDigit >= maxDigit)
+            {
+                int j = numDigits - 2;
+                while (j >= 0 && currDigit >= sortedArray[j].mVal)
+                {
+                    j--;
+                }
+                // if the max value comes after the curr digit then only swap them
+                if (sortedArray[j].mIndex > i && j >= 0)
+                {
+                    mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+                    long int number = getNumber(digitArray, numDigits);
+                    if (number > maxNumber)
+                    {
+                        maxNumber = number;
+                    }
+                    // restore to get original number back
+                    mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+                    
+                    swapped = true;
+                }
+                continue;
+            }
+            else
+            {
+                if (i < maxIndex)
+                {
+                    // keep getting case 1 numbers, till we break;
+                    mySwap(&digitArray[i], &digitArray[maxIndex]);
+                    long int number = getNumber(digitArray, numDigits);
+                    if (number >= maxNumber)
+                    {
+                        maxNumber = number;
+                        swapped = true;
+                        break;
+                    }
+                }
+                else if (i > maxIndex)
+                {
+                    // get the next max and see if we can swap it with next max
+                    int j = numDigits - 2;
+                    while (j >= 0 && (currDigit >= sortedArray[j].mVal || i > sortedArray[j].mIndex))
+                    {
+                        j--;
+                    }
+                    // if the min value comes after the curr digit then only swap them
+                    if (sortedArray[j].mIndex > i && currDigit < sortedArray[j].mVal && j >= 0)
+                    {
+                        mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+                        long int number = getNumber(digitArray, numDigits);
+                        if (number > maxNumber)
+                        {
+                            maxNumber = number;
+                        }
+                        // restore to get original number back
+                        mySwap(&digitArray[i], &digitArray[sortedArray[j].mIndex]);
+                        
+                        swapped = true;
+                    }
+                }
+            }
+        }
+        
+        outputStr += std::to_string(minNumber);
+        
+        outputStr += " ";
+        
+        outputStr += std::to_string(maxNumber);
+        
+        printf("%s\n", outputStr.c_str());
+//        printf("\n minNumber = %ld", minNumber);
+//        printf("\n maxNumber = %ld", maxNumber);
+    }
+    return 0;
+}
+

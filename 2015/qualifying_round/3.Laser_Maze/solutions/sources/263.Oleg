@@ -1,0 +1,174 @@
+#include <assert.h> 
+#include <ctype.h> 
+#include <float.h> 
+#include <math.h> 
+#include <stdio.h> 
+#include <string> 
+#include <stdlib.h> 
+#include <time.h> 
+#include <algorithm> 
+#include <numeric> 
+#include <functional> 
+#include <utility> 
+#include <vector> 
+#include <list> 
+#include <set> 
+#include <map> 
+#include <queue> 
+#include <stack> 
+#include <sstream> 
+#include <iostream> 
+#include <memory.h>
+
+using namespace std; 
+
+struct Pos {
+	int row, col;
+};
+int N, M;
+Pos start, goal;
+
+bool wall[100][100];
+int laser[100][100];
+
+char s[1001];
+enum LaserDir {
+	UP, RIGHT, DOWN, LEFT
+};
+int dx[] = {0, 1, 0, -1};
+int dy[] = {-1, 0, 1, 0};
+
+struct State {
+	Pos pos;
+	int shift;
+};
+int mem[100][100][4];
+
+bool HasWallOrLaser(int y, int x) {
+	if (x < 0 || x >= M) 
+		return true;
+	if (y < 0 || y >= N) 
+		return true;
+	if (wall[y][x]) {
+		return true;
+	}
+	if (laser[y][x] != -1) {
+		return true;
+	}
+	return false;
+}
+bool WillKill(int y, int x, int ly, int lx, int dir) {
+	for(;;) {
+		ly += dy[dir];
+		lx += dx[dir];
+		if (HasWallOrLaser(ly, lx))
+			return false;
+		if (ly == y && lx == x)
+			return true;
+	}
+	return false;
+}
+bool WillKill(const State& s) {
+	for (int j = 0; j < M; j++) {
+		int i = s.pos.row;
+		if (laser[i][j] != -1) {
+			if (WillKill(s.pos.row, s.pos.col, i, j, (s.shift + laser[i][j])%4)) {
+				return true;
+			}
+		}
+	}
+	for (int i = 0; i < N; i++) {
+		int j = s.pos.col;
+		if (laser[i][j] != -1) {
+			if (WillKill(s.pos.row, s.pos.col, i, j, (s.shift + laser[i][j])%4)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+int main(int argc, char* argv[]) {
+#ifdef LAPTOP
+	freopen("test.in", "r", stdin);
+	freopen("test.out", "w", stdout); 
+#endif
+
+	int T; 
+	scanf("%d", &T);
+	for (int n = 1; n <= T; n++) {
+		memset(laser, -1, sizeof(laser));
+		memset(wall, 0, sizeof(wall));
+		memset(mem, -1, sizeof(mem));
+
+		scanf("%d %d", &N, &M);
+		for (int i = 0; i < N; i++) {
+			scanf("%s", s);
+			for (int j = 0; j < M; j++) {
+				if (s[j] == 'S') {
+					start.row = i;
+					start.col = j;
+				} else if (s[j] == 'G') {
+					goal.row = i;
+					goal.col = j;
+				} else if (s[j] == '#') {
+					wall[i][j] = true;
+				} else if (s[j] == '^') {
+					laser[i][j] = UP;
+				} else if (s[j] == 'v') {
+					laser[i][j] = DOWN;
+				} else if (s[j] == '<') {
+					laser[i][j] = LEFT;
+				}else if (s[j] == '>') {
+					laser[i][j] = RIGHT;
+				} else if (s[j] == '.') {
+					
+				} else assert(false);
+			}
+		}
+
+		queue<State> q;
+		State s; s.pos = start; s.shift = 0;
+		mem[s.pos.row][s.pos.col][s.shift] = 0;
+		int res = -1;
+
+		q.push(s);
+		while (!q.empty()) {
+			s = q.front();
+			q.pop();
+			int mv = mem[s.pos.row][s.pos.col][s.shift];
+			if (s.pos.col == goal.col && s.pos.row == goal.row) {
+				res = mv;
+				break;
+			}
+
+			for (int k = 0; k < 4; k++) {
+				State ns;
+				ns.pos.col = s.pos.col + dx[k];
+				ns.pos.row = s.pos.row + dy[k];
+				ns.shift = (s.shift + 1) % 4;
+
+				if (HasWallOrLaser(ns.pos.row, ns.pos.col)) {
+					continue;
+				}
+				if (mem[ns.pos.row][ns.pos.col][ns.shift] != -1) {
+					continue;
+				}
+				mem[ns.pos.row][ns.pos.col][ns.shift] = mv + 1;
+				if (WillKill(ns))
+					continue;
+
+				q.push(ns);
+			}
+		}
+		if (res == -1) {
+			printf("Case #%d: impossible\n", n);
+
+		} else {
+			printf("Case #%d: %d\n", n, res);
+		}
+	}
+
+	return 0;
+}
+

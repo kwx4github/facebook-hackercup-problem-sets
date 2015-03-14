@@ -1,0 +1,131 @@
+package hackercup
+
+import scala.annotation.tailrec
+import scala.io.Source
+
+object Lazer extends App {
+  var source = Source.fromURL(getClass.getResource("/lazer.txt")).getLines().toList
+  val testCount = source.head.toInt
+  source = source.tail
+
+  val blocks = List('#', '<', '>', '^', 'v')
+  val freeToMove = List('G', '.')
+  val freeToStrike = List('G', '.', 'B')
+  var fringe = List.empty[(Int, Int, Int)]
+  var cache = Set.empty[(Int, Int, Int)]
+
+  def allMaps(map: Array[Array[Char]]): Map[Int, Array[Array[Char]]] = Range(0, 4).map {
+      r => r -> {
+        var rotatedMap = map
+        Range(0, r).foreach { _ =>
+          rotatedMap = rotateMap(rotatedMap)
+        }
+        prepMap(rotatedMap.map(_.clone()))
+      }
+    }.toMap
+
+  def prepMap(map: Array[Array[Char]], rotate: Int = 4): Array[Array[Char]] = {
+    var y = 0
+    var fireLeft = false
+    while (y < map.size) {
+      var x = 0
+      fireLeft = false
+      while (x < map.head.size) {
+        map(y)(x) match {
+          case ch if fireLeft && freeToStrike.contains(ch) => map(y)(x) = 'B'
+          case '>' => fireLeft = true
+          case ch  => fireLeft = false
+        }
+        x += 1
+      }
+      y += 1
+    }
+    if (rotate > 0) {
+      val rot = rotateMap(map)
+      prepMap(trans(rot), rotate - 1)
+    }
+    else map
+  }
+
+  def trans(map: Array[Array[Char]]) = Range(0, map.head.size).map { i =>
+    Range(0, map.size).reverse.map{ j =>
+      map(j)(i)
+    }.toArray
+  }.toArray
+
+  def rotateMap(map: Array[Array[Char]]): Array[Array[Char]] = map.map {
+      l => l.map {
+        case '<' => '^'
+        case '^' => '>'
+        case '>' => 'v'
+        case 'v' => '<'
+        case o => o
+      }.toArray
+    }.toArray
+
+
+  def unitIndex(map: Array[Array[Char]]) =
+    map.zipWithIndex.collectFirst{
+      case(line, index) if line.contains('S') => (index, line.zipWithIndex.collectFirst{
+        case('S', index2) => index2
+      }.get)
+    }.get
+
+  def deleteS(map: Array[Array[Char]], index: (Int, Int)) = map(index._1)(index._2) = '.'
+
+  def check(maps: Map[Int, Array[Array[Char]]], value: (Int, Int, Int)) = {
+    val tick = value._3 % 4
+    val key = (value._1, value._2, tick)
+    val map = maps(tick)
+    val res = !cache.contains(key) && value._1 >= 0 && value._1 < map.size &&
+      value._2 >= 0 && value._2 < map.head.size && freeToMove.contains(map(value._1)(value._2))
+    cache += key
+    res
+  }
+
+  def success(maps: Map[Int, Array[Array[Char]]], value: (Int, Int, Int)): Boolean = {
+    val tick = value._3 % 4
+    val map = maps(tick)
+
+    map(value._1)(value._2) == 'G'
+  }
+
+  def extend(maps: Map[Int, Array[Array[Char]]], position: (Int, Int, Int)) =
+    fringe = fringe ::: List((1, 0), (-1, 0), (0, 1), (0, -1)).map {
+      case(a, b) => (position._1 + a, position._2 + b, position._3 + 1)
+    }.filter(el => check(maps, el))
+
+  @tailrec
+  def solve(maps: Map[Int, Array[Array[Char]]]): Int = {
+    fringe.headOption match {
+      case None => -1
+      case Some((a, b, tick)) if success(maps, (a, b, tick)) => tick
+      case Some(value) =>
+        fringe = fringe.tail
+        extend(maps, value)
+        solve(maps)
+    }
+  }
+
+
+  val res = Range(0, testCount).map { _ =>
+    fringe = List.empty[(Int, Int, Int)]
+    cache = Set.empty[(Int, Int, Int)]
+    val linesCount = source.head.split(" ").head.toInt
+    source = source.tail
+    val res = source.splitAt(linesCount)
+    source = res._2
+    val lines = res._1.map(_.toCharArray).toArray
+    val index = unitIndex(lines)
+    deleteS(lines, index)
+    val m = allMaps(lines)
+    extend(m, (index._1, index._2, 0))
+    solve(m)
+  }.zipWithIndex.map{
+    case (-1, index) => s"Case #${index + 1}: impossible"
+    case (b, index) => s"Case #${index + 1}: $b"
+  }.mkString("\n")
+
+  println(res)
+
+}

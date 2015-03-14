@@ -1,0 +1,57 @@
+# Pass in lines via STDIN or pass file name as command-line argument
+gets
+c = 0
+
+def rotate(map)
+    map.map(&:chars).transpose.reverse.map(&:join)
+end
+
+while line = gets
+    h,w = *line.split.map(&:to_i)
+    map = ['#'*(w+2)]
+    start = {x:-1, y:-1}
+    goal = {x:-1, y:-1}
+    h.times {|y|
+        line = gets.chomp
+        start = {x: line.index('S')+1, y: y+1} if line['S']
+        goal = {x: line.index('G')+1, y: y+1} if line['G']
+        map.push('#' + line.tr('SG','.') + '#')
+    }
+    map.push '#'*(w+2)
+    space = []
+    4.times {
+        this_map = map.clone
+        4.times {
+            this_map = rotate(this_map).map{|line|line.tr('v<^>','>v<^').gsub(/[.](?=[.,]*<)/, ',')}
+        }
+        space.push(this_map.map{|line|line.gsub(/[,<>^v]/,'#')})
+
+        map.map!{|line|line.tr('v<^>','<^>v')}
+    }
+
+    distances = Hash.new(h*w*5)
+    start[:z] = 0
+    distances[start] = 0
+    to_check = [start]
+
+    result = false
+    while to_check != []
+        coord = to_check.shift
+        distance = distances[coord]+1
+        [[1,0],[0,1],[-1,0],[0,-1]].each{|dx, dy|
+            x = coord[:x] + dx
+            y = coord[:y] + dy
+            z = (coord[:z] + 1)%4
+            if space[z][y][x] == '.'
+                result = distance if goal[:x] == x && goal[:y] == y
+                new_coord = {x: x, y: y, z: z}
+                distances[new_coord] = distance
+                to_check.push new_coord
+                space[z][y][x] = '#'
+            end
+        }
+        break if result
+    end
+
+    puts "Case ##{c+=1}: #{result || 'impossible'}"
+end

@@ -1,0 +1,192 @@
+#include<iostream>
+#include<queue>
+#include<utility>
+
+using namespace std;
+
+char peta[105][105];
+bool isAllow[105][105][4];
+int start_x, start_y, end_x, end_y;
+int M, N;
+
+typedef struct {
+  int x;
+  int y;
+  int code;
+  int distance;
+} State;
+
+char rotate (char c) {
+    if (c == '^') return '>';
+    else if (c == '>') return 'v';
+    else if (c == 'v') return '<';
+    else if (c == '<') return '^';
+    else return c;
+}
+
+void precompute(int x, int y, int code, char c, int x_origin, int y_origin) {
+    if (peta[x][y] == '#') isAllow[x][y][code] = false;
+    else if (peta[x][y]  == '<' || peta[x][y]  == '^' || peta[x][y]  == '>' || peta[x][y]  == 'v') {
+        // check current position
+        isAllow[x][y][code] = false;
+        if (x == x_origin && y == y_origin) {
+            // start traversing
+            if (c == '<' && y > 0) precompute(x, y-1, code, c, x_origin, y_origin);
+            if (c == '^' && x > 0) precompute(x-1, y, code, c, x_origin, y_origin);
+            if (c == '>' && y < N-1) precompute(x, y+1, code, c, x_origin, y_origin);
+            if (c == 'v' && x < M-1) precompute(x+1, y, code, c, x_origin, y_origin);
+        }
+    } else if (peta[x][y] == '.') {
+        if (c == '<' || c == '^' || c == '>' || c == 'v') {
+            isAllow[x][y][code] = false;
+            // start traversing
+            if (c == '<' && y > 0) precompute(x, y-1, code, c, x_origin, y_origin);
+            if (c == '^' && x > 0) precompute(x-1, y, code, c, x_origin, y_origin);
+            if (c == '>' && y < N-1) precompute(x, y+1, code, c, x_origin, y_origin);
+            if (c == 'v' && x < M-1) precompute(x+1, y, code, c, x_origin, y_origin);
+        }
+    }
+}
+
+int main() {
+    int T;
+
+    cin >> T;
+
+    for (int i = 1; i <= T; i++) {
+        int results = 0;
+        bool isPossible = false;
+        bool isReached[40005];
+
+        for (int j = 0; j < 40005; j++) isReached[j] = false;
+
+        for (int j = 0; j < 105; j++)
+        for (int k =0; k < 105; k++)
+        for (int l = 0; l < 4; l++)
+            isAllow[j][k][l] = true;
+
+        cin >> M >> N;
+
+        for (int j = 0; j < M; j++)
+        for (int k = 0; k < N; k++) {
+            cin >> peta[j][k];
+            if (peta[j][k] == 'S') {
+                start_x = j;
+                start_y = k;
+                peta[j][k] = '.';
+            }
+            if (peta[j][k] == 'G') {
+                end_x = j;
+                end_y = k;
+                peta[j][k] = '.';
+            }
+        }
+
+        // Pre-compute laser block (4 states)
+        for (int j = 0; j < M; j++)
+        for (int k = 0; k < N; k++) {
+            char temp = peta[j][k];
+            for (int l = 0; l < 4; l++) {
+                precompute(j, k, l, temp, j, k);
+                temp = rotate(temp);
+            }
+        }
+
+        /*
+        for (int l = 0; l < 4; l++) {
+        for (int j = 0; j < M; j++)
+        for (int k = 0; k < N; k++) {
+            if (isAllow[j][k][l]) cout <<".";
+            else cout <<"#";
+            if (k == N - 1) cout << endl;
+        }
+            cout << "--" << endl;
+        }
+        */
+
+        // BFS with state checking (100 * 100 * 4 states)
+        queue<State> q;
+        State init;
+        init.x = start_x;
+        init.y = start_y;
+        init.code = 0;
+        init.distance = 0;
+        q.push(init); // initial state
+        isReached[start_x * 100 + start_y] = true;
+
+        while (!q.empty()) {
+            State current = q.front();
+            q.pop(); // pop
+            if (current.x == end_x && current.y == end_y) {
+                results = current.distance;
+                isPossible = true;
+                break;
+            }
+            int next_code = (current.code + 1) % 4;
+            // Next State : Up
+            if (current.x > 0) {
+                if (isAllow[current.x-1][current.y][next_code]) {
+                    State next_state;
+                    next_state.x = current.x - 1;
+                    next_state.y = current.y;
+                    next_state.code = next_code;
+                    next_state.distance = current.distance + 1;
+                    if (!isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y]) {
+                        q.push(next_state);
+                        isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y] = true;
+                    }
+                }
+            }
+            // Next State : Right
+            if (current.y < N-1) {
+                if (isAllow[current.x][current.y+1][next_code]) {
+                    State next_state;
+                    next_state.x = current.x;
+                    next_state.y = current.y + 1;
+                    next_state.code = next_code;
+                    next_state.distance = current.distance + 1;
+                    if (!isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y]) {
+                        q.push(next_state);
+                        isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y] = true;
+                    }
+                }
+            }
+            // Next State : Down
+            if (current.x < M-1) {
+                if (isAllow[current.x+1][current.y][next_code]) {
+                    State next_state;
+                    next_state.x = current.x + 1;
+                    next_state.y = current.y;
+                    next_state.code = next_code;
+                    next_state.distance = current.distance + 1;
+                    if (!isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y]) {
+                        q.push(next_state);
+                        isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y] = true;
+                    }
+                }
+            }
+            // Next State : Left
+            if (current.y > 0) {
+                if (isAllow[current.x][current.y-1][next_code]) {
+                    State next_state;
+                    next_state.x = current.x;
+                    next_state.y = current.y - 1;
+                    next_state.code = next_code;
+                    next_state.distance = current.distance + 1;
+                    if (!isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y]) {
+                        q.push(next_state);
+                        isReached[next_state.code * 10000 + next_state.x * 100 + next_state.y] = true;
+                    }
+                }
+            }
+        }
+
+        cout << "Case #" << i << ": ";
+        if (isPossible) cout << results;
+        else cout << "impossible";
+        cout << endl;
+    }
+
+    return 0;
+}
+/** Created by freedomofkeima */

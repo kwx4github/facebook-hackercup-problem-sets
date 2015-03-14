@@ -1,0 +1,42 @@
+﻿module Main where
+
+import System.Environment (getArgs)
+import Data.List
+import Data.Char (isAlpha, toLower)
+
+main :: IO ()
+main = do
+  [fileIn, fileOut] <- getArgs
+  (_:lns) <- fmap lines $ readFile fileIn
+  let out = zipWith caseNr [1..] . map process . mkCases . map (map read . words) $ lns
+  writeFile fileOut $ unlines out
+
+caseNr :: Int -> Bool -> String
+caseNr n b = "Case #" ++ show n ++ ": " ++ post b
+  where post True = "yes"
+        post False = "no"
+
+data Case = Case { goal :: (Int,Int,Int), foods :: [(Int,Int,Int)] }
+
+mkCases :: [[Int]] -> [Case]
+mkCases [] = []
+mkCases (g:[n]:rest) = let (foods,next) = splitAt n rest
+                       in Case (toTriple g) (map toTriple foods) : mkCases next
+  where toTriple [x,y,z] = (x,y,z)
+
+process :: Case -> Bool
+process (Case goal foods) = not . null $ process' goal foods
+
+process' (0,0,0) _ = [()]
+process' (g1,g2,g3) _ | g1 < 0 = []
+                      | g2 < 0 = []
+                      | g3 < 0 = []
+process' g foods = do
+  (f,fs) <- pick foods
+  process' (subTriplet g f) fs
+  
+subTriplet (x1,x2,x3) (y1,y2,y3) = (x1-y1,x2-y2,x3-y3)
+
+pick :: [a] -> [(a,[a])]
+pick [] = []
+pick (x:xs) = (x,xs) : map (\ ~(y,ys) -> (y,x:ys)) (pick xs)

@@ -1,0 +1,118 @@
+#include <cstdio>
+#include <algorithm>
+#include <cstring>
+#include <queue>
+#include <vector>
+using namespace std;
+
+int M, N;
+char maze[100][110];
+int valid[100][100][4];
+
+int dy[4] = {-1, 0, 1, 0};
+int dx[4] = {0, 1, 0, -1};
+
+struct pos {
+	pos(int y_, int x_, int dist_) {
+		y = y_;
+		x = x_;
+		dist = dist_;
+	}
+	int y, x, dist;
+};
+
+bool isWalkable(char x) {
+	return x != '#' && x != '^' && x != '<' && x != '>' && x != 'v';
+}
+
+int go(void) {
+	for (int i = 0; i < M; i++) {
+		for (int j = 0; j < N; j++) {
+			for (int k = 0; k < 4; k++) {
+				if (isWalkable(maze[i][j]))
+					valid[i][j][k] = 987654321;
+				else
+					valid[i][j][k] = -1;
+			}
+		}
+	}
+	for (int i = 0; i < M; i++) {
+		for (int j = 0; j < N; j++) {
+			if (isWalkable(maze[i][j]) || maze[i][j] == '#')
+				continue;
+			int k = 0;
+			if (maze[i][j] == '^')
+				k = 0;
+			else if (maze[i][j] == '>')
+				k = 1;
+			else if (maze[i][j] == 'v')
+				k = 2;
+			else if (maze[i][j] == '<')
+				k = 3;
+			for (int kk = 0; kk < 4; kk++) {
+				int way = (k + kk) % 4;
+				int wy = i + dy[way];
+				int wx = j + dx[way];
+				while (0 <= wy && wy < M && 0 <= wx && wx < N && isWalkable(maze[wy][wx])) {
+					valid[wy][wx][kk] = -1;
+					wy += dy[way];
+					wx += dx[way];
+				}
+			}
+		}
+	}
+
+	queue <pos> Q;
+
+	for (int i = 0; i < M; i++) {
+		for (int j = 0; j < N; j++) {
+			if (maze[i][j] == 'S') {
+				valid[i][j][0] = 0;
+				Q.push(pos(i, j, 0));
+			}
+		}
+	}
+
+	while (!Q.empty()) {
+		pos X = Q.front();
+		Q.pop();
+		int y = X.y;
+		int x = X.x;
+		int dist = X.dist;
+
+		if (maze[y][x] == 'G')
+			return dist;
+
+		for (int k = 0; k < 4; k++) {
+			int wy = y + dy[k];
+			int wx = x + dx[k];
+			if (0 <= wy && wy < M && 0 <= wx && wx < N && isWalkable(maze[wy][wx]) && valid[wy][wx][(dist + 1) % 4] != -1) {
+				if (valid[wy][wx][(dist + 1) % 4] > dist + 1) {
+					valid[wy][wx][(dist + 1) % 4] = dist + 1;
+					Q.push(pos(wy, wx, dist + 1));
+				}
+			}
+		}
+	}
+	return -1;
+}
+
+
+int main(void) {
+	int testnum;
+	scanf("%d", &testnum);
+	for (int testcase = 1; testcase <= testnum; testcase ++) {
+		scanf("%d %d", &M, &N);
+		for (int i = 0; i < M; i++) {
+			scanf("%s", maze[i]);
+		}
+
+		int ans = go();
+		printf("Case #%d: ", testcase);
+		if (ans == -1)
+			printf("impossible\n");
+		else
+			printf("%d\n", ans);
+	}
+	return 0;
+}

@@ -1,0 +1,205 @@
+package qualification;
+
+import java.io.*;
+import java.util.*;
+
+public class LaserMaze {
+	
+	static final String INPUT = "laser_maze.txt";
+	static final String OUTPUT = "laser_maze_out.txt";
+
+	static BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+	static PrintWriter out = new PrintWriter(new BufferedOutputStream(System.out), true);
+	static StringTokenizer st = new StringTokenizer("");
+
+	public static String next() {
+		try	{
+		while (!st.hasMoreTokens()) {
+			String s = br.readLine();
+			if (s == null)
+				return null;
+			st = new StringTokenizer(s);
+		}
+		return st.nextToken();
+		}	catch(Exception e)	{
+			return	null;
+		}
+	}
+
+	public static void main(String[] args) throws FileNotFoundException {
+
+		
+		br = new BufferedReader( new InputStreamReader(new FileInputStream(INPUT)) );
+		out = new PrintWriter( new FileOutputStream(OUTPUT) );
+		
+		int CASES = Integer.parseInt( next() );
+		for (int cc = 1; cc <= CASES; cc++)	{
+			
+			N = Integer.parseInt( next() );
+			M = Integer.parseInt( next() );
+			
+			char [][] maze = new char [N][];
+			for (int i = 0; i < N; i++)
+				maze[i] = next().toCharArray();
+			
+			int row = 0, col = 0;
+			// find start
+			for (int i = 0; i < N; i++)	for (int k = 0; k < M; k++)	if	( maze[i][k] == 'S' )	{
+				row = i;
+				col = k;
+				break;
+			}
+			maze[row][col] = EMPTY;
+			State start = new State( 0, row, col, 0 );
+			
+			// find goal
+			for (int i = 0; i < N; i++)	for (int k = 0; k < M; k++)	if	( maze[i][k] == 'G' )	{
+				row = i;
+				col = k;
+				break;
+			}
+			maze[row][col] = EMPTY;
+			State end = new State( 1, row, col, 0 );
+			
+			// build mazes
+			char [][][] mazes = new char [4][N][M];
+			for (int i = 0; i < 4; i++)	{
+				mazes[i] = clone(maze);
+				fill( mazes[i] );
+				rotate( maze );
+				
+				/*
+				out.println();
+				out.println( "maze " + i );
+				for (char [] v : mazes[i])	out.println( new String(v) );
+				*/
+			}
+			
+			int cnt = solve(mazes, start, end);
+			String ans = cnt + "";
+			if	( cnt < 0 )
+				ans = "impossible";
+			
+			out.println( "Case #" + cc + ": " + ans );
+		}
+		
+
+		//
+		out.flush();
+		out.close();
+	}
+	
+	static int solve(char [][][] mazes, State start, State end)	{
+		
+		int [][][] ans = new int [4][N][M];
+		for (int [][] m : ans)	for (int [] a : m)	Arrays.fill(a, -1);
+		
+		Queue<State> q = new LinkedList<State>();
+		q.add(start);
+		ans[ start.maze ][start.row][start.col] = 0;
+		while	( !q.isEmpty() )	{
+			State curr = q.poll();
+	//		out.println(curr);
+			
+			if	( curr.row == end.row && curr.col == end.col )
+				return	curr.moves;
+			
+			int nMaze = (curr.maze + 1) % 4;
+			for (int i = 0; i < dr.length; i++)	{
+				int row = curr.row + dr[i];
+				int col = curr.col + dc[i];
+				
+				if	( row < 0 || col < 0 || row >= N || col >= M )
+					continue;	//outside
+				
+				if	( ans[nMaze][row][col] >= 0 )
+					continue;	// visited
+				
+				if	( mazes[nMaze][row][col] != EMPTY )
+					continue;	// wall or dead
+				
+				q.add( new State(nMaze, row, col, curr.moves + 1) );
+				ans[ nMaze ][row][col] = curr.moves + 1;
+			}
+		}
+		
+		return	-1;
+	}
+	
+	static int [] dr = { 1, -1, 0, 0 };
+	static int [] dc = { 0, 0, 1, -1 };
+	static int N, M;
+
+	static boolean canPutLaser(char pos)	{
+		return	pos == EMPTY || pos == LASER;
+	}
+	static void fill(char [][] maze)	{
+		for (int i = 0; i < N; i++)	for (int k = 0; k < M; k++)	{
+			switch (maze[i][k])	{
+			case UP:
+				for (int row = i - 1; row >= 0 && canPutLaser(maze[row][k]); row--)
+					maze[row][k] = LASER;
+			break;
+			
+			case RIGHT:
+				for (int col = k + 1; col < M && canPutLaser( maze[i][col] ); col++)
+					maze[i][col] = LASER;
+			break;
+			
+			case DOWN:
+				for (int row = i + 1; row < N && canPutLaser( maze[row][k] ); row++)
+					maze[row][k] = LASER;
+			break;
+			
+			case LEFT:
+				for (int col = k - 1; col >= 0 && canPutLaser( maze[i][col] ); col--)
+					maze[i][col] = LASER;
+			break;
+			}
+		}
+	}
+	
+	
+	static void rotate(char [][] maze)	{
+		for (int i = 0; i < N; i++)	for (int k = 0; k < M; k++)
+			maze[i][k] = next(maze[i][k]);
+	}
+	
+	
+	static char[][] clone(char [][] maze)	{
+		char [][] m = new char [maze.length][maze[0].length];
+		for (int i = 0; i < maze.length; i++)	for (int k = 0; k < maze[0].length; k++)
+			m[i][k] = maze[i][k];
+		return	m;
+	}
+	
+	final static char WALL = '#', EMPTY = '.', UP = '^', DOWN = 'v', LEFT = '<', RIGHT = '>', LASER = 'X';
+	
+	static char next(char pos)	{
+		switch (pos)	{
+		case UP:
+			return	RIGHT;
+		case RIGHT:
+			return	DOWN;
+		case DOWN:
+			return	LEFT;
+		case LEFT:
+			return	UP;
+		}
+		return	pos;
+	}
+	
+	static class State {
+		int maze, row, col, moves;
+		State(int maze, int row, int col, int moves)	{
+			this.maze = maze % 4;
+			this.row = row;
+			this.col = col;
+			this.moves = moves;
+		}
+		public String toString()	{
+			return	moves + ": " + maze + " - (" + row + ", " + col + ")";
+		}
+	}
+	
+}

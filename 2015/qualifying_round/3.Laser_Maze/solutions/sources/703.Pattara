@@ -1,0 +1,156 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<vector>
+#include<string>
+#include<iostream>
+#include<queue>
+using namespace std;
+
+vector < string > board;
+string dir="<^>v";
+int dx[4]={0,1,0,-1};
+int dy[4]={1,0,-1,0};
+void printBoard(vector<string> &b){
+    printf("-----------------\n");
+    for(int i = 0 ; i < b.size() ; ++ i ){
+        cout << b[i] << endl;
+    }
+    printf("-----------------\n");
+}
+void turnBoard(vector<string> &b){
+    for(int i = 0 ; i < b.size() ; ++ i ){
+        for(int j = 0 ; j < b[i].size() ; ++ j ){
+            for(int k = 0 ; k < 4 ; ++ k ){
+                if(b[i][j]==dir[k]){
+                    b[i][j]=dir[ (k+1)&3];
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void fillForbidArray(vector<string> &b , vector<vector<int> > &toFill){
+    for(int i = 0 ; i < b.size() ; ++ i ){
+        for(int j = 0 ; j < b[i].size() ; ++ j ){
+            if(b[i][j]=='S'||b[i][j]=='G'||b[i][j]=='.'){
+                toFill[i][j]=1;
+                for(int k = 0 ; k < 4 ; ++ k ){
+
+                    for(int d=1;i+d*dx[k]>=0&&j+d*dy[k]>=0 && i +d*dx[k] < b.size() && j + d*dy[k] < b[i].size() ; ++ d){
+                        char c =b[i+d*dx[k]][j+d*dy[k]];
+                        if(c == '.' || c == 'S' || c == 'G' ){
+                            continue;
+                        }
+                        else {
+                            if( c == dir[k] ) {
+                                //printf("%d %d %d %d %c\n",i,j,i+d*dx[k],j+d*dy[k],c);
+                                toFill[i][j]=0;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            else toFill[i][j]=0;
+        }
+    }
+}
+int inf = 100000000;
+void solve(){
+    int n,m;
+    scanf("%d %d",&n,&m);
+    board = vector< string > (n, "");
+    for(int i = 0 ; i <n ; ++ i ){
+        string line;
+        cin>> line;
+        board[i]=line;
+    }
+    vector<vector<int> > ok[4];
+    vector<vector<int> > dist[4];
+    for(int k = 0 ; k < 4 ; ++ k ){
+        //printBoard(board);
+        ok[k] = vector< vector<int> > (n , vector<int> ( m ,0 ) ) ;
+        dist[k] =  vector< vector<int> > (n , vector<int> ( m ,inf ) ) ;
+        fillForbidArray(board,ok[k]);
+        turnBoard(board);
+    }
+    int gx,gy;
+    queue< pair<int , pair<int,int > >  > q;
+    for(int i = 0 ; i < n ; ++ i ){
+        for(int j = 0 ; j < m ; ++ j ){
+            if(board[i][j]=='S'){
+                dist[0][i][j]=0;
+                /*if(!ok[0][i][j]){
+                    printf("impossible\n");
+                    return ;
+                }*/
+                q.push(make_pair(0,make_pair(i,j)));
+            }
+            if(board[i][j]=='G'){
+                gx=i;gy=j;
+            }
+        }
+    }
+/*
+    for(int d = 0 ; d < 4 ; ++ d ){
+        for(int i = 0 ; i< n ; ++ i ){
+            for(int j = 0 ; j < m ; ++ j ){
+                printf("%d",ok[d][i][j]);
+            }
+            printf("\n");
+        }
+        printf("===============\n");
+    }
+*/
+    while(!q.empty()){
+        pair<int,pair<int ,int > > cur = q.front();
+        q.pop();
+        int dir = cur.first;
+        int ndir= (dir+1)&3;
+        int x = cur.second.first;
+        int y=  cur.second.second;
+        for(int d = 0 ; d < 4 ; ++ d ){
+            int nx=x+dx[d];
+            int ny=y+dy[d];
+            if(nx<0||nx>=n||ny<0||ny>=m)continue;
+            if(ok[ndir][nx][ny] && dist[ndir][nx][ny] == inf ){
+                dist[ndir][nx][ny]=dist[dir][x][y]+1;
+                q.push( make_pair(ndir,make_pair(nx,ny) ) ) ;
+            }
+        }
+    }
+    /*
+    printf("#################\n");
+     for(int d = 0 ; d < 4 ; ++ d ){
+        for(int i = 0 ; i< n ; ++ i ){
+            for(int j = 0 ; j < m ; ++ j ){
+
+                printf("%d ",dist[d][i][j]==inf?-1:dist[d][i][j]);
+            }
+            printf("\n");
+        }
+        printf("===============\n");
+    }
+    */
+    int ans = inf;
+    for(int d = 0 ; d < 4 ; ++ d ){
+        ans=min(ans,dist[d][gx][gy]);
+    }
+    if(ans==inf){
+        printf("impossible\n");
+    }
+    else printf("%d\n",ans);
+
+}
+
+int main(){
+    freopen("laser_maze"".txt","r",stdin);
+    freopen("laser_maze"".out","w",stdout);
+    int n;
+    scanf("%d",&n);
+    for(int i = 1 ; i <= n ; ++ i ){
+        printf("Case #%d: ",i);
+        solve();
+    }
+}

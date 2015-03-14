@@ -1,0 +1,133 @@
+#include<cstdio>
+#include<cstring>
+
+#include<utility>
+#include<queue>
+
+using namespace std;
+
+typedef pair<int,int> pii;
+typedef pair<pii, pii> ppi;
+
+#define F                            first
+#define S                            second
+#define MAX                          128
+char inp[4][MAX][MAX];
+char realinp[MAX][MAX];
+char vis[4][MAX][MAX];
+void preprocess(int m, int n)
+{
+   memset(vis,0,sizeof(vis));
+   char next[128]={};
+   next['.']='.';
+   next['G']='G';
+   next['S']='S';
+   next['#']='#';
+   next['^']='>';
+   next['>']='v';
+   next['v']='<';
+   next['<']='^';
+   char canpass[128]={};
+   canpass['.']=1;
+   canpass['S']=1;
+   canpass['G']=1;
+   for(int i=0;i<m;i++)
+      strcpy(realinp[i],inp[0][i]);
+   for(int cur=1;cur<4;++cur)
+      for(int i=0;i<m;i++)
+         for(int j=0;j<n;j++){
+            char &pt =inp[cur][i][j];
+            pt = inp[cur-1][i][j];
+            pt = next[pt];
+         }
+   for(int cur=0;cur<4;++cur)
+      for(int i=0;i<m;i++)
+         for(int j=0;j<n;j++){
+            char &pt =inp[cur][i][j];
+            if     (pt=='.') continue;
+            else if(pt=='G') continue;
+            else if(pt=='S') continue;
+            else if(pt=='#') continue;
+            else if(pt=='^')
+               for(int k=i-1;(k>=0)&&canpass[realinp[k][j]];--k)
+                  inp[cur][k][j]='#';
+            else if(pt=='>')
+               for(int k=j+1;(k<n)&&canpass[realinp[i][k]];++k)
+                  inp[cur][i][k]='#';
+            else if(pt=='v')
+               for(int k=i+1;(k<m)&&canpass[realinp[k][j]];++k)
+                  inp[cur][k][j]='#';
+            else if(pt=='<')
+               for(int k=j-1;(k>=0)&&canpass[realinp[i][k]];--k)
+                  inp[cur][i][k]='#';
+            pt='#';
+         }
+   //printf("\n");   for(int cur=0;cur<4;++cur){      for(int i=0;i<m;i++)         printf("%s\n",inp[cur][i]);      printf("\n");   }
+}
+ppi mppi(int x, int y, int z, int w)
+{
+   return ppi(pii(x,y),pii(z,w));
+}
+int main()
+{
+   int cases,casectr;
+   int drow[4]={-1,-0,+0,+1};
+   int dcol[4]={-0,-1,+1,+0};
+   for(scanf("%d",&cases),casectr=1;casectr<=cases;++casectr){
+      printf("Case #%d: ",casectr);
+      int m,n;
+      scanf("%d%d",&m,&n);
+      for(int i=0;i<m;++i)
+         scanf("%s",inp[0][i]);
+      int sr,sc,er,ec;
+      for(int i=0;i<m;++i)
+         for(int j=0;j<n;++j)
+            if(inp[0][i][j]=='S'){
+               sr=i;
+               sc=j;
+            }
+            else if(inp[0][i][j]=='G'){
+               er=i;
+               ec=j;
+            }
+      //S and G can't be at the same place
+      preprocess(m,n);
+      queue<ppi> q;
+      //printf("m = %d, n = %d\n",m,n);      printf("sr = %d, sc %d\n",sr,sc);
+      q.push(mppi(0,0,sr,sc));
+      vis[0][sr][sc]=1;
+      //start BFS
+      int ans=-1;
+      while(!q.empty()){
+         ppi curr=q.front();
+         q.pop();
+         int row=curr.S.F;
+         int col=curr.S.S;
+         int fr=curr.F.F;
+         int dist = curr.F.S;
+         //printf("at row %d,  col %d, fr %d, dist %d\n",row,col,fr,dist);
+         if((row==er)&&(col==ec)){
+            ans = dist;
+            break;
+         }
+         for(int i=0;i<4;++i){
+            int newrow=row+drow[i];
+            int newcol=col+dcol[i];
+            int newfr=(fr+1)&3;
+            if(newrow<0) continue;
+            if(newcol<0) continue;
+            if(newrow>=m) continue;
+            if(newcol>=n) continue;
+            if(vis[newfr][newrow][newcol]) continue;
+            vis[newfr][newrow][newcol] = 1;
+            if(inp[newfr][newrow][newcol]=='#') continue;
+            q.push(mppi(newfr,dist+1,newrow,newcol));
+         }
+      }
+      if(ans!=-1)
+         printf("%d\n",ans);
+      else 
+         printf("impossible\n");
+   }
+   return 0;
+}

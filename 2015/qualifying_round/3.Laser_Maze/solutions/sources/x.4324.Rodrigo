@@ -1,0 +1,215 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+typedef pair<int, int> ii;
+
+vector<string> mapa[4];
+vector<ii> turrets;
+queue< pair<int, ii> > q;
+int dir[4][2] = {{0, 1}, {0, -1}, {-1, 0}, {1, 0}};
+
+char rotate(char x)
+{
+	if (x == 'v')
+		return '<';
+		
+	if (x == '<')
+		return '^';
+	
+	if (x == '^')
+		return '>';
+	
+	if (x == '>')
+		return 'v'; 
+}
+
+void mapa_process(int M, int N, int turn)
+{
+	int i, j;
+	int X;
+	for (i=0; i< turrets.size(); i++)
+	{
+		for (j=0; j<turn; j++)
+			mapa[turn][turrets[i].first][turrets[i].second] = rotate(mapa[turn][turrets[i].first][turrets[i].second]);
+			
+		if(mapa[turn][turrets[i].first][turrets[i].second] == '<')
+		{
+			X = turrets[i].second - 1;
+			while (X >= 0 && (mapa[turn][turrets[i].first][X] == '.' || mapa[turn][turrets[i].first][X] == 'S' || mapa[turn][turrets[i].first][X] == 'G'))
+			{
+				mapa[turn][turrets[i].first][X] = '@';
+				X--;
+			}
+		}
+		else if (mapa[turn][turrets[i].first][turrets[i].second] == '>')
+		{
+			X = turrets[i].second + 1;
+			while (X < N && (mapa[turn][turrets[i].first][X] == '.' || mapa[turn][turrets[i].first][X] == 'S' || mapa[turn][turrets[i].first][X] == 'G'))
+			{
+				mapa[turn][turrets[i].first][X] = '@';
+				X++;
+			}
+		}
+		else if (mapa[turn][turrets[i].first][turrets[i].second] == '^')
+		{
+			X = turrets[i].first - 1;
+			while (X >= 0 && (mapa[turn][X][turrets[i].second] == '.' || mapa[turn][X][turrets[i].second] == 'S' || mapa[turn][X][turrets[i].second] == 'G'))
+			{
+				mapa[turn][X][turrets[i].second] = '@';
+				X--;
+			}
+		}
+		else if (mapa[turn][turrets[i].first][turrets[i].second] == 'v')
+		{
+			X = turrets[i].first + 1;
+			while (X < M && (mapa[turn][X][turrets[i].second] == '.' || mapa[turn][X][turrets[i].second] == 'S' || mapa[turn][X][turrets[i].second] == 'G'))
+			{
+				mapa[turn][X][turrets[i].second] = '@';
+				X++;
+			}
+		}
+		
+	}
+}
+
+void mapa_print(int turn) /*for testing purposes only*/
+{
+	int i;
+	for (i=0; i < mapa[turn].size(); i++)
+	{
+		cout << mapa[turn][i];
+		printf("\n");
+	}
+	printf("\n");
+}
+
+int BFS(int curL, int curC, int goalL, int goalC, int M, int N)
+{
+	int nextL, nextC;
+	int nextMap;
+	int curMap = 0;
+	int ans;
+	int** v[4];
+	int i, j, k;
+	
+	for (i=0; i<4; i++)
+	{
+		v[i] = (int**) malloc(sizeof(int*)*M);
+		for (j=0; j<M; j++)
+		{
+			v[i][j] = (int*) malloc(sizeof(int)*N);
+			for (k=0; k<N; k++)
+				v[i][j][k] = -1;
+		}
+	}
+		
+	
+	q.push(make_pair(curMap, make_pair(curL, curC)));
+	v[curMap][curL][curC] = 0;
+	
+	while(!q.empty())
+	{
+		curL = q.front().second.first;
+		curC = q.front().second.second;
+		curMap = q.front().first;
+		q.pop();
+		
+		
+		for (i=0; i<4; i++)
+		{
+			nextL = curL + dir[i][0];
+			nextC = curC + dir[i][1];
+			nextMap = (curMap+1)%4;
+			if (nextL >=0 && nextL < M && nextC >= 0 && nextC < N && (mapa[nextMap][nextL][nextC] == '.' || mapa[nextMap][nextL][nextC] == 'S' || mapa[nextMap][nextL][nextC] == 'G'))
+			{
+				if (v[nextMap][nextL][nextC] == -1)
+				{
+					q.push(make_pair(nextMap, make_pair(nextL, nextC)));
+					v[nextMap][nextL][nextC] = v[curMap][curL][curC]+1;
+				}
+			}
+		}
+	}
+	ans = -1;
+	for (i=0; i<4; i++)
+	{
+		if (v[i][goalL][goalC] != -1)
+		{
+			ans = (ans > v[i][goalL][goalC] || ans == -1) ? v[i][goalL][goalC] : ans;
+		}
+	}
+	
+	for (i=0; i<4; i++)
+	{
+		for (j=0; j<M; j++)
+		{
+			free(v[i][j]);
+		}
+		free(v[i]);
+	}
+	
+	return ans;
+}
+
+int main()
+{
+	int T, N, M;
+	int c = 1;
+	int i, j, len;
+	int ans;
+	string str;
+	ii start, goal;
+	
+	cin >> T;
+	while (c <= T)
+	{
+		cin >> M >> N;
+		for (i=0; i<M; i++)
+		{
+			cin >> str;
+			for (j=0; j<4; j++)
+				mapa[j].push_back(str);
+
+			len = str.size();
+			for (j=0; j<len; j++)
+			{
+				if (mapa[0][i][j] == '<' || mapa[0][i][j] == '>' || mapa[0][i][j] == '^' || mapa[0][i][j] == 'v')
+					turrets.push_back(make_pair(i, j));
+				else if (mapa[0][i][j] == 'S')
+					start = make_pair(i, j);
+				else if (mapa[0][i][j] == 'G')
+					goal = make_pair(i, j);
+			}
+		}
+		for (i=0; i<4; i++)
+			mapa_process(M, N, i);
+			
+		ans = BFS(start.first, start.second, goal.first, goal.second, M, N);
+		
+		printf("Case #%d: ", c);
+		if (ans == -1)
+			printf("impossible\n");
+		else
+			printf("%d\n", ans);
+			
+		/*	
+		for (i=0; i<4; i++)
+		{
+			printf("Turn %d:\n", i);
+			mapa_print(i);
+		}
+		*/
+		
+			
+		
+		turrets.clear();
+		for (i=0; i<4; i++)
+			mapa[i].clear();
+		
+		
+		c++;
+	}
+	return 0;
+}
+

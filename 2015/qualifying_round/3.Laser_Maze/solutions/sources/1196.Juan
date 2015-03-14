@@ -1,0 +1,129 @@
+#include <string>
+#include <cstdio>
+#include <algorithm>
+#include <vector>
+#include <queue>
+#include <iostream>
+using namespace std;
+string turrets = "^>v<";
+string Map[105];
+bool Safe[4][105][105];
+int N, M;
+
+bool wall(char c) {
+  return c == '#' || c == '^' || c == '<' || c == 'v' || c == '>';
+}
+
+bool isturret(char c) {
+  return turrets.find(c) != string::npos;
+}
+
+int turretval(char c) {
+  return turrets.find(c);
+}
+
+void FillTurrets() {
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < M; j++) {
+      if (isturret(Map[i][j])) {
+        int turret = turretval(Map[i][j]);
+        for (int k = 0; k < 4; k++) {
+          int cur_turret = (turret + k) % 4;
+          if (cur_turret == 0) {
+            for (int ii = i - 1; ii >= 0; ii--) {
+              if (wall(Map[ii][j]))
+                break;
+              Safe[k][ii][j] = false;
+            }
+          }
+          if (cur_turret == 1) {
+            for (int jj = j + 1; jj < M; jj++) {
+              if (wall(Map[i][jj]))
+                break;
+              Safe[k][i][jj] = false;
+            }
+          }
+          if (cur_turret == 2) {
+            for (int ii = i + 1; ii < N; ii++) {
+              if (wall(Map[ii][j]))
+                break;
+              Safe[k][ii][j] = false;
+            }
+          }
+          if (cur_turret == 3) {
+            for (int jj = j - 1; jj >= 0; jj--) {
+              if (wall(Map[i][jj]))
+                break;
+              Safe[k][i][jj] = false;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+struct State {
+  int k, i, j, d;
+  State(int k, int i, int j, int d) : k(k), i(i), j(j), d(d) { }
+};
+
+bool Seen[4][105][105];
+
+int di[] = {1, -1, 0, 0};
+int dj[] = {0, 0, -1, 1};
+
+int Solve() {
+  int si = -1, sj = -1, gi = -1, gj = -1;
+  for (int i = 0; i < N; i++) {
+    for (int j = 0; j < M; j++) {
+      if (Map[i][j] == 'S') {
+        si = i;
+        sj = j;
+      }
+      if (Map[i][j] == 'G') {
+        gi = i;
+        gj = j;
+      }
+    }
+  }
+  FillTurrets();
+  queue<State> q;
+  Seen[0][si][sj] = true;
+  q.push(State(0, si, sj, 0));
+  while (!q.empty()) {
+    State cur = q.front(); q.pop();
+    if (cur.i == gi && cur.j == gj) {
+      return cur.d;
+    }
+    int nk = (cur.k + 1) % 4;
+    for (int i = 0; i < 4; i++) {
+      int ni = cur.i + di[i];
+      int nj = cur.j + dj[i];
+      if (ni >= 0 && ni < N && nj >= 0 && nj < M
+          && !wall(Map[ni][nj]) && !Seen[nk][ni][nj] && Safe[nk][ni][nj]) {
+        q.push(State(nk, ni, nj, cur.d + 1));
+        Seen[nk][ni][nj] = true;
+      }                                          
+    }
+  }
+  return -1;
+}
+
+int main() {
+  int cases;
+  cin >> cases;
+  for (int c = 1; c <= cases; c++) {
+    cin >> N >> M;
+    for (int i = 0; i < N; i++)
+      cin >> Map[i];
+    fill(**Safe, **Safe + 4 * 105 * 105, true);
+    fill(**Seen, **Seen + 4 * 105 * 105, false);
+    int steps = Solve();
+    if (steps == -1) {
+      printf("Case #%d: impossible\n", c);
+    } else {
+      printf("Case #%d: %d\n", c, steps);
+    }
+  }
+}

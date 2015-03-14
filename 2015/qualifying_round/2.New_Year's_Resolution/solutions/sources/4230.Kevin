@@ -1,0 +1,166 @@
+package zhang.kevin;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.common.base.Charsets;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+import com.google.common.io.Files;
+
+public class NewYearsResolution {
+    private static final String IN = "b.in";
+    private static final String OUT = "b.out";
+
+    public static void main(String[] args) throws IOException {
+        ArrayList<String> inLines = Lists.newArrayList(readLines(IN));
+        List<String> outLines = Lists.newArrayList();
+
+        int caseNum = 0;
+        for (int i = 1; i < inLines.size(); ) {
+            PCF targetPcf = PCF.fromLine(inLines.get(i++));
+            int numFoods = Integer.parseInt(inLines.get(i++));
+            PCF[] foods = new PCF[numFoods];
+            for (int j = 0; j < numFoods; j++) {
+                foods[j] = PCF.fromLine(inLines.get(i + j));
+            }
+
+            if (solve(foods, targetPcf)) {
+                outLines.add(createCase(++caseNum, "yes"));
+            } else {
+                outLines.add(createCase(++caseNum, "no"));
+            }
+            i += numFoods;
+        }
+
+        System.out.println(outLines);
+        writeLines(outLines, OUT);
+
+    }
+
+    private static boolean solve(PCF[] foods, PCF target) {
+        int maxVector = (1 << foods.length) - 1;
+        for (int vector = 0; vector <= maxVector; vector ++) {
+            PCF currentTotal = getTotal(foods, vector);
+            if (currentTotal.equals(target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static PCF getTotal(PCF[] foods, int includeVector) {
+        Preconditions.checkArgument(foods.length >= Integer.toBinaryString(includeVector).length());
+        PCF pcfTotal = new PCF(0, 0, 0);
+        for (int i = 0; i < foods.length; i++) {
+            if ((includeVector & (1 << i)) > 0) {
+                pcfTotal = PCF.add(pcfTotal, foods[i]);
+            }
+        }
+        return pcfTotal;
+    }
+
+    private static class PCF {
+
+        private final int p;
+        private final int c;
+        private final int f;
+
+        public PCF(int p, int c, int f) {
+            this.p = p;
+            this.c = c;
+            this.f = f;
+        }
+
+        public static PCF fromLine(String line) {
+            String[] split = line.split(" ");
+            Preconditions.checkState(split.length == 3);
+
+            int p = Integer.parseInt(split[0]);
+            int c = Integer.parseInt(split[1]);
+            int f = Integer.parseInt(split[2]);
+
+            return new PCF(p, c, f);
+        }
+
+        public static PCF add(PCF food1, PCF food2) {
+            return new PCF(
+                    food1.getP() + food2.getP(),
+                    food1.getC() + food2.getC(),
+                    food1.getF() + food2.getF());
+        }
+
+        public int getP() {
+            return p;
+        }
+        public int getC() {
+            return c;
+        }
+        public int getF() {
+            return f;
+        }
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + c;
+            result = prime * result + f;
+            result = prime * result + p;
+            return result;
+        }
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            PCF other = (PCF) obj;
+            if (c != other.c) {
+                return false;
+            }
+            if (f != other.f) {
+                return false;
+            }
+            if (p != other.p) {
+                return false;
+            }
+            return true;
+        }
+        @Override
+        public String toString() {
+            return "PCF [p=" + p + ", c=" + c + ", f=" + f + "]";
+        }
+    }
+
+    private static String createCase(int caseNum, String content) {
+        return "Case #" + caseNum + ": " + content;
+    }
+
+    private static List<String> readLines(String path) {
+        try {
+            return Files.readLines(new File(path), Charsets.UTF_8);
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    private static void writeLines(List<String> lines, String path) {
+        try {
+            StringBuilder fileContents = new StringBuilder();
+            for (String line : lines) {
+                fileContents.append(line + "\n");
+            }
+            Files.write(fileContents.toString(), new File(path), Charsets.UTF_8);
+        } catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
+    }
+}

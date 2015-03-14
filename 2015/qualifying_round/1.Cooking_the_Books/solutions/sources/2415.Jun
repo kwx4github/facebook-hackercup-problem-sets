@@ -1,0 +1,53 @@
+{-# OPTIONS_GHC -O2 -funbox-strict-fields #-}
+{-# LANGUAGE BangPatterns, ViewPatterns, TupleSections #-}
+
+import Control.Applicative
+import Control.Monad
+import Data.Fixed
+import Data.List
+import Data.Time.Clock
+import Data.Time.Clock.POSIX
+import System.IO
+import Debug.Trace
+
+runGCJ :: IO () -> IO ()
+runGCJ main_ = do
+  t <- readLn
+  forM_ [1..t] $ \i -> do
+    putStr $ "Case #" ++ shows i ": "
+    hPutStr stderr $ shows i "/" ++ shows t ": "
+    hFlush stderr
+    start <- getPOSIXTime
+    main_
+    end <- getPOSIXTime
+    hPutStrLn stderr $ (shows.msec) (end - start) "ms"
+    hFlush stderr
+
+msec :: NominalDiffTime -> Int
+msec s = let t = realToFrac s :: Milli in fromEnum t
+
+main :: IO ()
+main = runGCJ $ do
+  n <- getLine
+  putStrLn.unwords $ solve n
+
+solve :: String -> [String]
+solve [c] = [[c], [c]]
+solve cs = [minimum candidates, maximum candidates]
+   where
+     !len = length cs
+     !candidates = do
+       i<-[0..len-1]
+       j<-[i..len-1]
+       let cs'@(c:_) = swap cs i j
+       guard (c /= '0')
+       return cs'
+
+swap :: [a] -> Int -> Int -> [a]
+swap xs i j
+  | i == j = xs
+  | j < i = swap xs j i
+  | otherwise = xs' ++ xj:ys' ++ xi:zs
+   where
+     (xs', xi:ys) = splitAt i xs
+     (ys', xj:zs) = splitAt (j-i-1) ys

@@ -1,0 +1,318 @@
+#include<cstdio>
+#include<queue>
+#include<list>
+using namespace std;
+
+struct node
+{
+    int z, r, c, d;
+};
+
+node moves[4];
+int mark[4][100][100];
+int M, N;
+char graph[4][100][105];
+list <node> L;
+
+void findEndPoints(node *start, node *goal)
+{
+    int i, j;
+
+    for(i=0;i<M;i++)
+    {
+        for(j=0;j<N;j++)
+        {
+            if(graph[0][i][j] == 'S')
+            {
+                start->r = i;
+                start->c = j;
+            }
+            else if(graph[0][i][j] == 'G')
+            {
+                goal->r = i;
+                goal->c = j;
+            }
+        }
+    }
+}
+
+node makeNode(int z, int r, int c, int d)
+{
+    node x;
+
+    x.z = z;
+    x.r = r;
+    x.c = c;
+    x.d = d;
+
+    return x;
+}
+
+void findAllVertices(node x, queue <node> *Q)
+{
+    if(x.r >= M || x.c >= N)
+        return;
+
+    int i, r, c, z;
+
+    for(i=0;i<4;i++)
+    {
+        r = x.r + moves[i].r;
+        c = x.c + moves[i].c;
+        z = (x.z +1)%4;
+        if(r < M && r>=0 && c < N && c >= 0)
+        {
+            if(graph[z][r][c] != '#')
+            {
+                if(mark[z][r][c] == 0)
+                {
+                    Q->push(makeNode(z,r,c, x.d+1));
+                    mark[z][r][c] = 1;
+                }
+            }
+        }
+    }
+}
+
+void rotateTurrets90(int i)
+{
+    list<node>::iterator it = L.begin(), jt = L.end();
+
+    for(;it!=jt;it++)
+    {
+        if(graph[i][it->r][it->c] == '>')
+            graph[i][it->r][it->c] = 'v';
+        else if(graph[i][it->r][it->c] == 'v')
+            graph[i][it->r][it->c] = '<';
+        else if(graph[i][it->r][it->c] == '<')
+            graph[i][it->r][it->c] = '^';
+        else if(graph[i][it->r][it->c] == '^')
+            graph[i][it->r][it->c] = '>';
+    }
+}
+
+void rotateTurrets180(int i)
+{
+    list<node>::iterator it = L.begin(), jt = L.end();
+
+    for(;it!=jt;it++)
+    {
+        if(graph[i][it->r][it->c] == '>')
+            graph[i][it->r][it->c] = '<';
+        else if(graph[i][it->r][it->c] == 'v')
+            graph[i][it->r][it->c] = '^';
+        else if(graph[i][it->r][it->c] == '<')
+            graph[i][it->r][it->c] = '>';
+        else if(graph[i][it->r][it->c] == '^')
+            graph[i][it->r][it->c] = 'v';
+    }
+}
+
+void rotateTurrets270(int i)
+{
+    list<node>::iterator it = L.begin(), jt = L.end();
+
+    for(;it!=jt;it++)
+    {
+        if(graph[i][it->r][it->c] == '>')
+            graph[i][it->r][it->c] = '^';
+        else if(graph[i][it->r][it->c] == 'v')
+            graph[i][it->r][it->c] = '>';
+        else if(graph[i][it->r][it->c] == '<')
+            graph[i][it->r][it->c] = 'v';
+        else if(graph[i][it->r][it->c] == '^')
+            graph[i][it->r][it->c] = '<';
+    }
+}
+
+int BFS(node start, node goal)
+{
+    int i, j;
+    node x;
+    queue <node> Q;
+
+    Q.push(start);
+
+    while(!Q.empty())
+    {
+        x = Q.front();
+        Q.pop();
+
+        mark[x.z][x.r][x.c] = 2;    //black
+
+        if(x.r == goal.r && x.c == goal.c)
+            return x.d;
+
+        findAllVertices(x, &Q);
+    }
+
+    return -1;
+}
+
+void findAllTurrets()
+{
+    int i, j;
+
+    for(i=0; i<M; i++)
+    {
+        for(j=0;j<N;j++)
+        {
+            if(graph[0][i][j] == '>' || graph[0][i][j] == '^' || graph[0][i][j] == 'v' || graph[0][i][j] == '<')
+                L.push_back(makeNode(0, i, j, 0));
+        }
+    }
+}
+
+void simplifyGraph(int i)
+{
+    int r, c;
+
+    list<node>::iterator it = L.begin(), jt = L.end();
+
+    for(;it!=jt;it++)
+    {
+        if(graph[i][it->r][it->c] == '>')
+        {
+            graph[i][it->r][it->c] = '#';
+            r = (it->r);
+            c = (it->c)+1;
+            for(; c<N; c++)
+            {
+                if(graph[i][r][c] != '#')
+                    graph[i][r][c] = 'x';
+                else
+                    break;
+            }
+        }
+        else if(graph[i][it->r][it->c] == 'v')
+        {
+            graph[i][it->r][it->c] = '#';
+            r = (it->r)+1;
+            c = it->c;
+            for(; r<M; r++)
+            {
+                if(graph[i][r][c] != '#')
+                    graph[i][r][c] = 'x';
+                else
+                    break;
+            }
+        }
+        else if(graph[i][it->r][it->c] == '<')
+        {
+            graph[i][it->r][it->c] = '#';
+            r = (it->r);
+            c = (it->c)-1;
+            for(; c>=0; c--)
+            {
+                if(graph[i][r][c] != '#')
+                    graph[i][r][c] = 'x';
+                else
+                    break;
+            }
+        }
+        else if(graph[i][it->r][it->c] == '^')
+        {
+            graph[i][it->r][it->c] = '#';
+            r = (it->r)-1;
+            c = it->c;
+            for(; r>=0; r--)
+            {
+                if(graph[i][r][c] != '#')
+                    graph[i][r][c] = 'x';
+                else
+                    break;
+            }
+        }
+    }
+
+    for(r=0;r<M;r++)
+    {
+        for(c=0;c<N;c++)
+        {
+            if(graph[i][r][c] == 'x')
+                graph[i][r][c] = '#';
+        }
+    }
+}
+
+void makeGraphStates()
+{
+    int i, j, k;
+
+    //copy graphs
+    for(i=1; i<4; i++)
+    {
+        for(j=0; j<M; j++)
+        {
+            for(k=0; k<N; k++)
+                graph[i][j][k] = graph[0][j][k];
+        }
+    }
+
+    rotateTurrets90(1);
+    rotateTurrets180(2);
+    rotateTurrets270(3);
+
+    for(i=0;i<4;i++)
+    {
+        simplifyGraph(i);
+    }
+}
+
+void clearMark()
+{
+    int i, j, k;
+
+    for(i=0;i<4;i++)
+    for(j=0;j<100;j++)
+    for(k=0;k<100;k++)
+        mark[i][j][k] = 0;
+}
+
+int main()
+{
+    //freopen("input.txt", "r", stdin);
+    int i, j, k, t;
+    node start, goal;
+    int result;
+
+    moves[0].r = -1; moves[0].c = 0;
+    moves[1].r = 1; moves[1].c = 0;
+    moves[2].r = 0; moves[2].c = -1;
+    moves[3].r = 0; moves[3].c = 1;
+
+    clearMark();
+
+    scanf("%d", &t);
+    gets(&graph[0][0][0]);
+
+    for(i=0;i<t;i++)
+    {
+        L.clear();
+        clearMark();
+        scanf("%d%d", &M, &N);
+        gets(&graph[0][0][0]);
+
+        for(j=0;j<M;j++)
+            gets(&graph[0][j][0]);
+
+//        for(j=0;j<M;j++)
+//            printf("%s\n", &graph[j][0]);
+
+        start.z = start.d = 0;
+        findEndPoints(&start, &goal);
+        findAllTurrets();
+        mark[0][start.r][start.c] = 2;
+
+        makeGraphStates();
+
+        result = -1;
+        result = BFS(start, goal);
+
+        if(result == -1)
+            printf("Case #%d: impossible\n", i+1);
+        else
+            printf("Case #%d: %d\n", i+1, result);
+    }
+    return(0);
+}

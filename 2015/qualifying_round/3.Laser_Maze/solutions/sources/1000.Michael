@@ -1,0 +1,234 @@
+require 'pp'
+
+# returns nil if empty line
+def input_line
+  # if not defined, set to nil and read from stdinput
+  @input_filename ||= 'laser_maze.txt'
+  # @input_filename ||= 'laser_maze_example_input.txt'
+
+  if @input_filename
+    @lines ||= File.read(@input_filename).each_line.map(&:chomp)
+    # read from file line by line
+    @lines.shift
+  else
+    # read from stdin
+    $stdin.read
+  end
+end
+
+def letter?(char)
+  char =~ /[a-z]/
+end
+
+# . (empty space)
+# # (wall)
+# S (starting position)
+# G (goal)
+# < > ^ v (laser turrets)
+$num_row = 0
+$num_col = 0
+
+$maps = nil
+$map_status = 0 # 0..3
+$map_start_loc = nil
+$map_goal_loc = nil
+$turret_locs = []
+
+def init_map(map)
+  $map_start_loc = map_find_loc(map, 'S')
+  $map_goal_loc = map_find_loc(map, 'G')
+  if $map_goal_loc == nil || $map_start_loc == nil
+    return false
+  end
+
+  $map_status = 0
+  $maps = []
+  $turret_locs = []
+
+  $maps[0] = map.clone
+  $maps[0][$map_start_loc[0]][$map_start_loc[1]] = '.' # remove start loc
+  (1..3).each do |map_status|
+    $maps[map_status] = map_turn($maps[map_status-1])
+  end
+
+  $maps.each do |current_map|
+    $turret_locs.each do |turret_loc|
+      map_draw_laser(current_map, turret_loc, current_map[turret_loc[0]][turret_loc[1]], true)
+    end
+  end
+
+  true
+end
+
+$directions = %w(< ^ > v)
+def map_turn(map)
+  map.each_with_index.map do |row, r|
+    row.each_with_index.map do |element, c|
+      if $directions.include?(element)
+        dir = direction_next(element)
+        $turret_locs << [r,c]
+        dir
+      else
+        element
+      end
+    end
+  end
+end
+
+def map_draw_laser(map, loc, dir, is_start)
+  unless is_start
+    if not loc_in_map?(loc)
+      return # out of bound
+    end
+    el = map[loc[0]][loc[1]]
+    if el != '.' && el != 'L' && el != 'G'
+      return # laser no path
+    else
+      map[loc[0]][loc[1]] = 'L'
+    end
+  end
+
+  case dir
+  when '<'
+    map_draw_laser(map, [loc[0], loc[1]-1], dir, false)
+  when '^'
+    map_draw_laser(map, [loc[0]-1, loc[1]], dir, false)
+  when '>'
+    map_draw_laser(map, [loc[0], loc[1]+1], dir, false)
+  when 'v'
+    map_draw_laser(map, [loc[0]+1, loc[1]], dir, false)
+  else
+    raise "invalid direction #{dir}"
+  end
+end
+
+def direction_next(dir)
+  out = nil
+  case dir
+  when '<'
+    out = '^'
+  when '^'
+    out = '>'
+  when '>'
+    out = 'v'
+  when 'v'
+    out = '<'
+  else
+    raise "invalid direction #{dir}"
+  end
+  out
+end
+
+def map_find_loc(map, needle)
+  (0..$num_row-1).each do |r|
+    (0..$num_col-1).each do |c|
+      return [r, c] if map[r][c] == needle
+    end
+  end
+  return nil # not found
+end
+
+def current_map_shoot_at?(loc)
+  current_map_equal?(loc, 'L')
+end
+
+def current_map_goal_at?(loc)
+  current_map_equal?(loc, 'G')
+end
+
+def current_map_equal?(loc, needle)
+  current_map[loc[0]][loc[1]] == needle
+end
+
+def current_map_status
+  $map_status
+end
+
+def map_turn_turret
+  $map_status += 1
+  $map_status = $map_status % 4
+end
+
+def current_map
+  $maps[current_map_status]
+end
+
+def loc_in_map?(loc)
+  loc[0] >= 0 && loc[1] >= 0 && loc[0] < $num_row && loc[1] < $num_col
+end
+
+def surrounds(loc)
+  r = loc[0]
+  c = loc[1]
+  [
+    [r+1, c],
+    [r-1, c],
+    [r, c+1],
+    [r, c-1]
+  ]
+end
+
+def new_locs(loc)
+  surrounds(loc).map do |l|
+    if loc_in_map?(l)
+      el = current_map[l[0]][l[1]]
+      if el == '.' || el == 'G' || el == 'L'
+        l
+      else
+        nil
+      end
+    else
+      nil
+    end
+  end.compact
+end
+
+def num_steps_to_reach_goal(map)
+  if not init_map(map)
+    return nil
+  end
+  num_steps_to_goal_bfs($map_start_loc, 0) # walked 0 steps
+end
+
+$cache = {}
+def num_steps_to_goal_bfs(in_loc, in_level)
+  queue = [[in_loc, in_level]]
+  while not queue.empty?
+    (loc, level) = queue.shift
+
+    if current_map_goal_at?(loc)
+      return level
+    end
+
+    key = cache_key(loc, current_map_status)
+
+    # not proceed if searched before or get shot at
+    unless $cache.has_key?(key) || (current_map_shoot_at?(loc) && level > 0)
+      new_locs(loc).map do |new_loc|
+        queue.push [new_loc, level+1]
+      end
+    end
+
+    $cache[key] = true unless level == 0 # searching already, skip when encounter later
+    if (queue.empty? || (queue.first[1] != level)) # move to next map
+      map_turn_turret
+    end
+  end
+  nil
+end
+
+def cache_key(loc, map_status)
+  loc[0] + loc[1] * 1000 + map_status * 1000000
+end
+
+num_cases = input_line.to_i
+(1..num_cases).each do |case_num|
+  ($num_row, $num_col) = input_line.split(' ').map(&:to_i)
+  map = []
+  $num_row.times.each do |_n|
+    map << input_line.each_char.to_a
+  end
+  $cache = {}
+  num_steps = num_steps_to_reach_goal(map)
+  puts "Case #{case_num}: #{num_steps.nil? ? 'impossible' : num_steps}"
+end

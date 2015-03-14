@@ -1,0 +1,187 @@
+#include <cstdio>
+#include <climits>
+#include <iostream>
+#include <map>
+#include <stack>
+#include <queue>
+#include <utility>
+
+using namespace std;
+
+#define MAX_M       100
+#define MAX_N       100
+
+enum {
+	EMPTY   =   '.',
+	WALL    =   '#',
+	START   =   'S',
+	GOAL    =   'G',
+	LEFT    =   '<',
+	RIGHT   =   '>',
+	UP      =   '^',
+	DOWN    =   'v'
+};
+
+int T, M, N;
+int sx = -1, sy = -1;
+char maze[MAX_M+4][MAX_N+4] = { 0, };
+char laserRange[4][MAX_M+4][MAX_N+4] = { 0 };
+int cost[MAX_M+4][MAX_N+4] = { 0, };
+map<char,char> nextDir = { { LEFT,  UP },   { UP, RIGHT },
+	                       { RIGHT, DOWN }, { DOWN, LEFT } };
+
+inline bool isBlocked(char room) {
+	return (room == WALL ||
+			room == LEFT || room == RIGHT ||
+			room == UP   || room == DOWN);
+}
+
+inline bool isEmpty(char room) {
+	return (room == EMPTY || room == START || room == GOAL);
+}
+
+inline int isCandidate(int ox, int oy, int step, char dir) {
+	int x, y;
+
+	switch(dir) {
+	case LEFT:  x = ox - 1, y = oy;     break;
+	case RIGHT: x = ox + 1, y = oy;     break;
+	case UP:    x = ox,     y = oy - 1; break;
+	case DOWN:  x = ox,     y = oy + 1; break;
+	}
+
+	if(x < 1 || x > N || y < 1 || y > M)
+		return -1;
+
+	if(isEmpty(maze[y][x])) {
+		if(laserRange[step%4][y][x] != '*') {
+			return step;
+		} else if(laserRange[(step+2)%4][y][x] != '*') {
+			if(laserRange[(step+1)%4][oy][ox] == '*')
+				return -1;
+			if(isEmpty(maze[oy][ox-1]) && laserRange[step%4][oy][ox-1] != '*')
+				return (step+2);
+			if(isEmpty(maze[oy][ox+1]) && laserRange[step%4][oy][ox+1] != '*')
+				return (step+2);
+			if(isEmpty(maze[oy-1][ox]) && laserRange[step%4][oy-1][ox] != '*')
+				return (step+2);
+			if(isEmpty(maze[oy+1][ox]) && laserRange[step%4][oy+1][ox] != '*')
+				return (step+2);
+		}
+	}
+
+	return -1;
+}
+
+int solve(void) {
+	memset(cost, 0, sizeof(cost));
+	priority_queue<tuple<int,int,int>,
+		vector<tuple<int,int,int> >,
+		greater<tuple<int,int,int> > > q;
+	q.push(make_tuple(4, sx, sy));
+	int answer = -1;
+	while(!q.empty()) {
+		int x, y, step, nextStep;
+		tie(step, x, y) = q.top();
+		q.pop();
+
+		int &c = cost[y][x];
+		if(c > 0 && c <= step)
+			continue;
+
+		c = step;
+		if(maze[y][x] == GOAL) {
+			return (step - 4);
+			answer = (answer < 0)? step: min(answer, step);
+			continue;
+		}
+
+		++step;
+		if((nextStep = isCandidate(x, y, step, LEFT)) > 0)
+			q.push(make_tuple(nextStep, x-1, y));
+		if((nextStep = isCandidate(x, y, step, RIGHT)) > 0)
+			q.push(make_tuple(nextStep, x+1, y));
+		if((nextStep = isCandidate(x, y, step, UP)) > 0)
+			q.push(make_tuple(nextStep, x, y-1));
+		if((nextStep = isCandidate(x, y, step, DOWN)) > 0)
+			q.push(make_tuple(nextStep, x, y+1));
+	}
+
+	return (answer - 4);
+}
+
+void setRange(int x, int y, char type, int idx) {
+	switch(type) {
+	case LEFT:
+		for(int j = x - 1; j > 0; --j) {
+			if(isBlocked(maze[y][j])) break;
+			laserRange[idx][y][j] = '*';
+		}
+		break;
+	case RIGHT:
+		for(int j = x + 1; j <= N; ++j) {
+			if(isBlocked(maze[y][j])) break;
+			laserRange[idx][y][j] = '*';
+		}
+		break;
+	case UP:
+		for(int i = y - 1; i > 0; --i) {
+			if(isBlocked(maze[i][x])) break;
+			laserRange[idx][i][x] = '*';
+		}
+		break;
+	case DOWN:
+		for(int i = y + 1; i <= M; ++i) {
+			if(isBlocked(maze[i][x])) break;
+			laserRange[idx][i][x] = '*';
+		}
+		break;
+	}
+}
+
+int main(void) {
+	scanf("%d", &T);
+	for(int t = 1; t <= T; ++t) {
+		scanf("%d %d", &M, &N);
+		sx = -1, sy = -1;
+		memset(maze, 0, sizeof(maze));
+		for(int i = 1; i <= M; ++i) {
+			scanf("%s", &maze[i][1]);
+			maze[i][N+1] = 0;
+			if(sx > 0) continue;
+			for(int j = 1; j <= N; ++j) {
+				if(maze[i][j] == START) {
+					sx = j, sy = i;
+					break;
+				}
+			}
+		}
+		memset(laserRange, '.', sizeof(laserRange));
+
+		for(int i = 1; i <= M; ++i) {
+			for(int j = 1; j <= N; ++j) {
+				switch(maze[i][j]) {
+				case LEFT:
+				case RIGHT:
+				case UP:
+				case DOWN:
+					char next;
+					setRange(j, i, (next = maze[i][j]), 0);
+					setRange(j, i, (next = nextDir[next]), 1);
+					setRange(j, i, (next = nextDir[next]), 2);
+					setRange(j, i, (next = nextDir[next]), 3);
+					break;
+				}
+			}
+		}
+
+		int answer = solve();
+		if(answer < 0) {
+			printf("Case #%d: impossible\n", t);
+		} else {
+			printf("Case #%d: %d\n", t, answer);
+		}
+	}
+
+	return 0;
+}

@@ -1,0 +1,111 @@
+#include <cstdio>
+#include <iostream>
+#include <map>
+#include <memory.h>
+#include <queue>
+
+#define _DEBUG
+
+using namespace std;
+
+int M, N;
+char Z[110][110];
+
+map<char,int> dir;
+
+int seen[110][110][4];
+
+pair<int,int> s, g;
+queue<pair<int,pair<int,int> > > q;
+
+int dr[4] = {0, 0, 1, -1};
+int dc[4] = {1, -1, 0, 0};
+
+bool find(int sr, int er, int sc, int ec, int t, int rd) {
+    for (int r = sr; r <= er; r++) {
+        for (int c = sc; c <= ec; c++) {
+            if (Z[r][c] == '.') continue;
+            if (Z[r][c] == '#') return false;
+            if (Z[r][c] == 'S' || Z[r][c] == 'G') continue;
+            int edir = (dir[Z[r][c]] + t) % 4;
+            if (edir == rd) return true;
+            else return false;
+        }
+    }
+    return false;
+}
+
+bool isDangerous(int r, int c, int t) {
+    // north (dir = 0)
+    if (find(0, max(0, r-1), c, c, t, 2))
+        return true;
+    // east (dir = 1)
+    if (find(r, r, min(c+1, N-1), N-1, t, 3))
+        return true;
+    // south (dir = 2)
+    if (find(min(r+1, M-1), M-1, c, c, t, 0))
+        return true;
+    // west (dir = 3)
+    if (find(r, r, 0, max(0, c-1), t, 1))
+        return true;    
+    // Now, safe
+    return false;
+}
+
+void BFS() {
+    memset(seen, -1, sizeof(seen));
+    for (int r = 0; r < M; r++) {
+        for (int c = 0; c < N; c++) {
+            if (Z[r][c] == 'S') s = {r, c};
+            if (Z[r][c] == 'G') g = {r, c};
+        }
+    }
+    q.push({0, s});
+    seen[s.first][s.second][0] = 0;
+    while (!q.empty()) {
+        int t = q.front().first;
+        pair<int,int> h = q.front().second;
+        q.pop();
+        for (int i = 0; i < 4; i++) {
+            int nr = h.first + dr[i];
+            int nc = h.second + dc[i];
+            if (nr < 0 || nc < 0 || nr >= M || nc >= N) continue;
+            if (Z[nr][nc] == '#') continue;
+            if (Z[nr][nc] == '^' || Z[nr][nc] == '>') continue;
+            if (Z[nr][nc] == 'v' || Z[nr][nc] == '<') continue;
+            if (seen[nr][nc][(t+1) % 4] != -1) continue;
+            if (isDangerous(nr, nc, t+1)) continue;
+            seen[nr][nc][(t+1) % 4] = t+1;
+            q.push({t+1, {nr, nc}});
+        }
+    }
+}
+
+int solve() {
+    BFS();
+    int ret = -1;
+    for (int d = 0; d < 4; d++) {
+        if (seen[g.first][g.second][d] != -1) {
+            if (ret == -1) ret = seen[g.first][g.second][d];
+            else ret = min(ret, seen[g.first][g.second][d]);
+        }
+    }
+    return ret;
+}
+
+int main() {
+#ifdef _DEBUG
+    freopen("laser_maze.txt", "r", stdin);
+#endif
+    dir['^'] = 0, dir['>'] = 1, dir['v'] = 2, dir['<'] = 3;
+    int T; scanf("%d", &T);
+    for (int t = 1; t <= T; t++) {
+        scanf("%d%d", &M, &N);
+        for (int i = 0; i < M; i++) scanf("%s", Z[i]);
+        int ans = solve();
+        printf("Case #%d: ", t);
+        if (ans == -1) puts("impossible");
+        else printf("%d\n", ans);
+    }
+    return 0;
+}

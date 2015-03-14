@@ -1,0 +1,142 @@
+import java.io.*;
+import java.util.*;
+
+/**
+ * Facebook Hacker Cup 2015
+ * @author Cosmin Dumitrache (cosmin.m.dumitrache@gmail.com)
+ */
+public class NewYearsResolution {
+
+    static class Problem {
+        int index;
+        int protein;
+        int carbs;
+        int fats;
+
+        public Problem(int index, int protein, int carbs, int fats) {
+            this.index = index;
+            this.protein = protein;
+            this.carbs = carbs;
+            this.fats = fats;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Problem problem = (Problem) o;
+
+            if (carbs != problem.carbs) return false;
+            if (fats != problem.fats) return false;
+            if (index != problem.index) return false;
+            if (protein != problem.protein) return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = index;
+            result = 31 * result + protein;
+            result = 31 * result + carbs;
+            result = 31 * result + fats;
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "Problem{" +
+                    "index=" + index +
+                    ", protein=" + protein +
+                    ", carbs=" + carbs +
+                    ", fats=" + fats +
+                    '}';
+        }
+    }
+
+    static class Food {
+        int protein;
+        int carbs;
+        int fats;
+
+        public Food(int protein, int carbs, int fats) {
+            this.protein = protein;
+            this.carbs = carbs;
+            this.fats = fats;
+        }
+
+        @Override
+        public String toString() {
+            return "Food{" +
+                    "protein=" + protein +
+                    ", carbs=" + carbs +
+                    ", fats=" + fats +
+                    '}';
+        }
+    }
+
+    /**
+     * Dynamic Program solution (recursion + memoization)
+     *
+     * @param i current element index
+     * @param p how much protein calories do I still need to get
+     * @param c how much carbs calories do I still need to get
+     * @param f how much fat calories do I still need to get
+     * @param foods list of possible food options
+     * @param memo a memo table that remembers a solution to a subproblem for later reuse
+     * @return
+     */
+    static boolean canEatDP(int i, int p, int c, int f, Food[] foods, HashMap<Problem, Boolean> memo) {
+        if (p==0 && c==0 && f==0) return true;
+        if (i>=foods.length) return false;
+        if (memo.containsKey(new Problem(i, p, c, f))) return memo.get(new Problem(i, p, c, f));
+        LinkedList<Boolean> choices = new LinkedList<Boolean>();
+        // choice 1: skip food item i
+        choices.add(canEatDP(i + 1, p, c, f, foods, memo));
+        // choice 2: eat food item i (if possible)
+        if (p>=foods[i].protein && c>=foods[i].carbs && f>=foods[i].fats)
+            choices.add(canEatDP(i + 1, p - foods[i].protein, c - foods[i].carbs, f - foods[i].fats, foods, memo));
+        boolean canEat = choices.contains(true);
+        memo.put(new Problem(i, p, c, f), canEat);
+        return canEat;
+    }
+
+    static boolean canEat(int targetProtein, int targetCarbs, int targetFats, Food[] foods) {
+        HashMap<Problem, Boolean> memo = new HashMap<Problem, Boolean>();
+        return canEatDP(0, targetProtein, targetCarbs, targetFats, foods, memo);
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length != 2) {
+            System.err.printf("Usage: java %s <input file> <output file>\n", NewYearsResolution.class.getCanonicalName());
+            System.exit(1);
+        }
+        String inputFile = args[0];
+        String outputFile = args[1];
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile)));
+        BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputFile)));
+        int t = Integer.parseInt(reader.readLine());
+        for (int i=1; i<=t; i++) {
+            String[] targets = reader.readLine().split(" ");
+            int targetProtein = Integer.parseInt(targets[0]);
+            int targetCarbs = Integer.parseInt(targets[1]);
+            int targetFats = Integer.parseInt(targets[2]);
+            int n = Integer.parseInt(reader.readLine());
+            Food[] foods = new Food[n];
+            for (int j=0; j<n; j++) {
+                String[] calories = reader.readLine().split(" ");
+                int protein = Integer.parseInt(calories[0]);
+                int carbs = Integer.parseInt(calories[1]);
+                int fats = Integer.parseInt(calories[2]);
+                foods[j] = new Food(protein, carbs, fats);
+            }
+            String output = String.format("Case #%d: %s\n", i, canEat(targetProtein, targetCarbs, targetFats, foods) ? "yes" : "no");
+            writer.write(output);
+
+        }
+        reader.close();
+        writer.close();
+    }
+
+}

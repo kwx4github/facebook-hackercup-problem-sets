@@ -1,0 +1,382 @@
+#include <algorithm>
+#include <cassert>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <utility>
+#include <vector>
+
+using namespace std;
+
+enum class MAZE_ELEMENT : uint8_t {
+	START,
+	SPACE,
+	WALL,
+	LASER_UP,
+	LASER_RIGHT,
+	LASER_DOWN,
+	LASER_LEFT,
+	GOAL,
+};
+
+enum class DIRECTION : uint8_t {
+	UP,
+	RIGHT,
+	DOWN,
+	LEFT,
+};
+
+typedef vector<vector<MAZE_ELEMENT> > maze_t;
+typedef vector<vector<int> > board_t;
+
+typedef pair<int, int > node_t;
+
+const int BLOCKED = -1;
+const int UNDISCOVERED = 1000000;
+
+void invalidate_laser_path(int M, int N, const maze_t& maze, board_t& board,
+						   int rt, int ct, DIRECTION direction)
+{
+	bool done = false;
+
+	switch (direction) {
+	case DIRECTION::UP:
+		if (rt == 0)
+			break;
+
+		for (int r = rt - 1;r >= 0 && !done; r--) {
+			switch (maze[r][ct]) {
+			case MAZE_ELEMENT::START:
+			case MAZE_ELEMENT::SPACE:
+			case MAZE_ELEMENT::GOAL:
+				board[r][ct] = BLOCKED;
+				break;
+
+			case MAZE_ELEMENT::WALL:
+			case MAZE_ELEMENT::LASER_UP:
+			case MAZE_ELEMENT::LASER_RIGHT:
+			case MAZE_ELEMENT::LASER_DOWN:
+			case MAZE_ELEMENT::LASER_LEFT:
+				done = true;
+				break;
+			}
+		}
+		break;
+
+	case DIRECTION::RIGHT:
+		if (ct >= N - 1)
+			break;
+
+		for (int c = ct + 1; c < N && !done; ++c) {
+			switch (maze[rt][c]) {
+			case MAZE_ELEMENT::START:
+			case MAZE_ELEMENT::SPACE:
+			case MAZE_ELEMENT::GOAL:
+				board[rt][c] = BLOCKED;
+				break;
+
+			case MAZE_ELEMENT::WALL:
+			case MAZE_ELEMENT::LASER_UP:
+			case MAZE_ELEMENT::LASER_RIGHT:
+			case MAZE_ELEMENT::LASER_DOWN:
+			case MAZE_ELEMENT::LASER_LEFT:
+				done = true;
+				break;
+			}
+		}
+		break;
+
+	case DIRECTION::DOWN:
+		if (rt >= M - 1)
+			break;
+
+		for (int r = rt + 1; r < M && !done; ++r) {
+			switch (maze[r][ct]) {
+			case MAZE_ELEMENT::START:
+			case MAZE_ELEMENT::SPACE:
+			case MAZE_ELEMENT::GOAL:
+				board[r][ct] = BLOCKED;
+				break;
+
+			case MAZE_ELEMENT::WALL:
+			case MAZE_ELEMENT::LASER_UP:
+			case MAZE_ELEMENT::LASER_RIGHT:
+			case MAZE_ELEMENT::LASER_DOWN:
+			case MAZE_ELEMENT::LASER_LEFT:
+				done = true;
+				break;
+			}
+		}
+		break;
+
+	case DIRECTION::LEFT:
+		if (ct == 0)
+			break;
+
+		for (int c = ct - 1; c >= 0 && !done; --c) {
+			switch (maze[rt][c]) {
+			case MAZE_ELEMENT::START:
+			case MAZE_ELEMENT::SPACE:
+			case MAZE_ELEMENT::GOAL:
+				board[rt][c] = BLOCKED;
+				break;
+
+			case MAZE_ELEMENT::WALL:
+			case MAZE_ELEMENT::LASER_UP:
+			case MAZE_ELEMENT::LASER_RIGHT:
+			case MAZE_ELEMENT::LASER_DOWN:
+			case MAZE_ELEMENT::LASER_LEFT:
+				done = true;
+				break;
+			}
+		}
+		break;
+	}
+}
+
+
+int solve(int M, int N, const maze_t& maze)
+{
+	node_t	start;
+	node_t	goal;
+
+	board_t	T0_board = board_t(M, vector<int>(N, UNDISCOVERED));
+	board_t	T1_board = board_t(M, vector<int>(N, UNDISCOVERED));
+	board_t	T2_board = board_t(M, vector<int>(N, UNDISCOVERED));
+	board_t	T3_board = board_t(M, vector<int>(N, UNDISCOVERED));
+
+	for (int r = 0; r < M; ++r) {
+		for (int c = 0; c < N; ++c) {
+			MAZE_ELEMENT col = maze[r][c];
+
+			switch (col) {
+			case MAZE_ELEMENT::START:
+				start = make_pair(r, c);
+				break;
+
+			case MAZE_ELEMENT::SPACE:
+				break;
+
+			case MAZE_ELEMENT::WALL:
+				T0_board[r][c] = BLOCKED;
+				T1_board[r][c] = BLOCKED;
+				T2_board[r][c] = BLOCKED;
+				T3_board[r][c] = BLOCKED;
+				break;
+
+			case MAZE_ELEMENT::LASER_UP:
+				T0_board[r][c] = BLOCKED;
+				T1_board[r][c] = BLOCKED;
+				T2_board[r][c] = BLOCKED;
+				T3_board[r][c] = BLOCKED;
+				invalidate_laser_path(M, N, maze, T0_board, r, c, DIRECTION::UP);
+				invalidate_laser_path(M, N, maze, T1_board, r, c, DIRECTION::RIGHT);
+				invalidate_laser_path(M, N, maze, T2_board, r, c, DIRECTION::DOWN);
+				invalidate_laser_path(M, N, maze, T3_board, r, c, DIRECTION::LEFT);
+				break;
+
+			case MAZE_ELEMENT::LASER_RIGHT:
+				T0_board[r][c] = BLOCKED;
+				T1_board[r][c] = BLOCKED;
+				T2_board[r][c] = BLOCKED;
+				T3_board[r][c] = BLOCKED;
+				invalidate_laser_path(M, N, maze, T0_board, r, c, DIRECTION::RIGHT);
+				invalidate_laser_path(M, N, maze, T1_board, r, c, DIRECTION::DOWN);
+				invalidate_laser_path(M, N, maze, T2_board, r, c, DIRECTION::LEFT);
+				invalidate_laser_path(M, N, maze, T3_board, r, c, DIRECTION::UP);
+				break;
+
+			case MAZE_ELEMENT::LASER_DOWN:
+				T0_board[r][c] = BLOCKED;
+				T1_board[r][c] = BLOCKED;
+				T2_board[r][c] = BLOCKED;
+				T3_board[r][c] = BLOCKED;
+				invalidate_laser_path(M, N, maze, T0_board, r, c, DIRECTION::DOWN);
+				invalidate_laser_path(M, N, maze, T1_board, r, c, DIRECTION::LEFT);
+				invalidate_laser_path(M, N, maze, T2_board, r, c, DIRECTION::UP);
+				invalidate_laser_path(M, N, maze, T3_board, r, c, DIRECTION::RIGHT);
+				break;
+
+			case MAZE_ELEMENT::LASER_LEFT:
+				T0_board[r][c] = BLOCKED;
+				T1_board[r][c] = BLOCKED;
+				T2_board[r][c] = BLOCKED;
+				T3_board[r][c] = BLOCKED;
+				invalidate_laser_path(M, N, maze, T0_board, r, c, DIRECTION::LEFT);
+				invalidate_laser_path(M, N, maze, T1_board, r, c, DIRECTION::UP);
+				invalidate_laser_path(M, N, maze, T2_board, r, c, DIRECTION::RIGHT);
+				invalidate_laser_path(M, N, maze, T3_board, r, c, DIRECTION::DOWN);
+				break;
+
+			case MAZE_ELEMENT::GOAL:
+				goal = make_pair(r, c);
+				break;
+			}
+		}
+	}
+
+	T0_board[start.first][start.second] = 0;
+
+//	if (T0_board[goal.first][goal.second] == BLOCKED
+//	 && T1_board[goal.first][goal.second] == BLOCKED
+//	 && T2_board[goal.first][goal.second] == BLOCKED
+//	 && T3_board[goal.first][goal.second] == BLOCKED) {
+//		return -1;
+//	}
+
+	set<node_t>	start_points = { start };
+
+	for (int t = 0; t < 4*M*N; ++t) {
+		set<node_t>	end_points = {  };
+
+		board_t* current_board = nullptr;
+		board_t* next_board = nullptr;
+		if (t % 4 == 0) {
+			current_board	= &T0_board;
+			next_board		= &T1_board;
+		}
+		else if (t % 4 == 1) {
+			current_board	= &T1_board;
+			next_board		= &T2_board;
+		}
+		else if (t % 4 == 2) {
+			current_board	= &T2_board;
+			next_board		= &T3_board;
+		}
+		else {
+			current_board	= &T3_board;
+			next_board		= &T0_board;
+		}
+
+		for (const auto& s : start_points) {
+			assert(current_board->at(s.first)[s.second] == t);
+
+			// Look up
+			if (s.first > 0) {
+				const node_t e = make_pair(s.first - 1, s.second);
+				if (next_board->at(e.first)[e.second] > t) { // Undiscovered
+					next_board->at(e.first).at(e.second) = t + 1;
+					end_points.insert(e);
+				}
+			}
+
+			// Look right
+			if (s.second < N - 1) {
+				const node_t e = make_pair(s.first, s.second + 1);
+				if (next_board->at(e.first)[e.second] > t) { // Undiscovered
+					next_board->at(e.first).at(e.second) = t + 1;
+					end_points.insert(e);
+				}
+			}
+
+			// Look down
+			if (s.first < M - 1) {
+				const node_t e = make_pair(s.first + 1, s.second);
+				if (next_board->at(e.first)[e.second] > t) { // Undiscovered
+					next_board->at(e.first).at(e.second) = t + 1;
+					end_points.insert(e);
+				}
+			}
+
+			// Look left
+			if (s.second > 0) {
+				const node_t e = make_pair(s.first, s.second - 1);
+				if (next_board->at(e.first)[e.second] > t) { // Undiscovered
+					next_board->at(e.first).at(e.second) = t + 1;
+					end_points.insert(e);
+				}
+			}
+		}
+
+		if (end_points.empty())
+			return -1;
+		else if (end_points.count(goal) > 0) {
+			return t + 1;
+		}
+
+		start_points = end_points;
+	}
+
+	return -1;
+}
+
+
+int main(int argc, char** argv)
+{
+	if (argc < 2) {
+		std::cerr << "Need an input file" << std::endl;
+	}
+	else {
+		std::fstream input;
+		input.open(argv[1], std::fstream::in);
+
+		if (!input.is_open())
+			return -1;
+
+		unsigned T;
+		input >> T;
+
+		for (unsigned i = 1; i <= T; ++i) {
+			int M, N;
+
+			input >> M >> N;
+
+			maze_t maze(M, std::vector<MAZE_ELEMENT>(N, MAZE_ELEMENT::WALL));
+
+			for (int r = 0; r < M; ++r) {
+				std::string row;
+				input >> row;
+
+				for (int c = 0; c < N; ++c) {
+					MAZE_ELEMENT e;
+
+					switch (row[c]) {
+					case 'S':
+						e = MAZE_ELEMENT::START;
+						break;
+					case '.':
+						e = MAZE_ELEMENT::SPACE;
+						break;
+					case '#':
+						e = MAZE_ELEMENT::WALL;
+						break;
+					case '^':
+						e = MAZE_ELEMENT::LASER_UP;
+						break;
+					case '>':
+						e = MAZE_ELEMENT::LASER_RIGHT;
+						break;
+					case '<':
+						e = MAZE_ELEMENT::LASER_LEFT;
+						break;
+					case 'G':
+						e = MAZE_ELEMENT::GOAL;
+						break;
+					case 'v':
+					default:
+						assert(row[c] == 'v');
+						e = MAZE_ELEMENT::LASER_DOWN;
+						break;
+					}
+					maze[r][c] = e;
+				}
+			}
+
+			int retval = solve(M, N, maze);
+
+			std::cout << "Case #" << i << ": ";
+			if (retval >= 0) {
+				std::cout << retval << std::endl;
+			}
+			else {
+				std::cout << "impossible" << std::endl;
+			}
+		}
+	}
+	return 0;
+}

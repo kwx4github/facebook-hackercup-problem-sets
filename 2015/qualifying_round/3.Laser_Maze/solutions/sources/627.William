@@ -1,0 +1,106 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+using namespace std;
+
+const int maxn = 100 + 10;
+const char turret[4] = {'^', '<', 'v', '>'};
+const int dx[4] = {-1, 0, 1, 0};
+const int dy[4] = {0, 1, 0, -1};
+char map[maxn][maxn];
+int step[4][maxn][maxn], rounds[maxn][maxn];
+bool vis[4][maxn][maxn];
+int h, t, q[maxn * maxn * 4], goal, n, m;
+
+void doit(int x0, int y0, int f0)
+{
+	for (int i = 0; i < 4; ++i)
+		for (int x = x0 + dx[i], y = y0 + dy[i];;x += dx[i], y += dy[i])
+		{
+			if (x < 0 || y < 0 || x >= n || y >= m || map[x][y] != '.')
+				break;
+			rounds[x][y] |= (1<<((f0+i)&3));
+		}
+}
+
+void solve()
+{
+	memset(step, -1, sizeof(step));
+	memset(rounds, 0, sizeof(rounds));
+	memset(vis, 0, sizeof(vis));
+	h = t = 0;
+	scanf("%d %d", &n, &m);
+	for (int i = 0; i < n; ++i)
+	{
+		char tmp;
+		scanf("%c", &tmp);
+		for (int j = 0; j < m; ++j)
+		{
+			scanf("%c", &map[i][j]);
+			if (map[i][j] == 'S')
+			{
+				q[t++] = i * maxn + j;
+				vis[0][i][j] = true;
+				map[i][j] = '.';
+				step[0][i][j] = 0;
+			}
+			if (map[i][j] == 'G')
+			{
+				goal = i * maxn + j;
+				map[i][j] = '.';
+			}
+		}
+	}
+	for (int i = 0; i < n; ++i)
+		for (int j = 0; j < m; ++j)
+			for (int k = 0; k < 4; ++k)
+				if (map[i][j] == turret[k])
+				{
+					doit(i, j, k);
+					map[i][j] = '#';
+				}
+	while (h != t)
+	{
+		int cur = q[h++];
+		int cury = cur % maxn;
+		cur /= maxn;
+		int curx = cur % maxn;
+		cur /= maxn;
+		int curround = cur;
+		for (int i = 0; i < 4; ++i)
+		{
+			int x = curx + dx[i], y = cury + dy[i], r = (curround + 1)&3;
+			if (x < 0 || y < 0 || x >= n || y >= m || (rounds[x][y] & (1<<r)) || map[x][y] == '#')
+				continue;
+			int cost = step[curround][curx][cury] + 1;
+			if (step[r][x][y] != -1 && cost >= step[r][x][y])
+				continue;
+			step[r][x][y] = cost;
+			if (!vis[r][x][y])
+			{
+				vis[r][x][y] = true;
+				q[t++] = (r*maxn + x)*maxn + y;
+			}
+			if (x*maxn+y == goal)
+			{
+				printf("%d\n", cost);
+				return;
+			}
+		}
+	}
+	printf("impossible\n");
+}
+
+int main()
+{
+	freopen("a.txt", "r", stdin);
+	freopen("a.out", "w", stdout);
+	int times;
+	scanf("%d", &times);
+	for (int i = 1; i <= times; ++i)
+	{
+		printf("Case #%d: ", i);
+		solve();
+	}
+	return 0;
+}

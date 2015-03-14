@@ -1,0 +1,210 @@
+#include <cstdio>
+#include <cassert>
+#include <queue>
+#include <utility>
+#include <cstring>
+
+using namespace std;
+
+const int MAX_N = 104;
+
+enum Type {
+	EMPTY,
+	WALL,
+	UP,
+	RIGHT,
+	DOWN,
+	LEFT
+};
+
+int rows, cols;
+Type field[4][MAX_N][MAX_N];
+bool safe[4][MAX_N][MAX_N];
+bool vis[4][MAX_N][MAX_N];
+
+Type next(Type t) {
+	switch (t) {
+		case EMPTY:
+		case WALL:
+		return t;
+
+		case UP:
+		return RIGHT;
+
+		case RIGHT:
+		return DOWN;
+
+		case DOWN:
+		return LEFT;
+
+		case LEFT:
+		return UP;
+	}
+
+	assert(false);
+	return WALL;
+}
+
+void fill_safe(int k, int i, int j) {
+	int di = 0, dj = 0;
+	switch (field[k][i][j]) {
+		case UP:
+		di = -1;
+		break;
+
+		case RIGHT:
+		dj = 1;
+		break;
+
+		case DOWN:
+		di = 1;
+		break;
+
+		case LEFT:
+		dj = -1;
+		break;
+
+		default:
+		assert(false);
+		break;
+	}
+
+	int posi = i + di;
+	int posj = j + dj;
+
+	while (0 <= posi && posi < rows && 0 <= posj && posj <= cols) {
+		if (field[k][posi][posj] != EMPTY)
+			break;
+
+		safe[k][posi][posj] = false;
+		posi += di;
+		posj += dj;
+	}
+}
+
+int bfs(int si, int sj, int gi, int gj) {
+	queue < pair < pair < int, int >, pair < int, int > > > q;
+	q.push(make_pair(make_pair(0, 0), make_pair(si, sj)));
+
+	memset(vis, 0, sizeof(vis));
+	vis[0][si][sj] = true;
+
+	while (!q.empty()) {
+		int k = q.front().first.first;
+		int dist = q.front().first.second;
+		int i = q.front().second.first;
+		int j = q.front().second.second;
+		q.pop();
+
+		if (i == gi && j == gj)
+			return dist;
+
+		int di[] = { -1, 1, 0, 0 };
+		int dj[] = { 0, 0, 1, -1 };
+		for (int poss = 0; poss < 4; poss++) {
+			int ni = i + di[poss];
+			int nj = j + dj[poss];
+			int nk = (k + 1) % 4;
+
+			if (0 <= ni && ni < rows && 0 <= nj && nj <= cols) {
+				if (safe[nk][ni][nj] && !vis[nk][ni][nj]) {
+					vis[nk][ni][nj] = true;
+					q.push(make_pair(make_pair(nk, dist + 1), make_pair(ni, nj)));
+				}
+			}
+		}
+	}
+
+	return -1;
+}
+
+int main() {
+	int tests;
+	scanf("%d", &tests);
+
+	for (int t = 1; t <= tests; t++) {
+		scanf("%d %d", &rows, &cols);
+
+		int si = 0, sj = 0, gi = 0, gj = 0;
+
+		for (int i = 0; i < rows; i++) {
+			for (int j = 0; j < cols; j++) {
+				char c;
+				scanf(" %c", &c);
+
+				Type t = EMPTY;
+
+				switch (c) {
+					case '.':
+					t = EMPTY;
+					break;
+
+					case '#':
+					t = WALL;
+					break;
+
+					case 'S':
+					t = EMPTY;
+					si = i;
+					sj = j;
+					break;
+
+					case 'G':
+					t = EMPTY;
+					gi = i;
+					gj = j;
+					break;
+
+					case '^':
+					t = UP;
+					break;
+
+					case '>':
+					t = RIGHT;
+					break;
+
+					case 'v':
+					t = DOWN;
+					break;
+
+					case '<':
+					t = LEFT;
+					break;
+				}
+
+				field[0][i][j] = t;
+				for (int k = 1; k < 4; k++)
+					field[k][i][j] = next(field[k - 1][i][j]);
+			}
+		}
+
+		for (int k = 0; k < 4; k++) {
+			for (int i = 0; i < rows; i++) {
+				for (int j = 0; j < cols; j++) {
+					if (field[k][i][j] == EMPTY)
+						safe[k][i][j] = true;
+					else
+						safe[k][i][j] = false;
+				}
+			}
+
+			for (int i = 0; i < rows; i++) {
+				for (int j = 0; j < cols; j++) {
+					if (next(field[k][i][j]) != field[k][i][j]) {
+						fill_safe(k, i, j);
+					}
+				}
+			}
+		}
+
+		printf("Case #%d: ", t);
+
+		int ans = bfs(si, sj, gi, gj);
+		if (ans == -1)
+			printf("impossible\n");
+		else
+			printf("%d\n", ans);
+	}
+
+	return 0;
+}

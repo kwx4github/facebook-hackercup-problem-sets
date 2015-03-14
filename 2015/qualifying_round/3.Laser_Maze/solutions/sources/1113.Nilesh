@@ -1,0 +1,281 @@
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
+
+public class Prob3 {
+
+    static String input_filename = "laser_maze.txt";
+    static String output_filename = "laser_maze_output.txt";
+
+    static int no_of_cases;
+
+    public static void main(String[] args) throws FileNotFoundException, IOException {
+        String output_data[] = new String[101];
+        String str_data;
+        int m, n;
+
+        File inputFileObj = new File(input_filename);
+        if (!inputFileObj.exists()) {
+            System.out.println("Error: File '" + input_filename + "' not found!!");
+            System.exit(0);
+        }
+
+        FileReader fr = new FileReader(inputFileObj);
+        BufferedReader br = new BufferedReader(fr);
+
+        //read process
+        no_of_cases = Integer.parseInt(br.readLine());
+
+        for (int i = 0; i < no_of_cases; i++) {
+            str_data = br.readLine();
+            m = Integer.parseInt(str_data.split("\\s+")[0]);
+            n = Integer.parseInt(str_data.split("\\s+")[1]);
+
+            char block[][] = new char[m][n];
+            Map<String, Integer> laser_turret_pos_map = new HashMap<String, Integer>();
+            List<Map<String, Integer>> laser_turret_list = new ArrayList<Map<String, Integer>>();
+
+            int g_m = -1, g_n = -1;
+            int s_m = -1, s_n = -1;
+            for (int j = 0; j < m; j++) {
+                block[j] = br.readLine().toCharArray();
+                for (int k = 0; k < n; k++) {
+                    if (block[j][k] == '>' || block[j][k] == 'v' || block[j][k] == '<' || block[j][k] == '^') {
+                        laser_turret_pos_map.put("m", j);
+                        laser_turret_pos_map.put("n", k);
+                        laser_turret_list.add(new HashMap<String, Integer>(laser_turret_pos_map));
+                    } else if (block[j][k] == 'G') {
+                        g_m = j;
+                        g_n = k;
+                    } else if (block[j][k] == 'S') {
+                        s_m = j;
+                        s_n = k;
+                    }
+                }
+            }
+            //process program
+            output_data[i] = processResult(m, n, block, laser_turret_list, s_m, s_n, g_m, g_n);
+            System.out.println("Case #" + (i + 1) + ": " + output_data[i]);
+        }
+        writeToOutputFile(output_filename, output_data);
+        System.out.println("'" + output_filename + "' file created successfully");
+    }
+
+    public static String processResult(int m, int n, char block[][], List<Map<String, Integer>> laser_turret_list, int s_m, int s_n, int g_m, int g_n) {
+        ArrayList<Integer> al = new ArrayList<Integer>();
+//        Map<Integer,Integer> mp = new HashMap<Integer,Integer>();
+        Stack<ArrayList<Integer>> st = new Stack<ArrayList<Integer>>();
+
+        int my_pos_m = s_m;
+        int my_pos_n = s_n;
+        int my_pos = (n * s_m) + s_n;
+        int goal_pos = (n * g_m) + g_n;
+        al.add(my_pos);
+        st.push(new ArrayList<Integer>(al));
+        al.clear();
+
+        char temp;
+        while (st.size() < (m * n)) {
+
+            block = updateBlock(block, laser_turret_list);
+            for (int li : st.peek()) {
+                my_pos_m = (int) li / n;
+                my_pos_n = li - (n * my_pos_m);
+                my_pos = li;
+
+//                System.out.println("\nli:" + li + ", size:" + st.size());
+//                temp = block[my_pos_m][my_pos_n];
+//                block[my_pos_m][my_pos_n] = 'i';
+//                for (char[] str : block) {
+//                    System.out.println(str);
+//                }
+//                block[my_pos_m][my_pos_n] = temp;
+                
+                if (canMoveRight(my_pos_m, my_pos_n, m, n, block)) {
+                    my_pos = ((n * my_pos_m) + my_pos_n) + 1;
+                    if (my_pos == goal_pos) {
+                        return "" + st.size();
+                    }
+                    if (!al.contains(my_pos)) {
+                        al.add(my_pos);
+                    }
+                }
+                if (canMoveDown(my_pos_m, my_pos_n, m, n, block)) {
+                    my_pos = ((n * my_pos_m) + my_pos_n) + n;
+                    if (my_pos == goal_pos) {
+                        return "" + st.size();
+                    }
+                    if (!al.contains(my_pos)) {
+                        al.add(my_pos);
+                    }
+                }
+                if (canMoveLeft(my_pos_m, my_pos_n, m, n, block)) {
+                    my_pos = ((n * my_pos_m) + my_pos_n) - 1;
+                    if (my_pos == goal_pos) {
+                        return "" + st.size();
+                    }
+                    if (!al.contains(my_pos)) {
+                        al.add(my_pos);
+                    }
+                }
+                if (canMoveUp(my_pos_m, my_pos_n, m, n, block)) {
+                    my_pos = ((n * my_pos_m) + my_pos_n) - n;
+                    if (my_pos == goal_pos) {
+                        return "" + st.size();
+                    }
+                    if (!al.contains(my_pos)) {
+                        al.add(my_pos);
+                    }
+                }
+            }
+            if (al.isEmpty()) {
+                return "impossible";
+            }
+            st.push(new ArrayList<Integer>(al));
+            al.clear();
+        }
+        return "impossible";
+    }
+
+    public static char[][] updateBlock(char[][] block, List<Map<String, Integer>> laser_turret_list) {
+        char ch;
+        for (Map<String, Integer> li : laser_turret_list) {
+            switch (ch = block[li.get("m")][li.get("n")]) {
+                case '>':
+                    ch = 'v';
+                    break;
+                case 'v':
+                    ch = '<';
+                    break;
+                case '<':
+                    ch = '^';
+                    break;
+                case '^':
+                    ch = '>';
+                    break;
+            }
+            block[li.get("m")][li.get("n")] = ch;
+        }
+        return block;
+    }
+
+    public static boolean canMoveRight(int my_pos_m, int my_pos_n, int m, int n, char[][] block) {
+        my_pos_n++;
+        if (my_pos_n >= n) {
+            return false;
+        }
+        if (block[my_pos_m][my_pos_n] == '.' || block[my_pos_m][my_pos_n] == 'G' || block[my_pos_m][my_pos_n] == 'S') {
+            if (isLaserSafe(my_pos_m, my_pos_n, m, n, block)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean canMoveDown(int my_pos_m, int my_pos_n, int m, int n, char[][] block) {
+        my_pos_m++;
+        if (my_pos_m >= m) {
+            return false;
+        }
+        if (block[my_pos_m][my_pos_n] == '.' || block[my_pos_m][my_pos_n] == 'G' || block[my_pos_m][my_pos_n] == 'S') {
+            if (isLaserSafe(my_pos_m, my_pos_n, m, n, block)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean canMoveLeft(int my_pos_m, int my_pos_n, int m, int n, char[][] block) {
+        my_pos_n--;
+        if (my_pos_n < 0) {
+            return false;
+        }
+        if (block[my_pos_m][my_pos_n] == '.' || block[my_pos_m][my_pos_n] == 'G' || block[my_pos_m][my_pos_n] == 'S') {
+            if (isLaserSafe(my_pos_m, my_pos_n, m, n, block)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean canMoveUp(int my_pos_m, int my_pos_n, int m, int n, char[][] block) {
+        my_pos_m--;
+        if (my_pos_m < 0) {
+            return false;
+        }
+        if (block[my_pos_m][my_pos_n] == '.' || block[my_pos_m][my_pos_n] == 'G' || block[my_pos_m][my_pos_n] == 'S') {
+            if (isLaserSafe(my_pos_m, my_pos_n, m, n, block)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isLaserSafe(int my_pos_m, int my_pos_n, int m, int n, char[][] block) {
+        //for right direction
+        for (int i = my_pos_n; i < n; i++) {
+            if (block[my_pos_m][i] == '#' || block[my_pos_m][i] == '>' || block[my_pos_m][i] == 'v' || block[my_pos_m][i] == '^') {
+                break;
+            }
+            if (block[my_pos_m][i] == '<') {
+                return false;
+            }
+        }
+        //for down direction
+        for (int i = my_pos_m; i < m; i++) {
+//            if (block[i][my_pos_n] == 'G') {
+//                continue;
+//            }
+            if (block[i][my_pos_n] == '#' || block[i][my_pos_n] == '>' || block[i][my_pos_n] == 'v' || block[i][my_pos_n] == '<') {
+                break;
+            }
+            if (block[i][my_pos_n] == '^') {
+                return false;
+            }
+        }
+        //for left direction
+        for (int i = my_pos_n; i >= 0; i--) {
+            if (block[my_pos_m][i] == '#' || block[my_pos_m][i] == '<' || block[my_pos_m][i] == 'v' || block[my_pos_m][i] == '^') {
+                break;
+            }
+            if (block[my_pos_m][i] == '>') {
+                return false;
+            }
+        }
+        //for up direction
+        for (int i = my_pos_m; i >= 0; i--) {
+            if (block[i][my_pos_n] == '#' || block[i][my_pos_n] == '>' || block[i][my_pos_n] == '<' || block[i][my_pos_n] == '^') {
+                break;
+            }
+            if (block[i][my_pos_n] == 'v') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static void writeToOutputFile(String output_filename, String output_data[]) {
+        try {
+            File outputFileObj = new File(output_filename);
+            FileWriter fw = new FileWriter(outputFileObj);
+            BufferedWriter bw = new BufferedWriter(fw);
+            for (int i = 0; i < no_of_cases; i++) {
+                bw.write("Case #" + (i + 1) + ": " + output_data[i]);
+                bw.newLine();
+            }
+            bw.flush();
+            fw.flush();
+        } catch (IOException e) {
+            System.out.println(e);
+        }
+    }
+}

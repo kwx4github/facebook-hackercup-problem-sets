@@ -1,0 +1,166 @@
+/* G++ */
+/* Laser Maze */
+
+/* input/output */
+	#include <iostream>
+	#include <cstdio>
+	#include <fstream>
+
+/* data structures */
+	#include <cstring>
+	#include <sstream>
+	#include <vector>
+	#include <map>
+	#include <queue>
+	#include <deque>
+	#include <stack>
+	
+/* std algorithms and math functions */
+	#include <algorithm>
+	#include <cmath>
+	#include <cstdlib>
+
+/* i only use this shit in olympiads */
+	using namespace std;
+
+/* some useful defines */
+	#define MAX(x, y) ((x) > (y))? (x):(y)
+	#define MIN(x, y) ((x) < (y))? (x):(y)
+	#define R first
+	#define C second
+	#define PB(x) push_back(x)
+	#define PPB(x) pop_back(x)
+	#define MP(x, y) make_pair(x, y)
+	#define ALL(a) (a).begin(), (a).end()
+	#define SORT(a) sort(all(a))
+	#define FOR(i, a, b) for(int i=a; i<b; i++)
+	#define SWAP(t, a, b) {t tmp=a; a=b; b=tmp;}
+	#define CASET(T) "Case #" << T << ": "
+
+const char marked		= '*';
+const char wall			= '#';
+const char empty		= '.';
+const char start		= 'S';
+const char goal			= 'G';
+const string laser_up		= "^>v<";
+const string laser_right	= ">v<^";
+const string laser_down		= "v<^>";
+const string laser_left		= "<^>v";
+const string laser_morph[]	= {laser_up, laser_right, laser_down, laser_left};
+
+int SolveTestcase(size_t T)
+{
+	int M, N;
+	cin >> M >> N;
+	vector<string> maze_raw(M);
+	FOR(i, 0, M)
+		cin >> maze_raw[i];
+
+	vector< vector<string> > maze_morph(4, maze_raw );
+
+	#define ISLASER(x)			((x == '^')||(x == '>')||(x == 'v')||(x == '<'))
+	#define GETLASERID(x)		((x)=='^')?(0):(((x)=='>')?(1):(((x)=='v')?(2):(3)))
+	#define OUTOFBOUND(r, c) 	((r<0)||(r>=M)||(c<0)||(c>=N))
+	#define CANMOVE(m, r, c) \
+		((!OUTOFBOUND(r, c)) && ((m[r][c] == empty) || (m[r][c] == 'S') || (m[r][c] == 'G'))) 
+
+	FOR(mod, 0, 4)	
+		FOR(row, 0, M)
+			FOR(col, 0, N){
+				if (!ISLASER(maze_raw[row][col]))
+					continue;
+				int ID = GETLASERID(maze_raw[row][col]);
+				if (laser_morph[ID][mod] == '^'){
+					int r = row, c = col;
+					maze_morph[mod][r--][c] = wall;
+					while (CANMOVE(maze_raw, r, c)){
+						maze_morph[mod][r--][c] = wall;
+					}
+				}
+				if (laser_morph[ID][mod] == '>'){
+					int r = row, c = col;
+					maze_morph[mod][r][c++] = wall;
+					while (CANMOVE(maze_raw, r, c)){
+						maze_morph[mod][r][c++] = wall;						
+					}
+				}
+				if (laser_morph[ID][mod] == 'v'){
+					int r = row, c = col;
+					maze_morph[mod][r++][c] = wall;
+					while (CANMOVE(maze_raw, r, c)){
+						maze_morph[mod][r++][c] = wall;
+					}
+				}
+				if (laser_morph[ID][mod] == '<'){
+					int r = row, c = col;
+					maze_morph[mod][r][c--] = wall;
+					while (CANMOVE(maze_raw, r, c)){
+						maze_morph[mod][r][c--] = wall;						
+					}
+				}
+			}
+
+	pair<int, int>* que[2];
+	int s0 = 0, s1 = 1, goal_r = -1, goal_c = -1, l0 = 0, l1 = 0;
+	que[s0] = new pair<int, int>[N*M];
+	que[s1] = new pair<int, int>[N*M];
+
+	FOR(row, 0, M)
+		FOR (col, 0, N)
+			if (maze_raw[row][col] == start)
+				que[s0][l0++] = MP(row, col);
+			else if (maze_raw[row][col] == goal)
+				goal_r = row, goal_c = col;			
+
+	int len = 0;
+	while ((l0 > 0) && (len <= 4*N*M)){	
+		len++;
+		FOR(row, 0, M)
+			FOR(col, 0, N)
+				if (maze_morph[len % 4][row][col] == marked)
+					maze_morph[len % 4][row][col] = empty;
+
+		l1 = 0;
+		FOR(i, 0, l0){
+			int r = que[s0][i].R;
+			int c = que[s0][i].C;
+			if ((r == goal_r) && (c == goal_c)){
+				cout << CASET(T) << len-1 << endl;
+				return 0;
+			}
+			
+			if (CANMOVE(maze_morph[len % 4], r-1, c)){
+				maze_morph[len % 4][r-1][c] = marked;
+				que[s1][l1++] = MP(r-1, c);
+			}
+			if (CANMOVE(maze_morph[len % 4], r, c+1)){
+				maze_morph[len % 4][r][c+1] = marked;
+				que[s1][l1++] = MP(r, c+1);
+			}
+			if (CANMOVE(maze_morph[len % 4], r+1, c)){
+				maze_morph[len % 4][r+1][c] = marked;
+				que[s1][l1++] = MP(r+1, c);
+			}
+			if (CANMOVE(maze_morph[len % 4], r, c-1)){
+				maze_morph[len % 4][r][c-1] = marked;
+				que[s1][l1++] = MP(r, c-1);
+			}
+		}
+		l0 = l1;
+		s0 = 1-s0;
+		s1 = 1-s1;
+	}
+
+	cout << CASET(T) << "impossible" << endl;
+	return 0;
+}
+
+int main()
+{
+	size_t T;
+	cin >> T;
+	for (int i=0; i<T; i++){
+		SolveTestcase(i+1);
+	}	
+	return 0;
+}

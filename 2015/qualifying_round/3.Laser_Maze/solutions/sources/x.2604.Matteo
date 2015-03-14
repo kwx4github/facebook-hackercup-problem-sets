@@ -1,0 +1,98 @@
+#include <iostream>
+#include <cstring>
+#include <queue>
+
+using namespace std;
+
+#define mp make_pair
+#define ff first
+#define ss second
+
+int R,C;
+char M[105][105], tmp[4][105][105];
+int S[2], G[2];
+        
+void rotate(char &t, int time){
+    if (time==0) return;
+    if (t=='>') t = 'v';
+    else if (t=='v') t = '<';
+    else if (t=='<') t = '^';
+    else if (t=='^') t = '>';
+    rotate(t, time-1);
+}
+void shot(int t, int r, int c, int dr, int dc){
+    r += dr, c += dc;
+    if (r < 0 || r >= R || c < 0 || c >= C) return;
+    if (tmp[t][r][c] != '.') return;
+    tmp[t][r][c] = '@';
+    shot(t,r,c,dr,dc);
+}
+void initKillzone(){
+    for (int t = 0; t < 4; t++){
+        memcpy(tmp[t], M, sizeof M);
+        for (int r = 0; r < R; r++)
+            for (int c = 0; c < C; c++)
+                if (tmp[t][r][c]=='>' || tmp[t][r][c]=='<' || tmp[t][r][c]=='^' || tmp[t][r][c]=='v')
+                    rotate(tmp[t][r][c], t);
+        for (int r = 0; r < R; r++)
+            for (int c = 0; c < C; c++)
+                if (tmp[t][r][c]=='>') shot(t,r,c,0,+1);
+                else if (tmp[t][r][c]=='v') shot(t,r,c,+1,0);
+                else if (tmp[t][r][c]=='<') shot(t,r,c,0,-1);
+                else if (tmp[t][r][c]=='^') shot(t,r,c,-1,0);
+    }
+}
+bool VIS[4][105][105];
+int moves[4][2] = {{+1,0},{-1,0},{0,+1},{0,-1}};
+bool isFine(int t, int r, int c){
+    if (r < 0 || r >= R || c < 0 || c >= C) return false;
+    return (tmp[t%4][r][c] == '.');
+}
+int main(){
+    freopen("C.in","r",stdin);
+    freopen("C.out","w",stdout);
+    int T;
+    cin>>T;
+    for (int i = 0; i < T; i++){
+        cin>>R>>C;
+        for (int i = 0; i < R; i++)
+            cin>>M[i];
+        for (int r = 0; r < R; r++)
+            for (int c = 0; c < C; c++)
+                if (M[r][c]=='S'){
+                    S[0] = r, S[1] = c;
+                    M[r][c] = '.';
+                } else if (M[r][c]=='G'){
+                    G[0] = r, G[1] = c;
+                    M[r][c] = '.';
+                }
+        initKillzone();
+        int ans = -1;
+        
+        memset(VIS,0,sizeof VIS);
+        VIS[0][S[0]][S[1]] = 1;
+        
+        queue<pair<int,pair<int,int> > > q;
+        q.push(mp(0,mp(S[0],S[1])));
+        
+        while (!q.empty()){
+            auto t = q.front(); q.pop();
+            //~ cout<<t.ff<<","<<t.ss.ff<<","<<t.ss.ss<<endl;
+            if (t.ss.ff == G[0] && t.ss.ss == G[1]){
+                ans = t.ff;
+                break;
+            }
+            for (int i = 0; i < 4; i++)
+                if (isFine(t.ff+1, t.ss.ff+moves[i][0], t.ss.ss+moves[i][1]) && !VIS[(t.ff+1)%4][t.ss.ff+moves[i][0]][t.ss.ss+moves[i][1]]){
+                    VIS[(t.ff+1)%4][t.ss.ff+moves[i][0]][t.ss.ss+moves[i][1]] = 1;
+                    q.push(mp(t.ff+1,mp(t.ss.ff+moves[i][0],t.ss.ss+moves[i][1])));
+                }
+        }
+        cout<<"Case #"<<i+1<<": ";
+        if (ans == -1)
+            cout<<"impossible\n";
+        else
+            cout<<ans<<"\n";
+    }
+    return 0;
+}

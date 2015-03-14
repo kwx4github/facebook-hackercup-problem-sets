@@ -1,0 +1,437 @@
+#include<cstdio>
+#include<cmath>
+#include<cstdlib>
+
+
+
+
+enum CellState{
+	available,
+	wall,
+	fired,
+	obsolete,
+	turret_0,
+	turret_1,
+	turret_2,
+	turret_3
+};
+
+struct point{
+	int X;
+	int Y;
+	int Z;
+	int moves;
+	point *next;
+};
+
+
+class PointQueue{
+private:
+	
+	point *first;
+	point *last;
+
+public:
+	PointQueue(){
+		first=0;
+		last=0;
+	}
+
+	void Put(point &p){
+		if(last==0){
+			last=new point(p);
+			first=last;
+			last->next=0;
+			return;
+		}
+		last->next=new point(p);
+		last=last->next;
+		last->next=0;
+	}
+
+	point* Get(){
+		if(first==0)return 0;
+		point* ptr=first;
+		first=first->next;
+		if(first==0)last=0;
+		return ptr;
+	}
+
+	~PointQueue(){
+		point *ptr;
+		while(first!=0){
+			ptr=first;
+			first=first->next;
+			delete ptr;
+		}
+	}
+};
+
+
+
+class Grid{
+public:
+	CellState grid[4][100][100];
+	int width;
+	int height;
+	int currentLaserState;
+	point currentPos;
+	point goal;
+	int moves;
+	long debugCount;
+
+	Grid(int width,int height, char inputArray[100][100]){
+		debugCount=0;
+		this->width=width;
+		this->height=height;
+		currentLaserState=0;
+		moves=0;
+		char c;
+
+		for(int w=0;w<width;w++){
+			for(int h=0;h<height;h++){
+				c=inputArray[w][h];
+				switch(c){
+				case '.':
+					grid[0][w][h]=CellState::available;
+					break;
+				case '#':
+					grid[0][w][h]=CellState::wall;
+					break;
+				case '^':
+					grid[0][w][h]=CellState::turret_0;
+					break;
+				case '>':
+					grid[0][w][h]=CellState::turret_1;
+					break;
+				case 'v':
+					grid[0][w][h]=CellState::turret_2;
+					break;
+				case '<':
+					grid[0][w][h]=CellState::turret_3;
+					break;
+				case 'S':
+					grid[0][w][h]=CellState::obsolete;
+					currentPos.X=w;
+					currentPos.Y=h;
+					currentPos.Z=0;
+					currentPos.moves=0;
+					break;
+				case 'G':
+					grid[0][w][h]=CellState::available;
+					goal.X=w;
+					goal.Y=h;
+				}
+			}
+		}
+		CalculateLaserStates();
+	}
+
+	void CalculateLaserStates(int laserState){
+		point p;
+		CellState s;
+		for(int w=0;w<width;w++){
+			for(int h=0;h<height;h++){
+				switch(grid[laserState][w][h]){
+				case CellState::turret_0:
+					
+
+					p.X=w;
+					p.Y=h+1;
+					s=GetState(p,laserState);
+					while(s==CellState::available||s==CellState::fired||s==CellState::obsolete){
+						grid[laserState][p.X][p.Y]=CellState::fired;
+						p.Y++;
+						s=GetState(p,laserState);
+					}
+
+					if(laserState!=3) grid[laserState+1][w][h]=CellState::turret_1;
+
+					break;
+				case CellState::turret_1:
+					p.X=w+1;
+					p.Y=h;
+					s=GetState(p,laserState);
+					while(s==CellState::available||s==CellState::fired||s==CellState::obsolete){
+						grid[laserState][p.X][p.Y]=CellState::fired;
+						p.X++;
+						s=GetState(p,laserState);
+					}
+
+					if(laserState!=3) grid[laserState+1][w][h]=CellState::turret_2;
+
+					break;
+				case CellState::turret_2:
+					p.X=w;
+					p.Y=h-1;
+					s=GetState(p,laserState);
+					while(s==CellState::available||s==CellState::fired||s==CellState::obsolete){
+						grid[laserState][p.X][p.Y]=CellState::fired;
+						p.Y--;
+						s=GetState(p,laserState);
+					}
+
+					if(laserState!=3) grid[laserState+1][w][h]=CellState::turret_3;
+
+					break;
+				case CellState::turret_3:
+					p.X=w-1;
+					p.Y=h;
+					s=GetState(p,laserState);
+					while(s==CellState::available||s==CellState::fired||s==CellState::obsolete){
+						grid[laserState][p.X][p.Y]=CellState::fired;
+						p.X--;
+						s=GetState(p,laserState);
+					}
+
+					if(laserState!=3) grid[laserState+1][w][h]=CellState::turret_0;
+
+					break;
+				case CellState::wall:
+					if(laserState!=3) grid[laserState+1][w][h]=CellState::wall;
+					break;
+				case CellState::available:
+				case CellState::fired:
+				case CellState::obsolete:
+
+					if(laserState!=3) grid[laserState+1][w][h]=CellState::available;
+					
+				}
+			}
+		}
+	}
+
+	void CalculateLaserStates(){
+		CalculateLaserStates(0);
+		CalculateLaserStates(1);
+		CalculateLaserStates(2);
+		CalculateLaserStates(3);
+	}
+
+	CellState GetState(point p, int laserState){
+		if(p.X<0||p.X>=width||p.Y<0||p.Y>=height)return CellState::wall;
+		return grid[laserState][p.X][p.Y];
+	}
+
+	/*
+	//old "Move()"
+	bool Move(int direction){
+		int nextState = (currentLaserState==3)?0:(currentLaserState+1);
+		point target;
+		switch(direction){
+		case 0:
+			target.X=currentPos.X;
+			target.Y=currentPos.Y+1;
+			break;
+		case 1:
+			target.X=currentPos.X+1;
+			target.Y=currentPos.Y;
+			break;
+		case 2:
+			target.X=currentPos.X;
+			target.Y=currentPos.Y-1;
+			break;
+		case 3:
+			target.X=currentPos.X-1;
+			target.Y=currentPos.Y;
+		}
+		if(GetState(target,nextState)!=CellState::available) return false;
+		moves++;
+		currentLaserState=nextState;
+		grid[nextState][target.X][target.Y]=CellState::obsolete;
+		currentPos=target;
+
+		return true;
+	}
+	*/
+
+	bool Move(int direction, point position, int state){
+		int nextState = (state==3)?0:(state+1);
+		point target;
+		switch(direction){
+		case 0:
+			target.X=position.X;
+			target.Y=position.Y+1;
+			break;
+		case 1:
+			target.X=position.X+1;
+			target.Y=position.Y;
+			break;
+		case 2:
+			target.X=position.X;
+			target.Y=position.Y-1;
+			break;
+		case 3:
+			target.X=position.X-1;
+			target.Y=position.Y;
+		}
+		if(GetState(target,nextState)!=CellState::available) return false;
+		//moves++;
+		//currentLaserState=nextState;
+		grid[nextState][target.X][target.Y]=CellState::obsolete;
+		//currentPos=target;
+
+		return true;
+	}
+
+};
+
+
+
+int MinSteps(Grid *grid, point *currentPosition, int moves);
+
+int MinSteps(int width,int height, char inputArray[100][100]){
+	Grid *grid=0;
+	grid=new Grid(width,height,inputArray);
+	//return MinSteps(grid);
+	point *p=new point(grid->currentPos);
+	//p->X=grid->currentPos.X;
+	//p->Y=grid->currentPos.Y;
+	int min=MinSteps(grid,p,0);
+	delete grid;
+	//delete p;
+	return min;
+}
+/*
+int MinSteps(Grid *grid){
+	if((grid->currentPos.X==grid->goal.X) && (grid->currentPos.Y==grid->goal.Y))
+		return grid->moves;
+	if(MINIMAL>0 && grid->moves>=MINIMAL-1)return 0;
+
+	Grid *grid_moveup=0;
+	Grid *grid_moveright=0;
+	Grid *grid_movedown=0;
+	Grid *grid_moveleft=0;
+
+	int moveup=0;
+	int moveright=0;
+	int movedown=0;
+	int moveleft=0;
+
+	grid_moveup=new Grid(*grid);
+	if(grid_moveup->Move(0)){
+		fprintf(fp3,"up ");
+		moveup=MinSteps(grid_moveup);
+
+	}
+	if(moveup>0) MINIMAL=moveup;
+
+	grid_moveright=new Grid(*grid);
+	if(grid_moveright->Move(1)){
+		fprintf(fp3,"right ");
+		moveright=MinSteps(grid_moveright);
+		
+	}
+	if(moveright>0)MINIMAL=moveright;
+
+	grid_movedown=new Grid(*grid);
+	if(grid_movedown->Move(2)){
+		fprintf(fp3,"down ");
+		movedown=MinSteps(grid_movedown);
+		
+	}
+	if(movedown>0)MINIMAL=movedown;
+
+	grid_moveleft=new Grid(*grid);
+	if(grid_moveleft->Move(3)){
+		fprintf(fp3,"left ");
+		moveleft=MinSteps(grid_moveleft);
+		
+	}
+	if(moveleft>0)MINIMAL=moveleft;
+
+	delete grid_moveup;
+	delete grid_moveright;
+	delete grid_movedown;
+	delete grid_moveleft;
+
+
+	DEBUGCOUNT++;
+	fprintf(fp3,"stop\n");
+	return MinButNotNull(moveup,moveright,movedown,moveleft);
+}
+*/
+
+int MinSteps(Grid *grid, point *currentPosition, int moves){
+	//if(currentPosition->X==grid->goal.X && currentPosition->Y==grid->goal.Y) return moves;
+	
+	point moveup;
+	point moveright;
+	point movedown;
+	point moveleft;
+	point *ptr;
+
+	PointQueue queue;
+	
+	while(true){
+		if(currentPosition->X==grid->goal.X && currentPosition->Y==grid->goal.Y) return currentPosition->moves;
+		if(grid->Move(0,*currentPosition,currentPosition->Z)){
+			moveup.X=currentPosition->X;
+			moveup.Y=currentPosition->Y+1;
+			moveup.Z=currentPosition->Z==3?0:currentPosition->Z+1;
+			moveup.moves=currentPosition->moves+1;
+			queue.Put(moveup);
+		}
+		if(grid->Move(1,*currentPosition,currentPosition->Z)){
+			moveright.X=currentPosition->X+1;
+			moveright.Y=currentPosition->Y;
+			moveright.Z=currentPosition->Z==3?0:currentPosition->Z+1;
+			moveright.moves=currentPosition->moves+1;
+			queue.Put(moveright);
+		}
+		if(grid->Move(2,*currentPosition,currentPosition->Z)){
+			movedown.X=currentPosition->X;
+			movedown.Y=currentPosition->Y-1;
+			movedown.Z=currentPosition->Z==3?0:currentPosition->Z+1;
+			movedown.moves=currentPosition->moves+1;
+			queue.Put(movedown);
+		}
+		if(grid->Move(3,*currentPosition,currentPosition->Z)){
+			moveleft.X=currentPosition->X-1;
+			moveleft.Y=currentPosition->Y;
+			moveleft.Z=currentPosition->Z==3?0:currentPosition->Z+1;
+			moveleft.moves=currentPosition->moves+1;
+			queue.Put(moveleft);
+		}
+		ptr=queue.Get();
+		if(ptr==0)return 0;
+		delete currentPosition;
+		currentPosition=ptr;
+	}
+
+}
+
+void main(){
+	_iobuf *fp1;
+	_iobuf *fp2;
+	//fp3=fopen("debug.txt","w");
+	fp1=fopen("laser_maze.txt","r");
+	fp2=fopen("output.txt","w");
+
+	int cases;
+	int height;
+	int width;
+	char buf[100][100];
+	char *str0="impossible";
+
+	fscanf(fp1,"%d",&cases);
+
+	for(int i=1;i<=cases;i++){
+		fscanf(fp1,"%d",&height);
+		fscanf(fp1,"%d",&width);
+		for(int h=height-1;h>=0;h--){
+			fgetc(fp1);
+			for(int w=0;w<width;w++){
+				buf[w][h] = fgetc(fp1);
+			}
+		}
+		int answer=MinSteps(width,height,buf);
+		if(answer==0){
+			fprintf(fp2,"Case #%d: %s\n",i,str0);
+		}
+		else{
+			fprintf(fp2,"Case #%d: %d\n",i,answer);
+		}
+	}
+}
+

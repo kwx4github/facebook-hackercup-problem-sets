@@ -1,0 +1,119 @@
+#include <iostream>
+#include <map>
+#include <queue>
+#include <string>
+#include <string.h>
+using namespace std;
+
+#define EMPTY -1
+#define WALL -2
+#define UP 0
+#define RIGHT 1
+#define DOWN 2
+#define LEFT 3
+
+const int move[4][2] = { { -1, 0 }, { 0, +1 }, { +1, 0 }, { 0, -1 } };
+const int opposite[4] = { 2, 3, 0, 1 };
+
+struct state {
+	int r, c, t;
+};
+
+int rows, cols, maze[100][100];
+
+bool inside_maze(state x) {
+	return 0 <= x.r && x.r < rows && 0 <= x.c && x.c < cols;
+}
+bool legal(state x) {
+	return inside_maze(x) && maze[x.r][x.c] == EMPTY;
+}
+
+int main() {
+	map<char, int> char_to_int;
+	char_to_int['.'] = EMPTY;
+	char_to_int['#'] = WALL;
+	char_to_int['S'] = EMPTY;
+	char_to_int['G'] = EMPTY;
+	char_to_int['^'] = UP;
+	char_to_int['>'] = RIGHT;
+	char_to_int['v'] = DOWN;
+	char_to_int['<'] = LEFT;
+
+	int cases;
+	cin >> cases;
+	for (int cas = 1; cas <= cases; cas++) {
+
+		// read maze
+
+		state start, goal;
+		cin >> rows >> cols;
+		for (int r = 0; r < rows; r++) {
+			string line;
+			cin >> line;
+			for (int c = 0; c < cols; c++) {
+				maze[r][c] = char_to_int[line[c]];
+				if (line[c] == 'S') {
+					start.r = r;
+					start.c = c;
+				} else if (line[c] == 'G') {
+					goal.r = r;
+					goal.c = c;
+				}
+			}
+		}
+
+		// BFS
+		bool seen[100][100][4];
+		memset(seen, false, sizeof(seen));
+		int time = -1;
+		start.t = 0;
+		queue<state> q;
+		q.push(start);
+
+		while (!q.empty()) {
+			state now = q.front();
+			q.pop();
+			if (now.r == goal.r && now.c == goal.c) {
+				time = now.t;
+				break;
+			}
+			for (int dir = 0; dir < 4; dir++) {
+				state nxt;
+				nxt.r = now.r + move[dir][0];
+				nxt.c = now.c + move[dir][1];
+				nxt.t = now.t + 1;
+				if (legal(nxt) && !seen[nxt.r][nxt.c][nxt.t % 4]) {
+
+					bool killed_by_turret = false;
+					for (int k = 0; k < 4; k++) {
+						state turret;
+						turret.r = nxt.r + move[k][0];
+						turret.c = nxt.c + move[k][1];
+						while (legal(turret)) {
+							turret.r += move[k][0];
+							turret.c += move[k][1];
+						}
+						killed_by_turret = inside_maze(turret)
+								&& maze[turret.r][turret.c] != WALL
+								&& (maze[turret.r][turret.c] + nxt.t) % 4
+										== opposite[k];
+						if (killed_by_turret)
+							break;
+					}
+
+					if (!killed_by_turret) {
+						q.push(nxt);
+						seen[nxt.r][nxt.c][nxt.t % 4] = true;
+					}
+				}
+			}
+		}
+		cout << "Case #" << cas << ": ";
+		if (time == -1)
+			cout << "impossible" << endl;
+		else
+			cout << time << endl;
+	}
+
+	return 0;
+}

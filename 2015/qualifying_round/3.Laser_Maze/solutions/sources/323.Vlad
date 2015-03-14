@@ -1,0 +1,313 @@
+// LaserMaze.cpp : Defines the entry point for the console application.
+//
+
+#include <fstream>
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <map>
+#include <string>
+
+using namespace std;
+
+const int maxN = 100;
+const int maxM = 100;
+
+class Maze
+{
+public:
+	Maze() : N(0), M(0), m_sx(0), m_sy(0), m_ex(0), m_ey(0), m_cx(0), m_cy(0)
+	{
+		for (int i = 0; i < maxM; ++i)
+		{
+			for (int j = 0; j < maxN; ++j)
+			{
+				m_maze[i][j] = 0;
+			}
+		}
+	}
+	Maze(int i_N, int i_M, char maze[maxM][maxN]) : N(i_N), M(i_M)
+	{
+		for (int i = 0; i < maxM; ++i)
+		{
+			for (int j = 0; j < maxN; ++j)
+			{
+				m_maze[i][j] = 0;
+			}
+		}
+		for (int i = 0; i < M; ++i)
+		{
+			for (int j = 0; j < N; ++j)
+			{
+				m_maze[i][j] = maze[i][j];
+			}
+		}
+		for (int i = 0; i < M; ++i)
+		{
+			for (int j = 0; j < N; ++j)
+			{
+				if (m_maze[i][j] == 'S')
+				{
+					m_sx = i;
+					m_sy = j;
+					m_cx = i;
+					m_cy = j;
+					m_maze[i][j] = 'x';
+				}
+				if (m_maze[i][j] == 'G')
+				{
+					m_ex = i;
+					m_ey = j;
+					m_maze[i][j] = '.';
+				}
+			}
+		}
+	}
+
+	void rotateturrets()
+	{
+		for (int i = 0; i < M; ++i)
+		{
+			for (int j = 0; j < N; ++j)
+			{
+				switch (m_maze[i][j])
+				{
+				case '<':
+					m_maze[i][j] = '^';
+					break;
+				case '^':
+					m_maze[i][j] = '>';
+					break;
+				case '>':
+					m_maze[i][j] = 'v';
+					break;
+				case 'v':
+					m_maze[i][j] = '<';
+					break;
+				}
+			}
+		}
+	}
+
+	void printarray()
+	{
+		for (int i = 0; i < M; ++i)
+		{
+			for (int j = 0; j < N; ++j)
+			{
+				cout << m_maze[i][j];
+			}
+			cout << endl;
+		}
+		cout << endl;
+	}
+
+	bool final() const { return (m_cx == m_ex) && (m_cy == m_ey); }
+	char getvalue(int i, int j) const { return m_maze[i][j]; }
+	char getM() const { return M; }
+	char getN() const {	return N; }
+	int getCurrentI() const { return m_cx; }
+	int getCurrentJ() const { return m_cy; }
+
+	bool dead(int stepnumber)
+	{
+		bool fnd = false;
+		m_maze[m_cx][m_cy] = '.';
+		for (int i = 0; (i < M) && !fnd; ++i)
+		{
+			for (int j = 0; (j < N) && !fnd; ++j)
+			{
+				switch (m_maze[i][j])
+				{
+				case '<':
+					if (m_cx == i && m_cy < j)
+					{
+						bool good = true;
+						for (int jj = m_cy; jj < j; ++jj)
+						{
+							good = good && ('.' == m_maze[i][jj]);
+						}
+						fnd = fnd || good;
+					}
+					break;
+				case '^':
+					if (m_cx < i && m_cy == j)
+					{
+						bool good = true;
+						for (int ii = m_cx; ii < i; ++ii)
+						{
+							good = good && ('.' == m_maze[ii][j]);
+						}
+						fnd = fnd || good;
+					}
+					break;
+				case '>':
+					if (m_cx == i && m_cy > j)
+					{
+						bool good = true;
+						for (int jj = j + 1; jj <= m_cy; ++jj)
+						{
+							good = good && ('.' == m_maze[i][jj]);
+						}
+						fnd = fnd || good;
+					}
+					break;
+				case 'v':
+					if (m_cx > i && m_cy == j)
+					{
+						bool good = true;
+						for (int ii = i + 1; ii <= m_cx; ++ii)
+						{
+							good = good && ('.' == m_maze[ii][j]);
+						}
+						fnd = fnd || good;
+					}
+					break;
+				}
+			}
+		}
+		m_maze[m_cx][m_cy] = 'x';
+		return fnd && (stepnumber > 0);
+	}
+
+	bool canmove(int i, int j)
+	{
+		bool rv = false;
+		int dist = abs(i - m_cx) + abs(j - m_cy);
+		bool cond = (0 <= i && i < M) && (0 <= j && j < N);
+		if (cond && (dist == 1))
+		{
+			rv = ('.' == m_maze[i][j]);
+		}
+		return rv;
+	}
+
+	void setPosition(int i, int j)
+	{
+		m_maze[m_cx][m_cy] = '.';
+		m_maze[i][j] = 'x';
+		m_cx = i;
+		m_cy = j;
+	}
+
+private:
+	int N;
+	int M;
+	int m_sx;
+	int m_sy;
+	int m_ex;
+	int m_ey;
+	int m_cx;
+	int m_cy;
+	char m_maze[maxM][maxN];
+};
+
+bool operator < (const Maze& m1, const Maze& m2)
+{
+	for (int i = 0; i < maxM; ++i)
+	{
+		for (int j = 0; j < maxN; ++j)
+		{
+			if (m1.getvalue(i, j) != m2.getvalue(i, j))
+				return m1.getvalue(i, j) < m2.getvalue(i, j);
+		}
+	}
+	return false;
+}
+
+
+int main(int argc, char* argv[])
+{
+	ifstream inf("infile.txt");
+	ofstream ouf("outfile.txt");
+	int T;
+	inf >> T;
+	for (int tk = 1; tk <= T; ++tk)
+	{
+		map<Maze, bool> mp;
+		int N, M;
+		inf >> M >> N;
+		char maze[maxM][maxN];
+		for (int i = 0; i < M; ++i)
+		{
+			string s;
+			inf >> s;
+			for (int j = 0; j < N; ++j)
+			{
+				maze[i][j] = s[j];
+			}
+		}
+		Maze maz(N, M, maze);
+		queue<pair<Maze, int> > q;
+		q.push(make_pair(maz, 0));
+		while (!q.empty() && !q.front().first.final())
+		{
+			int stepnumber = q.front().second;
+			Maze current(q.front().first);
+			if (!current.dead(stepnumber) && (mp.find(current) == mp.end()))
+			{
+				mp[current] = true;
+				int ci = current.getCurrentI();
+				int cj = current.getCurrentJ();
+				if (current.canmove(ci - 1, cj))
+				{
+					Maze nw(current);
+					nw.setPosition(ci - 1, cj);
+					nw.rotateturrets();
+					if (!nw.dead(stepnumber + 1))
+					{
+						q.push(make_pair(nw, stepnumber + 1));
+					}
+				}
+				if (current.canmove(ci + 1, cj))
+				{
+					Maze nw(current);
+					nw.setPosition(ci + 1, cj);
+					nw.rotateturrets();
+					if (!nw.dead(stepnumber + 1))
+					{
+						q.push(make_pair(nw, stepnumber + 1));
+					}
+				}
+				if (current.canmove(ci, cj - 1))
+				{
+					Maze nw(current);
+					nw.setPosition(ci, cj - 1);
+					nw.rotateturrets();
+					if (!nw.dead(stepnumber + 1))
+					{
+						q.push(make_pair(nw, stepnumber + 1));
+					}
+				}
+				if (current.canmove(ci, cj + 1))
+				{
+					Maze nw(current);
+					nw.setPosition(ci, cj + 1);
+					nw.rotateturrets();
+					if (!nw.dead(stepnumber + 1))
+					{
+						q.push(make_pair(nw, stepnumber + 1));
+					}
+				}
+			}
+			q.pop();
+		}
+		ouf << "Case #" << tk << ": ";
+		cout << "Case #" << tk << ": ";
+		if (q.empty())
+		{
+			ouf << "impossible" << endl;
+			cout << "impossible" << endl;
+		}
+		else
+		{
+			ouf << q.front().second << endl;
+			cout << q.front().second << endl;
+		}
+	}
+	inf.close();
+	ouf.close();
+	system("pause");
+	return 0;
+}
+

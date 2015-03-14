@@ -1,0 +1,320 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Scanner;
+
+
+public class Main {
+	public static void main(String[] args) throws NumberFormatException, IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+		
+		int mazesCount = Integer.valueOf(reader.readLine());
+		
+		for (int i=0; i<mazesCount; ++i) {
+			System.out.println("Case #" + (i+1) + ": " + getMinStepCount(reader));
+		}
+	}
+	
+	private static enum CellType {
+		EMPTY("."), WALL("#"), START("S"),  GOAL("G"), TURRET("<>^v");
+		private static Map<Character, CellType> cellsByChar;
+		
+		private CellType(String mazeChars) {
+			addCharsToMap(mazeChars);
+		}
+		
+		private void addCharsToMap(String symbols) {
+			if (cellsByChar == null) {
+				cellsByChar = new HashMap<Character, CellType>();
+			}
+			for (char c: symbols.toCharArray()) {
+				cellsByChar.put(c, this);
+			}
+		}
+		
+		public static CellType get(Character c) {
+			return cellsByChar.get(c);
+		}
+	}
+	
+	private static class Pair {
+		int i;
+		int j;
+		public Pair(int i, int j) {
+			this.i = i;
+			this.j = j;
+		}
+	}
+	
+	private static class CellFactory {
+		public static Cell createCell(Character c) {
+			switch (CellType.get(c)) {
+			case TURRET:
+				return new Turret(c);
+			default:
+				return new Cell(c);
+			}
+		}
+	}
+	
+	private static class Cell {
+		private CellType type;
+		private boolean[] forbiddenSteps;
+		private List<Cell>[] edges;
+		public Cell(Character c) {
+			forbiddenSteps = new boolean[4];
+			type = CellType.get(c);
+			edges = new List[4];
+		}
+		public CellType getType() {
+			return type;
+		}
+		public void setType(CellType type) {
+			this.type = type;
+		}
+		public boolean[] getForbiddenSteps() {
+			return forbiddenSteps;
+		}
+		public void setForbiddenSteps(boolean[] forbiddenSteps) {
+			this.forbiddenSteps = forbiddenSteps;
+		}
+		public List<Cell>[] getEdges() {
+			return edges;
+		}
+		public void setEdges(List<Cell>[] edges) {
+			this.edges = edges;
+		}
+	}
+	
+	private static enum Direction {
+		EAST, WEST, SOUTH, NORTH
+	}
+	
+	private static class Turret extends Cell {
+		Direction direction;
+		public Turret(Character c) {
+			super(c);
+			
+			switch (c) {
+			case '<':
+				direction = Direction.WEST;
+				break;
+			case '>':
+				direction = Direction.EAST;
+				break;
+			case 'v':
+				direction = Direction.SOUTH;
+				break;
+			case '^':
+				direction = Direction.NORTH;
+				break;
+			}
+		}
+		public Direction getDirection() {
+			return direction;
+		}
+		public void setDirection(Direction direction) {
+			this.direction = direction;
+		}
+	}
+	
+	private static String getMinStepCount(BufferedReader reader) throws IOException {
+		Scanner scanner = new Scanner(reader.readLine()).useDelimiter(" ");
+		int n = scanner.nextInt();
+		int m = scanner.nextInt();
+		
+		Cell[][] maze = new Cell[n][m];
+		
+		Pair start = null;
+		Pair goal = null;
+		
+		List<Pair> turrets = new LinkedList<Pair>();
+
+		// Construct the cells
+		for (int i=0; i<n; ++i) {
+			String line = reader.readLine();
+			for (int j=0; j<m; ++j) {
+				Cell cell = CellFactory.createCell(line.charAt(j));
+				switch(cell.getType()) {
+				case START:
+					start = new Pair(i, j);
+					cell.setType(CellType.EMPTY);
+					break;
+				case GOAL:
+					goal = new Pair(i, j);
+					cell.setType(CellType.EMPTY);
+					break;
+				case TURRET:
+					turrets.add(new Pair(i, j));
+					break;
+				}
+				
+				maze[i][j] = cell;
+			}
+		}
+		
+		// For all turrets, set the forbidden steps of the relative cells
+		setForbiddenSteps(maze, turrets, n, m);
+		
+		// Generate the edges
+		generateEdges(maze, n, m);
+		
+		// Start BFS
+		return getMinSteps(maze, start, goal);
+	}
+	
+	private static String getMinSteps(Cell[][] maze, Pair startPosition, Pair goalPosition) {
+		Cell start = maze[startPosition.i][startPosition.j];
+		Cell goal = maze[goalPosition.i][goalPosition.j];
+		
+		List<Cell>[] edges;
+		
+		Queue<Cell> queue = new LinkedList<Cell>();
+		queue.add(start);
+		queue.add(null);
+		int steps = 0;
+		
+		while (!queue.isEmpty()) {
+			Cell current = queue.remove();
+			if (current == null) {
+				++steps;
+				if (!queue.isEmpty()) {
+					queue.add(null);
+				}
+				continue;
+			}
+			
+			if (current == goal) {
+				return String.valueOf(steps);
+			}
+			
+			// Add siblings to queue
+			int idx = (steps + 1) % 4;
+			edges = current.getEdges();
+			if (edges[idx] == null) {
+				continue;
+			}
+			
+			
+			for (Cell cell: edges[idx]) {
+				queue.add(cell);
+			}
+			
+			// Make sure we do not have infinite cycles - we can go through each edge only once
+			edges[idx] = null;
+		}
+		
+		return "impossible";
+	}
+	
+	
+	private static void generateEdges(Cell[][] maze, int n, int m) {
+		for (int i=0; i<n; ++i) {
+			for (int j=0; j<m; ++j) {
+				if (maze[i][j].getType() != CellType.EMPTY) {
+					continue;
+				}
+			
+				if (i+1 < n) {
+					addEdges(maze[i][j], maze[i+1][j]);
+				}
+				
+				if (i-1 >= 0) { 
+					addEdges(maze[i][j], maze[i-1][j]);
+				}
+				if (j+1 < m) {
+					addEdges(maze[i][j], maze[i][j+1]);
+				}
+				if (j-1 >= 0) {
+					addEdges(maze[i][j], maze[i][j-1]);
+				}
+			}
+		}
+	}
+	
+	private static void addEdges(Cell from, Cell to) {
+		if (to.getType() != CellType.EMPTY) {
+			return;
+		}
+		
+		List<Cell>[] edges = from.getEdges();
+		boolean[] forbiddenSteps = to.getForbiddenSteps(); 
+		for (int i=0; i<forbiddenSteps.length; ++i) {
+			if (forbiddenSteps[i]) {
+				continue;
+			}
+			
+			if (edges[i] == null) {
+				edges[i] = new LinkedList<Cell>();
+			}
+			
+			edges[i].add(to);
+		}
+	}
+	
+	private static void setForbiddenSteps(Cell[][] maze, List<Pair> turrets, int n, int m) {
+		for (Pair turretIdx: turrets) {
+			Turret turret = (Turret) maze[turretIdx.i][turretIdx.j];
+			int stepUp = 0;
+			switch (turret.getDirection()) {
+			case NORTH:
+				stepUp = 0;
+				break;
+			case WEST:
+				stepUp = 1;
+				break;
+			case SOUTH:
+				stepUp = 2;
+				break;
+			case EAST:
+				stepUp = 3;
+				break;
+			}
+			
+			int i;
+			// Set forbidden steps up
+			int j = turretIdx.j;
+			int step = stepUp;
+			for (i=turretIdx.i-1; i>=0 && maze[i][j].getType() == CellType.EMPTY; --i) {
+				maze[i][j].forbiddenSteps[step] = true;
+			}
+			
+			// Set forbidden steps on right
+			step = (step + 1) % 4;
+			i = turretIdx.i;
+			for (j=turretIdx.j+1; j<m && maze[i][j].getType() == CellType.EMPTY; ++j) {
+				maze[i][j].forbiddenSteps[step] = true;
+			}
+			
+			// Set forbidden steps down
+			step = (step + 1) % 4;
+			j = turretIdx.j;
+			for (i=turretIdx.i+1; i<n && maze[i][j].getType() == CellType.EMPTY; ++i) {
+				maze[i][j].forbiddenSteps[step] = true;
+			}
+			
+			// Set forbidden steps on left
+			step = (step + 1) % 4;
+			i = turretIdx.i;
+			for (j=turretIdx.j-1; j>=0 && maze[i][j].getType() == CellType.EMPTY; --j) {
+				maze[i][j].forbiddenSteps[step] = true;
+			}
+		}
+	}
+	
+	
+
+	/* (non-Java-doc)
+	 * @see java.lang.Object#Object()
+	 */
+	public Main() {
+		super();
+	}
+
+} 

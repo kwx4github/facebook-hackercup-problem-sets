@@ -1,0 +1,131 @@
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <string>
+#include <vector>
+#include <queue>
+
+using namespace std;
+
+char rotate(char turret, int steps) {
+    static map<char, int> turretToStep;
+    static map<int, char> stepToTurret;
+    if (turretToStep.size() == 0) {
+        turretToStep['<'] = 0;
+        stepToTurret[0] = '<';
+        turretToStep['^'] = 1;
+        stepToTurret[1] = '^';
+        turretToStep['>'] = 2;
+        stepToTurret[2] = '>';
+        turretToStep['v'] = 3;
+        stepToTurret[3] = 'v';
+    }
+
+    return stepToTurret[(turretToStep[turret] + steps) % 4];
+}
+
+int getSteps(vector<string> maze, int M, int N) {
+    static map<char, pair<int, int> > directions;
+    if (directions.size() == 0) {
+        directions['<'] = make_pair(0, -1);
+        directions['^'] = make_pair(-1, 0);
+        directions['>'] = make_pair(0, 1);
+        directions['v'] = make_pair(1, 0);
+    }
+
+    vector<vector<string> > mazes;
+
+    for (int i = 0; i < 4; i++) {
+        mazes.push_back(maze);
+
+        for (int j = 0; j < M; j++) {
+            for (int k = 0; k < N; k++) {
+                if (mazes[i][j][k] == '<' ||
+                    mazes[i][j][k] == '^' ||
+                    mazes[i][j][k] == '>' ||
+                    mazes[i][j][k] == 'v') {
+                    char turret = rotate(mazes[i][j][k], i);
+
+                    mazes[i][j][k] = '#';
+                    pair<int, int> step = directions[turret];
+                    int nj = j + step.first;
+                    int nk = k + step.second;
+                    while (nj >= 0 && nj < M && nk >= 0 && nk < N) {
+                        char c = mazes[i][nj][nk];
+                        if (c == '.' || c == 'S' || c == 'G')
+                            mazes[i][nj][nk] = '#';
+                        else
+                            break;
+                        nj += step.first;
+                        nk += step.second;
+                    }
+                }
+            }
+        }
+    }
+
+    int best[M][N][4];
+    memset(best, -1, sizeof(best));
+    pair<int, pair<int, int> > start;
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            if (maze[i][j] == 'S') {
+                best[i][j][0] = 0;
+                start = make_pair(i, make_pair(j, 0));
+            }
+        }
+    }
+
+    queue<pair<int, pair<int, int> > > q;
+    q.push(start);
+
+    int dirs[][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+
+    while (!q.empty()) {
+        pair<int, pair<int, int> > current = q.front(); q.pop();
+        int i = current.first;
+        int j = current.second.first;
+        int m = current.second.second;
+        int d = best[i][j][m];
+
+        if (maze[i][j] == 'G')
+            return best[i][j][m];
+
+        m = (m + 1) % 4;
+
+        for (int k = 0; k < 4; k++) {
+            int ni = i + dirs[k][0];
+            int nj = j + dirs[k][1];
+            if (ni >= 0 && ni < M && nj >= 0 && nj < N && mazes[m][ni][nj] != '#' && best[ni][nj][m] == -1) {
+                best[ni][nj][m] = d + 1;
+                q.push(make_pair(ni, make_pair(nj, m)));
+            }
+        }
+    }
+
+    return -1;
+}
+
+int main() {
+    int T;
+
+    cin >> T;
+    for (int i = 1; i <= T; i++) {
+        int M, N;
+        cin >> M >> N;
+
+        vector<string> maze;
+        maze.assign(M, "");
+        for (int j = 0; j < M; j++)
+            cin >> maze[j];
+
+        int steps = getSteps(maze, M, N);
+        cout << "Case #" << i << ": ";
+        if (steps == -1)
+            cout << "impossible" << endl;
+        else
+            cout << steps << endl;
+    }
+
+    return 0;
+}

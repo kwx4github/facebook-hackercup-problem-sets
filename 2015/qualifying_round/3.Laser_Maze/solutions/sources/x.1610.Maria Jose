@@ -1,0 +1,195 @@
+#include <iostream>
+#include <queue>
+#include <vector>
+#include <fstream>
+using namespace std;
+
+typedef pair<int, int> ii;
+typedef vector < ii > vii;
+typedef vector<int> vi;
+#define FOR(i, a, b) for(int i = int(a); i<= int(b); i++)
+
+int T, M, N, clave;
+char maze[103][103];
+ii S;
+int turrets[2][100], tcount=0;
+
+struct visitados
+{
+    int vis[4];
+};
+visitados dist[103][103];
+
+struct nodo
+{
+    int x;
+    int y;
+    int r;
+};
+
+char rota(char c, int r)
+{
+    switch(c){
+    case '^':
+        switch(r){
+            case 1: return '>';
+            case 2: return 'v';
+            case 3: return '<';
+          }
+    case '>':
+        switch(r){
+            case 1: return 'v';
+            case 2: return '<';
+            case 3: return '^';
+          }
+    case 'v':
+        switch(r){
+            case 1: return '<';
+            case 2: return '^';
+            case 3: return '>';
+          }
+    case '<':
+        switch(r){
+            case 1: return '^';
+            case 2: return '>';
+            case 3: return 'v';
+          }
+    }
+}
+
+bool valido(int x, int y, int r)
+{
+    char simb;
+    if(r < 3) clave = r+1;
+    else clave = 0;
+
+    if(dist[x][y].vis[clave] != -1)
+            return false; // estado ya visitado
+
+    for(int i=0; i<tcount; i++){
+        simb = maze[turrets[0][i]][turrets[1][i] ];
+        if(clave != 0) simb = rota(simb, clave);
+        switch(simb)
+        {
+            case '^':
+                if(y==turrets[1][i] && x < turrets[0][i]) {
+                        return false;
+                } break;
+            case '>':
+                 if(x==turrets[0][i] && y > turrets[1][i]) return false;
+                 break;
+            case 'v':
+                if(y==turrets[1][i] && x > turrets[0][i]) return false;
+                break;
+            case '<':
+                if(x==turrets[0][i] && y < turrets[1][i]) return false;
+                break;
+        }
+    }
+    return true;
+}
+
+int laser_maze()
+{
+    int movs;
+    queue<nodo> q;
+    nodo n, nuevo;
+    n.x = S.first;
+    n.y = S.second;
+    n.r = 0;
+    dist[n.x][n.y].vis[n.r] = 0;
+
+    q.push(n);
+
+    while(!q.empty()){
+        n = q.front();
+        q.pop();
+        if(maze[n.x][n.y] == 'G'){
+            return dist[n.x][n.y].vis[n.r];
+        }
+        ///norte
+        if(n.x>1 && (maze[n.x-1][n.y]=='.' || maze[n.x-1][n.y]=='G')){
+            if(valido(n.x-1, n.y, n.r)){
+            nuevo = n;
+            nuevo.x -= 1;
+            nuevo.r = clave;
+            dist[nuevo.x][nuevo.y].vis[clave] = dist[n.x][n.y].vis[n.r]+1;
+            q.push(nuevo);
+            }
+        }
+
+        ///sur
+        if(n.x<M && (maze[n.x+1][n.y]=='.' || maze[n.x+1][n.y]=='G')){
+            if(valido(n.x+1, n.y, n.r)){
+            nuevo = n;
+            nuevo.x += 1;
+            nuevo.r = clave;
+            dist[nuevo.x][nuevo.y].vis[clave] = dist[n.x][n.y].vis[n.r] + 1;
+            q.push(nuevo);
+            }
+        }
+
+        ///este
+        if(n.y<N && (maze[n.x][n.y+1]=='.' || maze[n.x][n.y+1]=='G')){
+            if(valido(n.x, n.y+1, n.r)){
+            nuevo = n;
+            nuevo.y += 1;
+            nuevo.r = clave;
+            dist[nuevo.x][nuevo.y].vis[clave] = dist[n.x][n.y].vis[n.r] + 1;
+            q.push(nuevo);
+            }
+        }
+
+        ///oeste
+        if(n.y>1 && (maze[n.x][n.y-1]=='.' || maze[n.x][n.y-1]=='G')){
+            if(valido(n.x, n.y-1, n.r)){
+                nuevo = n;
+                nuevo.y -= 1;
+                nuevo.r = clave;
+                dist[nuevo.x][nuevo.y].vis[clave] = dist[n.x][n.y].vis[n.r] + 1;
+                q.push(nuevo);
+            }
+        }
+    }
+    return -1;
+}
+
+int main()
+{
+    ofstream cout("maze_out.txt");
+    ifstream cin("maze_in.txt");
+    int moves=0;
+    cin >> T;
+    FOR(k, 1, T){
+        tcount=0;
+        cin >> M >> N;
+        for(int i=0; i<=M+1; i++){
+            for(int j=0; j<=N+1; j++){
+                for(int h=0; h<=3; h++)
+                    dist[i][j].vis[h] = -1;
+            }
+        }
+        FOR(i, 1, M){
+            FOR(j, 1, N)
+            {
+                cin >> maze[i][j];
+                if(maze[i][j]=='S'){
+                    maze[i][j] = '.';
+                    S.first = i;
+                    S.second = j;
+                }
+                if(maze[i][j]=='v' || maze[i][j]=='<' || maze[i][j]=='>' || maze[i][j]=='^'){
+                    turrets[0][tcount] = i;
+                    turrets[1][tcount] = j;
+                    tcount++;
+                }
+            }
+        }
+        if(M==1 && N==1) moves = 0;
+        else moves = laser_maze();
+        if(moves == -1) cout << "Case #" << k << ": " << "impossible";
+        else cout << "Case #" << k << ": " << moves;
+        if(k<T) cout << "\n";
+    }
+    return 0;
+}

@@ -1,0 +1,220 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+using namespace std;
+
+char a[100][100];
+char b[100][100];
+char p[100][100];
+char q[100][100];
+char r[100][100];
+char s[100][100];
+int dist[100][100];
+queue <int> qx;
+queue <int> qy;
+queue <int> state;
+queue <int> distanc;
+bool explored[100][100][4];
+
+void rotate(int x, int m, int n) {
+	x = x%4;
+	if (x == 0) x = 4;
+	
+	char dup[100][100];
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			dup[i][j] = b[i][j];
+		}
+	}
+
+	for (int i = 0; i < x; i++) {
+		for (int i = 0; i < m; i++) {
+			for (int j = 0; j < n; j++) {
+				a[i][j] = '.';
+			}
+		}
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				char c = b[j][k];
+				if ((c == 'S' || c == 'G') && a[j][k] != '#') a[j][k] = '.';
+				else if (c == '#') a[j][k] = '#';
+				else {
+					if (c == '^') {
+						b[j][k] = '>';
+						a[j][k] = '#';
+						for (int col = k+1; col < n; col++) {
+							if (b[j][col] == '#' || b[j][col] == '^' || b[j][col] == '>' || b[j][col] == '<' || b[j][col] == 'v') {
+								break;
+							}
+							else {
+								a[j][col] = '#';
+							}
+						}
+					}
+					else if (c == 'v') {
+						b[j][k] = '<';
+						a[j][k] = '#';
+						for (int col = k-1; col >= 0; col--) {
+							if (b[j][col] == '#' || b[j][col] == '^' || b[j][col] == '>' || b[j][col] == '<' || b[j][col] == 'v') {
+								break;
+							}
+							else {
+								a[j][col] = '#';
+							}
+						}
+					}
+					else if (c == '<') {
+						b[j][k] = '^';
+						a[j][k] = '#';
+						for (int row = j-1; row >= 0; row--) {
+							if (b[row][k] == '#' || b[row][k] == '^' || b[row][k] == '>' || b[row][k] == '<' || b[row][k] == 'v') {
+								break;
+							}
+							else {
+								a[row][k] = '#';
+							}
+						}
+					}
+					else if (c == '>') {
+						b[j][k] = 'v';
+						a[j][k] = '#';
+						for (int row = j+1; row < m; row++) {
+							if (b[row][k] == '#' || b[row][k] == '^' || b[row][k] == '>' || b[row][k] == '<' || b[row][k] == 'v') {
+								break;
+							}
+							else {
+								a[row][k] = '#';
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	for (int i = 0; i < m; i++) {
+		for (int j = 0; j < n; j++) {
+			b[i][j] = dup[i][j];
+		}
+	}
+}
+
+
+
+void bfs (int m, int n, int endx, int endy) {
+	while (!qx.empty()) {
+		int x = qx.front();
+		int y = qy.front();
+		int st = state.front();
+		int d = distanc.front();
+		qx.pop();
+		qy.pop();
+		state.pop();
+		distanc.pop();
+		if (x < 0 || x >= m || y < 0 || y >= n) continue;
+		if (st > 0 && explored[x][y][st-1]) continue;
+		if (d>dist[endx][endy] && dist[endx][endy]!= -1) continue;
+		int prevd = dist[x][y];
+		bool ex = false;
+		if (st > 0)
+			ex = explored[x][y][st-1];
+		char current;
+		if (st == 1) current = p[x][y];
+		if (st == 2) current = q[x][y];
+		if (st == 3) current = r[x][y];
+		if (st == 4) current = s[x][y];
+		if (d > prevd && ex) continue;
+		else {
+			if (current != '#') {
+				if (d <= dist[x][y] || dist[x][y] == -1)
+					dist[x][y] = d;
+				int nextstate = st+1;
+				if (nextstate == 5) nextstate = 1;
+				qx.push(x+1);
+				qx.push(x-1);
+				qx.push(x);
+				qx.push(x);
+				qy.push(y);
+				qy.push(y);
+				qy.push(y+1);
+				qy.push(y-1);
+				state.push(nextstate);
+				state.push(nextstate);
+				state.push(nextstate);
+				state.push(nextstate);
+				distanc.push(d+1);
+				distanc.push(d+1);
+				distanc.push(d+1);
+				distanc.push(d+1);
+			}
+			if (st > 0)
+				explored[x][y][st-1] = true;
+		}
+	}
+}
+
+int main () {
+	int t;
+	cin >> t;
+	for (int i = 0; i < t; i++) {
+		int m, n;
+		cin >> m >> n;
+		int startx = 0;
+		int starty = 0;
+		int endx = 0;
+		int endy = 0;
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				cin >> b[j][k];
+				if (b[j][k] == 'S') {
+					startx = j;
+					starty = k;
+				}
+				else if (b[j][k] == 'G') {
+					endx = j;
+					endy = k;
+				}
+			}
+		}
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				dist[j][k] = -1;
+				for (int l = 0; l < 4; l++) {
+					explored[j][k][l] = false;
+				}
+			}
+		}
+		rotate(1,m, n);
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				p[j][k] = a[j][k];
+			}
+		}
+		rotate(2,m, n);
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				q[j][k] = a[j][k];
+			}
+		}
+		rotate(3,m, n);
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				r[j][k] = a[j][k];
+			}
+		}
+		rotate(4,m, n);
+		for (int j = 0; j < m; j++) {
+			for (int k = 0; k < n; k++) {
+				s[j][k] = a[j][k];
+			}
+		}
+		qx.push(startx);
+		qy.push(starty);
+		state.push(0);
+		distanc.push(0);
+		bfs (m,n,endx,endy);
+		cout << "Case #" << (i+1) << ": ";
+		if (dist[endx][endy] == -1) cout << "impossible";
+		else cout << dist[endx][endy];
+		cout << endl;
+	}
+}

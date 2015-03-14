@@ -1,0 +1,171 @@
+#include <cstdio>
+#define INF 1000000
+struct location{
+	int r,c;
+	int steps;
+};
+int nrow,ncol;
+char map[100][100];
+int obs[4][100][100];
+int vis[4][100][100];
+location start;
+location goal;
+int mov[4][2] ={{-1, 0},
+				{ 0, 1},
+				{ 1, 0},
+				{ 0,-1}};
+void marca(int f,int c,int dirf,int dirc,int time){
+	f += dirf;
+	c += dirc;
+	while(f>=0 && f<nrow && c>=0 && c<ncol){
+		if( map[f][c] == '#' || 
+			map[f][c] == '<' ||
+			map[f][c] == '>' ||
+			map[f][c] == '^' ||
+			map[f][c] == 'v') return;
+		obs[time][f][c] = 1;
+		f += dirf;
+		c += dirc;
+	}
+}
+void laser(int type,int i,int j){
+	obs[0][i][j] = obs[1][i][j] = obs[2][i][j] = obs[3][i][j] = 1;
+	for(int rep=0;rep<4;rep++){
+		marca(i,j,mov[type][0],mov[type][1],rep);
+		type++;
+		type%=4;
+	}
+}
+int sstack=0;
+int estack=0;
+location states[INF];
+void push(location nuevo){
+	states[estack].steps = nuevo.steps;
+	states[estack].r = nuevo.r;
+	states[estack].c = nuevo.c;
+	estack++;
+}
+void pop(){
+	sstack++;
+}
+location top(){
+	location res;
+	res.steps = states[sstack].steps;
+	res.r = states[sstack].r;
+	res.c = states[sstack].c;
+	return res;
+}
+bool empty(){
+	return estack==sstack;
+}
+void bfs(){
+	bool resultFound = false;
+	vis[0][start.r][start.c] = 0;
+	push(start);
+	while(!resultFound && !empty()){
+		location act = top();
+		pop();
+		//printf("Locaction(%d): %d %d\n",act.steps, act.r, act.c);
+		for(int m=0;m<4;m++){
+			location next;
+			next.steps = act.steps + 1;
+			next.r = act.r + mov[m][0];
+			next.c = act.c + mov[m][1];
+			//printf("step(%d): %d %d\n",next.steps,next.r,next.c);
+			if( next.r >=0 && next.r < nrow && next.c >=0 && next.c <ncol){
+				if(obs[next.steps%4][next.r][next.c] == 0){
+					if(vis[next.steps%4][next.r][next.c] > next.steps){
+						vis[next.steps%4][next.r][next.c] = next.steps;
+						push(next);
+						//printf("Aceptado\n");
+						if(next.r == goal.r && next.c == goal.c){
+							printf("%d\n",next.steps);
+							resultFound = true;
+						}
+					}
+				}
+			}
+		}
+	}
+	if(!resultFound) printf("impossible\n");
+	while(!empty()){
+		pop();
+	}
+}
+void debug(){
+	printf("Map obstacle\n");
+	for(int m=0;m<4;m++){
+		printf("Time %d\n",m);
+		for(int i=0;i<nrow;i++){
+			for(int j=0;j<ncol;j++){
+				printf("%d", obs[m][i][j]);
+			}
+			printf("\n");
+		}
+	}
+	printf("caminos Minimos\n");
+	for(int m=0;m<4;m++){
+		printf("Time %d\n",m);
+		for(int i=0;i<nrow;i++){
+			for(int j=0;j<ncol;j++){
+				printf(" %7d", vis[m][i][j]);
+			}
+			printf("\n");
+		}
+	}
+}
+void testcase(){
+	scanf("%d%d",&nrow,&ncol);
+	for(int i=0;i<nrow;i++){
+		for(int j=0;j<ncol;j++){
+			obs[0][i][j] = obs[1][i][j] = obs[2][i][j] = obs[3][i][j] = 0;
+			vis[0][i][j] = vis[1][i][j] = vis[2][i][j] = vis[3][i][j] = INF;
+			scanf(" %c",&map[i][j]);
+		}
+	}
+	for(int i=0;i<nrow;i++){
+		for(int j=0;j<ncol;j++){
+			switch(map[i][j]){
+				case 'S':
+					start.r = i;
+					start.c = j;
+					start.steps = 0;
+					break;
+				case 'G':
+					goal.r = i;
+					goal.c = j;
+					break;
+				case '#':
+					obs[0][i][j] = obs[1][i][j] = obs[2][i][j] = obs[3][i][j] = 1;
+					break;
+				case '<':
+					laser(3,i,j);
+					break;
+				case '>':
+					laser(1,i,j);
+					break;
+				case 'v':
+					laser(2,i,j);
+					break;
+				case '^':
+					laser(0,i,j);
+					break;
+				case '.':
+					break;
+			}
+		}
+	}
+	bfs();
+	//debug();
+}
+
+int main(int argc, char const *argv[])
+{
+	int t;
+	scanf("%d",&t);
+	for(int i=0;i<t;i++){
+		printf("Case #%d: ", i+1);
+		testcase();
+	}
+	return 0;
+}

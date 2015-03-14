@@ -1,0 +1,177 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <array>
+#include <limits>
+#include <deque>
+#include <queue>
+#include <cassert>
+
+static const size_t INF = std::numeric_limits<size_t>::max();
+
+enum class Color {
+    White, Grey, Black
+};
+
+struct Vertex {
+    size_t i;
+    size_t j;
+    size_t t;
+    
+    friend std::ostream& operator << (std::ostream& out, const Vertex& v)
+    {
+        return out << "{ i: " << v.i << ", j: " << v.j << ", t: " << v.t << " }";
+    } 
+};
+
+size_t solve(const std::vector<std::string>& field)
+{
+    assert(!field.empty());
+    size_t M = field.size();
+    size_t N = field.front().size();
+
+    size_t Si, Sj;
+    size_t Gi, Gj;
+   
+    const std::array<bool, 4> WALL {{true, true, true, true}};
+    const std::array<bool, 4> EMPTY {{false, false, false, false}};
+
+    static const std::string TURRET_SYMBOLS("^>v<");
+    const auto IS_TURRET = [&](char c) -> bool {
+        return TURRET_SYMBOLS.find(c) != std::string::npos;
+    };
+    const auto IS_WALL = [&](char c) -> bool {
+        return c == '#' || IS_TURRET(c);
+    };
+    const auto TURRET_STATE = [&](char c) -> size_t {
+        assert(IS_TURRET(c));
+        return TURRET_SYMBOLS.find(c);
+    };
+
+    std::vector<std::vector<std::array<bool, 4>>> cells(M, std::vector<std::array<bool, 4>>(N, EMPTY));
+
+    for (size_t row = 0; row < M; ++row) {
+        for (size_t column = 0; column < N; ++column) {
+            char c = field[row][column];
+            if (c == 'S') {
+                Si = row; Sj = column;
+            } else if (c == 'G') {
+                Gi = row; Gj = column;
+            } if (c == '#') {
+                cells[row][column] = WALL;
+            } else if (IS_TURRET(c)) {
+                cells[row][column] = WALL;
+                size_t state = TURRET_STATE(c);
+                for (ssize_t i = row - 1; i >= 0 && !IS_WALL(field[i][column]); --i) {
+                    size_t r = (0 - state) % 4;
+                    cells[i][column][r] = true;
+                }
+                for (size_t j = column + 1; j < N && !IS_WALL(field[row][j]); ++j) {
+                    size_t r = (1 - state) % 4;
+                    cells[row][j][r] = true;
+                }
+                for (size_t i = row + 1; i < M && !IS_WALL(field[i][column]); ++i) {
+                    size_t r = (2 - state) % 4;
+                    cells[i][column][r] = true;
+                }
+                for (ssize_t j = column - 1; j >= 0 && !IS_WALL(field[row][j]); --j) {
+                    size_t r = (3 - state) % 4;
+                    cells[row][j][r] = true;
+                }
+            }
+        }        
+    }
+
+    auto const GET_NEIGHBOURS = [&] (const Vertex& v) -> std::vector<Vertex> {
+        static const std::vector<std::pair<ssize_t, ssize_t>> STEPS {
+            {-1, 0}, {0, 1}, {1, 0}, {0, -1}
+        };
+        std::vector<Vertex> neighbours;
+        const size_t t = (v.t + 1) % 4;
+        for (const auto& step: STEPS) {
+            ssize_t i = v.i + step.first;
+            ssize_t j = v.j + step.second;
+            if (i >= 0 && i < M && j >= 0 && j < N) {
+                if (!cells[i][j][t]) {
+                    neighbours.push_back(Vertex {i, j, t});
+                }
+            } 
+        }
+        return neighbours;
+    }; 
+    
+    std::vector<std::vector<std::array<size_t, 4>>> distances(
+        M, 
+        std::vector<std::array<size_t, 4>>(
+            N, std::array<size_t, 4> {{INF, INF, INF, INF}}
+        )
+    );
+    const auto SET_DIST = [&](const Vertex& v, size_t d) {
+        distances[v.i][v.j][v.t] = d;
+    };
+    const auto GET_DIST = [&](const Vertex& v) {
+        return distances[v.i][v.j][v.t];
+    };
+
+    std::vector<std::vector<std::array<Color, 4>>> colors(
+        M, 
+        std::vector<std::array<Color, 4>>(
+            N, std::array<Color, 4> {{Color::White, Color::White, Color::White, Color::White}}
+        )
+    );
+    const auto SET_COLOR = [&](const Vertex& v, Color c) {
+        colors[v.i][v.j][v.t] = c;
+    };
+    const auto GET_COLOR = [&](const Vertex& v) {
+        return colors[v.i][v.j][v.t];
+    };
+    const Vertex Start { Si, Sj, 0 };
+    const auto IS_GOAL = [&](const Vertex& v) {
+        return v.i == Gi && v.j == Gj;
+    };
+    
+    std::queue<Vertex> queue;
+    queue.push(Start);
+    SET_COLOR(Start, Color::Grey);
+    SET_DIST(Start, 0);
+    while (!queue.empty()) {
+        Vertex v = queue.front();
+        queue.pop();
+        SET_COLOR(v, Color::Black);
+        if (IS_GOAL(v)) {
+            return GET_DIST(v);
+        }
+        for (const auto& n: GET_NEIGHBOURS(v)) {
+            if (GET_COLOR(n) == Color::White) {
+                queue.push(n);
+                SET_COLOR(n, Color::Grey);
+                SET_DIST(n, GET_DIST(v) + 1); 
+            }
+        }
+    }
+    return INF;
+}
+
+int main()
+{
+    size_t T;
+    std::cin >> T;
+    for (size_t t = 0; t < T; ++t) {
+        size_t M, N;
+        std::cin >> M >> N;
+        std::vector<std::string> field;
+        field.reserve(M);
+        for (size_t row = 0; row < M; ++row) {
+            std::string row;
+            std::cin >> row;
+            field.push_back(std::move(row));
+        }
+        size_t res = solve(field);
+        std::cout << "Case #" << (t + 1) << ": " 
+                  << (res == INF ? "impossible" : std::to_string(res)) 
+                  << std::endl;
+    }
+    return 0;
+}
+
+

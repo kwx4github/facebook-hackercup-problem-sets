@@ -1,0 +1,203 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <queue>
+#include <sstream>
+
+using namespace std;
+
+void goUp (vector < vector <char> > &graph, int i, int j)
+{
+    while (i - 1 >= 0 && graph[i - 1][j] != 's')
+    {
+        graph[i - 1][j] = 'l';
+        i--;
+    }
+}
+
+void goDown (vector < vector <char> > &graph, int i, int j, int height)
+{
+    while (i + 1 < height && graph[i + 1][j] != 's')
+    {
+        graph[i + 1][j] = 'l';
+        i++;
+    }
+}
+
+void goLeft (vector < vector <char> > &graph, int i, int j)
+{
+    while (j - 1 >= 0  && graph[i][j-1] != 's')
+    {
+        graph[i][j-1] = 'l';
+        j--;
+    }
+}
+void goRight (vector < vector <char> > &graph, int i, int j, int width)
+{
+    while (j + 1 < width && graph[i][j+1] != 's')
+    {
+        graph[i][j+1] = 'l';
+        j++;
+    }
+}
+
+void makeGraph (vector < vector <char> > &g11, vector < vector <char> > &maze, int height, int width)
+{
+    for (int k = 0; k < height; k++)
+        {
+            for (int l = 0; l < width; l++)
+            {
+                if (maze[k][l] == '<' || maze[k][l] == '^' || maze[k][l] == '>' || maze[k][l] == 'v' || maze[k][l] == '#')
+                    g11[k][l] = 's';
+                else
+                    g11[k][l] = 'o';
+            }
+        }
+        for (int k = 0; k < height; k++)
+        {
+            for (int l = 0; l < width; l++)
+            {
+                if (maze[k][l] == 'v')
+                {
+                    goDown(g11, k, l, height);
+                    maze[k][l] = '<';
+                }
+                else if (maze[k][l] == '^')
+                {
+                    goUp(g11, k, l);
+                    maze[k][l] = '>';
+                }
+                else if (maze[k][l] == '<')
+                {
+                    goLeft(g11, k, l);
+                    maze[k][l] = '^';
+                }
+                else if (maze[k][l] == '>')
+                {
+                    goRight(g11, k, l, width);
+                    maze[k][l] = 'v';
+                }
+            }
+        }
+}
+
+int main()
+{
+    ifstream in;
+    in.open("in.txt");
+    ofstream out;
+    out.open("out.txt");
+    int tests;
+    in >> tests;
+    vector < vector <char> > maze (100, vector<char> (100, ' '));
+    vector < vector <char> > g1(100, vector<char> (100, ' '));
+    vector < vector <char> > g2(100, vector<char> (100, ' '));
+    vector < vector <char> > g3(100, vector<char> (100, ' '));
+    vector < vector <char> > g4(100, vector<char> (100, ' '));
+
+    for (int i = 0; i < tests; i++)
+    {
+        int width, height;
+        in >> height >> width;
+        vector <int> start(2,0);
+        vector <int> goal(2,0);
+        for (int j = 0; j < height; j++)
+        {
+            for (int k=0; k < width; k++)
+                in >> maze[j][k];
+        }
+        for (int k = 0; k < height; k++)
+        {
+            for (int l = 0; l < width; l++)
+            {
+                if (maze[k][l] == 'S')
+                {
+                    start[0] = k;
+                    start[1] = l;
+                }
+                if (maze[k][l] == 'G')
+                {
+                    goal[0] = k;
+                    goal[1] = l;
+                }
+
+            }
+        }
+        makeGraph(g1, maze, height, width);
+        makeGraph(g2, maze, height, width);
+        makeGraph(g3, maze, height, width);
+        makeGraph(g4, maze, height, width);
+        vector< vector < vector <char> > > tabOfG;
+        tabOfG.push_back(g1);
+        tabOfG.push_back(g2);
+        tabOfG.push_back(g3);
+        tabOfG.push_back(g4);
+        queue < vector<int> > kolejka;
+        vector <int> init(4,0);
+        init[0] = start[0];
+        init[1] = start[1];
+        init[2] = 0;
+        init[3] = 0;
+        kolejka.push(init);
+        while (true)
+        {
+            vector <int> elem = kolejka.front();
+            kolejka.pop();
+            if (elem[0] == goal[0] && elem[1] == goal[1])
+            {
+                out << "Case #" <<i+1 << ": " <<elem[2] <<'\n';
+                break;
+            }
+            tabOfG[elem[3]][elem[0]][elem[1]] = 's';
+            int next = (elem[3]+1)%4;
+            if (elem[0] - 1 >= 0 && tabOfG[next][elem[0]-1][elem[1]] == 'o')
+            {
+                vector<int> temp(4,0);
+                temp[0] = elem[0] - 1;
+                temp[1] = elem[1];
+                temp[2] = elem[2] + 1;
+                temp[3] = next;
+                kolejka.push(temp);
+                tabOfG[next][elem[0]-1][elem[1]] = 's';
+            }
+            if (elem[0] + 1 < height && tabOfG[next][elem[0]+1][elem[1]] == 'o')
+            {
+                vector<int> temp(4,0);
+                temp[0] = elem[0] + 1;
+                temp[1] = elem[1];
+                temp[2] = elem[2] + 1;
+                temp[3] = next;
+                kolejka.push(temp);
+                tabOfG[next][elem[0]+1][elem[1]] = 's';
+            }
+            if (elem[1] - 1 >= 0 && tabOfG[next][elem[0]][elem[1]-1] == 'o')
+            {
+                vector<int> temp(4,0);
+                temp[0] = elem[0];
+                temp[1] = elem[1] - 1;
+                temp[2] = elem[2] + 1;
+                temp[3] = next;
+                kolejka.push(temp);
+                tabOfG[next][elem[0]][elem[1]-1] = 's';
+            }
+            if (elem[1] + 1 < width && tabOfG[next][elem[0]][elem[1]+1] == 'o')
+            {
+                vector<int> temp(4,0);
+                temp[0] = elem[0];
+                temp[1] = elem[1] + 1;
+                temp[2] = elem[2] + 1;
+                temp[3] = next;
+                kolejka.push(temp);
+                tabOfG[next][elem[0]][elem[1]+1] = 's';
+
+            }
+            if (kolejka.empty())
+            {
+                out <<"Case #" <<i+1 <<": impossible" <<'\n';
+                break;
+            }
+        }
+    }
+    return 0;
+}

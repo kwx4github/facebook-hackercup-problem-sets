@@ -1,0 +1,91 @@
+object LaserMaze extends App {
+  import scala.io.StdIn._
+  import scala.util.control.Breaks._
+  import scala.collection.mutable._
+  
+  case class Return[T](obj: T) extends Exception
+  def ret[T](obj: T) = throw Return(obj)
+  
+  val turrets = "^>v<"
+  
+  def readInts = readLine split " " map (_ toInt)
+  
+  val T = readInt
+  
+  for (caseNb <- 1 to T) {
+    
+    val Array(h,w) = readInts
+    
+    val grid = for (l <- 0 until h) yield readLine.toCharArray
+    val gridIndexes = (0 until h) flatMap (l => Stream.continually(l) zip (0 until w))
+    
+    val (start, goal) = {
+      def find(ch: Char) = gridIndexes.find{case(l,c) => grid(l)(c) == ch}
+      (find('S') get, find('G') get)
+    }
+    Seq(start, goal) foreach {case(l,c) => grid(l)(c) = '.'}
+    
+    def rotate(n: Int) = for ((l,c) <- gridIndexes) {
+      val i = turrets.indexOf(grid(l)(c))
+      if (i >= 0) grid(l)(c) = turrets((i + n + turrets.size)%turrets.size)
+    }
+    
+    def free(pos: (Int, Int)): Boolean =
+      pos match { case(l,c) => l >= 0 && l < h && c >= 0 && c < w && grid(l)(c) == '.' }
+    
+    def vulnerable(pos: (Int, Int)): Boolean = {
+      for ((l,c) <- gridIndexes) {
+        breakable((grid(l)(c) match {
+          case '<' => Some(0,-1)  case '>' => Some(0,1)
+          case '^' => Some(-1,0)  case 'v' => Some(1,0)          
+          case _ => None
+        }) map {
+          case (dl,dc) => for {
+            (l,c) <- Iterator.iterate(l,c){case(l,c) => (l + dl, c + dc)}.drop(1)
+          } if ((l,c) == pos) return true  else if (!free(l,c)) break
+        })
+      }
+      false
+    }
+    
+    case class State(pos: (Int,Int), time: Int)
+    def mkState(pos: (Int,Int), time: Int) = State(pos, time % 4)
+    
+    val inis = mkState(start, 0)
+    
+    val discovered = HashSet(inis);
+    val toVisit = PriorityQueue((0, inis))(Ordering by ((_:(Int, State)) _1) reverse)
+    
+    val ans = try{ while (!toVisit.isEmpty) {
+      val (d,s) = toVisit.dequeue
+      if (s.pos == goal) throw Return(d)
+      
+      rotate(s.time+1)
+      
+      Seq((0,-1),(-1,0),(0,1),(1,0)) map { case(dl,dc) =>
+        val (l,c) = (s.pos._1+dl, s.pos._2+dc)
+        val ns = mkState((l,c), s.time+1)
+        if (free(l,c) && !discovered(ns)) {
+          discovered += ns
+          if (!vulnerable(l,c))
+            toVisit += ((d+1, ns))
+        }}
+      
+      rotate(-s.time-1)
+      
+    }; "impossible" }
+    catch { case Return(d) => d }
+    
+    println(s"Case #$caseNb: $ans")
+  }
+}
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,292 @@
+import java.io.*;
+import java.util.*;
+import java.awt.Point;
+
+public class LaserMaze {
+    static int m, n;
+    static char[][] maze;
+    static char[][] maze0;
+    static char[][][] mz;
+    static Point start, goal;
+    // < > ^ v (laser turrets)
+    static char up = '^';
+    static char down = 'v';
+    static char left = '<';
+    static char right = '>';
+    static HashSet<Item> reachable = new HashSet<Item>();
+    static LinkedList<Point> queue;
+    static LinkedList<Point> nextQueue;
+
+    public static void main(String[] args) throws IOException {
+        BufferedReader r = new BufferedReader(new InputStreamReader(System.in));
+        int t = Integer.parseInt(r.readLine());
+        for (int i = 1; i <= t; i++) {
+            StringTokenizer st = new StringTokenizer(r.readLine().trim());
+            m = Integer.parseInt(st.nextToken());
+            n = Integer.parseInt(st.nextToken());
+            maze = new char[m][n];
+            mz = new char[4][m][n];
+            for (int u = 0; u < m; u++) {
+                String s = r.readLine();
+                for (int v = 0; v < n; v++) {
+                    char ch = s.charAt(v);
+                    if (ch == 'S') {
+                        start = new Point(u, v);
+                        ch = '.';
+                    }
+                    if (ch == 'G') {
+                        goal = new Point(u, v);
+                        ch = '.';
+                    }
+                    maze[u][v] = ch;
+                }
+            }
+            init();
+            System.out.println("Case #" + i + ": " + solve());
+        }
+    }
+
+    private static String solve() {
+        reachable.clear();
+        int time = 1;
+        reachable.add(new Item(start, 3));
+        queue = new LinkedList<Point>();
+        queue.add(start);
+        nextQueue = new LinkedList<Point>();
+        while (true) {
+            int result = iteration(time);
+            if (result == -1) {
+                return "impossible";
+            }
+            if (result > 0) {
+                return "" + result;
+            }
+            time++;
+            queue = nextQueue;
+            nextQueue = new LinkedList<Point>();
+        }
+    }
+
+    private static int iteration(int time) {
+        if (queue.size() == 0) {
+            return -1;
+        }
+        int rem = (time + 3) % 4;
+        for (Point p : queue) {
+            boolean result = processPoint(p, rem);
+            if (result) {
+                return time;
+            }
+        }
+        return 0;
+    }
+
+    private static boolean processPoint(Point p, int rem) {
+
+        // up
+        if (p.x > 0) {
+            int x = p.x - 1;
+            int y = p.y;
+            if (mz[rem][x][y] == '.') {
+                Point point = new Point(x, y);
+                if (point.equals(goal)) {
+                    return true;
+                }
+                Item item = new Item(point, rem);
+                if (!reachable.contains(item)) {
+                    reachable.add(item);
+                    nextQueue.add(point);
+                }
+            }
+        }
+
+        // down
+        if (p.x < m - 1) {
+            int x = p.x + 1;
+            int y = p.y;
+            if (mz[rem][x][y] == '.') {
+                Point point = new Point(x, y);
+                if (point.equals(goal)) {
+                    return true;
+                }
+                Item item = new Item(point, rem);
+                if (!reachable.contains(item)) {
+                    reachable.add(item);
+                    nextQueue.add(point);
+                }
+            }
+        }
+
+        // right
+        if (p.y < n - 1) {
+            int x = p.x;
+            int y = p.y + 1;
+            if (mz[rem][x][y] == '.') {
+                Point point = new Point(x, y);
+                if (point.equals(goal)) {
+                    return true;
+                }
+                Item item = new Item(point, rem);
+                if (!reachable.contains(item)) {
+                    reachable.add(item);
+                    nextQueue.add(point);
+                }
+            }
+        }
+
+        // left
+        if (p.y > 0) {
+            int x = p.x;
+            int y = p.y - 1;
+            if (mz[rem][x][y] == '.') {
+                Point point = new Point(x, y);
+                if (point.equals(goal)) {
+                    return true;
+                }
+                Item item = new Item(point, rem);
+                if (!reachable.contains(item)) {
+                    reachable.add(item);
+                    nextQueue.add(point);
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static void init() {
+        for (int w = 0; w < 4; w++) {
+            rotateTurret();
+            for (int u = 0; u < m; u++) {
+                for (int v = 0; v < n; v++) {
+                    mz[w][u][v] = maze[u][v];
+                }
+            }
+        }
+        for (int w = 0; w < 4; w++) {
+            process(mz[w]);
+        }
+    }
+
+    private static void rotateTurret() {
+        for (int u = 0; u < m; u++) {
+            for (int v = 0; v < n; v++) {
+                maze[u][v] = next(maze[u][v]);
+            }
+        }
+    }
+
+    private static void process(char[][] cc) {
+        for (int u = 0; u < m; u++) {
+            for (int v = 0; v < n; v++) {
+                if (cc[u][v] == up) {
+                    for (int i = u - 1; i >= 0; i--) {
+                        if (cc[i][v] == 'T') {
+                            continue;
+                        }
+                        if (cc[i][v] == '.') {
+                            cc[i][v] = 'T';
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                if (cc[u][v] == down) {
+                    for (int i = u + 1; i < m; i++) {
+                        if (cc[i][v] == 'T') {
+                            continue;
+                        }
+                        if (cc[i][v] == '.') {
+                            cc[i][v] = 'T';
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                if (cc[u][v] == left) {
+                    for (int i = v - 1; i >= 0; i--) {
+                        if (cc[u][i] == 'T') {
+                            continue;
+                        }
+                        if (cc[u][i] == '.') {
+                            cc[u][i] = 'T';
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                if (cc[u][v] == right) {
+                    for (int i = v + 1; i < n; i++) {
+                        if (cc[u][i] == 'T') {
+                            continue;
+                        }
+                        if (cc[u][i] == '.') {
+                            cc[u][i] = 'T';
+                            continue;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private static char next(char ch) {
+        if (ch == up) {
+            return right;
+        }
+        if (ch == right) {
+            return down;
+        }
+        if (ch == down) {
+            return left;
+        }
+        if (ch == left) {
+            return up;
+        }
+        return ch;
+    }
+
+    private static class Item {
+        Point p;
+        int rem;
+
+        public Item(Point p, int rem) {
+            super();
+            this.p = p;
+            this.rem = rem;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((p == null) ? 0 : p.hashCode());
+            result = prime * result + rem;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            Item other = (Item) obj;
+            if (p == null) {
+                if (other.p != null)
+                    return false;
+            } else if (!p.equals(other.p))
+                return false;
+            if (rem != other.rem)
+                return false;
+            return true;
+        }
+
+    }
+}

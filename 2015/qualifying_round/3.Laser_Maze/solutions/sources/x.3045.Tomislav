@@ -1,0 +1,196 @@
+#include <algorithm>
+#include <iostream>
+#include <bitset>
+#include <sstream>
+#include <fstream>
+#include <map>
+#include <string>
+#include <set>
+#include <queue>
+#include <vector>
+#include <cstdio>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+using namespace std;
+
+
+typedef long long int64;
+typedef unsigned long long uint64;
+typedef unsigned int uint;
+#define sz(X) ((int)(X).size())
+#define foreach(i,c) for(__typeof((c).begin()) i=((c).begin());i!=(c).end();++i)
+#define EXISTS(x, s) ( (s).find((x)) != (s).end() )
+template<class T> vector<T> tokenize_to(const string &str) { vector<T> r; T x; istringstream is(str); while (is >> x) r.push_back(x); return r; }
+template<typename T> string v_2_s(vector<T> &a) { stringstream sb; __typeof(a.begin()) i = a.begin(); if (i!=a.end()) { sb << *i; ++i; } for (; i!=a.end();++i) { sb << " " << *i; } return sb.str(); }
+
+int v[100][100][4];
+
+// up-down-left-right
+int d_x[]={0, 0, -1, 1};
+int d_y[]={-1, 1, 0, 0};
+
+
+template<typename T, typename U> inline void relaxmin(T &res, const U &x) {
+  if (x < res) {
+    res = x;
+  }
+}
+template<typename T, typename U> inline void relaxmax(T &res, const U &x) {
+  if (x > res) {
+    res = x;
+  }
+}
+
+bool inbound (int x, int y, int N, int M) {
+  return (x >= 0 && y >= 0 && x < N && y < M);
+}
+
+vector<string> okreni(vector<string> S) {
+  int N = sz(S);
+  int M = sz(S[0]);
+  for (int i = 0; i < N; ++i){
+    for (int j = 0; j < M; ++j){
+      switch(S[i][j]) {
+        case '<': S[i][j] = '^'; break;
+        case '>': S[i][j] = 'v'; break;
+        case '^': S[i][j] = '>'; break;
+        case 'v': S[i][j] = '<'; break;
+      }
+    }
+  }
+  return S;
+
+}
+
+void popuni(vector<string> &S) {
+  int N = sz(S);
+  int M = sz(S[0]);
+  for (int i = 0; i < N; ++i){
+    for (int j = 0; j < M; ++j){
+      int dir = -1;
+      switch(S[i][j]) {
+        case '<': dir = 0; break;
+        case '>': dir = 1; break;
+        case '^': dir = 2; break;
+        case 'v': dir = 3; break;
+      }
+      if (dir == -1) continue;
+      S[i][j] = '#';
+      int x = i;
+      int y = j;
+      do {
+        S[x][y] = '#';
+        x += d_x[dir];
+        y += d_y[dir];
+      } while (inbound(x, y, N, M) && S[x][y] == '.');
+    }
+  }
+}
+
+vector<vector<string> > A(4);
+
+struct triplet {
+  int x, y, t;
+  triplet() {}
+  triplet(int _x, int _y, int _t) : x(_x), y(_y), t(_t) {}
+};
+
+void bfs(int x, int y, int t) {
+  queue<triplet> q;
+  int N = sz(A[0]);
+  int M = sz(A[0][0]);
+  triplet temp(x, y, t);
+  q.push(temp);
+  while (q.size()) {
+    temp = q.front();
+    q.pop();
+    if (!inbound(temp.x, temp.y, N, M)) continue;
+    if (v[temp.x][temp.y][temp.t%4] != -1) continue;
+    if (temp.t && A[temp.t%4][temp.x][temp.y] == '#') continue;
+    v[temp.x][temp.y][temp.t%4] = temp.t;
+    //~ cerr << temp.x << " " << temp.y << " " << temp.t << endl;
+    for (int i = 0; i < 4; ++i){
+      q.push(triplet(temp.x + d_x[i], temp.y + d_y[i], temp.t + 1));
+    }
+    //~ cerr << q.size() << endl;
+  }
+
+
+}
+
+void solve() {
+  int N, M;
+  cin >> N >> M;
+  vector<string> S(N);
+  for (int i = 0; i < N; ++i){
+    cin >> S[i];
+  }
+  int ret = -1;
+  memset(v, -1, sizeof(v));
+
+  int s_x = 0, s_y = 0;
+  int g_x = 0, g_y = 0;
+
+    for (int i = 0; i < N; ++i){
+      for (int j = 0; j < M; ++j){
+        if (S[i][j] == 'S') {
+          s_x = i; s_y = j;
+          S[i][j] = '.';
+        }
+        if (S[i][j] == 'G') {
+          g_x = i; g_y = j;
+          S[i][j] = '.';
+        }
+      }
+    }
+
+
+  for (int i = 0; i < 4; ++i){
+    if (i == 0) A[i] = S; else A[i] = okreni(A[i-1]);
+  }
+
+  for (int i = 0; i < 4; ++i){
+    popuni (A[i]);
+  }
+
+  bfs (s_x, s_y, 0);
+
+  for (int i = 0; i < 4; ++i){
+    if (v[g_x][g_y][i] == -1) continue;
+    //~ cerr << "G: " << v[g_x][g_y][i] << endl;
+    if (ret == -1) ret = v[g_x][g_y][i];
+    relaxmin(ret, v[g_x][g_y][i]);
+  }
+
+
+
+  if (ret == -1) {
+    cout << "impossible\n";
+  } else {
+    cout << ret << endl;
+  }
+
+
+}
+
+void init() {
+
+}
+
+int main (int argc, char *argv[]) {
+  cin.sync_with_stdio(0);
+  clock_t c_init = clock();
+  init();
+  cerr << "Init Elapsed: " << double(clock()-c_init) / CLOCKS_PER_SEC << " seconds\n";
+  clock_t c_solve = clock();
+  int t = 1;
+  cin >> t;
+  for(int c = 1; c <= t; ++c) {
+    cout << "Case #" << c << ": ";
+    solve();
+  }
+  cerr << "Solve Elapsed: " << double(clock()-c_solve) / CLOCKS_PER_SEC << " seconds\n";
+  cerr << "Total Elapsed: " << double(clock()-c_init) / CLOCKS_PER_SEC << " seconds\n";
+  return 0;
+}

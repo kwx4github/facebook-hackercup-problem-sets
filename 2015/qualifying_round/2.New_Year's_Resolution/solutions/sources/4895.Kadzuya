@@ -1,0 +1,43 @@
+{-# OPTIONS_GHC -O2 -Wall -fno-warn-missing-signatures -fno-warn-type-defaults #-}
+-- {-# LANGUAGE BangPatterns #-}
+-- {-# LANGUAGE ViewPatterns #-}
+
+main = interact $ unlines . mapSv sv . parseCase . tail . lines
+-- main = interact $ unlines . map show . parseCase . tail . lines
+
+type Food = (Int,Int,Int)
+
+parseCase :: [String] -> [(Food, [Food])]
+parseCase [] = []
+parseCase (g:n:str) = (toFood g, map toFood fs) : parseCase ls
+ where
+  (fs, ls) = splitAt (read n) str
+
+toFood :: String -> Food
+toFood str = (gp,gc,gf)
+ where (gp:gc:gf:_) = map read . words $ str
+
+sv :: (Food, [Food]) -> String
+sv (f,fs) = if elem f . search f $ fs
+  then "yes"
+  else "no"
+
+search :: Food -> [Food] -> [Food]
+search _ [] = [(0,0,0)]
+search o (f:fs) = consFood f fs'
+ where
+  fs' = filter (`hasLessCalorieThan` o) (search o fs)
+
+(a,b,c) `hasLessCalorieThan` (a1,b1,c1) =
+  a <= a1 && b <= b1 && c <= c1
+  
+consFood :: Food -> [Food] -> [Food]
+consFood f fs = fs ++ map (addFood f) fs
+
+addFood (a,b,c) (a1,b1,c1) = (a+a1,b+b1,c+c1)
+
+
+mapSv :: (a -> String) -> [a] -> [String]
+mapSv f as = [caseP i (f a) | (i,a) <- zip [1..] as]
+
+caseP i a = concat [ "Case #", show i, ": ", a]

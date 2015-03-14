@@ -1,0 +1,153 @@
+package hackercup;
+
+import java.io.File;
+import java.io.PrintWriter;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
+
+public class ProblemC {
+	
+	private static final String LASER = "^>v<";
+	
+	private static final int[] laser_di = new int[] { -1, 0, 1, 0 };
+	private static final int[] laser_dj = new int[] { 0, 1, 0, -1 };
+	public static void main(String[] args) throws Exception {
+		Scanner sc = new Scanner(new File("input.txt"));
+		PrintWriter out = new PrintWriter(new File("output.txt"));
+		int t = sc.nextInt();
+		for (int k = 0; k < t; k++) {
+			int n = sc.nextInt();
+			int m = sc.nextInt();
+			char[][] maze = new char[n][m];
+			for (int i = 0; i < n; i++) {
+				String s = sc.next();
+				maze[i] = new char[m];
+				for (int j = 0; j < m; j++) {
+					maze[i][j] = s.charAt(j);
+				}
+			}
+			Integer ret = solve(maze);
+			out.print("Case #" + (k + 1) + ": ");
+			if (ret == null) {
+				out.println("impossible");
+			} else {
+				out.println(ret);
+			}
+		}
+		out.close();
+		sc.close();
+	}
+
+	private static Integer solve(char[][] maze) {
+		Queue<Position> q = new LinkedList<Position>();
+		int si = 0, sj = 0, gi = 0, gj = 0;
+		for (int i = 0; i < maze.length; i++) {
+			for (int j = 0; j < maze[0].length; j++) {
+				if (maze[i][j] == 'S') {
+					si = i;
+					sj = j;
+				} else if (maze[i][j] == 'G') {
+					gi = i;
+					gj = j;
+				}
+			}
+		}
+		q.add(new Position(si, sj, 0));
+		int[][][] d = new int[maze.length][maze[0].length][4];
+		boolean[][][] hits = new boolean[maze.length][maze[0].length][4];
+		for (int i = 0; i < maze.length; i++) {
+			d[i] = new int[maze[0].length][4];
+			hits[i] = new boolean[maze[0].length][4];
+			for (int j = 0; j < maze[0].length; j++) {
+				d[i][j] = new int[4];
+				hits[i][j] = new boolean[4];
+				for (int k = 0; k < 4; k++) {
+					d[i][j][k] = -1;
+					boolean h = false;
+					for (int dj = 0; dj  < maze[0].length; dj++) {
+						if (isLaser(maze[i][dj]) && attacks(i, dj, i, j, k, maze)) {
+							h = true;
+						}
+					}
+					for (int di = 0; di < maze.length; di++) {
+						if (isLaser(maze[di][j]) && attacks(di, j, i, j, k, maze)) {
+							h = true;
+						}
+					}
+					hits[i][j][k] = h;
+				}
+			}
+		}
+		int[] di = new int[] { 0, 0, 1, -1 };
+		int[] dj = new int[] { 1, -1, 0, 0 };
+		d[si][sj][0] = 0;
+		while (!q.isEmpty()) {
+			Position p = q.poll();
+			for (int k = 0; k < 4; k++) {
+				int ni = p.i + di[k];
+				int nj = p.j + dj[k];
+				int nm = (p.m + 1) % 4;
+				int curd = d[p.i][p.j][p.m];
+				if (ni >= 0 && ni < maze.length && nj >= 0 && nj < maze[0].length) {
+					boolean cango = false;
+					if (d[ni][nj][nm] == -1 || d[ni][nj][nm] > curd + 1) {
+						if (maze[ni][nj] == '.' || maze[ni][nj] == 'S' || maze[ni][nj] == 'G') {
+							if (!hits[ni][nj][nm]) {
+								cango = true;
+							}
+						}
+					}
+					if (cango) {
+						d[ni][nj][nm] = curd + 1;
+						q.add(new Position(ni, nj, nm));
+					}
+				}
+			}
+		}
+		Integer ret = null;
+		for (int k = 0; k < 4; k++) {
+			if (d[gi][gj][k] != -1) {
+				if (ret == null || d[gi][gj][k] < ret) {
+					ret = d[gi][gj][k];
+				}
+			}
+		}
+		return ret;
+	}
+	
+	
+	private static boolean attacks(int li, int lj, int i, int j, int k, char[][] maze) {
+		int laser = maze[li][lj];
+		int laser_d = ((LASER.indexOf(laser) + k) % 4);
+		int ci = li;
+		int cj = lj;
+		while (true) {
+			ci += laser_di[laser_d];
+			cj += laser_dj[laser_d];
+			if (ci >= 0 && cj >= 0 && ci < maze.length && cj < maze[0].length) {
+				if (maze[ci][cj] == '#' || isLaser(maze[ci][cj])) {
+					return false;
+				}
+				if (ci == i && cj == j) {
+					return true;
+				}
+			} else {
+				return false;
+			}
+		}
+	}
+
+	private static boolean isLaser(char c) {
+		return c == '>' || c == '<' || c == '^' || c == 'v';
+	}
+
+	static class Position {
+		public int i, j, m;
+		public Position(int i, int j, int m) {
+			this.i = i;
+			this.j = j;
+			this.m = m;
+		}
+	}
+}

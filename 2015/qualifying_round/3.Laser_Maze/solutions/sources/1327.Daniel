@@ -1,0 +1,193 @@
+﻿using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace hacker
+{
+    public class State
+    {
+        public int R { get; set; }
+        public int C { get; set; }
+        public int D { get; set; }
+        public override bool Equals(object obj)
+        {
+            if (obj == null || GetType() != obj.GetType())
+                return false;
+
+            State p = (State)obj;
+            return (R == p.R) && (C == p.C) && (D == p.D);
+        }
+        public override int GetHashCode()
+        {
+            return R * 1000000 + C * 1000 + D;
+        }
+      
+    }
+    public class Maze
+    {
+        public int R { get; set; }
+        public int C { get; set; }
+        public string[] strs { get; set; }
+    }
+    class C
+    {
+        private static Maze ReadMaze(StreamReader input)
+        {
+            var result = new Maze();
+            var ints = input.ReadLine().Split().Select(x => int.Parse(x)).ToList();
+            result.R = ints[0];
+            result.C = ints[1];
+            result.strs = new string[result.R];
+            for (int i = 0; i < result.R;i++ )
+            {
+                result.strs[i] = input.ReadLine();
+            }
+            return result;
+        }
+
+        private static int directory(char c)
+        {
+            if (c == '>') return 0;
+            if (c == 'v') return 1;
+            if (c == '<') return 2;
+            if (c == '^') return 3;
+            if (c == '#') return -2;
+            return -1;
+        }
+        private static bool canMove(Maze maze, int destR, int destC, int D)
+        {
+            if(directory(maze.strs[destR][destC])!=-1)
+            {
+                return false;
+            }
+            for (int dR = -1; dR <= 1; dR++)
+                for (int dC = -1; dC <= 1; dC++)
+                {
+                    if(Math.Abs(dR)+Math.Abs(dC)!=1)
+                    {
+                        continue;
+                    }
+                    bool findW = false;
+                    for (int j = destR + dR; ; j += dR)
+                    {
+                        if (dR > 0 && j >= maze.R) break;
+                        if (dR < 0 && j < 0) break;
+                        for (int i = destC + dC; ; i += dC)
+                        {
+                            if (dC > 0 && i >= maze.C) break;
+                            if (dC < 0 && i < 0) break;
+                            int dir = directory(maze.strs[j][i]);
+                            if (dir == -2)
+                            {
+                                findW = true;
+                                break;
+                            }
+                            if (dir == -1)
+                            {
+                                if (dC == 0) break;
+                                continue;
+                            }
+                            int rdir = (dir + D) % 4;
+                            if ((rdir == 2&&dC==1)||(rdir==0&&dC==-1)||(rdir==1&&dR==-1)||(rdir==3&&dR==1))
+                            {
+                                return false;
+                            }
+                            findW = true;
+                            break;
+                        }
+                        if (findW) break;
+                        if (dR == 0) break;
+                    }
+                }
+                return true;
+        }
+        private static int resolve(Maze maze)
+        {
+            var dic = new Dictionary<State, int>();
+            int startR=-1, startC=-1, goalR=-1, goalC=-1;
+            for(int i=0;i<maze.R;i++)
+                for(int j=0;j<maze.C;j++)
+                {
+                    if(maze.strs[i][j]== 'S')
+                    {
+                        startR = i;
+                        startC = j;
+                    }
+                    if (maze.strs[i][j] == 'G')
+                    {
+                        goalR = i;
+                        goalC = j;
+                    }
+
+                }
+            var state = new State()
+            {
+                R = startR,
+                C = startC,
+                D = 0
+            };
+            dic.Add(state, 0);
+            var queue = new Queue<State>();
+            queue.Enqueue(state);
+            while(queue.Count!=0)
+            {
+                var currentState = queue.Dequeue();
+                var step = dic[currentState];
+                if((currentState.R == goalR)&&(currentState.C==goalC))
+                {
+                    return dic[currentState];
+                }
+                for(int i=-1;i<=1;i++)
+                    for(int j=-1;j<=1;j++)
+                    {
+                        if(Math.Abs(i)+Math.Abs(j)!=1)
+                        {
+                            continue;
+                        }
+                        int newR = currentState.R + i;
+                        int newC = currentState.C + j;
+                        int newD = (currentState.D + 1) % 4;
+                        if((newR<0)||(newR>=maze.R)||(newC<0)||(newC>=maze.C))
+                        {
+                            continue;
+                        }
+                        var newState = new State()
+                        {
+                            R = newR,
+                            C = newC,
+                            D = newD
+                        };
+                        if((dic.ContainsKey(newState))||(!canMove(maze,newR, newC, newD)))
+                        {
+                            continue;
+                        }
+                        dic[newState] = step + 1;
+                        queue.Enqueue(newState);
+                    }
+            }
+            return -1;
+
+        }
+        public static void Main()
+        {
+            var inputFileName = "C.txt";
+            var outputFileName = "Cout.txt";
+            var input = new System.IO.StreamReader(inputFileName);
+            var output = new System.IO.StreamWriter(outputFileName);
+            var caseNumber = int.Parse(input.ReadLine());
+            for (int i = 0; i < caseNumber; i++)
+            {
+                var maze = ReadMaze(input);
+                var step = resolve(maze);
+                var outMessage = string.Format("Case #{0}: {1}", i + 1, step >= 0 ? step.ToString() : "impossible");
+                output.WriteLine(outMessage);
+
+            }
+            input.Close();
+            output.Close();
+        }
+    }
+}

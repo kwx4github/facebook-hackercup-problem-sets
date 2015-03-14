@@ -1,0 +1,183 @@
+#include <iostream>
+#include <string>
+#include <queue>
+#include <cstring>
+
+using namespace std;
+
+const int MAX_N = 100;
+const int MAX_NODES = MAX_N * MAX_N * 4;
+
+int di[] = {-1,  0, +1,  0};
+int dj[] = { 0, +1,  0, -1};
+
+string maze[MAX_N];
+int n, m;
+int si, sj, gi, gj;
+
+bool mazes[4][MAX_N][MAX_N];
+bool visited[4][MAX_N][MAX_N];
+
+int laser_dir(char c)
+{
+    if (c == '^') return 1;
+    if (c == '>') return 2;
+    if (c == 'v') return 3;
+    if (c == '<') return 4;
+    return 0;
+}
+
+bool is_laser(char c)
+{
+    return laser_dir(c);
+}
+
+bool is_wall(char c)
+{
+    return c == '#' || is_laser(c);
+}
+
+bool is_empty(char c)
+{
+    return c == '.' || c == 'S' || c == 'G';
+}
+
+bool is_valid(int i, int j)
+{
+    return i >= 0 && i < n && j >=0 && j < m;
+}
+
+void shoot_laser(int i, int j, int d, int mz)
+{
+    mazes[mz][i][j] = 1;
+
+    for (int xi = i+di[d], xj = j+dj[d]; is_valid(xi, xj) && is_empty(maze[xi][xj]); xi += di[d], xj += dj[d])
+    {
+        mazes[mz][xi][xj] = 1;
+    }
+}
+
+void calc_mazes()
+{
+    memset(mazes, 0, sizeof mazes);
+
+    for (int i = 0; i < n; ++i)
+    {
+        for (int j = 0; j < m; ++j)
+        {
+            if (is_laser(maze[i][j]))
+            {
+                int laser_d = laser_dir(maze[i][j]) - 1;
+                for (int d = 0; d < 4; ++d)
+                    shoot_laser(i, j, (laser_d + d) % 4, d);
+            }
+
+            if (is_wall(maze[i][j]))
+            {
+                for (int d = 0; d < 4; ++d)
+                    mazes[d][i][j] = 1;
+            }
+
+            if (maze[i][j] == 'S') si = i, sj = j;
+            else if (maze[i][j] == 'G') gi = i, gj = j;
+        }
+    }
+}
+
+struct node {int d, i, j;};
+    
+node make_node(int d, int i, int j)
+{
+    node x;
+
+    x.d = d;
+    x.i = i;
+    x.j = j;
+
+    return x;
+}
+
+int bfs()
+{
+    memset(visited, 0, sizeof visited);
+
+    queue< pair<int, node> > q;
+    q.push(make_pair(0, make_node(0, si, sj)));
+
+    visited[0][si][sj] = 1;
+
+    while (!q.empty())
+    {
+        pair<int, node> p = q.front(); q.pop();
+
+        if (p.second.i == gi && p.second.j == gj) return p.first;
+
+        for (int d = 0; d < 4; ++d)
+        {
+            node nn = make_node( (p.second.d + 1) % 4, p.second.i + di[d], p.second.j + dj[d]);
+
+            if (is_valid(nn.i, nn.j) && !mazes[nn.d][nn.i][nn.j] && !visited[nn.d][nn.i][nn.j])
+            {
+                q.push(make_pair(p.first+1, nn));
+                visited[nn.d][nn.i][nn.j] = 1;
+            }
+        }
+    }
+
+    return -1;
+}
+
+void debug()
+{
+    cout << "S: " << si << ", " << sj << endl;
+    cout << "G: " << gi << ", " << gj << endl << endl;
+
+    cout << "Maze:" << endl;
+
+    for (int i = 0; i < n; ++i)
+    {
+        cout << maze[i] << endl;
+    }
+
+    cout << endl;
+
+    cout << "Mazes:" << endl;
+
+
+    for (int d = 0; d < 4; ++d)
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            for (int j = 0; j < m; ++j)
+            {
+                cout << (mazes[d][i][j] ? 'X' : '.');
+            }
+            cout << endl;
+        }
+        cout << endl;
+    }
+}
+
+int main()
+{
+    int t, ncase = 1;
+    cin >> t;
+
+    while (t--)
+    {
+        cin >> n >> m;
+
+        for (int i = 0; i < n; ++i)
+            cin >> maze[i];
+
+        calc_mazes();
+
+        int ans = bfs();
+
+        cout << "Case #" << ncase++ << ": ";
+        if (ans < 0)
+            cout << "impossible" << endl;
+        else
+            cout << ans << endl;
+    }
+}

@@ -1,0 +1,259 @@
+﻿#pragma comment(linker, "/STACK:133217728")
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <cctype>
+#include <cstring>
+#include <vector>
+#include <list>
+#include <queue>
+#include <deque>
+#include <stack>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <numeric>
+#include <ctime>
+#include <fstream>
+#include <iomanip>
+#include <stdexcept>
+#include <functional>
+#include <math.h>
+using namespace std;
+
+typedef pair<int, int> PII;
+typedef vector<int> VI;
+
+#define FOR(i, a, b) for(int i = (a); i < (b); ++i)
+#define RFOR(i, a, b) for(int i = (a) - 1; i >= (b); --i)
+#define CLEAR(a, b) memset(a, b, sizeof(a))
+#define ALL(a) (a).begin(),(a).end()
+#define PB push_back
+#define MP make_pair
+const int INF=1e+9;
+const int N=100;
+
+int n,m;
+string c[N];
+bool allowed[4][N][N];
+bool temp[N][N];
+bool was[4][N][N];
+
+int dj[]={1, 0, -1, 0};
+int di[]={0, 1, 0, -1};
+
+struct Pos
+{
+	Pos(int X, int Y, int Sol)
+	{
+		x=X;
+		y=Y;
+		sol=Sol;
+	}
+	int x,y;
+	int sol;
+};
+
+queue< Pos > Q;
+
+int getDir(char c, int p)
+{
+	int sol=-1;
+	if (c=='>') sol=0;
+	if (c=='v') sol=1;
+	if (c=='<') sol=2;
+	if (c=='^') sol=3;
+	if (sol==-1) return -1;
+	return (sol+p)%4;
+}
+
+void clear()
+{
+	FOR(i,0,m)
+		FOR(j,0,n)
+			FOR(k,0,4)
+			{
+				allowed[k][i][j]=true;
+				was[k][i][j]=false;
+			}
+
+	while (!Q.empty())
+		Q.pop();
+}
+
+void clear_temp()
+{
+	FOR(i,0,m)
+		FOR(j,0,n)
+		temp[i][j]=false;
+}
+
+bool empty(char x)
+{
+	return (x=='.' || x=='S' || x=='G');
+}
+
+void update_with_dir(int dir)
+{
+	if (dir==0)
+	{
+		FOR(i,0,m)
+			FOR(j,1,n)
+			if (temp[i][j-1] && empty(c[i][j]))
+				temp[i][j]=true;		
+		return;
+	}
+
+	if (dir==2)
+	{
+		FOR(i,0,m)
+			RFOR(j,n-1,0)
+			if (temp[i][j+1] && empty(c[i][j]))
+				temp[i][j]=true;
+	}
+
+	if (dir==1)
+	{
+		FOR(j,0,n)
+		    FOR(i,1,m)
+			if (temp[i-1][j] && empty(c[i][j]))
+				temp[i][j]=true;		
+		return;
+	}
+
+	if (dir==3)
+	{
+		FOR(j,0,n)
+		    RFOR(i,m-1,0)
+			if (temp[i+1][j] && empty(c[i][j]))
+				temp[i][j]=true;
+		return;
+	}
+
+	return;
+}
+
+void show_temp(int k)
+{
+	FOR(i,0,m)
+	{
+		FOR(j,0,n)
+			cerr << allowed[k][i][j] << " ";
+		cerr << endl;
+	}
+}
+
+bool Was(Pos p)
+{
+	return was[p.sol%4][p.x][p.y];
+}
+
+void push(Pos p)
+{
+	//cerr << "push " << p.x << " " << p.y << endl;
+	Q.push(p);
+	was[p.sol%4][p.x][p.y]=true;
+}
+
+bool Can(Pos p)
+{
+	return allowed[p.sol%4][p.x][p.y];
+}
+
+bool Goal(Pos p)
+{
+	return c[p.x][p.y]=='G';
+}
+
+int main()
+{
+	freopen("input.txt","r",stdin);
+	freopen("output.txt","w",stdout);
+
+	int T;
+	cin >> T;
+
+	FOR(t,0,T)
+	{
+		cin >> m >> n;
+		FOR(i,0,m)
+			cin >> c[i];
+
+		clear();
+
+		FOR(state, 0, 4)
+		{
+			FOR(dir, 0, 4)
+			{
+				clear_temp();
+
+				FOR(i,0,m)
+					FOR(j,0,n)
+					if (getDir(c[i][j], state)==dir)
+						temp[i][j]=true;
+
+				update_with_dir(dir);
+
+				FOR(i,0,m)
+					FOR(j,0,n)
+					if (temp[i][j])
+						allowed[state][i][j]=false;
+			}
+		}
+
+		//FOR(k,0,4)
+		//{
+		//	cerr << "k=" << k << endl;
+		//	show_temp(k);
+		//	cerr << endl;
+		//}
+
+		FOR(i,0,m)
+		{
+				FOR(j,0,n)
+				{
+					if (c[i][j]=='S') push(Pos(i,j,0));
+					if (c[i][j]=='#')
+					{
+						FOR(k,0,4)
+							allowed[k][i][j]=false;
+					}
+				}
+		}
+		
+		int sol=-1;	
+
+		while (!Q.empty())
+		{
+			Pos p=Q.front();
+			Q.pop();
+			//cerr << "pop " << p.x << " " << p.y << endl;
+			if (Goal(p))
+			{
+				sol=p.sol;
+				break;
+			}
+			
+			FOR(i, 0, 4)
+			{
+				Pos next=p;
+				next.sol++;
+				next.x+=di[i];
+				next.y+=dj[i];
+				if (next.x<0 || next.x>=m || next.y<0 || next.y>=n) continue;
+				if (!Was(next) && Can(next)) push(next);
+			}
+		}
+
+		if (sol!=-1)
+		cout << "Case #" << t+1 << ": " << sol << endl;
+		else
+			cout << "Case #" << t+1 << ": impossible" << endl;
+	}
+
+
+
+	return 0;
+}

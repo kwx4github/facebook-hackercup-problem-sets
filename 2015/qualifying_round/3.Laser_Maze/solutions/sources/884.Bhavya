@@ -1,0 +1,270 @@
+// Author: thecodekaiser
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef long long ll;
+#define MXN 105
+
+char maze[MXN][MXN];
+int state[MXN][MXN][4];		// Any cell will be under the attack of a laser
+bool vis[MXN][MXN][4];
+int dp[MXN][MXN][4];
+int M, N;
+
+bool laser(int x, int y)
+{
+	return (maze[x][y] == '^' or maze[x][y] == '>' or maze[x][y] == 'v' or maze[x][y] == '<');
+}
+
+void upd(pair<int,int> p)
+{
+	int x = p.first, y = p.second;
+	state[x][y][0] = state[x][y][1] = state[x][y][2] = state[x][y][3] = 1;		// 1 means blocked
+
+	if(maze[x][y] == '^')
+	{
+		for(int i = x-1; i >= 0; i--)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][0] = 1;
+		}
+		for(int i = y+1; i < N; i++)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][1] = 1;
+		}
+		for(int i = x+1; i < M; i++)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][2] = 1;
+		}
+		for(int i = y-1; i >= 0 ; i--)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][3] = 1;
+		}	
+	}
+	else if(maze[x][y] == '>')
+	{
+		for(int i = x-1; i >= 0; i--)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][3] = 1;
+		}
+		for(int i = y+1; i < N; i++)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][0] = 1;
+		}
+		for(int i = x+1; i < M; i++)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][1] = 1;
+		}
+		for(int i = y-1; i >= 0 ; i--)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][2] = 1;
+		}
+	}
+	else if(maze[x][y] == 'v')
+	{
+		for(int i = x-1; i >= 0; i--)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][2] = 1;
+		}
+		for(int i = y+1; i < N; i++)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][3] = 1;
+		}
+		for(int i = x+1; i < M; i++)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][0] = 1;
+		}
+		for(int i = y-1; i >= 0 ; i--)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][1] = 1;
+		}
+	}
+	else
+	{
+		for(int i = x-1; i >= 0; i--)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][1] = 1;
+		}
+		for(int i = y+1; i < N; i++)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][2] = 1;
+		}
+		for(int i = x+1; i < M; i++)
+		{
+			if(maze[i][y] == '#' or laser(i,y))
+				break;
+			state[i][y][3] = 1;
+		}
+		for(int i = y-1; i >= 0 ; i--)
+		{
+			if(maze[x][i] == '#' or laser(x,i))
+				break;
+			state[x][i][0] = 1;
+		}
+	}
+
+	return;
+}
+
+	
+
+void solve(int CS)
+{
+	memset(maze, 0, sizeof(maze));
+	memset(state, 0, sizeof(state));
+
+	cin >> M >> N;
+
+	pair<int,int> start, end;
+
+	vector< pair<int,int> > lT;
+
+	for(int i = 0; i < M; i++)
+	{
+		for(int j = 0; j < N; j++)
+		{
+			cin >> maze[i][j];
+			if(maze[i][j] == 'S')
+				start.first = i, start.second = j;
+			
+			if(maze[i][j] == 'G')
+				end.first = i, end.second = j;
+
+			if(maze[i][j] == '#')
+				state[i][j][0] = state[i][j][1] = state[i][j][2] = state[i][j][3] = 1;
+
+			if(laser(i,j))
+				lT.push_back(pair<int,int>(i,j));
+		}
+	}
+
+	for(int i = 0; i < lT.size(); i++)
+		upd(lT[i]);
+
+	
+	memset(dp, 0, sizeof(dp));
+	memset(vis, 0, sizeof(vis));
+
+	queue < pair< pair<int,int>, int> > q;
+
+	vis[start.first][start.second][0] = 1;
+	dp[start.first][start.second][0]  = 0;	// Will take 0 steps
+
+	q.push(pair< pair<int,int>, int>(start, 0));
+	int code = 0;
+	int ans;
+	while(!q.empty())
+	{
+		pair<int,int> temp = q.front().first, pp;
+
+		int x = temp.first, y = temp.second, cntr = q.front().second;
+		//cout << "VISITED: " << x << "," << y << " STATE: " << cntr % 4 << endl;
+		
+		cntr = cntr % 4;
+
+		q.pop();
+
+		if(x == end.first and y == end.second)
+		{
+			ans = dp[x][y][cntr];
+			code = 1;
+			break;
+		}
+
+		if(x+1 < M)
+		{
+			if(state[x+1][y][(cntr+1) % 4] != 1 and vis[x+1][y][(cntr+1) % 4] == 0)
+			{
+				dp[x+1][y][(cntr+1) % 4] = dp[x][y][(cntr) % 4] + 1;
+				pp.first = x+1, pp.second = y;
+				q.push(pair< pair<int,int>,int>(pp, cntr+1));
+				vis[x+1][y][(cntr+1) % 4] = 1;
+			}	
+		}
+		if(y+1 < N)
+		{
+			if(state[x][y+1][(cntr+1) % 4] != 1 and vis[x][y+1][(cntr+1) % 4] == 0)
+			{
+				dp[x][y+1][(cntr+1) % 4] = dp[x][y][(cntr) % 4] + 1;
+				pp.first = x, pp.second = y+1;
+				q.push(pair< pair<int,int>,int>(pp, cntr+1));
+				vis[x][y+1][(cntr+1) % 4] = 1;
+			}	
+		}
+		if(x-1 >= 0)
+		{
+			if(state[x-1][y][(cntr+1) % 4] != 1 and vis[x-1][y][(cntr+1) % 4] == 0)
+			{
+				dp[x-1][y][(cntr+1) % 4] = dp[x][y][(cntr) % 4] + 1;
+				pp.first = x-1, pp.second = y;
+				q.push(pair< pair<int,int>,int>(pp, cntr+1));
+				vis[x-1][y][(cntr+1) % 4] = 1;
+			}	
+		}
+		if(y-1 >= 0)
+		{
+			if(state[x][y-1][(cntr+1) % 4] != 1 and vis[x][y-1][(cntr+1) % 4] == 0)
+			{
+				dp[x][y-1][(cntr+1) % 4] = dp[x][y][(cntr) % 4] + 1;
+				pp.first = x, pp.second = y-1;
+				q.push(pair< pair<int,int>,int>(pp, cntr+1));
+				vis[x][y-1][(cntr+1) % 4] = 1;
+			}	
+		}
+		
+	}
+
+	if(code)
+		printf("Case %d: %d\n", CS, ans);
+	else
+		printf("Case %d: impossible\n", CS);
+}
+
+
+int main()
+{
+	int t, CS = 1;
+
+	cin >> t;
+	while(t--)
+		solve(CS++);
+
+	return 0;
+}
+	
+
+	
+
+	
+
+	
+
+
+	

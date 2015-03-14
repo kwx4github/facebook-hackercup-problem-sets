@@ -1,0 +1,73 @@
+#include <iostream>
+#include <algorithm>
+#include <queue>
+#include <cstring>
+using namespace std;
+
+char mapa[102][102], is_turret[200];
+int L, C, dist[102][102][4];
+int turret_dir[][2] = {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
+vector<pair<int, int>> turrets;
+
+void AddState(int y, int x, int t, queue<tuple<int,int,int>>& q, int d) {
+  if (y >= 0 && y < L && x >= 0 && x < C && d < dist[y][x][t]) {
+    for (const auto& turret : turrets) {
+      int dir = (is_turret[mapa[turret.first][turret.second]]-1+t) % 4;
+      int dy = turret_dir[dir][0], dx = turret_dir[dir][1];
+      int ay = turret.first+dy, ax = turret.second+dx;
+      while (ay >= 0 && ay < L && ax >= 0 && ax < C && !is_turret[mapa[ay][ax]] && mapa[ay][ax] != '#') {
+        if (ay == y && ax == x)
+          return;
+        ay += dy;
+        ax += dx;
+      }
+    }
+    dist[y][x][t] = d;
+    q.push(make_tuple(y, x, t));
+  }
+}
+int Solve() {
+  int i, j, sx, sy, y, x, t;
+  memset(dist, 0x3f, sizeof dist);
+  turrets.clear();
+  cin >> L >> C;
+  for (i = 0; i < L; i++) {
+    cin >> mapa[i];
+    for (j = 0; j < C; j++)
+      if (mapa[i][j] == 'S')
+        sy = i, sx = j;
+      else if (is_turret[mapa[i][j]])
+        turrets.push_back({i, j});
+  }
+  queue<tuple<int, int, int>> q;
+  q.push(make_tuple(sy, sx, 0));
+  dist[sy][sx][0] = 0;
+  while (!q.empty()) {
+    tie(y, x, t) = q.front();
+    q.pop();
+    if (mapa[y][x] == 'G')
+      return dist[y][x][t];
+    int new_t = (t+1) % 4, new_dist = dist[y][x][t]+1;
+    AddState(y+1, x, new_t, q, new_dist);
+    AddState(y-1, x, new_t, q, new_dist);
+    AddState(y, x+1, new_t, q, new_dist);
+    AddState(y, x-1, new_t, q, new_dist);
+  }
+  return -1;
+}
+int main() {
+  int nt, t;
+  is_turret['v'] = 1;
+  is_turret['<'] = 2;
+  is_turret['^'] = 3;
+  is_turret['>'] = 4;
+  cin >> nt;
+  for (t = 1; t <= nt; t++) {
+    int ans = Solve();
+    if (ans != -1) 
+      printf("Case #%d: %d\n", t, ans);
+    else
+      printf("Case #%d: impossible\n", t);
+  }
+  return 0;
+}

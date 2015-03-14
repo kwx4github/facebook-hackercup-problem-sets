@@ -1,0 +1,171 @@
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
+
+/**
+ * Created by poly on 1/10/15.
+ */
+public class LaserMaze {
+    public static void main(String argv[]) {
+        Scanner scanner = new Scanner(System.in);
+        int T = scanner.nextInt();
+        for (int t = 0; t < T; t++) {
+            int m = scanner.nextInt();
+            int n = scanner.nextInt();
+            String[] maze = new String[m];
+            int startR = -1, startC = -1;
+            for (int i = 0; i < m; i++) {
+                String s = scanner.next();
+                int pos = s.indexOf('S');
+                if (pos >= 0) {
+                    startR = i;
+                    startC = pos;
+                    s = s.replace('S', '.');
+                }
+                s = s.replace('<', '0');
+                s = s.replace('^', '1');
+                s = s.replace('>', '2');
+                s = s.replace('v', '3');
+                maze[i] = s;
+            }
+            Solver solver = new Solver(maze);
+            int ans = solver.solve(0, startR, startC);
+            if (ans < 0) {
+                System.out.println("Case #" + (t + 1) + ": impossible");
+            } else {
+                System.out.println("Case #" + (t + 1) + ": " + ans);
+            }
+        }
+    }
+
+    static class Solver {
+        final String[] maze;
+        int row, col;
+        int dirR[] = {0, -1, 0, +1};
+        int dirC[] = {-1, 0, +1, 0};
+        Queue<Integer> q = new LinkedList<Integer>();
+        int memo[] = new int[40010];
+
+        Solver(String[] maze) {
+            this.maze = maze;
+            row = maze.length;
+            col = maze[0].length();
+        }
+
+        private int solve() {
+            while (!q.isEmpty()) {
+                int key = q.poll();
+                int dir = key / (row * col);
+                int rest = key % (row * col);
+                int curR = rest / col;
+                int curC = rest % col;
+
+                int newDir = (dir + 1) % 4;
+                for (int i = 0; i < 4; i++) {
+                    int newR = curR + dirR[i];
+                    int newC = curC + dirC[i];
+                    if (newR >= 0 && newR < row && newC >= 0 && newC < col) {
+                        int newKey = makeKey(newDir, newR, newC);
+                        if (memo[newKey] >= 0) {
+                            continue;
+                        }
+                        int tmpAns = checkDone(newDir, newR, newC);
+                        if (tmpAns == -1) {
+                            continue;
+                        } else if (tmpAns == 0) {
+                            // done
+                            return memo[key] + 1;
+                        } else {
+                            memo[newKey] = memo[key] + 1;
+                            q.add(newKey);
+                        }
+                    }
+                }
+            }
+            return -1;
+        }
+
+        int solve(final int dir, final int curR, final int curC) {
+            int key = makeKey(dir, curR, curC);
+            for (int i=0; i<memo.length; i++) {
+                memo[i] = -1;
+            }
+            q.add(key);
+            memo[key] = 0;
+            return solve();
+        }
+
+        boolean isWallOrLaser(char cc) {
+            if (cc == '#' || (cc >= '0' && cc <= '3')) {
+                return true;
+            }
+            return false;
+        }
+
+        char getVal(int dir, int r, int c) {
+            char cc = maze[r].charAt(c);
+            if (cc >= '0' && cc <= '3') {
+                return (char) (((cc - '0') + dir) % 4 + '0');
+            }
+            return cc;
+        }
+
+        int checkDone(final int dir, final int curR, final int curC) {
+            if (isWallOrLaser(getVal(dir, curR, curC))) {
+                return -1;
+            }
+            for (int r = curR; r < row; r++) {
+                char target = '1';
+                char c = getVal(dir, r, curC);
+                if (isWallOrLaser(c)) {
+                    if (c == target) {
+                        return -1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int r = curR; r >= 0; r--) {
+                char target = '3';
+                char c = getVal(dir, r, curC);
+                if (isWallOrLaser(c)) {
+                    if (c == target) {
+                        return -1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int cc = curC; cc < col; cc++) {
+                char target = '0';
+                char c = getVal(dir, curR, cc);
+                if (isWallOrLaser(c)) {
+                    if (c == target) {
+                        return -1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int cc = curC; cc > 0; cc--) {
+                char target = '2';
+                char c = getVal(dir, curR, cc);
+                if (isWallOrLaser(c)) {
+                    if (c == target) {
+                        return -1;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            if (getVal(dir, curR, curC) == 'G') {
+                return 0;
+            }
+            return 1;
+        }
+
+        int makeKey(final int dir, final int curR, final int curC) {
+            return dir * (row * col) + curR * col + curC;
+        }
+    }
+}

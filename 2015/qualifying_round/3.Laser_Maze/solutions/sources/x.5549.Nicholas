@@ -1,0 +1,318 @@
+<Query Kind="Program">
+  <Namespace>System</Namespace>
+  <Namespace>System.Collections.Generic</Namespace>
+  <Namespace>System.Linq</Namespace>
+</Query>
+
+void Main()
+{
+    string outputDir = @"C:\Temp";
+    string inputFile = Path.Combine(outputDir, "input.txt");
+    string outputFile = Path.Combine(outputDir, "output.txt");
+    
+    string[] input = File.ReadAllLines(inputFile);
+    StringBuilder sb = new StringBuilder();
+    
+    int lineNum = 0;
+    int numCases = int.Parse(input[lineNum++]);
+    for (int i = 1; i < numCases + 1; i++)
+    {
+        string[] dim = input[lineNum++].Split(new string[] { " " }, StringSplitOptions.None);
+        int h = int.Parse(dim[0]);
+        int w = int.Parse(dim[1]);
+        
+        List<string> lines = new List<string>();
+        for (int j = 0; j < h; j++)
+        {
+            lines.Add(input[lineNum++]);
+        }
+    
+        string result = GetAnswer(h, w, lines);        
+        sb.AppendLine("Case #" + i + ": " + result);
+    }
+    
+    File.WriteAllText(outputFile, sb.ToString());
+}
+
+string GetAnswer(int h, int w, List<string> lines)
+{
+    Explorer start = BuildMaze(h, w, lines);
+    LinkedList<Explorer> ops = new LinkedList<Explorer>();
+    ops.AddFirst(start);
+    
+    while (ops.Count > 0)
+    {
+        Explorer ex = ops.First.Value;
+        ops.RemoveFirst();
+        if (ex.loc.isEnd)
+        {
+            return "" + ex.turn;
+        }
+        
+        ex.Move(ops);
+    }
+
+    return "impossible";
+}
+
+Explorer BuildMaze(int h, int w, List<string> lines)
+{
+    Cell[,] maze = new Cell[h, w];
+    Explorer result = null;
+    
+    List<Gun> guns = new List<Gun>();
+    
+    int lineNum = 0;
+    foreach (string line in lines)
+    {
+        for (int i = 0; i < line.Length; i++)
+        {
+            maze[lineNum, i] = BuildCell("" + line[i]);
+        }
+        
+        ++lineNum;
+    }
+    
+    for (int i = 0; i < h; i++)
+    {
+        for (int j = 0; j < w; j++)
+        {
+            Cell c = GetMazeCell(maze, i, j);
+            c.up = GetMazeCell(maze, i - 1, j);
+            c.right = GetMazeCell(maze, i, j + 1);
+            c.down = GetMazeCell(maze, i + 1, j);
+            c.left = GetMazeCell(maze, i, j - 1);
+            
+            if (c.isStart)
+            {
+                result = new Explorer();
+                result.loc = c;
+            }
+            
+            if (c.isGun)
+            {
+                guns.Add((Gun)c);
+            }
+        }
+    }
+    
+    foreach (Gun g in guns)
+    {
+        g.Fire();
+    }
+
+    return result;   
+}
+
+Cell GetMazeCell (Cell[,] maze, int i, int j)
+{
+    if (i >= maze.GetLength(0) 
+    || i < 0
+    || j >= maze.GetLength(1)
+    || j < 0)
+    {
+        return Wall.Instance;
+    }
+    
+    return maze[i, j];
+}
+
+Cell BuildCell(string input)
+{
+    switch (input.ToLower())
+    {
+        case ".":
+            return new Cell();
+        
+        case "s":
+            Cell start = new Cell();
+            start.isStart = true;
+            return start;
+            
+        case "g":
+            Cell goal = new Cell();
+            goal.isEnd = true;
+            return goal;
+        
+        case "#":
+            return Wall.Instance;
+       
+        case "^":
+            Gun upGun = new Gun();
+            upGun.dir = Direction.Up;
+            return upGun;
+            
+        case ">":
+            Gun rGun = new Gun();
+            rGun.dir = Direction.Right;
+            return rGun;
+        
+        case "v":
+            Gun dGun = new Gun();
+            dGun.dir = Direction.Right;
+            return dGun;
+        
+        case "<":
+            Gun lGun = new Gun();
+            lGun.dir = Direction.Left;
+            return lGun;
+            
+        default:
+            return null;
+    }
+}
+
+class Cell
+{
+    public Cell up;
+    public Cell right;
+    public Cell down;
+    public Cell left;
+    
+    public bool isStart;
+    public bool isEnd;
+    
+    public bool isGun;
+    
+    public bool[] invalid;
+    
+    public Cell()
+    {
+        this.invalid = new bool[] { false, false, false, false};
+    }
+}
+
+class Wall : Cell
+{   
+    public Wall()
+    {
+        this.invalid = new bool[] { true, true, true, true};
+    }
+    
+    public static Wall Instance = new Wall();
+}
+
+class Gun : Wall
+{   
+    public Gun()
+    {
+        this.isGun = true;
+        this.invalid = new bool[] { true, true, true, true};
+    }
+
+    public Direction dir;
+        
+    public void Fire()
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            this.dir++;
+            this.dir = (Direction) ((int)this.dir % 4);
+        
+            Bullet b = new Bullet();
+            b.dir = this.dir;
+            b.loc = this;
+            b.Fly(i);
+        }
+    }
+}
+
+class Bullet
+{
+    public Direction dir;
+    public Cell loc;
+    
+    public void Fly(int color)
+    {
+        while (loc != null)
+        {
+            Cell newLoc = null;
+            switch (dir)
+            {
+                case Direction.Up:
+                    newLoc = loc.up;
+                    break;
+                
+                case Direction.Right:
+                    newLoc = loc.right;
+                    break;
+                    
+                case Direction.Down:
+                    newLoc = loc.down;
+                    break;
+                
+                default:
+                    newLoc = loc.left;
+                    break;
+            }
+            
+            if (newLoc == null)
+            {
+                return;
+            }
+            
+            if (newLoc.invalid[color])
+            {
+                return;
+            }
+            
+            loc = newLoc;
+            loc.invalid[color] = true;
+        }
+    }
+}
+
+class Explorer
+{
+    public Cell loc;
+    public int turn;
+    
+    public void Move(LinkedList<Explorer> ops)
+    {
+        int color = this.turn % 4;
+    
+        if (loc.up != null && !loc.up.invalid[color])
+        {
+            Explorer upExp = new Explorer();
+            upExp.loc = loc.up;
+            upExp.turn = this.turn + 1;
+            ops.AddLast(upExp);
+            loc.up.invalid[color] = true;
+        }
+        
+        if (loc.right != null && !loc.right.invalid[color])
+        {
+            Explorer rightExp = new Explorer();
+            rightExp.loc = loc.right;
+            rightExp.turn = this.turn + 1;
+            ops.AddLast(rightExp);
+            loc.right.invalid[color] = true;
+        }
+        
+        if (loc.down != null && !loc.down.invalid[color])
+        {
+            Explorer downExp = new Explorer();
+            downExp.loc = loc.down;
+            downExp.turn = this.turn + 1;
+            ops.AddLast(downExp);
+            loc.down.invalid[color] = true;
+        }
+        
+        if (loc.left != null && !loc.left.invalid[color])
+        {
+            Explorer leftExp = new Explorer();
+            leftExp.loc = loc.left;
+            leftExp.turn = this.turn + 1;
+            ops.AddLast(leftExp);
+            loc.left.invalid[color] = true;
+        }
+    }
+}
+
+enum Direction
+{  
+    Up = 0,
+    Right = 1,
+    Down = 2,
+    Left = 3
+}

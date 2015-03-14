@@ -1,0 +1,538 @@
+//This program wrote Jakub Tomanek 
+//9.1. 2015
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <climits>
+
+using namespace std;
+
+// DECLARATION
+
+const int START = 0;
+const int WALL = -1;
+const int SPACE = INT_MAX;
+const int LASER_UP = -2;
+const int LASER_RIGHT = -3;
+const int LASER_DOWN = -4;
+const int LASER_LEFT = -5;
+const int DEATH = -6;
+const int GOAL = -7;
+const int RESULT_NOT_SET = -8;
+const int IMPOSSIBLE = -9;
+const int RESERVED = -10;
+
+const string CASE = "Case #";
+const string strIMPOSSIBLE = ": impossible";
+const string COLON = ": ";
+
+const int TIME = 4;
+
+struct QueueItem
+{
+	QueueItem(int x = 0, int y = 0, int t = 0, int s = 0):x(x), y(y), time(t), step(s){}
+	int x;
+	int y;
+	int time;
+	int step;
+};
+
+class Queue{
+public:
+	Queue(int maxLength);
+	~Queue();
+	void push(QueueItem qi);
+	QueueItem pop();
+	bool isEmpty(){ return from == to; }
+private:
+	int maxLength;
+	QueueItem * queue;
+	int from;
+	int to;
+};
+
+class Maze{
+public:
+	Maze(int height, int width);
+	~Maze();
+	void setNext(Maze * next);
+	void setField(int x, int y, int value);
+	void solve();
+	void solveMaze();
+	void printMaze();
+	void outputMaze();
+	void resolveDeath();
+private:
+	void planGoLeft(int x, int y, int t, int step);
+	void planGoRight(int x, int y, int t, int step);
+	void planGoUp(int x, int y, int t, int step);
+	void planGoDown(int x, int y, int t, int step);
+	bool isPossibleStep(int fieldType, int newStep);
+	void fetchNextStep();
+	Maze * getNextMaze(){ return next;}
+	int width;
+	int height;
+	int startX;
+	int startY;
+	int *** field;
+	int result;
+	Queue * queue;
+	Maze * next;
+};
+
+bool isLaser(int fieldType);
+bool isBlock(int fieldType);
+
+Queue::Queue(int maxLength){
+	queue = new QueueItem[maxLength];
+	this->maxLength = maxLength;
+	this->from = 0;
+	this->to = 0;
+}
+
+Queue::~Queue(){
+	delete [] queue;
+}
+
+void Queue::push(QueueItem qi){
+	if(to > maxLength){
+		cout << "OUHA" << endl;
+	}
+	queue[to].x = qi.x;
+	queue[to].y = qi.y;
+	queue[to].time = qi.time;
+	queue[to].step = qi.step;
+	to++;
+}
+
+QueueItem Queue::pop(){
+	if(from == to)
+		return QueueItem(-1);
+	from++;
+	return queue[from - 1];
+}
+
+Maze::Maze(int height, int width){
+	this->width = width;
+	this->height = height;
+	field = new int **[height];
+	for(int i = 0; i < height; i++){
+		field[i] = new int *[width];
+		for (int j = 0; j < width; j++)
+		{
+			field[i][j] = new int[TIME];
+		}
+	}
+	queue = new Queue(width * height * TIME);
+	result = RESULT_NOT_SET;
+}
+
+Maze::~Maze(){
+	for(int i = 0; i < height; i++){
+		for (int j = 0; j < width; j++){
+			delete [] field[i][j];
+		}
+		delete [] field[i];
+	}
+	delete [] field;
+	delete queue;
+}
+
+void Maze::setNext(Maze * next){
+	this->next = next;
+}
+
+void Maze::setField(int x, int y, int value){
+	switch(value){
+		case LASER_UP:
+			field[x][y][0] = LASER_UP;
+			field[x][y][1] = LASER_RIGHT;
+			field[x][y][2] = LASER_DOWN;
+			field[x][y][3] = LASER_LEFT;
+			break;
+		case LASER_RIGHT:
+			field[x][y][0] = LASER_RIGHT;
+			field[x][y][1] = LASER_DOWN;
+			field[x][y][2] = LASER_LEFT;
+			field[x][y][3] = LASER_UP;
+			break;
+		case LASER_DOWN:
+			field[x][y][0] = LASER_DOWN;
+			field[x][y][1] = LASER_LEFT;
+			field[x][y][2] = LASER_UP;
+			field[x][y][3] = LASER_RIGHT;
+			break;
+		case LASER_LEFT:
+			field[x][y][0] = LASER_LEFT;
+			field[x][y][1] = LASER_UP;
+			field[x][y][2] = LASER_RIGHT;
+			field[x][y][3] = LASER_DOWN;
+			break;
+		case START:
+			startX = x;
+			startY = y;
+			field[x][y][0] = value;
+			field[x][y][1] = SPACE;
+			field[x][y][2] = SPACE;
+			field[x][y][3] = SPACE;
+			break;
+		default:
+			for(int i = 0; i < TIME; i++){
+				field[x][y][i] = value;
+			}
+	}
+}
+
+void Maze::solve(){
+	solveMaze();
+	if(next != NULL){
+		next->solve();
+	}
+}
+
+void Maze::solveMaze(){
+	planGoUp(startX, startY, 0, 0);
+	planGoRight(startX, startY, 0, 0);
+	planGoDown(startX, startY, 0, 0);
+	planGoLeft(startX, startY, 0, 0);
+	while(result == RESULT_NOT_SET){
+		fetchNextStep();
+	}
+}
+
+void Maze::resolveDeath(){
+	for(int t = 0; t < 4; t++){
+		for(int i = 0; i < height; i++){
+			for (int j = 0; j < width; j++)
+			{
+				if(isLaser(field[i][j][t])){
+					switch(field[i][j][t]){
+						case LASER_UP:
+							for(int k = i - 1; k >=0; k--){
+								if(isBlock(field[k][j][t])){
+									break;
+								}
+								field[k][j][t] = DEATH;
+							}
+							break;
+						case LASER_RIGHT:
+							for(int k = j + 1; k < width; k++){
+								if(isBlock(field[i][k][t])){
+									break;
+								}
+								field[i][k][t] = DEATH;
+							}
+							break;
+						case LASER_DOWN:
+							for(int k = i + 1; k < height; k++){
+								if(isBlock(field[k][j][t])){
+									break;
+								}
+								field[k][j][t] = DEATH;
+							}
+							break;
+						case LASER_LEFT:
+							for(int k = j - 1; k >=0; k--){
+								if(isBlock(field[i][k][t])){
+									break;
+								}
+								field[i][k][t] = DEATH;
+							}
+							break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void Maze::printMaze(){
+	char c;
+	bool number = false;
+	int n;
+	for(int t = 0; t < 4; t++){
+		for(int i = 0; i < height; i++){
+			for (int j = 0; j < width; j++)
+			{
+				switch(field[i][j][t]){
+					case LASER_UP:
+						c = '^';
+						break;
+					case LASER_RIGHT:
+						c = '>';
+						break;
+					case LASER_DOWN:
+						c = 'v';
+						break;
+					case LASER_LEFT:
+						c = '<';
+						break;
+					case WALL:
+						c = '#';
+						break;
+					case SPACE:
+						c = '.';
+						break;
+					case GOAL:
+						c = 'G';
+						break;
+					case START:
+						c = 'S';
+						break;
+					case DEATH:
+						c = '*';
+						break;
+					default:
+						number = true;
+						n = field[i][j][t];
+				}
+				if(number){
+					cout << n;
+					number = false;
+				} else{
+					cout << c;
+				}
+			}
+		cout << endl;
+		}
+	cout << "\n+++++++++++++++++++++++++++++++++++++++\n" << endl;
+	}
+
+	if (next != NULL)
+		next->printMaze();
+}
+
+
+void Maze::outputMaze(){
+	ofstream ofs ("output.txt", ofstream::out);
+	Maze * tmpThis = this;
+	Maze * tmpNext = next;
+	int counter = 1;
+	while(tmpNext != NULL){
+		if(tmpThis->result == IMPOSSIBLE){
+			ofs << CASE << counter << strIMPOSSIBLE << endl;
+			cout << CASE << counter << strIMPOSSIBLE << endl;
+		}
+		else{
+			ofs << CASE << counter << COLON << tmpThis->result << endl;
+			cout << CASE << counter << COLON << tmpThis->result << endl;
+		}
+		counter++;
+		tmpThis = tmpNext;
+		tmpNext = tmpNext->getNextMaze();
+	}
+	if(tmpThis->result == IMPOSSIBLE){
+		ofs << CASE << counter << strIMPOSSIBLE << endl;
+		cout << CASE << counter << strIMPOSSIBLE << endl;
+	}
+	else{
+		ofs << CASE << counter << COLON << tmpThis->result << endl;
+		cout << CASE << counter << COLON << tmpThis->result << endl;
+	}
+	ofs.close();
+}
+
+
+void Maze::planGoLeft(int x, int y, int t, int step){
+	if( x - 1 < 0 )
+		return;
+	int newTime = (t + 1) % TIME;
+	int newX = x - 1;;
+	int newFieldType = field[newX][y][newTime];
+	if(isPossibleStep(newFieldType, step + 1)){
+		QueueItem q(newX, y, newTime, step + 1);
+		if( newFieldType != GOAL)
+			field[newX][y][newTime] = RESERVED;
+		queue->push(q);
+	}
+}
+
+void Maze::planGoRight(int x, int y, int t, int step){
+	if( y + 1 >= width )
+		return;
+	int newTime = (t + 1) % TIME;
+	int newY = y + 1;
+	int newFieldType = field[x][newY][newTime];
+	if(isPossibleStep(newFieldType, step + 1)){
+		QueueItem q(x, newY, newTime, step + 1);
+		if( newFieldType != GOAL)
+			field[x][newY][newTime] = RESERVED;
+		queue->push(q);
+	}
+}
+
+void Maze::planGoUp(int x, int y, int t, int step){
+	if( y - 1 < 0 )
+		return;
+	int newTime = (t + 1) % TIME;
+	int newY = y - 1;
+	int newFieldType = field[x][newY][newTime];
+	if(isPossibleStep(newFieldType, step + 1)){
+		QueueItem q(x, newY, newTime, step + 1);
+		if( newFieldType != GOAL)
+			field[x][newY][newTime] = RESERVED;
+		queue->push(q);
+	}
+}
+
+void Maze::planGoDown(int x, int y, int t, int step){
+	if( x + 1 >= height )
+		return;
+	int newTime = (t + 1) % TIME;
+	int newX = x + 1;
+	int newFieldType = field[newX][y][newTime];
+	if(isPossibleStep(newFieldType, step + 1)){
+		QueueItem q(newX, y, newTime, step + 1);
+		if( newFieldType != GOAL)
+			field[newX][y][newTime] = RESERVED;
+		queue->push(q);
+	}
+}
+
+bool Maze::isPossibleStep(int fieldType, int newStep){
+	bool decision = false;
+	switch(fieldType){
+		case LASER_UP:
+		case LASER_RIGHT:
+		case LASER_DOWN:
+		case LASER_LEFT:
+		case WALL:
+		case START:
+		case DEATH:
+		case RESERVED:
+			decision = false;
+			break;
+		case GOAL:
+			decision = true;
+			break;
+		default:
+			decision = fieldType > newStep;
+	}
+	return decision;
+}
+
+void Maze::fetchNextStep(){
+	QueueItem q = queue->pop();
+	if(q.x == -1){
+		result = IMPOSSIBLE;
+		return;
+	} else if (field[q.x][q.y][q.time] == GOAL){
+		result = q.step;
+		return;
+	}
+	field[q.x][q.y][q.time] = q.step;
+	planGoUp(q.x, q.y, q.time, q.step);
+	planGoRight(q.x, q.y, q.time, q.step);
+	planGoDown(q.x, q.y, q.time, q.step);
+	planGoLeft(q.x, q.y, q.time, q.step);
+}
+
+
+bool isLaser(int fieldType){
+	bool decision = false;
+	switch(fieldType){
+		case LASER_UP:
+		case LASER_RIGHT:
+		case LASER_DOWN:
+		case LASER_LEFT:
+			decision = true;
+			break;
+		default:
+			decision = false;
+	}
+	return decision;
+}
+
+bool isBlock(int fieldType){
+	bool decision = false;
+	switch(fieldType){
+		case LASER_UP:
+		case LASER_RIGHT:
+		case LASER_DOWN:
+		case LASER_LEFT:
+		case WALL:
+		case START:
+			decision = true;
+			break;
+		default:
+			decision = false;
+	}
+	return decision;
+}
+
+Maze * readInput(char * fileName){
+	int count, height, width, fieldType;
+	string line;
+	ifstream ifs;
+	ifs.open(fileName, ifstream::in);
+	ifs >> count;
+	Maze * first, * tmp, * tmp2;
+	ifs >> height;
+	ifs >> width;
+	getline(ifs, line); // read dummy newline
+	tmp = new Maze(height, width);
+	for(int i = 0; i < count; i++){
+		for(int j = 0; j < height; j++){
+			getline(ifs, line);
+			for(int k = 0; k < width; k++){
+				switch(line[k])
+				{
+					case '.':
+						fieldType = SPACE;
+						break;
+					case '#':
+						fieldType = WALL;
+						break;
+					case 'S':
+						fieldType = START;
+						break;
+					case 'G':
+						fieldType = GOAL;
+						break;
+					case '<':
+						fieldType = LASER_LEFT;
+						break;
+					case '>':
+						fieldType = LASER_RIGHT;
+						break;
+					case '^':
+						fieldType = LASER_UP;
+						break;
+					case 'v':
+						fieldType = LASER_DOWN;
+						break;
+					default:;
+				}
+				tmp->setField(j, k, fieldType);
+			}
+		}
+		tmp->resolveDeath();
+
+		if(i == 0){
+			first = tmp;
+		}
+		if(i == count - 1){
+			break;
+		}
+
+		ifs >> height;
+		ifs >> width;
+		getline(ifs, line); // read dummy newline
+		tmp2 = new Maze(height, width);
+		tmp->setNext(tmp2);
+		tmp = tmp2;
+	}
+	return first;
+}
+
+int main(int argc, char * argv[]){
+	if(argc < 2){
+		cout << "Invalid number of arguments." << endl;
+	}
+	Maze * m = readInput(argv[1]);
+	m->solve();
+	m->outputMaze();
+	delete m;
+	return 0;
+}

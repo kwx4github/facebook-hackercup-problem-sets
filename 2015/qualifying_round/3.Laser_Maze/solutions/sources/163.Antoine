@@ -1,0 +1,87 @@
+from __future__ import division, print_function
+from copy import deepcopy
+from collections import deque
+
+try:
+    input = raw_input
+    range = xrange
+except:
+    pass
+
+passable = lambda x: x in 'Steins;Gate.'
+directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
+
+turrets = '<^>v'
+turrets_dir = dict(zip(turrets, directions))
+next_turret = {t: turrets[(i + 1) % len(turrets)]
+               for i, t in enumerate(turrets)}
+
+
+def print_map(k):
+    for r in k:
+        print(''.join(r))
+
+def index(l, v):
+    for i, x in enumerate(l):
+        if v in x:
+            return (i, x.index(v))
+
+def convert_map(m, n, k):
+    nk = deepcopy(k)
+    for i, r in enumerate(k):
+        for j, c in enumerate(r):
+            if c in turrets:
+                ni, nj = i, j
+                tdir = turrets_dir[c]
+                while 0 <= ni < m and 0 <= nj < n:
+                    if (ni != i or nj != j) and not passable(k[ni][nj]):
+                        break
+                    nk[ni][nj] = '#'
+                    ni += tdir[0]
+                    nj += tdir[1]
+    return nk
+
+def next_map(m, n, k):
+    nk = deepcopy(k)
+    for i, r in enumerate(k):
+        for j, c in enumerate(r):
+            if c in turrets:
+                nk[i][j] = next_turret[c]
+    return nk
+
+def result(m, n, k):
+    nk = k
+    maps = []
+    for i in range(len(turrets)):
+        maps.append(convert_map(m, n, nk))
+        nk = next_map(m, n, nk)
+    start = (0,) + index(k, 'S')
+    seen = set()
+    parent = {}
+    q = deque([start])
+    while q:
+        d, i, j = q.popleft()
+        nd = (d + 1) % len(turrets)
+        for di, dj in directions:
+            ni, nj = i + di, j + dj
+            if (0 <= ni < m and 0 <= nj < n and passable(maps[nd][ni][nj]) and
+                (nd, ni, nj) not in seen):
+                seen.add((nd, ni, nj))
+                parent[(nd, ni, nj)] = (d, i, j)
+                if maps[nd][ni][nj] == 'G':
+                    l = 0
+                    c = (nd, ni, nj)
+                    while c != start:
+                        c = parent[c]
+                        l += 1
+                    return l
+                q.append((nd, ni, nj))
+    return None
+
+T = int(input())
+for i in range(T):
+    m, n = map(int, input().split())
+    k = [list(input()) for _ in range(m)] # row, col
+    r = result(m, n, k)
+    r = str(r) if r is not None else 'impossible'
+    print('Case #{}: {}'.format(i + 1, r))

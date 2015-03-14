@@ -1,0 +1,173 @@
+#include <stdio.h>
+#include <assert.h>
+#include <stdbool.h>
+
+#define maxn 110
+
+#define UP    0
+#define RIGHT 1
+#define DOWN  2
+#define LEFT  3
+
+
+#define min(a, b) (a < b ? a : b)
+
+const int inf = 1 << 30;
+
+const char *turrets = "^>v<";
+
+bool intree[maxn][maxn][4];
+int dist[maxn][maxn][4], n, m;
+char g[maxn][maxn];
+
+int ctoi( char c ) {
+    int i;
+    
+    for( i = 0; i < 4; i++ )
+	if( c == turrets[i] ) 
+	    return i;
+
+    return -1;
+}
+
+bool safe( char c ) {
+    int i;
+
+    for( i = 0; i < 4; i++ )
+	if( c == turrets[i] ) 
+	    return false;
+   
+   return (c != '#') ? true : false;
+}
+
+
+bool safe_move( int x, int y, int dir ) {
+    int i, j;
+
+    if( (x < 0) || (x > n) || (y < 0) || (y > m) || !safe(g[x][y]) )
+	return false;
+    
+    i = x;
+    while( (i >= 0) && safe(g[i][y]) ) i--;
+    if( (i >= 0) && g[i][y] != '#' ) {
+	int d = ctoi(g[i][y]);
+	assert( d >= 0 && d <= 3 );
+
+	d = (d + dir) % 4;
+	if( d == DOWN ) return false;
+    }
+    
+    i = x;
+    while( (i < n) && safe(g[i][y]) ) i++;
+    if( (i < n) && g[i][y] != '#' ) {
+	int d = ctoi(g[i][y]);
+	assert( d >= 0 && d <= 3 );
+
+	d = (d + dir) % 4;
+	if( d == UP ) return false;	    
+    }
+
+    j = y;
+    while( (j >= 0) && safe(g[x][j]) ) j--;
+    if( (j >= 0) && g[x][j] != '#' ) {
+	int d = ctoi(g[x][j]);
+	assert( d >= 0 && d <= 3 );
+
+	d = (d + dir) % 4;
+	if( d == RIGHT ) return false;
+    }
+
+    j = y;
+    while( (j < m) && safe(g[x][j]) ) j++;
+    if( (j < m) && g[x][j] != '#' ) {
+	int d = ctoi(g[x][j]);
+	assert( d >= 0 && d <= 3 );
+
+	d = (d + dir) % 4;
+	if( d == LEFT ) return false;
+    }
+    
+    return true;
+}
+
+void getmin( void ) {
+    int i, j, k;
+    int u, v, x;
+	
+
+    static int dx[] = { -1, 1, 0, 0 };
+    static int dy[] = { 0, 0, 1, -1 };
+
+    for( i = 0; i < n; i++ )
+	for( j = 0; j < m; j++ )
+	    for( k = 0; k < 4; k++ ) {
+		dist[i][j][k] = inf;
+		intree[i][j][k] = 0;
+	    }
+    
+    x = 0;
+    for( u = 0; u < n; u++ ) {
+	for( v = 0; v < m; v++ )
+	    if( g[u][v] == 'S' )
+		break;
+	if( v != m ) break;
+    }
+    
+
+    dist[u][v][x] = 0;
+    while( true ) {
+	intree[u][v][x] = 1;
+	
+	for( i = 0; i < 4; i++ ) {
+	    int xx = u + dx[i], yy = v + dy[i];
+
+	    if( safe_move(xx, yy, (x+1) % 4) )
+		dist[xx][yy][(x + 1) % 4] = min(dist[u][v][x] + 1, 
+						    dist[xx][yy][(x + 1) % 4]);
+	}
+	
+	int d = inf;
+	for( i = 0; i < n; i++ )
+	    for( j = 0; j < m; j++ )
+		for( k = 0; k < 4; k++ )
+		    if( !intree[i][j][k] && dist[i][j][k] < d ) {
+			u = i, v = j, x = k;
+			d = dist[i][j][k];
+		    }	
+	
+	if( d == inf ) break;
+    }
+
+}
+
+int main( void ) {
+    int T, t, i, j, s;
+    scanf("%i", &T);
+
+    for( t = 1; t <= T; t++ ) {
+	scanf("%i %i", &n, &m);
+
+	for( i = 0; i < n; i++ )
+	    scanf("%s", g[i]);
+	
+	getmin();
+
+	for( i = 0; i < n; i++ ) {
+	    for( j = 0; j < m; j++ )
+		if( g[i][j] == 'G' ) 
+		    break;
+	    if( j != m ) break;
+	}
+	
+	int ans = inf;
+	for( s = 0; s < 4; s++ )
+	    ans = min(dist[i][j][s], ans);
+	
+	printf("Case #%i: ", t);
+
+	if( ans == inf ) puts("impossible");
+	else		 printf("%i\n", ans);
+    }	    
+
+    return 0;
+}

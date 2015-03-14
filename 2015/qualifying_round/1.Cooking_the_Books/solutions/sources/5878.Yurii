@@ -1,0 +1,106 @@
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * TODO: description
+ *
+ * @author Yurii Smyrnov
+ * @version 1
+ * @since 1/9/2015 2:05 PM
+ */
+public class CookingTheBooks {
+
+    private static StringBuffer output = new StringBuffer();
+
+    public static void main(String[] args) throws Exception {
+        System.out.println("Reading from: " + args[0]);
+        List<String> lines = Files.readAllLines(Paths.get(args[0]));
+        List<String> linesWithValues = lines.subList(1, lines.size());
+
+        System.out.println("Input:");
+        linesWithValues.forEach(System.out::println);
+
+        System.out.println("Output:");
+        for (int i = 0; i < linesWithValues.size(); i++) {
+            appendToOutput("Case #" + (i + 1) + ": ");
+            String value = linesWithValues.get(i).trim();
+            appendToOutput(findMin(value) + " ");
+            appendToOutput(findMax(value) + "\r\n");
+        }
+
+        System.out.println("Writing to: " + args[1]);
+        flushOutput(args[1]);
+    }
+
+    static void appendToOutput(String value) {
+        output.append(value);
+        System.out.print(value);
+    }
+
+    static void flushOutput(String file) throws Exception {
+        Files.write(Paths.get(file), output.toString().getBytes());
+    }
+
+    /**
+     * 1. Знайти найпершу цифру, яка підлягає заміні, тобто серед цифр після неї є хоч одна більша
+     * 2. Серед знайдених більших цифр взяти останню найбільшу.
+     * 3. Поміняти їх місцями
+     *
+     * @param value value
+     * @return max number
+     */
+    static Integer findMax(String value) {
+        return find(value, true);
+    }
+
+    /**
+     * 1. Знайти найпершу цифру, яка підлягає заміні, тобто серед цифр після неї є хоч одна менша (але не нуль)
+     * 2. Серед знайдених найменших цифр взяти останню найменшу.
+     * 3. Поміняти їх місцями
+     *
+     * @param value value
+     * @return min number
+     */
+    static Integer findMin(String value) {
+        return find(value, false);
+    }
+
+    static Integer find(String value, boolean max) {
+        if (value.length() == 1) {
+            return Integer.valueOf(value);
+        }
+        List<Integer> list = value.chars().mapToObj(CookingTheBooks::fromChar).collect(Collectors.toList());
+        int firstIndex = 0, first, lastIndex = 0, last = max ? 0 : Integer.MAX_VALUE;
+        boolean swap = false;
+        for (int i = 0; i < list.size(); i++) {
+            firstIndex = i;
+            first = list.get(i);
+            for (int j = i + 1; j < list.size(); j++) {
+                int candidate = list.get(j);
+                if ((max && candidate > first && candidate >= last)
+                        ||
+                        (!max && candidate != 0 && candidate < first && candidate <= last)) {
+                    last = candidate;
+                    lastIndex = j;
+                    swap = true;
+                }
+            }
+            if (swap) {
+                break;
+            }
+        }
+        if (swap) {
+            Collections.swap(list, firstIndex, lastIndex);
+            return Integer.valueOf(list.stream().map(String::valueOf).reduce(String::concat).get());
+        } else {
+            return Integer.valueOf(value);
+        }
+    }
+
+    static int fromChar(int i) {
+        return i - 48;
+    }
+}

@@ -1,0 +1,228 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef int row[ 1024 ];
+
+enum {
+	SPACE,
+	WALL,
+	UP_TURRET,
+	DOWN_TURRET,
+	LEFT_TURRET,
+	RIGHT_TURRET,
+	LASER,
+	STEP
+};
+
+const int dxs[] = { -1, 1, 0, 0 };
+const int dys[] = { 0, 0, -1, 1 };
+const int dlen = sizeof( dxs ) / sizeof( dxs[ 0 ] );
+
+int isFinished();
+int isImpossible();
+int isInsideMaze( int x, int y );
+int char2code( char c );
+char code2char( int c );
+
+int h = 0, w = 0;
+row maze1[ 1024 ], maze2[ 1024 ], maze3[ 1024 ], maze4[ 1024 ], maze5[ 1024 ];
+row *maze, *xmaze, *xmaze2, *xmaze3, *xmaze4;
+int gx = 0, gy = 0;
+
+int checkMan( int x, int y ) {
+	int meet = 0;
+	for( int i = 0; i < dlen; i++ ) {
+		int x2 = x + dxs[ i ];
+		int y2 = y + dys[ i ];
+		if( isInsideMaze( x2, y2 ) && maze[ x2 ][ y2 ] == STEP ) {
+			xmaze[ x ][ y ] = STEP;
+			meet = 1;
+		}
+	}
+	return meet;
+}
+
+int checkTurret( int x, int y ) {
+	int meet = 0;
+	int turrets[] = { RIGHT_TURRET, LEFT_TURRET, UP_TURRET, DOWN_TURRET };
+	for( int i = 0; i < dlen; i++ ) {
+		int x2 = x;
+		int y2 = y;
+		do {
+			x2 += dxs[ i ];
+			y2 += dys[ i ];
+			if( isInsideMaze( x2, y2 ) && ( maze[ x2 ][ y2 ] == SPACE || maze[ x2 ][ y2 ] == STEP ) ) {
+			} else if( isInsideMaze( x2, y2 ) && maze[ x2 ][ y2 ] == turrets[ i ] ) {
+				xmaze[ x ][ y ] = LASER;
+				meet = 1;
+			} else {
+				break;
+			}
+		} while( isInsideMaze( x2, y2 ) && meet == 0 );
+	}
+	return meet;
+}
+
+void moveForth( int step ) {
+	for( int x = 0; x < h; x++ ) {
+		for( int y = 0; y < w; y++ ) {
+			switch( maze[ x ][ y ] ) {
+				case DOWN_TURRET:
+					xmaze[ x ][ y ] = LEFT_TURRET;
+					break;
+				case UP_TURRET:
+					xmaze[ x ][ y ] = RIGHT_TURRET;
+					break;
+				case RIGHT_TURRET:
+					xmaze[ x ][ y ] = DOWN_TURRET;
+					break;
+				case LEFT_TURRET:
+					xmaze[ x ][ y ] = UP_TURRET;
+					break;
+				case WALL:
+					xmaze[ x ][ y ] = WALL;
+					break;
+				default:
+					if( checkTurret( x, y ) ) {
+//						printf( "Turret! (%d,%d)=%d\n", x, y, xmaze[ x ][ y ] );
+					} else if( checkMan( x, y ) ) {
+//						printf( "Man! (%d,%d)\n", x, y );
+					} else {
+						xmaze[ x ][ y ] = SPACE;
+					}
+			}
+		}
+	}
+//	row *t = maze;
+//	maze = xmaze;
+//	xmaze = t;
+	row *t = maze;
+	maze = xmaze;
+	xmaze = xmaze2;
+	xmaze2 = xmaze3;
+	xmaze3 = xmaze4;
+	xmaze4 = t;
+}
+
+void printMaze() {
+	for( int x = 0; x < h; x++ ) {
+		printf( "      " );
+		for( int y = 0; y < w; y++ ) {
+			printf( "%c", code2char( maze[ x ][ y ] ) );
+		}
+		printf( "      " );
+		for( int y = 0; y < w; y ++ ) {
+			printf( "%c", code2char( xmaze[ x ][ y ] ) );
+		}
+		printf( "\n" );
+	}
+}
+
+int main( int argc, char **argv ) {
+	int nmaze = 0;
+	char buf[ 1024 ];
+	scanf( "%d", &nmaze );
+	for( int i = 1; i <= nmaze; i++ ) {
+		scanf( "%d %d", &h, &w );
+		memset( maze1, 0, sizeof( maze1 ) );
+		for( int x = 0; x < h; x++ ) {
+			scanf( "%s", buf );
+			for( int y = 0; y < w; y++ ) {
+				if( buf[ y ] == 'G' ) {
+					gx = x;
+					gy = y;
+				}
+				maze1[ x ][ y ] = char2code( buf[ y ] );
+			}
+		}
+
+		maze = maze1;
+		memset( maze2, 0, sizeof( maze2 ) );
+		xmaze = maze2;
+		memset( maze3, 0, sizeof( maze3 ) );
+		xmaze2 = maze3;
+		memset( maze4, 0, sizeof( maze4 ) );
+		xmaze3 = maze4;
+		memset( maze5, 0, sizeof( maze5 ) );
+		xmaze4 = maze5;
+//		printf( "goal: (%d,%d)\n", gx, gy );
+
+//		printMaze();
+		for( int step = 1; ; step++ ) {
+//			printf( "step %d\n", step );
+			moveForth( step );
+//			printMaze();
+			if( isFinished() ) {
+//				printf( "finish, %d steps!\n", step );
+				printf( "Case #%d: %d\n", i, step );
+				break;
+			} else if( isImpossible() ) {
+//				printf( "impossible\n" );
+				printf( "Case #%d: impossible\n", i );
+				break;
+			}
+		}
+//		printf( "\n" );
+	}
+}
+
+int isFinished() {
+	for( int x = 0; x < h; x++ ) {
+		for( int y = 0; y < w; y++ ) {
+			if( maze[ x ][ y ] == STEP && x == gx && y == gy ) {
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+int isImpossible() {
+	return memcmp( maze, xmaze, sizeof( maze1 ) ) == 0;
+}
+
+int isInsideMaze( int x, int y ) {
+	return x >= 0 && x < h && y >= 0 && y < w;
+}
+
+int char2code( char c ) {
+	if( c == '#' ) {
+		return WALL;
+	} else if( c == '^' ) {
+		return UP_TURRET;
+	} else if( c == 'v' ) {
+		return DOWN_TURRET;
+	} else if( c == '<' ) {
+		return LEFT_TURRET;
+	} else if( c == '>' ) {
+		return RIGHT_TURRET;
+	} else if( c == '.' || c == 'G' ) {
+		return SPACE;
+	} else if( c == 'S' ) {
+		return STEP;
+	}
+	return SPACE;
+}
+
+char code2char( int c ) {
+	if( c == WALL ) {
+		return '#';
+	} else if( c == UP_TURRET ) {
+		return '^';
+	} else if( c == DOWN_TURRET ) {
+		return 'v';
+	} else if( c == LEFT_TURRET ) {
+		return '<';
+	} else if( c == RIGHT_TURRET ) {
+		return '>';
+	} else if( c == LASER ) {
+		return '*';
+	} else if( c == SPACE ) {
+		return '.';
+	} else if( c == STEP ) {
+		return 'S';
+	} else {
+		return '0' + ( c - STEP );
+	}
+}

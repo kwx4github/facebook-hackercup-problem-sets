@@ -1,0 +1,113 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <string>
+#include <tuple>
+using namespace std;
+
+int main() {
+	int cases; cin >> cases;
+	for (int cn = 0; cn < cases; cn++) {
+		int h, w; cin >> h >> w;
+		vector<string> bd(h);
+		for (auto& i : bd) {
+			cin >> i;
+		}
+		vector<vector<int>> danger(h, vector<int>(w, 0));
+
+		int sx, sy, gx, gy;
+		vector<pair<int, int>> lasers;
+		for (size_t y = 0; y < h; y++) {
+			for (size_t x = 0; x < w; x++) {
+				char &c = bd[y][x];
+				if (c == 'S') {
+					sx = x;
+					sy = y;
+					c = '.';
+				}
+				if (c == 'G') {
+					gx = x;
+					gy = y;
+					c = '.';
+				}
+				if (c == '<' || c == '>' || c == '^' || c == 'v') {
+					if (c == '^')
+						c = 0;
+					if (c == '>')
+						c = 1;
+					if (c == 'v')
+						c = 2;
+					if (c == '<')
+						c = 3;
+
+					lasers.push_back(make_pair(x, y));
+				}
+			}
+		}
+
+		static const int vect[4][2] = {
+			{0, -1},
+			{1, 0},
+			{0, 1},
+			{-1, 0}
+		};
+
+		for (int i = 0; i < 4; i++) {
+			for (auto& p : lasers) {
+				int x = p.first, y = p.second;
+				int dir = (bd[y][x] + i) % 4;
+				int vx = vect[dir][0], vy = vect[dir][1];
+
+				for (int cx = x + vx, cy = y + vy;
+					 cx >= 0 && cx < w && cy >= 0 && cy < h&&bd[cy][cx] == '.';
+					 cx += vx, cy += vy) {
+					danger[cy][cx] |= (1 << i);
+				}
+			}
+		}
+
+		queue<tuple<int, int, int>> q;
+		vector<vector<vector<int>>> dist(h, vector<vector<int>>(w, vector<int>(4, -1)));
+		q.push(make_tuple(sx, sy, 0));
+		dist[sy][sx][0] = 0;
+
+		int ans = -1;
+
+		while (q.size()) {
+			int cx = get<0>(q.front());
+			int cy = get<1>(q.front());
+			int cycle = get<2>(q.front());
+			int d = dist[cy][cx][cycle];
+			q.pop();
+			if (cx == gx && cy == gy) {
+				ans = d;
+				break;
+			}
+
+			for (int dir = 0; dir < 4; dir++) {
+				int nx = cx + vect[dir][0];
+				int ny = cy + vect[dir][1];
+				int nd = d + 1;
+				int nc = (cycle + 1) % 4;
+				if (!(nx >= 0 && nx < w&&ny >= 0 && ny < h))
+					continue;
+				if (bd[ny][nx] != '.')
+					continue;
+				if (danger[ny][nx] & (1 << nc))
+					continue;
+
+				if (dist[ny][nx][nc] >= 0) continue;
+				dist[ny][nx][nc] = nd;
+				q.push(make_tuple(nx, ny, nc));
+			}
+		}
+
+		cout << "Case #" << cn + 1 << ": ";
+
+		if (ans >= 0)
+			cout << ans << endl;
+		else
+			cout << "impossible" << endl;
+	}
+	return 0;
+}

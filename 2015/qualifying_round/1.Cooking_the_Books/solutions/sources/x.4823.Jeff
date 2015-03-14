@@ -1,0 +1,125 @@
+package com.jmc;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CookTheBooks {
+    static List<String> getLines(String fileName) throws IOException {
+        if (new File(fileName).exists()) {
+            String line;
+            ArrayList<String> lines = new ArrayList<String>();
+            BufferedReader reader = new BufferedReader(new FileReader(fileName));
+            while((line=reader.readLine()) != null) {
+                lines.add(line);
+            }
+            return lines;
+        } else {
+            return null;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+        String filename;
+        if (args.length < 1) {
+            filename = CookTheBooks.class.getSimpleName() + ".txt";
+        } else {
+            filename = args[0];
+        }
+        System.out.println("Running with filename: " + filename);
+
+        List<String> lines = getLines(filename);
+        if (lines == null) {
+            System.out.println("Error: can't find file [" + filename + "]");
+            System.exit(0);
+        }
+
+        String outfile = filename.replace("txt", "out");
+        PrintWriter out = new PrintWriter(new FileOutputStream(outfile));
+
+        int tests = Integer.parseInt(lines.get(0));
+        int currLine = 1;
+        for (int i = 0; i < tests; i++) {
+            String num = lines.get(currLine++);
+            Result result = doNumber(num);
+            out.println("Case #" + (i+1) + ": " + result.lowest + " " + result.highest);
+        }
+        out.close();
+        System.out.println("Output in filename: " + outfile);
+    }
+
+    static class Result {
+        String lowest, highest;
+    }
+
+    static Result doNumber(String num) {
+        Result r = new Result();
+        r.lowest = num;
+        r.highest = num;
+        int currMax = 0;
+        boolean seenNonZero = false;
+        for (int i = 0; i < num.length(); i++) {
+            int currNum = num.charAt(i) - '0';
+
+            if (i > 0 && currNum != 0) seenNonZero = true;
+
+            if (currNum > currMax) {
+                currMax = currNum;
+            } else if (currNum < currMax && (currNum > 0 || seenNonZero)) {
+                int k = i + 1;
+                int swapIndex = i;
+                for (; k < num.length(); k++) {
+                    int newNum =  num.charAt(k) - '0';
+                    if (newNum <= currNum && (newNum > 0 || currNum == 0)) {
+                        currNum = newNum;
+                        swapIndex = k;
+                    }
+                }
+                int j = i - 1;
+                for (; j > 0 || (j == 0 && currNum != 0); j--) {
+                    int prevNum = num.charAt(j) - '0';
+                    if (prevNum <= currNum && (prevNum > 0 || currNum == 0)) {
+                        break;
+                    }
+                }
+                byte b[] = num.getBytes();
+                byte t = b[swapIndex];
+                b[swapIndex] = b[j+1];
+                b[j+1] = t;
+                r.lowest = new String(b);
+                break;
+            }
+        }
+        int currMin = Integer.MAX_VALUE;
+        for (int i = 0; i < num.length(); i++) {
+            int currNum = num.charAt(i) - '0';
+            if (currNum < currMin) {
+                currMin = currNum;
+            } else if (currNum > currMin) {
+                int k = i + 1;
+                int swapIndex = i;
+                for (; k < num.length(); k++) {
+                    int newNum =  num.charAt(k) - '0';
+                    if (newNum >= currNum) {
+                        currNum = newNum;
+                        swapIndex = k;
+                    }
+                }
+                int j = i - 1;
+                for (; j >= 0; j--) {
+                    int prevNum = num.charAt(j) - '0';
+                    if (prevNum >= currNum) {
+                        break;
+                    }
+                }
+                byte b[] = num.getBytes();
+                byte t = b[swapIndex];
+                b[swapIndex] = b[j+1];
+                b[j+1] = t;
+                r.highest = new String(b);
+                break;
+            }
+        }
+        return r;
+    }
+}

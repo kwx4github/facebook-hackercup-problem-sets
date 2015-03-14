@@ -1,0 +1,158 @@
+#!/usr/bin/python
+
+import sys
+
+def createKey(ints):
+    key = ''
+    for i in ints:
+        key = key + str(i) + '.'
+    
+    return key
+
+
+def getDir(tur, rd):
+    sets = [tur, rd]
+    if sets in [['<', 4], ['^', 3], ['>', 2], ['v', 1]]:
+        return '<'
+    elif sets in [['<', 1], ['^', 4], ['>', 3], ['v', 2]]:
+        return '^'
+    elif sets in [['<', 2], ['^', 1], ['>', 4], ['v', 3]]:
+        return '>'
+    elif sets in [['<', 3], ['^', 2], ['>', 1], ['v', 4]]:
+        return 'v'
+
+    return None
+
+
+def getTurLaserRange(maze, numrows, numcols):
+    hashtables = [{} for i in range(0, 4)] 
+    turs = []
+    for i in range(0, numrows):
+        for j in range(0, numcols):
+            if maze[i][j] in ['<', '^', '>', 'v' ]:
+                turs.append([i, j, maze[i][j]])
+
+    for r in range(0, 4): 
+        for tur in turs:
+            direction = getDir(tur[2], r+1)
+            if direction == '<':
+                i = tur[0]
+                for j in range(tur[1]-1, -1, -1):
+                    if maze[i][j] in ['.', 'S', 'G']:
+                        hashtables[r][createKey([i, j])] = True
+                    else:
+                        break
+            elif direction == '^': 
+                j = tur[1]
+                for i in range(tur[0]-1, -1, -1):
+                    if maze[i][j] in ['.', 'S', 'G']:
+                        hashtables[r][createKey([i, j])] = True
+                    else:
+                        break
+            elif direction == '>':
+                i = tur[0]
+                for j in range(tur[1]+1, numcols):
+                    if maze[i][j] in ['.', 'S', 'G']:
+                        hashtables[r][createKey([i, j])] = True
+                    else:
+                        break
+            elif direction == 'v':
+                j = tur[1]
+                for i in range(tur[0]+1, numrows):
+                    if maze[i][j] in ['.', 'S', 'G']:
+                        hashtables[r][createKey([i, j])] = True
+                    else:
+                        break
+            else:
+                # FIXME
+                pass
+
+    return hashtables
+
+
+def laserMaze(maze, numrows, numcols):
+    for i in range(0, numrows):
+        for j in range(0, numcols):
+            if maze[i][j] == 'S':
+                [x, y] = [i, j]
+                break
+
+    stack = []
+    step = 0
+    used = {}   
+    laserrange = getTurLaserRange(maze, numrows, numcols)
+    minsteps = None
+    while True:
+        sets = []
+        if y - 1 >= 0:   
+            sets.append([x, y-1])
+        if x - 1 >= 0: 
+            sets.append([x-1, y])
+        if y + 1 < numcols:
+            sets.append([x, y+1])
+        if x + 1 < numrows: 
+            sets.append([x+1, y])
+
+        for [x, y] in sets:
+            if laserrange[step%4].get(createKey([x, y])) == None:
+                char = maze[x][y]
+                if char == 'G':
+                    if minsteps == None:
+                        minsteps = step + 1
+                    else:
+                        minsteps = min(minsteps, step+1)
+            
+                if (char == '.' or char == 'S') and used.get(createKey([x, y, (step+1)%4])) == None:
+                    stack.append([x, y, step+1])
+
+        found = False
+        while True:
+            if len(stack) == 0:
+                break
+            
+            [x, y, step] = stack.pop()
+            used[createKey([x, y, step%4])] = True
+            if minsteps == None or step+1 < minsteps: 
+                found = True
+                break
+
+        if not found:
+            break
+
+    if minsteps == None:
+        return -1
+    else:
+        return minsteps
+     
+    
+def main(argv):
+    if len(argv) != 2:
+        return -1
+
+    with open(argv[1]) as f:
+        lines = f.readlines()
+
+    i = 1
+    numcases = int(lines[0])
+    for c in range(1, numcases+1):
+        mn = lines[i].split()
+        numrows = int(mn[0])
+        numcols = int(mn[1])
+        i = i + 1
+
+        maze = []
+        for j in range(0, numrows):
+            maze.append(lines[i][0:numcols])
+            i = i + 1
+
+        steps = laserMaze(maze, numrows, numcols)
+        if steps >= 0:    
+            print "Case #%d: %d" % (c, steps)
+        else:
+            print "Case #%d: %s" % (c, 'impossible')
+
+
+if __name__ == "__main__":
+    main(sys.argv)
+
+

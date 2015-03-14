@@ -1,0 +1,166 @@
+/*Laser Maze*/
+
+#include<cstdio>
+#include<map>
+#include<string>
+#include<queue>
+#include<utility>
+
+using namespace std;
+
+struct node
+{
+	string state;
+	int row;
+	int col;
+};
+
+struct comparator
+{
+	bool operator()(struct node a, struct node b)
+	{
+		if (a.state < b.state)
+			return true;
+		if (a.state == b.state)
+		{
+			if (a.row < b.row)
+				return true;
+			else if (a.row == b.row)
+			{
+				if (a.col < b.col)
+					return true;
+			}
+		}
+		return false;
+	}
+};
+
+char maze[100][105];
+int dx[] = { -1, 0, 1, 0 };
+int dy[] = { 0, -1, 0, 1 };
+
+int main()
+{
+	bool found, will_be_killed;
+	char ch;
+	int currentsteps, i, j, k, M, minsteps, N, pos, t, T;
+	pair<int, int> goal, start;
+	queue<struct node> q;
+	map<struct node, int, comparator> states;
+	string state;
+	struct node current, next;
+	freopen("laser_maze.txt", "r", stdin);
+	freopen("laser_maze_output.txt", "w", stdout);
+	scanf("%d", &T);
+	for (t = 1; t <= T; t++)
+	{
+		states.clear();
+		scanf("%d %d", &M, &N);
+		for (i = 0; i < M; i++)
+			scanf("%s", maze[i]);
+		for (i = 0; i < M; i++)
+		{
+			for (j = 0; j < N; j++)
+			{
+				if (maze[i][j] == 'S')
+					start = make_pair(i, j);
+				else if (maze[i][j] == 'G')
+					goal = make_pair(i, j);
+			}
+		}
+		state = "";
+		for (i = 0; i < M; i++)
+			state += string(maze[i]);
+		current.state = state;
+		current.row = start.first;
+		current.col = start.second;
+		states[current] = 0;
+		q.push(current);
+		found = false;
+		while (!q.empty())
+		{
+			current = q.front();
+			q.pop();
+			currentsteps = states[current];
+			if ((current.row == goal.first) && (current.col == goal.second))
+			{
+				found = true;
+				minsteps = currentsteps;
+				break;
+			}
+			state = current.state;
+			for (i = 0; i < M; i++)
+			{
+				for (j = 0; j < N; j++)
+				{
+					ch = state[i * N + j];
+					if (ch == '<')
+						ch = '^';
+					else if (ch == '^')
+						ch = '>';
+					else if (ch == '>')
+						ch = 'v';
+					else if (ch == 'v')
+						ch = '<';
+					state[i * N + j] = ch;
+				}
+			}
+			next.state = state;
+			for (k = 0; k < 4; k++)
+			{
+				next.row = current.row + dx[k];
+				next.col = current.col + dy[k];
+				if ((next.row < 0) || (next.row >= M) || (next.col < 0) || (next.col >= N))
+					continue;
+				pos = next.row * N + next.col;
+				if ((state[pos] != '.') && (state[pos] != 'S') && (state[pos] != 'G'))
+					continue;
+				will_be_killed = false;
+				for (i = next.col; (i >= 0) && (!will_be_killed); i--)
+				{
+					pos = next.row * N + i;
+					if (state[pos] == '>')
+						will_be_killed = true;
+					else if ((state[pos] == '#') || (state[pos] == '<') || (state[pos] == '^') || (state[pos] == 'v'))
+						break;
+				}
+				for (i = next.col; (i < N) && (!will_be_killed); i++)
+				{
+					pos = next.row * N + i;
+					if (state[pos] == '<')
+						will_be_killed = true;
+					else if ((state[pos] == '#') || (state[pos] == '^') || (state[pos] == '>') || (state[pos] == 'v'))
+						break;
+				}
+				for (j = next.row; (j >= 0) && (!will_be_killed); j--)
+				{
+					pos = j * N + next.col;
+					if (state[pos] == 'v')
+						will_be_killed = true;
+					else if ((state[pos] == '#') || (state[pos] == '<') || (state[pos] == '^') || (state[pos] == '>'))
+						break;
+				}
+				for (j = next.row; (j < M) && (!will_be_killed); j++)
+				{
+					pos = j * N + next.col;
+					if (state[pos] == '^')
+						will_be_killed = true;
+					else if ((state[pos] == '#') || (state[pos] == '<') || (state[pos] == '>') || (state[pos] == 'v'))
+						break;
+				}
+				if ((!will_be_killed) && (states.find(next) == states.end()))
+				{
+					q.push(next);
+					states[next] = currentsteps + 1;
+				}
+			}
+		}
+		if (found)
+			printf("Case #%d: %d\n", t, minsteps);
+		else
+			printf("Case #%d: impossible\n", t);
+		while (!q.empty())
+			q.pop();
+	}
+	return 0;
+}

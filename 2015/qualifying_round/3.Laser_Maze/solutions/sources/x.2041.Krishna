@@ -1,0 +1,324 @@
+/************************************************************/
+// 	Author  : Krishna Vedulla
+//	College : Army Institute of Technology, Pune
+/************************************************************/
+
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <limits.h>
+#include <algorithm>
+#include <math.h>
+#include <map>
+#include <bitset>
+#include <set>
+#include <fstream>
+#include <string.h>
+
+
+#define MAX 101
+#define MOD 1000000007
+#define LL long long
+#define ULL unsigned long long
+
+
+#define FOR(i,a,b) for(int i=a; i<b; i++)
+#define FOR_(i,a,b) for(int i=a-1; i>=b; i--)
+#define NODE pair<int, int>
+#define SQR(a) ((a)*(a))
+#define VI vector<int>
+#define MII map<int, int>
+
+#define SI(n) scanf("%d", &n)
+#define SS(r) scanf("%s", r)
+#define PI(k, n) printf("Case #%d: %d\n", k, n)
+#define PS(k, r) printf("Case #%d: %s\n", k, r)
+
+using namespace std;
+
+/*********************************************************************************/
+
+struct node 
+{
+	bool time[4];
+};
+
+struct qnode
+{
+	NODE cc; int tot;
+};
+
+node fire[MAX][MAX];
+bool visited[MAX][MAX];
+char a[MAX][MAX];
+priority_queue<qnode>  Q;
+NODE start, goal;
+
+void init(int m, int n)
+{
+	while(!Q.empty())
+		Q.pop();
+
+	FOR(i,0,m)
+		FOR(j,0,n)
+		{
+			visited[i][j] = false;
+				FOR(k,0,4)
+				fire[i][j].time[k] = false;
+		}
+}
+
+int isLaser(char l)
+{
+	int ans = -1;
+	switch(l)
+	{
+	case '^':ans =0; break;
+	case '>':ans =1; break;
+	case 'v':ans =2; break;
+	case '<':ans =3; break; 
+	}
+	return ans;
+}
+
+bool operator<(const qnode &a,const qnode &b)
+{
+	return a.tot > b.tot;
+}
+
+void putfire(int x, int y, int m, int n, int dir)
+{
+	int incr = (dir+1)%4;
+	int cnt = 1;
+
+	do {
+
+		if(incr == 0)
+		{
+			FOR_(i, x, 0)
+			{
+				if(a[i][y]=='#' || isLaser(a[i][y])!=-1)
+					break;
+				else fire[i][y].time[cnt] = true;
+			}
+		}
+
+		else if(incr == 1)
+		{
+			FOR(i, y+1, n)
+			{
+				if(a[x][i]=='#' || isLaser(a[x][i])!=-1)
+					break;
+				else fire[x][i].time[cnt] = true;
+			}
+		}
+
+		else if(incr == 2)
+		{
+			FOR(i, x+1, m)
+			{
+				if(a[i][y]=='#' || isLaser(a[i][y])!=-1)
+					break;
+				else fire[i][y].time[cnt] = true;
+			}
+		}
+
+		else if(incr == 3)
+		{
+			FOR_(i, y, 0)
+			{
+				if(a[x][i]=='#' || isLaser(a[x][i])!=-1)
+					break;
+				else fire[x][i].time[cnt] = true;
+			}
+		}
+		incr = (incr+1)%4;  
+		cnt = (cnt+1)%4;
+
+	}while(incr != (dir+1)%4);
+
+}
+
+void findLasers(char a[][MAX], int m, int n )
+{
+	int dir;
+	FOR(i,0,m)
+		FOR(j,0,n)
+		{
+			dir = isLaser(a[i][j]);
+			if(dir!=-1)
+				putfire(i, j, m, n, dir);
+			else if(a[i][j] == 'S'){
+				start.first = i;	start.second = j;
+			}
+			else if(a[i][j] == 'G'){
+				goal.first = i;	goal.second = j;
+			}
+		}
+}
+
+bool isValidPos(int x, int y, int t, int m, int n)
+{
+	if(x > 0 && isLaser(a[x-1][y]) == -1 && a[x-1][y] != '#' && !fire[x-1][y].time[(t+1)%4])
+		return true;
+	if(x < m-1 && isLaser(a[x+1][y]) == -1 && a[x+1][y] != '#' && !fire[x+1][y].time[(t+1)%4])
+		return true;
+	if(x < n-1 && isLaser(a[x][y+1]) == -1 && a[x][y+1] != '#' && !fire[x][y+1].time[(t+1)%4])
+		return true;
+	if(y > 0 && isLaser(a[x][y-1]) == -1 && a[x][y-1] != '#' && !fire[x][y-1].time[(t+1)%4])
+		return true;
+
+	return false;
+}
+
+int bfs(int m, int n)
+{
+	if(Q.empty())
+		return 0;
+
+	qnode ss = Q.top(), tt;
+	Q.pop();
+	if(visited[ss.cc.first][ss.cc.second])
+		return -1;
+	else visited[ss.cc.first][ss.cc.second] = true;
+	
+
+	if(a[ss.cc.first][ss.cc.second]== 'G')
+		return ss.tot;
+
+	int x = ss.cc.first, y = ss.cc.second;
+
+	if(x > 0 && !visited[x-1][y])
+	{
+		if(isLaser(a[x-1][y])==-1 && a[x-1][y]!='#')
+		{
+			int flag = 0;
+			if(!fire[x-1][y].time[(ss.tot+1)%4])	flag = 1;
+			else if(!fire[x-1][y].time[(ss.tot+3)%4])	flag = 2;
+			else return -1;
+			
+			tt.cc.first = x-1; tt.cc.second = y; tt.tot = ss.tot+1;
+			if(flag == 2)	
+			{
+				if(!fire[x][y].time[(ss.tot+2)%4] && isValidPos(x, y, ss.tot, m, n))
+					tt.tot+=2;
+				else return -1;
+			}
+			Q.push(tt); 
+		}
+	}
+
+	if(x < m-1 && !visited[x+1][y])
+	{
+		if(isLaser(a[x+1][y])==-1 && a[x+1][y]!='#')
+		{
+			int flag = 0;
+			if(!fire[x+1][y].time[(ss.tot+1)%4])	flag = 1;
+			else if(!fire[x+1][y].time[(ss.tot+3)%4])	flag = 2;
+			else return -1;
+			
+			tt.cc.first = x+1; tt.cc.second = y; tt.tot = ss.tot+1;
+			if(flag == 2)	
+			{
+				if(!fire[x][y].time[(ss.tot+2)%4] && isValidPos(x, y, ss.tot, m, n))
+					tt.tot+=2;
+				else return -1;
+			}
+			Q.push(tt); 
+		}
+	}
+
+	if(y > 0 && !visited[x][y-1])
+	{
+		if(isLaser(a[x][y-1])==-1 && a[x][y-1]!='#')
+		{
+			int flag = 0;
+			if(!fire[x][y-1].time[(ss.tot+1)%4])	flag = 1;
+			else if(!fire[x][y-1].time[(ss.tot+3)%4])	flag = 2;
+			else return -1;
+			
+			tt.cc.first = x; tt.cc.second = y-1; tt.tot = ss.tot+1;
+			if(flag == 2)	
+			{
+				if(!fire[x][y].time[(ss.tot+2)%4] && isValidPos(x, y, ss.tot, m, n))
+					tt.tot+=2;
+				else return -1;
+			}
+			Q.push(tt);
+		}
+	}
+
+	if(y < n-1 && !visited[x][y+1])
+	{
+		if(isLaser(a[x][y+1])==-1 && a[x][y+1]!='#')
+		{
+			int flag = 0;
+			if(!fire[x][y+1].time[(ss.tot+1)%4])	flag = 1;
+			else if(!fire[x][y+1].time[(ss.tot+3)%4])	flag = 2;
+			else return -1;
+			
+			tt.cc.first = x; tt.cc.second = y+1; tt.tot = ss.tot+1;
+			if(flag == 2)	
+			{
+				if(!fire[x][y].time[(ss.tot+2)%4] && isValidPos(x, y, ss.tot, m, n))
+					tt.tot+=2;
+				else return -1;
+			}
+			Q.push(tt);
+		}
+	}
+
+	return -1;
+}
+
+int solve(char a[][MAX],int m, int n)
+{
+	int ans = 0;
+
+	// processing
+	init(m, n);
+	findLasers(a, m, n);
+	qnode ss;
+	ss.cc.first = start.first; ss.cc.second=start.second; ss.tot = 0;
+	
+	Q.push(ss);
+	while(!Q.empty())
+	{
+		ans = bfs(m,n);
+		if(ans == 0)
+			return -1;
+		else if(ans != -1)
+			return ans;
+	}
+
+	return -1;
+}
+
+int main()
+{
+	int t, n, m;
+	int ans;
+	ifstream in; ofstream out;
+	in.open("three15-ip.txt");
+	out.open("three15-op.txt");
+	in>>t;
+	FOR(k,1,t+1)
+	{
+		ans = 0;
+		in>>m>>n;
+		FOR(i,0,m)
+			in >> a[i] ;
+
+		ans = solve(a,m,n);
+
+		if(ans != -1)	out << "Case #"<<k<<": "<< ans<<endl;
+		else  out<< "Case #"<<k<<": impossible\n";
+	}
+	in.close();
+	out.close();
+	return 0;
+}

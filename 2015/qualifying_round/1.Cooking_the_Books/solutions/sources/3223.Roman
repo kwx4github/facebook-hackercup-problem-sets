@@ -1,0 +1,187 @@
+#ifdef SHTRIX 
+#include "/Users/roman/Dev/SharedCpp/DebugOutput.h"
+#endif
+#include <thread>
+#include <mutex>
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <queue>
+#include <iostream>
+#include <cmath>
+#include <sstream>
+#include <map>
+#include <set>
+#include <stack>
+#include <cstring>
+#include <ctime>
+#include <cstdio>
+#include <memory>
+using namespace std;
+#define pb push_back
+#define INF 1000000000
+#define L(s) (int)((s).end()-(s).begin())
+#define FOR(i,a,b) for (int i = (a); i <= (b); i++)
+#define FORD(i,a,b) for(int i = (a); i >= (b); i--)
+#define rep(i,n) FOR(i,1,(n))
+#define rept(i,n) FOR(i,0,(n)-1)
+#define C(a) memset((a),0,sizeof(a))
+#define ll long long
+#define all(c) (c).begin(), (c).end()
+#define SORT(c) sort(all(c))
+#define VI vector<int>
+#define ppb pop_back
+#define mp make_pair
+#define pii pair<int,int>
+#define pdd pair<double,double>
+//#define x first
+//#define y second
+#define sqr(a) (a)*(a)
+#define D(a,b) sqrt(((a).x-(b).x)*((a).x-(b).x)+((a).y-(b).y)*((a).y-(b).y))
+#define pi 3.1415926535897932384626433832795028841971
+#define UN(v) sort((v).begin(),(v).end()),v.erase(unique(v.begin(),v.end()),v.end())
+
+std::mutex logging_mutex;
+const bool allow_logging = true;
+inline void LOG(string templ, int test_case) {
+    if (!allow_logging) return;
+    logging_mutex.lock();
+    char buffer[1024];
+    sprintf(buffer, templ.c_str(), test_case);
+    fprintf(stderr, "%s", buffer);
+    logging_mutex.unlock();
+}
+
+std::mutex output_mutex;
+int NumberWorkersActive = 0;
+int MaxThreadsInParallel = 10;
+
+class Solver {
+  private:
+    int test_case;
+    void read();
+    void solve();
+    void write();
+  public:
+    void setTestCase(int test_case) {this->test_case = test_case;}
+    string outputFilename() {
+        char buffer[100];
+        sprintf(buffer, ".outputs/%07d.out", test_case); // 7 digits is required
+        return buffer;        
+    }
+    void performReading() {
+        LOG("Performing reading on test case #%d\n", test_case);
+        read();
+        LOG("Done reading on test case #%d\n", test_case);
+    }
+    void performSolvingAndWriting() {
+        LOG("Performing solving on test case #%d\n", test_case);
+        solve();
+        LOG("Done solving on test case #%d\n", test_case);
+
+        output_mutex.lock();
+        LOG("Performing writing on test case #%d\n", test_case);
+        freopen(outputFilename().c_str(), "wt", stdout);
+        printf("Case #%d: ", test_case + 1);
+        write();
+        LOG("Done writing on test case #%d\n", test_case);
+        NumberWorkersActive--;
+        output_mutex.unlock();
+    }
+
+    /* All data should be created here */
+    string s, mn, mx;
+};
+
+class ParallelRunner {
+  private:
+    void mergeOutput(vector<string> output_files) {
+        sort(output_files.begin(), output_files.end());
+        for (int i = 0; i < output_files.size(); i++) {
+            char cmd_line[1111];
+            sprintf(cmd_line, "cat %s >> output.txt", output_files[i].c_str());
+            system(cmd_line);
+        }
+    }
+  public:
+    void runParallel(int test_cases) {
+        vector<string> output_files;
+        vector<Solver> S(test_cases);
+        for (int i = 0; i < test_cases; i++) {
+            S[i].setTestCase(i);
+            output_files.push_back(S[i].outputFilename());
+            S[i].performReading();
+        }
+        vector<thread*> T(test_cases);
+        for (int i = 0; i < test_cases; i++) {
+            while (true) {
+                bool can_launch = false;
+                output_mutex.lock();
+                can_launch = (NumberWorkersActive < MaxThreadsInParallel);
+                output_mutex.unlock();
+                if (can_launch) {
+                    output_mutex.lock();
+                    NumberWorkersActive++;
+                    output_mutex.unlock();
+                    T[i] = new std::thread(&Solver::performSolvingAndWriting, S[i]);
+                    break;
+                }
+            }
+        }
+        for (int i = 0; i < test_cases; i++) {
+            T[i]->join();
+        }
+        for (int i = 0; i < test_cases; i++) {
+            delete(T[i]);
+        }
+        mergeOutput(output_files);
+    }
+    void runSingleThread(int test_cases) {
+        vector<string> output_files;
+        for (int i = 0; i < test_cases; i++) {
+            Solver *S = new Solver();
+            S->setTestCase(i);
+            output_files.push_back(S[i].outputFilename());
+            S->performReading();
+            S->performSolvingAndWriting();
+            delete S;
+        }
+        mergeOutput(output_files);
+    }
+} runner;
+
+inline bool ok(string s) {
+    return s[0] != '0';
+}
+
+void Solver::read() {
+    cin >> s;
+}
+
+void Solver::solve() {
+    mn = s;
+    mx = s;
+    for (int i = 0; i < s.size(); i++)
+        for (int j = 0; j < i; j++) {
+            string p = s;
+            swap(p[i], p[j]);
+            if (!ok(p)) continue;
+            if (p < mn) mn = p;
+            if (p > mx) mx = p;
+        }
+}
+
+void Solver::write() {
+    cout << mn << " " << mx << endl;
+}
+
+
+int main() {
+    freopen("input.txt", "rt", stdin);
+	system("mkdir .outputs");
+    system("rm output.txt");
+    int TC;
+    cin >> TC;
+    runner.runParallel(TC);
+    return 0;
+}

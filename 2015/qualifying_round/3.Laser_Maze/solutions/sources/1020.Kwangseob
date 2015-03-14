@@ -1,0 +1,185 @@
+#include <iostream>
+#include <set>
+#include <string>
+#include <vector>
+using namespace std;
+
+int AT[120];
+int DIRS[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+int N = 0, M =0;
+struct laser_t
+{
+    char t;
+    int i;
+    int j;
+    laser_t(){}
+    laser_t(int _t, int _i, int _j) : t(_t), i(_i), j(_j) {}
+};
+
+char board[102][102];
+int S[102][102];
+int S2[102][102];
+
+set<string> duple;
+
+
+bool stage_visit(int step, int i, int j)
+{
+    string s;
+    char buffer[125];
+    sprintf(buffer,"%d %d %d", step % 4, i, j);
+    s += buffer;
+    if(duple.find(s) != duple.end())
+        return true;
+    duple.insert(s);
+    //printf("%s\n", s.c_str());
+    return false;
+}
+
+
+void update(vector<laser_t>& lasers)
+{
+    for(int i=0; i < N; ++i){
+        for(int j=0; j < M; ++j){
+            if(S[i][j] == -1)
+                S[i][j] = 0;
+        }
+    }
+    for(int i=0; i < (int)lasers.size(); ++i){
+        laser_t& l = lasers[i];
+        //printf("aaaa %c\n", l.t);
+        if(l.t == '>'){
+            for(int k=l.j + 1; k < M; ++k){
+                if(AT[(int)board[l.i][k]])
+                    break;
+                S[l.i][k] = 0;
+            }
+        }
+        if(l.t == 'v'){
+            for(int k=l.i + 1; k < N; ++k){
+                if(AT[(int)board[k][l.j]])
+                    break;
+                S[k][l.j] = 0;
+            }
+        }
+        if(l.t == '<'){
+            for(int k=l.j - 1; k >= 0; --k){
+                if(AT[(int)board[l.i][k]])
+                    break;
+                S[l.i][k] = 0;
+            }
+        }
+        if(l.t == '^'){
+            for(int k=l.i - 1; k >= 0; --k){
+                if(AT[(int)board[k][l.j]])
+                    break;
+                S[k][l.j] = 0;
+            }
+        }
+    }
+}
+
+bool walk(int step){
+    memset(S2, 0, sizeof(S2));
+    bool moved = false;
+    for(int i=0; i < N; ++i){
+        for(int j=0; j < M; ++j){
+            if(S[i][j] != 1)
+                continue;
+            for(int k=0; k < 4; ++k){
+                int ii = i + DIRS[k][0];
+                int jj = j + DIRS[k][1];
+                if(ii < 0 || jj < 0 || ii >= N || jj >= M)
+                    continue;
+                if(!AT[(int)board[ii][jj]]){
+                    if(!stage_visit(step, ii, jj)){
+                        S2[ii][jj] = 1;
+                        moved = true;
+                    }
+                    //printf("%d %d to %d %d\n", i, j, ii, jj);
+                }
+            }
+        }
+    }
+    memcpy(S, S2, sizeof(S));
+    return moved;
+}
+
+void turn(vector<laser_t>& L){
+    for(int i=0; i < (int)L.size(); ++i){
+        laser_t& l = L[i];
+        if(l.t == '^') l.t = '>';
+        else if(l.t == '>') l.t = 'v';
+        else if(l.t == 'v') l.t = '<';
+        else if(l.t == '<') l.t = '^';
+    }
+}
+
+
+int main(int argc, char ** argv)
+{
+    memset(AT, 0, sizeof(AT));
+    AT[60] = 1; AT[94] = 1; AT[62] = 1; AT[118] = 1; AT[35] = 1;
+
+    int T;
+    scanf("%d", &T);
+    for(int tcase=1; tcase <= T; ++tcase){
+        duple.clear();
+        memset(S, 0, sizeof(S));
+        memset(S2, 0, sizeof(S2));
+        vector<laser_t> L;
+        int gi = 0, gj = 0;
+        scanf("%d %d", &N, &M);
+        for(int i=0; i < N; ++i){
+            scanf("%s", board[i]);
+            for(int j=0; j < M; ++j){
+                if(board[i][j] == 'S')
+                    S[i][j] = 1;
+                if(board[i][j] == '^' ||
+                   board[i][j] == '>' ||
+                   board[i][j] == 'v' ||
+                   board[i][j] == '<')
+                    L.push_back(laser_t(board[i][j], i, j));
+                if(board[i][j] == 'G')
+                    gi = i, gj = j;
+            }
+        }
+        int ans = -1;
+        for(int step=0; step < N * M * 100; ++step){
+            // printf("step %d\n", step);
+            /*
+            printf("step %d\n", step);
+            for(int i=0; i < N; ++i){
+                for(int j=0; j < M; ++j)
+                    printf("%02d,", S[i][j]);
+                printf("\n");
+            }
+            */
+
+            if(!walk(step))
+                break;
+            turn(L);
+            update(L);
+            /*
+            for(int i=0; i < N; ++i){
+                for(int j=0; j < M; ++j)
+                    printf("%02d,", S[i][j]);
+                printf("\n");
+            }
+            */
+            if(S[gi][gj] == 1){
+                ans = step + 1;
+                break;
+            }
+        }
+        if(ans != -1){
+            printf("Case #%d: %d\n", tcase, ans);
+        }else{
+            printf("Case #%d: impossible\n", tcase);
+        }
+        //break;
+    }
+    return 0;
+}
+
+

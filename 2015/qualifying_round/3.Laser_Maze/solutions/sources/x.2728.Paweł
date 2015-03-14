@@ -1,0 +1,236 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <fstream>
+#include <sstream>
+
+using namespace std;
+
+class GraphProblem{
+
+    public:
+
+    // 4 states of graph with a symbol and bool is_safe
+    // 0,1,2,3 - turrets <^v; 10 - start 20 -finish 30 - dot; 40 - wall
+    // < > ^ v
+    vector < vector <int> > graph;
+    int hg;
+    int wg;
+
+    bool push_or_not(int x, int y, int time){
+        int where = graph[x][y];
+        if (where != 20) return false;
+        int temp_x = x;
+        while (true){
+            temp_x--;
+            int now = graph[temp_x][y];
+            if (now == 10) break;
+            if (now >= 0 && now <= 3){
+                if ((now+time)%4 == 3){
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+
+        }
+        temp_x = x;
+        while (true){
+            temp_x++;
+            int now = graph[temp_x][y];
+            if (now == 10) break;
+            if (now >= 0 && now <= 3){
+                if ((now+time)%4 == 1){
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+
+        }
+        int temp_y=y;
+        while (true){
+            temp_y++;
+            int now = graph[x][temp_y];
+            if (now == 10) break;
+            if (now >= 0 && now <= 3){
+                if ((now+time)%4 == 0){
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+
+        }
+        temp_y=y;
+        while (true){
+            temp_y--;
+            int now = graph[x][temp_y];
+            if (now == 10) break;
+            if (now >= 0 && now <= 3){
+                if ((now+time)%4 == 2){
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+
+        }
+    }
+
+    void build_graph(int h, int w, vector<string> data){
+        hg = h;
+        wg = w;
+        for (int i = 0; i < h+2; i++){
+            graph.push_back(vector<int>());
+            for (int j = 0; j < w+2; j++){
+                if (i == 0 || j == 0 || i == h+1 || j == w+1){
+                    graph[i].push_back(10);
+                } else {
+                    char character = data[i-1][j-1];
+                    if (character == '<'){
+                        graph[i].push_back(0);
+                    }
+                    if (character == '^'){
+                        graph[i].push_back(1);
+                    }
+                    if (character == '>'){
+                        graph[i].push_back(2);
+                    }
+                    if (character == 'v'){
+                        graph[i].push_back(3);
+                    }
+                    if (character == '#'){
+                        graph[i].push_back(10);
+                    }
+                    if (character == 'S' || character == 'G' || character == '.'){
+                        graph[i].push_back(20);
+                    }
+                }
+            }
+        }
+    }
+
+    int bfs (int hs, int ws, int he, int we){
+        vector < vector < vector<int> > > distances(hg+2);
+        for (int i = 0; i < distances.size(); i++){
+            vector < vector<int> > coords(wg+2);
+            distances[i] = coords;
+        }
+        for (int i = 0; i < distances.size(); i++){
+            for (int j = 0; j < distances[i].size(); j++){
+                vector<int> times(4,-2);
+                distances[i][j]=times;
+            }
+        }
+        distances[hs][ws][0] = 0;
+        queue < vector<int> > q;
+        vector<int> beg;
+        beg.push_back(hs);
+        beg.push_back(ws);
+        beg.push_back(0);
+        q.push(beg);
+
+        while(q.empty() != true){
+            vector<int> coords = q.front();
+            q.pop();
+            int time = coords[2];
+            int time2 = (time + 1)%4;
+            for (int i = coords[0]-1; i<=coords[0]+1;i++){
+                if (i == coords[0]) continue;
+                vector<int> coords2(3,0);
+                coords2[0] = i;
+                coords2[1] = coords[1];
+                coords2[2] = time2;
+                if (distances[coords2[0]][coords2[1]][coords2[2]] != -2){
+                    continue;
+                }
+                if (push_or_not(coords2[0], coords2[1], coords2[2])){
+                    if (coords2[0] == he && coords2[1] == we){
+                        return distances[coords[0]][coords[1]][coords[2]] + 1;
+                    }
+                    q.push(coords2);
+                    distances[coords2[0]][coords2[1]][coords2[2]] = distances[coords[0]][coords[1]][coords[2]] + 1;
+                } else {
+                    distances[coords2[0]][coords2[1]][coords2[2]] = -1;
+                }
+            }
+            for (int i = coords[1]-1; i<=coords[1]+1;i++){
+                if (i==coords[1]) continue;
+                vector<int> coords2(3,0);
+                coords2[0] = coords[0];
+                coords2[1] = i;
+                coords2[2] = time2;
+                if (distances[coords2[0]][coords2[1]][coords2[2]] != -2){
+                    continue;
+                }
+                if (push_or_not(coords2[0], coords2[1], coords2[2])){
+                    if (coords2[0] == he && coords2[1] == we){
+                        return distances[coords[0]][coords[1]][coords[2]] + 1;
+                    }
+                    q.push(coords2);
+                    distances[coords2[0]][coords2[1]][coords2[2]] = distances[coords[0]][coords[1]][coords[2]] + 1;
+                } else {
+                    distances[coords2[0]][coords2[1]][coords2[2]] = -1;
+                }
+            }
+        }
+        return -1;
+    }
+
+
+    vector < vector<int> > get_graph(){
+        return graph;
+    }
+
+
+};
+
+int main()
+{
+    ifstream in;
+    ofstream out;
+    in.open("in.txt");
+    out.open("out.txt");
+    int mazes;
+    in >> mazes;
+    for (int i = 0; i < mazes; i++){
+        int h, w;
+        in >> h >> w;
+        vector <string> maze;
+        for (int j = 0; j < h; j++){
+            string line;
+            in >> line;
+            maze.push_back(line);
+        }
+        GraphProblem gp;
+        gp.build_graph(h, w, maze);
+        int sh, sw, eh, ew;
+        for (int j = 0; j < h; j++){
+            for (int k = 0; k < w; k++){
+                if (maze[j][k] == 'S'){
+                    sh = j+1;
+                    sw = k+1;
+                }
+                if (maze[j][k] == 'G'){
+                    eh = j+1;
+                    ew = k+1;
+                }
+            }
+        }
+
+        // BUGFEST
+        int res = gp.bfs(sh, sw, eh, ew);
+        if (res == -1){
+            out << "Case #" << i + 1 << ": impossible" << endl;
+        } else {
+            out << "Case #" << i + 1 << ": " << res << endl;
+        }
+        // BUGFEST
+
+
+    }
+    in.close();
+    out.close();
+    return 0;
+}

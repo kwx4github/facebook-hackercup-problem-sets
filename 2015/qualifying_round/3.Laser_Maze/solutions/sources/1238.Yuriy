@@ -1,0 +1,359 @@
+#include "stdafx.h"
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <map>
+#include <queue>
+
+enum Cell
+{
+    Free, Wall
+};
+
+enum Direction
+{
+    Left = 1,
+    Up = Left << 1,
+    Right = Up << 1,
+    Down = Right << 1
+};
+
+struct Pos
+{
+    int x;
+    int y;
+
+    bool operator<(const Pos& other) const
+    {
+        return x < other.x || (x == other.x && y < other.y);
+    }
+    bool operator==(const Pos& other) const
+    {
+        return x == other.x && y == other.y;
+    }
+
+    Pos move(Direction d) const
+    {
+        switch (d)
+        {
+        case Left: return { x - 1, y };
+        case Up: return { x, y - 1 };
+        case Right: return { x + 1, y };
+        case Down: return { x, y + 1 };
+        }
+
+        return *this; // ?
+    }
+};
+
+void turn(Direction& orig)
+{
+    if (orig == Direction::Down)
+    {
+        orig = Direction::Left;
+    }
+    else
+    {
+        orig = (Direction)(orig << 1);
+    }
+}
+
+Direction turn_copy(Direction orig)
+{
+    turn(orig);
+    return orig;
+}
+
+char print(Direction d)
+{
+    switch (d)
+    {
+    case Left: return '<';
+    case Up: return '^';
+    case Right: return '>';
+    case Down: return 'v';
+    }
+
+    return '?';
+}
+
+const Pos marker = { -1, -1 };
+
+struct Maze
+{
+    int height;
+    int width;
+    Pos start;
+    Pos stop;
+    std::vector<Cell> cells;
+    std::vector<int> was_here;
+
+    using Lasers = std::map<Pos, Direction>;
+    Lasers lasers;
+    std::map<int, std::vector<Pos>> lasers_by_x;
+    std::map<int, std::vector<Pos>> lasers_by_y;
+
+    Direction current_direction;
+
+    int index(const Pos& p) const
+    {
+        return (p.y + 1)*(width + 1) + (p.x + 1);
+    }
+
+    Cell& cell(int x, int y)
+    {
+        return cells[index({x, y})];
+    }
+
+    static Maze load(std::istream& in)
+    {
+        Maze maze;
+
+        std::string line;
+        std::getline(in, line);
+        std::istringstream sin(line);
+        sin >> maze.height >> maze.width;
+
+        int size = (maze.height + 2)*(maze.width + 2);
+        maze.cells.resize(size, Cell::Wall);
+
+        for (int y = 0; y != maze.height; ++y)
+        {
+            std::getline(in, line);
+            for (int x = 0; x != maze.width; ++x)
+            {
+                switch (line[x])
+                {
+                case '.':
+                    maze.cell(x, y) = Cell::Free;
+                    break;
+                case 'S':
+                    maze.cell(x, y) = Cell::Free;
+                    maze.start = {x, y};
+                    break;
+                case 'G':
+                    maze.cell(x, y) = Cell::Free;
+                    maze.stop = {x, y};
+                    break;
+                case '#':
+                    break;  // all walls are already filled during the initial resize()
+                case '<':
+                    maze.lasers[{x, y}] = Direction::Left;
+                    break;
+                case '>':
+                    maze.lasers[{x, y}] = Direction::Right;
+                    break;
+                case '^':
+                    maze.lasers[{x, y}] = Direction::Up;
+                    break;
+                case 'v':
+                    maze.lasers[{x, y}] = Direction::Down;
+                    break;
+                }
+            }
+        }
+
+        for (auto laser_it = maze.lasers.begin(); laser_it != maze.lasers.end(); ++laser_it)
+        {
+            maze.lasers_by_x[laser_it->first.x].push_back(laser_it->first);
+            maze.lasers_by_y[laser_it->first.y].push_back(laser_it->first);
+        }
+        return maze;
+    }
+
+    static const int impossible = -1;
+
+    int calc_num_steps()
+    {
+        std::queue<Pos> pos_to_process;
+
+        was_here.clear();
+        was_here.resize(cells.size(), 0);
+
+        pos_to_process.push(start);
+        pos_to_process.push(marker);
+
+        current_direction = Direction::Left;
+        int step_count = 0;
+        while (!pos_to_process.empty())
+        {
+            Pos pos = pos_to_process.front();
+            pos_to_process.pop();
+
+            if (pos == stop)
+            {
+                // we're done!
+                return step_count;
+            }
+            if (pos == marker)
+            {
+                if (pos_to_process.empty())
+                {
+                    // just marker - queue is actually empty
+                    break;
+                }
+
+                // finished the step
+                ++step_count;
+                // turn current direction and all lasers
+                turn(current_direction);
+                for (auto& laser : lasers)
+                {
+                    turn(laser.second);
+                }
+
+                // mark the end of processing - all enqueued items are for the next step
+                pos_to_process.push(marker);
+                continue;
+            }
+
+            if ((was_here[index(pos)] & current_direction) != 0 || (step_count != 0 && !is_free(pos)))
+            {
+                continue;
+            }
+            was_here[index(pos)] |= current_direction;
+
+            auto neighbours = get_free_neighbours(pos);
+            for (auto n : neighbours)
+            {
+                pos_to_process.push(n);
+            }
+        }
+
+        return impossible;
+    }
+
+    void print(Pos curr) const
+    {
+        std::cout << "Pos = {" << curr.x << ", " << curr.y << "}\n";
+        
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                if (cells[index({x, y})] == Cell::Wall)
+                {
+                    auto it = lasers.find({x, y});
+                    if (it != lasers.end())
+                    {
+                        std::cout << ::print(it->second);
+                    }
+                    else
+                    {
+                        std::cout << '#';
+                    }
+                }
+                else
+                {
+                    if (curr == Pos{x, y})
+                    {
+                        std::cout << 'x';
+                    }
+                    else if (start == Pos{x, y})
+                    {
+                        std::cout << 'S';
+                    }
+                    else if (stop == Pos{x, y})
+                    {
+                        std::cout << 'G';
+                    }
+                    else if (!was_here.empty() && was_here[index({x, y})])
+                    {
+                        std::cout << std::hex << was_here[index({x, y})] << std::dec;
+                    }
+                    else
+                    {
+                        std::cout << '.';
+                    }
+                }
+            }
+            std::cout << '\n';
+        }
+
+        std::cout.flush();
+    }
+
+    std::vector<Pos> get_free_neighbours(const Pos& pos)
+    {
+        std::vector<Pos> res;
+        for (int i = Direction::Left; i <= Direction::Down; i <<= 1)
+        {
+            auto next = pos.move((Direction)i);
+            if ((was_here[index(next)] & turn_copy(current_direction)) == 0 && is_free(next, true))
+            {
+                res.push_back(next);
+            }
+        }
+
+        return res;
+    }
+
+    bool is_free(const Pos& pos, bool turn = false)
+    {
+        if (cells[index(pos)] != Cell::Free)
+        {
+            return false;
+        }
+
+        for (auto laser_pos : lasers_by_x[pos.x])
+        {
+            if (is_shot(pos, lasers.find(laser_pos), turn))
+            {
+                return false;
+            }
+        }
+        for (auto laser_pos : lasers_by_y[pos.y])
+        {
+            if (is_shot(pos, lasers.find(laser_pos), turn))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool is_shot(const Pos& pos, Lasers::iterator laser_it, bool turn) const
+    {
+        // check if laser reaches pos when moving in laser's next move next direction
+        Direction dir = turn ? turn_copy(laser_it->second) : laser_it->second;
+        for (Pos laser = laser_it->first.move(dir); cells[index(laser)] == Cell::Free; laser = laser.move(dir))
+        {
+            if (laser == pos)
+            {
+                // bang we're dead
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
+
+int main()
+{
+    std::istream& in = std::cin;
+
+    std::string line;
+    std::getline(in, line);
+    int count = std::stoi(line);
+
+    for (int lineNo = 1; lineNo <= count; ++lineNo)
+    {
+        auto maze = Maze::load(in);
+
+        int num_steps = maze.calc_num_steps();
+
+        std::cout << "Case #" << lineNo << ": ";
+        if (num_steps == Maze::impossible)
+        {
+            std::cout << "impossible";
+        }
+        else
+        {
+            std::cout << num_steps;
+        }
+        std::cout << '\n';
+    }
+}

@@ -1,0 +1,883 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+
+namespace fbmaze
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var ai = true;
+
+            var preview = false;
+            var step_by_step = false;
+
+            foreach (var arg in args)
+                if (arg == "preview")
+                    preview = true;
+
+                else if (arg == "step")
+                    step_by_step = true;
+
+            var step_threshold = 100;
+
+            // test
+            var test = true;
+            var original_input = Console.In;
+
+            if (test)
+                Console.SetIn(new StreamReader(@"C:\users\stan\downloads\laser_maze.txt"));
+
+            var count = read_int();
+            var mazes = new List<maze>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var m = new maze();
+
+                {
+                    var columns = read_split();
+
+                    m.height = Convert.ToInt32(columns[0]);
+                    m.width = Convert.ToInt32(columns[1]);
+                }
+
+                {
+                    m.table = new cell[m.width][];
+
+                    for (int j = 0; j < m.width; j++)
+                        m.table[j] = new cell[m.height];
+
+                    for (int j = 0; j < m.height; j++)
+                    {
+                        var data = Console.ReadLine().Trim(" \r\n".ToCharArray()).ToCharArray();
+
+                        for (int k = 0; k < data.Length; k++)
+                        {
+                            var c = new cell();
+
+                            c.data = data[k];
+
+                            m.table[k][j] = c;
+
+                            c.x = k;
+                            c.y = j;
+
+                            if (c.type == cell_type.start)
+                                m.start = c;
+
+                            else if (c.type == cell_type.goal)
+                                m.goal = c;
+
+                            else if (c.type == cell_type.laser)
+                                c.initial_direction = c.laser_direction;
+                        }
+                    }
+                }
+
+                mazes.Add(m);
+            }
+
+            if (test)
+                Console.SetIn(original_input);
+
+            for (int i = 0; i < mazes.Count; i++)
+            {
+                var m = mazes[i];
+
+                m.reset();
+
+                var possible_start_directions = possible_directions(m);
+
+                var tried_start_directions = new List<direction>();
+                var empty_direction_list = new List<direction>();
+
+                var direction_steps = new Dictionary<direction, int>();
+
+                foreach (var possible_start_direction in possible_start_directions)
+                {
+                    m.reset();
+
+                    var start_direction = direction.up;
+
+                    Console.Title = string.Format("Case #{0}", i + 1);
+
+                    {
+                        while (true)
+                        {
+                            var first_step = m.step_number == 0;
+
+                            Console.Title = string.Format("Case #{0} Step #{1}", i + 1, m.step_number);
+
+                            if (preview)
+                                m.print();
+
+                            if (!m.can_move())
+                            {
+                                m.step_number = -1;
+
+                                break;
+                            }
+
+                            // still impossible?
+                            if (m.step_number > step_threshold)
+                            {
+                                m.step_number = -1;
+
+                                goto NEXT_MAZE_VARIANT;
+                            }
+
+                            if (preview)
+                                Console.WriteLine("Press for next step.");
+
+                            var d = direction.left;
+
+                            if (ai)
+                            {
+                                d = figure_out_direction(m, first_step ? tried_start_directions : empty_direction_list);
+
+                                if (first_step)
+                                    if (!tried_start_directions.Contains(d))
+                                        tried_start_directions.Add(d);
+                            }
+                            else
+                            {
+                                var key = Console.ReadKey();
+
+                                if (key.Key == ConsoleKey.Escape)
+                                    break;
+
+                                switch (key.Key)
+                                {
+                                    case ConsoleKey.LeftArrow:
+                                        d = direction.left;
+                                        break;
+
+                                    case ConsoleKey.RightArrow:
+                                        d = direction.right;
+                                        break;
+
+                                    case ConsoleKey.DownArrow:
+                                        d = direction.down;
+                                        break;
+
+                                    case ConsoleKey.UpArrow:
+                                        d = direction.up;
+                                        break;
+                                }
+                            }
+
+                            if (first_step)
+                                start_direction = d;
+
+                            if (m.move(d))
+                            {
+                                m.step();
+
+                                if (m.x == m.goal.x)
+                                    if (m.y == m.goal.y)
+                                        break;
+                            }
+
+                            if (ai)
+                                if (preview)
+                                    if (step_by_step)
+                                        read_key();
+                        }
+
+                        if (preview)
+                            m.print();
+
+                        /* Console.Title = string.Format("Case #{0} Step #{1}", i + 1, m.step_number);
+
+                        Console.WriteLine("Case #{0}: {1}", i + 1, m.step_number < 0 ? "impossible" : m.step_number.ToString());
+                        Console.WriteLine();
+
+                        Console.WriteLine("Press key to exit...");
+                        Console.ReadKey(); */
+                    }
+
+                NEXT_MAZE_VARIANT:
+                    direction_steps[start_direction] = m.step_number;
+                }
+
+                Console.Title = string.Empty;
+
+                var minimum_step_count = -1;
+
+                foreach (var steps in direction_steps.Values)
+                    if (steps >= 0 && minimum_step_count < steps)
+                        minimum_step_count = steps;
+
+                Console.WriteLine("Case #{0}: {1}", i + 1, minimum_step_count < 0 ? "impossible" : minimum_step_count.ToString());
+
+                if (step_by_step)
+                    read_key();
+            }
+        }
+
+        static direction figure_out_direction(maze m, List<direction> tried_directions)
+        {
+            var possible = possible_directions(m);
+
+            // ignore directions we've already tried?
+            foreach (var d in tried_directions)
+                if (possible.Contains(d))
+                    possible.Remove(d);
+
+            if (possible.Count == 0)
+                throw new Exception("impossible");
+
+            else if (possible.Count == 1)
+                return possible[0];
+
+            // now what?
+            // todo
+            var desired = desired_directions(m);
+
+            foreach (var d in desired)
+                if (possible.Contains(d))
+                    return d;
+
+            return possible[0];
+        }
+
+        static List<direction> desired_directions(maze m)
+        {
+            var l = new List<direction>();
+
+            // find direction to goal?
+            var c_x = m.x;
+            var c_y = m.y;
+
+            var g_x = m.goal.x;
+            var g_y = m.goal.y;
+
+            // same column
+            if (c_x == g_x)
+            {
+                if (c_y > g_y)
+                    l.Add(direction.up);
+                else
+                    l.Add(direction.down);
+            }
+
+            if (c_y == g_y)
+            {
+                if (c_x > g_x)
+                    l.Add(direction.left);
+                else
+                    l.Add(direction.right);
+            }
+
+            if (c_x > g_x)
+                l.Add(direction.left);
+
+            else if (c_x < g_x)
+                l.Add(direction.right);
+
+            if (c_y > g_y)
+                l.Add(direction.up);
+
+            else if (c_y < g_y)
+                l.Add(direction.down);
+
+            var unique_directions = new List<direction>();
+
+            foreach (var d in l)
+                if (!unique_directions.Contains(d))
+                    unique_directions.Add(d);
+
+            if (unique_directions.Count == 0)
+                throw new NotImplementedException("no idea");
+
+            return unique_directions;
+        }
+
+        static bool can_move(maze m)
+        {
+            var cells = adjacent_cells(m);
+
+            return cells.Count > 0;
+        }
+
+        static List<cell> adjacent_cells(maze m)
+        {
+            var cells = new List<cell>();
+
+            var u = adjacent_cell(m, direction.up);
+            var d = adjacent_cell(m, direction.down);
+            var l = adjacent_cell(m, direction.left);
+            var r = adjacent_cell(m, direction.right);
+
+            if (u != null) cells.Add(u);
+            if (d != null) cells.Add(d);
+            if (l != null) cells.Add(l);
+            if (r != null) cells.Add(r);
+
+            return cells;
+        }
+
+        static List<direction> possible_directions(maze m)
+        {
+            var cells = new List<direction>();
+
+            var u = adjacent_cell(m, direction.up);
+            var d = adjacent_cell(m, direction.down);
+            var l = adjacent_cell(m, direction.left);
+            var r = adjacent_cell(m, direction.right);
+
+            if (u != null) cells.Add(direction.up);
+            if (d != null) cells.Add(direction.down);
+            if (l != null) cells.Add(direction.left);
+            if (r != null) cells.Add(direction.right);
+
+            return cells;
+        }
+
+        static cell adjacent_cell(maze m, direction d)
+        {
+            // relative distance
+            var d_x = 0;
+            var d_y = 0;
+
+            switch (d)
+            {
+                case direction.up:
+                    d_y = -1;
+                    break;
+
+                case direction.down:
+                    d_y = 1;
+                    break;
+
+                case direction.left:
+                    d_x = -1;
+                    break;
+
+                case direction.right:
+                    d_x = 1;
+                    break;
+            }
+
+            var can_go = true;
+
+            var n_x = m.x + d_x;
+            var n_y = m.y + d_y;
+
+            if (n_x < 0 || n_x >= m.width)
+                can_go = false;
+
+            if (n_y < 0 || n_y >= m.height)
+                can_go = false;
+
+            if (can_go)
+            {
+                var new_cell = m.table[n_x][n_y];
+
+                switch (new_cell.type)
+                {
+                    case cell_type.laser:
+                    case cell_type.wall:
+                        can_go = false;
+
+                        break;
+                }
+
+                if (can_go)
+                    if (is_going_to_be_hit(m, new_cell))
+                        can_go = false;
+
+                if (can_go)
+                    return new_cell;
+            }
+
+            return null;
+        }
+
+        static bool move(maze m, direction d)
+        {
+            var c = adjacent_cell(m, d);
+
+            if (c != null)
+            {
+                m.x = c.x;
+                m.y = c.y;
+
+                return true;
+            }
+
+            return false;
+        }
+
+        static void show(maze m)
+        {
+            for (int j = 0; j < m.height; j++)
+            {
+                for (int k = 0; k < m.width; k++)
+                {
+                    Console.ResetColor();
+
+                    var c = m.table[k][j];
+
+                    switch (c.type)
+                    {
+                        case cell_type.start:
+                        case cell_type.goal:
+                            Console.ForegroundColor = ConsoleColor.Green;
+                            break;
+
+                        case cell_type.laser:
+                            Console.ForegroundColor = ConsoleColor.Magenta;
+                            break;
+
+                        case cell_type.wall:
+                            Console.ForegroundColor = ConsoleColor.Gray;
+                            break;
+                    }
+
+                    if (is_going_to_be_hit(m, c))
+                        Console.BackgroundColor = ConsoleColor.Red;
+
+                    if (c.x == m.x && c.y == m.y &&
+                        m.x == m.goal.x && m.y == m.goal.y)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.Write("{0}\t", "goal!");
+                    }
+                    
+                    else if (c.x == m.x && c.y == m.y)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.Write("{0}\t", "current");
+                    }
+
+                    else if (c.type == cell_type.empty)
+                    {
+                        Console.Write("\t");
+                    }
+
+                    else if (c.type == cell_type.laser)
+                    {
+                        Console.Write("{0}\t", c.next_direction);
+                    }
+
+                    else
+                    {
+                        Console.Write("{0}\t", c);
+                    }
+
+                    Console.ResetColor();
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+        static bool is_hit(maze m, cell c)
+        {
+            if (m.step_number == 0)
+                return false;
+
+            for (int j = 0; j < m.height; j++)
+            {
+                for (int k = 0; k < m.width; k++)
+                {
+                    var laser = m.table[k][j];
+
+                    if (laser.type == cell_type.laser)
+                    {
+                        // relative distance
+                        var d_x = 0;
+                        var d_y = 0;
+
+                        switch (laser.laser_direction)
+                        {
+                            case direction.up:
+                                d_y = -1;
+                                break;
+
+                            case direction.down:
+                                d_y = 1;
+                                break;
+
+                            case direction.left:
+                                d_x = -1;
+                                break;
+
+                            case direction.right:
+                                d_x = 1;
+                                break;
+                        }
+
+                        var n_x = laser.x;
+                        var n_y = laser.y;
+
+                        while (true)
+                        {
+                            n_x += d_x;
+                            n_y += d_y;
+
+                            var can_go = true;
+
+                            if (n_x < 0 || n_x >= m.width)
+                                can_go = false;
+
+                            if (n_y < 0 || n_y >= m.height)
+                                can_go = false;
+
+                            if (can_go)
+                            {
+                                var new_cell = m.table[n_x][n_y];
+
+                                switch (new_cell.type)
+                                {
+                                    case cell_type.laser:
+                                    case cell_type.wall:
+                                        can_go = false;
+
+                                        break;
+                                }
+                            }
+
+                            if (!can_go)
+                                break;
+
+                            if (n_x == c.x)
+                                if (n_y == c.y)
+                                    return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        static bool is_going_to_be_hit(maze m, cell c)
+        {
+            for (int j = 0; j < m.height; j++)
+            {
+                for (int k = 0; k < m.width; k++)
+                {
+                    var laser = m.table[k][j];
+
+                    if (laser.type == cell_type.laser)
+                    {
+                        var current_direction = laser.laser_direction;
+                        var next_direction = laser.next_direction;
+
+                        // relative distance
+                        var d_x = 0;
+                        var d_y = 0;
+
+                        switch (next_direction)
+                        {
+                            case direction.up:
+                                d_y = -1;
+                                break;
+
+                            case direction.down:
+                                d_y = 1;
+                                break;
+
+                            case direction.left:
+                                d_x = -1;
+                                break;
+
+                            case direction.right:
+                                d_x = 1;
+                                break;
+                        }
+
+                        var n_x = laser.x;
+                        var n_y = laser.y;
+
+                        while (true)
+                        {
+                            n_x += d_x;
+                            n_y += d_y;
+
+                            var can_go = true;
+
+                            if (n_x < 0 || n_x >= m.width)
+                                can_go = false;
+
+                            if (n_y < 0 || n_y >= m.height)
+                                can_go = false;
+
+                            if (can_go)
+                            {
+                                var new_cell = m.table[n_x][n_y];
+
+                                switch (new_cell.type)
+                                {
+                                    case cell_type.laser:
+                                    case cell_type.wall:
+                                        can_go = false;
+
+                                        break;
+                                }
+                            }
+
+                            if (!can_go)
+                                break;
+
+                            if (n_x == c.x)
+                                if (n_y == c.y)
+                                    return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        static void step(maze m)
+        {
+            m.step_number++;
+
+            // TODO?
+
+            // rotate laser
+            for (int j = 0; j < m.height; j++)
+            {
+                for (int k = 0; k < m.width; k++)
+                {
+                    var c = m.table[k][j];
+
+                    if (c.type == cell_type.laser)
+                        c.rotate_laser();
+                }
+            }
+        }
+
+        static string[] read_split()
+        {
+            var line = Console.ReadLine();
+            var columns = line.Split(' ');
+
+            return columns;
+        }
+
+        static void read_key()
+        {
+            try
+            {
+                Console.ReadKey();
+            }
+            catch
+            {
+                System.Threading.Thread.Sleep(333);
+            }
+        }
+
+        static int read_int()
+        {
+            return Convert.ToInt32(Console.ReadLine());
+        }
+
+        class maze
+        {
+            public int width;
+            public int height;
+
+            public int x;
+            public int y;
+
+            public int step_number;
+
+            public cell[][] table;
+
+            public cell goal;
+            public cell start;
+
+            public void reset()
+            {
+                x = start.x;
+                y = start.y;
+
+                step_number = 0;
+
+                for (int j = 0; j < height; j++)
+                {
+                    for (int k = 0; k < width; k++)
+                    {
+                        var laser = table[k][j];
+
+                        if (laser.type == cell_type.laser)
+                            laser.reset();
+                    }
+                }
+            }
+
+            public void print()
+            {
+                Console.Clear();
+
+                Program.show(this);
+
+                Console.WriteLine();
+            }
+
+            public void step()
+            {
+                Program.step(this);
+            }
+
+            public bool move(direction d)
+            {
+                return Program.move(this, d);
+            }
+
+            public bool can_move()
+            {
+                return Program.can_move(this);
+            }
+        }
+
+        class cell
+        {
+            public char data;
+
+            public direction initial_direction = direction.up;
+
+            public int x;
+            public int y;
+
+            public override string ToString()
+            {
+                if (type == cell_type.laser)
+                    return string.Format("{0} {1}", type, laser_direction);
+
+                return type.ToString();
+            }
+
+            public void rotate_laser()
+            {
+                var next = next_direction;
+                var next_char = laser_direction_char(next);
+
+                data = next_char;
+
+                if (laser_direction != next)
+                    throw new NotSupportedException("laser_direction");
+            }
+
+            public char laser_direction_char(direction direction)
+            {
+                switch (direction)
+                {
+                    case Program.direction.left:
+                        return '<';
+                    case Program.direction.right:
+                        return '>';
+                    case Program.direction.up:
+                        return '^';
+                    case Program.direction.down:
+                        return 'v';
+                }
+
+                throw new NotImplementedException();
+            }
+
+            public direction next_direction
+            {
+                get
+                {
+                    var current = laser_direction;
+                    var next = (direction)(((int)laser_direction + 1) % 4); // 4 directions
+
+                    return next;
+                }
+            }
+
+            public void reset()
+            {
+                var next = initial_direction;
+                var next_char = laser_direction_char(next);
+
+                data = next_char;
+
+                if (laser_direction != next)
+                    throw new NotSupportedException("laser_direction");
+            }
+
+            public direction laser_direction
+            {
+                get
+                {
+                    switch (data)
+                    {
+                        case '<':
+                            return Program.direction.left;
+                        case '>':
+                            return Program.direction.right;
+                        case '^':
+                            return Program.direction.up;
+                        case 'v':
+                            return Program.direction.down;
+                    }
+
+                    throw new NotImplementedException();
+                }
+            }
+
+            public cell_type type
+            {
+                get
+                {
+                    switch (data)
+                    {
+                        case '.':
+                            return cell_type.empty;
+                        case '#':
+                            return cell_type.wall;
+                        case 'S':
+                            return cell_type.start;
+                        case 'G':
+                            return cell_type.goal;
+                    }
+
+                    switch (laser_direction)
+                    {
+                        case direction.left:
+                        case direction.right:
+                        case direction.up:
+                        case direction.down:
+                            return cell_type.laser;
+                    }
+
+                    throw new NotImplementedException();
+                }
+            }
+        }
+
+        enum cell_type
+        {
+            empty,
+ 
+            wall,
+            start,
+            goal,
+            laser,
+
+            current
+        }
+
+        enum direction
+        {
+            up = 0,
+            right,
+            down,
+            left
+        }
+    }
+}
+
+
+
+

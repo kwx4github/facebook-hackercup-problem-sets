@@ -1,0 +1,112 @@
+#!/usr/bin/env python
+
+import heapq
+import copy
+
+lasers = ['<', '^', '>', 'v']
+laser_directions = [(0, -1), (-1, 0), (0, 1), (1, 0)]
+
+def print_maze(m):
+    print "-------------------"
+    for l in m:
+        print ''.join(l)
+    print "-------------------"
+
+def add_laser_shots(m):
+    global laser_directions
+    H = len(m)
+    W = len(m[0])
+    for i, r in enumerate(m):
+        for j, c in enumerate(r):
+            if c in lasers:
+                d = laser_directions[lasers.index(c)]
+                #print "Found laser '%s' at %i, %i" % (c, i, j)
+                #print "Directions %i, %i" % (d[0], d[1])
+                x, y = i + d[0], j + d[1]
+                #print "Status: x=%i, H=%i, y=%i, W=%i" % (x, H, y, W)
+                while x > -1 and x < H and y > -1 and y < W and m[x][y] != "#" and m[x][y] not in lasers:
+                    if m[x][y] != 'S':
+                        m[x][y] = 'L'
+                    x, y = x + d[0], y + d[1]
+    
+
+def gen_mazes(m):
+    global lasers
+    first_maze = copy.deepcopy(m)
+    mazes = []
+    another_first_maze = copy.deepcopy(m)
+    add_laser_shots(another_first_maze)
+    #print_maze(another_first_maze)
+    mazes.append(another_first_maze)
+    for i, row in enumerate(first_maze):
+        for j, c in enumerate(row):
+            if c == 'S':
+                first_maze[i][j] = '.'
+
+    for m in range(1,4):
+        new_maze = copy.deepcopy(first_maze)
+        for i, row in enumerate(first_maze):
+             for j, c in enumerate(row):
+                 if c in lasers:
+                     new_maze[i][j] = lasers[(lasers.index(c)+m) % 4]
+
+        add_laser_shots(new_maze)
+        mazes.append(new_maze)
+            
+    return mazes
+    
+def astar(m):
+    mazes = gen_mazes(m)
+    #for m in mazes:
+    #    print_maze(m)
+        
+    pts = { (k, j, i): c for k, maze in enumerate(mazes) for i, row in enumerate(maze) for j, c in enumerate(row)}
+    #print pts
+    start = [k for k,v in pts.items() if v == 'S'][0]
+    end = [k for k,v in pts.items() if v == 'G']
+    #print start
+    #print end
+    #return "nothing"
+    q = [(0, [start])]
+    closed = set()
+
+    while len(q) > 0:
+        path = heapq.heappop(q)
+        c = path[1][-1]
+        #print "Path"
+        #print c
+        closed.add(c)
+
+        if c in end:
+            return str(len(path[1])-1)
+
+        neighbours = [((c[0]+1)%4, c[1]-1, c[2]), ((c[0]+1)%4, c[1]+1,c[2]),
+                      ((c[0]+1)%4, c[1],c[2]-1), ((c[0]+1)%4, c[1],c[2]+1)]
+
+        for p in [n for n in neighbours if n in set(pts)-closed and pts[n]!='#' and pts[n]!='L']:
+            heuristic = abs(end[0][1]-p[1]) + abs(end[0][2] - p[2])
+            heapq.heappush(q, (len(path[1]) + heuristic, path[1] + [p]))
+
+           
+    return "impossible"
+
+#def isLaser(n):
+#    lasers = set('^', '>', 'v', '<')
+#    if n in lasers:
+#        return True
+#    else:
+#        return False
+
+T = int(raw_input())
+for t in xrange(T):
+    H, W = map(int, raw_input().split())
+    M = []
+    for h in xrange(H):
+        M.append(list(raw_input()))
+    #    M.append(['#' if i=='^' or i=='>' or i=='<' or i=='v' else i for i in list(raw_input())])
+    
+    #print_maze(M)
+    #print astar(M)
+    print "Case #%i: %s" % (t+1, astar(M))
+
+

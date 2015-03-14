@@ -1,0 +1,109 @@
+#include <iostream>
+#include <cstdio>
+#include <algorithm>
+#include <cstring>
+#include <vector>
+#include <cstdlib>
+#include <queue>
+#include <map>
+using namespace std;
+#define mp make_pair
+#define pb push_back
+#define ff first
+#define ss second
+typedef long long ll;
+typedef pair <int, int> pii;
+typedef pair < pii, int > ppi;
+const int MAXN = 105;
+int T, N, M;
+int dx[] = {-1,0,1,0}, dy[] = {0,1,0,-1};
+char grid[MAXN][MAXN];
+bool bad[4][MAXN][MAXN], vis[4][MAXN][MAXN];
+map <char, int> con;
+string str = "^>v<";
+pii start, end;
+queue< ppi > bfs;
+bool inb(int r, int c)
+{
+  return (r >= 0 && r < M && c >= 0 && c < N);
+}
+int main()
+{
+    if(fopen("3.in","r")) freopen("3.in","r",stdin);
+    freopen("3.out","w",stdout);
+    cin >> T;
+    for(int i = 0; i < 4; i++)
+      con[str[i]] = i;
+    for(int i = 1; i <= T; i++)
+    {
+      bool found = 0;
+      int ans = 1 << 25;
+      printf("Case #%d: ", i);
+      cin >> M >> N;
+      for(int j = 0; j < M; j++)
+        cin >> grid[j];
+      for(int j = 0; j < M; j++)
+      {
+        for(int k = 0; k < N; k++)
+        {
+          if(con.count(grid[j][k]) > 0) // one of ^, >, v, <
+          {
+            int dir = con[grid[j][k]];
+            for(int kk = 0; kk < 4; kk++)
+            {
+              int rcur = j, ccur = k;
+              while(inb(rcur,ccur))
+              {
+                bad[kk][rcur][ccur] = 1;
+                rcur += dx[(dir + kk) % 4];
+                ccur += dy[(dir + kk) % 4];
+                if(inb(rcur,ccur) && (con.count(grid[rcur][ccur]) > 0 || grid[rcur][ccur] == '#'))
+                  break;
+              }
+            }
+          }
+          else if(grid[j][k] == 'S')
+            start = mp(j,k);
+          else if(grid[j][k] == 'G')
+            end = mp(j,k);
+          else if(grid[j][k] == '#')
+            for(int kk = 0; kk < 4; kk++)
+              bad[kk][j][k] = 1;
+        }
+      }      
+      bfs.push(mp(start,0));
+      while(!bfs.empty())
+      {
+        ppi cur = bfs.front(); 
+        bfs.pop();
+        int lay = cur.ss, rcur = cur.ff.ff, ccur = cur.ff.ss;
+        if(!bad[lay % 4][rcur][ccur] && rcur == end.ff && ccur == end.ss) //we're done
+        {
+          found = 1;
+          ans = lay;
+          break;
+        }
+        vis[lay % 4][rcur][ccur] = 1;
+        for(int kk = 0; kk < 4; kk++)
+        {
+          int rnxt = rcur + dx[kk];
+          int cnxt = ccur + dy[kk];
+          int lnxt = lay + 1;         
+          if(inb(rnxt,cnxt) && !vis[lnxt % 4][rnxt][cnxt] && !bad[lnxt % 4][rnxt][cnxt])
+          {
+            vis[lnxt % 4][rnxt][cnxt] = 1;
+            bfs.push(mp(mp(rnxt,cnxt),lnxt));
+          }
+        }
+      }      
+      if(found)
+        cout << ans << endl;
+      else
+        cout << "impossible" << endl;
+      memset(grid,0,sizeof(grid));
+      memset(bad,0,sizeof(bad));
+      memset(vis,0,sizeof(vis));
+      while(!bfs.empty()) bfs.pop(); //clear the queue
+    }
+    return 0;
+}

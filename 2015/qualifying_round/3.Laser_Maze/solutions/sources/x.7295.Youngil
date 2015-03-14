@@ -1,0 +1,366 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <cstdlib>
+#include <vector>
+#include <algorithm>
+#include <utility>
+
+using namespace std;
+
+#define MAXM 100
+#define MAXN 100
+#define NDIR 4
+#define INIF 0x1FFFFFFF
+
+enum
+{
+	INIT = 0,
+
+	TRA0 = 1 << 0,
+	TRA1 = TRA0 << 1,
+	TRA2 = TRA0 << 2,
+	TRA3 = TRA0 << 3,
+
+	WALL = TRA0 << 4,
+};
+
+static vector <vector <int> > _g_mw;
+static int _g_mvisit[MAXM][MAXN];
+static int _g_gx, _g_gy;
+static int _g_min_steps;
+
+void make_maze_weight(const vector <vector <char> > maze, vector <vector <int> > &ms)
+{
+	vector <int> line;
+
+	line.clear();
+	line.resize(maze[0].size(), INIT);
+
+	ms.clear();
+	ms.resize(maze.size(), line);
+
+	for (int i = 0; i < maze.size(); i++)
+	{
+		for (int j = 0; j < maze[i].size(); j++)
+		{
+			char c = maze[i][j];
+
+			if (c == '.' || c == 'S' || c == 'G') continue;
+			else if (c == '#') ms[i][j] = WALL;
+			else
+			{
+				ms[i][j] = WALL;
+
+				if (c == '<')
+				{
+					for (int k = j - 1; k >= 0; k--)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA0;
+						else break;
+					}
+					for (int k = j + 1; k < maze[i].size(); k++)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA2;
+						else break;
+					}
+					for (int k = i - 1; k >= 0; k--)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA1;
+						else break;
+					}
+					for (int k = i + 1; k < maze.size(); k++)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA3;
+						else break;
+					}
+				}
+				else if (c == '>')
+				{
+					for (int k = j - 1; k >= 0; k--)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA2;
+						else break;
+					}
+					for (int k = j + 1; k < maze[i].size(); k++)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA0;
+						else break;
+					}
+					for (int k = i - 1; k >= 0; k--)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA3;
+						else break;
+					}
+					for (int k = i + 1; k < maze.size(); k++)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA1;
+						else break;
+					}
+				}
+				else if (c == '^')
+				{
+					for (int k = j - 1; k >= 0; k--)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA3;
+						else break;
+					}
+					for (int k = j + 1; k < maze[i].size(); k++)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA1;
+						else break;
+					}
+					for (int k = i - 1; k >= 0; k--)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA0;
+						else break;
+					}
+					for (int k = i + 1; k < maze.size(); k++)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA2;
+						else break;
+					}
+				}
+				else /* 'v' */
+				{
+					for (int k = j - 1; k >= 0; k--)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA1;
+						else break;
+					}
+					for (int k = j + 1; k < maze[i].size(); k++)
+					{
+						if (maze[i][k] == '.' || maze[i][k] == 'S'
+								|| maze[i][k] == 'G')
+								ms[i][k] |= TRA3;
+						else break;
+					}
+					for (int k = i - 1; k >= 0; k--)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA2;
+						else break;
+					}
+					for (int k = i + 1; k < maze.size(); k++)
+					{
+						if (maze[k][j] == '.' || maze[k][j] == 'S'
+								|| maze[k][j] == 'G')
+								ms[k][j] |= TRA0;
+						else break;
+					}
+				}
+			}
+		}
+	}
+}
+
+void print_maze_weight(const vector <vector <int> > mw)
+{
+	for (int i = 0; i < mw.size(); i++)
+	{
+		for (int j = 0; j < mw[i].size(); j++)
+		{
+			cout << mw[i][j] << " ";
+		}
+		cout << endl;
+	}
+}
+
+bool is_move_available(int mx, int my, const int steps)
+{
+	bool ret = true;
+	int w;
+
+	if (_g_mw.size() <= 0) return false;
+	if (_g_mw[0].size() <= 0) return false;
+	if (mx < 0 || my < 0 || mx >= _g_mw[0].size() || my >= _g_mw.size())
+		return false;
+
+	w = _g_mw[my][mx];
+
+	if (steps == 0) return true;
+	else if (w == INIT) return true;
+	else if (w == WALL) return false;
+	else
+	{
+		int a = steps % NDIR;
+		switch (a)
+		{
+			default : /* fall through */
+			case 0 : if (w & TRA0) ret = false; break;
+			case 1 : if (w & TRA1) ret = false; break;
+			case 2 : if (w & TRA2) ret = false; break;
+			case 3 : if (w & TRA3) ret = false; break;
+		}
+
+		return ret;
+	}
+}
+
+int move(int mx, int my, int steps)
+{
+	int nextsteps;
+	int ret = 0;
+
+	if (is_move_available(mx, my, steps))
+	{
+		if (_g_mvisit[my][mx] == 1) return INIF;
+
+		_g_mvisit[my][mx] = 1;
+
+		if (mx == _g_gx && my == _g_gy) return steps;
+
+		steps = steps + 1;
+
+		_g_min_steps = min(move(mx + 1, my, steps), _g_min_steps);
+		_g_min_steps = min(move(mx, my + 1, steps), _g_min_steps);
+		_g_min_steps = min(move(mx - 1, my, steps), _g_min_steps);
+		_g_min_steps = min(move(mx, my - 1, steps), _g_min_steps);
+
+		if (_g_min_steps == INIF)
+		{
+
+			if ((is_move_available(mx + 1, my, steps)
+					|| is_move_available(mx, my + 1, steps)
+					|| is_move_available(mx - 1, my, steps)
+					|| is_move_available(mx, my - 1, steps))
+					&& is_move_available(mx, my, steps + 1))
+			{
+				steps = steps + 2;
+
+				_g_min_steps = min(move(mx + 1, my, steps), _g_min_steps);
+				_g_min_steps = min(move(mx, my + 1, steps), _g_min_steps);
+				_g_min_steps = min(move(mx - 1, my, steps), _g_min_steps);
+				_g_min_steps = min(move(mx, my - 1, steps), _g_min_steps);
+			}
+		}
+
+		return _g_min_steps;
+	}
+
+	return INIF;
+}
+
+int check(const vector <vector <char> > maze, int sx, int sy, int gx, int gy)
+{
+	_g_min_steps = INIF;
+	_g_gx = gx; _g_gy = gy;
+
+	make_maze_weight(maze, _g_mw);
+
+	memset(_g_mvisit, 0, sizeof(_g_mvisit));
+
+	print_maze_weight(_g_mw);
+
+	int steps = 0;
+	if (move(sx, sy, steps) == 0) _g_min_steps = INIF;
+
+	return _g_min_steps;
+}
+
+int main(int argc, char **argv)
+{
+	ifstream ifs;
+	ofstream ofs;
+
+	string buf;
+	stringstream ssi;
+
+	int T;
+	int h, w;
+	vector <vector <char> > maze;
+
+	//ifs.open("input.txt", ifstream::in);
+	//ofs.open("output.txt", ofstream::out);
+	ifs.open("laser_maze.txt", ifstream::in);
+	ofs.open("laser_maze_output.txt", ofstream::out);
+
+	buf.clear();
+	getline(ifs, buf);
+	T = atoi(buf.c_str());
+
+	for (int i = 0; i < T; i++)
+	{
+		maze.clear();
+
+		buf.clear();
+		getline(ifs, buf);
+
+		ssi.clear();
+		ssi << buf;
+
+		ssi >> h;
+		ssi >> w;
+
+		maze.clear();
+
+		char c;
+		int sx, sy, gx, gy;
+
+		for (int j = 0; j < h; j++)
+		{
+			vector <char> line;
+			int k = 0;
+
+			while (ifs.get(c))
+			{
+				if (c == '\n') break;
+				if (c == 'S') sx = k, sy = j;
+				if (c == 'G') gx = k, gy = j;
+				line.push_back(c);
+				k++;
+			}
+
+			maze.push_back(line);
+		}
+
+		cout << "Case #" << i + 1 << ": " << endl;
+		for (int j = 0; j < maze.size(); j++)
+		{
+			for (int k = 0; k < maze[j].size(); k++)
+				cout << maze[j][k];
+			cout <<endl;
+		}
+
+		int ret = check(maze, sx, sy, gx, gy);
+
+		ofs << "Case #" << i + 1 << ": ";
+		if (ret == INIF) ofs << "impossible" << endl;
+		else ofs << _g_min_steps << endl;
+
+		cout << "Goal : " << _g_gx << ", " << _g_gy << endl;
+		cout << "Result : " << _g_min_steps << endl;
+	}
+
+	ifs.close();
+	ofs.close();
+
+	return 0;
+}

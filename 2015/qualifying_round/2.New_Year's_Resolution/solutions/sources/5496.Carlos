@@ -1,0 +1,179 @@
+package es.sadita;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+public class NYResolution {
+
+	public String getResolutions(final String rawMenus) {
+		List<Menu> menus = parseMenu(rawMenus);
+
+		StringBuilder responseBuilder = new StringBuilder();
+		int numberIndex = 1;
+
+		for (Menu menu : menus) {
+			boolean possible = processMenu(menu);
+
+			numberIndex = composeResult(responseBuilder, numberIndex, possible);
+		}
+
+		return responseBuilder.toString();
+	}
+
+	private int composeResult(final StringBuilder responseBuilder, int bookIndex, final boolean possible) {
+		responseBuilder.append("Case #").append(bookIndex++).append(": ");
+		responseBuilder.append(possible ? "yes" : "no");
+		responseBuilder.append(String.format("%n"));
+		return bookIndex;
+	}
+
+	protected List<Menu> parseMenu(final String rawMenu) {
+		List<Menu> menus = new ArrayList<Menu>();
+
+		String[] lines = rawMenu.split(System.getProperty("line.separator"));
+
+		int numOfMenus = Integer.parseInt(lines[0]);
+		int lineIndex = 1;
+		Menu menu = null;
+		Food dish = null;
+		for (int i = 0; i < numOfMenus; i++) {
+			String[] target = lines[lineIndex++].split(" ");
+			menu = new Menu(Integer.parseInt(target[0]), Integer.parseInt(target[1]), Integer.parseInt(target[2]));
+			int numOfDishes = Integer.parseInt(lines[lineIndex++]);
+			for (int j = 0; j < numOfDishes; j++) {
+				String[] food = lines[lineIndex++].split(" ");
+				dish = new Food(Integer.parseInt(food[0]), Integer.parseInt(food[1]), Integer.parseInt(food[2]));
+				menu.addDish(dish);
+			}
+			menus.add(menu);
+		}
+
+		return menus;
+	}
+
+	private boolean processMenu(final Menu menu) {
+		int p = menu.getGP();
+		int c = menu.getGC();
+		int f = menu.getGF();
+
+		List<Food> dishes = new ArrayList<Food>(menu.getDishes());
+
+		while (dishes.size() > 0) {
+			Food nextDish = dishes.remove(0);
+
+			p -= nextDish.getP();
+			c -= nextDish.getC();
+			f -= nextDish.getF();
+
+			if ((p == 0) && (c == 0) && (f == 0)) {
+				return true;
+			}
+
+			if ((p < 0) || (c < 0) || (f < 0) || (dishes.size() == 0)) {
+				p += nextDish.getP();
+				c += nextDish.getC();
+				f += nextDish.getF();
+				continue;
+			}
+
+			if (processMenu(new Menu(p, c, f, dishes))) {
+				return true;
+			} else {
+				p += nextDish.getP();
+				c += nextDish.getC();
+				f += nextDish.getF();
+			}
+		}
+		return false;
+	}
+
+	public static class Menu {
+
+		private final int GP;
+		private final int GC;
+		private final int GF;
+		private final List<Food> dishes;
+
+		public Menu(final int gP, final int gC, final int gF) {
+			GP = gP;
+			GC = gC;
+			GF = gF;
+			dishes = new ArrayList<Food>();
+		}
+
+		public Menu(final int gP, final int gC, final int gF, final List<Food> dishes) {
+			GP = gP;
+			GC = gC;
+			GF = gF;
+			this.dishes = dishes;
+		}
+
+		public int getGP() {
+			return GP;
+		}
+
+		public int getGC() {
+			return GC;
+		}
+
+		public int getGF() {
+			return GF;
+		}
+
+		public void addDish(final Food dish) {
+			dishes.add(dish);
+		}
+
+		public List<Food> getDishes() {
+			return new ArrayList<Food>(dishes);
+		}
+	}
+
+	public static class Food {
+
+		private final int P;
+		private final int C;
+		private final int F;
+
+		public Food(final int p, final int c, final int f) {
+			P = p;
+			C = c;
+			F = f;
+		}
+
+		public int getP() {
+			return P;
+		}
+
+		public int getC() {
+			return C;
+		}
+
+		public int getF() {
+			return F;
+		}
+
+	}
+
+	public static void main(final String[] args) throws IOException {
+		byte[] encoded = Files.readAllBytes(Paths.get(args[0]));
+
+		String content = new String(encoded, Charset.defaultCharset());
+
+		NYResolution resolutions = new NYResolution();
+		String result = resolutions.getResolutions(content);
+
+		System.out.println(result);
+
+		try (PrintWriter out = new PrintWriter("resolutionsResult.txt")) {
+			out.print(result);
+			out.flush();
+		}
+
+	}
+}

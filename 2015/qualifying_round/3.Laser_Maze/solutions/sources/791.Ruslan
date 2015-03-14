@@ -1,0 +1,111 @@
+package facebook;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
+
+/**
+ * User: RK
+ * Date: 11.01.15
+ * Time: 14:12
+ */
+public class C {
+    public static String lasers = "<^>v";
+    public static int[][] adds = new int[][]{{0, -1}, {-1, 0}, {0, 1}, {1, 0}};
+
+    public static class Position {
+        int x, y, time;
+        public Position(int x, int y, int time) {
+            this.x = x;
+            this.y = y;
+            this.time = time;
+        }
+    }
+    public static boolean isCorrect(char[][] plan, int x, int y) {
+        return x>=0 && y>=0 && x<plan.length && y<plan[x].length;
+    }
+
+    public static char[][] generatePlan(char[][] plan, int time) {
+        char[][] result = new char[plan.length][plan[0].length];
+        for (int i=0;i<result.length;i++) {
+            for (int j=0;j<result[i].length;j++) {
+                result[i][j] = plan[i][j];
+            }
+        }
+
+        for (int i=0;i<result.length;i++) {
+            for (int j=0;j<result[i].length;j++) {
+                int pos = lasers.indexOf(result[i][j]);
+                if (pos!=-1) {
+                    int[] add = adds[(pos+time)%adds.length];
+                    int x = i+add[0], y = j+add[1];
+                    while (isCorrect(plan, x, y) && plan[x][y]=='.') {
+                        result[x][y] = 'x';
+                        x+=add[0];
+                        y+=add[1];
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    public static int calcResult(char[][] plan, Position start, Position goal) {
+        char[][][] plans = new char[adds.length][plan.length][plan[0].length];
+        boolean was[][][] = new boolean[adds.length][plan.length][plan[0].length];
+        for (int time = 0; time<plans.length; time++) {
+            plans[time] = generatePlan(plan, time);
+        }
+        LinkedList<Position> q = new LinkedList<Position>();
+        q.add(start);
+        while (!q.isEmpty()) {
+            Position pos = q.poll();
+            for (int[] add:adds) {
+                Position nextPos = new Position(pos.x+add[0], pos.y+add[1], pos.time+1);
+                if (isCorrect(plan, nextPos.x, nextPos.y) && plans[nextPos.time%adds.length][nextPos.x][nextPos.y]=='.' && !was[nextPos.time%adds.length][nextPos.x][nextPos.y]) {
+                    was[nextPos.time%adds.length][nextPos.x][nextPos.y] = true;
+                    q.add(nextPos);
+                    if (nextPos.x == goal.x && nextPos.y == goal.y) {
+                        return nextPos.time;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public static void main(String[] args) throws FileNotFoundException {
+        Scanner in = new Scanner(new FileInputStream("c1.in"));
+        PrintWriter out = new PrintWriter(new FileOutputStream("c1.out"));
+        int t = in.nextInt();
+        int test = 0;
+        Position start = null, goal = null;
+        while (test++<t) {
+            int height = in.nextInt();
+            int width = in.nextInt();
+            char[][] plan = new char[height][];
+            for (int i = 0; i<plan.length; i++) {
+                plan[i] = in.next().toCharArray();
+                for (int j=0;j<plan[i].length; j++) {
+                    if (plan[i][j]=='S') {
+                        start = new Position(i,j,0);
+                        plan[i][j] = '.';
+                    }
+                    if (plan[i][j]=='G') {
+                        goal = new Position(i,j,0);
+                        plan[i][j] = '.';
+                    }
+                }
+            }
+
+            int result = calcResult(plan, start, goal);
+            out.println("Case #" + test + ": "+(result==-1?"impossible":result));
+        }
+        out.close();
+    }
+}

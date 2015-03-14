@@ -1,0 +1,281 @@
+import java.io.OutputStreamWriter;
+import java.io.BufferedWriter;
+import java.util.Comparator;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.Writer;
+import java.util.LinkedList;
+import java.util.Collection;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.InputMismatchException;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.NoSuchElementException;
+import java.math.BigInteger;
+import java.util.Queue;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author Stanislav Pak
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("lasermaze.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("lasermaze.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		OutputWriter out = new OutputWriter(outputStream);
+		LaserMaze solver = new LaserMaze();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class LaserMaze {
+    private static final int INF = (int) 1e8;
+    char[][] maze;
+    int n;
+    int m;
+
+    final int[] DX = {0, -1, 0, 1};
+    final int[] DY = {-1, 0, 1, 0};
+
+    int direction(char c) {
+        return "<^>v".indexOf(c);
+    }
+
+    class Point {
+        final int x;
+        final int y;
+
+        Point(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        Point shift(int i) {
+            return new Point(x + DX[i], y + DY[i]);
+        }
+
+        boolean isValid() {
+            return x >= 0 && y >= 0 && x < n && y < m;
+        }
+
+        boolean isFree() {
+            return isValid() && (maze[x][y] == '.' || maze[x][y] == 'G');
+        }
+
+        boolean isExit() {
+            return isValid() && maze[x][y] == 'G';
+        }
+
+        boolean isLaser() {
+            return isValid() && direction(maze[x][y]) >= 0;
+        }
+
+        boolean isDead(int turn) {
+            for (int i = 0; i < DX.length; ++i) {
+                Point p = new Point(x + DX[i], y + DY[i]);
+                while (p.isFree()) {
+                    p = p.shift(i);
+                }
+                if (p.isLaser()) {
+                    if ((direction(maze[p.x][p.y]) + turn + 2) % DX.length == i) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+
+    class State {
+        final Point p;
+        final int turn;
+
+        State(Point p, int turn) {
+            this.p = p;
+            this.turn = turn;
+        }
+    }
+    public void solve(int testNumber, InputReader in, OutputWriter out) {
+        n = in.readInt();
+        m = in.readInt();
+        maze = new char[n][];
+        for (int i = 0; i < n; ++i) {
+            maze[i] = in.readString().toCharArray();
+        }
+        Point start = new Point(0, 0);
+        for (int x = 0; x < n; ++x) {
+            for (int y = 0; y < m; ++y) {
+                if (maze[x][y] == 'S') {
+                    maze[x][y] = '.';
+                    start = new Point(x, y);
+                    break;
+                }
+            }
+        }
+
+        int[][][] dist = new int[4][][];
+        for (int i = 0; i < 4; ++i) {
+            dist[i] = new int[n][];
+            for (int x = 0; x < n; ++x) {
+                dist[i][x] = ArrayUtils.createArray(m, INF);
+            }
+        }
+        dist[0][start.x][start.y] = 0;
+
+        Queue<State> queue = new LinkedList<>();
+        queue.add(new State(start, 0));
+
+        while (!queue.isEmpty()) {
+            State s = queue.poll();
+            if (s.p.isExit()) {
+                out.printLine(String.format("Case #%d: %d", testNumber, dist[s.turn][s.p.x][s.p.y]));
+                return;
+            }
+            for (int i = 0; i < DX.length; ++i) {
+                Point p = s.p.shift(i);
+                if (!p.isFree()) continue;
+                int turn = (s.turn + 1) % DX.length;
+                if (p.isDead(turn)) continue;
+                if (dist[turn][p.x][p.y] == INF) {
+                    dist[turn][p.x][p.y] = dist[s.turn][s.p.x][s.p.y] + 1;
+                    queue.add(new State(p, turn));
+                }
+            }
+        }
+        out.printLine(String.format("Case #%d: impossible", testNumber));
+    }
+}
+
+class InputReader {
+
+	private InputStream stream;
+	private byte[] buf = new byte[1024];
+	private int curChar;
+	private int numChars;
+	private SpaceCharFilter filter;
+
+	public InputReader(InputStream stream) {
+		this.stream = stream;
+	}
+
+	public int read() {
+		if (numChars == -1)
+			throw new InputMismatchException();
+		if (curChar >= numChars) {
+			curChar = 0;
+			try {
+				numChars = stream.read(buf);
+			} catch (IOException e) {
+				throw new InputMismatchException();
+			}
+			if (numChars <= 0)
+				return -1;
+		}
+		return buf[curChar++];
+	}
+
+	public int readInt() {
+		int c = read();
+		while (isSpaceChar(c))
+			c = read();
+		int sgn = 1;
+		if (c == '-') {
+			sgn = -1;
+			c = read();
+		}
+		int res = 0;
+		do {
+			if (c < '0' || c > '9')
+				throw new InputMismatchException();
+			res *= 10;
+			res += c - '0';
+			c = read();
+		} while (!isSpaceChar(c));
+		return res * sgn;
+	}
+
+	public String readString() {
+		int c = read();
+		while (isSpaceChar(c))
+			c = read();
+		StringBuilder res = new StringBuilder();
+		do {
+			if (Character.isValidCodePoint(c))
+				res.appendCodePoint(c);
+			c = read();
+		} while (!isSpaceChar(c));
+		return res.toString();
+	}
+
+	public boolean isSpaceChar(int c) {
+		if (filter != null)
+			return filter.isSpaceChar(c);
+		return isWhitespace(c);
+	}
+
+	public static boolean isWhitespace(int c) {
+		return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+	}
+
+	public String next() {
+		return readString();
+	}
+
+	public interface SpaceCharFilter {
+		public boolean isSpaceChar(int ch);
+	}
+}
+
+class OutputWriter {
+	private final PrintWriter writer;
+
+	public OutputWriter(OutputStream outputStream) {
+		writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(outputStream)));
+	}
+
+	public void print(Object...objects) {
+		for (int i = 0; i < objects.length; i++) {
+			if (i != 0)
+				writer.print(' ');
+			writer.print(objects[i]);
+		}
+	}
+
+	public void printLine(Object...objects) {
+		print(objects);
+		writer.println();
+	}
+
+	public void close() {
+		writer.close();
+	}
+
+}
+
+class ArrayUtils {
+
+	public static int[] createArray(int count, int value) {
+		int[] array = new int[count];
+		Arrays.fill(array, value);
+		return array;
+	}
+
+}
+

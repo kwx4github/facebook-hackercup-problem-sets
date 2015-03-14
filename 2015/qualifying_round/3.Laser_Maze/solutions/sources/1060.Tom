@@ -1,0 +1,171 @@
+#include <iostream>
+#include <vector>
+#include <set>
+
+/* build using gcc 4.8.2 with c++11 on ubuntu 14.04 LTS */
+
+typedef std::pair<int, int> position;
+
+class wallmap
+{
+private:
+    int n1, n2;
+    std::vector<char> data;
+
+public:
+    wallmap(int _n1, int _n2) : n1(_n1), n2(_n2)
+    {
+        data.resize(n1*n2, 0);
+    }
+
+    bool operator()(const position &p, int e)
+    {
+        if (p.first < 0 || p.second < 0 || p.first >= n1 || p.second >= n2)
+            return 1; // there's a wall!
+        return data[p.first*n2 + p.second] & (1 << e);
+    }
+    
+    void set(const position &p, int e)
+    {
+        data[p.first*n2 + p.second] |= 1 << e;
+    }
+};
+
+class turret
+{
+private:
+    position dir;
+    position pos;
+    
+public:
+    turret(const position &p, const position &d) : dir(d), pos(p) {}
+
+    position trigger()
+    {
+        dir = {-dir.second, dir.first};
+        position p = pos;
+        next(p);
+        return p;
+    }
+
+    void next(position &p)
+    {
+        p.first += dir.first;
+        p.second += dir.second;
+    }
+};
+
+int testcase()
+{
+    int m, n;
+    std::cin >> m >> n;
+
+    // wallmap at offset 0-3 has this field been visited with current turret configuration?
+    // wallmap at offset 4 is there a wall or a turret?
+    wallmap wallmap(n, m);
+    std::vector<turret> turrets;
+    std::set<position> locations;
+    position goal;
+    int steps = 0;
+
+    for (int j = 0; j < m; j++)
+    {
+        std::string line;
+        std::cin >> line;
+        
+        for (int i = 0; i < n; i++)
+        {
+            switch (line[i])
+            {
+                case '.': // some air!!
+                    break;
+                case '#': // walls
+                {
+                    wallmap.set({i, j}, 4);
+                } break;
+                case 'v': // turret (also add to wall map)
+                {
+                    wallmap.set({i, j}, 4);
+                    turrets.push_back(turret({i, j}, {0, 1}));
+                } break;
+                case '<':
+                {
+                    wallmap.set({i, j}, 4);
+                    turrets.push_back(turret({i, j}, {-1, 0}));
+                } break;
+                case '>':
+                {
+                    wallmap.set({i, j}, 4);
+                    turrets.push_back(turret({i, j}, {1, 0}));
+                } break;
+                case '^':
+                {
+                    wallmap.set({i, j}, 4);
+                    turrets.push_back(turret({i, j}, {0, -1}));
+                } break;
+                case 'G': // goal
+                {
+                    goal = {i, j};
+                } break;
+                case 'S': // start
+                {
+                    locations.insert({i, j});
+                } break;
+            }
+        }
+    }
+
+    while (!locations.empty() && locations.find(goal) == locations.end())
+    {
+        std::set<position> new_locations;
+        auto add_location = [&](const position &p) {
+            if (!wallmap(p, 4) && !wallmap(p, steps%4)) {
+                new_locations.insert(p);
+                wallmap.set(p, steps%4);
+            }
+        };
+
+        for (auto it = locations.cbegin(); it != locations.cend(); it++)
+        {
+            const position &p = *it;
+            add_location({p.first+1, p.second});
+            add_location({p.first-1, p.second});
+            add_location({p.first, p.second+1});
+            add_location({p.first, p.second-1});
+        }
+
+        for (auto it = turrets.begin(); it != turrets.end(); it++)
+        {
+            turret &t = *it;
+
+            // while no wall (or turret), remove invalid locations
+            for (position p = t.trigger(); !wallmap(p, 4); t.next(p))
+            {
+                new_locations.erase(p);
+            }
+        }
+
+        locations = std::move(new_locations);
+        steps++;
+    }
+
+    return locations.find(goal) != locations.end() ? steps : -1;
+}
+
+int main(int argc, char **argv)
+{
+    int t;
+    
+    std::cin >> t;
+
+    for (int i = 0; i < t; i++)
+    {
+        int r = testcase();
+        if (r < 0)
+            std::cout << "Case #" << i+1 << ": impossible" << std::endl;
+        else
+            std::cout << "Case #" << i+1 << ": " << r << std::endl;
+    }
+
+    return 0;
+}

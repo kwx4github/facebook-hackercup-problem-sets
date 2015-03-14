@@ -1,0 +1,264 @@
+#include <QCoreApplication>
+#include <QFile>
+#include <QDir>
+#include <QVector>
+#include <QDebug>
+
+struct Item
+{
+    char map = ' ';
+    char nextStep = ' ';
+    bool readInStep[4] = {false, false, false, false};
+
+    bool isLaser()
+    {
+        return map == 'v' || map == '>' || map == '^' || map == '<';
+    }
+
+    void dreheLaser()
+    {
+        switch(map)
+        {
+        case '<':
+            map = '^';
+            break;
+        case '^':
+            map = '>';
+            break;
+        case '>':
+            map = 'v';
+            break;
+        case 'v':
+            map = '<';
+            break;
+        }
+    }
+
+    bool isWall()
+    {
+        return isLaser() || map == '#';
+    }
+};
+
+class Labyrinth
+{
+public:
+    enum Status
+    {
+        Open,
+        Ready,
+        Impossible
+    };
+
+    Labyrinth(int breite, int hoehe) : m_Breite(breite), m_Hoehe(hoehe), m_Feld(breite * hoehe)
+    {
+    }
+
+    Item& at(int x, int y)
+    {
+        return m_Feld[x + y * m_Breite];
+    }
+
+    void weitergehen(int step)
+    {
+        for(int h = 0; h < m_Hoehe; h++)
+        {
+            for(int b = 0; b < m_Breite; b++)
+            {
+                if(at(b, h).map == '1')
+                {
+                    if(0 <= b - 1 && !at(b - 1, h).isWall() && !at(b - 1, h).readInStep[step])
+                        at(b - 1, h).nextStep = '1';
+
+                    if(b + 1 < m_Breite && !at(b + 1, h).isWall() && !at(b + 1, h).readInStep[step])
+                        at(b + 1, h).nextStep = '1';
+
+                    if(0 <= h - 1 && !at(b, h - 1).isWall() && !at(b, h - 1).readInStep[step])
+                        at(b, h - 1).nextStep = '1';
+
+                    if(h + 1 < m_Hoehe && !at(b, h + 1).isWall() && !at(b, h + 1).readInStep[step])
+                        at(b, h + 1).nextStep = '1';
+                }
+            }
+        }
+    }
+
+    void laserDrehen()
+    {
+        for(int h = 0; h < m_Hoehe; h++)
+        {
+            for(int b = 0; b < m_Breite; b++)
+            {
+                if(at(b, h).isLaser())
+                    at(b, h).dreheLaser();
+            }
+        }
+    }
+
+    void schiessen()
+    {
+        for(int h = 0; h < m_Hoehe; h++)
+        {
+            for(int b = 0; b < m_Breite; b++)
+            {
+                if(at(b, h).isLaser())
+                {
+                    if(at(b, h).map == '<')
+                    {
+                        for(int x = b - 1; 0 <= x; x--)
+                        {
+                            if(at(x, h).isWall())
+                                break;
+
+                            at(x, h).nextStep = ' ';
+                        }
+                    }
+
+                    if(at(b, h).map == '>')
+                    {
+                        for(int x = b + 1; x < m_Breite; x++)
+                        {
+                            if(at(x, h).isWall())
+                                break;
+
+                            at(x, h).nextStep = ' ';
+                        }
+                    }
+
+                    if(at(b, h).map == '^')
+                    {
+                        for(int y = h - 1; 0 <= y; y--)
+                        {
+                            if(at(b, y).isWall())
+                                break;
+
+                            at(b, y).nextStep = ' ';
+                        }
+                    }
+
+                    if(at(b, h).map == 'v')
+                    {
+                        for(int y = h + 1; y < m_Hoehe; y++)
+                        {
+                            if(at(b, y).isWall())
+                                break;
+
+                            at(b, y).nextStep = ' ';
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    void show()
+    {
+        for(int h = 0; h < m_Hoehe; h++)
+        {
+            for(int b = 0; b < m_Breite; b++)
+            {
+                qDebug() << at(b, h).map << at(b, h).nextStep;
+            }
+        }
+    }
+
+    Status prepare(int step)
+    {
+        bool nochwas = false;
+        for(int h = 0; h < m_Hoehe; h++)
+        {
+            for(int b = 0; b < m_Breite; b++)
+            {
+                Item& it = at(b, h);
+
+                if(it.map == 'G' && it.nextStep == '1')
+                    return Ready;
+
+                if(it.nextStep == '1')
+                {
+                    it.nextStep = ' ';
+                    it.map = '1';
+                    it.readInStep[step] = true;
+                    nochwas = true;
+                }
+                else if(it.map == '1')
+                    it.map = ' ';
+            }
+        }
+
+        if(nochwas)
+            return Open;
+
+        return Impossible;
+    }
+
+private:
+    int m_Breite;
+    int m_Hoehe;
+    QVector<Item> m_Feld;
+};
+
+int main(int argc, char *argv[])
+{
+    QCoreApplication a(argc, argv);
+
+    QFile file(QDir::homePath() + "/Documents/Laser/laser_maze.txt");
+    file.open(QIODevice::ReadOnly);
+    QFile summary(QDir::homePath() + "/Documents/Laser/output.txt");
+    summary.open(QIODevice::WriteOnly);
+
+    int test = file.readLine().simplified().toInt();
+
+    for(int i = 0; i < test; i++)
+    {
+        QList<QByteArray> list = file.readLine().simplified().split(' ');
+        int hoehe = list.at(0).toInt();
+        int breite =  list.at(1).toInt();
+
+        Labyrinth lab(breite, hoehe);
+
+        for(int j = 0; j < hoehe; j++)
+        {
+            QByteArray line = file.readLine().simplified();
+            for(int k = 0; k < line.size(); k++)
+            {
+                char temp = line.at(k);
+                if(temp == '#' || temp == 'G' || temp == '<' || temp == '>' || temp == 'v' || temp == '^')
+                    lab.at(k, j).map = temp;
+                else if(temp == 'S')
+                {
+                    lab.at(k, j).map = '1';
+                    lab.at(k, j).readInStep[0] = true;
+                }
+            }
+        }
+
+        int step = 0;
+
+        while(true)
+        {
+            step++;
+            lab.weitergehen(step % 4);
+            lab.laserDrehen();
+            lab.schiessen();
+            Labyrinth::Status stat = lab.prepare(step % 4);
+
+            if(stat == Labyrinth::Ready)
+            {
+                summary.write(QString("Case #%1: %2\n").arg(i + 1).arg(step).toLatin1());
+                break;
+            }
+
+            if(stat == Labyrinth::Impossible)
+            {
+                summary.write(QString("Case #%1: impossible\n").arg(i + 1).toLatin1());
+                break;
+            }
+        }
+    }
+
+    summary.close();
+    file.close();
+
+    return 0;
+}

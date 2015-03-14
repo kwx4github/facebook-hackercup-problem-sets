@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+import sys
+import numpy
+
+class Solver:
+  def __init__(self, goals, foods):
+    self.goals = goals
+    self.foods = foods
+    self.protein = foods[:, 0]
+    self.carbo = foods[:, 1]
+    self.fat = foods[:, 2]
+    self.sort_idx = numpy.argsort(self.protein)
+    self.sorted_protein = self.protein[self.sort_idx]
+
+  def check_goal(self, assign_key, assign_size, array, goal):
+    total = 0
+    for i in range(assign_size):
+      idx = self.sort_idx[assign_key[i]]
+      total = total + array[idx]
+    return total == goal
+
+  def dump_solution(self, assign_key, assign_size):
+    print "To goals (%d, %d, %d), eat the following food:" %(self.goals[0], self.goals[1], self.goals[2])
+    print "-------------------"
+    for i in range(assign_size):
+      idx = self.sort_idx[assign_key[i]]
+      print "Food %d: %d %d %d" %(idx, self.protein[idx], self.carbo[idx], self.fat[idx])
+    print "-------------------"
+
+  def subset_protein(self, idx, assign_key, assign_size, remain):
+    possible = False
+    if remain == 0:
+      possible = self.check_goal(assign_key, assign_size, self.carbo, self.goals[1])
+      if possible:
+        possible = self.check_goal(assign_key, assign_size, self.fat, self.goals[2])
+      # if possible:
+      #  self.dump_solution(assign_key, assign_size)
+    else:
+      i = idx
+      n = len(self.sorted_protein)
+      while i < n and self.sorted_protein[i] > remain:
+        i = i + 1
+      while i < n and self.sorted_protein[i] <= remain:
+        assign_key[assign_size] = i
+        if self.subset_protein(i + 1, assign_key, assign_size + 1, remain - self.sorted_protein[i]):
+          return True
+        i = i + 1
+    return possible
+
+  def solve(self):
+    assign_key = [0] * len(self.sorted_protein)
+    if self.subset_protein(0, assign_key, 0, self.goals[0]):
+      return "yes"
+    else:
+      return "no"
+
+if len(sys.argv) != 2:
+  sys.stderr.write("Usage: %s FILE\n" %(sys.argv[0]))
+  sys.exit(1)
+
+infile = open(sys.argv[1], 'r')
+cases = int(infile.readline().strip())
+for i in range(cases):
+    goals = [int(x) for x in infile.readline().strip().split()]
+    nfoods = int(infile.readline().strip())
+    foods = []
+    for j in range(nfoods):
+      food = [int(x) for x in infile.readline().strip().split()]
+      foods.append(food)
+    foods = numpy.array(foods)
+    s = Solver(goals, foods)
+    print "Case #%d: %s" %(i + 1, s.solve()) 

@@ -1,0 +1,208 @@
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.PriorityQueue;
+import java.util.StringTokenizer;
+
+public class ProblemC {
+
+public static void main(String[] args) throws IOException {
+		
+		ProblemC solver = new ProblemC();
+		solver.init();
+		solver.solve();
+	}
+
+	private void init() {
+		
+	}
+	
+	static class Cell {
+		int i,j;
+
+		public Cell(int i, int j) {
+			super();
+			this.i = i;
+			this.j = j;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + i;
+			result = prime * result + j;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Cell other = (Cell) obj;
+			if (i != other.i)
+				return false;
+			if (j != other.j)
+				return false;
+			return true;
+		}
+		
+	}
+	
+	static class State implements Comparable<State> {
+		Cell pos;
+		int steps;
+		
+		public State(Cell pos, int steps) {
+			super();
+			this.pos = pos;
+			this.steps = steps;
+		}
+
+		@Override
+		public int compareTo(State o) {
+			return this.steps - o.steps;
+		}
+	}
+	
+	int M,N;
+	char[][] board;
+	Cell start;
+	Cell end;
+	
+	boolean[][][] fire;
+	boolean[][][] visited;
+	
+	private void solve() throws IOException {
+		 
+		Reader in = new Reader(System.in);
+		PrintWriter out = new PrintWriter(new BufferedOutputStream(System.out));
+		
+		int T = in.nextInt();
+		
+		for(int t = 1; t <= T; t++) {
+			
+			M = in.nextInt();
+			N = in.nextInt();
+			
+			board = new char[M][];
+			for (int i = 0; i < M; i++) board[i] = in.next().toCharArray();
+			
+			initBoard();
+			
+			int steps = findPath();
+			
+			out.println("Case #" + t + ": " + (steps > -1 ? steps : "impossible"));
+		}
+		
+		out.flush();
+		out.close();
+	}
+	
+	private int findPath() {
+		PriorityQueue<State> queue = new PriorityQueue<ProblemC.State>();
+		queue.add(new State(start, 0));
+		while (!queue.isEmpty()) {
+			State hd = queue.poll();
+			if (visited[hd.steps % 4][hd.pos.i][hd.pos.j]) continue;
+			visited[hd.steps % 4][hd.pos.i][hd.pos.j] = true;
+			if (hd.pos.equals(end)) return hd.steps;
+			int nextLevel = (hd.steps + 1) % 4;
+			if (hd.pos.i > 0 && isEmpty(hd.pos.i - 1, hd.pos.j) && !fire[nextLevel][hd.pos.i - 1][hd.pos.j]) 
+				queue.add(new State(new Cell(hd.pos.i - 1, hd.pos.j), hd.steps + 1));
+			if (hd.pos.i < M - 1 && isEmpty(hd.pos.i + 1, hd.pos.j) && !fire[nextLevel][hd.pos.i + 1][hd.pos.j]) 
+				queue.add(new State(new Cell(hd.pos.i + 1, hd.pos.j), hd.steps + 1));
+			if (hd.pos.j > 0 && isEmpty(hd.pos.i, hd.pos.j - 1) && !fire[nextLevel][hd.pos.i][hd.pos.j - 1]) 
+				queue.add(new State(new Cell(hd.pos.i, hd.pos.j - 1), hd.steps + 1));
+			if (hd.pos.j < N - 1 && isEmpty(hd.pos.i, hd.pos.j + 1) && !fire[nextLevel][hd.pos.i][hd.pos.j + 1]) 
+				queue.add(new State(new Cell(hd.pos.i, hd.pos.j + 1), hd.steps + 1));
+		}
+		
+		return -1;
+	}
+
+	private void initBoard() {
+		fire = new boolean[4][M][N];
+		visited = new boolean[4][M][N];
+		
+		for (int i = 0; i < M; i++)
+			for(int j = 0; j < N; j++) {
+				if (board[i][j] == 'S') start = new Cell(i,j);
+				if (board[i][j] == 'G') end = new Cell(i,j);
+				if (board[i][j] == '>') initFire(new Cell(i,j),0);
+				if (board[i][j] == '^') initFire(new Cell(i,j),1);
+				if (board[i][j] == '<') initFire(new Cell(i,j),2);
+				if (board[i][j] == 'V') initFire(new Cell(i,j),3);
+			}
+		
+	}
+	
+	private boolean isEmpty(int i, int j) {
+		return board[i][j] == '.' || board[i][j] == 'S' || board[i][j] == 'G';
+	}
+
+	private void initFire(Cell cell, int level) {
+		for (int j = cell.j + 1; j < N && isEmpty(cell.i, j); j++) {
+			fire[level][cell.i][j] = true;
+		}
+		level = (level + 1) % 4;
+		for (int i = cell.i + 1; i < M && isEmpty(i, cell.j); i++) {
+			fire[level][i][cell.j] = true;
+		}
+		level = (level + 1) % 4;
+		for (int j = cell.j - 1; j >= 0 && isEmpty(cell.i, j); j--) {
+			fire[level][cell.i][j] = true;
+		}
+		level = (level + 1) % 4;
+		for (int i = cell.i - 1; i >= 0 && isEmpty(i, cell.j); i--) {
+			fire[level][i][cell.j] = true;
+		}
+		
+	}
+
+	private static class Reader {
+		
+	    BufferedReader reader;
+	    StringTokenizer tokenizer;
+	
+	    /** call this method to initialize reader for InputStream */
+	    Reader(InputStream input) {
+	        reader = new BufferedReader(
+	                     new InputStreamReader(input) );
+	        tokenizer = new StringTokenizer("");
+	    }
+	
+	    /** get next word */
+	    public String next() throws IOException {
+	        while ( ! tokenizer.hasMoreTokens() ) {
+	            //TODO add check for eof if necessary
+	            tokenizer = new StringTokenizer(
+	                   reader.readLine() );
+	        }
+	        return tokenizer.nextToken();
+	    }
+	    
+	    public String nextLine() throws IOException {
+	    	return reader.readLine();
+	    }
+	
+	    public int nextInt() throws IOException {
+	        return Integer.parseInt( next() );
+	    }
+	    
+	    public double nextDouble() throws IOException {
+	        return Double.parseDouble( next() );
+	    }
+	    
+	    public long nextLong() throws IOException {
+	    	return Long.parseLong(next());
+	    }
+	}
+}

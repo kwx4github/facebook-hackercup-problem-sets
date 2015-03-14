@@ -1,0 +1,138 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
+
+int dx[5] = {-1, 0,1,0};
+int dy[5] = {0, 1,0,-1};
+
+struct Point {
+	int x;
+	int y;
+};
+
+bool operator <(const Point& x, const Point& y) {
+    return true;
+}
+
+bool isValid(Point p, int width, int height){
+	return p.x >= 0 && p.x < width && p.y >= 0 && p.y < height;
+}
+
+bool isLaz0r(char c){
+	return c == '<' || c == '>' || c == '^' || c == 'v';
+}
+
+int lazerToInt(char c){
+	switch(c)
+	{
+		case '>': return 0;
+		case '^': return 1;
+		case '<': return 2;
+		case 'v': return 3;
+	}
+
+	cout << "WTF" << endl;
+	return -1;
+}
+
+bool checkIfWeDie(char lazer, int timestamp, int direction){
+	if(timestamp == 0){ return false; }
+
+	int laserDirection = (lazerToInt(lazer) + timestamp) % 4;
+	
+	return laserDirection == direction;
+}
+
+void JeMoeder(){
+	bool geweest[105][105][4] = {false};
+	char maze[105][105];
+	int width, height;  cin >> height >> width;
+		
+	Point begin;
+	Point goal;
+		
+	for(int y = 0; y < height; y++){
+		for(int x = 0; x < width; x++){
+			char c; cin >> c; 
+			if(c == 'S'){
+				begin.x = x;
+				begin.y = y;
+				c = '.';
+			}
+			if(c == 'G'){
+				goal.x = x;
+				goal.y = y;
+				c = '.';
+			}
+			maze[y][x] = c;
+		}
+	}
+	
+	priority_queue< pair<int, Point>, vector< pair<int, Point > >, std::greater< pair< int, Point > >  > Q;
+	Q.push(make_pair(0,begin));
+	while(!Q.empty()){
+		// read from stack
+		Point now = Q.top().second;
+		int timestamp = Q.top().first;
+		Q.pop();
+		
+		//cout << "(" << now.x << "," << now.y << ")@" << timestamp << endl;
+		
+		// check if already been here
+		if(geweest[now.x][now.y][timestamp%4]){
+			continue;
+		}
+		geweest[now.x][now.y][timestamp%4] = true;
+		
+		// check if we die from laz0rs
+		bool doWeDie = false;
+		for(int r = 0; r < 4; r++){
+			Point p = now;
+			while(isValid(p,width,height) && maze[p.y][p.x] != '#'){
+				p.x += dx[r]; p.y += dy[r];
+				if(isLaz0r(maze[p.y][p.x])){
+					//cout << now.x << "," << now.y << endl;
+					doWeDie = doWeDie || checkIfWeDie(maze[p.y][p.x],timestamp,r);
+					// break out of the loop
+					p.x = -1; p.y = -1;
+				}
+			}
+		}
+		
+		if(doWeDie){
+			//cout << "WE GAAN DOOD(@"<<timestamp<<")" << endl;
+			continue;
+		}
+		
+		// check if we are done
+		if(now.x == goal.x && now.y == goal.y){
+			cout << timestamp << endl;
+			return;
+		}
+		
+		// go to next element
+		for(int r = 0; r < 4; r++){
+			Point next; 
+			next.x = now.x + dx[r];
+			next.y = now.y + dy[r];
+						
+			// check if next is valid
+			if(isValid(next, width, height) && maze[next.y][next.x] == '.'){
+				Q.push(make_pair(timestamp + 1, next));
+			}
+		}
+	}
+	
+
+	cout << "impossible" << endl;
+}
+
+int main(){
+	int n; cin >> n;
+	for(int i = 1; i <= n; i++){
+		cout << "Case #" << i << " ";
+		JeMoeder();
+	}
+}

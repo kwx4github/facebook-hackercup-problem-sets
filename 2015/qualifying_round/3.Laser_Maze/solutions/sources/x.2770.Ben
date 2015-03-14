@@ -1,0 +1,138 @@
+#include <iostream>
+#include <unordered_map>
+#include <queue>
+#include <algorithm>
+
+int r, c;
+char map[100][100];
+bool cache[100][100][4];
+std::unordered_multimap<int, int> rows;
+std::unordered_multimap<int, int> columns;
+char getDir(char initial, int steps) {
+    char _[] = {'<', '^', '>', 'v'};
+    return _[(std::find(_, _+4, initial) - _ + steps) % 4];
+}
+
+// assume that 'laser' is in the right row *or* column
+bool hitsMe(std::pair<int, int> me, std::pair<int, int> laser, char dir) {
+    switch (dir) {
+        case '<':
+            return me.second < laser.second;
+        case '>':
+            return me.second > laser.second;
+        case '^':
+            return me.first < laser.first;
+        case 'v':
+            return me.first > laser.first;
+    }
+}
+
+bool hasWall(std::pair<int, int> me, std::pair<int, int> laser, char dir) {
+    switch (dir) {
+        case '<':
+            for (int j = laser.second; j >= 0 && j != me.second; j--)
+                if (map[laser.first][j] == '#')
+                    return true;
+            break;
+        case '>':
+            for (int j = laser.second; j < c && j != me.second; j++)
+                if (map[laser.first][j] == '#')
+                    return true;
+            break;
+        case 'v':
+            for (int i = laser.first; i < r && i != me.first; i++)
+                if (map[i][laser.second] == '#')
+                    return true;
+            break;
+        case '^':
+            for (int i = laser.first; i >= 0 && i != me.first; i--)
+                if (map[i][laser.second] == '#')
+                    return true;
+            break;
+    }
+    return false;
+}
+
+int main() {
+    int cases;
+    std::cin >> cases;
+    std::cin.get();
+    for (int z = 0; z < cases; z++) {
+        rows.clear();
+        columns.clear();
+        std::cin >> r >> c;
+        int sR, sC;
+        for (int i = 0; i < r; i++) {
+            for (int j = 0; j < c; j++) {
+                for (int k = 0; k < 4; k++)
+                    cache[i][j][k] = false;
+                std::cin >> map[i][j];
+                if (map[i][j] == '<' ||
+                    map[i][j] == '>' ||
+                    map[i][j] == 'v' ||
+                    map[i][j] == '^') {
+                    rows.insert({i, j});
+                    columns.insert({j, i});
+                } else if (map[i][j] == 'S') {
+                    sR = i;
+                    sC = j;
+                }
+            }
+        }
+
+        std::queue<std::pair<std::pair<int, int>, int>> q;
+        q.push({{sR, sC}, 0});
+        int minSteps = -1;
+        while (q.size()) {
+            std::pair<std::pair<int, int>, int> current = q.front();
+            q.pop();
+            int currR = current.first.first;
+            int currC = current.first.second;
+            int steps = current.second;
+            //std::cout << "At (" << currR << ", " << currC << ") with " << steps << " steps" << std::endl;
+            if (map[currR][currC] == 'G') {
+                minSteps = steps;
+                break;
+            }
+            int dr[] = {-1, 0, 1, 0};
+            int dc[] = {0, -1, 0, 1};
+            for (int k = 0; k < 4; k++) {
+                int newR = currR + dr[k];
+                int newC = currC + dc[k];
+                if (newR >= 0 && newR < r && newC >= 0 && newC < c &&
+                        !cache[newR][newC][(steps + 1) % 4] &&
+                        map[newR][newC] != '#') {
+                    //std::cout << "Let's try (" << newR << ", " << newC << ") with " << steps%4 << "\n";
+                    cache[newR][newC][(steps + 1) % 4] = true;
+                    bool willLive = true;
+                    auto range = rows.equal_range(newR);
+                    for (auto row = range.first; row != range.second; row++) {
+                        std::pair<int, int> me = {newR, newC};
+                        std::pair<int, int> laser = {row->first, row->second};
+                        char newDir = getDir(map[row->first][row->second], steps+1);
+                        if (hitsMe(me, laser, newDir) && !hasWall(me, laser, newDir)) {
+                            //std::cout << "Nope, (" << row->first << ", " << row->second << ") kills\n";
+                            willLive = false;
+                        }
+                    }
+                    range = columns.equal_range(newC);
+                    for (auto column = range.first; column != range.second; column++) {
+                        std::pair<int, int> me = {newR, newC};
+                        std::pair<int, int> laser = {column->second, column->first};
+                        char newDir = getDir(map[column->second][column->first], steps+1);
+                        if (hitsMe(me, laser, newDir) && !hasWall(me, laser, newDir)) {
+                            //std::cout << "Nope, (" << column->second << ", " << column->first << ") kills\n";
+                            willLive = false;
+                        }
+                    }
+                    if (willLive)
+                        q.push({{newR, newC}, steps + 1});
+                }
+            }
+
+
+        }
+        std::cout << "Case #" << z+1 << ": " << ((minSteps == -1) ? "impossible" : std::to_string(minSteps)) << "\n";
+    }
+    return 0;
+}

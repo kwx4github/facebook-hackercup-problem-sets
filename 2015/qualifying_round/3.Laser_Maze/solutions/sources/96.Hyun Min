@@ -1,0 +1,113 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <vector>
+#include <queue>
+using namespace std;
+
+const int N = 100;
+
+typedef pair<int, int> pii;
+
+struct phase {
+	int x, y, t;
+	phase() {}
+	phase(int x, int y, int t) : x(x), y(y), t(t) {}
+};
+
+int n, m;
+string g[N];
+queue<phase> q;
+
+int bad[4][N][N], vst[4][N][N];
+int direction[128];
+
+int dx[4] = { 0, -1, 0, 1 };
+int dy[4] = { -1, 0, 1, 0 };
+
+bool ok(int x, int y) {
+	if (x < 0 || x >= n || y < 0 || y >= m) return false;
+	if (g[x][y] == '.' || g[x][y] == 'S' || g[x][y] == 'G') return true;
+	return false;
+}
+
+int main(void) {
+	freopen("lazer_maze.txt", "r", stdin);
+	freopen("lazer_maze.out", "w", stdout);
+	// processing
+	direction['<'] = 0;
+	direction['^'] = 1;
+	direction['>'] = 2;
+	direction['v'] = 3;
+
+	int test_cases;
+	cin >> test_cases;
+	for (int kase = 1; kase <= test_cases; kase++) {
+		cin >> n >> m;
+		for (int i = 0; i < n; i++)
+			cin >> g[i];
+		while (!q.empty()) q.pop();
+		
+		for (int i = 0; i < n; i++) for (int j = 0; j < m; j++) for (int t = 0; t < 4; t++) vst[t][i][j] = -1, bad[t][i][j] = 0;
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < m; j++) {
+				if (g[i][j] == '#') for (int t = 0; t < 4; t++) bad[t][i][j] = 1;
+				if (g[i][j] == '<' || g[i][j] == '>' ||
+					g[i][j] == '^' || g[i][j] == 'v') {
+					for (int t = 0; t < 4; t++) {
+						bad[t][i][j] = 1;
+						int sx = i, sy = j;
+						int ld = (direction[g[i][j]] + t) % 4;
+						sx += dx[ld], sy += dy[ld];
+						while (ok(sx, sy)) {
+							bad[t][sx][sy] = 1;
+							sx += dx[ld], sy += dy[ld];
+						}
+					}
+				}
+			}
+		}
+
+		for (int i = 0; i < n; i++) {
+			for (int j = 0; j < m; j++) {
+				if (g[i][j] == 'S')
+					q.push(phase(i, j, 0));
+			}
+		}
+
+		while (!q.empty()) {
+			phase cp = q.front(); q.pop();
+			int x = cp.x, y = cp.y, t = cp.t;
+			if (vst[t%4][x][y] != -1) continue;
+			vst[t % 4][x][y] = t;
+			for (int k = 0; k < 4; k++) {
+				int nt = (t + 1) % 4;
+				int nx = x + dx[k];
+				int ny = y + dy[k];
+				if (!ok(nx, ny)) continue;
+				if (bad[nt][nx][ny]) continue;
+				q.push(phase(nx, ny, t+1));
+			}
+		}
+		int ans = -1;
+		for (int t = 0; t < 4; t++) {
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < m; j++) {
+					if (vst[t][i][j] != -1 && g[i][j] == 'G') {
+						if (ans == -1) ans = vst[t][i][j];
+						else ans = min(ans, vst[t][i][j]);
+					}
+				}
+			}
+		}
+		cout << "Case #" << kase << ": ";
+		if (ans == -1) cout << "impossible\n";
+		else {
+			cout << ans << "\n";
+		}
+	}
+
+	return 0;
+}

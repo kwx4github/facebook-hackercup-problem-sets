@@ -1,0 +1,101 @@
+let _ =
+  let sb = Scanf.Scanning.stdib in
+  let cases = Scanf.bscanf sb "%d " (fun s -> s) in
+    for ca = 1 to cases do
+      let m = Scanf.bscanf sb "%d " (fun s -> s) in
+      let n = Scanf.bscanf sb "%d " (fun s -> s) in
+      let maze = Array.make m "" in
+      let _ =
+	for i = 0 to m - 1 do
+	  maze.(i) <- Scanf.bscanf sb "%s " (fun s -> s)
+	done;
+      in
+      let dirs = [| (-1, 0); (0, -1); (1, 0); (0, 1) |] in
+      let sx = ref 0 in
+      let sy = ref 0 in
+      let gx = ref 0 in
+      let gy = ref 0 in
+      let a = Array.init 4 (fun _ -> Array.make_matrix m n true) in
+      let dist = Array.init 4 (fun _ -> Array.make_matrix m n (-1)) in
+      let fill_turret x y dir =
+	for k = 0 to 3 do
+	  let dir = (dir + k) mod 4 in
+	  let (dx, dy) = dirs.(dir) in
+	  let x = ref x in
+	  let y = ref y in
+	  let c = ref 0 in
+	    while !x >= 0 && !y >= 0 && !x < n && !y < m &&
+	      (!c = 0 || maze.(!y).[!x] = '.' || maze.(!y).[!x] = 'S' ||
+		  maze.(!y).[!x] = 'G')
+	    do
+	      a.(k).(!y).(!x) <- false;
+	      incr c;
+	      x := !x + dx;
+	      y := !y + dy;
+	    done
+	done
+      in
+      let _ =
+	for i = 0 to m - 1 do
+	  for j = 0 to n - 1 do
+	    match maze.(i).[j] with
+	      | '.' -> ()
+	      | '#' ->
+		  for k = 0 to 3 do
+		    a.(k).(i).(j) <- false;
+		  done;
+	      | 'S' ->
+		  sx := j;
+		  sy := i;
+	      | 'G' ->
+		  gx := j;
+		  gy := i;
+	      | '<' -> fill_turret j i 0
+	      | '^' -> fill_turret j i 1
+	      | '>' -> fill_turret j i 2
+	      | 'v' -> fill_turret j i 3
+	      | _ -> assert false
+	  done
+	done;
+	(*for k = 0 to 3 do
+	  for i = 0 to m - 1 do
+	    for j = 0 to n - 1 do
+	      if a.(k).(i).(j)
+	      then Printf.printf "."
+	      else Printf.printf "#"
+	    done;
+	    Printf.printf "\n"
+	  done;
+	  Printf.printf "\n\n"
+	done*)
+      in
+      let q = Queue.create () in
+	Queue.add (!sx, !sy, 0) q;
+	dist.(0).(!sy).(!sx) <- 0;
+	while not (Queue.is_empty q) do
+	  let (x, y, k) = Queue.take q in
+	  let d = dist.(k).(y).(x) in
+(*Printf.printf "asd %d %d %d  %d\n" x y k d;*)
+	  let k = (k + 1) mod 4 in
+	    for dir = 0 to 3 do
+	      let (dx, dy) = dirs.(dir) in
+	      let x = x + dx
+	      and y = y + dy in
+		if x >= 0 && y >= 0 && x < n && y < m && a.(k).(y).(x) &&
+		  dist.(k).(y).(x) < 0
+		then (
+		  dist.(k).(y).(x) <- d + 1;
+		  Queue.add (x, y, k) q;
+		)
+	    done;
+	done;
+	let res = ref 1000000000 in
+	  for k = 0 to 3 do
+(*Printf.printf "qwe %d %d %d  %d %d\n" !gx !gy k dist.(k).(!gy).(!gx) !res;*)
+	    if dist.(k).(!gy).(!gx) >= 0
+	    then res := min !res dist.(k).(!gy).(!gx);
+	  done;
+	  if !res = 1000000000
+	  then Printf.printf "Case #%d: impossible\n" ca
+	  else Printf.printf "Case #%d: %d\n" ca !res;
+    done

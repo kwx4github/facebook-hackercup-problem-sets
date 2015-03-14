@@ -1,0 +1,218 @@
+//Clibrary:
+#include<cassert>
+#include<cctype>
+#include<cerrno>
+//#include<cfenv>
+#include<cfloat>
+//#include<cinttypes>
+#include<ciso646>
+#include<climits>
+#include<clocale>
+#include<cmath>
+#include<csetjmp>
+#include<csignal>
+#include<cstdarg>
+//#include<cstdbool>
+#include<cstddef>
+//#include<cstdint>
+#include<cstdio>
+#include<cstdlib>
+#include<cstring>
+//#include<ctgmath>
+#include<ctime>
+//#include<cuchar>
+#include<cwchar>
+#include<cwctype>
+//Containers:
+//#include<array>
+#include<bitset>
+#include<deque>
+//#include<forward_list>
+#include<list>
+#include<map>
+#include<queue>
+#include<set>
+#include<stack>
+//#include<unordered_map>
+//#include<unordered_set>
+#include<vector>
+//Input/Output:
+#include<fstream>
+#include<iomanip>
+#include<ios>
+#include<iosfwd>
+#include<iostream>
+#include<istream>
+#include<ostream>
+#include<sstream>
+#include<streambuf>
+//Other:
+#include<algorithm>
+//#include<chrono>
+//#include<codecvt>
+#include<complex>
+#include<exception>
+#include<functional>
+//#include<initializer_list>
+#include<iterator>
+#include<limits>
+#include<locale>
+#include<memory>
+#include<new>
+#include<numeric>
+//#include<random>
+//#include<ratio>
+//#include<regex>
+#include<stdexcept>
+#include<string>
+//#include<system_error>
+//#include<tuple>
+//#include<typeindex>
+#include<typeinfo>
+//#include<type_traits>
+#include<utility>
+#include<valarray>
+using namespace std;
+
+typedef long long i64;
+typedef unsigned long long u64;
+
+typedef long long               ll;
+typedef long double             ld;
+typedef vector<int>             vi;
+typedef vector<vi>              vvi;
+typedef pair<int, int>          pii;
+typedef vector<pii>             vii; // vector of integer pairs
+typedef set<int>                si;
+typedef map<string, int>        msi;
+
+const double PI = acos(-1);
+
+/*
+ * __builtin_ffs  __builtin_clz  __builtin_ctz __builtin_popcount  __builtin_parity
+ * sizeof CLOCKS_PER_SEC
+ * (1 << (31 - __builtin_clz(100) ) == 64;
+ * decltype // deprecated
+ */
+
+const int MAXN = 128;
+vector<string> maze;
+vector<vector<string> > grid;
+int  step[4][MAXN][MAXN];
+int M, N;
+string turrets = "<^>v";
+bool isTurrets(char c) {
+  return turrets.find(c) != string::npos;
+}
+struct Pos{
+  int i, j;
+  Pos(int _i, int _j): i(_i), j(_j){}
+};
+
+
+Pos dirTurrets(char c) {
+  switch(c){
+  case '<': return Pos(0, -1);
+  case '^': return Pos(-1, 0);
+  case '>': return Pos(0,  1);
+  case 'v': return Pos(1,  0);
+  }
+  assert(0);
+}
+char nextTurrets(char c) {
+  char pos = turrets.find(c);
+  return turrets[(pos + 1)%4];
+}
+bool isValid(int i, int j) {
+  return 0 <= i && i < M && 0 <= j && j < N;
+}
+bool isValid(Pos p) {
+  return isValid(p.i, p.j);
+}
+bool isTurretsCross(char c) {
+  return !isTurrets(c) && c != '#';
+}
+void preprocess() {
+  grid.clear();
+  memset(step, 0, sizeof(step));
+  for (int T = 0; T < 4; T++) {
+    grid.push_back(maze);
+    auto &g = grid.back();
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) if (isTurrets(g[i][j])) {
+        //cout << i << ", " << j << endl;
+        Pos d = dirTurrets(g[i][j]);
+        Pos p(i, j);
+        do{
+          g[p.i][p.j] = 'L';
+          p.i += d.i, p.j += d.j;
+        }while (isValid(p) && isTurretsCross(g[p.i][p.j]));
+      }
+    }
+    //for (int i = 0; i < M; i++) {
+      //cout << g[i] << endl;
+    //}
+    for (int i = 0; i < M; i++) {
+      for (int j = 0; j < N; j++) if (isTurrets(maze[i][j])) {
+        maze[i][j] = nextTurrets(maze[i][j]);
+      }
+    }
+  }
+}
+Pos findPos(char c) {
+  for (int i = 0; i < M; i++) {
+    for (int j = 0; j < N; j++) {
+      if (maze[i][j] == c) return Pos(i, j);
+    }
+  }
+  assert(0);
+}
+
+struct State{
+  int i, j, l;
+  State(int _i, int _j, int _l): i(_i), j(_j), l(_l){}
+};
+int di[] = {1, -1, 0, 0};
+int dj[] = {0,  0,-1, 1};
+void solve() {
+  memset(step, 0x3f, sizeof(step));
+  Pos S = findPos('S');
+  Pos G = findPos('G');
+  queue<State> Q;
+  step[0][S.i][S.j] = 0;
+  Q.push(State(S.i, S.j, 0));
+  while (!Q.empty()) {
+    State s = Q.front(); Q.pop();
+    for (int i = 0; i < 4; i++) {
+      State t(s.i + di[i], s.j + dj[i], (s.l + 1)%4);  
+      if (!isValid(t.i, t.j)) continue;
+      //if (step[s.l][s.i][s.j] != 0 && grid[s.l][t.i][t.j] == 'L') continue;
+      //if (grid[s.l][t.i][t.j] == '#') continue;
+      if (grid[t.l][t.i][t.j] == '#' ) continue;
+      if (grid[t.l][t.i][t.j] == 'L' ) continue;
+      if (G.i == t.i && G.j == t.j) {
+        cout << step[s.l][s.i][s.j] + 1<< endl;
+        return;
+      }
+      if (step[s.l][s.i][s.j] + 1 >= step[t.l][t.i][t.j]) continue;
+      step[t.l][t.i][t.j] = step[s.l][s.i][s.j] + 1;
+      //cout << t.i << ", " << t.j << ", " << t.l << ": " << step[t.l][t.i][t.j] << endl;
+      Q.push(t);
+    }
+  }
+  cout << "impossible" << endl;
+}
+int main(){
+  ios_base::sync_with_stdio(false); 
+  int T; cin >> T;
+  for (int CASE = 1; CASE <= T; CASE++) {
+    cout << "Case #" << CASE << ": ";
+    cin  >> M >> N;
+    maze.clear();
+    maze.resize(M);
+    for (int i = 0; i < M; i++) cin >> maze[i];
+    preprocess();
+    solve();
+  }
+}
+

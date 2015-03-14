@@ -1,0 +1,205 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+char queueX[1000000];
+char queueY[1000000];
+char queueTime[1000000];
+
+int turretX[10000];
+int turretY[10000];
+int turretDirection[10000];
+int turretcnt;
+
+int mapx, mapy;
+char map[100][100];
+
+int turretCheck(int myX, int myY, int time)
+{
+	int i, j, afterTimeTurretDirection;
+
+	for (i=0; i<turretcnt; i++)
+	{
+		if (myX != turretX[i] && myY != turretY[i])
+			continue;
+
+		afterTimeTurretDirection = (turretDirection[i] + time) % 4;
+		
+		//printf("time %d, direction %d\n", time, afterTimeTurretDirection);
+		// ^ > v <
+
+		switch (afterTimeTurretDirection)
+		{
+		case 0:
+			for (j=turretX[i]-1; j>=0; j--)
+			{
+				if (j == myX && turretY[i] == myY) 
+					return 0;
+				else if (map[j][turretY[i]] == '#' || map[j][turretY[i]] == '^' || map[j][turretY[i]] == '>' || map[j][turretY[i]] == '<' || map[j][turretY[i]] == 'v')
+					break;
+			}
+			break;
+		case 1:
+			for (j=turretY[i]+1; j<mapy; j++)
+			{
+				if (j == myY && turretX[i] == myX) 
+					return 0;
+				else if (map[turretX[i]][j] == '#' || map[turretX[i]][j] == '^' || map[turretX[i]][j] == '>' || map[turretX[i]][j] == '<' || map[turretX[i]][j] == 'v')
+					break;
+			}
+			break;
+		case 2:
+			for (j=turretX[i]+1; j<mapy; j++)
+			{
+				if (j == myX && turretY[i] == myY) 
+					return 0;
+				else if (map[j][turretY[i]] == '#' || map[j][turretY[i]] == '^' || map[j][turretY[i]] == '>' || map[j][turretY[i]] == '<' || map[j][turretY[i]] == 'v')
+					break;
+			}
+			break;
+		case 3:
+			
+			for (j=turretY[i]-1; j>=0; j--)
+			{
+				if (j == myY && turretX[i] == myX) 
+					return 0;
+				else if (map[turretX[i]][j] == '#' || map[turretX[i]][j] == '^' || map[turretX[i]][j] == '>' || map[turretX[i]][j] == '<' || map[turretX[i]][j] == 'v')
+					break;
+			}
+			break;
+		}
+	}
+	return 1;
+}
+
+int main()
+{
+	int t, testcase;
+	int i, j;
+	
+
+	int startx, starty;
+	int goalx, goaly;
+
+	
+	int mapmin[100][100];
+
+
+	int addX[4] = {1, 0, 0, -1};
+	int addY[4] = {0, 1, -1, 0};
+
+	int start;
+	int end;
+
+	int nowX, nowY, nowTime;
+	int nextX, nextY, nextTime;
+
+	int minTime;
+
+	char junk;
+
+	freopen("input.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+
+	scanf("%d", &testcase);
+
+	for (t=1; t<=testcase; t++)
+	{
+		printf("Case #%d: ", t);
+
+		scanf("%d %d", &mapx, &mapy);
+		
+		// init
+		turretcnt = 0; start = 0; end = 0; minTime = 999999999;
+
+		for (i=0; i<mapx; i++)
+		{
+			scanf("%c", &junk);
+			for (j=0; j<mapy; j++)
+			{
+				mapmin[i][j] = 999999999;
+
+				scanf("%c", &map[i][j]);
+
+				// ^ > v <
+				if (map[i][j] == 'S') {startx = i; starty = j;}
+				else if (map[i][j] == 'G') {goalx = i; goaly = j;}
+				else if (map[i][j] == '^') 
+				{
+					turretX[turretcnt] = i;
+					turretY[turretcnt] = j;
+					turretDirection[turretcnt] = 0;
+					turretcnt++;
+				}
+				else if (map[i][j] == '>') 
+				{
+					turretX[turretcnt] = i;
+					turretY[turretcnt] = j;
+					turretDirection[turretcnt] = 1;
+					turretcnt++;
+				}
+				else if (map[i][j] == 'v') 
+				{
+					turretX[turretcnt] = i;
+					turretY[turretcnt] = j;
+					turretDirection[turretcnt] = 2;
+					turretcnt++;
+				}
+				else if (map[i][j] == '<') 
+				{
+					turretX[turretcnt] = i;
+					turretY[turretcnt] = j;
+					turretDirection[turretcnt] = 3;
+					turretcnt++;
+				}
+			}
+			
+		}
+
+		queueX[0] = startx; queueY[0] = starty;
+		queueTime[0] = 0;
+		end++;
+		mapmin[startx][starty] = 0;
+
+		while(start < end)
+		{
+			nowX = queueX[start]; nowY = queueY[start];
+			nowTime = queueTime[start];
+			start++;
+
+			if (nowX == goalx && nowY == goaly)
+			{
+				minTime = nowTime;
+				break;
+			}
+
+			for (i=0; i<4; i++)
+			{
+				nextX = nowX + addX[i];	
+				nextY = nowY + addY[i];
+				nextTime = nowTime + 1;
+
+				if (nextX >= 0 && nextX < mapx && nextY >= 0 && nextY < mapy && (map[nextX][nextY] == '.' || map[nextX][nextY] == 'S' || map[nextX][nextY] == 'G') && (mapmin[nextX][nextY] + 4) > nextTime && turretCheck(nextX, nextY, nextTime))
+				{
+					if (mapmin[nextX][nextY] > nextTime)
+						mapmin[nextX][nextY] = nextTime;
+
+					queueX[end] = nextX; queueY[end] = nextY; queueTime[end] = nextTime;
+					end++;
+				}
+			}
+		}
+
+		for (i=0; i<end; i++)
+		{
+			//printf("%d %d %d\n", queueX[i], queueY[i], queueTime[i]);
+
+		}
+		if (minTime == 999999999)
+			printf("impossible\n");
+		else
+			printf("%d\n", minTime);
+	}
+
+	return 0;
+}

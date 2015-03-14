@@ -1,0 +1,146 @@
+#include <vector>
+#include <map>
+#include <set>
+#include <utility>
+#include <iostream>
+#include <dispatch/dispatch.h>
+
+using namespace std;
+
+struct Nutrition {
+	int P;
+	int C;
+	int F;
+
+	Nutrition() : P(0), C(0), F(0) {}
+
+	Nutrition &operator+=(const Nutrition &o)
+	{
+		P += o.P;
+		C += o.C;
+		F += o.F;
+		return *this;
+	}
+
+	bool operator==(const Nutrition &o)
+	{
+		return P == o.P &&
+			   C == o.C &&
+			   F == o.F;
+	}
+
+	bool empty() const
+	{
+		return P == 0 && C == 0 && F == 0;
+	}
+};
+
+bool operator<(const Nutrition& l, const Nutrition& r)
+{
+	if (l.P != r.P)
+		return l.P < r.P;
+	else if (l.C != r.C)
+		return l.C < r.C;
+	else
+		return l.F < r.F;
+}
+
+int N;
+Nutrition goal;
+vector<Nutrition> foods;
+
+#ifdef DEBUG
+bool dfs(int i, Nutrition subtotal, map<int, bool> ate)
+#else
+bool dfs(int i, Nutrition subtotal)
+#endif
+{
+#ifdef DEBUG
+printf("\ndfs %d: ", i);
+for (int j = 0; j < N; ++j) {
+	auto it = ate.find(j);
+	if (it == ate.end())
+		printf("-");
+	else
+		printf("%c", it->second ? 'o' : 'x');
+}
+printf(" P=%d C=%d F=%d ", subtotal.P, subtotal.C, subtotal.F);
+#endif
+
+	bool result;
+	if (subtotal == goal) {
+		result = true;
+	} else if (i == N) {
+		result = false;
+	} else if (
+			subtotal.P > goal.P ||
+			subtotal.C > goal.C ||
+			subtotal.F > goal.F) {
+		result = false;
+	} else {
+#ifdef DEBUG
+		ate[i] = false;
+		result = dfs(i + 1, subtotal, ate); // don't eat foods[i]
+#else
+		result = dfs(i + 1, subtotal); // don't eat foods[i]
+#endif
+
+		if (!result) {
+			const Nutrition& food = foods[i];
+			subtotal += food; // eat foods[i]
+#ifdef DEBUG
+			ate[i] = true;
+			result = dfs(i + 1, subtotal, ate);
+#else
+			result = dfs(i + 1, subtotal);
+#endif
+		}
+	}
+	return result;
+}
+
+int main()
+{
+	int T;
+	cin >> T;
+	for (int caseNo = 1; caseNo <= T; ++caseNo) {
+		cin >> goal.P;
+		cin >> goal.C;
+		cin >> goal.F;
+
+		cin >> N;
+
+		Nutrition total;
+		foods.clear();
+		for (int i = 0; i < N; ++i) {
+			Nutrition food;
+			cin >> food.P;
+			cin >> food.C;
+			cin >> food.F;
+			foods.emplace_back(food);
+			total += food;
+		}
+
+		bool result;
+		if (goal == total) {
+			result = true;
+		} else if (
+				total.P < goal.P ||
+				total.C < goal.C ||
+				total.F < goal.F) {
+			result = false;
+		} else {
+			Nutrition subtotal;
+#ifdef DEBUG
+			map<int, bool> ate;
+			result = dfs(0, subtotal, ate);
+#else
+			result = dfs(0, subtotal);
+#endif
+		}
+
+		printf("Case #%d: %s\n", caseNo, result ? "yes" : "no");
+	}
+	return 0;
+}
+

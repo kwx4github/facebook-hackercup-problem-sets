@@ -1,0 +1,359 @@
+#include <fstream>
+#include <cstring>
+#include <queue>
+#include <climits>
+#include <utility>
+
+const int MAX_WIDTH = 100;
+const int MAX_HEIGHT = 100;
+const int MAX_STATES = 4;
+
+char Maze[MAX_WIDTH][MAX_HEIGHT];
+char Maze_State[MAX_WIDTH][MAX_HEIGHT][MAX_STATES];
+
+const char FROM_DOWN = 1;
+const char FROM_UP = 2;
+const char FROM_LEFT = 4;
+const char FROM_RIGHT = 8;
+
+int	iRowStrt;
+int	iColStrt;
+int iRowEnd;
+int iColEnd;
+int	M;
+int	N;
+
+bool Can_Move_To_Safely(int iRow, int iCol, int iLevel)
+{
+	for (int i = iCol - 1; i >= 0; --i)
+	{
+		if (Maze[iRow][i] == '#')
+			break;
+
+		if (Maze[iRow][i] != '.' || Maze[iRow][i] != 'S' || Maze[iRow][i] != 'G')
+		{
+			if (Maze[iRow][i] == '^')
+			{
+				if (iLevel == 1)
+					return false;
+
+				break;
+			}
+
+			if (Maze[iRow][i] == '<')
+			{
+				if (iLevel == 2)
+					return false;
+
+				break;
+			}
+
+			if (Maze[iRow][i] == '>')
+			{
+				if (iLevel == 0)
+					return false;
+
+				break;
+			}
+
+			if (Maze[iRow][i] == 'v')
+			{
+				if (iLevel == 3)
+					return false;
+
+				break;
+			}
+		}
+	}
+	
+	for (int i = iCol + 1; i < N; ++i)
+	{
+		if (Maze[iRow][i] == '#')
+			break;
+
+		if (Maze[iRow][i] != '.' || Maze[iRow][i] != 'S' || Maze[iRow][i] != 'G')
+		{
+			if (Maze[iRow][i] == '^')
+			{
+				if (iLevel == 3)
+					return false;
+
+				break;
+			}
+
+			if (Maze[iRow][i] == '<')
+			{
+				if (iLevel == 0)
+					return false;
+
+				break;
+			}
+
+			if (Maze[iRow][i] == '>')
+			{
+				if (iLevel == 2)
+					return false;
+
+				break;
+			}
+
+			if (Maze[iRow][i] == 'v')
+			{
+				if (iLevel == 1)
+					return false;
+
+				break;
+			}
+		}
+	}
+
+	for (int i = iRow - 1; i >= 0; --i)
+	{
+		if (Maze[i][iCol] == '#')
+			break;
+
+		if (Maze[i][iCol] != '.' || Maze[i][iCol] != 'S' || Maze[i][iCol] != 'G')
+		{
+			if (Maze[i][iCol] == '^')
+			{
+				if (iLevel == 2)
+					return false;
+
+				break;
+			}
+
+			if (Maze[i][iCol] == '<')
+			{
+				if(iLevel == 3)
+					return false;
+
+				break;
+			}
+
+			if (Maze[i][iCol] == '>')
+			{
+				if (iLevel == 1)
+					return false;
+	
+				break;
+			}
+
+			if (Maze[i][iCol] == 'v')
+			{
+				if (iLevel == 0)
+					return false;
+
+				break;
+			}
+		}
+	}
+
+	for (int i = iRow + 1; i < M; ++i)
+	{
+		if (Maze[i][iCol] == '#')
+			break;
+
+		if (Maze[i][iCol] != '.' || Maze[i][iCol] != 'S' || Maze[i][iCol] != 'G')
+		{
+			if (Maze[i][iCol] == '^')
+			{
+				if (iLevel == 0)
+					return false;
+
+				break;
+			}
+
+			if (Maze[i][iCol] == '<')
+			{
+				if (iLevel == 1)
+					return false;
+			
+				break;
+			}
+
+			if (Maze[i][iCol] == '>')
+			{
+				if (iLevel == 3)
+					return false;
+
+				break;
+			}
+
+			if (Maze[i][iCol] == 'v')
+			{
+				if (iLevel == 2)
+					return false;
+
+				break;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool BFS(int* pSolution)
+{
+	int									iLevel = 0;
+	std::queue<std::pair <int, int> >	BackLog;
+	std::queue<int>						Levels;
+	std::pair <int, int>				point;
+
+	BackLog.push(std::make_pair<int, int> (iRowStrt, iColStrt));
+	Levels.push(0);
+
+	while (!BackLog.empty())
+	{
+		point = BackLog.front();
+		BackLog.pop();
+		iLevel = Levels.front();
+		Levels.pop();
+
+		if (point.first != 0)
+		{
+			if (Maze[point.first - 1][point.second] == '.' || Maze[point.first - 1][point.second] == 'G' || Maze[point.first - 1][point.second] == 'S')
+			{
+				if ((Maze_State[point.first - 1][point.second][(iLevel + 1) % MAX_STATES] & FROM_DOWN) == 0)
+				{
+					if (Can_Move_To_Safely(point.first - 1, point.second, (iLevel + 1) % MAX_STATES))
+					{
+						if (Maze[point.first - 1][point.second] == 'G')
+						{
+							*pSolution = iLevel + 1;
+							return true;
+						}
+						else
+						{
+							BackLog.push(std::make_pair<int, int>(point.first - 1, point.second));
+							Levels.push(iLevel + 1);
+						}
+					}
+
+					Maze_State[point.first - 1][point.second][(iLevel + 1) % MAX_STATES] |= FROM_DOWN;
+				}
+			}
+		}
+
+		if (point.first != (M - 1))
+		{
+			if (Maze[point.first + 1][point.second] == '.' || Maze[point.first + 1][point.second] == 'G' || Maze[point.first + 1][point.second] == 'S')
+			{
+				if ((Maze_State[point.first + 1][point.second][(iLevel + 1) % MAX_STATES] & FROM_UP) == 0)
+				{
+					if (Can_Move_To_Safely(point.first + 1, point.second, (iLevel + 1) % MAX_STATES))
+					{
+						if (Maze[point.first + 1][point.second] == 'G')
+						{
+							*pSolution = iLevel + 1;
+							return true;
+						}
+						else
+						{
+							BackLog.push(std::make_pair<int, int>(point.first + 1, point.second));				
+							Levels.push(iLevel + 1);
+						}
+					}
+
+					Maze_State[point.first + 1][point.second][(iLevel + 1) % MAX_STATES] |= FROM_UP;
+				}
+			}
+		}
+
+		if (point.second != 0)
+		{
+			if (Maze[point.first][point.second - 1] == '.' || Maze[point.first][point.second - 1] == 'G' || Maze[point.first][point.second - 1] == 'S')
+			{
+				if ((Maze_State[point.first][point.second - 1][(iLevel + 1) % MAX_STATES] & FROM_RIGHT) == 0)
+				{
+					if (Can_Move_To_Safely(point.first, point.second - 1, (iLevel + 1) % MAX_STATES))
+					{
+						if (Maze[point.first][point.second - 1] == 'G')
+						{
+							*pSolution = iLevel + 1;
+							return true;
+						}
+						else
+						{
+							BackLog.push(std::make_pair<int, int>(point.first, point.second - 1));				
+							Levels.push(iLevel + 1);
+						}
+					}
+
+					Maze_State[point.first][point.second - 1][(iLevel + 1) % MAX_STATES] |= FROM_RIGHT;
+				}
+			}
+		}
+
+		if (point.second != (N - 1))
+		{
+			if (Maze[point.first][point.second + 1] == '.' || Maze[point.first][point.second + 1] == 'G' || Maze[point.first][point.second + 1] == 'S')
+			{
+				if ((Maze_State[point.first][point.second + 1][(iLevel + 1) % MAX_STATES] & FROM_LEFT) == 0)
+				{
+					if (Can_Move_To_Safely(point.first, point.second + 1, (iLevel + 1) % MAX_STATES))
+					{
+						if (Maze[point.first][point.second + 1] == 'G')
+						{
+							*pSolution = iLevel + 1;
+							return true;
+						}
+						else
+						{
+							BackLog.push(std::make_pair<int, int>(point.first, point.second + 1));
+							Levels.push(iLevel + 1);
+						}
+					}
+
+					Maze_State[point.first][point.second + 1][(iLevel + 1) % MAX_STATES] |= FROM_LEFT;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+int main()
+{
+	std::ifstream	InFile("laser_maze.txt");
+	std::ofstream	OutFile("Laser_Maze_output.txt", std::ios_base::ate || std::ios_base::out);
+	int				iCase = 0;
+	int				T;
+	int				nSolution = 0;
+
+	InFile >> T;
+
+	while (T--)
+	{
+		InFile >> M >> N;
+
+		for (int i = 0; i < M; ++i)
+		{
+			for (int j = 0; j < N; ++j)
+			{
+				InFile >> Maze[i][j];
+
+				Maze_State[i][j][0] = Maze_State[i][j][1] = Maze_State[i][j][2] = Maze_State[i][j][3] = 0;
+
+				if (Maze[i][j] == 'S')
+				{
+					iRowStrt = i;
+					iColStrt = j;
+				}
+
+				if (Maze[i][j] == 'G')
+				{
+					iRowEnd = i;
+					iColEnd = j;
+				}
+			}
+		}
+
+		if (BFS(&nSolution))
+			OutFile << "Case #" << ++iCase << ": " << nSolution << "\n";
+		else
+			OutFile << "Case #" << ++iCase << ": " << "impossible" << "\n";
+	}	
+
+	return 0;
+}

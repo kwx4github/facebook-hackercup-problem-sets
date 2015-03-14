@@ -1,0 +1,53 @@
+{-# LANGUAGE TemplateHaskell #-}
+
+module Cook (main, runTests) where
+
+import Test.QuickCheck
+
+import Data.Maybe
+import Data.List
+
+main :: IO ()
+-- main = print (swapFront '3' "10301")
+main = getContents >>= printCases . map cook . drop 1 . lines
+
+printCases :: [String] -> IO ()
+printCases = mapM_ printCase . zip ([1..])
+
+printCase (n, value) = putStrLn $ "Case #" ++ show n ++ ": " ++ value
+
+cookmax [] = []
+cookmax cs@(c:cs') = if c >= maximum cs then c : cookmax cs' else swapFirst (maximum cs) cs
+
+cookmin [] = []
+cookmin (c:[]) = c:[]
+cookmin (c:cs) = if null (filter (/='0') cs) then c:cs else (if c <= minNonZero cs then c:(cookmin' cs) else swapLast (minNonZero cs) (c:cs))
+  where
+    cookmin' [] = []
+    cookmin' (c:[]) = c:[]
+    cookmin' (c:cs) = if c <= minimum cs then c:(cookmin' cs) else swapLast (minimum cs) (c:cs)
+    minNonZero = minimum . filter (/='0')
+
+cook word = cookmin word ++ " " ++ cookmax  word
+
+swapFirst c str = swapIndices 0 (fromJust $ elemIndex c str) str
+swapLast c str = swapIndices 0 (last $ elemIndices c str) str
+
+swapIndices i0 i1 str = replace i1 (str !! i0) . replace i0 (str !! i1) $ str
+
+replace :: Int -> Char -> String -> String
+replace i c str = take i str ++ [c] ++ drop (i+1) str
+
+prop_replace :: String -> Char -> Int -> Bool
+prop_replace str c i = if null str then True else ((replace i' c str) !! i' == c)
+  where
+    i' = i `mod` length str
+
+prop_swapFront :: String -> Int -> Bool
+prop_swapFront str i = if null str then True else (head swapped == str !! i' && swapped !! i' == head str)
+  where
+    i' = i `mod` length str
+    swapped = swapIndices 0 i' str
+
+return []
+runTests = $quickCheckAll

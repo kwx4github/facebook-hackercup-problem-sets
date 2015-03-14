@@ -1,0 +1,196 @@
+#include <bits/stdc++.h>
+
+#define F(i,a,b) for(int i = a; i < b; i++)
+#define pb push_back
+#define mp make_pair
+#define all(a) a.begin(), a.end()
+
+#define gc getchar_unlocked
+
+void scanint(int &x)
+{
+    register int c = gc();
+    x = 0;
+    for(;(c<48 || c>57);c = gc());
+    for(;c>47 && c<58;c = gc()) {x = (x<<1) + (x<<3) + c - 48;}
+}
+
+using namespace std;
+
+typedef vector<int> vi;
+typedef vector<vi> vii;
+typedef pair<int,int> pii;
+typedef vector<pii> vpii;
+typedef vector<string> vs;
+typedef vector<vs> vvs;
+typedef long long ll;
+
+int T,M,N;
+int xS,yS,xE,yE;
+struct STR
+{
+	int x;
+	int y;
+	vector <string> V;
+	int ctr;
+	
+	STR(int X,int Y,vs v, int c)
+	{
+		x = X; 
+		y = Y;
+		V = v;
+		ctr = c;
+	}
+};
+vector < pair<int,int> > turrets;
+int moves[4][2] = {{0,1},{1,0},{0,-1},{-1,0}};
+void MoveTurrets(vector <string> &V)
+{
+	int x,y;
+	F(i,0,turrets.size())
+	{
+		x = turrets[i].first;
+		y = turrets[i].second;
+		if(V[x][y] == '>')
+			V[x][y] = 'v';
+		else if(V[x][y] == 'v')
+			V[x][y] = '<';
+		else if(V[x][y] == '<')
+			V[x][y] = '^';
+		else if(V[x][y] == '^')
+			V[x][y] = '>';
+	}
+}
+
+bool IsMoveValid(vector <string> &V, int x,int y)
+{
+	//right
+	for(int i = y + 1; i < N; i++)
+	{
+		if(V[x][i] == '#')
+			break;
+		if(V[x][i] == '>' || V[x][i] == '^' || V[x][i] == 'v')
+			break;
+		if(V[x][i] == '<')
+			return false;
+	}
+	//left
+	for(int i = y - 1; i >= 0 ; i--)
+	{
+		if(V[x][i] == '#')
+			break;
+		if(V[x][i] == '<' || V[x][i] == '^' || V[x][i] == 'v')
+			break;
+		if(V[x][i] == '>')
+			return false;
+	}
+	//up
+	for(int i = x - 1; i >= 0 ; i--)
+	{
+		if(V[i][y] == '#')
+			break;
+		if(V[i][y] == '<' || V[i][y] == '^' || V[i][y] == '>')
+			break;
+		if(V[i][y] == 'v')
+			return false;
+	}
+	//down
+	for(int i = x + 1; i < M ; i++)
+	{
+		if(V[i][y] == '#')
+			break;
+		if(V[i][y] == '<' || V[i][y] == 'v' || V[i][y] == '>')
+			break;
+		if(V[i][y] == '^')
+			return false;
+	}
+	return true;
+}
+map <vs,bool> done;
+int bfs(vector <string> &V)
+{
+	queue < STR > Q;
+	Q.push( STR(xS,yS,V,0));
+	vector <string> temp;
+	while(!Q.empty())
+	{
+		STR P = Q.front();
+		Q.pop();
+		
+		F(i,0,4)
+		{
+			if(moves[i][0] + P.x >= 0 && moves[i][0] + P.x < M
+			 && moves[i][1] + P.y >= 0 && moves[i][1] + P.y < N
+			 && (P.V[moves[i][0] + P.x][moves[i][1] + P.y] == '.'
+			|| P.V[moves[i][0] + P.x][moves[i][1] + P.y] == 'G'))
+			{
+				STR ans = P;
+				temp = P.V;
+				temp[moves[i][0] + P.x][moves[i][1] + P.y] = 'S';
+				temp[P.x][P.y] = '.';
+				//~ for(int k = 0; k < M; k++)
+						//~ cout << temp[k] << endl;
+				//~ cout << "----------------" << endl;
+				MoveTurrets(temp);
+				if(done[temp])
+					continue;
+				done[temp] = true;
+				if(IsMoveValid(temp,moves[i][0] + P.x,moves[i][1] + P.y))
+				{
+					if(moves[i][0] + P.x == xE &&
+					moves[i][1] + P.y == yE)
+						return P.ctr + 1;
+					ans.V = temp;
+					ans.ctr++;
+					ans.x = moves[i][0] + P.x;
+					ans.y = moves[i][1] + P.y;
+					Q.push(ans);
+				}
+			}
+		}
+	
+	}
+	return -1;
+}
+
+int main()
+{
+	std::ios_base::sync_with_stdio(false);
+	
+	int T;
+	cin >> T;
+	int c = 1;
+	while(T--)
+	{
+		turrets.clear();
+		vector < string > V;
+		string inp;
+		cin >> M >> N;
+		done.clear();
+		F(i,0,M)
+		{
+			cin >> inp;
+			
+			F(k,0,inp.length())
+			{
+				if(inp[k] == 'S')
+					xS = i, yS = k;
+				else if(inp[k] == 'G')
+					xE = i, yE = k;
+				else if(inp[k] == '>' || inp[k] == '<' || 
+						inp[k] == 'v' || inp[k] == '^')
+					turrets.pb(mp(i,k));
+			}
+			
+			V.pb(inp);
+		}
+		
+		cout << "Case #" << c++ << ": ";
+		int ans = bfs(V);
+		if(ans > 0)
+				cout << ans << endl;
+		else
+			cout << "impossible" << endl;
+	}
+	return 0;
+}

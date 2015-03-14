@@ -1,0 +1,114 @@
+module C where
+
+import Control.Applicative
+import Control.Monad
+import Data.Array
+import Data.Maybe (fromJust, fromMaybe)
+import qualified Data.Set as S
+
+solveC :: IO ()
+solveC = do
+  t <- read <$> getLine
+  forM_ [1..t] (\x -> do
+    (h:w:[]) <- map read <$> (words <$> getLine)
+    xs <- forM [1..h] (\y -> do
+                         str <- getLine
+                         return str)
+    let maze = constMap xs
+    putStrLn $ "Case #" ++ (show x) ++ ": " ++ (fromMaybe "impossible" $ show <$> calcMin maze))
+
+
+walls :: [Char]
+walls = "#^>v<"
+
+calcMin :: Array (Int, Int) Char -> Maybe Int
+calcMin maze = calcMin' maze S.empty invalid goal 0 [start]
+  where start = findStartPos maze
+        goal = findGoalPos maze
+        invalid = enumInvalidPos maze
+
+calcMin' :: Array (Int, Int) Char -> S.Set (Int, [(Int, Int)]) ->
+ ([(Int, Int)], [(Int, Int)], [(Int, Int)], [(Int, Int)]) -> (Int, Int) -> Int -> [(Int, Int)] -> Maybe Int
+calcMin' maze record lasers goal t xs
+  | S.member (t `mod` 4, xs) record = Nothing
+  | goal `elem` nextXs = Just (t+1)
+  | otherwise = calcMin' maze nextRecord lasers goal (t+1) nextXs
+  where (ls1, ls2, ls3, ls4) = lasers
+        ys = case t `mod` 4 of
+               3 -> ls1
+               0 -> ls2
+               1 -> ls3
+               2 -> ls4
+        nextXs = nextStatus maze xs ys
+        nextRecord = S.insert (t `mod` 4, xs) record
+
+
+constMap :: [String] -> Array (Int, Int) Char
+constMap [] = undefined
+constMap xs = array ((0, 0), (h+1, w+1)) assoc
+  where h = length xs
+        w = length $ xs !! 0
+        assoc' = do
+                   let xs' = zip [1..] xs
+                   (n, str) <- xs'
+                   let ys = zip [1..] str
+                   (m, ch) <- ys
+                   return ((n,m), ch)
+        assoc = concat [[((0, x), '#'), ((h+1, x), '#')] | x <- [0..(w+1)]] ++
+                concat [[((y, 0), '#'), ((y, w+1), '#')] | y <- [0..(h+1)]] ++
+                assoc'
+
+findVal :: (Ix a, Eq b) => b -> Array a b -> Maybe a
+findVal v arr = foldr (\x acc -> if arr ! x == v then Just x else acc) Nothing $ indices arr
+
+findStartPos :: Array (Int, Int) Char -> (Int, Int)
+findStartPos = fromJust . findVal 'S'
+
+findGoalPos :: Array (Int, Int) Char -> (Int, Int)
+findGoalPos = fromJust . findVal 'G'
+
+findLaser :: Array (Int, Int) Char -> ([(Int, Int)], [(Int, Int)], [(Int, Int)], [(Int, Int)])
+findLaser arr = foldr (\x (a1, a2, a3, a4) -> case arr ! x of
+                                   '^' -> (x:a1, a2, a3, a4)
+                                   '>' -> (a1, x:a2, a3, a4)
+                                   'v' -> (a1, a2, x:a3, a4)
+                                   '<' -> (a1, a2, a3, x:a4)
+                                   _   -> (a1, a2, a3, a4)) ([], [], [], []) $ indices arr
+
+findInvalidPos :: Array (Int, Int) Char -> (Int, Int) -> ([(Int, Int)], [(Int, Int)], [(Int, Int)], [(Int, Int)])
+findInvalidPos maze (x, y) = case maze ! (x, y) of
+                           '^' -> (up, right, down, left)
+                           '>' -> (right, down, left, up)
+                           'v' -> (down, left, up, right)
+                           '<' -> (left, up, right, down)
+  where proc (dx, dy) (x', y') = takeWhile (\p -> not (maze ! p `elem` walls))
+                                           $ zip [x'+dx, x'+2*dx..] [y'+dy, y'+2*dy..]
+        up = proc (-1, 0) (x, y)
+        right = proc (0, 1) (x, y)
+        down = proc (1, 0) (x, y)
+        left = proc (0, -1) (x, y)
+
+enumInvalidPos :: Array (Int, Int) Char -> ([(Int, Int)], [(Int, Int)], [(Int, Int)], [(Int, Int)])
+enumInvalidPos maze = (us1 ++ rs1 ++ bs1 ++ ls1,
+                       us2 ++ rs2 ++ bs2 ++ ls2,
+                       us3 ++ rs3 ++ bs3 ++ ls3,
+                       us4 ++ rs4 ++ bs4 ++ ls4)
+  where (us, rs, bs, ls) = findLaser maze
+        enumHelper xs = foldr (\x (a1, a2, a3, a4) ->
+                                  let (x1, x2, x3, x4) = findInvalidPos maze x
+                                  in (x1++a1, x2++a2, x3++a3, x4++a4)) ([],[],[],[]) xs
+        (us1, us2, us3, us4) = enumHelper us
+        (rs1, rs2, rs3, rs4) = enumHelper rs
+        (bs1, bs2, bs3, bs4) = enumHelper bs
+        (ls1, ls2, ls3, ls4) = enumHelper ls
+
+nextStatus :: Array (Int, Int) Char -> [(Int, Int)] -> [(Int, Int)] -> [(Int, Int)]
+nextStatus maze xs ys = S.toList $ S.fromList candidates'
+  where candidates' = do
+                        (x, y) <- xs
+                        (dx, dy) <- [(-1, 0), (0, 1), (1, 0), (0, -1)]
+                        let pos = (x+dx, y+dy)
+                            v = maze ! pos
+                        if v `elem` walls || pos `elem` ys
+                          then []
+                          else return pos

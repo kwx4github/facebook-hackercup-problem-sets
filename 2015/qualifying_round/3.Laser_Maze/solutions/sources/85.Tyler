@@ -1,0 +1,100 @@
+import java.io.FileInputStream;
+import java.io.PrintStream;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Scanner;
+
+
+public class LaserMaze {
+	public LaserMaze() {
+		Scanner in = new Scanner(System.in);
+		int tests = in.nextInt();
+		for(int t= 0; t<tests; t++){
+			int n = in.nextInt();
+			int m = in.nextInt();
+			char[][] grid = new char[n][];
+			for(int i = 0; i<n; i++)
+				grid[i] = in.next().toCharArray();
+			boolean[][][] isSafe = new boolean[4][n][m];
+			for(boolean[][] a: isSafe)
+				for(boolean[] b: a)
+					Arrays.fill(b, true);
+			int[] dx = {0, 1, 0, -1};
+			int[] dy = {1, 0, -1, 0};
+			int sx, sy, ex, ey;
+			sx = sy = ex = ey = -1;
+			for(int x = 0; x<n; x++)
+				for(int y = 0; y<m; y++){
+					if(grid[x][y] == 'S'){
+						sx = x; sy = y;
+					}else if(grid[x][y] == 'G'){
+						ex = x; ey = y;
+					}
+					if(getDir(grid[x][y]) == -1)
+						continue;
+					int dir = getDir(grid[x][y]);
+					for(int dt=0; dt<4; dt++){
+						int cd = (dir+dt)%4;
+						int cx = x+dx[cd], cy = y+dy[cd];
+						while(cx>=0 && cx<n && cy>=0 && cy<m && isWalkable(grid[cx][cy])){
+							isSafe[dt][cx][cy] = false;
+							cx += dx[cd];
+							cy += dy[cd];
+						}
+					}
+				}
+			boolean[][][] seen = new boolean[4][n][m];
+			ArrayDeque<Integer> q = new ArrayDeque<>();
+			q.add(encode(0, sx, sy));
+			seen[0][sx][sy] = true;
+			int ans = -1;
+			int mask = (1<<7)-1;
+			Loop: for(int steps = 0; !q.isEmpty(); steps++){
+				int size = q.size();
+				for(int s = 0; s<size; s++){
+					int node = q.remove();
+					int y = node&mask; node >>= 7;
+					int x = node&mask; node >>= 7;
+					int ndt = (node+1)%4;
+					if(x == ex && y == ey){
+						ans = steps;
+						break Loop;
+					}
+					for(int d = 0; d<4; d++){
+						int nx = x+dx[d];
+						int ny = y+dy[d];
+						if(nx < 0 || ny < 0 || nx >= n || ny >= m)
+							continue;
+						if(!isSafe[ndt][nx][ny] || !isWalkable(grid[nx][ny]))
+							continue;
+						if(seen[ndt][nx][ny])
+							continue;
+						seen[ndt][nx][ny] = true;
+						q.add(encode(ndt, nx, ny));
+					}
+				}
+			}
+			System.out.printf("Case #%d: %s\n", t+1, ans==-1?"impossible":""+ans);
+		}
+	}
+	int encode(int d, int x, int y){
+		return (((d<<7)|x)<<7)|y;
+	}
+	boolean isWalkable(char c){
+		return '.'==c || 'S'==c || 'G'==c;
+	}
+	int getDir(char c){
+		switch(c){
+		case '>': return 0;
+		case 'v': return 1;
+		case '<': return 2;
+		case '^': return 3;
+		}
+		return -1;
+	}
+	public static void main(String[] args) throws Exception {
+		System.setIn(new FileInputStream("laser_maze.txt"));
+		System.setOut(new PrintStream("out.txt"));
+		new LaserMaze();
+	}
+}

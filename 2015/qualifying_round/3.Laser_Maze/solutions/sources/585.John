@@ -1,0 +1,353 @@
+//
+// Facebook hacker cup 2015 - qualification - third question
+//
+#include <iostream>
+#include <iomanip>
+#include <set>
+#include <algorithm>
+#include <gmpxx.h>
+
+using namespace std;
+
+unsigned int X=0;
+unsigned int Y=0;
+unsigned int T=4;
+
+static bool in(const set<unsigned int> &ss, unsigned int u )
+{
+     if (ss.find(u) == ss.end()) return false;
+     return true;
+}
+
+unsigned int idx( unsigned int x, unsigned int y, unsigned int t )
+{
+     return x + y*X + t*Y*X;
+}
+
+unsigned int get_x( unsigned int i )
+{
+     return i%X;
+}
+
+unsigned int get_y( unsigned int i )
+{
+     return (i/X)%Y;
+}
+
+unsigned int get_t( unsigned int i )
+{
+     return i/X/Y;
+}
+
+struct cell
+{
+     bool is_object;
+     bool is_blocked;
+     vector<unsigned int> neighbours;
+
+     cell() : is_object(false), is_blocked(false) {
+     }
+};
+	  
+unsigned int solve( vector<string> maze )
+{
+     if (0)
+     {
+	  for (auto x : maze)
+	  {
+	       cout << x << endl;
+	  }
+     }
+
+     X = maze.at(0).size();
+     Y = maze.size();
+     T = 4;
+
+     unsigned int NN = X*Y*T;
+     vector<cell> vv(NN);
+
+     unsigned int x,y;
+     unsigned int start;
+     set<unsigned int> goals;
+     for (y=0; y<Y; y++)
+	  for (x=0; x<X; x++)
+	  {
+	       char c = maze.at(y).at(x);
+	       switch (c)
+	       {
+	       case '#':
+	       case '<':
+	       case '^':
+	       case '>':
+	       case 'v':
+		    vv.at(idx(x,y,0)).is_object = true;
+		    vv.at(idx(x,y,1)).is_object = true;
+		    vv.at(idx(x,y,2)).is_object = true;
+		    vv.at(idx(x,y,3)).is_object = true;
+		    break;
+	       case '.':
+		    break;
+	       case 'S':
+		    start = idx(x,y,0);
+		    break;
+	       case 'G':
+		    goals.insert(idx(x,y,0));
+		    goals.insert(idx(x,y,1));
+		    goals.insert(idx(x,y,2));
+		    goals.insert(idx(x,y,3));
+		    break;
+	       }
+	  }
+
+     for (y=0; y<Y; y++)
+	  for (x=0; x<X; x++)
+	  {
+	       if (vv.at(idx(x,y,0)).is_object)
+	       {
+		    vv.at(idx(x,y,0)).is_blocked = true;
+		    vv.at(idx(x,y,1)).is_blocked = true;
+		    vv.at(idx(x,y,2)).is_blocked = true;
+		    vv.at(idx(x,y,3)).is_blocked = true;
+	       }
+
+	       bool laser = false;
+	       unsigned int t0 = 0;
+	       char c = maze.at(y).at(x);
+	       switch (c)
+	       {
+	       case '<':
+		    t0 = 0;
+		    laser = true;
+		    break;
+	       case '^':
+		    t0 = 3;
+		    laser = true;
+		    break;
+	       case '>':
+		    t0 = 2;
+		    laser = true;
+		    break;
+	       case 'v':
+		    t0 = 1;
+		    laser = true;
+		    break;
+	       default:
+		    break;
+	       }
+
+	       if (laser)
+	       {
+		    /* track left */	
+		    {	   
+			 unsigned int x1 = x;		    
+			 while (x1 > 0)
+			 {
+			      x1--;
+			      if (vv.at(idx(x1,y,0)).is_object == true)
+			      {
+				   break;
+			      }
+			      vv.at(idx(x1,y,t0)).is_blocked = true;
+			 }
+		    }
+		    
+		    /* track up */
+		    t0++; t0 %= 4;
+		    {
+			 unsigned int y1 = y;
+			 while (y1 > 0)
+			 {
+			      y1--;
+			      if (vv.at(idx(x,y1,0)).is_object == true)
+			      {
+				   break;
+			      }
+			      vv.at(idx(x,y1,t0)).is_blocked = true;
+			 }
+		    }
+		    
+		    /* track right */
+		    t0++; t0 %= 4;
+		    {
+			 unsigned int x1 = x;
+			 while (++x1 < X)
+			 {
+			      if (vv.at(idx(x1,y,0)).is_object == true)
+			      {
+				   break;
+			      }
+			      vv.at(idx(x1,y,t0)).is_blocked = true;
+			 }
+		    }
+
+		    /* track down */
+		    t0++; t0 %= 4;
+		    {
+			 unsigned int y1 = y;
+			 while (++y1 < Y)
+			 {
+			      if (vv.at(idx(x,y1,0)).is_object == true)
+			      {
+				   break;
+			      }
+			      vv.at(idx(x,y1,t0)).is_blocked = true;
+			 }
+		    }
+	       }
+	  }
+
+     if (0)
+     {
+	  cout << "======================================" << endl;
+	  for (unsigned int t=0; t<4; t++)
+	  {
+	       for (y=0; y<Y; y++)
+	       {
+		    for (x=0; x<X; x++)
+		    {
+			 if (vv.at(idx(x,y,t)).is_object)
+			 {
+			      cout << "O";
+			 }
+			 else if (vv.at(idx(x,y,t)).is_blocked)
+			 {
+			      cout << "#";
+			 }
+			 else
+			 {
+			      cout << ".";
+			 }
+		    }
+		    cout << endl;
+	       }
+	       cout << "======================================" << endl;
+	  }
+	  cout << endl;
+     }
+
+     for (x=0; x<X; x++)
+     {
+	  for (y=0; y<Y; y++)
+	  {
+	       for (unsigned int t=0; t<4; t++)
+	       {
+		    unsigned int ii = idx(x,y,t);
+		    if (ii == start ||
+			vv.at(idx(x,y,t)).is_blocked == false)
+		    {
+			 if (x > 0)
+			 {
+			      unsigned int i2 = idx(x-1,y,(t+1)%4);
+			      if (vv.at(i2).is_blocked == false)
+			      {
+				   vv.at(ii).neighbours.push_back(i2);
+			      }
+			 }
+
+			 if (y > 0)
+			 {
+			      unsigned int i2 = idx(x,y-1,(t+1)%4);
+			      if (vv.at(i2).is_blocked == false)
+			      {
+				   vv.at(ii).neighbours.push_back(i2);
+			      }
+			 }
+
+			 if (x+1 < X)
+			 {
+			      unsigned int i2 = idx(x+1,y,(t+1)%4);
+			      if (vv.at(i2).is_blocked == false)
+			      {
+				   vv.at(ii).neighbours.push_back(i2);
+			      }
+			 }
+
+			 if (y+1 < Y)
+			 {
+			      unsigned int i2 = idx(x,y+1,(t+1)%4);
+			      if (vv.at(i2).is_blocked == false)
+			      {
+				   vv.at(ii).neighbours.push_back(i2);
+			      }
+			 }
+		    }
+	       }
+	  }
+     }
+
+     set<unsigned int> current;
+     set<unsigned int> visited;
+     current.insert(start);
+
+     unsigned int steps = 0;
+     while (current.size() > 0)
+     {
+	  if (0)
+	  {
+	       cout << "Steps " << steps << endl;
+	       for (auto c : current)
+	       {
+		    cout << setw(2) << get_x(c) << " ";
+		    cout << setw(2) << get_y(c) << " ";
+		    cout << setw(2) << get_t(c) << " ";
+		    cout << endl;
+	       }
+	  }
+
+	  steps++;
+	  set<unsigned int> next;
+	  for (auto c : current)
+	  {
+	       for (auto c2 : vv.at(c).neighbours)
+	       {
+		    if (in(goals,c2)) goto quit_loop;
+		    if (!in(visited,c2))
+		    {
+			 next.insert(c2);
+		    }
+	       }
+	  }	  
+	  
+	  visited.insert(next.begin(), next.end());
+	  current = next;
+     }	  
+quit_loop:
+
+     if (current.size() == 0) steps = 0;
+     return steps;
+}
+
+int main( int argc, char ** argv )
+{
+     unsigned int t;
+     string s;
+
+     cin >> t;
+     getline( cin, s );
+     for (auto i=1u; i<=t; i++)
+     {
+	  unsigned int m,n;
+	  cin >> m >> n;
+	  getline( cin, s );
+
+	  vector<string> maze;
+	  for (auto j=0u; j<m; j++)
+	  {
+	       getline( cin, s );
+	       maze.push_back(s);
+	  }
+
+	  unsigned int a = solve(maze);
+	  
+	  cout << "Case #" << i << ": ";
+	  if (a == 0)
+	       cout << "impossible";
+	  else
+	       cout << a;
+
+	  cout << endl;
+     }
+
+     return 0;
+}
+

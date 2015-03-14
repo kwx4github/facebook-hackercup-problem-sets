@@ -1,0 +1,184 @@
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <deque>
+#include <functional>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <tuple>
+#include <vector>
+using namespace std;
+
+const int kInf = numeric_limits<int>::max() / 8;
+
+typedef vector<string> Field;
+typedef vector<vector<char>> Banned;
+
+const int dx[] = {0, 1, 0, -1};
+const int dy[] = {1, 0, -1, 0};
+
+bool IsEmpty(char ch) {
+  switch (ch) {
+    case 'S':
+    case 'G':
+    case '.':
+      return true;
+    default:
+      return false;
+  }
+}
+
+int GetDirection(char ch) {
+  switch (ch) {
+    case '>':
+      return 0;
+    case 'v':
+      return 1;
+    case '<':
+      return 2;
+    case '^':
+      return 3;
+    default:
+      return -1;
+  }
+}
+
+Banned GetBanned(const Field& field, int step) {
+  int N = field.size();
+  int M = field[0].size();
+  Banned banned(N, vector<char>(M, false));
+
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      int dir = GetDirection(field[i][j]);
+      if (dir == -1) {
+        continue;
+      }
+
+      dir = (dir + step) % 4;
+      int x = i;
+      int y = j;
+
+      x += dx[dir];
+      y += dy[dir];
+
+      while (x < N && y < M && x >= 0 && y >= 0 && IsEmpty(field[x][y])) {
+        banned[x][y] = true;
+
+        x += dx[dir];
+        y += dy[dir];
+      }
+    }
+  }
+
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      if (!IsEmpty(field[i][j])) {
+        banned[i][j] = true;
+      }
+    }
+  }
+
+  return banned;
+}
+
+tuple<int, int> FindChar(const Field& field, char ch) {
+  int N = field.size();
+  int M = field[0].size();
+
+  for (int i = 0; i < N; ++i) {
+    for (int j = 0; j < M; ++j) {
+      if (field[i][j] == ch) {
+        return {i, j};
+      }
+    }
+  }
+
+  return {-1, -1};
+}
+
+int Solve(const Field& field) {
+  int N = field.size();
+  int M = field[0].size();
+
+  auto from = FindChar(field, 'S');
+  auto to = FindChar(field, 'G');
+
+  Banned banned[4];
+  for (int i = 0; i < 4; ++i) {
+    banned[i] = GetBanned(field, i);
+  }
+
+  typedef tuple<int, int, int> State;  // [step, x, y]
+  vector<vector<int>> H[4];
+  for (int i = 0; i < 4; ++i) {
+    H[i].assign(N, vector<int>(M, kInf));
+  }
+  queue<State> Q;
+
+  H[0][get<0>(from)][get<1>(from)] = 0;
+  Q.push({0, get<0>(from), get<1>(from)});
+  while (!Q.empty()) {
+    int dir, i, j;
+    tie(dir, i, j) = Q.front();
+    Q.pop();
+
+    int d = H[dir][i][j];
+    dir = (dir + 1) % 4;
+    for (int k = 0; k < 4; ++k) {
+      int x = i + dx[k];
+      int y = j + dy[k];
+
+      if (x < N && y < M && x >= 0 && y >= 0 && H[dir][x][y] == kInf &&
+          !banned[dir][x][y]) {
+        H[dir][x][y] = d + 1;
+        Q.push({dir, x, y});
+      }
+    }
+  }
+
+  int result = kInf;
+  for (int i = 0; i < 4; ++i) {
+    result = min(result, H[i][get<0>(to)][get<1>(to)]);
+  }
+  return result;
+}
+
+int main() {
+//  std::freopen("/Users/kuznetsovs/Hobby/qt-creator/Console/1.txt", "rb", stdin);
+  std::freopen("/Users/kuznetsovs/Hobby/qt-creator/Console/laser_maze.txt", "rb", stdin);
+  std::freopen("/Users/kuznetsovs/Hobby/qt-creator/Console/laser_maze.out", "wb", stdout);
+  ios_base::sync_with_stdio(false);
+  cin.tie(nullptr);
+
+  int T;
+  cin >> T;
+  for (int tc = 0; tc < T; ++tc) {
+    int N, M;
+    cin >> N >> M;
+
+    Field field(N);
+    getline(cin, field[0]);
+    for (string& str : field) {
+      getline(cin, str);
+    }
+
+    cout << "Case #" << tc + 1 << ": ";
+    int result = Solve(field);
+    if (result == kInf) {
+      cout << "impossible";
+    } else {
+      cout << result;
+    }
+    cout << '\n';
+  }
+
+  return 0;
+}

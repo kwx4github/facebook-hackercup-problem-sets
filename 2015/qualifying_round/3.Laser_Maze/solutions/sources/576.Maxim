@@ -1,0 +1,205 @@
+#ifdef MG
+#define _GLIBCXX_DEBUG
+#endif
+
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
+#include <string>
+#include <cstdlib>
+#include <cstdio>
+#include <climits>
+#include <cstring>
+#include <cassert>
+#include <ctime>
+#include <cmath>
+#include <vector>
+#include <queue>
+#include <stack>
+#include <list>
+#include <set>
+#include <map>
+#include <bitset>
+#include <algorithm>
+
+#define forn(i, n) for (int i = 0; i < int(n); i++)
+#define forl(i, n) for (int i = 1; i <= int(n); i++)
+#define ford(i, n) for (int i = int(n) - 1; i >= 0; i--)
+#define fore(i, l, r) for (int i = int(l); i <= int(r); i++)
+#define correct(x, y, n, m) (0 <= (x) && (x) < (n) && 0 <= (y) && (y) < (m))
+#define all(a) (a).begin(), (a).end()
+#define sz(a) int((a).size())
+#define pb(a) push_back(a)
+#define mp(x, y) make_pair((x), (y))
+#define ft first
+#define sc second
+#define x first
+#define y second
+
+using namespace std;
+
+typedef long long li;
+typedef long double ld;
+typedef pair<int, int> pt;
+
+template<typename X> inline X abs(const X &a) { return a < 0? -a: a; }
+template<typename X> inline X sqr(const X &a) { return a * a; }
+template<typename X, typename Y> inline ostream& operator<< (ostream& out, const pair <X, Y>& p) { return out << '(' << p.x << ", " << p.y << ')'; }
+template<typename X> inline ostream& operator<< (ostream& out, const vector<X>& p) { forn(i, sz(p)) { if (i != 0) out << ' '; out << p[i]; } return out; }
+
+const int INF = int(1e9);
+const li INF64 = li(1e18);
+const ld EPS = 1e-9, PI = acosl(ld(-1));
+
+const int N = 100 + 13;
+
+int n, m;
+char a[N][N];
+
+inline bool read()
+{
+	if (scanf("%d%d", &n, &m) != 2) return false;
+	
+	forn(i, n)
+		assert(scanf("%s", a[i]) == 1);
+	
+	return true;
+}
+
+inline pt getdir(char c)
+{	
+	if (c == '<') return mp(0, -1);
+	if (c == '^') return mp(-1, 0);
+	if (c == '>') return mp(0, 1);
+	if (c == 'v') return mp(1, 0);
+
+	throw;
+}
+
+bool bad[4][N][N];
+
+inline void prepare()
+{
+	map<char, char> nextDir;
+	nextDir['<'] = '^';
+	nextDir['^'] = '>';
+	nextDir['>'] = 'v';
+	nextDir['v'] = '<';
+	
+	memset(bad, false, sizeof bad);
+	
+	forn(iter, 4)
+	{
+		forn(i, n)
+			forn(j, m)
+				if (a[i][j] == '#')
+					bad[iter][i][j] = true;
+				else if (nextDir.count(a[i][j]))
+				{
+					bad[iter][i][j] = true;
+					pt dir = getdir(a[i][j]);
+					
+					int x = i + dir.x, y = j + dir.y;
+					
+					while (true)
+					{
+						if (!correct(x, y, n, m)) break;
+						if (a[x][y] == '#' || nextDir.count(a[x][y])) break;
+						bad[iter][x][y] = true;
+						x += dir.x, y += dir.y;
+					}
+				}
+	
+		forn(i, n)
+			forn(j, m)
+				if (nextDir.count(a[i][j]))
+					a[i][j] = nextDir[a[i][j]];
+	}
+}
+
+int d[N][N][4];
+
+const int dx[] = { -1, 0, 1, 0 };
+const int dy[] = { 0, -1, 0, 1 };
+
+inline void solve(int test)
+{
+	printf("Case #%d: ", test + 1);
+	
+	pt st, fn;
+	forn(i, n)
+		forn(j, m)
+			if (a[i][j] == 'S')
+				st = mp(i, j);
+			else if (a[i][j] == 'G')
+				fn = mp(i, j);
+				
+	prepare();
+	
+	forn(i, n)
+		forn(j, m)
+			forn(k, 4)
+				d[i][j][k] = INF;
+				
+	queue<pair<pt, int> > q;
+	
+	q.push(mp(st, 0));
+	d[st.x][st.y][0] = 0;
+	
+	while (!q.empty())
+	{
+		int x = q.front().ft.x, y = q.front().ft.y, t = q.front().sc;
+		q.pop();
+		
+		const int &dv = d[x][y][t];
+		
+		forn(i, 4)
+		{
+			int nx = x + dx[i], ny = y + dy[i], nt = (t + 1) % 4;
+			
+			if (!correct(nx, ny, n, m)) continue;
+			if (bad[nt][nx][ny]) continue;
+			
+			if (d[nx][ny][nt] > dv + 1)
+			{
+				d[nx][ny][nt] = dv + 1;
+				q.push(mp(mp(nx, ny), nt));
+			}
+		}
+	}
+	
+	int ans = INF;
+	forn(i, 4) ans = min(ans, d[fn.x][fn.y][i]);
+	
+	if (ans > INF / 2)
+		puts("impossible");
+	else
+		printf("%d\n", ans);
+}
+
+int main()
+{
+#ifdef MG
+	freopen("input.txt", "rt", stdin);
+	freopen("output.txt", "wt", stdout);
+#endif
+	
+	cout << setprecision(10) << fixed;
+	cerr << setprecision(5) << fixed;
+	
+	int testCount;
+	cin >> testCount;
+	
+	forn(test, testCount)
+	{
+		assert(read());
+		solve(test);
+	}
+	
+#ifdef MG
+	cerr << "=== TIME: " << clock() << " ===" << endl;
+#endif
+
+	return 0;
+}

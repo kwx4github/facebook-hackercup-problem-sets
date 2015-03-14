@@ -1,0 +1,116 @@
+#include <bits/stdc++.h>
+
+#define X first
+#define Y second
+
+using namespace std;
+
+typedef pair<int, int> V;
+typedef pair<V, int> State;
+
+char maze[102][102];
+
+char laser_nextmap[128];
+
+bool is_laser(const char& c) { return laser_nextmap[(int)c]; }
+
+vector<V> lasers;
+
+bool valid(const State& s) {
+    int x = s.X.X, y = s.X.Y;
+    int t = s.Y % 4;
+
+    if (maze[x][y] == '#' or is_laser(maze[x][y])) return false;
+
+    for (const auto& laser : lasers) {
+        int lx = laser.X, ly = laser.Y;
+        char c = maze[lx][ly];
+        for (int i = 0; i < t; ++i) c = laser_nextmap[(int)c];
+
+        if (c == '^' and x < lx and y == ly) return false;
+        if (c == 'v' and x > lx and y == ly) return false;
+        if (c == '>' and x == lx and y > ly) return false;
+        if (c == '<' and x == lx and y < ly) return false;
+    }
+
+    return true;
+}
+
+bool on_goal(const State& s) { return maze[s.X.X][s.X.Y] == 'G'; }
+
+int hashnum(const State& s) { return ((s.Y & 3) << 20) | (s.X.X << 10) | s.X.Y; }
+
+int jizz() {
+    memset(maze, '#', sizeof(maze));
+
+    int m, n; scanf("%d%d", &m, &n);
+
+    lasers.clear();
+    V start;
+
+    for (int i = 1; i <= m; ++i) {
+        scanf("%100s", maze[i] + 1);
+        maze[i][n+1] = '#';
+
+        for (int j = 1; j <= n; ++j) {
+            if (is_laser(maze[i][j])) {
+                lasers.push_back({i, j});
+            }
+            if (maze[i][j] == 'S') {
+                start = {i, j};
+            }
+        }
+    }
+
+    unordered_set<int> S;
+    queue<State> Q;
+
+    Q.push({start, 0});
+    S.insert(hashnum({start, 0}));
+
+    while (not Q.empty()) {
+        State s = Q.front();
+        Q.pop();
+
+        int x = s.X.X, y = s.X.Y;
+        int newt = s.Y + 1;
+        for (int d = 0; d < 4; ++d) {
+            static const int dx[] = {0, 1, 0, -1};
+            static const int dy[] = {1, 0, -1, 0};
+
+            V newv{x+dx[d], y+dy[d]};
+            State news{newv, newt};
+
+            int hash = hashnum(news);
+
+            if (S.count(hash)) continue;
+            S.insert(hash);
+
+            if (not valid(news)) continue;
+            if (on_goal(news)) return newt;
+
+            Q.push(news);
+        }
+    }
+
+    return -1;
+}
+
+int main() {
+    laser_nextmap['^'] = '>';
+    laser_nextmap['>'] = 'v';
+    laser_nextmap['v'] = '<';
+    laser_nextmap['<'] = '^';
+
+    int T; scanf("%d", &T);
+    for (int t = 1; t <= T; ++t) {
+        printf("Case #%d: ", t);
+        int ans = jizz();
+        if (ans == -1)
+            puts("impossible");
+        else
+            printf("%d\n", ans);
+    }
+
+    return 0;
+}

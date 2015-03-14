@@ -1,0 +1,50 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
+import Data.Char
+import Test.QuickCheck
+
+main :: IO ()
+main = interact
+       $ unlines . map toCase . zip [1..]
+       . map solve
+       . map toTask . drop 1 . lines
+
+type Task = [Integer]
+
+toCase :: (Int, (Integer, Integer)) -> String
+toCase (n, (min, max)) = "Case #" ++ show n ++ ": " ++
+                         show min ++ " " ++ show max
+
+toTask :: String -> Task
+toTask = toDigits
+
+solve [] = (0, 0)
+solve [c] = (c, c)
+solve digits = case ns of
+                [] -> let n = toNumber digits in (n, n)
+                ns -> (minimum ns, maximum ns)
+  where
+    ns = map toNumber
+         $ filter ((> 0) . head)
+         $ digits : choices digits
+
+toDigits :: [Char] -> [Integer]
+toDigits = map (fromIntegral . (flip (-) 48) . ord)
+
+toNumber = sum . zipWith (*) (map (10 ^) [0..]) . reverse
+
+indexes n = [ (i, j) | i <- [0 .. n - 1], j <- [i + 1 .. n] ]
+
+at i x xs = take i xs ++ [x] ++ drop (i + 1) xs
+
+swap (i, j) ns = at j a $ at i b ns
+  where
+    a = ns !! i
+    b = ns !! j
+
+choices ns = map (flip swap ns)
+             $ indexes (length ns - 1)
+
+prop_swap = quickCheck
+            $ \(xs :: [Int]) i j -> length xs > 1 && i < length xs && j < length xs && i /= j && i >= 0 && j >= 0
+                                    ==> swap (i, j) (swap (i, j) xs) == xs

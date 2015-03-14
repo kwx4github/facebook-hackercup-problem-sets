@@ -1,0 +1,159 @@
+#include <cstdio>
+#include <queue>
+#include <vector>
+#include <set>
+#include <map>
+#include <utility>
+
+using namespace std;
+
+struct reach{
+	int row;
+	int col;
+	int step;
+	reach(int r, int c, int s){
+		this->row = r;
+		this->col = c;
+		this->step = s;
+	}
+	pair<pair<int, int>, int> get_pair(){
+		return make_pair(make_pair(this->row, this->col), this->step%4);
+	}
+	bool operator<(const reach &r) const{
+		return this->step > r.step;
+	}
+};
+
+int directions[4][2] = {{1,0},{0,-1},{-1,0},{0,1}};
+map<char, int> laser_directions;
+set<char> solid;
+void init(){
+	laser_directions['>'] = 3; laser_directions['<'] = 1; 
+	laser_directions['^'] = 2; laser_directions['v'] = 0;
+	solid.insert('#');
+	solid.insert('v');
+	solid.insert('>');
+	solid.insert('<');
+	solid.insert('^');
+}
+
+
+bool valid_position(int r, int c, int rows, int cols){
+	return r>=0&&c>=0&&r<rows&&c<cols;
+}
+
+set<pair<pair<int, int>, int> > get_deadly_places(vector<vector<char> > &grid, int rows, int cols){
+	set<pair<pair<int, int>, int> > deadly_places;
+	for(int r = 0; r < rows; ++r){
+		for(int c = 0; c < cols; ++c){
+			if(laser_directions.find(grid[r][c]) != laser_directions.end()){
+				for(int step = 0; step < 4; ++step){
+					int dir = (laser_directions[grid[r][c]]+step)%4;
+					int curr_row = r + directions[dir][0];
+					int curr_col = c + directions[dir][1];
+					while(valid_position(curr_row, curr_col, rows, cols)){
+						if(solid.find(grid[curr_row][curr_col]) != solid.end()){
+							break;
+						}
+						deadly_places.insert(make_pair(make_pair(curr_row, curr_col), step));
+						curr_row += directions[dir][0];
+						curr_col += directions[dir][1];
+					}
+				}
+			}
+		}
+	}
+	return deadly_places;
+}
+
+pair<int, int> get_start_position(vector<vector<char> > &grid, int rows, int cols){
+	for(int r = 0; r < rows; ++r){
+		for(int c = 0; c < cols; ++c){
+			if(grid[r][c] == 'S'){
+				return make_pair(r, c);
+			}
+		}
+	}
+}
+pair<int, int> get_end_position(vector<vector<char> > &grid, int rows, int cols){
+	for(int r = 0; r < rows; ++r){
+		for(int c = 0; c < cols; ++c){
+			if(grid[r][c] == 'G'){
+				return make_pair(r, c);
+			}
+		}
+	}
+}
+
+bool good_coordinate(int row, int col, int step, vector<vector<char> > &grid, set<pair<pair<int, int>, int> > &deadly_places, map<pair<pair<int, int>, int>, int> visited, int rows, int cols){
+	if(!valid_position(row, col, rows, cols))
+		return false;
+	if(solid.find(grid[row][col]) != solid.end())
+		return false;
+	if(deadly_places.find(make_pair(make_pair(row, col), step%4)) != deadly_places.end()){
+		return false;
+	}
+	if(visited.find(make_pair(make_pair(row, col), step%4)) != visited.end() && visited[make_pair(make_pair(row, col), step%4)] <= step)
+		return false;
+	return true;
+}
+
+
+int solve(vector<vector<char> > &grid, int rows, int cols){
+	map<pair<pair<int, int>, int>, int> visited;
+	set<pair<pair<int, int>, int> > deadly_places = get_deadly_places(grid, rows, cols);
+	priority_queue<reach> pq;
+	pair<int, int> start_position = get_start_position(grid, rows, cols);
+	pair<int, int> end_position = get_end_position(grid, rows, cols);
+	//if(!good_coordinate(start_position.first, start_position.second, 0, grid, deadly_places, visited, rows, cols)){
+	//	return -1;
+	//}
+	pq.push(reach(start_position.first, start_position.second, 0));
+	while(!pq.empty()){
+		reach t = pq.top();
+		pq.pop();
+		if(visited.find(t.get_pair()) != visited.end()){
+			continue;
+		}
+		visited[t.get_pair()] = t.step;
+		if(end_position.first == t.row && end_position.second == t.col){
+			return t.step;
+		}
+		for(int d = 0; d < 4; ++d){
+			int nr = t.row + directions[d][0];
+			int nc = t.col + directions[d][1];
+			if(!good_coordinate(nr, nc, t.step + 1, grid, deadly_places, visited, rows, cols)){
+				continue;
+			}
+			pq.push(reach(nr, nc, t.step+1));
+		}
+	}
+	return -1;
+}
+
+int main(){
+	init();
+	int T;
+	scanf("%d", &T);
+	for(int current_case = 1; current_case <= T; ++current_case){
+		int M, N;
+		scanf("%d%d", &M, &N);
+		vector<vector<char> > grid;
+		for(int r = 0; r < M; ++r){
+			vector<char> v;
+			while(fgetc(stdin) != '\n'){}
+			for(int c = 0; c < N; ++c){
+				v.push_back(fgetc(stdin));
+			}
+			grid.push_back(v);
+		}
+		int result = solve(grid, M, N);
+		printf("Case #%d: ", current_case);
+		if(result == -1){
+			printf("impossible");
+		}else{
+			printf("%d", result);
+		}
+		printf("\n");
+	}
+}

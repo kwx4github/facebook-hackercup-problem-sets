@@ -1,0 +1,122 @@
+#include <cstdio>
+#include <algorithm>
+#include <queue>
+#include <set>
+using namespace std;
+
+const int MAXN = 105;
+const int INF = 99999999;
+
+struct TState {
+    int x, y, d;
+    TState(int x, int y, int d):
+        x(x), y(y), d(d)
+        {};
+};
+
+int n, m;
+queue<TState> Q;
+char T[MAXN][MAXN];
+bool visited[MAXN][MAXN][4], bad[MAXN][MAXN][4];
+
+const int dx[4] = {-1, 1, 0, 0};
+const int dy[4] = {0, 0, -1, 1};
+
+int Bfs(pair<int,int> start, pair<int,int> finish) {
+    int result = INF, x = start.first, y = start.second;
+
+    Q.push(TState(start.first, start.second, 0));
+    
+    while (!Q.empty()) {
+        int x = Q.front().x, y = Q.front().y, d = Q.front().d;
+
+        //printf("x = %d, y = %d, d = %d\n", x, y, d);
+
+        if (make_pair(x, y) == finish) result = min(result, d);
+
+        Q.pop();
+
+        for (int i = 0; i < 5; i++) {
+            int nx = x+dx[i], ny = y+dy[i], nd = d+1;
+
+            if ((nx < 0) || (nx >= n) || (ny < 0) || (ny >= m)) continue;
+            if ((T[nx][ny] != 'S') && (T[nx][ny] != 'G') && (T[nx][ny] != '.')) continue;
+            if (bad[nx][ny][nd%4]) continue;
+            if (visited[nx][ny][nd%4]) continue;
+
+            Q.push(TState(nx, ny, nd));
+            visited[nx][ny][nd%4] = true;            
+        }
+    }
+
+    return result;
+}
+
+void ComputeBad() {
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < m; j++) {
+            if ((T[i][j] == '#') || (T[i][j] == 'S') || (T[i][j] == 'G') || (T[i][j] == '.')) continue;
+
+            int t;
+            if (T[i][j] == '^') t = 0;
+            if (T[i][j] == 'v') t = 2;
+            if (T[i][j] == '<') t = 3;
+            if (T[i][j] == '>') t = 1;
+
+            for (int k = i-1; k >= 0 && (T[k][j] == '.' || T[k][j] == 'S' || T[k][j] == 'G'); k--)  // up
+                bad[k][j][(0-t+4)%4] = true;
+            for (int k = i+1; k < n && (T[k][j] == '.' || T[k][j] == 'S' || T[k][j] == 'G'); k++)   // down
+                bad[k][j][(2-t+4)%4] = true;
+            for (int k = j-1; k >= 0 && (T[i][k] == '.' || T[i][k] == 'S' || T[i][k] == 'G'); k--)  // left
+                bad[i][k][(3-t+4)%4] = true;
+            for (int k = j+1; k < m && (T[i][k] == '.' || T[i][k] == 'S' || T[i][k] == 'G'); k++)   // right
+                bad[i][k][(1-t+4)%4] = true;
+        }
+}
+
+int main() {
+    int q, tst = 1;
+    scanf("%d", &q);
+    while (q--) {
+        pair<int,int> start, finish;
+
+        scanf("%d%d", &n, &m);
+        for (int i = 0; i < n; i++)
+            scanf("%s", T[i]);
+
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < m; j++) {
+                if (T[i][j] == 'S') start = make_pair(i, j);
+                if (T[i][j] == 'G') finish = make_pair(i, j);
+            }
+
+        ComputeBad();
+
+        /*
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < m; j++)
+                for (int k = 0; k < 4; k++)
+                    if (bad[i][j][k])
+                        printf("cannot go to %d,%d on time %d\n", i, j, k);
+        */
+
+        //printf("start = %d,%d\n", start.first, start.second);
+        //printf("finish = %d,%d\n", finish.first, finish.second);
+        int d = Bfs(start, finish);
+
+        printf("Case #%d: ", tst);
+        if (d < INF) printf("%d\n", d);
+        else printf("impossible\n");
+
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < m; j++)
+                for (int k = 0; k < 4; k++) {
+                    visited[i][j][k] = false;
+                    bad[i][j][k] = false;
+                }                    
+
+        tst++;
+    }
+
+    return 0;
+}

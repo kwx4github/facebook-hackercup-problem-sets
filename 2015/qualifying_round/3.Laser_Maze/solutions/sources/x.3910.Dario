@@ -1,0 +1,140 @@
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <queue>
+#include <vector>
+#include <fstream>
+using namespace std;
+const int maxn = 101;
+int n, m;
+vector < string > polje;
+bool zauzeto[ maxn ][ maxn ][ 4 ];
+ifstream fin ("laser_maze.txt");
+ofstream fout ("out3.txt");
+
+int smx[] = { -1, 0 , 0 , 1 };
+int smy[] = { 0 , -1 , 1 , 0 };
+int bio[ maxn ][ maxn ];
+
+
+struct str {
+    int a, b, step;
+    str() {}
+    str ( int x , int y , int d ) {
+        a = x;
+        b = y;
+        step = d;
+    }
+};
+queue < str > q;
+void init() {
+    for ( int i = 0; i < n; i++ )
+        for ( int j = 0; j < m; j++ ) {
+            bio[ i ][ j ] = 0;
+            for ( int k = 0; k < 4; k++ ) zauzeto[ i ][ j ][ k ] = 0;
+        }
+
+    while ( !q.empty() ) q.pop();
+
+}
+bool ok ( int x , int y ) {
+    if ( x < 0 or x >= n or y < 0 or y >= m ) return false;
+    return true;
+}
+
+bool prolazno ( int x , int y ) {
+    if ( polje[ x ][ y ] == '.' or polje[ x ][ y ] == 'S' or polje[ x ][ y ] == 'G' ) return true;
+    return false;
+}
+
+void zauzmi( int kad, int x , int y , int dir) {
+    x += smx[ dir ]; y += smy[ dir ];
+    while ( ok ( x , y ) and prolazno ( x, y ) ){
+        zauzeto[ x ][ y ][ kad ] = 1;
+        x += smx[ dir ]; y += smy[ dir ];
+    }
+}
+
+int solve() {
+    int x, y, gx, gy;
+    for ( int i = 0; i < n; i++ )
+        for ( int j = 0; j < m; j++ ) {
+            if ( polje[ i ][ j ] == 'S' ) {
+                x = i; y = j;
+            }
+            else if ( polje[ i ][ j ] == 'G' ) {
+                gx = i; gy = j;
+            }
+            else if ( polje[ i ][ j ] == '<' ) {
+                zauzmi ( 0 , i , j , 1 );
+                zauzmi ( 1 , i , j , 0 );
+                zauzmi ( 2 , i , j , 2 );
+                zauzmi ( 3 , i , j , 3 );
+            }
+            else if ( polje[ i ][ j ] == '^' ) {
+                zauzmi ( 0 , i , j , 0 );
+                zauzmi ( 1 , i , j , 2 );
+                zauzmi ( 2 , i , j , 3 );
+                zauzmi ( 3 , i , j , 1 );
+            }
+            else if ( polje[ i ][ j ] == '>' ) {
+                zauzmi ( 0 , i , j , 2 );
+                zauzmi ( 1 , i , j , 3 );
+                zauzmi ( 2 , i , j , 1 );
+                zauzmi ( 3 , i , j , 0 );
+            }
+            else if ( polje[ i ][ j ] == 'v' ) {
+                zauzmi ( 0 , i , j , 3 );
+                zauzmi ( 1 , i , j , 1 );
+                zauzmi ( 2 , i , j , 0 );
+                zauzmi ( 3 , i , j , 2 );
+            }
+        }
+    str bla;
+    bla.a = x;
+    bla.b = y;
+    bla.step = 0;
+    q.push( bla );
+    int ans = 0;
+    bio[ x ][ y ]++;
+    while ( !q.empty() ) {
+        if ( bla.step > 20000 ) break;
+        bla = q.front(); q.pop();
+        if ( bla.a == gx and bla.b == gy ) {
+            ans = bla.step;
+            break;
+        }
+        for ( int i = 0; i < 4; i++ ) {
+            int canx = bla.a + smx[ i ];
+            int cany = bla.b + smy[ i ];
+            if ( ok ( canx, cany ) and !zauzeto[ canx ][ cany ][ ( bla.step + 1 ) % 4 ] and bio[ canx ][ cany ] < 2 and prolazno ( canx, cany ) ) {
+                bio[ canx ][ cany ]++;
+                q.push ( str ( canx , cany, bla.step + 1 ) );
+            }
+        }
+
+    }
+    return ans;
+
+
+
+}
+
+int main () {
+    int t; fin >> t;
+    for ( int i = 1; i <= t; i++ ) {
+        fin >> n >> m;
+        polje.clear();
+        string x;
+        for ( int j = 0; j < n; j++ ) {
+            fin >> x;
+            polje.push_back ( x );
+        }
+        fout << "Case #"<< i << ": ";
+        init();
+        int ans = solve ();
+        if ( !ans ) fout << "impossible" << endl;
+        else fout << ans << endl;
+    }
+    return 0;
+}

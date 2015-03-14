@@ -1,0 +1,183 @@
+// Round 1A 2012
+// Problem X.
+
+#ifdef _MSC_VER
+	#define _CRT_SECURE_NO_WARNINGS
+#endif
+
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <string>
+#include <iostream>
+#include <set>
+#include <map>
+#include <list>
+#include <queue>
+#include <deque>
+#include <vector>
+#include <algorithm>
+#include <iterator>
+#include <cassert>
+
+using namespace std;
+
+typedef unsigned long long llong;
+typedef long double ldouble;
+typedef pair<int, int> pint;
+typedef pair<double, double> pdouble;
+typedef vector<int> vint;
+typedef vint::iterator vit;
+typedef vector<double> vdouble;
+typedef vdouble::iterator vdit;
+typedef vector<ldouble> vldouble;
+typedef vector<string> vstring;
+typedef vector<llong> vllong;
+typedef vector<vint> graph;
+
+#define FOR(v,p,k) for(int v=p;v<=k;++v)
+#define FORD(v,p,k) for(int v=p;v>=k;--v)
+#define REP(i,n) for(int i=0;i<(n);++i)
+#ifdef _MSC_VER
+	#define VAR(v,i) auto v=(i)
+#else
+	#define VAR(v,i) __typeof(i) v=(i)
+#endif
+#define FOREACH(i,c) for(VAR(i,(c).begin());i!=(c).end();++i)
+#define SIZE(x) (int)x.size()
+#define ALL(c) c.begin(),c.end()
+
+#define ADD_EDGE(g,u,v) g[u].push_back(v),g[v].push_back(u)
+
+#define ST first
+#define ND second
+#define INF 1000000000
+#define INFL 1000000000000000000LL
+#define EPS 1e-5
+
+int LR[] = {-1, 1, 0, 0}, UD[] = {0, 0, -1, 1};
+
+bool is_visible(vstring &P, int p, int q, int a, int b, int dir)
+{
+	if(dir == 0 && p == a && b > q)
+	{
+		for(int i = b - 1; i >= q; i--)
+			if(P[p][i] != '.')
+				return false;
+		return true;
+	}
+	else if(dir == 1 && q == b && a > p)
+	{
+		for(int i = a - 1; i >= p; i--)
+			if(P[i][q] != '.')
+				return false;
+		return true;
+	}
+	else if(dir == 2 && p == a && b < q)
+	{
+		for(int i = b + 1; i <= q; i++)
+			if(P[p][i] != '.')
+				return false;
+		return true;
+	}
+	else if(dir == 3 && q == b && a < p)
+	{
+		for(int i = a + 1; i <= p; i++)
+			if(P[i][q] != '.')
+				return false;
+		return true;
+	}
+	
+	return false;
+}
+
+bool is_available(vstring &P, int p, int q, int move, map<char, int> &dir)
+{
+	if(P[p][q] != '.')
+		return false;
+
+	for(int i = 0; i < P.size(); i++)
+		for(int j = 0; j < P[i].size(); j++)
+			if(P[i][j] == '<' || P[i][j] == '^' || P[i][j] == '>' || P[i][j] == 'v')
+				if(is_visible(P, p, q, i, j, (dir[P[i][j]] + move) % 4))
+					return false;
+	return true;
+}
+
+int solve(vstring &P, int ps, int qs, int pg, int qg)
+{
+	map<char, int> dir;
+	dir['<'] = 0, dir['^'] = 1, dir['>'] = 2, dir['v'] = 3;
+	
+	vector<vector<vint> > A(4);
+	for(int k = 0; k < 4; k++)
+	{
+		A[k].resize(P.size());
+		for(int i = 0; i < P.size(); i++)
+		{
+			A[k][i].resize(P[i].size());
+			for(int j = 0; j < P[i].size(); j++)
+				A[k][i][j] = INF;
+		}
+	}
+	
+	// Dijkstra
+	queue<pair<int, pint> > Q;
+    Q.push(make_pair(0, make_pair(ps, qs)));
+	
+	while(!Q.empty())
+    {
+        pair<int, pint> top = Q.front();
+        int move = top.first, p = top.second.first, q = top.second.second;
+        Q.pop();
+		
+		if(p == pg && q == qg)
+			return move;
+		if(A[move % 4][p][q] != INF)
+			continue;
+		A[move % 4][p][q] = move;
+		
+		if(p > 0 && is_available(P, p - 1, q, move + 1, dir))
+			Q.push(make_pair(move + 1, make_pair(p - 1, q)));
+		if(q > 0 && is_available(P, p, q - 1, move + 1, dir))
+			Q.push(make_pair(move + 1, make_pair(p, q - 1)));
+		if(p < P.size() - 1 && is_available(P, p + 1, q, move + 1, dir))
+			Q.push(make_pair(move + 1, make_pair(p + 1, q)));
+		if(q < P[p].size() - 1 && is_available(P, p, q + 1, move + 1, dir))
+			Q.push(make_pair(move + 1, make_pair(p, q + 1)));
+    }
+	
+	return 0;
+}
+
+int main()
+{
+	int T;
+	
+	cin >> T;
+	REP(t, T)
+	{
+		int M, N;
+		cin >> M >> N;
+		
+		vstring P(M);
+		for(int i = 0; i < M; i++)
+			cin >> P[i];
+		
+		int ps, qs, pg, qg;
+		for(int i = 0; i < P.size(); i++)
+			for(int j = 0; j < P[i].size(); j++)
+				if(P[i][j] == 'S')
+					ps = i, qs = j, P[i][j] = '.';
+				else if(P[i][j] == 'G')
+					pg = i, qg = j, P[i][j] = '.';
+
+		int value = solve(P, ps, qs, pg, qg);
+		if(value > 0)
+			printf("Case #%d: %d\n", t + 1, value);
+		else
+			printf("Case #%d: impossible\n", t + 1);
+	}
+	
+	return 0;
+}

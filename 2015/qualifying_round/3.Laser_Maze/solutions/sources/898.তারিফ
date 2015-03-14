@@ -1,0 +1,185 @@
+#include <bits/stdc++.h>
+
+using namespace std ; 
+
+int fine[ 105 ][ 105 ][ 6 ] ; 
+int dist[ 105 ][ 105 ][ 6 ] ; 
+
+int ROW , COL ; 
+vector<string> maze ;
+int R[] = { -1 , 0 , 1 , 0 } ; 
+int C[] = { 0 , 1 , 0 , -1 } ; 
+
+bool ok( int row , int col ) {
+	if( row >= 0 && row < ROW && col >= 0 && col < COL ) {
+		if( maze[ row ][ col ] == '#' ) return false ;
+		if( maze[ row ][ col ] == '^' ) return false ;
+		if( maze[ row ][ col ] == '<' ) return false ; 
+		if( maze[ row ][ col ] == '>' ) return false ; 
+		if( maze[ row ][ col ] == 'v' ) return false ; 
+
+		return true ; 
+	}
+
+	return false ; 	
+}
+
+void go( int row , int col , int dir , int tym ) {
+	
+	do {
+		fine[ row ][ col ][ tym ] = 1 ;
+		row += R[ dir ] ; 
+		col += C[ dir ] ;  
+	}while( ok( row , col ) ) ; 
+}
+
+bool ok( int nx , int ny , int nt ) {
+	if( nx >= 0 && nx < ROW && ny >= 0 && ny < COL ) {
+		if( maze[ nx ][ ny ] == '^' ) return false ;
+		if( maze[ nx ][ ny ] == '<' ) return false ; 
+		if( maze[ nx ][ ny ] == '>' ) return false ; 
+		if( maze[ nx ][ ny ] == 'v' ) return false ; 
+		if( maze[ nx ][ ny ] == '#' ) return false ; 
+		if( fine[ nx ][ ny ][ nt ] == 1 ) return false ; 
+
+		return true ;
+	}	
+
+	return false ;
+}
+
+int solve( vector<string> maze ) {
+	memset( fine , 0 , sizeof( fine ) ) ; 
+	
+	for( int i = 0 ; i < maze.size() ; i ++ ) {
+		for( int j = 0 ; j < maze[ i ].size() ; j ++ ) {
+			if( maze[ i ][ j ] == '^' ) {
+				go( i , j , 0 , 0 ) ;
+				go( i , j , 1 , 1 ) ; 
+				go( i , j , 2 , 2 ) ; 
+				go( i , j , 3 , 3 ) ; 
+			}
+
+			if( maze[ i ][ j ] == '>' ) {
+				go( i , j , 1 , 0 ) ; 
+				go( i , j , 2 , 1 ) ; 
+				go( i , j , 3 , 2 ) ; 
+				go( i , j , 0 , 3 ) ; 
+			}
+
+			if( maze[ i ][ j ] == 'v' ) {
+				go( i , j , 2 , 0 ) ; 
+				go( i , j , 3 , 1 ) ; 
+				go( i , j , 0 , 2 ) ; 
+				go( i , j , 1 , 3 ) ; 
+			}
+
+			if( maze[ i ][ j ] == '<' ) {
+				go( i , j , 3 , 0 ) ; 
+				go( i , j , 0 , 1 ) ; 
+				go( i , j , 1 , 2 ) ; 
+				go( i , j , 2 , 3 ) ; 
+			}
+		}
+	}
+
+	pair<int,int> st ; 
+	pair<int,int> en ; 
+
+	for( int i = 0 ; i < maze.size() ; i ++ ) {
+		for( int j = 0 ; j < maze[ i ].size() ; j ++ ) {
+			if( maze[ i ][ j ] == 'S' ) {
+				st.first = i ; 
+				st.second = j ; 
+			}
+
+			if( maze[ i ][ j ] == 'G' ) {
+				en.first = i ; 
+				en.second = j ; 
+			}
+		}
+	}
+
+	for( int i = 0 ; i <= 101 ; i ++ ) {
+		for( int j = 0 ; j <= 101 ; j ++ ) {
+			for( int k = 0 ; k <= 4 ; k ++ ) {
+				dist[ i ][ j ][ k ] = ( 1 << 20 ) ; 
+			}
+		}
+	}
+
+	dist[ st.first ][ st.second ][ 0 ] = 0 ; 
+	
+	queue<pair<int,int> > q ; 
+	//queue<int> tt( 0 ) ; 
+	queue<int> tot ; 
+
+	q.push( st ) ;
+	tot.push( 0 ) ;  
+
+	while( !q.empty() ) {
+		pair<int,int> cur = q.front() ; q.pop() ; 
+		int curtime = tot.front() ; tot.pop() ; 
+
+		for( int i = 0 ; i < 4 ; i ++ ) {
+			int nx = cur.first + R[ i ] ; 
+			int ny = cur.second + C[ i ] ; 
+			int nt = ( curtime + 1 ) % 4 ; 
+
+			if( ok( nx , ny , nt ) ) {
+				if( ( curtime + 1 ) < dist[ nx ][ ny ][ nt ] ) {
+					dist[ nx ][ ny ][ nt ] = curtime + 1 ; 
+
+					pair<int,int> nxt ; 
+					nxt.first = nx ; 
+					nxt.second = ny ; 
+					
+					q.push( nxt ) ; 
+					tot.push( curtime + 1 ) ; 
+				}
+			}			
+		}
+	}
+
+	int mins = 1 << 20 ; 
+	
+	for( int i = 0 ; i < 4 ; i ++ ) {
+		mins = min( mins , dist[ en.first ][ en.second ][ i ] ) ; 
+	}	
+
+	if( mins == ( 1 << 20 ) ) return -1 ; 
+	return mins ; 
+}
+
+int main() {
+	
+	int T ; 
+
+	cin >> T ; 
+
+	int M , N ; 
+
+	for( int i = 0 ; i < T ; i ++ ) {
+		cin >> M >> N ;  
+		ROW = M ; 
+		COL = N ; 
+		string line = "" ; 
+		maze.clear() ; 
+
+		for( int j = 0 ; j < M ; j ++ ) {
+			cin >> line ; 
+			maze.push_back( line ) ; 
+		}		
+		
+//		cerr << "Here" << endl ;
+		int res = solve( maze ) ; 
+		
+		if( res != -1 ) 
+			cout << "Case #" << i + 1 << ": " << res << "\n" ;  
+		
+		else
+			cout << "Case #" << i + 1 << ": impossible\n" ; 
+	}
+
+	return 0 ; 
+}

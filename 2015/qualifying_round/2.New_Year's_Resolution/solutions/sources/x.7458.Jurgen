@@ -1,0 +1,88 @@
+#!/usr/bin/php
+<?php
+
+function readStdInAtOnce() {
+	$stdin = fopen('php://stdin', 'r');
+
+	$result = '';
+	
+	while(!feof($stdin)) {
+		$result .= trim(fread($stdin, 4096));
+	}
+
+	fclose($stdin);
+
+	return preg_split('/\r?\n/', $result);
+}
+
+$inFile = readStdInAtOnce();
+
+$linePointer = 0;
+
+$nrOfCases = $inFile[$linePointer++];
+
+for($i = 1; $i <= $nrOfCases; $i++) {
+	$requirement = explode(' ', $inFile[$linePointer++]);
+	$nrOfFoods = $inFile[$linePointer++];
+	$foods = array();
+	for($j = 0; $j < $nrOfFoods; $j++) {
+		$foods[] = explode(' ', $inFile[$linePointer++]);
+	}
+	echo 'Case #' . $i . ': ' . (canEat($requirement, $foods)? 'yes': 'no') . PHP_EOL;
+}
+
+function canEat($requirement, $foods) {
+	for($i = count($foods); $i >= 0; $i--) {
+		
+		$cm = new CombinationMaker($foods);
+		$testFoodCombinations = $cm->get($i);
+
+		foreach($testFoodCombinations as $testFood) {
+			$sum = array(0, 0, 0);
+			for($j = 0, $maxJ = count($testFood); $j < $maxJ; $j++) {
+				$sum[0] += $testFood[$j][0];
+				$sum[1] += $testFood[$j][1];
+				$sum[2] += $testFood[$j][2];
+			}
+			if($sum[0] == $requirement[0] && $sum[1] == $requirement[1] && $sum[2] == $requirement[2]) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+class CombinationMaker {
+	protected $result;
+	protected $combination;
+
+	public function __CONSTRUCT($inArray) {
+		$this->inArray = $inArray;
+
+		$this->result = array();
+		$this->combination = array();
+	}
+
+	public function get($choose) {
+		$this->choose = $choose;
+
+  		$n = count($this->inArray);
+
+		$this->innerGet(0, $this->choose, $this->inArray, $n);
+		
+		return $this->result;
+	}
+
+	protected function innerGet($start, $choose_, $arr, $n) {
+	    if ($choose_ == 0) {
+	    	array_push($this->result, $this->combination);
+    	} else {
+			for ($i = $start; $i <= $n - $choose_; $i++) {
+				array_push($this->combination, $arr[$i]);
+				$this->innerGet($i + 1, $choose_ - 1, $arr, $n);
+				array_pop($this->combination);
+			}
+		}
+	}
+}

@@ -1,0 +1,162 @@
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <stack>
+#include <string>
+#include <sstream>
+#include <vector>
+
+
+#define INF 1000000000
+#define MOD 1000000007
+#define ALL(x) std::begin(x), std::end(x)
+
+
+#define XYZ(x, y, z) (((x) << 9) + ((y) << 2) + (z))
+
+#define X(x) (((x) >>  9) & 127)
+#define Y(x) (((x) >>  2) & 127)
+#define Z(x) ( (x)        &   3)
+
+
+std::map<char, const char*> lut = {
+  {'>', ">v<^"},
+  {'v', "v<^>"},
+  {'<', "<^>v"},
+  {'^', "^>v<"}
+};
+
+std::map<char, std::vector<int>> D = {
+  {'>', { 1,  0}},
+  {'v', { 0,  1}},
+  {'<', {-1,  0}},
+  {'^', { 0, -1}},
+};
+
+const int dx[] = { 1,  0, -1,  0};
+const int dy[] = { 0, -1,  0,  1};
+
+
+char a[5][111][111];
+
+
+int bfs(int sx, int sy, int gx, int gy)
+{
+  int dist[4][111][111];
+
+  memset(dist, -1, sizeof(dist));
+
+  dist[0][sy][sx] = 0;
+
+  std::queue<int> queue;
+
+  queue.push(XYZ(sx, sy, 0));
+    
+  while (! queue.empty()) {
+    int x = X(queue.front());
+    int y = Y(queue.front());
+    int z = Z(queue.front());
+      
+    queue.pop();
+
+    int xx, yy, zz = (z + 1) % 4;
+
+    for (int k = 0; k < 4; k ++) {
+      xx = x + dx[k];
+      yy = y + dy[k];
+
+      if (a[zz][yy][xx] == '.')
+        if (dist[zz][yy][xx] == -1) {
+          if (xx == gx && yy == gy)
+            return dist[z][y][x] + 1;
+
+          dist[zz][yy][xx] = dist[z][y][x] + 1;
+
+          queue.push(XYZ(xx, yy, zz));
+        }
+    }
+  }
+  
+  return -1;
+}
+
+
+int main(int argc, char** argv)
+{
+  std::cin.tie(0);
+  std::ios_base::sync_with_stdio(0);
+
+  int T, M, N, sx, sy, gx, gy;
+
+  std::cin >> T;
+
+  for (int t = 1; t <= T; t ++) {
+    std::cin >> M >> N;
+
+    memset(a, 0, sizeof(a));
+
+    for (int i = 1; i <= M; i ++)
+      std::cin >> &a[4][i][1];
+
+    for (int i = 0; i < M + 2; i ++)
+      a[4][i][0] = a[4][i][N + 1] = '#';
+    
+    for (int j = 0; j < N + 2; j ++)
+      a[4][0][j] = a[4][M + 1][j] = '#';
+
+    M += 2;
+    N += 2;
+
+    for (int i = 0; i < M; i ++)
+      for (int j = 0; j < N; j ++) {
+        char c = a[4][i][j];
+
+        if (c == 'S') {
+          a[4][sy = i][sx = j] = '.';
+        }
+        else if (c == 'G') {
+          a[4][gy = i][gx = j] = '.';
+        }
+      }
+
+    for (int k = 0; k < 4; k ++)
+      for (int i = 0; i < M; i ++)
+        for (int j = 0; j < N; j ++) {
+          char c = a[4][i][j], cc;
+
+          if (lut.count(c))
+            c = lut[cc = c][k];
+
+          if (D.count(c)) {
+            int dy = D[c][1], dx = D[c][0];
+
+            a[k][i][j] = c;
+
+            for (int ii = i + dy, jj = j + dx; a[4][ii][jj] == '.'; ii += dy, jj += dx)
+              a[k][ii][jj] = 'x';
+          }
+          else if (a[k][i][j] != 'x') {
+            a[k][i][j] = c;
+          }
+        }
+
+
+    int n = bfs(sx, sy, gx, gy);
+
+    if (n >= 0) {
+      std::cout << "Case #" << t << ": " << n << std::endl;
+    }
+    else {
+      std::cout << "Case #" << t << ": " << "impossible" << std::endl;
+    }
+  }
+
+  return 0;
+}

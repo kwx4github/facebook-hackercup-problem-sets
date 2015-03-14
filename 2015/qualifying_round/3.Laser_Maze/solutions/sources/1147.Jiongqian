@@ -1,0 +1,144 @@
+package LaserMaze;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.Arrays;
+
+public class LazerMaze {
+	static int startI=-1, startJ=-1;
+	static int minStep;
+	public static void main(String[] args) throws IOException {
+		BufferedReader reader =new BufferedReader(new InputStreamReader(System.in));
+		PrintWriter writer = new PrintWriter(new File("./LaserMaze.txt"));
+		int num = Integer.parseInt(reader.readLine());
+		for(int i=0; i<num; i++){
+			minStep = Integer.MAX_VALUE;
+			String strSplit[] = reader.readLine().split(" ");
+			int height = Integer.parseInt(strSplit[0]);
+			int width = Integer.parseInt(strSplit[1]);
+			char maze[][] = new char[height][width];
+			for(int j=0; j<height; j++){
+				maze[j] = reader.readLine().toCharArray();
+			}
+			boolean laser[][] = fillLaser(maze, height, width);
+			int visited[][] = new int[4][height*width];
+			for(int j=0; j<4; j++)
+				Arrays.fill(visited[j], -1);
+			int posI = startI, posJ=startJ;
+//			if(laser[0][posI*width+posJ]){//die at the beginning. Does not shoot in the begining.
+//				writer.println("Case #" +(i+1)+": impossible");
+//				continue;
+//			}
+			solveLaserMaze(maze, height, width, laser, visited, posI, posJ, 0);
+			if(minStep == Integer.MAX_VALUE){
+				writer.println("Case #" +(i+1)+": impossible");
+			}
+			else writer.println("Case #" +(i+1)+": "+minStep);
+			System.out.println("Case #" +(i+1)+": "+minStep);
+			
+		}
+		writer.flush();
+		writer.close();
+		reader.close();
+	}
+	public static boolean[][] fillLaser(char maze[][], int height, int width){
+		boolean laser[][] = new boolean[4][height*width];
+		for(int t=0; t<4; t++)
+					Arrays.fill(laser[t], false);
+		for(int i=0; i<height; i++)
+			for(int j=0; j<width; j++){
+				int id = checkLaser(maze[i][j]);
+				if(id>=0){
+					for(int k=0; k<4; k++)
+						laserAttack(laser[k], maze, height, width, i, j, (k+id)%4);
+				}
+				else if(maze[i][j] =='S'){
+					maze[i][j] = '.';					
+					startI = i; startJ=j;
+				}
+			}
+		return laser;
+	}
+	public static int checkLaser(char ch){
+		if(ch == '^')
+			return 0;
+		if(ch == '>')
+			return 1;
+		if(ch == 'v')
+			return 2;
+		if(ch == '<')
+			return 3;
+		return -1;
+	}
+	public static void laserAttack(boolean laserID[], char maze[][], int height, int width, int posI, int posJ, int dir){
+		if(dir == 0){
+			for(int i=posI-1; i>=0; i--){
+				if(checkLaser(maze[i][posJ]) >=0 || maze[i][posJ]=='#')
+					break;
+				else laserID[i*width+posJ]=true;
+			}
+		}
+		else if(dir == 2){
+			for(int i=posI+1; i<height; i++){
+				if(checkLaser(maze[i][posJ]) >=0 || maze[i][posJ]=='#')
+					break;
+				else laserID[i*width+posJ]=true;
+			}
+		}
+		else if(dir == 1){
+			for(int j=posJ+1; j<width; j++){
+				if(checkLaser(maze[posI][j]) >=0 || maze[posI][j]=='#')
+					break;
+				else laserID[posI*width+j]=true;
+			}
+		}
+		else if(dir == 3){
+			for(int j=posJ-1; j>=0; j--){
+				if(checkLaser(maze[posI][j]) >=0 || maze[posI][j]=='#')
+					break;
+				else laserID[posI*width+j]=true;
+			}
+		}
+	}
+	
+	public static void solveLaserMaze(char maze[][], int height, int width, boolean laser[][], int visited[][], int posI, int posJ, int previousStep){
+		if(maze[posI][posJ] == 'G'){
+			if(previousStep < minStep)
+				minStep = previousStep;
+		}
+		if(previousStep == minStep)
+			return ;//
+		int time = (previousStep+1)%4;
+		//up
+		if(posI>0 && !laser[time][(posI-1)*width+posJ] && (maze[posI-1][posJ]=='.'||maze[posI-1][posJ]=='G')){
+			if(visited[time][(posI-1)*width+posJ]==-1 || visited[time][(posI-1)*width+posJ]>previousStep+1){
+				visited[time][(posI-1)*width+posJ] = previousStep+1;
+				solveLaserMaze(maze, height, width, laser, visited, posI-1, posJ, previousStep+1);
+			}
+		}
+		//Down
+		if(posI<height-1 && !laser[time][(posI+1)*width+posJ] && (maze[posI+1][posJ]=='.' || maze[posI+1][posJ]=='G')){
+			if(visited[time][(posI+1)*width+posJ]==-1 || visited[time][(posI+1)*width+posJ]>previousStep+1){
+				visited[time][(posI+1)*width+posJ] = previousStep+1;
+				solveLaserMaze(maze, height, width, laser, visited, posI+1, posJ, previousStep+1);
+			}
+		}
+		//left
+		if(posJ>0 && !laser[time][(posI)*width+posJ-1] && (maze[posI][posJ-1]=='.' ||maze[posI][posJ-1]=='G')){
+			if(visited[time][(posI)*width+posJ-1]==-1 || visited[time][(posI)*width+posJ-1]>previousStep+1){
+				visited[time][(posI)*width+posJ-1] = previousStep+1;
+				solveLaserMaze(maze, height, width, laser, visited, posI, posJ-1, previousStep+1);
+			}
+		}
+		//right
+		if(posJ<width-1 && !laser[time][(posI)*width+posJ+1]  && (maze[posI][posJ+1]=='.' || maze[posI][posJ+1]=='G')){
+			if(visited[time][(posI)*width+posJ+1]==-1 || visited[time][(posI)*width+posJ+1]>previousStep+1){
+				visited[time][(posI)*width+posJ+1] = previousStep+1;
+				solveLaserMaze(maze, height, width, laser, visited, posI, posJ+1, previousStep+1);
+			}
+		}
+	}
+}

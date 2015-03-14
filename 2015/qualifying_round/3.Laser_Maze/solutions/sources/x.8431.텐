@@ -1,0 +1,285 @@
+// https://www.facebook.com/hackercup/problems.php?pid=1523599254559737&round=742632349177460
+// solved by jong10@gmail.com
+
+#include <cstdio>
+#include <algorithm>
+using namespace std;
+
+#define MAXM 100
+#define MAXN 100
+#define MAX_STEPS 99999999
+#define NOT_VISITED 0
+#define ON_GOING (-1)
+#define NO_WAY (-2)
+
+#define EMPTY '.'
+#define TURRET 'X'
+#define WALL '#'
+
+struct Position {
+    int x;
+    int y;
+};
+
+struct Turret {
+    int x;
+    int y;
+    int dir; // 0,1,2,3 == < ^ > v
+    Turret() {
+    };
+    Turret(int x, int y, int direction) {
+        this->x = x;
+        this->y = y;
+        this->dir = direction;
+    };
+};
+
+int MAX_Y; // M. lines
+int MAX_X; // N. characters in a line
+
+char maze[MAXM][MAXN+1]; // +1 is for null string
+
+Position start_pos, end_pos;
+
+Turret turrets[MAXM * MAXN]; // turrets
+int len_turrets;
+
+int visited[256 * 256 * 256]; // x,y,dir => visited with steps
+
+///////// debug ///////////////////////////////////////////////////
+
+char get_dir(int x, int y, int steps) {
+    for (int t = 0; t < len_turrets; ++t) {
+        if (turrets[t].x == x && turrets[t].y == y) {
+            int d = (turrets[t].dir + steps) % 4;
+            switch (d) {
+                case 0: return '<';
+                case 1: return '^';
+                case 2: return '>';
+                case 3: return 'v';
+            }
+        }
+    }
+    return '*';
+}
+void print_maze(int ux, int uy, int steps) {
+    for (int y = 0; y < MAX_Y; ++y) {
+        printf("    ");
+        for (int x = 0; x < MAX_X; ++x) {
+            if (x == ux && y == uy) {
+                printf("O"); // user
+            } else if (maze[y][x] == TURRET) {
+                printf("%c", get_dir(x, y, steps));
+            } else {
+                printf("%c", maze[y][x]);
+            }
+        }
+        printf("\n");
+    }
+}
+///////// debug ///////////////////////////////////////////////////
+
+
+
+
+static inline int index_visited(int x, int y, int dir) {
+    return (0xff & x) | ((0xff & y) << 8) | ((0xff & dir) << 16);
+}
+
+
+static inline void clear_visited() {
+    for (int dir = 0; dir < 4; ++dir) {
+        for (int y = 0; y < MAX_Y; ++y) {
+            for (int x = 0; x < MAX_X; ++x) {
+                visited[index_visited(x, y, dir)] = NOT_VISITED;
+            }
+        }
+    }
+}
+
+
+// ON_GOING: going now
+// NOT_VISITED: not visited yet
+// NO_WAY: cannot go
+// others: visited with steps
+static inline bool is_visited(int x, int y, int currentSteps) {
+    int index = index_visited(x, y, currentSteps % 4);
+    int oldSteps = visited[index];
+
+    if (oldSteps == NOT_VISITED)
+        return false;
+    else if (oldSteps < 0)
+        return true;
+    else if (currentSteps < oldSteps)
+        return false;
+    else
+        return true;
+}
+
+
+static inline void set_visited(int x, int y, int steps, int stepsValue) {
+    int index = index_visited(x, y, steps % 4);
+    visited[index] = stepsValue;
+}
+
+// x,y -> target_x,target_y (delta: dx,dy)
+static inline bool check_direct_line(int x, int y, int target_x, int target_y, int dx, int dy) {
+    while (0 <= x && x < MAX_X && 0 <= y && y < MAX_Y) {
+        if (maze[y][x] != EMPTY) // wall, terret
+            return false;
+        if (x == target_x && y == target_y) // hit turret.. die.
+            return true;
+        x += dx;
+        y += dy;
+    }
+    return false;
+}
+
+
+static inline bool is_die(int x, int y, int steps) {
+    for (int t = 0; t < len_turrets; ++t) {
+        int direction = (turrets[t].dir + steps) % 4;
+        int dx = 0;
+        int dy = 0;
+        switch (direction) {
+            case 0: dx = -1; break; // left
+            case 1: dy = -1; break; // up
+            case 2: dx = +1; break; // right
+            case 3: dy = +1; break; // down
+        }
+        // TODO fix this bug
+        return check_direct_line(turrets[t].x + dx, turrets[t].y + dy, x, y, dx, dy);
+    }
+
+    return false;
+}
+
+
+int next(int x, int y, int steps) {
+    if (maze[y][x] != EMPTY)
+        return MAX_STEPS;
+
+    if (is_visited(x, y, steps)) {
+        //printf("VISITED => y=%d, x=%d, steps=%d\n", y, x, steps % 4);
+        return MAX_STEPS;
+    }
+
+    set_visited(x, y, steps, ON_GOING);
+
+    //printf("[%d] y=%d, x=%d\n", steps, y, x);
+    //print_maze(x, y, steps);
+
+    // if this is not starting point,
+    if (steps > 0) {
+        if (is_die(x, y, steps)) {
+            //printf("DIE!! => (%d, %d) => %d\n\n", x, y, steps);
+            set_visited(x, y, steps, NO_WAY);
+            return MAX_STEPS;
+        } else if (x == end_pos.x && y == end_pos.y) {
+            //printf("GOAL!! => %d\n\n", steps);
+            set_visited(x, y, steps, steps);
+            return steps; // goal!!
+        }
+    }
+
+    //printf("\n");
+
+    // check next positions
+    int min_steps = MAX_STEPS;
+
+    // left
+    if (x - 1 >= 0) {
+        int val = next(x - 1, y, steps + 1);
+        min_steps = min(min_steps, val);
+    }
+
+    // up
+    if (y - 1 >= 0) {
+        int val = next(x, y - 1, steps + 1);
+        min_steps = min(min_steps, val);
+    }
+
+    // right
+    if (x + 1 < MAX_X) {
+        int val = next(x + 1, y, steps + 1);
+        min_steps = min(min_steps, val);
+    }
+
+    // down
+    if (y + 1 < MAX_Y) {
+        int val = next(x, y + 1, steps + 1);
+        min_steps = min(min_steps, val);
+    }
+
+    if (min_steps < MAX_STEPS)
+        set_visited(x, y, steps, steps);
+    else
+        set_visited(x, y, steps, NO_WAY);
+
+    return min_steps;
+}
+
+
+static inline int solve() {
+    clear_visited();
+    return next(start_pos.x, start_pos.y, 0);
+}
+
+
+static inline void copy_line(int y, char *temp) {
+    for (int x = 0; x < MAX_X; ++x) {
+        char c = temp[x];
+        switch (c) {
+            case 'S':
+                start_pos.x = x;
+                start_pos.y = y;
+                maze[y][x] = EMPTY;
+                break;
+            case 'G':
+                end_pos.x = x;
+                end_pos.y = y;
+                maze[y][x] = EMPTY;
+                break;
+            case '<': // 0
+                turrets[len_turrets++] = Turret(x, y, 0);
+                maze[y][x] = TURRET;
+                break;
+            case '^': // 1
+                turrets[len_turrets++] = Turret(x, y, 1);
+                maze[y][x] = TURRET;
+                break;
+            case '>': // 2
+                turrets[len_turrets++] = Turret(x, y, 2);
+                maze[y][x] = TURRET;
+                break;
+            case 'v': // 3
+                turrets[len_turrets++] = Turret(x, y, 3);
+                maze[y][x] = TURRET;
+                break;
+            default:
+                maze[y][x] = c;
+                break;
+        }
+    }
+}
+
+
+int main() {
+    int T, result;
+    char temp_line[MAXN+1];
+    scanf("%d\n", &T);
+    for (int t = 1; t <= T; ++t) {
+        scanf("%d %d\n", &MAX_Y, &MAX_X);
+        len_turrets = 0;
+        for (int y = 0; y < MAX_Y; ++y) {
+            scanf("%s\n", temp_line);
+            copy_line(y, temp_line);
+        }
+        result = solve();
+        if (result < MAX_STEPS)
+            printf("Case #%d: %d\n", t, result);
+        else
+            printf("Case #%d: impossible\n", t);
+    }
+    return 0;
+}

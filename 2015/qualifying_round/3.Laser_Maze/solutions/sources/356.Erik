@@ -1,0 +1,105 @@
+import java.util.*;
+import java.io.*;
+
+public class LazerMaze {
+
+    static final int[] dr = {-1, 0, 1, 0};
+    static final int[] dc = {0, 1, 0, -1};
+
+    public static void main(String[] args) throws IOException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+        PrintWriter out = new PrintWriter(System.out);
+
+        int T = Integer.parseInt(in.readLine());
+        for (int t = 1; t <= T; t++) {
+            StringTokenizer st = new StringTokenizer(in.readLine());
+            int R = Integer.parseInt(st.nextToken());
+            int C = Integer.parseInt(st.nextToken());
+            char[][] grid = new char[R][C];
+            for (int r = 0; r < R; r++) {
+                grid[r] = in.readLine().toCharArray();
+            }
+            int res = solve(R, C, grid);
+            out.println("Case #" + t + ": " + (res == -1 ? "impossible" : res));
+        }
+
+        in.close();
+        out.close();
+    }
+
+    public static int solve(int R, int C, char[][] grid) {
+        boolean[][][] free = new boolean[R][C][4];
+        for (int r = 0; r < R; r++) {
+            for (int c = 0; c < C; c++) {
+                Arrays.fill(free[r][c], true);
+            }
+        }
+        int sr = -1, sc = -1, gr = -1, gc = -1;
+        for (int r = 0; r < R; r++) {
+            for (int c = 0; c < C; c++) {
+                char ch = grid[r][c];
+                if (ch == 'S') {
+                    sr = r;
+                    sc = c;
+                } else if (ch == 'G') {
+                    gr = r;
+                    gc = c;
+                } else if (ch != '.') {
+                    Arrays.fill(free[r][c], false);
+                    int dir = -1;
+                    if (ch == '^') dir = 0;
+                    else if (ch == '>') dir = 1;
+                    else if (ch == 'v') dir = 2;
+                    else if (ch == '<') dir = 3;
+                    if (dir == -1) continue;
+                    for (int i = 0; i < 4; i++) {
+                        int nr = r + dr[i], nc = c + dc[i];
+                        while (nr >= 0 && nr < R && nc >= 0 && nc < C && isEmpty(grid[nr][nc])) {
+                            free[nr][nc][(i+4-dir)%4] = false;
+                            nr += dr[i];
+                            nc += dc[i];
+                        }
+                    }
+                }
+            }
+        }
+        int[][][] vis = new int[R][C][4];
+        for (int r = 0; r < R; r++) {
+            for (int c = 0; c < C; c++) {
+                Arrays.fill(vis[r][c], -1);
+            }
+        }
+        vis[sr][sc][0] = 0;
+        LinkedList<State> q = new LinkedList<State>();
+        q.add(new State(sr, sc, 0));
+        while(!q.isEmpty()) {
+            State st = q.removeFirst();
+            if (st.r == gr && st.c == gc) {
+                return st.t;
+            }
+            for (int i = 0; i < 4; i++) {
+                int nr = st.r + dr[i];
+                int nc = st.c + dc[i];
+                int nt = st.t + 1;
+                if (nr >= 0 && nr < R && nc >= 0 && nc < C && free[nr][nc][nt%4] && vis[nr][nc][nt%4] == -1) {
+                    vis[nr][nc][nt%4] = nt;
+                    q.add(new State(nr, nc, nt));
+                }
+            }
+        }
+        return -1;
+    }
+
+    static boolean isEmpty(char c) {
+        return c == '.' || c == 'S' || c == 'G';
+    }
+
+    static class State {
+        int r, c, t;
+        public State(int r, int c, int t) {
+            this.r = r;
+            this.c = c;
+            this.t = t;
+        }
+    }
+}

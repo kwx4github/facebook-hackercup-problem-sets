@@ -1,0 +1,103 @@
+#include <stdio.h>
+#include <algorithm>
+#include <string>
+#include <stdlib.h>
+#include <vector>
+#include <utility>
+#include <iostream>
+#include <queue>
+using namespace std;
+
+int to_index(int x, int y, int r, int N, int M) {
+    r %= 4;
+    return r + 4*y + 4*M*x;
+}
+
+void from_index(int inx, int N, int M, int &x, int &y, int &r) {
+    r = inx % 4;
+    inx /= 4;
+    y = inx % M;
+    x = inx / M;
+}
+
+const int dir[][2] = { {0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+char buf[100000];
+int main() {
+    int T;
+    scanf("%d", &T);
+    for (int t = 1; t <= T; ++t) {
+        int N, M;
+        scanf("%d %d", &N, &M);
+        vector<string> maze(N);
+        for (string& x : maze) {
+            scanf(" %s", buf);
+            x = buf;
+        }
+        vector<bool> can(4*N*M, true);
+        int start, endx, endy;
+        for (int i = 0; i < N; ++i) for (int j = 0; j < M; ++j) {
+            switch (maze[i][j]) {
+            case '.': break;
+            case 'S':
+                start = to_index(i, j, 0, N, M);
+                break;
+            case 'G':
+                endx = i;
+                endy = j;
+                break;
+            default:
+                for (int r = 0; r < 4; ++r) can[to_index(i, j, r, N, M)] = false;
+                if (maze[i][j] == '#') break;
+                // > -- at 0 goes to right
+                // < -- at 2 goes to right
+                // v -- at 3 goes to right
+                // ^ -- at 1 goes to right
+                int ini = -1;
+                if (maze[i][j] == '>') ini = 0;
+                if (maze[i][j] == '^') ini = 1;
+                if (maze[i][j] == '<') ini = 2;
+                if (maze[i][j] == 'v') ini = 3;
+                if (ini == -1) cout << "NOOOOOOOOO!!!!";
+                for (int d = 0; d < 4; ++d) {
+                    int ii = i + dir[d][0], jj = j + dir[d][1];
+                    while (true) {
+                        if (ii < 0 || ii >= N || jj < 0 || jj >= M) break;
+                        if (maze[ii][jj] == '#' || maze[ii][jj] == '<' || maze[ii][jj] == '>' || maze[ii][jj] == 'v' || maze[ii][jj] == '^') break;
+                        can[to_index(ii, jj, d+ini, N, M)] = false;
+                        ii += dir[d][0];
+                        jj += dir[d][1];
+                    }
+                }
+            }
+        }
+        vector<int> dist(4*N*M, -1);
+        queue<int> Q;
+        Q.push(start);
+        dist[start] = 0;
+        while (!Q.empty()) {
+            int p = Q.front(); Q.pop();
+            int x, y, r;
+            from_index(p, N, M, x, y, r);
+            for (int d = 0; d < 4; ++d) {
+                int rr = (r+1)%4;
+                int ii = x + dir[d][0];
+                int jj = y + dir[d][1];
+                if (ii < 0 || ii >= N || jj < 0 || jj >= M) continue;
+                int pp = to_index(ii, jj, rr, N, M);
+                if (!can[pp]) continue;
+                if (dist[pp] != -1) continue;
+                dist[pp] = dist[p] + 1;
+                Q.push(pp);
+            }
+        }
+        int ans = -1;
+        for (int r = 0; r < 4; ++r) {
+            int p = to_index(endx, endy, r, N, M);
+            if (dist[p] == -1) continue;
+            if (ans == -1 || dist[p] < ans) ans = dist[p];
+        }
+        if (ans == -1) printf("Case #%d: impossible\n", t);
+        else printf("Case #%d: %d\n", t, ans);
+    }
+    return 0;
+}

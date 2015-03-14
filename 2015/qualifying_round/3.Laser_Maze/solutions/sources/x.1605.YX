@@ -1,0 +1,169 @@
+#include <iostream>
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <queue>
+using namespace std;
+
+#define MAXN 105
+#define isLazer (ch=='^' || ch=='v' || ch=='<' || ch=='>')
+
+typedef struct node_t {
+    int x, y;
+    int t;
+    node_t() {}
+    node_t(int xx, int yy, int tt) {
+        x = xx; y = yy; t = tt;
+    }
+} node_t;
+
+
+int dir[4][2] = {
+    {-1,0}, {1,0}, {0,-1}, {0,1}
+};
+bool visit[4][MAXN][MAXN];
+bool dead[4][MAXN][MAXN];
+char map[MAXN][MAXN];
+int n, m;
+int bx, by, ex, ey;
+int ans;
+
+inline int getLazer(char ch) {
+    if (ch == '^') return 1;
+    if (ch == 'v') return 2;
+    if (ch == '<') return 3;
+    if (ch == '>') return 4;
+
+    return 0;
+}
+
+inline bool check(int x, int y ){
+    return x<0 || x>=n || y<0 || y>=m;
+}
+
+int bfs() {
+    node_t nd;
+    queue<node_t> Q;
+    int i, j, k;
+    int x, y, t;
+
+    memset(visit, false, sizeof(visit));
+    visit[0][bx][by] = true;
+    Q.push(node_t(bx, by, 0));
+
+    while (!Q.empty()) {
+        nd = Q.front();
+        Q.pop();
+        if (nd.x==ex && nd.y==ey)
+            return nd.t;
+        t = nd.t+1;
+        j = t&3;
+        for (i=0; i<4; ++i) {
+            x = nd.x + dir[i][0];
+            y = nd.y + dir[i][1];
+            if (check(x, y) || visit[j][x][y])	// enable & re walk
+                continue;
+            if (dead[j][x][y])					// lazer
+                continue;
+            if (map[x][y] == 'G') {
+                return t;
+            } else if (map[x][y] == '.') {
+                visit[j][x][y] = true;
+                Q.push(node_t(x, y, t));
+            }
+        }
+    }
+
+    return 0;
+}
+
+void init() {
+    memset(dead, false, sizeof(dead));
+}
+
+void setDead(int x, int y, int d) {
+    int i, j;
+
+    if (d == 0) {
+        // up right down left
+        for (i=0; i<x; ++i)
+            dead[0][i][y] = true;
+        for (j=y; j<m; ++j)
+            dead[1][x][j] = true;
+        for (i=x; i<n; ++i)
+            dead[2][i][y] = true;
+        for (j=0; j<=y; ++j)
+            dead[3][x][j] = true;
+    } else if (d == 1) {
+        // down left up right
+        for (i=x; i<n; ++i)
+            dead[0][i][y] = true;
+        for (j=0; j<=y; ++j)
+            dead[1][x][j] = true;
+        for (i=0; i<=x; ++i)
+            dead[2][i][y] = true;
+        for (j=y; j<m; ++j)
+            dead[3][x][j] = true;
+    } else if (d == 2) {
+        // left up right down
+        for (j=0; j<=y; ++j)
+            dead[0][x][j] = true;
+        for (i=0; i<=x; ++i)
+            dead[1][i][y] = true;
+        for (j=y; j<m; ++j)
+            dead[2][x][j] = true;
+        for (i=x; i<n; ++i)
+            dead[3][i][y] = true;
+    } else if (d == 3) {
+        // right down left up
+        for (j=y; j<m; ++j)
+            dead[0][x][j] = true;
+        for (i=x; i<n; ++i)
+            dead[1][i][y] = true;
+        for (j=0; j<=y; ++j)
+            dead[2][x][j] = true;
+        for (i=0; i<=x; ++i)
+            dead[3][i][y] = true;
+    }
+}
+
+int main() {
+    int tt, t;
+    int i, j, k;
+
+#ifndef ONLINE_JUDGE
+    freopen("data.in", "r", stdin);
+    freopen("data.out", "w", stdout);
+#endif
+
+    scanf("%d", &t);
+    for (tt=1; tt<=t; ++tt) {
+        init();
+        scanf("%d %d", &n, &m);
+        for (i=0; i<n; ++i) {
+            scanf("%s", map[i]);
+            for (j=0; j<m; ++j) {
+                if (map[i][j] == 'S') {
+                    bx = i;
+                    by = j;
+                    map[i][j] = '.';
+                } else if (map[i][j] == 'G') {
+                    ex = i;
+                    ey = j;
+                } else {
+                    k = getLazer(map[i][j]);
+                    if ( k ) {
+                        setDead(i, j, k-1);
+                    }
+                }
+            }
+        }
+        ans = bfs();
+        if (ans > 0)
+            printf("Case #%d: %d\n", tt, ans);
+        else
+            printf("Case #%d: impossible\n", tt);
+    }
+
+    return 0;
+}

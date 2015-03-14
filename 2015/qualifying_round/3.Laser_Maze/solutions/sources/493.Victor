@@ -1,0 +1,129 @@
+#include <iostream>
+#include <cstdio>
+#include <fstream>
+#include <vector>
+#include <queue>
+#include <utility>
+
+using namespace std;
+
+ifstream in("Cin.txt");
+ofstream out("Cout.txt");
+
+const int dx[4]={-1,0,1,0}, dy[4]={0,-1,0,1};
+const int MAXMN = 101;
+bool seen[4][101][101];
+
+struct line {
+    int x1, y1, x2, y2;
+    line( int a, int b, int c, int d ) { x1=a; y1=b; x2=c; y2=d; }
+};
+
+struct coord {
+    int R, C;
+    coord(int a, int b) { R=a; C=b; }
+};
+
+struct state {
+    int R, C, steps;
+    state( int a, int b, int c ) { R=a; C=b; steps=c; }
+};
+
+bool isLaser(char x) {
+    return ( x=='<' || x == '>' || x == '^' || x == 'v' );
+}
+
+int laserIdx(char x) {
+    if( x == '<' ) return 0;
+    else if( x == '^' ) return 1;
+    else if( x == '>' ) return 2;
+    else if( x == 'v' ) return 3;
+    else return -1;
+}
+
+bool withinGrid (int curR, int curC, int R, int C) {
+    return (curR >= 0 && curR < R && curC >= 0 && curC < C);
+}
+
+bool isOpen(char x) {
+    return (x == '.' || x == 'S' || x == 'G');
+}
+
+bool isOverlap( int r, int c, line a ) {
+    return ( r >= min(a.y1,a.y2) && r <= max(a.y1,a.y2) && c >= min(a.x1, a.x2) && c <= max(a.x1,a.x2) );
+}
+int main() {
+    int T;
+    in >> T;
+    for( int test = 1; test<= T; test++ ) {
+        int R, C;
+        int sR, sC;
+        in >> R >> C;
+        string grid[101];
+        vector< pair<coord,int> > laser; //coordinate and starting direction
+        vector<line> laserPath[MAXMN*MAXMN];
+        for( int i=0; i<R; i++ ) in >> grid[i];
+        for( int k=0; k<4; k++ )
+            for( int i=0; i<MAXMN; i++ )
+                for( int j=0; j<MAXMN; j++ )
+                    seen[k][i][j] = false;
+
+        for( int i=0; i<R; i++ ) {
+            for( int j=0; j<C; j++ ) {
+                if( isLaser(grid[i][j]) ) {
+                    laser.push_back( make_pair(coord(i,j), laserIdx(grid[i][j])) );
+
+                    for( int dir=0; dir<4; dir++ ) {
+                        int tr = i, tc = j;
+                        while ( withinGrid(tr+dy[dir], tc+dx[dir], R, C) &&
+                               isOpen( grid[tr+dy[dir]][tc+dx[dir]] ) ) {
+                                   tr += dy[dir];
+                                   tc += dx[dir];
+                        }
+                        laserPath[laser.size()-1].push_back( line(tc,tr,j,i) );
+                        //cout << "Laser #" << laser.size()-1 << " with path (" << tc << ", " << tr << ") and (" << j << ", " << i << ")" << endl;
+                    }
+                }
+                if( grid[i][j] == 'S' ) { sR = i, sC = j; }
+            }
+        }
+
+        int ans = -1;
+        queue<state> q;
+        q.push( state(sR, sC, 0) );
+
+        while(!q.empty()) {
+            state t = q.front(); q.pop();
+            if( seen[t.steps%4][t.R][t.C] ) continue;
+            seen[t.steps%4][t.R][t.C] = true;
+
+            //check if in the path of a laser
+            bool ok = true;
+            for( int i=0; i<laser.size(); i++ ) {
+                if( isOverlap(t.R, t.C, laserPath[i][ (laser[i].second+t.steps)%4 ]) ) { ok = false; break; }
+            }
+            if( !ok && t.steps > 0 ) continue;
+
+            //reached the goal state?
+            if( grid[t.R][t.C] == 'G' ) {
+                ans = t.steps;
+                break;
+            }
+
+            //navigate to the next square
+            for( int i=0; i<4; i++ ) {
+                if( withinGrid( t.R+dy[i], t.C+dx[i], R, C) && isOpen( grid[t.R+dy[i]][t.C+dx[i]] )
+                   && !seen[(t.steps+1)%4][t.R+dy[i]][t.C+dx[i]] ) {
+                    q.push( state( t.R+dy[i], t.C+dx[i], t.steps+1 ) );
+                }
+            }
+
+        }
+
+        out << "Case #" << test << ": ";
+
+        if( ans == -1 ) out << "impossible" << endl;
+        else out << ans << endl;
+    }
+    return 0;
+}

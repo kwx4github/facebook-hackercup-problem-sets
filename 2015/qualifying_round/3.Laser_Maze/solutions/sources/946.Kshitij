@@ -1,0 +1,173 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef pair<int, int> pii;
+typedef pair<pii, int> piii;
+
+int M, N;
+char graph[101][101];
+vector<int> unsafe[101][101];
+int gdp[101][101][4];
+
+int check_good(int r, int c, int t) {
+    if(r < 0 || r >= M || c < 0 || c >= N)
+        return 0;
+    if(graph[r][c] == '#' || graph[r][c] == '^' || graph[r][c] == '<' || graph[r][c] == '>' || graph[r][c] == 'v')
+        return 0;
+    vector<int> unsafe_pos = unsafe[r][c];
+    for(int i = 0; i < unsafe_pos.size(); ++i) {
+        if(unsafe_pos[i] == t % 4)
+            return 0;
+    }
+    return 1;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cout.precision(30);
+    int T;
+    cin >> T;
+    for(int test = 1; test <= T; ++test) {
+        cout << "Case #" << test << ": ";
+        cin >> M >> N;
+        int sr, sc;
+        int gr, gc;
+        for(int i = 0; i < M; ++i) {
+            string s;
+            cin >> s;
+            for(int j = 0; j < N; ++j) {
+                graph[i][j] = s[j];
+                if(graph[i][j] == 'S') {
+                    sr = i;
+                    sc = j;
+                }
+                if(graph[i][j] == 'G') {
+                    gr = i;
+                    gc = j;
+                }
+            }
+        }
+        for(int i = 0; i < M; ++i)
+            for(int j = 0; j < N; ++j) {
+                unsafe[i][j].clear();
+                for(int k = 0; k < 4; ++k)
+                    gdp[i][j][k] = -1;
+            }
+        for(int i = 0; i < M; ++i) {
+            for(int j = 0; j < N; ++j) {
+                if(graph[i][j] == '#' || graph[i][j] == '^' || graph[i][j] == '<' || graph[i][j] == '>' || graph[i][j] == 'v') {
+                    // unsafe[i][j].push_back(-1);
+                } else {
+                    for(int k = j - 1; k >= 0; --k) {
+                        char v = graph[i][k];
+                        if(v == '.') continue;
+                        if(v == 'S' || v == 'G') continue;
+                        if(v == '<') {
+                            unsafe[i][j].push_back(2);
+                        }
+                        if(v == '>') {
+                            unsafe[i][j].push_back(0);
+                        }
+                        if(v == 'v') {
+                            unsafe[i][j].push_back(3);
+                        }
+                        if(v == '^') {
+                            unsafe[i][j].push_back(1);
+                        }
+                        break;
+                    }
+                    for(int k = j + 1; k < N; ++k) {
+                        char v = graph[i][k];
+                        if(v == 'S' || v == 'G') continue;
+                        if(v == '.') continue;
+                        if(v == '<') {
+                            unsafe[i][j].push_back(0);
+                        }
+                        if(v == '>') {
+                            unsafe[i][j].push_back(2);
+                        }
+                        if(v == 'v') {
+                            unsafe[i][j].push_back(1);
+                        }
+                        if(v == '^') {
+                            unsafe[i][j].push_back(3);
+                        }
+                        break;
+                    }
+                    for(int k = i - 1; k >= 0; --k) {
+                        char v = graph[k][j];
+                        if(v == '.') continue;
+                        if(v == 'S' || v == 'G') continue;
+                        if(v == '<') {
+                            unsafe[i][j].push_back(3);
+                        }
+                        if(v == '>') {
+                            unsafe[i][j].push_back(1);
+                        }
+                        if(v == 'v') {
+                            unsafe[i][j].push_back(0);
+                        }
+                        if(v == '^') {
+                            unsafe[i][j].push_back(2);
+                        }
+                        break;
+                    }
+                    for(int k = i + 1; k < M; ++k) {
+                        char v = graph[k][j];
+                        if(v == '.') continue;
+                        if(v == 'S' || v == 'G') continue;
+                        if(v == '<') {
+                            unsafe[i][j].push_back(1);
+                        }
+                        if(v == '>') {
+                            unsafe[i][j].push_back(3);
+                        }
+                        if(v == 'v') {
+                            unsafe[i][j].push_back(2);
+                        }
+                        if(v == '^') {
+                            unsafe[i][j].push_back(0);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        int done = 0;
+        queue<piii> positions;
+        positions.push(piii(pii(sr, sc), 0));
+        while(!positions.empty()) {
+            piii next_pos = positions.front();
+            int r = next_pos.first.first;
+            int c = next_pos.first.second;
+            int t = next_pos.second;
+            positions.pop();
+            if(gdp[r][c][t%4] != -1)
+                continue;
+            gdp[r][c][t%4] = t;
+            if(r == gr && c == gc) {
+                done = 1;
+                cout << t;
+                break;
+            }
+            if(check_good(r + 1, c, t + 1) && gdp[r + 1][c][(t+1) % 4] == -1) {
+                positions.push(piii(pii(r + 1, c), t + 1));
+            }
+            if(check_good(r, c + 1, t + 1) && gdp[r][c + 1][(t+1) % 4] == -1) {
+                positions.push(piii(pii(r, c + 1), t + 1));
+            }
+            if(check_good(r - 1, c, t + 1) && gdp[r - 1][c][(t+1) % 4] == -1) {
+                positions.push(piii(pii(r - 1, c), t + 1));
+            }
+            if(check_good(r, c - 1, t + 1) && gdp[r][c - 1][(t+1) % 4] == -1) {
+                positions.push(piii(pii(r, c - 1), t + 1));
+            }
+        }
+        if(done == 0)
+            cout << "impossible";
+        cout << endl;
+    }
+
+    return 0;
+}

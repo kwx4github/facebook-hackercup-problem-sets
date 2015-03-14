@@ -1,0 +1,98 @@
+import copy
+
+__author__ = 'alex'
+filebase = "laser_maze"
+infilename = "%s_input.txt" % filebase
+outfilename = "%s_output.txt" % filebase
+
+deltas = {'^':(-1,0), 'v':(1,0), '<':(0,-1), '>':(0,1)}
+next_lazer = {'^':'>', '>':'v', 'v':'<', '<':'^'}
+
+def solve_maze(start, goal, maze):
+    step = 0
+    sr,sc = start
+    gr,gc = goal
+
+    while 1:
+        slice = maze[step % 4]
+        prev_slice = maze[(step - 1) % 4]
+        possible = False
+
+        for r in range(len(slice)):
+            for c in range(len(slice[0])):
+                if type(prev_slice[r][c]) == type(0):
+                    for dr,dc in deltas.values():
+                        if r+dr>=0 and c+dc>=0 and r+dr<len(slice) and c+dc<len(slice[0]) and slice[r+dr][c+dc] == ' ':
+                            slice[r+dr][c+dc] = step
+                            possible = True
+
+        if type(slice[gr][gc]) == type(0):
+            return step
+        if not possible and step:
+            return -1
+
+        step += 1
+
+def process_lazer(lazer, maze_slice):
+    r,c = lazer
+    dr,dc = deltas[maze_slice[r][c]]
+    r += dr
+    c += dc
+
+    while r>=0 and c>=0 and r<len(maze_slice) and c<len(maze_slice[0]) and maze_slice[r][c] == ' ':
+        maze_slice[r][c]='#'
+        r += dr
+        c += dc
+
+def process_maze(maze_def):
+    lazers = []
+    mazes = []
+    for i in range(4):
+        mazes.append(copy.deepcopy(maze_def))
+    for r in range(len(maze_def)):
+        for c in range(len(maze_def[r])):
+            code = maze_def[r][c]
+            if code == 'S':
+                start = (r,c)
+            if code == 'G':
+                goal = (r,c)
+            if code in ['.','S','G']:
+                for i in range(4):
+                    mazes[i][r][c] = ' '
+            if code in ['^','<','>','v']:
+                lazers.append((r,c))
+                for i in range(1,4):
+                    mazes[i][r][c] = next_lazer[mazes[i-1][r][c]]
+    mazes[0][start[0]][start[1]] = 0
+
+    for lazer in lazers:
+        for i in range(4):
+            process_lazer(lazer, mazes[i])
+    result = solve_maze(start,goal,mazes)
+    if result == -1:
+        result = "impossible"
+    return str(result)
+
+
+def run():
+    results = []
+    infile = open(infilename)
+    cases = int(infile.readline())
+    for case in range(cases):
+        maze_def = []
+        M,N = infile.readline().split(' ')
+        M,N = int(M),int(N)
+        for row in range(M):
+            maze_def.append(list(infile.readline().strip()))
+        results.append("Case #%d: %s" % (case+1,process_maze(maze_def)))
+
+    print '\n'.join(results)
+
+    infile.close()
+    outfile = open(outfilename,"wb")
+    outfile.write('\n'.join(results))
+    outfile.write('\n')
+    outfile.close()
+
+
+run()

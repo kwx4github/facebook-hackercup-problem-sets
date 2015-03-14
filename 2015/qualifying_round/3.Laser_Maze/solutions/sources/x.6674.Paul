@@ -1,0 +1,150 @@
+import fileinput
+import numpy as np
+from heapq import heappush, heappop
+
+
+def dijkstra(neighbors, start, is_goal):
+    q = [(0, start)]
+    seen = set()
+    while q:
+        (cost, v1) = heappop(q)
+        if v1 not in seen:
+            seen.add(v1)
+            if is_goal(v1):
+                return cost
+            for v2 in neighbors(v1):
+                if v2 not in seen:
+                    heappush(q, (cost + 1, v2))
+    return None
+
+
+def read_ints(line):
+    return map(int, line.split(" "))
+
+
+directions_chars = {"^": 0, ">": 1, "v": 2, "<": 3}
+directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+
+
+class Mazes:
+
+    def __init__(self, mazes):
+        self.mazes = mazes
+
+    def is_wall(self, pos):
+        (m, n, phase) = pos
+        maze = self.mazes[phase]
+        return maze.get((m, n))
+
+    def neighbors(self, pos):
+        (m, n, phase) = pos
+        phase_ = (phase + 1) % 4
+        for (dm, dn) in directions:
+            pos_ = (m + dm, n + dn, phase_)
+            if not self.is_wall(pos_):
+                yield pos_
+
+
+class Maze:
+    def __init__(self, M, N):
+        self.M = M
+        self.N = N
+        self.grid = np.zeros((M, N), dtype=np.bool)
+
+    def get(self, pos):
+        (m, n) = pos
+        if 0 <= m < self.M:
+            if 0 <= n < self.N:
+                return self.grid[m][n]
+        return True
+
+    def put_wall(self, m, n):
+        if not 0 <= m < self.M:
+            return False
+        if not 0 <= n < self.N:
+            return False
+        if self.grid[m, n]:
+            return False
+        self.grid[m, n] = True
+        return True
+
+    def put_laser(self, m, n, direction):
+        dirx, diry = direction
+        m += dirx
+        n += diry
+        while self.put_wall(m, n):
+            m += dirx
+            n += diry
+
+    def __repr__(self,):
+        lines = []
+        for m in range(self.M):
+            line = "".join([{False: " ", True: "X"}[self.grid[m][n]] for n in range(self.N)])
+            lines.append(line)
+        return "\n".join(lines)
+
+
+def draw_maze(M, N, walls, lasers_rotated):
+    maze = Maze(M, N)
+    for wall in walls:
+        maze.put_wall(*wall)
+    for ((m, n), direction) in lasers_rotated:
+        maze.put_laser(m, n, direction)
+    return maze
+
+
+def draw_mazes(M, N, walls, lasers):
+    mazes = []
+    for phase in range(4):
+        lasers_rotated = [
+            ((m, n), directions[(dir_ini + phase) % 4])
+            for ((m, n), dir_ini) in lasers
+        ]
+        mazes.append(draw_maze(M, N, walls, lasers_rotated))
+    return Mazes(mazes)
+
+
+def read_maze(lines):
+    M, N = read_ints(lines.next())
+    start = None
+    goal = None
+    walls = []
+    lasers = []
+    for m in range(M):
+        maze_line = lines.next()
+        for n, c in enumerate(maze_line):
+            if c == "S":
+                start = (m, n)
+            elif c == "G":
+                goal = (m, n)
+            elif c == "#":
+                walls.append((m, n))
+            elif c == ".":
+                continue
+            else:
+                walls.append((m, n))
+                lasers.append(((m, n), directions_chars[c]))
+    mazes = draw_mazes(M, N, walls, lasers)
+    return (start, goal, mazes)
+
+
+def solve(origin, goal, mazes, visited):
+    (m, n) = origin
+    start = (m, n, 0)
+
+    def is_goal(pos):
+        (m, n, phase) = pos
+        return tuple(pos[:2]) == goal
+    return dijkstra(mazes.neighbors, start, is_goal)
+
+
+lines = (line.strip() for line in fileinput.input())
+nb_tests = int(lines.next())
+
+for t in range(nb_tests):
+    start, goal, mazes = read_maze(lines)
+    res = solve(start, goal, mazes, 0)
+    if res is None:
+        print "Case #%i: impossible" % (t + 1)
+    else:
+        print "Case #%i: %i" % (t + 1, res)

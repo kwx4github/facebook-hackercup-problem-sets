@@ -1,0 +1,170 @@
+#define _CRT_SECURE_NO_WARNINGS
+#include <cstdio>
+#include <vector>
+#include <set>
+#include <string>
+#include <map>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <functional>
+#include <list>
+#include <deque>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+class Solution
+{
+    static const int MAX = 101;
+    int Result;
+    int M, N;
+    char Field[ MAX ][ MAX + 1 ];
+    int Count[ 4 ][ MAX ][ MAX ];
+
+    queue< int > q;
+
+public:
+    void Work()
+	{
+        int i, j, z, c;
+
+        int si = 0, sj = 0;
+        int gi = 0, gj = 0;
+
+        memset( Count, 0, sizeof( Count ) );
+
+        for( i = 0; i < M; ++i )
+        {
+            for( j = 0; j < N; ++j )
+            {
+                z = 0;
+                switch( Field[ i ][ j ] )
+                {
+                case 'S':
+                    si = i;
+                    sj = j;
+                    break;
+                case 'G':
+                    gi = i;
+                    gj = j;
+                    break;
+                case '.':
+                    break;
+                case '#':
+                    Fill( i, j, -1 );
+                    break;
+                case '>':
+                    ++z;
+                case 'v':
+                    ++z;
+                case '<':
+                    ++z;
+                case '^':
+                    Laser( z, i, j, -1, 0 );
+                    Laser( (z+1)%4, i, j, 0, 1 );
+                    Laser( (z+2)%4, i, j, 1, 0 );
+                    Laser( (z+3)%4, i, j, 0, -1 );
+                    Fill( i, j, -1 );
+                }
+            }
+        }
+
+        Result = -1;
+
+        q.push( si );
+        q.push( sj );
+        q.push( 0 );
+        q.push( 0 );
+
+        while( !q.empty() )
+        {
+            i = q.front();
+            q.pop();
+            j = q.front();
+            q.pop();
+            z = q.front();
+            q.pop();
+            c = q.front();
+            q.pop();
+            if( i == gi && j == gj ) {
+                Result = c;
+                break;
+            }
+            Enqueue( i - 1, j, z + 1, c + 1 );
+            Enqueue( i + 1, j, z + 1, c + 1 );
+            Enqueue( i, j - 1, z + 1, c + 1 );
+            Enqueue( i, j + 1, z + 1, c + 1 );
+        }
+	}
+
+    void Enqueue( int i, int j, int z, int c )
+    {
+        if( !( 0 <= i && i < M && 0 <= j && j < N ) )
+            return;
+        z %= 4;
+        if( Count[ z ][ i ][ j ] != 0 )
+            return;
+        Count[ z ][ i ][ j ] = c;
+        q.push( i );
+        q.push( j );
+        q.push( z );
+        q.push( c );
+    }
+
+    void Fill( int i, int j, int x )
+    {
+        int z;
+        for( z = 0; z < 4; ++z )
+            Count[ z ][ i ][ j ] = x;
+    }
+
+    void Laser( int z, int i, int j, int di, int dj )
+    {
+        i += di;
+        j += dj;
+        while( 0 <= i && i < M && 0 <= j && j < N && strchr( "#^>v<", Field[ i ][ j ] ) == NULL )
+        {
+            Count[ z ][ i ][ j ] = -1;
+            i += di;
+            j += dj;
+        }
+    }
+	
+	void Read()
+	{
+        int i;
+        scanf( "%d%d", &M, &N );
+        for( i = 0; i < M; ++i )
+        {
+            scanf( "%s", Field[ i ] );
+        }
+	}
+
+	void Write( int t )
+	{
+		printf( "Case #%d: ", t );
+        if( Result > 0 )
+            printf( "%d\n", Result );
+        else
+            puts( "impossible" );
+	}
+};
+
+vector< Solution > solution;
+
+int main()
+{
+	int i, t;
+	scanf( "%d", &t );
+	solution.resize( t );
+	for( i = 0; i < t; ++i )
+		solution[ i ].Read();
+#pragma omp parallel for schedule(dynamic, 1)
+	for( i = 0; i < t; ++i )
+		solution[ i ].Work();
+	for( i = 0; i < t; ++i )
+		solution[ i ].Write( i + 1 );
+	return 0;
+}

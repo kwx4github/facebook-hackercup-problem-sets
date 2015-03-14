@@ -1,0 +1,152 @@
+import java.io.*;
+import java.util.LinkedList;
+import java.util.StringTokenizer;
+
+public class lasermaze {
+    public static void main(String[] args) throws IOException {
+        BufferedReader in = new BufferedReader(new FileReader("lasermaze.in"));
+        int numberInputs = Integer.parseInt(in.readLine());
+        PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("lasermaze.out")));
+        int[][] offsets = new int[4][2];
+        offsets[0][0] = -1;
+        offsets[0][1] = 0;
+        offsets[1][0] = 0;
+        offsets[1][1] = 1;
+        offsets[2][0] = 1;
+        offsets[2][1] = 0;
+        offsets[3][0] = 0;
+        offsets[3][1] = -1;
+        for (int i = 0; i < numberInputs; i++) {
+            StringTokenizer stringTokenizer = new StringTokenizer(in.readLine());
+            int m = Integer.parseInt(stringTokenizer.nextToken());
+            int n = Integer.parseInt(stringTokenizer.nextToken());
+            int xStart = 0;
+            int yStart = 0;
+            int xEnd = 0;
+            int yEnd = 0;
+            int[][] mazeArray = new int[m][n];
+            boolean[][][] impassable = new boolean[m][n][4];
+            for (int j = 0; j < m; j++) {
+                String s = in.readLine();
+                for (int k = 0; k < n; k++) {
+                    char c = s.charAt(k);
+                    if (c == '#') {
+                        mazeArray[j][k] = -1;
+                        for (int h = 0; h < 4; h++) {
+                            impassable[j][k][h] = true;
+                        }
+                    } else if (c == '.') {
+                        mazeArray[j][k] = 0;
+                    } else if (c == 'S') {
+                        mazeArray[j][k] = 0;
+                        xStart = j;
+                        yStart = k;
+                    } else if (c == 'G') {
+                        mazeArray[j][k] = 0;
+                        xEnd = j;
+                        yEnd = k;
+                    } else {
+                        if (c == '^') {
+                            mazeArray[j][k] = 3;
+                        } else if (c == '>') {
+                            mazeArray[j][k] = 4;
+                        } else if (c == 'v') {
+                            mazeArray[j][k] = 5;
+                        } else if (c == '<') {
+                            mazeArray[j][k] = 6;
+                        }
+
+                    }
+                }
+            }
+            for (int j = 0; j < m; j++) {
+                for (int k = 0; k < n; k++) {
+                    if (mazeArray[j][k] >= 3) {
+                        int type = mazeArray[j][k];
+                        for (int h = 0; h < 4; h++) {
+                            int startX = j;
+                            int startY = k;
+                            impassable[j][k][h] = true;
+                            startX += offsets[(type - 3 + h) % 4][0];
+                            startY += offsets[(type - 3 + h) % 4][1];
+                            while (startX >= 0 && startX < m && startY >= 0 && startY < n) {
+                                int blockType = mazeArray[startX][startY];
+                                if (blockType != 0) {
+                                    break;
+                                } else {
+                                    impassable[startX][startY][h] = true;
+                                }
+                                startX += offsets[(type - 3 + h) % 4][0];
+                                startY += offsets[(type - 3 + h) % 4][1];
+                            }
+                        }
+                    }
+                }
+            }
+            LinkedList<Point> queue = new LinkedList<Point>();
+            int[][] fastestTravels = new int[m][n];
+            int[][] fastestTravelWithRevisit = new int[m][n];
+            for (int j = 0; j < m; j++) {
+                for (int k = 0; k < n; k++) {
+                    fastestTravels[j][k] = Integer.MAX_VALUE;
+                    fastestTravelWithRevisit[j][k] = Integer.MAX_VALUE;
+                }
+            }
+            queue.add(new Point(xStart, yStart, 0));
+            fastestTravels[xStart][yStart] = 0;
+            while (!queue.isEmpty()) {
+                Point p = queue.removeFirst();
+                int x = p.x;
+                int y = p.y;
+                int timeVisit = p.timeVisit;
+                int time = 0;
+                if (timeVisit == 0) {
+                    time = fastestTravels[x][y];
+                } else {
+                    time = fastestTravelWithRevisit[x][y];
+                }
+                for (int h = 0; h < 4; h++) {
+                    int startX = x;
+                    int startY = y;
+                    startX += offsets[h][0];
+                    startY += offsets[h][1];
+                    if (startX >= 0 && startX < m && startY >= 0 && startY < n) {
+                        if (mazeArray[startX][startY] == 0) {
+                            if (!impassable[startX][startY][(time + 1) % 4]) {
+                                if (fastestTravels[startX][startY] > time + 1) {
+                                    fastestTravels[startX][startY] = time + 1;
+                                    queue.add(new Point(startX, startY, 0));
+                                } else if (fastestTravelWithRevisit[startX][startY] > time + 1) {
+                                    fastestTravelWithRevisit[startX][startY] = time + 1;
+                                    queue.add(new Point(startX, startY, 1));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (fastestTravels[xEnd][yEnd] < Integer.MAX_VALUE) {
+                out.println("Case #" + (i+1) + ": " + fastestTravels[xEnd][yEnd]);
+            } else {
+                out.println("Case #" + (i+1) + ": impossible");
+            }
+        }
+
+        out.close();
+
+    }
+
+    public static class Point {
+        int x;
+        int y;
+        int timeVisit;
+
+        public Point(int tempX, int tempY, int tv) {
+            x = tempX;
+            y = tempY;
+            timeVisit = tv;
+        }
+
+    }
+
+}

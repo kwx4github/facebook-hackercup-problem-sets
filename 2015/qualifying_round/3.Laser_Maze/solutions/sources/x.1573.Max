@@ -1,0 +1,146 @@
+import sys
+from collections import deque
+
+def read_maze():
+    x, y = [int(x) for x in sys.stdin.readline().split()]
+    maze = []
+    for i in range(x):
+        maze += [list(sys.stdin.readline().strip())]
+    return maze
+
+def get_positions(maze):
+    turret_positions, start_position, end_position = [], (), ()
+    for i in range(len(maze)):
+        for j in range(len(maze[i])):
+            if maze[i][j] == '>' or maze[i][j] == '<' or \
+              maze[i][j] == '^' or maze[i][j] == 'v':
+              turret_positions += [(i, j)]
+            elif maze[i][j] == 'S':
+              start_position = (i, j)
+            elif maze[i][j] == 'G':
+              end_position = (i, j)
+    return turret_positions, start_position, end_position
+    
+def killed_by_laser(maze, position):
+    x, y = position[0], position[1]
+    left_checker, right_checker = x, x
+    up_checker, down_checker = y, y
+
+    while left_checker >= 0:
+        if maze[left_checker][y] == 'v':
+            return True
+        if maze[left_checker][y] == '^' or \
+          maze[left_checker][y] == '>' or \
+          maze[left_checker][y] == '<' or \
+          maze[left_checker][y] == '#':
+            break
+        left_checker -= 1
+    while right_checker < len(maze):
+        if maze[right_checker][y] == '^':
+            return True
+        if maze[left_checker][y] == 'v' or \
+          maze[left_checker][y] == '<' or \
+          maze[left_checker][y] == '>' or \
+          maze[left_checker][y] == '#':
+            break
+        right_checker += 1
+        
+    while up_checker >= 0:
+        if maze[x][up_checker] == '>':
+            return True
+        if maze[x][up_checker] == '<' or \
+          maze[x][up_checker] == '^' or \
+          maze[x][up_checker] == 'v' or \
+          maze[x][up_checker] == '#':
+            break
+        up_checker -= 1
+    while down_checker < len(maze[0]):
+        if maze[x][down_checker] == '<':
+            return True
+        if maze[x][down_checker] == '^' or \
+          maze[x][down_checker] == 'v' or \
+          maze[x][down_checker] == '>' or \
+          maze[x][down_checker] == '#':
+            break
+        down_checker += 1
+    return False
+
+def visited_position(time, position, m):
+    return (time % 4, position) in m
+    
+def visit_position(time, position, m):
+    m[(time % 4, position)] = True
+
+def found_end(end_position, position):
+    return end_position[0] == position[0] and \
+      end_position[1] == position[1]
+
+def generate_positions(maze, position):
+    positions = []
+    x, y = position[0], position[1]
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            if abs(i) + abs(j) != 1:
+                continue
+            new_x, new_y = x + i, y + j
+            if new_x >= 0 and new_y >= 0 and \
+              new_x < len(maze) and new_y < len(maze[0]) and \
+              (maze[new_x][new_y] == '.' or maze[new_x][new_y] == 'S' or maze[new_x][new_y] == 'G'):
+                positions += [(new_x, new_y)]
+    return positions
+
+def rotate(turret):
+    if turret == '>':
+        return 'v'
+    if turret == 'v':
+        return '<'
+    if turret == '<':
+        return '^'
+    if turret == '^':
+        return '>'
+    return ""
+
+def rotate_clockwise(maze, turret_positions):
+    new_maze = [list(x) for x in maze]
+    for position in turret_positions:
+        turret = new_maze[position[0]][position[1]]
+        new_maze[position[0]][position[1]] = rotate(turret)
+    return new_maze
+
+def maze_print(maze):
+    print("----------")
+    for line in maze:
+        print("".join(line))
+    print("----------")
+    
+def solve_maze(maze):
+    m = {}
+    turret_positions, start_position, end_position = get_positions(maze)
+    q = deque([start_position])
+    t = deque([0])
+    maze_configs = [maze]
+    for i in range(3):
+        maze_configs.append(rotate_clockwise(maze_configs[-1], turret_positions))
+    while not len(q) == 0:
+        position = q.popleft()
+        time = t.popleft()
+        cur_maze = maze_configs[time % 4]
+        if visited_position(time, position, m):
+            continue
+        visit_position(time, position, m)
+        if killed_by_laser(cur_maze, position) and time != 0:
+            continue
+        if found_end(end_position, position):
+            return time
+        for new_position in generate_positions(cur_maze, position):
+            q.append(new_position)
+            t.append(time+1)
+    return -1
+
+n_cases = int(sys.stdin.readline())
+for i in range(n_cases):
+    maze = read_maze()
+    min_steps = solve_maze(maze)
+    answer = min_steps if min_steps != -1 else "impossible"
+    print("Case #%d: %s" % (i+1, str(answer)))
+

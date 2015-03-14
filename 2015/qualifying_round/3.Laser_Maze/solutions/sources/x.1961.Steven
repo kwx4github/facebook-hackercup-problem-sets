@@ -1,0 +1,170 @@
+import java.util.*;
+import java.io.*;
+
+public class LaserMaze
+{
+	public static int solve(String[] maze)
+	{
+		int startX = 0, startY = 0;
+		for (; startX < maze.length; startX++)
+		{
+			startY = maze[startX].indexOf("S");
+			if (startY != -1)
+				break;
+		}
+		int endX = 0, endY = 0;
+		for (; endX < maze.length; endX++)
+		{
+			endY = maze[endX].indexOf("G");
+			if (endY != -1)
+				break;
+		}
+		
+//		System.out.println("Step 1");
+		
+		Node[][][] nodes = new Node[maze.length][maze[0].length()][4];
+		for (int i = 0; i < nodes.length; i++)
+			for (int j = 0; j < nodes[0].length; j++)
+				if (maze[i].charAt(j) == '.' || maze[i].charAt(j) == 'S' || maze[i].charAt(j) == 'G')
+					for (int k = 0; k < 4; k++)
+						nodes[i][j][k] = new Node(i, j, k);
+		
+//		System.out.println("Step 2");
+		
+		for (int i = 0; i < nodes.length; i++)
+			for (int j = 0; j < nodes[0].length; j++)
+				if (maze[i].charAt(j) == '^')
+					for (int t = 0; t < 4; t++)
+						mark(maze, nodes, (t + 2) % 4, t, i, j);
+				else if (maze[i].charAt(j) == '>')
+					for (int t = 0; t < 4; t++)
+						mark(maze, nodes, (t + 3) % 4, t, i, j);
+				else if (maze[i].charAt(j) == 'V')
+					for (int t = 0; t < 4; t++)
+						mark(maze, nodes, (t + 0) % 4, t, i, j);
+				else if (maze[i].charAt(j) == '<')
+					for (int t = 0; t < 4; t++)
+						mark(maze, nodes, (t + 1) % 4, t, i, j);
+		
+//		System.out.println("Step 3");
+		
+		for (int i = 0; i < nodes.length; i++)
+			for (int j = 0; j < nodes[0].length; j++)
+				for (int[] diff : ADJACENT)
+				{
+					int adjX = diff[0] + i;
+					int adjY = diff[1] + j;
+					if (adjX >= 0 && adjX < nodes.length && adjY >= 0 && adjY < nodes[0].length)
+						for (int t = 0; t < 4; t++)
+							if (nodes[i][j][t] != null && nodes[adjX][adjY][(t + 1) % 4] != null)
+								nodes[i][j][t].children.add(nodes[adjX][adjY][(t + 1) % 4]);
+				}
+		
+		if (nodes[startX][startY][0] == null)
+		{
+			nodes[startX][startY][0] = new Node(startX, startY, 0);
+			for (int[] diff : ADJACENT)
+			{
+				int adjX = diff[0] + startX;
+				int adjY = diff[1] + startY;
+				if (adjX >= 0 && adjX < nodes.length && adjY >= 0 && adjY < nodes[0].length)
+					if (nodes[adjX][adjY][1] != null)
+						nodes[startX][startY][0].children.add(nodes[adjX][adjY][1]);
+			}
+		}
+		
+		
+//		System.out.println("Step 4");
+		
+//		for (int t = 0; t < 4; t++)
+//		{
+//			System.out.println("Testing time " + t);
+//			for (int i = 0; i < nodes.length; i++)
+//			{
+//				for (int j = 0; j < nodes[0].length; j++)
+//					System.out.print(nodes[i][j][t] == null ? 0 : 1);
+//				System.out.println();
+//			}
+//			System.out.println();
+//		}
+		
+		Set<Node> explored = new HashSet<Node> ();
+		Set<Node> current = new HashSet<Node> ();
+		Set<Node> frontier;
+		current.add(nodes[startX][startY][0]);
+		for (int time = 1; ; time++)
+		{
+			frontier = new HashSet<Node> ();
+			for (Node node : current)
+			{
+				if (explored.contains(node))
+					continue;
+				explored.add(node);
+				for (Node child : node.children)
+					if (child.x == endX && child.y == endY)
+						return time;
+					else
+					{
+//						System.out.println("Adding " + child + " from " + node);
+						frontier.add(child);
+					}
+			}
+			if (frontier.size() == 0)
+				return -1;
+			current = frontier;
+		}
+	}
+	
+	private static void mark(String[] grid, Node[][][] nodes, int dir, int time, int x, int y)
+	{
+		int i = x + ADJACENT[dir][0], j = y + ADJACENT[dir][1];
+		while (i >= 0 && i < nodes.length && j >= 0 && j < nodes[0].length && (grid[i].charAt(j) == 'S' || grid[i].charAt(j) == 'G' || grid[i].charAt(j) == '.'))
+		{
+			nodes[i][j][time] = null;
+			i += ADJACENT[dir][0];
+			j += ADJACENT[dir][1];
+		}
+	}
+	
+	private static int[][] ADJACENT = new int[][] {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
+	
+	private static class Node
+	{
+		Set<Node> children = new HashSet<> ();
+		int x, y, t;
+		
+		public Node(int i, int j, int t2)
+		{
+			x = i;
+			y = j;
+			t = t2;
+		}
+		
+		public String toString()
+		{
+			return t + ":(" + x + "," + y + ")";
+		}
+	}
+	
+	public static void main(String[] args) throws IOException
+	{
+		Scanner in = new Scanner(new BufferedReader(new FileReader("laser_maze.txt")));
+		PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter("laserMaze.out")));
+		int t = in.nextInt();
+		for (int ii = 1; ii <= t; ii++)
+		{
+			int m = in.nextInt();
+			int n = in.nextInt();
+			String[] array = new String[m];
+			for (int i = 0; i < m; i++)
+				array[i] = in.next();
+			int v = solve(array);
+			if (v == -1)
+				out.println("Case #" + ii + ": impossible");
+			else
+				out.println("Case #" + ii + ": " + v);
+		}
+		out.flush();
+		out.close();
+	}
+}

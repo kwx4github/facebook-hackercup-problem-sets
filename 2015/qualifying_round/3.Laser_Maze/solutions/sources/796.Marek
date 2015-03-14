@@ -1,0 +1,242 @@
+#include <bits/stdc++.h>
+
+
+using namespace std;
+
+
+struct item
+{
+    int x;
+    int y;
+    int time;
+};
+
+
+item start, goal;
+
+int tab[109][109][4]; //0 - available, 1 - wall, 2 - turret, 3 - laser
+int tab2[109][109][4];
+int ruch[4][2];
+vector <item> lasers;
+queue <item> kolejka;
+
+
+void bfs()
+{
+    tab2[start.x][start.y][0] = 0;
+    
+    item tmp, tmp2;
+    kolejka.push(start);
+    
+    while(!kolejka.empty())
+      {
+          tmp = kolejka.front();
+          kolejka.pop();
+          
+          for(int i = 0; i < 4; i++)
+            {
+                tmp2.time = (tmp.time + 1) % 4;
+                
+                if((tab[tmp.x + ruch[i][0]][tmp.y + ruch[i][1]][tmp2.time] == 0) && (tab2[tmp.x + ruch[i][0]][tmp.y + ruch[i][1]][tmp2.time] > tab2[tmp.x][tmp.y][tmp.time] + 1))
+                  {
+                      tmp2.x = tmp.x + ruch[i][0];
+                      tmp2.y = tmp.y + ruch[i][1];
+                      
+                      kolejka.push(tmp2);
+                      tab2[tmp2.x][tmp2.y][tmp2.time] = tab2[tmp.x][tmp.y][tmp.time] + 1;
+                  }
+            }
+      }
+}
+
+
+int main()
+{
+    ruch[0][0] = 0;
+    ruch[0][1] = -1;
+    ruch[1][0] = 1;
+    ruch[1][1] = 0;
+    ruch[2][0] = 0;
+    ruch[2][1] = 1;
+    ruch[3][0] = -1;
+    ruch[3][1] = 0;
+    
+    int t, n, m, wyn;
+    char ch;
+    item tmp;
+    
+    ifstream fin("laser_maze_input.txt");
+    ofstream fout("laser_maze_output.txt");
+    
+    fin>>t;
+    
+    for(int o = 0; o < t; o++)
+      {
+          fin>>n>>m;
+          
+          for(int i = 0; i <= m + 1; i++)
+            {
+                for(int k = 0; k < 4; k++)
+                  {
+                     tab[i][0][k] = 1;
+                     tab[i][n + 1][k] = 1;
+                  }
+            }
+          
+          for(int i = 0; i <= n + 1; i++)
+            {
+                for(int k = 0; k < 4; k++)
+                  {
+                     tab[0][i][k] = 1;
+                     tab[m + 1][i][k] = 1;
+                  }
+            }
+          
+          for(int i = 0; i <= n + 1; i++)
+            {
+                for(int j = 0; j <= m + 1; j++)
+                  {
+                      for(int k = 0; k < 4; k++)
+                        {
+                            tab2[j][i][k] = 1e9 + 33;
+                        }
+                  }
+            }
+         
+          lasers.clear();
+          
+          while(!kolejka.empty()) kolejka.pop();
+          
+          for(int i = 1; i <= n; i++)
+            {
+                for(int j = 1; j <= m; j++)
+                  {
+                      fin>>ch;
+                      
+                      if(ch == '.')
+                        {
+                           for(int k = 0; k < 4; k++)
+                             tab[j][i][k] = 0;
+                        }
+                      
+                      else if(ch == '#')
+                        {
+                           for(int k = 0; k < 4; k++)
+                             tab[j][i][k] = 1;
+                        }
+                      
+                      else if(ch == 'S')
+                        {
+                           for(int k = 0; k < 4; k++)
+                             tab[j][i][k] = 0;
+                           
+                           start.x = j;
+                           start.y = i;
+                           start.time = 0;
+                        }
+                      
+                      else if(ch == 'G')
+                        {
+                           for(int k = 0; k < 4; k++)
+                             tab[j][i][k] = 0;
+                           
+                           goal.x = j;
+                           goal.y = i;
+                        }
+                      
+                      else
+                        {
+                            for(int k = 0; k < 4; k++)
+                              tab[j][i][k] = 2;
+                            
+                            tmp.x = j;
+                            tmp.y = i;
+                            
+                            if(ch == '^')
+                              tmp.time = 0;
+                            
+                            else if(ch == '>')
+                              tmp.time = 1;
+                            
+                            else if(ch == 'v')
+                              tmp.time = 2;
+                            
+                            else
+                              tmp.time = 3;
+                            
+                            lasers.push_back(tmp);
+                        }
+                  }
+            }
+          
+          for(int k = 0; k < 4; k++)
+            {
+                for(int i = 0; i < lasers.size(); i++)
+                  {
+                      if((lasers[i].time + k) % 4 == 0)
+                        {
+                            for(int j = lasers[i].y - 1; j > 0; j--)
+                              {
+                                  if((tab[lasers[i].x][j][k] == 1) || (tab[lasers[i].x][j][k] == 2))
+                                    break;
+                                  
+                                  tab[lasers[i].x][j][k] = 3;
+                              }
+                        }
+                      
+                      else if((lasers[i].time + k) % 4 == 1)
+                        {
+                            for(int j = lasers[i].x + 1; j < m + 1; j++)
+                              {
+                                  if((tab[j][lasers[i].y][k] == 1) || (tab[j][lasers[i].y][k] == 2))
+                                    break;
+                                  
+                                  tab[j][lasers[i].y][k] = 3;
+                              }
+                        }
+                      
+                      else if((lasers[i].time + k) % 4 == 2)
+                        {
+                            for(int j = lasers[i].y + 1; j < n + 1; j++)
+                              {
+                                  if((tab[lasers[i].x][j][k] == 1) || (tab[lasers[i].x][j][k] == 2))
+                                    break;
+                                  
+                                  tab[lasers[i].x][j][k] = 3;
+                              }
+                        }
+                      
+                      else
+                        {
+                            for(int j = lasers[i].x - 1; j > 0; j--)
+                              {
+                                  if((tab[j][lasers[i].y][k] == 1) || (tab[j][lasers[i].y][k] == 2))
+                                    break;
+                                  
+                                  tab[j][lasers[i].y][k] = 3;
+                              }
+                        }
+                  }
+            }
+          
+          bfs();
+          
+          wyn = 1e9 + 33;
+          
+          for(int i = 0; i < 4; i++)
+            {
+                goal.time = i;
+                
+                wyn = min(tab2[goal.x][goal.y][goal.time], wyn);
+            }
+          
+          if(wyn == 1e9 + 33)
+            fout<<"Case #"<<o + 1<<": impossible"<<endl;
+          
+          else
+            fout<<"Case #"<<o + 1<<": "<<wyn<<endl;
+      }
+    
+   // system("pause");
+    return 0;
+}

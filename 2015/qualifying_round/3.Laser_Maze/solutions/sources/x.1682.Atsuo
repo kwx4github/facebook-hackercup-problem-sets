@@ -1,0 +1,165 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef vector<int> VI;
+typedef vector<VI> VVI;
+typedef vector<string> VS;
+typedef pair<int, int> PII;
+typedef long long LL;
+
+#define d(x)  cerr << #x << " = " << (x) << endl;
+#define FOR(i,a,b) for(int i=(a);i<(b);++i)
+#define SORT(c) sort((c).begin(),(c).end())
+#define PB push_back
+
+using namespace std;
+
+int w, h, ans;
+VS m;
+vector<VS> laser_maps;
+VVI time_map;
+int startx, starty, goalx, goaly;
+
+bool like_block(char c) {
+  return c == '#' || c == '<' || c == '>' || c == '^' || c == 'v' ? true : false;
+}
+
+void fill_map_by_laser(VS &mp, int y, int x, int d) {
+  mp[y][x] = '#';
+  if (d==0) {
+    for(int i = y-1; 0 <= i; i--) {
+      if (like_block(mp[i][x])) break;
+      else mp[i][x] = '#';
+    }
+  } else if (d==1) {
+    for(int i = x+1; i < w;  i++) {
+      if (like_block(mp[y][i])) break;
+      else mp[y][i] = '#';
+    }
+  } else if (d==2) {
+    for(int i = y+1; i < h;  i++) {
+      if (like_block(mp[i][x])) break;
+      else mp[i][x] = '#';
+    }
+  } else if (d==3) {
+    for(int i = x-1; 0 <= i; i--) {
+      if (like_block(mp[y][i])) break;
+      else mp[y][i] = '#';
+    }
+  }
+}
+
+void initialize_laser_maps() {
+  FOR(i,0,h) {
+    FOR(j,0,w) {
+      if (m[i][j] == 'S') {
+        starty = i;
+        startx = j;
+        m[i][j] = '0';
+      } else if (m[i][j] == 'G') {
+        goaly = i;
+        goalx = j;
+      } else if (m[i][j] == '^') {
+        fill_map_by_laser(laser_maps[0], i, j, 0);
+        fill_map_by_laser(laser_maps[1], i, j, 1);
+        fill_map_by_laser(laser_maps[2], i, j, 2);
+        fill_map_by_laser(laser_maps[3], i, j, 3);
+        m[i][j] = '#';
+      } else if (m[i][j] == '>') {
+        fill_map_by_laser(laser_maps[0], i, j, 1);
+        fill_map_by_laser(laser_maps[1], i, j, 2);
+        fill_map_by_laser(laser_maps[2], i, j, 3);
+        fill_map_by_laser(laser_maps[3], i, j, 0);
+        m[i][j] = '#';
+      } else if (m[i][j] == 'v') {
+        fill_map_by_laser(laser_maps[0], i, j, 2);
+        fill_map_by_laser(laser_maps[1], i, j, 3);
+        fill_map_by_laser(laser_maps[2], i, j, 0);
+        fill_map_by_laser(laser_maps[3], i, j, 1);
+        m[i][j] = '#';
+      } else if (m[i][j] == '<') {
+        fill_map_by_laser(laser_maps[0], i, j, 3);
+        fill_map_by_laser(laser_maps[1], i, j, 0);
+        fill_map_by_laser(laser_maps[2], i, j, 1);
+        fill_map_by_laser(laser_maps[3], i, j, 2);
+        m[i][j] = '#';
+      }
+    }
+  }
+}
+
+void dfs(int y, int x, int time) {
+  if (time != 0 && laser_maps[time % 4][y][x] == '#') {
+    return;
+  }
+  if (time_map[y][x] != -1 && time_map[y][x] <= time) {
+    return;
+  }
+  if (ans <= time + abs(y-goaly) + abs(x-goalx)) {
+    return;
+  }
+  if (m[y][x] == 'G') {
+    ans = time;
+    return;
+  }
+
+  time_map[y][x] = time;
+
+  bool can_stay = ((0 < y   && laser_maps[(time+1) % 4][y-1][x] != '#') ||
+                   (x < w-1 && laser_maps[(time+1) % 4][y][x+1] != '#') ||
+                   (y < h-1 && laser_maps[(time+1) % 4][y+1][x] != '#') ||
+                   (0 < x   && laser_maps[(time+1) % 4][y][x-1] != '#'));
+  int xx, yy;
+  if (0 < y) {
+    yy = y-1; xx = x;
+    dfs(yy, xx, time+1);
+    if (can_stay) dfs(yy, xx, time+1+2);
+  }
+  if (x < w-1) {
+    yy = y; xx = x+1;
+    dfs(yy, xx, time+1);
+    if (can_stay) dfs(yy, xx, time+1+2);
+  }
+  if (y < h-1) {
+    yy = y+1; xx = x;
+    dfs(yy, xx, time+1);
+    if (can_stay) dfs(yy, xx, time+1+2);
+  }
+  if (0 < x) {
+    yy = y; xx = x-1;
+    dfs(yy, xx, time+1);
+    if (can_stay) dfs(yy, xx, time+1+2);
+  }
+}
+
+int main() {
+  int t;
+  cin >> t;
+
+  FOR(problem_num, 0, t) {
+    cin >> h >> w;
+    ans = 2147483647;
+
+    laser_maps = vector<VS>(4, vector<string>());
+    time_map   = vector<vector<int> >(h, vector<int>(w, -1));
+
+    m.clear();
+    FOR(i,0,h) {
+      string line;
+      cin >> line;
+      m.PB(line);
+      FOR(j,0,4) laser_maps[j].PB(line);
+    }
+
+    initialize_laser_maps();
+
+    dfs(starty, startx, 0);
+
+    if (ans == 2147483647) {
+      printf("Case #%d: impossible\n", problem_num + 1);
+    } else {
+      printf("Case #%d: %d\n", problem_num + 1, ans);
+    }
+  }
+  return 0;
+}

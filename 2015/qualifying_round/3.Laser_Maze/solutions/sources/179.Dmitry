@@ -1,0 +1,118 @@
+#include <iostream>
+#include <cstdio>
+#include <cmath>
+#include <vector>
+#include <cstring>
+#include <string>
+#include <map>
+#include <set>
+#include <list>
+#include <algorithm>
+#include <cctype>
+#include <queue>
+#include <complex>
+#include <functional>
+#include <sstream>
+
+using namespace std;
+
+const int INF = 1000000000;
+
+string maze[110];
+int a[110][110][4];
+int w, h, sty, stx, goy, gox;
+int result;
+
+const string laser = "^>v<";
+const int sh[4][2] = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+
+int canmove(int y, int x)
+{
+	return y >= 0 && y < h && x >= 0 && x < w && (maze[y][x] == '.' || maze[y][x] == 'G' || maze[y][x] == 'S');
+}
+
+int d[110][110][4];
+int q[1000000][3];
+
+void bfs()
+{
+	memset(d, -1, sizeof d);
+	d[sty][stx][0] = 0;
+	q[0][0] = sty;
+	q[0][1] = stx;
+	q[0][2] = 0;
+	int head = 0, tail = 1;
+	while (head < tail)
+	{
+		int cury = q[head][0];
+		int curx = q[head][1];
+		int curph = q[head][2];
+		for (int i = 0; i < 4; i++)
+		{
+			int y = cury + sh[i][0];
+			int x = curx + sh[i][1];
+			int ph = (curph + 1) % 4;
+			if (canmove(y, x) && !a[y][x][ph] && d[y][x][ph] == -1)
+			{
+				d[y][x][ph] = d[cury][curx][curph] + 1;
+				q[tail][0] = y;
+				q[tail][1] = x;
+				q[tail++][2] = ph;
+				if (y == goy && x == gox)
+					result = min(result, d[y][x][ph]);
+			}
+		}
+		head++;
+	}
+}
+
+void go(int y, int x, int phase, int dy, int dx, int skip)
+{
+	if (!skip && !canmove(y, x))
+		return;
+	a[y][x][phase] = 1;
+	go(y + dy, x + dx, phase, dy, dx, 0);
+}
+
+void prepare()
+{
+	memset(a, 0, sizeof a);
+	for (int i = 0; i < h; i++)
+		for (int j = 0; j < w; j++)
+		{
+			int f = laser.find(maze[i][j]);
+			if (f != -1)
+				for (int k = 0; k < 4; k++)
+					go(i, j, k, sh[(f + k) % 4][0], sh[(f + k) % 4][1], 1);
+			if (maze[i][j] == 'S')
+				sty = i, stx = j;
+			if (maze[i][j] == 'G')
+				goy = i, gox = j;
+		}
+}
+
+int main()
+{
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    int tn;
+    cin >> tn;
+    for (int tc = 0; tc < tn; tc++)
+    {
+    	cin >> h >> w;
+    	for (int i = 0; i < h; i++)
+    		cin >> maze[i];
+
+    	prepare();
+
+    	result = INF;
+    	bfs();
+
+    	cout << "Case #" << tc + 1 << ": ";
+    	if (result == INF)
+    		cout << "impossible" << endl;
+    	else
+    		cout << result << endl;
+    }
+    return 0;
+}

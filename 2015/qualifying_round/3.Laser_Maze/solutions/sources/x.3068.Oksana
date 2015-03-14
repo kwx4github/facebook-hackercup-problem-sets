@@ -1,0 +1,115 @@
+import heapq
+
+def heuristic(a, b):
+   (x1, y1) = a
+   (x2, y2) = b
+   return abs(x1 - x2) + abs(y1 - y2)
+
+def laser_check(maze, vertex, steps, cache):
+    m, n = vertex
+    lasers = "<^>v"
+
+    if cache.has_key((vertex, steps)):
+        return cache[(vertex, steps)]
+
+    #right
+    laser = None 
+    for nn in range(n, N):
+        if maze[m][nn] in lasers:
+            laser = maze[m][nn]
+            break
+        if maze[m][nn] == "#":
+            break       
+    
+    if laser and lasers[(lasers.index(laser) + steps) % 4] == "<":
+        cache[(vertex, steps)] = True
+        return True
+
+    #left
+    laser = None
+    for nn in range(n,-1,-1):
+        if maze[m][nn] in lasers:
+            laser = maze[m][nn]
+            break
+        if maze[m][nn] == "#":
+            break       
+    
+    if laser and lasers[(lasers.index(laser) + steps) % 4] == ">":
+        cache[(vertex, steps)] = True
+        return True
+
+    #up
+    laser = None
+    for mm in range(m,-1,-1):
+        if maze[mm][n] in lasers:
+            laser = maze[mm][n]
+            break
+        if maze[mm][n] == "#":
+            break       
+    
+    if laser and lasers[(lasers.index(laser) + steps) % 4] == "v":
+        cache[(vertex, steps)] = True
+        return True
+
+    #down
+    laser = None
+    for mm in range(m, M):
+        if maze[mm][n] in lasers:
+            laser = maze[mm][n]
+            break
+        if maze[mm][n] == "#":
+            break       
+    
+    if laser and lasers[(lasers.index(laser) + steps) % 4] == "^":
+        cache[(vertex, steps)] = True
+        return True
+
+    cache[(vertex, steps)] = False
+    return False
+
+def laser_maze_a_star(maze, start, end):
+    M, N = len(maze), len(maze[0])
+    visited, queue, cache = set(), [], dict()
+    heapq.heappush(queue, (heuristic(start, end), 0, start))
+
+    while queue:
+        prior, steps, vertex = heapq.heappop(queue)        
+        m, n = vertex
+
+        if maze[m][n] in "#<>v^":
+            continue
+
+        if steps > 0 and laser_check(maze, vertex, steps % 4, cache):
+            continue
+        
+        if vertex == end:
+            return steps
+
+        #check if we already were here 4 turns before
+        if (vertex, steps % 4) not in visited:
+            visited.add((vertex, steps % 4))
+            if (n + 1 < N):
+                heapq.heappush(queue, (heuristic((m, n + 1), end), steps + 1, (m, n + 1)))
+            if (n - 1 >= 0):
+                heapq.heappush(queue, (heuristic((m, n - 1), end), steps + 1, (m, n - 1)))
+            if (m + 1 < M):
+                heapq.heappush(queue, (heuristic((m + 1, n), end), steps + 1, (m + 1, n)))
+            if (m - 1 >= 0):
+                heapq.heappush(queue, (heuristic((m - 1, n), end), steps + 1, (m - 1, n)))
+
+    return "impossible"
+
+f = open('C:\\temp\\laser_maze.txt')
+out = open('C:\\temp\\laser_maze_output.txt', 'w')
+T = int(f.readline().strip())
+
+for t in range(1, T + 1):
+    M, N = (int(i) for i in f.readline().strip().split(" "))
+    grid = [list(f.readline().strip()) for m in range(M)]
+    S = [(m, n) for m in range(M) for n in range(N) if grid[m][n] == "S"][0]
+    G = [(m, n) for m in range(M) for n in range(N) if grid[m][n] == "G"][0]
+    result = "Case #{0}: {1}".format(t, laser_maze_a_star(grid, S, G))
+    out.write(result + "\n")
+    print result
+
+out.close()

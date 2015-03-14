@@ -1,0 +1,150 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <queue>
+using namespace std;
+// Using the 4D Dijkstra !!!!
+bool validInput[256] = {false};
+struct nodeD {
+    int x;
+    int y;
+    int d;
+    int val;
+};
+bool comp(nodeD& a,nodeD& b)
+{
+    return a.val<b.val;
+}
+int main()
+{
+    validInput['.'] = true;
+    validInput['<'] = true;
+    validInput['^'] = true;
+    validInput['>'] = true;
+    validInput['v'] = true;
+    validInput['S'] = true;
+    validInput['G'] = true;
+    validInput['#'] = true;
+    int t;
+    cin >> t;
+    for(int T = 1;T <= t;T++) {
+        int n,m;
+        cin >> n >> m;
+        char mp[n][m];
+        bool nodeAv[n][m][4]; // 4D !!!
+        int sY,sX,fY,fX;
+        char c;
+        for(int i = 0;i < n;i++) {
+            for(int j = 0;j < m;j++) {
+                c = 0;
+                while(!validInput[c]) c = getchar();
+                mp[i][j] = c;
+                if(mp[i][j] == 'S') {
+                    sX = j;
+                    sY = i;
+                    mp[i][j] = '.';
+                }
+                else if(mp[i][j] == 'G') {
+                    fX = j;
+                    fY = i;
+                    mp[i][j] = '.';
+                }
+                if(mp[i][j] != '.') { // can't walk , fill 4D data
+                    nodeAv[i][j][0] = nodeAv[i][j][1] = nodeAv[i][j][2] = nodeAv[i][j][3] = false;
+                }
+                else {
+                    nodeAv[i][j][0] = nodeAv[i][j][1] = nodeAv[i][j][2] = nodeAv[i][j][3] = true;
+                }
+            }
+        }
+        // fill 4D data for laser
+        int off;
+        for(int i = 0;i < n;i++) {
+            for(int j = 0;j < m;j++) {
+                if(mp[i][j] == '<') {
+                    for(off = 1;(j-off>=0 && mp[i][j-off] == '.');off++) nodeAv[i][j-off][0] = false;
+                    for(off = 1;(i-off>=0 && mp[i-off][j] == '.');off++) nodeAv[i-off][j][1] = false;
+                    for(off = 1;(j+off<m && mp[i][j+off] == '.');off++) nodeAv[i][j+off][2] = false;
+                    for(off = 1;(i+off<n && mp[i+off][j] == '.');off++) nodeAv[i+off][j][3] = false;
+                }
+                else if(mp[i][j] == '^') {
+                    for(off = 1;(j-off>=0 && mp[i][j-off] == '.');off++) nodeAv[i][j-off][3] = false;
+                    for(off = 1;(i-off>=0 && mp[i-off][j] == '.');off++) nodeAv[i-off][j][0] = false;
+                    for(off = 1;(j+off<m && mp[i][j+off] == '.');off++) nodeAv[i][j+off][1] = false;
+                    for(off = 1;(i+off<n && mp[i+off][j] == '.');off++) nodeAv[i+off][j][2] = false;
+                }
+                else if(mp[i][j] == '>') {
+                    for(off = 1;(j-off>=0 && mp[i][j-off] == '.');off++) nodeAv[i][j-off][2] = false;
+                    for(off = 1;(i-off>=0 && mp[i-off][j] == '.');off++) nodeAv[i-off][j][3] = false;
+                    for(off = 1;(j+off<m && mp[i][j+off] == '.');off++) nodeAv[i][j+off][0] = false;
+                    for(off = 1;(i+off<n && mp[i+off][j] == '.');off++) nodeAv[i+off][j][1] = false;
+                }
+                else if(mp[i][j] == 'v') {
+                    for(off = 1;(j-off>=0 && mp[i][j-off] == '.');off++) nodeAv[i][j-off][1] = false;
+                    for(off = 1;(i-off>=0 && mp[i-off][j] == '.');off++) nodeAv[i-off][j][2] = false;
+                    for(off = 1;(j+off<m && mp[i][j+off] == '.');off++) nodeAv[i][j+off][3] = false;
+                    for(off = 1;(i+off<n && mp[i+off][j] == '.');off++) nodeAv[i+off][j][0] = false;
+                }
+            }
+        }
+        /*for(int i = 0;i < n;i++) {
+            for(int j = 0;j < m;j++) {
+                printf("%c",nodeAv[i][j][0]?'-':'N');
+                printf("%c",nodeAv[i][j][1]?'-':'N');
+                printf("%c",nodeAv[i][j][2]?'-':'N');
+                printf("%c",nodeAv[i][j][3]?'-':'N');
+                printf(" ");
+            }
+            printf("\n");
+        }*/
+        // 4D data finish , start Dijkstra on 4D !
+        queue<nodeD> nodeQ;
+        nodeD toAdd;
+        nodeD start = {sX,sY,0,0};
+        nodeQ.push(start);
+        int targD;
+        int ans = -1;
+        while(!nodeQ.empty()) {
+            // pop first elem
+            nodeD thisNode = nodeQ.front();
+            //cout << thisNode.x << ',' << thisNode.y << endl;
+            targD = (thisNode.d + 1) % 4;
+            toAdd.d = targD;
+            toAdd.val = thisNode.val+1;
+            nodeQ.pop();
+            if(nodeAv[thisNode.y][thisNode.x][thisNode.d] == false && !(thisNode.y == sY && thisNode.x == sX)) continue;
+            nodeAv[thisNode.y][thisNode.x][thisNode.d] = false;
+            if(thisNode.x-1>=0 && nodeAv[thisNode.y][thisNode.x-1][targD]) { // left
+                toAdd.x = thisNode.x-1;
+                toAdd.y = thisNode.y;
+                if(toAdd.x == fX && toAdd.y == fY) ans = toAdd.val;
+                nodeQ.push(toAdd);
+            }
+            if(thisNode.y-1>=0 && nodeAv[thisNode.y-1][thisNode.x][targD]) { // up
+                toAdd.x = thisNode.x;
+                toAdd.y = thisNode.y-1;
+                if(toAdd.x == fX && toAdd.y == fY) ans = toAdd.val;
+                nodeQ.push(toAdd);
+            }
+            if(thisNode.x+1<m && nodeAv[thisNode.y][thisNode.x+1][targD]) { // right
+                toAdd.x = thisNode.x+1;
+                toAdd.y = thisNode.y;
+                if(toAdd.x == fX && toAdd.y == fY) ans = toAdd.val;
+                nodeQ.push(toAdd);
+            }
+            if(thisNode.y+1<n && nodeAv[thisNode.y+1][thisNode.x][targD]) { // down
+                toAdd.x = thisNode.x;
+                toAdd.y = thisNode.y+1;
+                if(toAdd.x == fX && toAdd.y == fY) ans = toAdd.val;
+                nodeQ.push(toAdd);
+            }
+            if(ans != -1) break;
+        }
+        cout << "Case #" << T << ": ";
+        if(ans == -1) cout << "impossible";
+        else cout << ans;
+        cout << endl;
+    }
+}

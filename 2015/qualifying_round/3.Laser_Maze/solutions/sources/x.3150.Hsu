@@ -1,0 +1,105 @@
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <ctime>
+#include <cmath>
+#include <string>
+#include <utility>
+#include <algorithm>
+#include <map>
+#include <bitset>
+#include <set>
+#include <queue>
+#include <stack>
+#include <vector>
+using namespace std;
+
+const int maxn = 110;
+const int maxd = 4;
+const int dirs[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+
+char maze[maxn][maxn];
+int row, col;
+bool block[maxd][maxn][maxn], visit[maxd][maxn][maxn];
+
+inline int diridx(char c){
+  if(c == '>') return 0;
+  else if(c == 'v') return 1;
+  else if(c == '<') return 2;
+  else if(c == '^') return 3;
+  return -1;
+}
+
+int main(){
+  int cas;
+  scanf("%d", &cas);
+  for(int cascnt = 1; cascnt <= cas; cascnt++){
+    memset(block, false, sizeof(block));
+    memset(visit, false, sizeof(visit));
+
+    scanf("%d%d", &row, &col);
+    for(int i = 0; i < row; i++) scanf("%s", maze[i]);
+
+    int sr, sc, er, ec;
+    for(int i = 0; i < row; i++)
+    for(int j = 0; j < col; j++)
+      if(maze[i][j] == 'S'){ sr = i; sc = j; maze[i][j] = '.'; }
+      else if(maze[i][j] == 'G'){ er = i; ec = j; maze[i][j] = '.'; }
+
+    for(int i = 0; i < row; i++)
+    for(int j = 0; j < col; j++)
+      if(maze[i][j] != '.'){
+        block[0][i][j] = block[1][i][j] = block[2][i][j] = block[3][i][j] = true;
+
+        int didx = diridx(maze[i][j]);
+        if(didx > 0){
+          for(int lev = 0; lev < maxd; lev++){
+            int offi = dirs[(didx + lev) % maxd][0];
+            int offj = dirs[(didx + lev) % maxd][1];
+            int si = i + offi;
+            int sj = j + offj;
+            while(si >= 0 && si < row && sj >= 0 && sj < col && maze[si][sj] == '.'){
+              block[lev][si][sj] = true;
+              si += offi;
+              sj += offj;
+            }
+          }
+        }
+      }
+
+    if(block[0][sr][sc]){ printf("Case #%d: impossible\n", cascnt); continue; }
+
+    int ans = -1;
+    queue<int> levs, rs, cs, cnts;
+    visit[0][sr][sc] = true;
+    levs.push(0); rs.push(sr); cs.push(sc); cnts.push(0);
+    while(!cnts.empty()){
+      int flev = levs.front(); levs.pop();
+      int fr = rs.front(); rs.pop();
+      int fc = cs.front(); cs.pop();
+      int fcnt = cnts.front(); cnts.pop();
+
+      if(fr == er && fc == ec){ ans = fcnt; break; }
+
+      int nxtlev = (flev + 1) % maxd;
+      int nxtcnt = fcnt + 1;
+      for(int i = 0; i < maxd; i++){
+        int nxtr = fr + dirs[i][0];
+        int nxtc = fc + dirs[i][1];
+        if(nxtr >= 0 && nxtr < row && nxtc >= 0 && nxtc < col
+        && !visit[nxtlev][nxtr][nxtc] && !block[nxtlev][nxtr][nxtc]){
+          visit[nxtlev][nxtr][nxtc] = true;
+          levs.push(nxtlev);
+          rs.push(nxtr);
+          cs.push(nxtc);
+          cnts.push(nxtcnt);
+        }
+      }
+    }
+
+    printf("Case #%d: ", cascnt);
+    if(ans == -1) puts("impossible");
+    else printf("%d\n", ans);
+  }
+  return 0;
+}

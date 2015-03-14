@@ -1,0 +1,112 @@
+#define _USE_MATH_DEFINES
+#define _CRT_SECURE_NO_WARNINGS
+#include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <complex>
+#include <cstdio>
+#include <cstring>
+#include <ctime>
+#include <deque>
+#include <fstream>
+#include <iostream>
+#include <limits.h>
+#include <map>
+#include <numeric>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+using namespace std;
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef vector<vi> vvi;
+typedef vector<string> vs;
+typedef pair<int, int> pii;
+typedef vector<pii> vpii;
+
+#define rep(i,m) for(int i=0;i<(int)(m);++i)
+#define sz(c) (int((c).size()))
+#define fill(a,b) memset(a,b,sizeof(a))
+#define all(x) (x).begin(),(x).end()
+#define mp make_pair
+#define two(x) (1<<(x))
+#define twoll(x) ((long long)1<<(x))
+#define contain(m,x) (((m)&two(x))!=0)
+#define containll(m,x) (((m)&twoll(x))!=0)
+
+const int dr[] = { -1, 0, 1, 0 };	// N,E,S,W
+const int dc[] = { 0, 1, 0, -1 };
+const string turret = "^>v<";
+const int MX = 101;
+const int INF = 1e9;
+int cost[MX][MX][4], can[MX][MX];
+int n, m;
+vector<string> g;
+
+struct S {
+	int r, c, rot, v;
+	S(int r, int c, int rot, int v) : r(r), c(c), rot(rot), v(v) { }
+};
+
+bool valid(int nr, int nc) {
+	return nr >= 0 && nr < n && nc >= 0 && nc < m && (g[nr][nc] == '.' || g[nr][nc] == 'S' || g[nr][nc] == 'G') && can[nr][nc];
+}
+
+void bfs(int sr, int sc) {
+	rep(i, n) rep(j, m) rep(k, 4) cost[i][j][k] = INF;
+	queue<S> q;
+	q.push(S(sr, sc, 0, 0));
+	while (!q.empty()) {
+		int r = q.front().r, c = q.front().c, rot = q.front().rot, v = q.front().v; q.pop();
+		cost[r][c][rot] = v;
+		for (int d = 0; d < 4; ++d) {
+			int nr = r + dr[d], nc = c + dc[d], nv = v + 1;
+			if (valid(nr, nc) && contain(can[nr][nc], nv % 4)) {
+				if (nv < cost[nr][nc][nv % 4]) cost[nr][nc][nv % 4] = nv, q.push(S(nr, nc, nv % 4, nv));
+			}
+		}
+	}
+}
+
+int main(int argc, char *argv[]) {
+	ios_base::sync_with_stdio(false); cout.precision(10); cout << fixed;
+	freopen("laser_maze.txt", "rt", stdin); freopen("output.txt", "wt", stdout);
+	clock_t start_time = clock(), check_time;
+	int total_cases; cin >> total_cases;
+	for (int cur_case = 1; cur_case <= total_cases; ++cur_case) {
+		cin >> n >> m;
+		g = vs(n);
+		rep(i, n) cin >> g[i];
+		int sr, sc, gr, gc;
+		rep(i, n) rep(j, m) {
+			can[i][j] = two(4) - 1;
+			if (g[i][j] == 'S') sr = i, sc = j; else if (g[i][j] == 'G') gr = i, gc = j;
+		}
+		rep(i, n) rep(j, m) rep(t, 4) {
+			if (g[i][j] == turret[t]) {
+				rep(rot, 4) {
+					int ii = i, jj = j;
+					while (valid(ii + dr[(t + rot) % 4], jj + dc[(t + rot) % 4])) {
+						ii = ii + dr[(t + rot) % 4];
+						jj = jj + dc[(t + rot) % 4];
+						can[ii][jj] &= ~two(rot);
+					}
+				}
+			}
+		}
+		bfs(sr, sc);
+		int res = INF;
+		rep(k, 4) res = min(res, cost[gr][gc][k]);
+		cout << "Case #" << cur_case << ": ";
+		if (res < INF) cout << res << endl;
+		else cout << "impossible" << endl;
+
+		check_time = clock(); cerr << "Case #" << cur_case << " elapsed time: " << check_time - start_time << "ms" << endl; start_time = clock();
+	}
+	return 0;
+}

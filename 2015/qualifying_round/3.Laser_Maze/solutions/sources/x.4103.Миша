@@ -1,0 +1,129 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
+using namespace std;
+
+const char wall='#',empty='.',start='S',goal='G',marked='*';
+const string l_up="^>v<",l_right=">v<^",l_down="v<^>",l_left="<^>v";
+const string l_morph[]={l_up, l_right, l_down,l_left};
+
+int main() {
+	int j,t,i,m,n;
+	ifstream in; ofstream out;
+	in.open("input.txt"); out.open("output.txt");
+	
+	in>>t;
+	#define LASER(x)			((x == '^')||(x == '>')||(x == 'v')||(x == '<'))
+	#define LASERID(x)		((x)=='^')?(0):(((x)=='>')?(1):(((x)=='v')?(2):(3)))
+	#define OUTOF(r, c) 	((r<0)||(r>=m)||(c<0)||(c>=n))
+	#define CAN(mm, rr, cc) ((!OUTOF(rr, cc)) && ((mm[rr][cc] == empty)||(mm[rr][cc]=='S')||(mm[rr][cc]=='G')))
+	
+	for (i=1;i<=t;i++){
+		in>>m>>n;
+		vector<string> raw(m);
+		for (j=0;j<m;j++){
+			in>>raw[j];
+		}
+		vector < vector <string> > morph(4,raw);
+		int mod,r,c;
+		for (mod=0;mod<4;mod++)
+			for (r=0;r<m;r++)
+				for (c=0;c<n;c++){
+					if (!LASER(raw[r][c]))	continue;
+					int id=LASERID(raw[r][c]);
+					if (l_morph[id][mod]=='^'){
+						int R=r,C=c;
+						morph[mod][R--][C]=wall;
+						while (CAN(raw,R,C)){
+							morph[mod][R--][C]=wall;
+						}
+					}
+					
+					if (l_morph[id][mod]=='>'){
+						int R=r,C=c;
+						morph[mod][R][C++]=wall;
+						while (CAN(raw,R,C)){
+							morph[mod][R][C++]=wall;
+						}
+					}
+					
+					if (l_morph[id][mod]=='v'){
+						int R=r,C=c;
+						morph[mod][R++][C]=wall;
+						while (CAN(raw,R,C)){
+							morph[mod][R++][C]=wall;
+						}
+					}
+					
+					if (l_morph[id][mod]=='<'){
+						int R=r,C=c;
+						morph[mod][R][C--]=wall;
+						while (CAN(raw,R,C)){
+							morph[mod][R][C--]=wall;
+						}
+					}
+										
+				}
+			pair<int, int>* sol[2];
+			int s0=0,s1=1,g_r=-1,g_c=-1,m0=0,m1=0;
+			sol[s0]=new pair<int, int>[n*m];
+			sol[s1]=new pair<int, int>[n*m];
+			
+			for(r=0;r<m;r++)
+				for(c=0;c<n;c++) 
+					if (raw[r][c]==start){
+						sol[s0][m0++]=(make_pair(r,c));
+					} else if (raw[r][c]==goal){
+						g_r=r; g_c=c;
+					}
+			int l=0;
+			while ((m0>0) && (l<=4*n*m) ){
+				l++;
+				for (r=0;r<m;r++)
+					for(c=0;c<n;c++)
+						if (morph[l%4][r][c]==marked)
+							morph[l%4][r][c]=empty;
+			
+			m1=0;
+			for(int z=0;z<m0;z++){
+				int Rr=sol[s0][z].first;
+				int Cc=sol[s0][z].second;
+				if ((Rr==g_r) && (Cc==g_c) ){
+					out<<"Case #"<<i<<": "<<l-1<<endl; 
+					goto Q;
+				}
+				
+				if(CAN(morph[l%4],Rr-1,Cc)){
+					morph[l%4][Rr-1][Cc]=marked;
+					sol[s1][m1++]=make_pair(Rr-1,Cc);
+				}
+				if(CAN(morph[l%4],Rr,Cc+1)){
+					morph[l%4][Rr][Cc+1]=marked;
+					sol[s1][m1++]=make_pair(Rr,Cc+1);
+				}
+				if(CAN(morph[l%4],Rr+1,Cc)){
+					morph[l%4][Rr+1][Cc]=marked;
+					sol[s1][m1++]=make_pair(Rr+1,Cc);
+				}
+				if(CAN(morph[l%4],Rr,Cc-1)){
+					morph[l%4][Rr][Cc-1]=marked;
+					sol[s1][m1++]=make_pair(Rr,Cc-1);
+				}
+			}
+			m0=m1;
+			s0=1-s0;
+			s1=1-s1;
+				
+			}
+		
+			out<<"Case #"<<i<<": imposible"<<endl;
+Q:	m=m;	
+	}
+	
+	
+	
+	in.close(); out.close();
+	return 0;
+}

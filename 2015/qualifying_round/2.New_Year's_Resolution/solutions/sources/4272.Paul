@@ -1,0 +1,145 @@
+/*
+ * Paul Allen
+ * January 9, 2015
+ *
+ */
+
+var fs = require('fs'),
+    readline = require('readline'),
+    lineCount = 0,
+    curCase = 1,
+    foodCount = 0,
+    foods = [],
+    goal = [],
+    nCases = 0;
+
+var inFile = readline.createInterface({
+    input: fs.createReadStream('./new_years_resolution.txt'),
+    output: process.stdout,
+    terminal: false
+});
+
+inFile.on('line', function(line) {
+
+    if(lineCount == 0) {
+        nCases = parseInt(line, 10);
+        lineCount += 1;
+        return;
+    }
+
+    if(nCases < curCase) {
+        return;
+    }
+
+    if (foodCount == -1) {
+        foodCount = parseInt(line, 10);
+        return;
+    }
+
+    if (foodCount > 0) {
+        foods.push(line.split(' '));
+        foodCount -= 1;
+    }
+
+    if (foodCount == 0) {
+
+        if (goal.length > 0) {
+            console.log('Case #' + curCase + ': ' + (findFood(goal, foods) ? 'yes' : 'no'));
+            goal = [];
+            foods = [];
+            curCase += 1;
+            return;
+        }
+
+        goal = line.split(' ');
+        foodCount -= 1;
+    }
+})
+.on('error', function(e) {
+    console.log(e);
+});
+
+function findFood(goal, foods) {
+    //sort so we can remove duplicates
+    foods.sort(function(a, b) {
+        if (a[0] < b[0]) {
+            return -1;
+        }
+        if (a[0] > b[0]) {
+            return 1;
+        }
+        return 0;
+    });
+
+    //search and destry duplicates
+    for (var i=foods.length-1; i > 0; i--) {
+        var dupe = true;
+        for (var j=0; j < foods.length; j++) {
+            if (foods[i][j] != foods[i-1][j]) {
+                dupe = false;
+                break;
+            }
+        }
+
+        if (dupe) {
+            foods.splice(i, 1);
+        }
+    }
+
+    for (var i=0; i < foods.length; i++) {
+    }
+
+    var FoundException = {};
+
+    try
+    {
+        powerset(foods).map(function(cmb) {
+            if (findMatch(goal, cmb)) {
+                throw FoundException;
+            };
+        });
+    } catch(e) {
+        if (e == FoundException) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function findMatch(goal, foods) {
+    var totals = [];
+
+    for (var i = 0 ; i < goal.length; i++) {
+
+        totals[i] = 0;
+
+        for (var k = 0; k < foods.length; k++) {
+            totals[i] += parseInt(foods[k][i], 10);
+        }
+
+        if (parseInt(totals[i], 10) != parseInt(goal[i], 10)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function powerset( list ){
+    var set = [],
+        listSize = list.length,
+        combinationsCount = (1 << listSize),
+        combination;
+
+    for (var i = 1; i < combinationsCount; i++ ){
+        var combination = [];
+        for (var j = 0; j < listSize; j++){
+            if ((i & (1 << j))){
+                combination.push(list[j]);
+            }
+        }
+        set.push(combination);
+    }
+    return set;
+}

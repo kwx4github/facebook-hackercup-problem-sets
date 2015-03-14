@@ -1,0 +1,181 @@
+#include <stdio.h>
+#include <vector>
+#include <algorithm>
+#include <string.h>
+#include <queue>
+#include <math.h>
+using namespace std;
+typedef pair<int, int> ii;
+
+int t, n, m;
+int maze[105][105];//0:floor, 1:wall, 2:N, 3:E, 4:S, 5:W
+bool walkable[105][105][4];
+int dist[105][105][4];
+ii start, goal;
+queue<pair <ii, int> > q;
+
+int main(){
+	
+	scanf("%d", &t);
+	char tempchar;
+	for(int testCase = 0; testCase < t; testCase++){
+		printf("Case #%d: ", testCase+1);
+		scanf("%d %d", &m, &n);
+		for(int j = 0; j < m; j++){
+			for(int i = 0; i < n; i++){
+				scanf("%d %d", &m, &n);
+				scanf("%c", &tempchar);
+				while(tempchar == '\n'){
+					scanf("%c", &tempchar);
+				}
+				if(tempchar == '.'){
+					maze[i][j] = 0;
+				}
+				else if(tempchar == 'S'){
+					maze[i][j] = 0;
+					start = make_pair(i, j);
+				}
+				else if(tempchar == 'G'){
+					maze[i][j] = 0;
+					goal = make_pair(i, j);
+				}
+				else if(tempchar == '#'){
+					maze[i][j] = 1;
+				}
+				else if(tempchar == '^'){
+					maze[i][j] = 2;
+				}
+				else if(tempchar == '>'){
+					maze[i][j] = 3;
+				}
+				else if(tempchar == 'v'){
+					maze[i][j] = 4;
+				}
+				else if(tempchar == '<'){
+					maze[i][j] = 5;
+				}
+			}
+		}
+		for(int i = 0; i < n; i++){
+			for(int j = 0; j < m; j++){
+				if(maze[i][j] > 0){
+					walkable[i][j][0] = false;
+					walkable[i][j][1] = false;
+					walkable[i][j][2] = false;
+					walkable[i][j][3] = false;
+				} else {
+					walkable[i][j][0] = true;
+					walkable[i][j][1] = true;
+					walkable[i][j][2] = true;
+					walkable[i][j][3] = true;
+				}
+			}
+		}
+		int temp;
+		for(int i = 0; i < n; i++){
+			for(int j = 0; j < m; j++){
+				for(int k = 0; k < 4; k++){
+					if(maze[i][j] > 1){
+						temp = (maze[i][j]-2+k)%4;
+						int tempi = i, tempj = j;
+						int di = 0, dj = 0;
+						if(temp == 0){dj--;}
+						else if(temp == 1){di++;}
+						else if(temp == 2){dj++;}
+						else if(temp == 3){di--;}
+						//printf("%d %d is a laser turret, temp = %d, di = %d, dj = %d\n", i, j, temp, di, dj);
+						//printf("%d %d is a laser turret\n", i, j);
+						while(true){
+							tempi+=di;
+							tempj+=dj;
+							//printf("tempi = %d, tempj = %d\n", tempi, tempj);
+							if(tempi < 0 || tempi >= n || tempj < 0 || tempj >= m || maze[tempi][tempj] > 0){
+								break;
+							}
+							walkable[tempi][tempj][k] = false;
+						}
+					}
+				}
+			}
+		}
+		
+		
+		/*for(int k = 0; k < 4; k++){
+			for(int j = 0; j < m; j++){
+				for(int i = 0; i < n; i++){
+					printf("%d", walkable[i][j][k]);
+				}
+				printf("\n");
+			}
+			printf("\n");
+		}
+		//*/
+		
+		//starting bfs
+		
+		memset(dist, -1, sizeof(dist));
+		
+		q.push(make_pair(start, 0));
+		dist[start.first][start.second][0] = 0;
+		int currDist = 0;
+		int di[4] = {1, -1, 0, 0};
+		int dj[4] = {0, 0, 1, -1};
+		int newi;
+		int newj;
+		int newk;
+		while(!q.empty()){
+			//printf("currDist = %d\n", currDist);
+			//printf("q.front().second = %d\n", q.front().second);
+			if(currDist%4 != q.front().second){
+				currDist++;
+			}
+			//printf("currDist = %d\n", currDist);
+			newk = (q.front().second + 1)%4;
+			//printf("newk = %d\n", newk);
+			for(int i = 0; i < 4; i++){
+				newi = q.front().first.first + di[i];
+				newj = q.front().first.second + dj[i];
+				//printf("considering %d, %d, %d\n", newi, newj, newk);
+				if(newi < 0 || newi >= n || newj < 0 || newj >= m){continue;}
+				//printf("in bounds %d, %d, %d\n", newi, newj, newk);
+				if(walkable[newi][newj][newk] && dist[newi][newj][newk] == -1){
+					//printf("pushing %d, %d, %d, %d\n", newi, newj, newk, walkable[newi][newj][newk]);
+					dist[newi][newj][newk] = currDist+1;
+					q.push(make_pair(make_pair(newi, newj), newk));
+				}
+			}
+			q.pop();
+		}
+		
+		
+		/*printf("\n");
+		for(int k = 0; k < 4; k++){
+			for(int j = 0; j < m; j++){
+				for(int i = 0; i < n; i++){
+					printf("%d ", dist[i][j][k]);
+				}
+				printf("\n");
+			}
+			printf("\n");
+		}
+		//*/
+		
+		bool possible = false;
+		int ans = 1000000000;
+		for(int i = 0; i < 4; i++){
+			//printf("\ngoal.first = %d, goal.second = %d\n", goal.first, goal.second);
+			if(dist[goal.first][goal.second][i] != -1){
+				possible = true;
+				ans = min(ans, dist[goal.first][goal.second][i]);
+			}
+		}
+		if(!possible){
+			printf("impossible\n");
+			continue;
+		}
+		printf("%d\n", ans);
+	}
+	
+	
+	return 0;
+}

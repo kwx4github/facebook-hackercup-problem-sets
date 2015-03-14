@@ -1,0 +1,139 @@
+#include <cstdio>
+#include <algorithm>
+#include <queue>
+#include <climits>
+#include <tuple>
+
+using namespace std;
+
+char Maze[100][101];
+bool V[100][100][4], S[100][100][4];
+int D[100][100][4];
+int s_i, s_j, g_i, g_j, m, n;
+
+inline bool turret(char c) { return c == '^' || c == '>' || c == '<' || c == 'v'; }
+inline int number(char c) {
+    switch(c) {
+        case '^': return 0;
+        case '>': return 1;
+        case 'v': return 2;
+        case '<': return 3;
+        default: return -1;
+    }
+}
+
+void bfs() {
+    for(int i = 0; i < m; i++) for(int j = 0; j < n; j++)
+        D[i][j][0] = D[i][j][1] = D[i][j][2] = D[i][j][3] = INT_MAX;
+
+    queue<tuple<int, int, int>> que;
+    D[s_i][s_j][0] = 0;
+    que.emplace(s_i, s_j, 0);
+    while(!que.empty()) {
+        int i, j, d;
+        tie(i, j, d) = que.front();
+        que.pop();
+        int s = (d+1)%4;
+        if(i > 0 && S[i-1][j][s] && D[i-1][j][s] == INT_MAX) {
+            D[i-1][j][s] = d+1;
+            que.emplace(i-1, j, d+1);
+        }
+        if(i < m-1 && S[i+1][j][s] && D[i+1][j][s] == INT_MAX) {
+            D[i+1][j][s] = d+1;
+            que.emplace(i+1, j, d+1);
+        }
+        if(j < n-1 && S[i][j+1][s] && D[i][j+1][s] == INT_MAX) {
+            D[i][j+1][s] = d+1;
+            que.emplace(i, j+1, d+1);
+        }
+        if(j > 0 && S[i][j-1][s] && D[i][j-1][s] == INT_MAX) {
+            D[i][j-1][s] = d+1;
+            que.emplace(i, j-1, d+1);
+        }
+    }
+}
+
+void test() {
+    for(int i = 0; i < m; i++) {
+        for(int j = 0; j < n; j++) printf("%c", Maze[i][j]);
+        printf("\n");
+    }
+    printf("\n");
+    for(int i = 0; i < m; i++) {
+        for(int j = 0; j < n; j++) {
+            printf("[%d %d %d %d] ", S[i][j][0], S[i][j][1], S[i][j][2], S[i][j][3]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int z;
+    scanf("%d", &z);
+    for(int f = 1; f <= z; f++) {
+        scanf("%d %d\n", &m, &n);
+        for(int i = 0; i < m; i++) {
+            scanf("%s", Maze[i]);
+        }
+        for(int i = 0; i < m; i++) {
+            for(int j = 0; j < n; j++) {
+                if(Maze[i][j] == 'G') {
+                    g_i = i; g_j = j;
+                } else if(Maze[i][j] == 'S') {
+                    s_i = i; s_j = j;
+                }
+
+                if(Maze[i][j] == '.' || Maze[i][j] == 'G' || Maze[i][j] == 'S') {
+                    S[i][j][0] = S[i][j][1] = S[i][j][2] = S[i][j][3] = true;
+
+                    for(int k = i-1; k >= 0; k--) {
+                        if(Maze[k][j] == '#') break;
+                        if(turret(Maze[k][j])) {
+                            int tn = (6-number(Maze[k][j])) % 4;
+                            S[i][j][tn] = false;
+                            break;
+                        }
+                    }
+
+                    for(int k = i+1; k < m; k++) {
+                        if(Maze[k][j] == '#') break;
+                        if(turret(Maze[k][j])) {
+                            int tn = (4-number(Maze[k][j]))%4;
+                            S[i][j][tn] = false;
+                            break;
+                        }
+                    }
+
+                    for(int k = j-1; k >= 0; k--) {
+                        if(Maze[i][k] == '#') break;
+                        if(turret(Maze[i][k])) {
+                            int tn = (1-number(Maze[i][k]) + 4) % 4;
+                            S[i][j][tn] = false;
+                            break;
+                        }
+                    }
+
+                    for(int k = j+1; k < n; k++) {
+                        if(Maze[i][k] == '#') break;
+                        if(turret(Maze[i][k])) {
+                            int tn = 3-number(Maze[i][k]);
+                            S[i][j][tn] = false;
+                            break;
+                        }
+                    }
+
+                } else
+                    S[i][j][0] = S[i][j][1] = S[i][j][2] = S[i][j][3] = false;
+
+            }
+        }
+        //test();
+        bfs();
+        int m = *min_element(D[g_i][g_j], D[g_i][g_j]+4);
+        printf("Case #%d: ", f);
+        if(m < INT_MAX) printf("%d\n", m);
+        else printf("impossible\n");
+    }
+
+    return 0;
+}

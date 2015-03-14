@@ -1,0 +1,96 @@
+#include <stdio.h>
+#include <memory.h>
+#define MX 128
+struct DATA {
+	int x, y, ph;
+	DATA(int _x = 0, int _y = 0, int _ph = 0)
+	{x = _x; y = _y; ph = _ph;}
+};
+int M, N;
+char d[MX][MX];
+bool npos[MX][MX][4];
+DATA qu[MX*MX*4]; int qs, qe;
+int dis[MX][MX][4];
+int dx[4]={-1,0,1,0}, dy[4]={0,1,0,-1};
+int pillar(int i, int j) {
+	if (d[i][j] == '#') return 4;
+	if (d[i][j] == '^') return 0;
+	if (d[i][j] == '>') return 1;
+	if (d[i][j] == 'v') return 2;
+	if (d[i][j] == '<') return 3;
+	return -1;
+}
+int main()
+{
+	freopen("input.txt","r",stdin);
+	FILE *out=fopen("output.txt","w");
+	int t, T, i, j, k;
+	
+	scanf("%d",&T);
+	for (t = 1; t <= T; t++) {
+		printf("Case #%d: ",t);
+		fprintf(out,"Case #%d: ",t);
+		scanf("%d%d",&M,&N);
+		for (i = 0; i < M; i++)
+			scanf("%s",d[i]);
+		memset(npos,0,sizeof(npos));
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				int ph = pillar(i,j);
+				if (ph != -1) {
+					for (k = 0; k < 4; k++) {
+						npos[i][j][k] = true;
+						if (ph < 4) {
+							int x = i, y = j;
+							for (;;) {
+								x += dx[(ph+k)%4]; y += dy[(ph+k)%4];
+								if (0<=x&&x<M && 0<=y&&y<N) {
+									if (pillar(x,y) != -1) break;
+								}
+								else break;
+								npos[x][y][k] = true;
+							}
+						}
+					}
+				}
+			}
+		}
+		qs = qe = 0;
+		memset(dis,-1,sizeof(dis));
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				if (d[i][j] == 'S') {
+					qu[qe++] = DATA(i,j,0); dis[i][j][0] = 0;
+				}
+			}
+		}
+		while (qs < qe) {
+			DATA p = qu[qs++], q;
+			for (i = 0; i < 4; i++) {
+				q = DATA(p.x+dx[i],p.y+dy[i],(p.ph+1)%4);
+				if (0<=q.x&&q.x<M && 0<=q.y&&q.y<N && !npos[q.x][q.y][q.ph]) {
+					if (dis[q.x][q.y][q.ph] == -1) {
+						qu[qe++] = q; dis[q.x][q.y][q.ph] = dis[p.x][p.y][p.ph]+1;
+					}
+				}
+			}
+		}
+		int r = -1;
+		for (i = 0; i < M; i++) {
+			for (j = 0; j < N; j++) {
+				if (d[i][j] == 'G') {
+					for (k = 0; k < 4; k++) {
+						if (dis[i][j][k] != -1) {
+							if (r == -1 || r > dis[i][j][k])
+								r = dis[i][j][k];
+						}
+					}
+				}
+			}
+		}
+		if (r == -1) fprintf(out,"impossible\n");
+		else fprintf(out,"%d\n",r);
+	}
+	fclose(out);
+	return 0;
+}

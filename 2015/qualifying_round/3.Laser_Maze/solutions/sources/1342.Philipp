@@ -1,0 +1,396 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+import org.jgraph.JGraph;
+import org.jgraph.graph.DefaultEdge;
+import org.jgrapht.DirectedGraph;
+import org.jgrapht.alg.DijkstraShortestPath;
+import org.jgrapht.graph.DefaultDirectedGraph;
+
+public class A2 {
+    DirectedGraph<String, DefaultEdge> directedGraph;
+
+    public static void main(final String[] args) throws IOException {
+	new A2();
+    }
+
+    public String toStringMatrix(final char[][] matrix) {
+	final StringBuilder sbResult = new StringBuilder();
+
+	for (final char[] element : matrix) {
+	    for (final char element2 : element) {
+		if (element2 == ' ') {
+		    sbResult.append('a');
+		} else {
+		    sbResult.append(element2);
+		}
+		sbResult.append(" ");
+
+	    }
+	    sbResult.append("\n");
+	}
+
+	return sbResult.toString();
+    }
+
+    A2() throws IOException {
+
+	final Scanner sc = new Scanner(new File("laser_maze.txt"));
+	final StringBuilder output = new StringBuilder();
+	sc.next();
+	int i = 1;
+	while (sc.hasNextInt()) {
+	    this.directedGraph = new DefaultDirectedGraph<String, DefaultEdge>(
+		    DefaultEdge.class);
+
+	    final int rows = sc.nextInt();
+	    final int collems = sc.nextInt();
+	    final char[][] matrix = new char[rows][collems];
+	    for (int row = 0; row <= rows - 1; row++) {
+		matrix[row] = sc.next().toCharArray();
+	    }
+	    System.out.println("Case+"+i);
+	    System.out.println(toStringMatrix(matrix));
+	    int res = this.doLacer(matrix) - 1;
+	    if (res <= 0)
+		output.append("Case #" + i + ": impossible");
+	    else
+		output.append("Case #" + i + ": " + res);
+	    output.append("\n");
+	    i++;
+	}
+
+	System.out.println(output.toString());
+
+	final File file = new File("a2_res.txt");
+	BufferedWriter writer = null;
+	try {
+	    writer = new BufferedWriter(new FileWriter(file));
+	    writer.write(output.toString());
+	} finally {
+	    if (writer != null) {
+		writer.close();
+	    }
+	}
+
+    }
+
+    public int doLacer(final char[][] matrix) {
+	char[][] interation1 = new char[matrix.length][matrix[0].length];
+	char[][] interation2 = new char[matrix.length][matrix[0].length];
+	char[][] interation3 = new char[matrix.length][matrix[0].length];
+	char[][] interation4 = new char[matrix.length][matrix[0].length];
+	int[] start = new int[2];
+	int[] ziel = new int[2];
+	for (int i = 0; i < matrix.length; i++) {
+	    for (int j = 0; j < matrix[0].length; j++) {
+		if (matrix[i][j] == 'G') {
+		    ziel[0] = i;
+		    ziel[1] = j;
+		    matrix[i][j] = '.';
+		} else if (matrix[i][j] == 'S') {
+		    start[0] = i;
+		    start[1] = j;
+		    matrix[i][j] = '.';
+		}
+	    }
+	}
+	for (int i = 0; i < matrix.length; i++) {
+	    for (int j = 0; j < matrix[0].length; j++) {
+		switch (matrix[i][j]) {
+		case '^':
+		    interation4[i][j] = matrix[i][j];
+		    interation1[i][j] = '>';
+		    interation2[i][j] = 'v';
+		    interation3[i][j] = '<';
+		    top(interation4, matrix, i, j);
+		    right(interation1, matrix, i, j);
+		    down(interation2, matrix, i, j);
+		    left(interation3, matrix, i, j);
+		    break;
+		case '>':
+		    interation4[i][j] = matrix[i][j];
+		    interation1[i][j] = 'v';
+		    interation2[i][j] = '<';
+		    interation3[i][j] = '^';
+		    right(interation4, matrix, i, j);
+		    down(interation1, matrix, i, j);
+		    left(interation2, matrix, i, j);
+		    top(interation3, matrix, i, j);
+		    break;
+		case 'v':
+		    interation4[i][j] = matrix[i][j];
+		    interation1[i][j] = '<';
+		    interation2[i][j] = '^';
+		    interation3[i][j] = '>';
+		    down(interation4, matrix, i, j);
+		    left(interation1, matrix, i, j);
+		    top(interation2, matrix, i, j);
+		    right(interation3, matrix, i, j);
+		    break;
+		case '<':
+		    interation4[i][j] = matrix[i][j];
+		    interation1[i][j] = '^';
+		    interation2[i][j] = '>';
+		    interation3[i][j] = 'v';
+		    left(interation4, matrix, i, j);
+		    top(interation1, matrix, i, j);
+		    right(interation2, matrix, i, j);
+		    down(interation3, matrix, i, j);
+		    break;
+		default:
+		    if (interation1[i][j] == 0)
+			interation1[i][j] = matrix[i][j];
+		    if (interation2[i][j] == 0)
+			interation2[i][j] = matrix[i][j];
+		    if (interation3[i][j] == 0)
+			interation3[i][j] = matrix[i][j];
+		    if (interation4[i][j] == 0)
+			interation4[i][j] = matrix[i][j];
+
+		}
+	    }
+	}
+//	System.out.println(this.toStringMatrix(interation1));
+//	System.out.println(this.toStringMatrix(interation2));
+//
+//	System.out.println(this.toStringMatrix(interation3));
+//	System.out.println(this.toStringMatrix(interation4));
+
+	return createGraph(interation1, interation2, interation3, interation4,
+		start, ziel);
+
+    }
+
+    private int createGraph(char[][] interation1, char[][] interation2,
+	    char[][] interation3, char[][] interation4, int[] start, int[] ziel) {
+	int maxi = interation1.length;
+	int maxj = interation1[0].length;
+
+	ArrayList<String[]> edges = new ArrayList<>();
+	for (int i = 0; i < maxi; i++) {
+	    for (int j = 0; j < maxj; j++) {
+
+		if (isValid(interation1[i][j])) {
+		    String accVertex = i + "_" + j + "inter1";
+		    directedGraph.addVertex(accVertex);
+		    // move right
+		    if (j + 1 < maxj && isValid(interation2[i][j + 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j + 1) + "inter2" });
+		    }
+		    // move left
+		    if (j - 1 >= 0 && isValid(interation2[i][j - 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j - 1) + "inter2" });
+		    }
+
+		    // move down
+		    if (i + 1 < maxi && isValid(interation2[i + 1][j])) {
+
+			edges.add(new String[] { accVertex,
+				(i + 1) + "_" + j + "inter2" });
+		    }
+
+		    // move up
+		    if (i - 1 >= 0 && isValid(interation2[i - 1][j])) {
+
+			edges.add(new String[] { accVertex,
+				(i - 1) + "_" + j + "inter2" });
+		    }
+		}
+
+		if (isValid(interation2[i][j])) {
+		    String accVertex = i + "_" + j + "inter2";
+		    directedGraph.addVertex(accVertex);
+		    // move right
+		    if (j + 1 < maxj && isValid(interation3[i][j + 1])) {
+
+			edges.add(new String[] { accVertex,
+				i + "_" + (j + 1) + "inter3" });
+		    }
+		    // move left
+		    if (j - 1 >= 0 && isValid(interation3[i][j - 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j - 1) + "inter3" });
+		    }
+
+		    // move down
+		    if (i + 1 < maxi && isValid(interation3[i + 1][j])) {
+			edges.add(new String[] { accVertex,
+				(i + 1) + "_" + j + "inter3" });
+		    }
+
+		    // move up
+		    if (i - 1 >= 0 && isValid(interation3[i - 1][j])) {
+			edges.add(new String[] { accVertex,
+				(i - 1) + "_" + j + "inter3" });
+		    }
+		}
+		if (isValid(interation3[i][j])) {
+		    String accVertex = i + "_" + j + "inter3";
+		    directedGraph.addVertex(accVertex);
+		    // move right
+		    if (j + 1 < maxj && isValid(interation4[i][j + 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j + 1) + "inter4" });
+		    }
+		    // move left
+		    if (j - 1 >= 0 && isValid(interation4[i][j - 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j - 1) + "inter4" });
+		    }
+
+		    // move down
+		    if (i + 1 < maxi && isValid(interation4[i + 1][j])) {
+			edges.add(new String[] { accVertex,
+				(i + 1) + "_" + j + "inter4" });
+		    }
+
+		    // move up
+		    if (i - 1 >= 0 && isValid(interation4[i - 1][j])) {
+			edges.add(new String[] { accVertex,
+				(i - 1) + "_" + j + "inter4" });
+		    }
+		}
+
+		if (isValid(interation4[i][j])) {
+		    String accVertex = i + "_" + j + "inter4";
+		    directedGraph.addVertex(accVertex);
+		    // move right
+		    if (j + 1 < maxj && isValid(interation1[i][j + 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j + 1) + "inter1" });
+		    }
+		    // move left
+		    if (j - 1 >= 0 && isValid(interation1[i][j - 1])) {
+			edges.add(new String[] { accVertex,
+				i + "_" + (j - 1) + "inter1" });
+		    }
+
+		    // move down
+		    if (i + 1 < maxi && isValid(interation1[i + 1][j])) {
+			edges.add(new String[] { accVertex,
+				(i + 1) + "_" + j + "inter1" });
+		    }
+
+		    // move up
+		    if (i - 1 >= 0 && isValid(interation1[i - 1][j])) {
+			edges.add(new String[] { accVertex,
+				(i - 1) + "_" + j + "inter1" });
+		    }
+		}
+	    }
+
+	}
+	for (String[] edge : edges) {
+	    try {
+
+		directedGraph.addEdge(edge[0], edge[1]);
+	    } catch (Exception e) {
+		// System.out.println(directedGraph.vertexSet());
+		// System.out.println(edge);
+	    }
+	    ;
+	}
+
+	directedGraph.addVertex("start");
+	// links
+	if (directedGraph.containsVertex((start[0]) + "_" + (start[1] - 1)
+		+ "inter1"))
+	    directedGraph.addEdge("start", (start[0]) + "_" + (start[1] - 1)
+		    + "inter1");
+	// rechts
+	if (directedGraph.containsVertex((start[0]) + "_" + (start[1]+1)
+		+ "inter1"))
+	    directedGraph.addEdge("start", (start[0]) + "_" + (start[1] + 1)
+		    + "inter1");
+
+	// oben
+	if (directedGraph.containsVertex((start[0]-1) + "_" + (start[1])
+		+ "inter1"))
+	    directedGraph.addEdge("start", (start[0] - 1) + "_" + (start[1])
+		    + "inter1");
+
+	// drunter
+	if (directedGraph.containsVertex((start[0]+1) + "_" + (start[1])
+		+ "inter1"))
+	    directedGraph.addEdge("start", (start[0] + 1) + "_" + (start[1])
+		    + "inter1");
+
+	directedGraph.addVertex("ziel");
+
+	if (directedGraph.containsVertex(ziel[0] + "_" + ziel[1] + "inter1"))
+	    directedGraph.addEdge(ziel[0] + "_" + ziel[1] + "inter1", "ziel");
+	if (directedGraph.containsVertex(ziel[0] + "_" + ziel[1] + "inter2"))
+	    directedGraph.addEdge(ziel[0] + "_" + ziel[1] + "inter2", "ziel");
+	if (directedGraph.containsVertex(ziel[0] + "_" + ziel[1] + "inter3"))
+	    directedGraph.addEdge(ziel[0] + "_" + ziel[1] + "inter3", "ziel");
+	if (directedGraph.containsVertex(ziel[0] + "_" + ziel[1] + "inter4"))
+	    directedGraph.addEdge(ziel[0] + "_" + ziel[1] + "inter4", "ziel");
+
+	final List path = DijkstraShortestPath.findPathBetween(directedGraph,
+		"start", "ziel");
+	
+
+	return path == null ? 0 : path.size();
+    }
+
+    private boolean isValid(char val) {
+	return val == '.' || val == 'S' || val == 'G';
+    }
+
+    private char[][] down(char[][] workMatrix, char[][] dataMatrix, int x, int y) {
+	for (int i = x + 1; i < dataMatrix.length; i++) {
+	    if (dataMatrix[i][y] == '.') {
+		workMatrix[i][y] = 'L';
+	    } else {
+		break;
+	    }
+	}
+	return workMatrix;
+    }
+
+    private char[][] right(char[][] workMatrix, char[][] dataMatrix, int x,
+	    int y) {
+	for (int i = y + 1; i < dataMatrix[x].length; i++) {
+	    if (dataMatrix[x][i] == '.') {
+		workMatrix[x][i] = 'L';
+
+	    } else {
+		break;
+	    }
+	}
+	return workMatrix;
+    }
+
+    private char[][] left(char[][] workMatrix, char[][] dataMatrix, int x, int y) {
+	for (int i = y - 1; i >= 0; i--) {
+	    if (dataMatrix[x][i] == '.') {
+		workMatrix[x][i] = 'L';
+	    } else {
+		break;
+	    }
+	}
+	return workMatrix;
+    }
+
+    private char[][] top(char[][] workMatrix, char[][] dataMatrix, int x, int y) {
+	for (int i = x - 1; i >= 0; i--) {
+	    if (dataMatrix[i][y] == '.') {
+		workMatrix[i][y] = 'L';
+	    } else {
+		break;
+	    }
+	}
+	return workMatrix;
+
+    }
+
+}

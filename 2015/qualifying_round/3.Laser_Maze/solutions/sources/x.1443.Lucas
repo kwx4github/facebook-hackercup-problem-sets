@@ -1,0 +1,112 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+const int oo = 0x3f3f3f3f;
+
+char grid[111][111];
+char bad[111][111][4];
+int dist[111][111][4];
+bool mark[111][111][4];
+
+int dr[] = {-1,0,1,0};
+int dc[] = {0,1,0,-1};
+
+bool valid(int i, int j, int rows, int cols) {
+    return (i >= 0 and i < rows and j >= 0 and j < cols and grid[i][j] == '.');
+}
+
+bool turret(char c) {
+    if (c == '^' or c == '>' or c == 'v' or c == '<') return true;
+    return false;
+}
+
+int to_int(char c) {
+    if (c == '^') return 0;
+    if (c == '>') return 1;
+    if (c == 'v') return 2;
+    if (c == '<') return 3;
+}
+
+int next_direction(int x) {
+    return (x + 1) % 4;
+}
+
+pair<int,int> next_pos(pair<int, int> pos, int direction) {
+    return {pos.first + dr[direction], pos.second + dc[direction]};
+}
+
+void mark_bads(pair<int,int> pos, int t, int direction, int rows, int cols) {
+    int i, j; tie(i,j) = pos;
+    if (valid(i,j,rows,cols) == false) return;
+    bad[i][j][t] = 1;
+    mark_bads(next_pos(pos, direction), t, direction, rows, cols);
+}
+
+typedef tuple<int,int,int> State;
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    int t;
+    cin >> t;
+    for (int case_number = 1; case_number <= t; ++case_number) {
+        memset(bad, 0, sizeof bad);
+        memset(mark, 0, sizeof mark);
+        int rows, cols;
+        cin >> rows >> cols;
+        for (int i = 0; i < rows; ++i) {
+            cin >> grid[i];
+        }
+        
+        pair<int,int> start_pos;
+        pair<int,int> end_pos;
+        for (int i = 0; i < rows; ++i) {
+            for (int j = 0; j < cols; ++j) {
+                if (grid[i][j] == 'S') {
+                    start_pos = {i,j};
+                    grid[i][j] = '.';
+                } else if (grid[i][j] == 'G') {
+                    end_pos = {i,j};
+                    grid[i][j] = '.';
+                }
+            }
+        }
+        
+        for (int i = 0; i < rows; ++i) {
+            for (int j = 0; j < cols; ++j) {
+                if (turret(grid[i][j])) {
+                    int current_direction = to_int(grid[i][j]);
+                    for (int k = 0; k < 4; ++k) {
+                        mark_bads(next_pos({i,j}, current_direction),k,current_direction,rows,cols);
+                        current_direction = next_direction(current_direction);
+                    }
+                }
+            }
+        }
+        int result = -1;
+        queue<State> q;
+        q.emplace(start_pos.first, start_pos.second, 0);
+        mark[start_pos.first][start_pos.second][0] = 1;
+        while (!q.empty() && result == -1) {
+            int i, j, t; tie(i,j,t) = q.front();
+            q.pop();
+            int next_t = (t + 1) % 4;
+            for (int k = 0; k < 4; ++k) {
+                int tr = i + dr[k];
+                int tc = j + dc[k];
+                if (valid(tr,tc,rows,cols)) {
+                    if (bad[tr][tc][next_t] == false and mark[tr][tc][next_t] == false) {
+                        mark[tr][tc][next_t] = 1;
+                        dist[tr][tc][next_t] = dist[i][j][t] + 1;
+                        q.emplace(tr,tc,next_t);
+                        if (tr == end_pos.first and tc == end_pos.second) {
+                            result = dist[tr][tc][next_t];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (result == -1) printf("Case #%d: impossible\n", case_number);
+        else printf("Case #%d: %d\n", case_number, result);
+    }
+}

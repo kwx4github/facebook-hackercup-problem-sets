@@ -1,0 +1,108 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+func main() {
+	s := bufio.NewScanner(os.Stdin)
+	ntests, err := readInt(s)
+	if err != nil {
+		panic(err)
+	}
+	for i := 0; i < ntests; i++ {
+		wants, available, err := readRecord(s)
+		if err != nil {
+			panic(fmt.Errorf(err.Error() + " at " + strconv.Itoa(i)))
+		}
+		fmt.Println("Case #"+strconv.Itoa(i+1)+":", checkAll(wants, available))
+	}
+}
+
+func checkAll(want []int, available [][]int) string {
+	// try all subsets (using binary counting)
+	al := len(available[0])
+	n := 1 << uint(al)
+	for i := 0; i < n; i++ {
+		have := make([]int, 3)
+		for j := 0; j < al; j++ {
+			if (i>>uint(j))&1 == 1 { // is it set
+				for k := 0; k < len(have); k++ {
+					have[k] += available[k][j]
+				}
+			}
+		}
+		if have[0] == want[0] && have[1] == want[1] && have[2] == want[2] {
+			return "yes"
+		}
+	}
+	return "no"
+}
+
+func readInt(s *bufio.Scanner) (int, error) {
+	ns, err := readInts(s)
+	if err != nil {
+		return 0, err
+	}
+	if len(ns) != 1 {
+		return 0, fmt.Errorf("need one number in this line")
+	}
+	return ns[0], nil
+}
+
+func readInts(s *bufio.Scanner) ([]int, error) {
+	if !s.Scan() {
+		return nil, s.Err()
+	}
+	ns := strings.Split(s.Text(), " ")
+	out := make([]int, 0, len(ns))
+	for _, v := range ns {
+		nv, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, nv)
+	}
+	return out, nil
+}
+
+func readRecord(s *bufio.Scanner) ([]int, [][]int, error) {
+	// wants
+	wants, err := readInts(s)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(wants) != 3 {
+		return nil, nil, fmt.Errorf("need 3 entries")
+	}
+	// available
+	n, err := readInt(s)
+	if err != nil {
+		return nil, nil, err
+	}
+	available := make([][]int, 0, 3)
+	available = append(available, make([]int, 0, n))
+	available = append(available, make([]int, 0, n))
+	available = append(available, make([]int, 0, n))
+	for i := 0; i < n; i++ {
+		ns, err := readInts(s)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(ns) != 3 {
+			return nil, nil, fmt.Errorf("need 3 entries")
+		}
+		// skip unusable cases
+		if ns[0] > wants[0] || ns[1] > wants[1] || ns[2] > wants[2] {
+			continue
+		}
+		for j, v := range ns {
+			available[j] = append(available[j], v)
+		}
+	}
+	return wants, available, nil
+}

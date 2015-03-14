@@ -1,0 +1,212 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+)
+
+const (
+	parallel = true
+)
+
+//------------------------------------------------------------------------------
+
+type Task struct {
+	m, n int
+	maze []string
+}
+
+func make_space(m, n int) [][]int8 {
+	space := make([][]int8, m, m)
+	for i, _ := range space {
+		space[i] = make([]int8, n, n)
+	}
+	return space
+}
+func solve(pr Task) string {
+	m, n := pr.m, pr.n
+	maze := pr.maze
+
+	mazes := [4][][]int8{
+		make_space(m, n),
+		make_space(m, n),
+		make_space(m, n),
+		make_space(m, n),
+	}
+	in_maze := func(i, j int) bool {
+		return 0 <= i && i < m && 0 <= j && j < n
+	}
+	type State struct {
+		i, j, t int
+	}
+	var state0 State
+	goal := [2]int{}
+	set_lazer := func(i, j int, tmaze [][]int8) bool {
+		if !in_maze(i, j) || !strings.ContainsRune(".SG", int32(maze[i][j])) {
+			return false
+		}
+		tmaze[i][j] = 1
+		return true
+	}
+	for i, row := range maze {
+		for j, ch := range row {
+			switch ch {
+			case '.':
+				continue
+			case '#': // static block
+				for _, tmaze := range mazes {
+					tmaze[i][j] = 2
+				}
+			case 'S':
+				state0 = State{i, j, 0}
+			case 'G':
+				goal = [2]int{i, j}
+			default: // laser turrels
+				direction := strings.IndexRune("^>v<", ch)
+				for t, tmaze := range mazes {
+					tmaze[i][j] = 2
+					id, jd := i, j
+					switch (direction + t) % 4 {
+					case 0: // up
+						for id = i - 1; set_lazer(id, jd, tmaze); id-- {
+						}
+					case 1: // right
+						for jd = j + 1; set_lazer(id, jd, tmaze); jd++ {
+						}
+					case 2: // down
+						for id = i + 1; set_lazer(id, jd, tmaze); id++ {
+						}
+					case 3: // left
+						for jd = j - 1; set_lazer(id, jd, tmaze); jd-- {
+						}
+					}
+				}
+			}
+		}
+	}
+
+	is_free := func(p [2]int, tmaze [][]int8) bool {
+		i, j := p[0], p[1]
+		return in_maze(i, j) && tmaze[i][j] == 0
+	}
+
+	visited := map[State]int8{state0: 1}
+	states := map[State]int8{state0: 1}
+	step := 0
+	for len(states) > 0 {
+		step++
+		t := step % 4
+		tmaze := mazes[t]
+
+		states1 := map[State]int8{}
+		for s0, _ := range states {
+			i, j := s0.i, s0.j
+			next := [4][2]int{{i - 1, j}, {i, j + 1}, {i + 1, j}, {i, j - 1}}
+			for _, pos := range next {
+				if !is_free(pos, tmaze) {
+					continue
+				}
+				if pos == goal {
+					return strconv.Itoa(step)
+				}
+				s1 := State{pos[0], pos[1], t}
+				if visited[s1] != 1 {
+					visited[s1] = 1
+					states1[s1] = 1
+				}
+			}
+		}
+		states = states1
+	}
+	return "imposible"
+}
+
+func tasks_count() int {
+	var count int
+	_, err := fmt.Scanln(&count)
+	yo(err)
+	return count
+}
+
+func next_task() Task {
+	var err error
+
+	var m, n int
+	_, err = fmt.Scan(&m)
+	yo(err)
+	_, err = fmt.Scanln(&n)
+	yo(err)
+
+	maze := make([]string, m, m)
+	for i := 0; i < m; i++ {
+		_, err = fmt.Scanln(&maze[i])
+		yo(err)
+	}
+	return Task{m, n, maze}
+}
+
+//------------------------------------------------------------------------------
+
+func main() {
+	start := time.Now()
+	solver := create(parallel)
+	solver.run(tasks_count())
+	log.Printf("%2fs total\n", time.Since(start).Seconds())
+}
+
+func yo(err error) {
+	if err != nil {
+		fmt.Println(err)
+		panic(42)
+	}
+}
+
+type Solver interface {
+	run(count int)
+}
+
+func create(parallel bool) Solver {
+	if parallel {
+		return PSolver{}
+	}
+	return CSolver{}
+}
+
+type CSolver struct{}
+
+func (s CSolver) run(count int) {
+	for i := 0; i < count; i++ {
+		ans := solve(next_task())
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}
+
+type PSolver struct{}
+type Result struct {
+	test int
+	ans  string
+}
+
+func (s PSolver) run(count int) {
+	resp := make(chan Result)
+	for i := 0; i < count; i++ {
+		go func(ch chan Result, test int, t Task) {
+			ch <- Result{test, solve(t)}
+		}(resp, i, next_task())
+	}
+
+	results := make([]string, count, count)
+	for count > 0 {
+		select {
+		case res := <-resp:
+			results[res.test] = res.ans
+			count--
+		}
+	}
+	for i, ans := range results {
+		fmt.Printf("Case #%d: %s\n", i+1, ans)
+	}
+}

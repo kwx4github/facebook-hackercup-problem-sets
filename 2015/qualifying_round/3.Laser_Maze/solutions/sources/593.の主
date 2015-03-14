@@ -1,0 +1,101 @@
+open Array;;
+open Queue;;
+open Scanf;;
+open Printf;;
+
+let pos = [|(-1,0);(0,1);(1,0);(0,-1)|];;
+
+let check n m mp nstep r c = 
+    let rec _rec sign r c ar ac =
+        if r < 0 || c < 0 || r >= n || c >= m
+        then true
+        else if mp.(r).(c) == sign
+        then false
+        else if mp.(r).(c) != 4
+        then true
+        else _rec sign (r + ar) (c + ac) ar ac
+    in
+    mp.(r).(c) == 4 &&
+    _rec (nstep mod 4) r c (-1) 0 &&
+    _rec ((nstep + 1) mod 4) r c 0 (-1) &&
+    _rec ((nstep + 2) mod 4) r c 1 0 &&
+    _rec ((nstep + 3) mod 4) r c 0 1;;
+
+let solve () =
+    Scanf.sscanf (read_line ()) "%d %d" (fun n m ->
+        let mp = Array.make_matrix n m 4 and
+            s = ref (-1,-1) and
+            t = ref (-1,-1) in
+        for i = 0 to (n - 1) do
+            let line = read_line () in
+            for j = 0 to (m - 1) do
+                match line.[j] with
+                | '#' -> mp.(i).(j) <- 5
+                | 'S' -> mp.(i).(j) <- 4; s := (i,j)
+                | 'G' -> mp.(i).(j) <- 4; t := (i,j)
+                | 'v' -> mp.(i).(j) <- 0
+                | '>' -> mp.(i).(j) <- 1
+                | '^' -> mp.(i).(j) <- 2
+                | '<' -> mp.(i).(j) <- 3
+                | _ -> ()
+            done
+        done;
+
+        let vis = Array.make 4 (Array.make_matrix n m (-1)) and
+            q = Queue.create () and
+            result = ref (-1) in
+        for i = 0 to 3 do
+            vis.(i) <- Array.make_matrix n m (-1)
+        done;
+
+        vis.(0).(fst !s).(snd !s) <- 0;
+        Queue.push (0,!s) q;
+        
+        while not (Queue.is_empty q) && !result == -1 do
+            let step,(r,c) = Queue.pop q in
+            let nstep = (step + 1) mod 4 in
+
+            if r == (fst !t) && c == (snd !t)
+            then result := step
+            else (
+                (*
+                print_int r;
+                print_newline ();
+                print_int c;
+                print_newline ();
+                read_line ();
+                *)
+                for i = 0 to 3 do
+                    let ar = r + (fst pos.(i)) and
+                        ac = c + (snd pos.(i)) in
+                    if ar >= 0 && ar < n && ac >=0 && ac < m then (
+                        (*
+                        print_string " ";
+                        print_int ac;
+                        print_int nstep;
+                        print_int vis.(nstep).(ar).(ac);
+                        print_newline ();
+                        *)
+                        if vis.(nstep).(ar).(ac) == -1 &&
+                            (check n m mp nstep ar ac) == true
+                        then (
+                            vis.(nstep).(ar).(ac) <- (step + 1);
+                            Queue.push ((step + 1),(ar,ac)) q
+                        )
+                    )
+                done
+            )
+        done;
+        !result
+    );;
+
+Scanf.sscanf (read_line ()) "%d" (fun t ->
+    for i = 1 to t do
+        let result = (solve ()) in
+        print_string (Printf.sprintf "Case #%d: " i);
+        if result == -1 
+        then print_string "impossible"
+        else print_int result;
+        print_newline ()
+    done
+);;

@@ -1,0 +1,161 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#define mp make_pair
+
+const int INF = 1000000000;
+
+int dx[] = {1, -1, 0, 0};
+int dy[] = {0, 0, 1, -1};
+
+inline char next(char c)
+{
+    switch(c)
+    {
+        case '<':
+            return '^';
+        case '^':
+            return '>';
+        case '>':
+            return 'v';
+        case 'v':
+            return '<';
+    }
+    return c;
+}
+
+int T;
+int M, N;
+vector<string> v;
+vector<vector<string> > maps;
+vector<vector<vector<bool> > > can;
+vector<vector<vector<int> > > path;
+
+inline bool can_go(int i, int j, int k)
+{
+    if (i < 0 || i >= 4 || j < 0 || j >= M || k < 0 || k >= N)
+        return false;
+    return can[i][j][k];
+}
+
+int solve()
+{
+    v.clear();
+    maps.clear();
+    can.clear();
+    path.clear();
+
+    cin >> M >> N;
+    v.resize(M);
+    for (int i = 0; i < M; i++)
+        cin >> v[i];
+    maps.resize(4);
+    maps[0] = v;
+    for (int i = 1; i < 4; i++)
+    {
+        maps[i] = maps[i - 1];
+        for (int j = 0; j < M; j++)
+            for (int k = 0; k < N; k++)
+                maps[i][j][k] = next(maps[i][j][k]);
+    }
+    //cerr << 100500 << endl;
+    can.resize(4, vector<vector<bool> >(M, vector<bool>(N, true)));
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < M; j++)
+        {
+            for (int k = 0; k < N; k++)
+            {
+                if (maps[i][j][k] == '.')
+                    continue;
+                if (maps[i][j][k] == '#')
+                {
+                    can[i][j][k] = false;
+                    continue;
+                }
+                if (maps[i][j][k] == 'S' || maps[i][j][k] == 'G')
+                    continue;
+                if (maps[i][j][k] == '<')
+                {
+                    can[i][j][k] = false;
+                    for (int l = k - 1; l >= 0 && (maps[i][j][l] == '.' || maps[i][j][l] == 'S' || maps[i][j][l] == 'G'); l--)
+                        can[i][j][l] = false;
+                    continue;
+                }
+                if (maps[i][j][k] == '^')
+                {
+                    can[i][j][k] = false;
+                    for (int l = j - 1; l >= 0 && (maps[i][l][k] == '.' || maps[i][l][k] == 'S' || maps[i][l][k] == 'G'); l--)
+                        can[i][l][k] = false;
+                }
+                if (maps[i][j][k] == '>')
+                {
+                    can[i][j][k] = false;
+                    for (int l = k + 1; l < N && (maps[i][j][l] == '.' || maps[i][j][l] == 'S' || maps[i][j][l] == 'G'); l++)
+                        can[i][j][l] = false;
+                    continue;
+                }
+                if (maps[i][j][k] == 'v')
+                {
+                    can[i][j][k] = false;
+                    for (int l = j + 1; l < M && (maps[i][l][k] == '.' || maps[i][l][k] == 'S' || maps[i][l][k] == 'G'); l++)
+                        can[i][l][k] = false;
+                }
+            }            
+        }
+    }
+
+    pair<int, int> numS, numG;
+    for (int i = 0; i < M; i++)
+        for (int j = 0; j < N; j++)
+        {
+            if (v[i][j] == 'S')
+                numS = mp(i, j);
+            if (v[i][j] == 'G')
+                numG = mp(i, j);
+        }
+
+    queue<pair<int, pair<int, int> > > q;
+    path.resize(4, vector<vector<int> >(M, vector<int>(N, INF)));
+    path[0][numS.first][numS.second] = 0;
+    q.push(mp(0, numS));
+    while (!q.empty())
+    {
+        pair<int, pair<int, int> > cur = q.front();
+        q.pop();
+        int nxt = (cur.first + 1) % 4, x = cur.second.first, y = cur.second.second;
+        for (int i = 0; i < 4; i++)
+        {
+            if (can_go(nxt, x + dx[i], y + dy[i]) && path[nxt][x + dx[i]][y + dy[i]] > path[cur.first][x][y] + 1)
+            {
+                path[nxt][x + dx[i]][y + dy[i]] = path[cur.first][x][y] + 1;
+                q.push(mp(nxt, mp(x + dx[i], y + dy[i])));
+            }
+        }
+    }
+
+    //cerr << -100500 << endl;
+
+    int mm = INF;
+    for (int i = 0; i < 4; i++)
+        mm = min(mm, path[i][numG.first][numG.second]);
+    if (mm == INF)
+        return -1;
+    return mm;
+}
+
+int main()
+{
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    cin >> T;
+    for (int test = 1; test <= T; test++)
+    {
+        int result = solve();
+        if (result == -1)
+            printf("Case #%d: impossible\n", test);
+        else
+            printf("Case #%d: %d\n", test, result);
+    }
+}

@@ -1,0 +1,269 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashSet;
+
+/**
+ * Created by Tom Wu on 1/8/15.
+ */
+public class Maze {
+
+    private static class Board {
+        public String[] rows;
+        public int numRows;
+        public int numCols;
+        public int initRow;
+        public int initCol;
+
+        public Board(int r, int c) {
+            numRows = r;
+            numCols = c;
+            rows = new String[numRows];
+        }
+
+        public void setMap(BufferedReader reader) {
+            try {
+                for (int i = 0; i < numRows; i++) {
+                    rows[i] = reader.readLine();
+                    int pos = rows[i].indexOf('S');
+                    if (pos >= 0) {
+                        initCol = pos;
+                        initRow = i;
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println(e);
+            }
+        }
+
+        public char getTile(int r, int c) {
+            return rows[r].charAt(c);
+        }
+
+        public boolean canGo(int r, int c) {
+            if (r < 0 || r >= numRows || c < 0 || c >= numCols) {
+                return false;
+            }
+            char tile = getTile(r, c);
+            if (tile == 'S' || tile == 'G' || tile == '.') {
+                return true;
+            }
+
+            return false;
+        }
+
+        public char rotate(char turret, int moves) {
+            String directions = "^>v<";
+            int idx = directions.indexOf(turret);
+            idx = (idx + moves) % 4;
+            return directions.charAt(idx);
+        }
+
+        // Return true if is safe to go there in <move> moves
+        public boolean isSafe(int r, int c, int moves) {
+            if (!canGo(r, c)) {
+                return false;
+            }
+
+            int ctr;
+            // Check upward
+            for (ctr = r - 1; ctr >= 0; ctr--) {
+                if (!canGo(ctr, c)) {
+                    if (getTile(ctr, c) != '#' && rotate(getTile(ctr, c), moves) == 'v') {
+                        return false;
+                    }
+                    break;
+                }
+            }
+
+            // Check downward
+            for (ctr = r + 1; ctr < numRows; ctr++) {
+                if (!canGo(ctr, c)) {
+                    if (getTile(ctr, c) != '#' && rotate(getTile(ctr, c), moves) == '^') {
+                        return false;
+                    }
+                    break;
+                }
+            }
+
+            // Check to the left
+            for (ctr = c - 1; ctr >= 0; ctr--) {
+                if (!canGo(r, ctr)) {
+                    if (getTile(r, ctr) != '#' && rotate(getTile(r, ctr), moves) == '>') {
+                        return false;
+                    }
+                    break;
+                }
+            }
+
+            // Check to the right
+            for (ctr = c + 1; ctr < numCols; ctr++) {
+                if (!canGo(r, ctr)) {
+                    if (getTile(r, ctr) != '#' && rotate(getTile(r, ctr), moves) == '<') {
+                        return false;
+                    }
+                    break;
+                }
+            }
+
+            return true;
+        }
+
+        public boolean isGoal(int r, int c) {
+            return getTile(r, c) == 'G';
+        }
+
+    }
+
+    private static class Position {
+        public int r, c;
+        public Board board;
+        public int moves;
+
+        public Position(int row, int col, Board b, int m) {
+            r = row;
+            c = col;
+            board = b;
+            moves = m;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            Position p = (Position) other;
+            if (p == null) {
+                return false;
+            }
+
+            if (p.r != r || p.c != c) {
+                return false;
+            }
+
+            if ((p.moves - moves) % 4 != 0) {
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    private static int solveTestCase(Board board) {
+        ArrayList<Position> open = new ArrayList<Position>();
+        HashSet<Position> visited = new HashSet<Position>();
+        Position init = new Position(board.initRow, board.initCol, board, 0);
+        open.add(init);
+        visited.add(init);
+
+        int i = 0;
+
+        while(!open.isEmpty()) {
+            i++;
+            if (i % 10000 == 0) {
+                System.out.println(i);
+            }
+            if (i == 1000000) {
+                return -1;
+            }
+            // Print number of iterations
+            Position next, current = open.remove(0);
+            int r, c, moves;
+            r = current.r;
+            c = current.c;
+            moves = current.moves;
+
+            // Right
+            if (board.isSafe(r, c + 1, moves + 1)) {
+                if (board.isGoal(r, c + 1)) {
+                    return moves + 1;
+                }
+                next = new Position(r, c + 1, board, moves + 1);
+                if (!visited.contains(next)) {
+                    open.add(next);
+                    visited.add(next);
+                }
+            }
+
+            // Down
+            if (board.isSafe(r + 1, c, moves + 1)) {
+                if (board.isGoal(r + 1, c)) {
+                    return moves + 1;
+                }
+                next = new Position(r + 1, c, board, moves + 1);
+                if (!visited.contains(next)) {
+                    open.add(next);
+                    visited.add(next);
+                }
+            }
+
+            // Left
+            if (board.isSafe(r, c - 1, moves + 1)) {
+                if (board.isGoal(r, c - 1)) {
+                    return moves + 1;
+                }
+                next = new Position(r, c - 1, board, moves + 1);
+                if (!visited.contains(next)) {
+                    open.add(next);
+                    visited.add(next);
+                }
+            }
+
+            // Up
+            if (board.isSafe(r - 1, c, moves + 1)) {
+                if (board.isGoal(r - 1, c)) {
+                    return moves + 1;
+                }
+                next = new Position(r - 1, c, board, moves + 1);
+                if (!visited.contains(next)) {
+                    open.add(next);
+                    visited.add(next);
+                }
+            }
+        }
+
+        return -1;
+
+    }
+
+    private static void solveAllCases(String input, String output) {
+        BufferedReader reader;
+        PrintWriter writer;
+
+        try {
+            reader = new BufferedReader(new FileReader(input));
+            writer = new PrintWriter(output, "UTF-8");
+
+            // Total number of cases
+            int numTestCases = Integer.parseInt(reader.readLine());
+
+            System.out.println("Total " + numTestCases);
+
+            for (int testCase = 1; testCase <= numTestCases; testCase++) {
+                int numRows, numCols;
+                String numRowsCols[] = reader.readLine().split(" ");
+                numRows = Integer.parseInt(numRowsCols[0]);
+                numCols = Integer.parseInt(numRowsCols[1]);
+
+                Board board = new Board(numRows, numCols);
+                board.setMap(reader);
+                int steps = solveTestCase(board);
+
+                writer.println("Case #" + testCase + ": " + (steps == -1 ? "impossible" : steps));
+            }
+
+            reader.close();
+            writer.close();
+
+        } catch (Exception e) {
+            System.err.println(e);
+        }
+
+    }
+
+    public static void main(String argv[]) {
+        System.out.println("Started");
+
+        solveAllCases("input.txt", "output.txt");
+
+        System.out.println("Finished");
+    }
+}

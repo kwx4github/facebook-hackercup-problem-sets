@@ -1,0 +1,209 @@
+#include <iostream>
+#include <fstream>
+#include <queue>
+
+using namespace std;
+
+class Quad
+{
+public:
+    int right;
+    int left;
+    int up;
+    int down;
+};
+
+char maze[100][100][4];
+bool visited[100][100][4];
+Quad laserNear[100][100];
+int M,N;
+
+char next(char c)
+{
+    if(c=='^')
+        return '>';
+    else if(c=='>')
+        return 'v';
+    else if(c=='v')
+        return '<';
+    else if(c=='<')
+        return '^';
+    else
+        return c;
+}
+
+bool isLaser(char c)
+{
+    return (c=='^' || c=='>' || c=='v' || c=='<');
+}
+
+bool isValid(char c)
+{
+    return (c=='.' || c=='S' || c=='G');
+}
+
+class Node
+{
+public:
+    int m;
+    int n;
+    int rot;
+    int level;
+    Node();
+    Node(int m, int n, int rot,int level=0)
+    {
+        this->m=m;
+        this->n=n;
+        this->rot=rot;
+        this->level=level;
+    }
+};
+
+int BFS(int startm, int startn)
+{
+    queue<Node> q;
+    q.push(Node(startm,startn,0));
+    visited[startm][startn][0]=true;
+
+    while(!q.empty())
+    {
+        Node vertex=q.front();
+        q.pop();
+
+        int m=vertex.m;
+        int n=vertex.n;
+        int rot=vertex.rot;
+        int level=vertex.level;
+        if(level!=0)
+        {
+            if( (laserNear[m][n].right!=-1 && maze[m][laserNear[m][n].right][rot]=='<') || (laserNear[m][n].left!=-1 && maze[m][laserNear[m][n].left][rot]=='>')
+               || (laserNear[m][n].up!=-1 && maze[laserNear[m][n].up][n][rot]=='v') || (laserNear[m][n].down!=-1 && maze[laserNear[m][n].down][n][rot]=='^'))
+                continue;
+        }
+        if(maze[m][n][rot]=='G')
+            return level;
+
+        if(n+1<N && !visited[m][n+1][(rot+1)%4] && isValid(maze[m][n+1][(rot+1)%4]))
+        {
+            q.push(Node(m,n+1,(rot+1)%4,level+1));
+            visited[m][n+1][(rot+1)%4]=true;
+
+        }
+        if(n-1>=0 && !visited[m][n-1][(rot+1)%4] && isValid(maze[m][n-1][(rot+1)%4]))
+        {
+            q.push(Node(m,n-1,(rot+1)%4,level+1));
+            visited[m][n-1][(rot+1)%4]=true;
+        }
+        if(m+1<M && !visited[m+1][n][(rot+1)%4] && isValid(maze[m+1][n][(rot+1)%4]))
+        {
+            q.push(Node(m+1,n,(rot+1)%4,level+1));
+            visited[m+1][n][(rot+1)%4]=true;
+        }
+        if(m-1>=0 && !visited[m-1][n][(rot+1)%4] && isValid(maze[m-1][n][(rot+1)%4]))
+        {
+            q.push(Node(m-1,n,(rot+1)%4,level+1));
+            visited[m-1][n][(rot+1)%4]=true;
+        }
+    }
+    return -1;
+}
+
+int main()
+{
+    freopen("laser_maze.txt","r",stdin);
+    freopen("laser_maze_out.txt","w",stdout);
+    int T;
+    cin >> T;
+
+    for(int t=0; t<T; t++)
+    {
+        cin >> M >> N;
+        for(int m=0; m<M; m++)
+        {
+            for(int n=0; n<N; n++)
+            {
+                cin >> maze[m][n][0];
+                maze[m][n][1]=next(maze[m][n][0]);
+                maze[m][n][2]=next(maze[m][n][1]);
+                maze[m][n][3]=next(maze[m][n][2]);
+                for(int rot=0; rot<4; rot++)
+                    visited[m][n][rot]=false;
+            }
+        }
+
+        int startm;
+        int startn;
+
+        for(int m=0; m<M; m++)
+        {
+            for(int n=0; n<N; n++)
+            {
+                if(maze[m][n][0]=='S')
+                {
+                    startn=n;
+                    startm=m;
+                }
+                if(!isValid(maze[m][n][0]))
+                {
+                    laserNear[m][n].right=-1;
+                    laserNear[m][n].left=-1;
+                    laserNear[m][n].up=-1;
+                    laserNear[m][n].down=-1;
+                    continue;
+                }
+                //right
+                int r=n+1;
+                while(r<N && !isLaser(maze[m][r][0]) && maze[m][r][0]!='#')
+                {
+                    r++;
+                }
+                if(r==N || maze[m][r][0]=='#')
+                    laserNear[m][n].right=-1;
+                else
+                    laserNear[m][n].right=r;
+
+                //left
+                int l=n-1;
+                while(l>=0 && !isLaser(maze[m][l][0]) && maze[m][l][0]!='#')
+                {
+                    l--;
+                }
+                if(l==-1 || maze[m][l][0]=='#')
+                    laserNear[m][n].left=-1;
+                else
+                    laserNear[m][n].left=l;
+
+                //up
+                int u=m-1;
+                while(u>=0 && !isLaser(maze[u][n][0]) && maze[u][n][0]!='#')
+                {
+                    u--;
+                }
+                if(u==-1 || maze[u][n][0]=='#')
+                    laserNear[m][n].up=-1;
+                else
+                    laserNear[m][n].up=u;
+
+                //down
+                int d=m+1;
+                while(d<M && !isLaser(maze[d][n][0]) && maze[d][n][0]!='#')
+                {
+                    d++;
+                }
+                if(d==M || maze[d][n][0]=='#')
+                    laserNear[m][n].down=-1;
+                else
+                    laserNear[m][n].down=d;
+            }
+        }
+
+        int res = BFS(startm,startn);
+        cout << "Case #" << t+1 << ": ";
+        if(res!=-1)
+            cout << res;
+        else
+            cout << "impossible";
+        cout << endl;
+    }
+    return 0;
+}

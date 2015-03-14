@@ -1,0 +1,105 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#define x first
+#define y second
+#define SZ(x) ((int)((x).size()))
+#define PB(x) push_back(x)
+#define INF (0x3f3f3f3f)
+#define MEMSET(x,v) memset(x,v,sizeof(x))
+
+typedef long long LL;
+typedef pair<int, int> PII; typedef pair<PII, int> PII2;
+
+#define MAXN (105)
+
+char board[MAXN][MAXN];
+int R, C;
+map<char, int> di_ind;
+int cx[] = {-1, 0, 1, 0}, cy[] = {0, 1, 0, -1};
+bool dead_block[MAXN][MAXN][4];
+int dist[MAXN][MAXN][4];
+
+bool is_turret(int ii, int jj) {
+    if (ii < 0 || jj < 0 || ii >= R || jj >= C) return false;
+    return board[ii][jj] == '^' || board[ii][jj] == '>'
+        || board[ii][jj] == 'v' || board[ii][jj] == '<';
+}
+
+bool good_block(int ii, int jj) {
+    if (ii < 0 || jj < 0 || ii >= R || jj >= C) return false;
+    if (board[ii][jj] == '#') return false;
+    if (is_turret(ii, jj)) return false;
+    return true;
+}
+
+void solve() {
+    scanf("%d %d", &R, &C);
+    for (int i = 0; i < R; i++) {
+        scanf("%s", board[i]);
+    }
+    MEMSET(dead_block, 0);
+    MEMSET(dist, INF);
+    int si = 0, sj = 0, fi = 0, fj = 0;
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
+            if (is_turret(i, j)) {
+                int di = di_ind[board[i][j]];
+                for (int t = 0; t < 4; t++) {
+                    dead_block[i][j][t] = true;
+                    for (int k = 1; ; k++) {
+                        int ii = i + cx[di] * k;
+                        int jj = j + cy[di] * k;
+                        if (!good_block(ii, jj)) break;
+                        dead_block[ii][jj][t] = true;
+                    }
+                    di = (di + 1) % 4;
+                }
+            }
+            if (board[i][j] == 'S') si = i, sj = j;
+            if (board[i][j] == 'G') fi = i, fj = j;
+        }
+    }
+    dist[si][sj][0] = 0;
+    queue<PII2> Q;
+    Q.push({{si, sj}, 0});
+    while (!Q.empty()) {
+        PII2 now = Q.front();
+        Q.pop();
+        for (int i = 0; i < 4; i++) {
+            int ii = now.x.x + cx[i];
+            int jj = now.x.y + cy[i];
+            if (good_block(ii, jj)) {
+                int tt = dist[now.x.x][now.x.y][now.y] + 1;
+                if (!dead_block[ii][jj][tt % 4] && tt < dist[ii][jj][tt % 4]) {
+                    dist[ii][jj][tt % 4] = tt;
+                    Q.push({{ii, jj}, tt % 4});
+                }
+            }
+        }
+    }
+    
+    int ans = INF;
+    for (int i = 0; i < 4; i++) {
+        ans = min(ans, dist[fi][fj][i]);
+    }
+    if (ans == INF) printf("impossible\n");
+    else printf("%d\n", ans);
+}
+
+int main() {
+    di_ind['^'] = 0;
+    di_ind['>'] = 1;
+    di_ind['v'] = 2;
+    di_ind['<'] = 3;
+    
+    int test;
+    cin >> test;
+    for (int tt = 0; tt < test; tt++) {
+        cout << "Case #" << tt + 1 << ": ";
+        solve();
+    }
+    
+    return 0;
+}

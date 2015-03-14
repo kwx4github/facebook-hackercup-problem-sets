@@ -1,0 +1,120 @@
+#include <iostream>
+#include <fstream>
+#include <queue>
+#include <utility>
+#include <functional>
+using namespace std;
+
+struct point {
+	int row, column;
+	point(int row, int column) : row(row), column(column) {}
+	point() {}
+	point operator -() const {
+		return point(-row, -column);
+	}
+	point operator +(const point &other) const {
+		return point(row + other.row, column + other.column);
+	}
+	bool operator ==(const point &other) const {
+		return row == other.row
+			&& column == other.column;
+	}
+};
+struct state {
+	int step;
+	point p;
+	state(point p, int step) : p(p), step(step) {}
+};
+
+const point movDirections[] = { point(0, -1), point(0, 1), point(-1, 0), point(1, 0) };
+const point shootDirections[] = { point(-1, 0), point(0, 1), point(1, 0), point(0, -1) };
+
+point getLaserDirection(char laser, int step) {
+	int initDirection;
+	if (laser == '^') initDirection = 0;
+	if (laser == '>') initDirection = 1;
+	if (laser == 'v') initDirection = 2;
+	if (laser == '<') initDirection = 3;
+	int curDirection = (initDirection + step) % 4;
+	return shootDirections[curDirection];
+}
+
+int main() {
+	ifstream fin("laser_maze.txt");
+	ofstream fout("maze_output.txt");
+	int T; fin >> T;
+
+	char field[102][102];
+	std::function<bool(point, int)> dead = [&field](point p, int step) {
+		for (int d = 0; d < 4; ++d) {
+			for (int delta = 0;; ++delta) {
+				char cur = field[p.row + movDirections[d].row * delta][p.column + movDirections[d].column * delta];
+				if (cur == '#') {
+					break;
+				}
+				else if (cur != '.') {
+					point shooting = getLaserDirection(cur, step);
+					if (movDirections[d] == -shooting) {
+						return true;
+					}
+					else {
+						break;
+					}
+				}
+			}
+		}
+		return false;
+	};
+
+	bool used[102][102][4];
+	for (int t = 0; t < T; ++t) {
+		int row, col;
+		fin >> row >> col;
+		memset(used, false, sizeof(used));
+		for (int c = 0; c <= col + 1; ++c) {
+			field[0][c] = '#';
+			field[row + 1][c] = '#';
+		}
+		point start, finish;
+		for (int r = 1; r <= row; ++r) {
+			field[r][0] = '#';
+			field[r][col + 1] = '#';
+			for (int c = 1; c <= col; ++c) {
+				fin >> field[r][c];
+				if (field[r][c] == 'S') {
+					field[r][c] = '.';
+					start = point(r, c);
+				}
+				else if (field[r][c] == 'G') {
+					field[r][c] = '.';
+					finish = point(r, c);
+				}
+			}
+		}
+		fout << "Case #" << t + 1 << ": ";
+		queue<state> Q;
+		used[start.row][start.column][0] = true;
+		Q.push(state(start, 0));
+		while (!Q.empty()) {
+			state cur = Q.front(); Q.pop();
+			if (cur.p == finish) {
+				fout << cur.step;
+				goto nextTest;
+			}
+			for (int d = 0; d < 4; ++d) {
+				point next = cur.p + movDirections[d];
+				int incStep = cur.step + 1;
+				int modStep = incStep % 4;
+				if (field[next.row][next.column] == '.'
+						&& !used[next.row][next.column][modStep]
+						&& !dead(next, incStep)) {
+					used[next.row][next.column][modStep] = true;
+					Q.push(state(next, incStep));
+				}
+			}
+		}
+		fout << "impossible";
+	nextTest:
+		fout << endl;
+	}
+}

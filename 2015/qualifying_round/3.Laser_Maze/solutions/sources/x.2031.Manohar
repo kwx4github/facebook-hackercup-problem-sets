@@ -1,0 +1,139 @@
+#include<bits/stdc++.h>
+using namespace std;
+
+int T,M,N,S,G;
+char board[100][100];
+set<int> unsafe_points;
+map<int, bool> visited;
+map<int, int> level;
+int getid(int m,int n, int turn){
+	return (m*N + n)*4 + turn;
+}
+void unsafe(int m, int n, int dir1, int dir2, int turn){
+	unsafe_points.insert(getid(m, n, turn));
+	m += dir1, n += dir2;
+	if(0 <= m && m < M && 0 <= n && n < N && board[m][n] == '.'){
+		unsafe(m, n, dir1, dir2, turn);
+	}
+}
+int bfs(vector<int> queue){
+	while(!queue.empty()){
+		int id = queue[0];
+		queue.erase(queue.begin());
+		if(unsafe_points.count(id) == 0){
+			int turn = id%4;
+			int n = (id/4)%N;
+			int m = (id/4)/N;
+			if(id/4 == G) return level[id];
+			if(visited[id]) continue;
+			visited[id] = true;
+			turn = (turn + 1)%4;
+			if(m > 0){
+				queue.push_back(getid(m-1, n, turn));
+				level[getid(m-1, n, turn)] = 1 + level[id];
+			}
+			if(n > 0){
+				queue.push_back(getid(m, n-1, turn));
+				level[getid(m, n-1, turn)] = 1 + level[id];
+			}
+			if(m+1 < M){
+				queue.push_back(getid(m+1, n, turn));
+				level[getid(m+1, n, turn)] = 1 + level[id];
+			}
+			if(n+1 < N){
+				queue.push_back(getid(m, n+1, turn));
+				level[getid(m, n+1, turn)] = 1 + level[id];
+			}
+		}
+	}
+	return -1;
+}
+int bfsstart(){
+	int turn = 0;
+	int n = (S/4)%N;
+	int m = (S/4)/N;
+	if(S == G && unsafe_points.count(getid(m, n, turn)) == 0) return 0;
+	turn = (turn + 1)%4;
+	vector<int> queue;
+	if(m > 0){
+		queue.push_back(getid(m-1, n, turn));
+		level[getid(m-1, n, turn)] = 1;
+	}
+	if(n > 0){
+		queue.push_back(getid(m, n-1, turn));
+		level[getid(m, n-1, turn)] = 1;
+	}
+	if(m+1 < M){
+		queue.push_back(getid(m+1, n, turn));
+		level[getid(m+1, n, turn)] = 1;
+	}
+	if(n+1 < N){
+		queue.push_back(getid(m, n+1, turn));
+		level[getid(m, n+1, turn)] = 1;
+	}
+	return bfs(queue);
+}
+void init(){
+	for(int m=0; m<M; m++){
+		for(int n=0; n<N; n++){
+			if(board[m][n] == '>'){
+				unsafe(m, n, 0, 1, 0);
+				unsafe(m, n, 1, 0, 1);
+				unsafe(m, n, 0, -1, 2);
+				unsafe(m, n, -1, 0, 3);
+			}
+			if(board[m][n] == 'v'){
+				unsafe(m, n, 1, 0, 0);
+				unsafe(m, n, 0, -1, 1);
+				unsafe(m, n, -1, 0, 2);
+				unsafe(m, n, 0, 1, 3);
+			}
+			if(board[m][n] == '<'){
+				unsafe(m, n, 0, -1, 0);
+				unsafe(m, n, -1, 0, 1);
+				unsafe(m, n, 0, 1, 2);
+				unsafe(m, n, 1, 0, 3);
+			}
+			if(board[m][n] == '^'){
+				unsafe(m, n, -1, 0, 0);
+				unsafe(m, n, 0, 1, 1);
+				unsafe(m, n, 1, 0, 2);
+				unsafe(m, n, 0, -1, 3);
+			}
+			if(board[m][n] == '#'){
+				unsafe_points.insert(getid(m, n, 0));
+				unsafe_points.insert(getid(m, n, 1));
+				unsafe_points.insert(getid(m, n, 2));
+				unsafe_points.insert(getid(m, n, 3));
+			}
+		}
+	}
+}
+int main(){
+	cin>>T;
+	for(int t=1; t<=T; t++){
+		cin>>M>>N;
+		unsafe_points.clear();
+		visited.clear();
+		level.clear();
+		for(int m=0; m<M; m++){
+			for(int n=0; n<N; n++){
+				cin>>board[m][n];
+				if(board[m][n] == 'S') {
+					S = m*N + n;
+					board[m][n] = '.';
+				}
+				if(board[m][n] == 'G'){
+					G = m*N + n;
+					board[m][n] = '.';
+				}
+			}
+		}
+		init();
+		int ans = bfsstart();
+		if(ans == -1)printf("Case #%d: %s\n", t, "impossible");
+		else printf("Case #%d: %d\n", t, ans);
+	}
+	return 0;
+}
+

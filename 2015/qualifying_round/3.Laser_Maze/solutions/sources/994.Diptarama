@@ -1,0 +1,135 @@
+#include <iostream>
+#include <string>
+#include <stdlib.h>
+#include <queue>
+
+using namespace std;
+
+enum{
+	GOAL = -3,
+	TILE = -2,
+	WALL = -1,
+	UP = 0,
+	RIGHT,
+	DOWN,
+	LEFT
+};
+
+int maze[102][102];
+int dp[4][102][102];
+
+int dx[] = {0,1,0,-1};
+int dy[] = {-1,0,1,0};
+
+struct State{
+	int x;
+	int y;
+	int phase;
+	int step;
+};
+
+int main(void){
+	int t;
+	cin >> t;
+	for(int i = 0;i < t;i++){
+		memset(dp,-1,sizeof(dp));
+		int h,w;
+		cin >> h >> w;
+		State start;
+		start.phase = 0;
+		start.step = 0;
+		for(int y = 0;y <= h + 1;y++){
+			for(int x = 0;x <= w + 1;x++){
+				if(x*y == 0 || x == w+1 || y == h+1){
+					maze[x][y] = WALL;
+				} else{
+					char tile;
+					cin >> tile;
+					if(tile == '#'){
+						maze[x][y] = WALL;
+					} else if(tile == '.'){
+						maze[x][y] = TILE;
+					} else if(tile == 'S'){
+						start.x = x;
+						start.y = y;
+						maze[x][y] = TILE;
+					} else if(tile == 'G'){
+						maze[x][y] = GOAL;
+					} else if(tile == '^'){
+						maze[x][y] = UP;
+					} else if(tile == '>'){
+						maze[x][y] = RIGHT;
+					} else if(tile == 'v'){
+						maze[x][y] = DOWN;
+					} else if(tile == '<'){
+						maze[x][y] = LEFT;
+					}
+				}
+			}
+		}
+		dp[0][start.x][start.y] = 0;
+		queue<State> search;
+		search.push(start);
+		int min_step = -1;
+		while(search.size() && min_step == -1){
+			State temp = search.front();
+			search.pop();
+			int phase = (temp.phase + 1) % 4;
+			int x = temp.x;
+			int y = temp.y;
+			for(int j = 0;j < 4;j++){
+				int xx = x + dx[j];
+				int yy = y + dy[j];
+				if(dp[phase][xx][yy] == -1 && maze[xx][yy] <= TILE){
+					int alive = 1;
+					int tempy = yy - 1;
+					while(alive && maze[xx][tempy] <= TILE){
+						tempy--;
+					}
+					if((maze[xx][tempy] != WALL) && (maze[xx][tempy] + phase) % 4 == DOWN){
+						alive = 0;
+					}
+					int tempx = xx + 1;
+					while(alive && maze[tempx][yy] <= TILE){
+						tempx++;
+					}
+					if((maze[tempx][yy] != WALL) && (maze[tempx][yy] + phase) % 4 == LEFT){
+						alive = 0;
+					}
+					tempy = yy + 1;
+					while(alive && maze[xx][tempy] <= TILE){
+						tempy++;
+					}
+					if((maze[xx][tempy] != WALL) && (maze[xx][tempy] + phase) % 4 == UP){
+						alive = 0;
+					}
+					tempx = xx - 1;
+					while(alive && maze[tempx][yy] <= TILE){
+						tempx--;
+					}
+					if((maze[tempx][yy] != WALL) && (maze[tempx][yy] + phase) % 4 == RIGHT){
+						alive = 0;
+					}
+					if(alive){
+						State temp2;
+						temp2.x = xx;
+						temp2.y = yy;
+						temp2.phase = phase;
+						temp2.step = temp.step + 1;
+						dp[phase][xx][yy] = temp2.step;
+						if(maze[xx][yy] == GOAL){
+							min_step = temp2.step;
+						}
+						search.push(temp2);
+					}
+				}
+			}
+		}
+		cout << "Case #" << i + 1 << ": ";
+		if(search.size()){
+			cout << min_step << endl;
+		} else{
+			cout << "impossible" << endl;
+		}
+	}
+}

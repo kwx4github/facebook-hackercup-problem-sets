@@ -1,0 +1,232 @@
+#include <string>
+#include <vector>
+#include <iostream>
+#include <queue>
+#include <set>
+#include <sstream>
+using namespace std;
+
+bool is_blocked(char ch)
+{
+	return (ch == '^' || ch == 'v' ||
+		ch == '<' || ch == '>' ||
+		ch == '#');
+}
+
+void mark_up(const vector<string>& maze, vector<vector<set<int>>>& marked, int r, int c, int value)
+{
+	for (int k = r - 1; k >= 0; k--)
+	{
+		if (is_blocked(maze[k][c])) break;
+		marked[k][c].insert(value);
+	}
+}
+
+void mark_right(const vector<string>& maze, vector<vector<set<int>>>& marked, int r, int c, int value)
+{
+	for (int k = c + 1; k < marked[r].size(); k++)
+	{
+		if (is_blocked(maze[r][k])) break;
+		marked[r][k].insert(value);
+	}
+}
+
+void mark_down(const vector<string>& maze, vector<vector<set<int>>>& marked, int r, int c, int value)
+{
+	for (int k = r + 1; k < maze.size(); k++)
+	{
+		if (is_blocked(maze[k][c])) break;
+		marked[k][c].insert(value);
+	}
+}
+
+void mark_left(const vector<string>& maze, vector<vector<set<int>>>& marked, int r, int c, int value)
+{
+	for (int k = c - 1; k >= 0; k--)
+	{
+		if (is_blocked(maze[r][k])) break;
+		marked[r][k].insert(value);
+	}
+}
+
+vector<vector<set<int>>> get_marked_maze(const vector<string>& maze)
+{
+	vector<vector<set<int>>> marked(maze.size());
+
+	for (auto &row : marked)
+	{
+		row = vector<set<int>>(maze[0].size());
+	}
+
+	for (int i = 0; i < maze.size(); i++)
+	{
+		for (int j = 0; j < maze[i].size(); j++)
+		{
+			switch (maze[i][j])
+			{
+			case '^':
+				mark_up(maze, marked, i, j, 0);
+				mark_right(maze, marked, i, j, 1);
+				mark_down(maze, marked, i, j, 2);
+				mark_left(maze, marked, i, j, 3);
+				break;
+
+			case '>':
+				mark_right(maze, marked, i, j, 0);
+				mark_down(maze, marked, i, j, 1);
+				mark_left(maze, marked, i, j, 2);
+				mark_up(maze, marked, i, j, 3);
+				break;
+
+			case 'v':
+				mark_down(maze, marked, i, j, 0);
+				mark_left(maze, marked, i, j, 1);
+				mark_up(maze, marked, i, j, 2);
+				mark_right(maze, marked, i, j, 3);
+				break;
+
+			case '<':
+				mark_left(maze, marked, i, j, 0);
+				mark_up(maze, marked, i, j, 1);
+				mark_right(maze, marked, i, j, 2);
+				mark_down(maze, marked, i, j, 3);
+				break;
+			}
+		}
+	}
+
+	return marked;
+}
+
+struct Data
+{
+	int r, c, nmove;
+};
+
+int determine(int tryr, int tryc, int nrow, int ncol, const vector<string>& maze,
+	vector<vector<vector<bool>>>& entered,
+	int gr, int gc, int next_move, const vector<vector<set<int>>>& marked,
+	queue<Data>& q)
+{
+	int next_short_move = next_move % 4;
+
+	if (tryr >= 0 && tryr < nrow && tryc >= 0 && tryc < ncol)
+	{
+		if (!is_blocked(maze[tryr][tryc]) &&
+			!entered[tryr][tryc][next_short_move])
+		{
+			if (marked[tryr][tryc].find(next_short_move) == marked[tryr][tryc].end())
+			{
+				if (tryr == gr && tryc == gc)
+				{
+					return next_move;
+				}
+				q.push({ tryr, tryc, next_move });
+				entered[tryr][tryc][next_short_move] = true;
+			}
+		}
+	}
+
+	return -1;
+}
+
+int main()
+{
+	int t;
+
+	cin >> t;
+
+	for (int i = 1; i <= t; i++)
+	{
+		int nrow, ncol;
+
+		cin >> nrow >> ncol;
+
+		vector<string> maze(nrow);
+
+		for (int a = 0; a < nrow; a++)
+		{
+			cin >> maze[a];
+		}
+
+		int sr = 0, sc = 0;
+		int gr = 0, gc = 0;
+		for (int i = 0; i < maze.size(); i++)
+		{
+			for (int j = 0; j < maze[i].size(); j++)
+			{
+				if (maze[i][j] == 'S')
+				{
+					sr = i;
+					sc = j;
+				}
+				else if (maze[i][j] == 'G')
+				{
+					gr = i;
+					gc = j;
+				}
+			}
+		}
+
+		vector<vector<set<int>>> marked = get_marked_maze(maze);
+		vector<vector<vector<bool>>> entered(nrow, vector<vector<bool>>(ncol, vector<bool>(4, false)));
+
+		queue<Data> q;
+		q.push({ sr, sc, 0 });
+		entered[sr][sc][0] = true;
+		int answer = -1;
+
+		while (!q.empty())
+		{
+			Data data = q.front(); q.pop();
+			int next_move = data.nmove + 1;
+
+			int tryr = data.r - 1;
+			int tryc = data.c;
+
+			int temp = determine(tryr, tryc, nrow, ncol, maze, entered, gr, gc, next_move, marked, q);
+			if (temp >= 0)
+			{
+				answer = temp;
+				break;
+			}
+
+			tryr = data.r;
+			tryc = data.c + 1;
+
+			temp = determine(tryr, tryc, nrow, ncol, maze, entered, gr, gc, next_move, marked, q);
+			if (temp >= 0)
+			{
+				answer = temp;
+				break;
+			}
+
+			tryr = data.r + 1;
+			tryc = data.c;
+
+			temp = determine(tryr, tryc, nrow, ncol, maze, entered, gr, gc, next_move, marked, q);
+			if (temp >= 0)
+			{
+				answer = temp;
+				break;
+			}
+
+			tryr = data.r;
+			tryc = data.c - 1;
+
+			temp = determine(tryr, tryc, nrow, ncol, maze, entered, gr, gc, next_move, marked, q);
+			if (temp >= 0)
+			{
+				answer = temp;
+				break;
+			}
+		}
+
+		stringstream sstr;
+		if (answer >= 0) sstr << answer;
+		else sstr << "impossible";
+		cout << "Case #" << i << ": " << sstr.str() << endl;
+	}
+
+	return 0;
+}

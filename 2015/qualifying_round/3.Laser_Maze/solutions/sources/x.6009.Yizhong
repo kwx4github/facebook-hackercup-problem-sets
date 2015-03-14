@@ -1,0 +1,107 @@
+#include <cstring>
+#include <iostream>
+#include <queue>
+using namespace std;
+
+int m, n;
+char maze[110][110];
+bool danger[100][100][4];
+int f[100][100][4];
+const int dx[4] = {0, 1, 0, -1};
+const int dy[4] = {1, 0, -1, 0};
+
+int laser(char c) {
+  switch (c) {
+    case '>':
+      return 0;
+    case 'v':
+      return 1;
+    case '<':
+      return 2;
+    case '^':
+      return 3;
+    default:
+      return -1;
+  }
+}
+
+void mark_danger() {
+  memset(danger, 0, sizeof(danger));
+  for (int i = 0; i < m; ++i)
+    for (int j = 0; j < n; ++j) {
+      int base = laser(maze[i][j]);
+      if (base == -1) continue;
+      for (int k = 0; k < 4; k++) {
+        int dir = (base + k) % 4;
+        int x = i + dx[dir], y = j + dy[dir];
+        while (x >= 0 && x < m && y >= 0 && y < n &&
+               (maze[x][y] == '.' || maze[x][y] == 'S' || maze[x][y] == 'G')) {
+          danger[x][y][k] = true;
+          x += dx[dir];
+          y += dy[dir];
+        }
+      }
+    }
+}
+
+struct State {
+  int x, y, steps;
+  State(int x, int y, int steps) : x(x), y(y), steps(steps) {}
+};
+
+int compute() {
+  mark_danger();
+  int sx, sy, gx, gy;
+  for (int i = 0; i < m; i++)
+    for (int j = 0; j < n; j++) {
+      if (maze[i][j] == 'S') {
+        sx = i;
+        sy = j;
+      } else if (maze[i][j] == 'G') {
+        gx = i;
+        gy = j;
+      }
+    }
+  for (int i = 0; i < m; i++)
+    for (int j = 0; j < n; j++)
+      for (int k = 0; k < 4; k++)
+        f[i][j][k] = 99999999;
+  queue<State> q;
+  f[sx][sy][0] = 0;
+  q.push(State(sx, sy, 0));
+  while (!q.empty()) {
+    State head = q.front();
+    if (head.x == gx && head.y == gy)
+      return head.steps;
+    q.pop();
+    for (int i = 0; i < 4; i++) {
+      int x = head.x + dx[i], y = head.y + dy[i];
+      if (x < 0 || x == m || y < 0 || y == n) continue;
+      if (maze[x][y] == '#' || laser(maze[x][y]) != -1) continue;
+      int steps = head.steps + 1;
+      if (danger[x][y][steps % 4]) continue;
+      if (steps < f[x][y][steps % 4]) {
+        f[x][y][steps % 4] = steps;
+        q.push(State(x, y, steps));
+      }
+    }
+  }
+  return -1;
+}
+
+int main() {
+  int t;
+  cin >> t;
+  for (int id = 1; id <= t; ++id) {
+    cin >> m >> n;
+    for (int i = 0; i < m; i++)
+      cin >> maze[i];
+    int ans = compute();
+    cout << "Case #" << id << ": ";
+    if (ans == -1)
+      cout << "impossible" << endl;
+    else
+      cout << ans << endl;
+  }
+  return 0;
+}

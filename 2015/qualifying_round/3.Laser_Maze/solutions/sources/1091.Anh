@@ -1,0 +1,177 @@
+import java.io.*;
+import java.util.*;
+import java.math.*;
+
+public class Maze {
+    public static void main(String[] args) { 
+        Scanner scanner = new Scanner(System.in);
+
+        int T = scanner.nextInt();
+        for (int t = 1; t <= T; t++) {
+            int M = scanner.nextInt();
+            int N = scanner.nextInt();
+            scanner.nextLine();
+            
+            MazeMap map = new MazeMap(M, N);
+            for (int i = 0; i < M; i++) {
+                char[] line = scanner.nextLine().trim().toCharArray();
+                for (int j = 0; j < N; j++) {
+                    map.set(i, j, line[j]);
+                }
+            }
+
+            int result = map.solve();
+            System.out.println("Case #" + t + ": " + (result == -1 ? "impossible" : result));
+
+        }
+    }
+}
+
+class MazeMap {
+    public static final int FREE   = 0;
+    public static final int BLOCK  = 1;
+    public static final int UP     = 2;
+    public static final int LEFT   = 3;
+    public static final int RIGHT  = 4;
+    public static final int DOWN   = 5;
+    public static final int START  = 6;
+    public static final int GOAL   = 7;
+
+    public int M, N;
+    public int[][] map = null;
+    public int[] start = null;
+    public int[] goal = null;
+    public MazeMap(int M, int N) {
+        this.map = new int[M][N];
+        this.M = M;
+        this.N = N;
+    }
+
+    public void set(int i, int j, char c) {
+        switch (c) {
+            case '#':
+                this.map[i][j] = BLOCK;
+                break;
+            case '.':
+                this.map[i][j] = FREE;
+                break;
+            case 'S':
+                this.map[i][j] = START;
+                this.start = new int[] { i, j};
+                break;
+            case 'G':
+                this.map[i][j] = GOAL;
+                this.goal = new int[] { i, j};
+                break;
+            case '^':
+                this.map[i][j] = UP;
+                break;
+            case '>':
+                this.map[i][j] = RIGHT;
+                break;
+            case 'v':
+                this.map[i][j] = DOWN;
+                break;
+            case '<':
+                this.map[i][j] = LEFT;
+                break;
+        }
+    }
+
+    public int solve() {
+        boolean visit[][][] = new boolean[this.M][this.N][4];
+        for (int i = 0; i < this.M; i++)
+            for (int j = 0; j < this.N; j++)
+                for (int k = 0; k < 4; k++)
+                    visit[i][j][k] = false;
+
+        int[] startState = new int[] {
+            this.start[0],
+            this.start[1],
+            0
+        };
+        visit[startState[0]][startState[1]][0] = true;
+
+        int[][] dir = new int[][] {
+            new int[] { 0, 1},
+            new int[] { 0,-1},
+            new int[] { 1, 0},
+            new int[] {-1, 0}
+        };
+
+        Queue<int[]> queue = new LinkedList<int[]>();
+        queue.add(startState);
+        while (!queue.isEmpty()) {
+            int[] state = (int[]) queue.poll();
+            if (state[0] == this.goal[0] && state[1] == this.goal[1]) {
+                return state[2];
+            }
+
+            for (int i = 0; i < 4; i++) {
+                int[] nextStates = new int[] {
+                    state[0] + dir[i][0],
+                    state[1] + dir[i][1],
+                    state[2] + 1
+                };
+
+                if (nextStates[0] >= 0 && nextStates[0] < M && nextStates[1] >= 0 && nextStates[1] < N) {
+                    if (!visit[nextStates[0]][nextStates[1]][nextStates[2] % 4]) {
+                        visit[nextStates[0]][nextStates[1]][nextStates[2] % 4] = true;
+                        
+                        if (this.isReachable(nextStates)) {
+                            queue.add(nextStates);
+                        }
+                    }
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private boolean isFree(int x, int y) {
+        return (map[x][y] == FREE || map[x][y] == START || map[x][y] == GOAL);
+    }
+    private boolean isBlocked(int x, int y) {
+        return (map[x][y] == BLOCK || map[x][y] == LEFT || map[x][y] == RIGHT || map[x][y] == UP || map[x][y] == DOWN);
+    }
+
+    private int[] rotateIndex = new int[] { UP, RIGHT, DOWN, LEFT};
+    private int detectBlock(int i, int j, int t) {
+        if (map[i][j] == BLOCK) { return BLOCK; }
+
+        int index = 0;
+        if (map[i][j] == UP) {    index = 0;}
+        if (map[i][j] == RIGHT) { index = 1;}
+        if (map[i][j] == DOWN) {  index = 2;}
+        if (map[i][j] == LEFT) {  index = 3;}
+        return rotateIndex[(index+t) % 4];
+    }
+
+    public boolean isReachable(int[] state) {
+        int x = state[0], y = state[1], t = state[2];
+        int i, j;
+        if (isFree(x, y)) {            
+            // move up
+            i = x;j = y;
+            while (i >= 0 && isFree(i, j)) { i--; }
+            if (i >= 0 && detectBlock(i, j, t) == DOWN) { return false; }
+            // move down
+            i = x;j = y;
+            while (i < M && isFree(i, j)) { i++; }
+            if (i < M  && detectBlock(i, j, t) == UP) { return false; }
+            // move left
+            i = x;j = y;
+            while (j >= 0 && isFree(i, j)) { j--; }
+            if (j >= 0  && detectBlock(i, j, t) == RIGHT) { return false; }
+            // move right
+            i = x;j = y;
+            while (j < N && isFree(i, j)) { j++; }
+            if (j < N  && detectBlock(i, j, t) == LEFT) { return false; }
+
+            return true;
+        }
+        return false;
+    }
+}
+

@@ -1,0 +1,129 @@
+#include <bits/stdc++.h>
+using namespace std;
+#define inf 1000000
+
+int n, m, srcx, srcy, dstx, dsty, dp[110][110][10][10];
+vector<int> laser[110][110];
+char arr[110][110];
+int visited[110][110][10];
+pair<int, int> dxy [] = { make_pair(0, 1) , make_pair(1, 0) , make_pair(0, -1) , make_pair(-1, 0) };
+
+bool safe(int x, int y, int step){
+	if( find(laser[x][y].begin(), laser[x][y].end(), (step+2)%4) != laser[x][y].end()) return false;
+
+	for (int i = 0; i < 4; i++){
+		if(x+dxy[i].first>=0 && x+dxy[i].first<n && y+dxy[i].second>=0 && y+dxy[i].second<m){
+			if( (arr[ x+dxy[i].first ][ y+dxy[i].second ] == '.') &&
+				( find(laser[ x+dxy[i].first ][ y+dxy[i].second ].begin(), laser[ x+dxy[i].first ][ y+dxy[i].second ].end(), (step+1)%4 ) 
+				== laser[ x+dxy[i].first ][ y+dxy[i].second ].end() ) 
+				)
+				return true;
+		}
+	}
+	return false;
+}
+
+int solve(int x, int y, int step, bool f = 0){
+
+	if(x<0 || x>=n || y<0 || y>=m) return inf;
+	if(arr[x][y] != '.') return inf;
+	if( find(laser[x][y].begin(), laser[x][y].end(), step) != laser[x][y].end() && f ) return inf;
+	if(x == dstx && y == dsty) return 0;
+	if( dp[x][y][step][0] == 1 ) return dp[x][y][step][1];
+	if(visited[x][y][step] >= 1) return inf;
+
+	visited[x][y][step] = 1;
+	int ans = inf;
+	for(int i=0 ; i<4 ; i++){
+		ans = min(ans, 1 + solve(x+dxy[i].first, y+dxy[i].second, (step+1)%4, 1));
+		if( safe(x,y,step) )
+			ans = min(ans, 3 + solve(x+dxy[i].first, y+dxy[i].second, (step+3)%4, 1));
+	}
+
+	dp[x][y][step][0] = 1;
+	return dp[x][y][step][1] = ans;
+
+}
+
+void block(int x, int y, int p){
+	for(int i=y+1; i<m && arr[x][i] == '.' ; i++)
+		laser[x][i].push_back(p);
+
+	p = (p+1)%4;
+	for(int i=x+1; i<n && arr[i][y] == '.' ; i++)
+		laser[i][y].push_back(p);
+
+	p = (p+1)%4;
+	for(int i=y-1; i>=0 && arr[x][i] == '.'; i--)
+		laser[x][i].push_back(p);
+
+	p = (p+1)%4;
+	for(int i=x-1; i>=0 && arr[i][y] == '.'; i--)
+		laser[i][y].push_back(p);
+}
+
+int main(){
+	freopen("in.txt", "r", stdin);
+	freopen("out.txt", "w", stdout);
+	int T;
+	scanf("%d", &T);
+	for(int t=1 ; t<=T; t++){
+
+		for (int i = 0; i < 110; i++)
+			for (int j = 0; j < 110; j++)
+				laser[i][j].clear();
+
+		scanf("%d%d", &n, &m);
+		for(int i=0 ; i<n ; i++){
+			for(int j=0 ; j<m ; j++){
+				cin >> arr[i][j];
+			}
+		}
+
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < m; j++)
+			{
+				if(arr[i][j] == 'S'){
+					srcx = i;
+					srcy = j;
+					arr[i][j] = '.';
+				}
+				else if( arr[i][j] == 'G' ){
+					dstx = i;
+					dsty = j;
+					arr[i][j] = '.';
+				}
+			}
+		}
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < m; j++)
+			{
+				if( arr[i][j] == '>' || arr[i][j] == '<' || arr[i][j] == '^' || arr[i][j] == 'v'){
+					int p = 0;
+					if( arr[i][j] == 'v' ) p = 3;
+					else if(arr[i][j] == '<') p = 2;
+					else if(arr[i][j] == '^') p = 1;
+					block(i, j, p);
+				}
+			}
+		}
+		printf("Case #%d: ", t);
+
+		sort(dxy, dxy + 4);
+		int ans = inf;
+		do{
+			memset(visited, 0, sizeof visited);
+			memset(dp , 0 , sizeof dp);
+
+			ans = min(ans, solve(srcx, srcy, 0));
+		} while(next_permutation(dxy, dxy+4));
+
+		if(ans >= inf) 
+			printf("impossible\n");
+		else printf("%d\n", ans);
+	}
+
+	return 0;
+}

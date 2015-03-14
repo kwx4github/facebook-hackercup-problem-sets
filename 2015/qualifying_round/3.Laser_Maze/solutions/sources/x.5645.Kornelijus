@@ -1,0 +1,221 @@
+package main
+
+import "fmt"
+
+var directions = [][]int{
+	{-1, 0},
+	{1, 0},
+	{0, -1},
+	{0, 1},
+}
+
+type Position struct {
+	y int
+	x int
+}
+
+type Node struct {
+	pos         Position
+	turretState int
+	prevNode    *Node
+}
+
+func blockedByLaser(y, x, state, height, width int, maze [][]uint8, turrets []Position) bool {
+	for _, pos := range turrets {
+		ty := pos.y
+		tx := pos.x
+		val := maze[ty][tx]
+		rotations := state % 4
+		for i := 0; i < rotations; i++ {
+			if val == '^' {
+				val = '>'
+			} else if val == '>' {
+				val = 'v'
+			} else if val == 'v' {
+				val = '<'
+			} else if val == '<' {
+				val = '^'
+			}
+		}
+
+		if val == '^' {
+			if tx != x {
+				continue
+			}
+
+			ty--
+			for ty != -1 {
+				if ty == y {
+					return true
+				}
+
+				if maze[ty][tx] == '#' {
+					break
+				}
+				ty--
+			}
+		} else if val == '>' {
+			if ty != y {
+				continue
+			}
+
+			tx++
+			for tx != width {
+				if tx == x {
+					return true
+				}
+
+				if maze[ty][tx] == '#' {
+					break
+				}
+				tx++
+			}
+		} else if val == 'v' {
+			if tx != x {
+				continue
+			}
+
+			ty++
+			for ty != height {
+				if ty == y {
+					return true
+				}
+
+				if maze[ty][tx] == '#' {
+					break
+				}
+				ty++
+			}
+		} else if val == '<' {
+			if ty != y {
+				continue
+			}
+
+			tx--
+			for tx != -1 {
+				if tx == x {
+					return true
+				}
+
+				if maze[ty][tx] == '#' {
+					break
+				}
+				tx--
+			}
+		}
+	}
+	return false
+}
+
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func getBestNode(nodes []*Node, dest Position) int {
+	bestNode := -1
+	bestNodeDistance := 1000000
+	for k, v := range nodes {
+		distance := Abs(dest.x-v.pos.x) + Abs(dest.y-v.pos.y)
+		if distance < bestNodeDistance {
+			bestNode = k
+			bestNodeDistance = distance
+		}
+	}
+	return bestNode
+}
+
+func solve(n int) {
+	var height, width int
+	fmt.Scanf("%d %d\n", &height, &width)
+
+	var dest Position
+	turrets := []Position{}
+
+	nodes := []*Node{}
+
+	maze := make([][]uint8, height)
+	for i := 0; i < height; i++ {
+		maze[i] = make([]uint8, width)
+		for j := 0; j < width; j++ {
+			fmt.Scanf("%c", &maze[i][j])
+			if maze[i][j] == 'S' {
+				nodes = append(nodes, &Node{
+					pos:         Position{i, j},
+					turretState: 1,
+					prevNode:    nil,
+				})
+				maze[i][j] = '.'
+			} else if maze[i][j] == 'G' {
+				dest.y = i
+				dest.x = j
+				maze[i][j] = '.'
+			} else if maze[i][j] == '<' || maze[i][j] == '>' || maze[i][j] == '^' || maze[i][j] == 'v' {
+				turrets = append(turrets, Position{i, j})
+			}
+		}
+		fmt.Scanf("\n")
+	}
+
+	var path *Node = nil
+	seen := make(map[string]struct{})
+	for {
+		var nodeIndex int
+		if nodeIndex = getBestNode(nodes, dest); nodeIndex == -1 {
+			break
+		}
+
+		node := nodes[nodeIndex]
+		if node.pos.y == dest.y && node.pos.x == dest.x {
+			path = node
+			break
+		}
+
+		nodes = nodes[1:]
+		seen[fmt.Sprintf("%d,%d,%d", node.pos.y, node.pos.x, node.turretState%4)] = struct{}{}
+
+		for _, v := range directions {
+			pos := Position{node.pos.y + v[0], node.pos.x + v[1]}
+			if pos.y < 0 || pos.x < 0 || pos.y >= height || pos.x >= width || maze[pos.y][pos.x] != '.' {
+				continue
+			}
+
+			if !blockedByLaser(pos.y, pos.x, node.turretState, height, width, maze, turrets) {
+				newNode := Node{
+					pos:         pos,
+					turretState: node.turretState + 1,
+					prevNode:    node,
+				}
+
+				seenKey := fmt.Sprintf("%d,%d,%d", newNode.pos.y, newNode.pos.x, newNode.turretState%4)
+				if _, skip := seen[seenKey]; skip {
+					continue
+				}
+				seen[seenKey] = struct{}{}
+				nodes = append(nodes, &newNode)
+			}
+		}
+	}
+
+	steps := -1
+	for path != nil {
+		path = path.prevNode
+		steps++
+	}
+
+	if steps == -1 {
+		fmt.Printf("Case #%d: impossible\n", n)
+	} else {
+		fmt.Printf("Case #%d: %d\n", n, steps)
+	}
+}
+
+func main() {
+	var N int
+	fmt.Scanf("%d\n", &N)
+	for i := 1; i <= N; i++ {
+		solve(i)
+	}
+}

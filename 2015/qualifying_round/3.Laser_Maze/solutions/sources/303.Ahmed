@@ -1,0 +1,142 @@
+/*
+ * lasermaze.cpp
+ *
+ *  Created on: 09.01.2015
+ *      Author: demamdoa
+ */
+
+
+
+
+#include <cstring>
+#include <string>
+#include <iostream>
+#include <bits/stdc++.h>
+using namespace std;
+#define pb push_back
+#define mp make_pair
+const int MX = 109;
+int vis[MX][MX][5][5][5][5];
+int states[MX][MX][4];
+/*
+ * ^ 0
+ * > 1
+ * v 2
+ * < 3
+ * E 4
+ */
+vector<string >grid;
+map<char, int> laser_dir;
+int di[]={-1, 0, 1, 0};
+int dj[]={ 0, 1, 0,-1};
+int n, m;
+void fill_states(int i, int j, int k, int ldir) {
+	while(1){
+		i+=di[k];
+		j+=dj[k];
+		if(i>=n || i<0 || j>=m || j<0 || grid[i][j] == '#' || laser_dir.count(grid[i][j]))
+			break;
+		states[i][j][k] = ldir;
+	}
+}
+int si, sj, ei, ej;
+int bfs() {
+	queue<pair<int, int> >q;
+	q.push(mp(si, sj));
+	int cd = states[si][sj][0];
+	int cl = states[si][sj][1];
+	int cu = states[si][sj][2];
+	int cr = states[si][sj][3];
+
+	vis[si][sj][cd][cl][cu][cr] = 1;
+	int steps = 0;
+	while(!q.empty()) {
+		int sz = q.size();
+		while(sz--) {
+			pair<int, int > cur = q.front();
+			q.pop();
+			int ci = cur.first;
+			int cj = cur.second;
+			int alive = 1;
+			if(steps>0)
+				for(int k=0; k<4; ++k) {
+					if(states[ci][cj][k] == 4)
+						continue;
+					int cld = (states[ci][cj][k] + steps)%4;
+					if(cld == k)
+						alive = 0;
+				}
+			if(!alive)
+				continue;
+
+			if(ci == ei && cj == ej)
+				return steps;
+			for(int k=0; k<4;++k) {
+				int ni = ci+di[k];
+				int nj = cj+dj[k];
+
+				if(ni>=n || nj>=m || ni<0 || nj<0 || grid[ni][nj]=='#' || laser_dir.count(grid[ni][nj]))
+					continue;
+
+				int nd = (states[ni][nj][0] + steps + 1) % 4;
+				int nl = (states[ni][nj][1] + steps + 1) % 4;
+				int nu = (states[ni][nj][2] + steps + 1) % 4;
+				int nr = (states[ni][nj][3] + steps + 1) % 4;
+				if(!vis[ni][nj][nd][nl][nu][nr]) {
+					vis[ni][nj][nd][nl][nu][nr] =1;
+					q.push(mp(ni, nj));
+				}
+			}
+		}
+		steps++;
+	}
+	return -1;
+}
+int main()
+{
+	freopen("laser_maze.txt", "rt", stdin);
+	freopen("lasermaze.out", "wt", stdout);
+	laser_dir['^'] = 0, laser_dir['>'] = 1, laser_dir['v'] = 2, laser_dir['<'] = 3;
+	int T;
+	cin>>T;
+	string str;
+	for(int ii=0; ii<T; ++ii) {
+		grid = vector<string>();
+		cin>>n>> m;
+
+		for(int i=0; i<n; ++i) {
+				cin>>str;
+				grid.pb(str);
+				for(int j=0; j<m; ++j) {
+					if(str[j] == 'S')
+						si = i, sj=j;
+					else if (str[j] == 'G')
+						ei = i, ej = j;
+				}
+
+		}
+		for(int i=0; i<n; ++i)
+			for(int j=0; j<m; ++j)
+				for(int k=0; k<4; ++k)
+					states[i][j][k] = 4;
+		for(int i=0; i<n; ++i) {
+			for(int j=0; j<m; ++j){
+				if(laser_dir.count(grid[i][j])) {
+					for(int k=0; k<4; ++k) {
+						fill_states(i, j, k, laser_dir[grid[i][j]]);
+					}
+				}
+			}
+		}
+
+		memset(vis, 0, sizeof vis);
+		int ans = bfs();
+		cout<<"Case #"<<ii+1<<": ";
+		if(ans == -1)
+			cout<<"impossible"<<endl;
+		else cout<<ans<<endl;
+
+	}
+
+	return 0;
+}

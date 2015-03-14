@@ -1,0 +1,79 @@
+open Str
+open Printf
+
+let map f xs =
+  let rec amap acc = function
+    | [] -> List.rev acc
+    | hd::tl -> amap (f hd :: acc) tl
+  in
+  amap [] xs
+
+type nutrition = {
+  protein : int;
+  carbohydrates: int;
+  fat: int;
+}
+  
+let rec powerset ls = match ls with
+  | [] -> [[]]
+  | hd::tl -> List.fold_left (fun xs t -> (hd::t)::t::xs) [] (powerset tl)
+
+let empty_nutrition = { protein = 0; carbohydrates = 0; fat = 0 }
+
+let nutrition_combinations nutritions =
+  let rec sumnn acc nutris = match nutris with
+    | [] -> acc
+    | hd::tl ->
+      sumnn { protein = acc.protein + hd.protein;
+              carbohydrates = acc.carbohydrates + hd.carbohydrates;
+              fat = acc.fat + hd.fat} tl
+  in
+  sumnn empty_nutrition nutritions
+
+let split = Str.split (Str.regexp_string " ")
+    
+let to_nutrition line =
+  let ls = List.map int_of_string (split line)
+  in
+  { protein = List.nth ls 0;
+    carbohydrates = List.nth ls 1;
+    fat = List.nth ls 2;
+  }
+
+let read_nutritions input count =
+  let nutritions = ref [] in
+  for i = 1 to count do
+    nutritions := to_nutrition (input_line input) :: !nutritions
+  done;
+  List.rev !nutritions
+
+let read_input in_filename out_filename =
+  let oc = open_out out_filename in
+  let ic = open_in in_filename in
+  try
+    let case_count = input_line ic in
+    for i = 1 to int_of_string case_count do
+      let expect_nutritions_line = input_line ic in
+      let expect_nutrition = to_nutrition expect_nutritions_line in
+      let nutritions_count_line = input_line ic in
+      let nutritions = read_nutritions ic (int_of_string nutritions_count_line) in
+      let pset = powerset nutritions in
+      let combinations = map nutrition_combinations (List.filter (fun x-> x != []) pset) in
+      if List.exists (fun x -> x = expect_nutrition) combinations then
+        (*print_endline "> Possible";*)
+	fprintf oc "Case #%d: yes\n" i
+      else
+        (*print_endline "> Not Possible";*)
+	fprintf oc "Case #%d: no\n" i
+    done;
+    flush stdout;
+    close_in ic;
+    close_out oc;
+  with e ->
+    close_in_noerr ic;
+    close_out_noerr oc;
+    raise e
+
+let () =
+  read_input "new_years_resolution.txt" "newout.txt"
+

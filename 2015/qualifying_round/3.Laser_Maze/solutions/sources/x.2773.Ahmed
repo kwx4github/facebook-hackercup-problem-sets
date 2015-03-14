@@ -1,0 +1,90 @@
+use strict;
+use warnings;
+
+use Data::Dumper;
+
+my $tc = <>;
+
+my %dir = (
+	'>'	=> [  0,  1 ],
+	'v'	=> [  1,  0 ],
+	'<'	=> [  0, -1 ],
+	'^'	=> [ -1,  0 ],
+);
+
+my %next = (
+	'>'	=> 'v',
+	'v'	=> '<',
+	'<'	=> '^',
+	'^'	=> '>',
+);
+
+my ( $n, $m );
+my @grid;
+
+sub val {
+	my ( $i, $j ) = @_;
+	return $grid[ $i ][ $j ] eq '.' if ( $i >= 0 and $i < $n and $j >= 0 and $j < $m );
+	return 0;
+}
+
+my %mem;
+my ( $si, $sj, $gi, $gj );
+my @blocked;
+
+sub dp {
+	my ( $i, $j, $t) = @_;
+	return 0 if $i == $gi and $j == $gj;
+	my $s = "$i,$j,$t";
+	return $mem{ $s } if exists $mem{ "$i,$j,$t" };
+
+	my $result = 1 << 30;
+	$mem{ $s } = $result;
+
+	my $ct = ( $t + 1 ) % 4 ;
+	for ( values %dir ) {
+		my ( $ci, $cj ) = @$_;
+		$ci += $i;
+		$cj += $j;
+		next unless val $ci, $cj;
+		next if exists $blocked[ $ci ][ $cj ]{ $ct };
+		my $r = dp ( $ci, $cj, $ct );
+		$r++;
+		$result = $result < $r ? $result : $r;
+	}
+
+	$mem{ $s } = $result;
+	return $result;
+}
+
+for my $T ( 1..$tc ) {
+	( $n, $m ) = split " ", <>;
+	undef @grid;
+	push @grid, [ split "", <> ] foreach ( 1..$n );
+	undef @blocked;
+	push @blocked, [map {}, ( 1..$m)] foreach ( 1..$n);
+	for my $i ( 0..( $n - 1 ) ){
+		for my $j ( 0..( $m - 1 ) ) {
+			my $ch = $grid[ $i ][ $j ];
+			( $si, $sj ) = ( $i, $j ) if $ch eq 'S';
+			( $gi, $gj ) = ( $i, $j ) if $ch eq 'G';
+			$grid[ $i ][ $j ] = '.' if $ch eq 'S' or $ch eq 'G';
+			next unless exists $dir{ $ch };
+			for my $cur ( 0..3 ){
+				my ( $di, $dj ) = @{ $dir{ $ch } };
+				my ( $ci, $cj ) = ( $i, $j );
+				while ( 1 ) {
+					$ci += $di;
+					$cj += $dj;
+					last unless val $ci, $cj;
+					$blocked[ $ci ][ $cj ]{ $cur } = 1;
+				}
+				$ch = $next{ $ch };
+			}
+		}
+	}
+	undef %mem;
+	my $result = dp $si, $sj, 0;
+	$result = $result < ( 1 << 30 ) ? $result : 'impossible';
+	print "Case #$T: $result\n";
+}

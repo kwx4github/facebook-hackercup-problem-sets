@@ -1,0 +1,132 @@
+#include <iostream>
+#include <vector>
+#include <queue>
+
+using namespace std;
+
+int sizex,sizey;
+int startx,starty;
+int goalx,goaly;
+vector<vector<vector<bool> > > maze; //x,y,t
+vector<vector<vector<bool> > > visited; //x,y,t
+vector<string> rawMaze;
+
+int dx[]={-1,0,1,0};
+int dy[]={0,1,0,-1};
+
+bool inBounds(int x, int y) {
+    return (x >= 0 && x<sizex && y >= 0 && y <sizey);
+}
+
+struct state {
+    int x,y,t;
+    int dist;
+
+    state(int _x, int _y, int _t, int _dist) {
+        x=_x; y=_y; t=_t; dist=_dist;
+    }
+    
+    bool operator<(const state& rhs) const {
+        if(dist != rhs.dist) return dist<rhs.dist;
+        if(x != rhs.x) return x<rhs.x;
+        if(y != rhs.y) return y<rhs.y;
+        if(t != rhs.t) return t<rhs.t;
+        return false;
+    }
+};
+
+void run(int casn) {
+    cin >> sizex >> sizey;
+    maze=vector<vector<vector<bool> > >(sizex, vector<vector<bool> >(sizey, vector<bool>(4,true)));
+    visited=vector<vector<vector<bool> > >(sizex, vector<vector<bool> >(sizey, vector<bool>(4,false)));
+    
+    rawMaze=vector<string>(sizex);
+    for(int i=0; i<sizex; i++) cin >> rawMaze[i];
+    
+    for(int x=0; x<sizex; x++)
+    for(int y=0; y<sizey; y++) {
+        char c=rawMaze[x][y];
+        if(c != '.')
+            for(int i=0; i<4; i++) maze[x][y][i]=false;
+        if(c == 'S') {
+            startx=x, starty=y;
+            for(int i=0; i<4; i++) maze[x][y][i]=true;
+        }
+        if(c == 'G') {
+            goalx=x, goaly=y;
+            for(int i=0; i<4; i++) maze[x][y][i]=true;
+        }
+        int tInitial=-1;
+        if(c == '^') tInitial=0;
+        if(c == '>')tInitial=3;
+        if(c == 'v')tInitial=2;
+        if(c == '<')tInitial=1;
+        if(tInitial >= 0)
+            for(int ti=0; ti<4; ti++) {
+                int t=(ti+tInitial)%4; 
+                for(int d=1; inBounds(x+d*dx[ti],y+d*dy[ti]); d++) {
+                    int cx=x+d*dx[ti];
+                    int cy=y+d*dy[ti];
+                    char ct=rawMaze[cx][cy];
+                    if(ct != '.' && ct != 'G' && ct != 'S') break;
+                    maze[cx][cy][t]=false;
+                }
+            }
+    }
+/*
+    cout << "The mazes:" << endl;
+
+    for(int t=0; t<4; t++) {
+        for(int x=0; x<sizex; x++) {
+            for(int y=0; y<sizey; y++) {
+                if(maze[x][y][t]) cout << '.';
+                else cout << '#';
+            }
+
+            cout << endl;
+        }
+
+        cout << endl;
+    }
+ */  
+    priority_queue<state> q; 
+    q.push(state(startx, starty, 0, 0));
+    int bestDist=100000;
+    bool initial=true;
+    while(!q.empty()) {
+        state cur=q.top();
+        if(cur.x == goalx && cur.y == goaly)
+            if(cur.dist < bestDist)
+                bestDist=cur.dist;
+        if(!initial);
+            visited[cur.x][cur.y][cur.t]=true;
+        initial=false;
+        q.pop();
+        for(int i=0; i<4; i++) {
+            int nx, ny, nt, nd;
+            nx=cur.x+dx[i];
+            ny=cur.y+dy[i];
+            nt=(cur.t+1)%4;
+            nd=cur.dist+1;
+
+            if(inBounds(nx,ny)) {
+                if(maze[nx][ny][nt] && !visited[nx][ny][nt]) {
+                    q.push(state(nx,ny,nt,nd));
+                }
+            }
+        }
+    }
+    if(bestDist < 99999)
+        cout <<"Case #"<<casn<<": "<< bestDist << endl;
+    else
+        cout <<"Case #"<<casn<<": impossible" << endl;
+}
+
+
+int main() {
+    int n;
+    cin >> n;
+    for(int i=1; i<=n; i++)
+        run(i);
+    return 0;
+}

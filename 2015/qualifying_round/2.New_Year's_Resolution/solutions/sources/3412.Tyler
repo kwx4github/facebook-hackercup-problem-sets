@@ -1,0 +1,160 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using NUnit.Framework;
+
+namespace FacebookHackerCup2015
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            const string inputFile = @"E:\Downloads\foo.in";
+            const string outputFile = @"E:\Downloads\foo.out";
+
+            var sr = new StreamReader(inputFile);
+            var sw = new StreamWriter(outputFile);
+
+            int testCases = int.Parse(sr.ReadLine());
+            for (int i = 1; i <= testCases; i++)
+            {
+                var testCase = NewYearsResolution.ParseCase(sr);
+                var result = "Case #" + i + ": " + testCase.SolveCase();
+                sw.WriteLine(result);
+            }
+            sw.Flush();
+            sw.Close();
+        }
+    }
+
+    public class Nutrition
+    {
+        public int Protien { get; set; }
+        public int Carbs { get; set; }
+        public int Fat { get; set; }
+
+        public int Score(Nutrition n)
+        {
+            return Math.Max(n.Protien - Protien, 0) +
+                   Math.Max(n.Carbs - Carbs, 0) +
+                   Math.Max(n.Fat - Fat, 0);
+        }
+
+        public bool Empty()
+        {
+            return Protien == 0 && Carbs == 0 && Fat == 0;
+        }
+    }
+
+    public class NewYearsResolution
+    {
+        public Nutrition Goal { get; set; }
+        public List<Nutrition> Food { get; set; }
+
+        public static NewYearsResolution ParseCase(TextReader sr)
+        {
+            var parameters = sr.ReadLine().Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Select(s => int.Parse(s)).ToList();
+            var goal = new Nutrition {Protien = parameters[0], Carbs = parameters[1], Fat = parameters[1]};
+
+            var count = int.Parse(sr.ReadLine());
+            var food = new List<Nutrition>();
+            for (int i = 0; i < count; i++)
+            {
+                parameters = sr.ReadLine().Split(" ".ToCharArray(), StringSplitOptions.RemoveEmptyEntries).Select(s => int.Parse(s)).ToList();
+                var f = new Nutrition { Protien = parameters[0], Carbs = parameters[1], Fat = parameters[1] };
+                food.Add(f);
+            }
+            return new NewYearsResolution { Goal = goal, Food = food };
+        }
+
+        public String SolveCase()
+        {
+            return Search(Food, Goal) ? "yes" : "no";
+        }
+
+        public bool Search(List<Nutrition> availableFood, Nutrition needed)
+        {
+            if (needed.Empty())
+                return true;
+            availableFood = RemoveUnfitFood(availableFood, needed);
+            if (!EnoughLeft(availableFood, needed))
+                return false;
+
+            bool ok;
+            do
+            {
+                var next = PickSomethingToEat(availableFood, needed);
+                availableFood.Remove(next);
+                var remaining = new Nutrition
+                                    {
+                                        Protien = needed.Protien - next.Protien,
+                                        Carbs = needed.Carbs - next.Carbs,
+                                        Fat = needed.Fat - next.Fat
+                                    };
+                ok = Search(availableFood, remaining);
+            } while (!ok && availableFood.Count > 0);
+            return ok;
+        }
+
+        public bool EnoughLeft(List<Nutrition> availableFood, Nutrition needed)
+        {
+            var total = new Nutrition
+                            {
+                                Protien = availableFood.Sum(f => f.Protien),
+                                Carbs = availableFood.Sum(f => f.Carbs),
+                                Fat = availableFood.Sum(f => f.Fat)
+                            };
+            if (needed.Protien > total.Protien ||
+                needed.Carbs > total.Carbs ||
+                needed.Fat > total.Fat)
+                return false;
+            return true;
+        }
+
+        public List<Nutrition> RemoveUnfitFood(List<Nutrition> availableFood, Nutrition needed)
+        {
+            return availableFood.Where(f => f.Protien <= needed.Protien &&
+                                            f.Carbs <= needed.Carbs &&
+                                            f.Fat <= needed.Fat).ToList();
+
+        } 
+
+        public Nutrition PickSomethingToEat(List<Nutrition> availableFood, Nutrition needed)
+        {
+            return availableFood.Aggregate((curmin, x) => (curmin == null || (x.Score(needed) < curmin.Score(needed)) ? x : curmin));
+        }
+    }
+
+    [TestFixture]
+    public class NewYearsResolutionTest
+    {
+        [Test]
+        public void GivenTests()
+        {
+
+            var tests = new List<Tuple<String, String>>
+                            {
+                                new Tuple<string, string>("100 100 100\n1\n100 100 100", "yes"),
+                                new Tuple<string, string>("100 100 100\n3\n10 10 40\n10 30 10\n10 60 50", "no"),
+                                new Tuple<string, string>("100 100 100\n5\n40 70 30\n30 10 40\n20 20 50\n10 50 90\n40 10 20", "yes"),
+                                new Tuple<string, string>("292 264 512\n20\n909 302 261\n705 597 823\n291 51 126\n28 697 57\n593 31 826\n311 256 57\n292 14 47\n29 730 716\n12 529 146\n768 16 439\n37 472 15\n350 192 34\n163 468 238\n69 173 10\n203 72 690\n424 875 213\n223 593 292\n151 46 10\n88 90 16\n773 653 711", "no"),
+                                new Tuple<string, string>("991 827 352\n20\n29 560 929\n139 681 102\n144 853 10\n84 729 80\n218 20 67\n140 80 901\n428 20 500\n520 970 128\n422 419 30\n413 101 192\n467 448 501\n32 939 684\n34 20 38\n251 317 132\n588 437 10\n648 21 79\n391 25 14\n499 22 24\n854 77 361\n405 25 20\n", "yes")
+                            };
+            foreach (var test in tests)
+            {
+                StringReader sr = new StringReader(test.Item1);
+                var ctb = NewYearsResolution.ParseCase(sr);
+                var solution = ctb.SolveCase();
+                Assert.AreEqual(test.Item2, solution);
+            }
+        }
+
+        [Test]
+        public void EdgeCases()
+        {
+
+        }
+    }
+}

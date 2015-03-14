@@ -1,0 +1,236 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <queue>
+#include <climits>
+
+using namespace std;
+
+class maze : public vector<string> {
+public:
+  int width() const { return at(0).length(); }
+  int height() const { return size(); }
+};
+
+void print_maze(const maze &m) {
+  for(string row : m) {
+    cout << row << endl;
+  }
+}
+
+bool is_turret(char c) {
+  return c == '^' ||
+         c == '>' ||
+         c == 'v' ||
+         c == '<';
+}
+
+void turn_turret(char &turret, int turns) {
+  while(turns-- > 0) {
+    if(turret == '^') turret = '>';
+    else if(turret == '>') turret = 'v';
+    else if(turret == 'v') turret = '<';
+    else if(turret == '<') turret = '^';
+    else {
+      cout << "Character " << turret << " is not a turret.";
+      exit(-1);
+    }
+  }
+}
+
+vector<maze> generate_submazes(const maze &m) {
+  vector<maze> submazes(4, m);
+  int turns = 0;
+  for(maze &m : submazes) {
+    for(string &row : m) {
+      for(char &c : row) {
+        if(is_turret(c)) {
+          turn_turret(c, turns);
+        }
+      }
+    }
+    turns++;
+  }
+  return submazes;
+}
+
+void project_beams(maze &m) {
+  for(int i = 0; i < m.height(); i++) {
+    for(int j = 0; j < m.width(); j++) {
+      if(is_turret(m[i][j])) {
+        int di = 0, dj = 0;
+        if(m[i][j] == '^') di = -1;
+        else if(m[i][j] == '>') dj = 1;
+        else if(m[i][j] == 'v') di = 1;
+        else dj = -1;
+
+        int ii = i + di, jj = j + dj;
+        while(0 <= ii && ii < m.size() &&
+              0 <= jj && jj < m[0].length() &&
+              (m[ii][jj] == '.' || m[ii][jj] == 'x' ||
+               m[ii][jj] == 'S' || m[ii][jj] == 'G')) {
+          m[ii][jj] = 'x';
+          ii += di;
+          jj += dj;
+        }
+      }
+    }
+  }
+}
+
+typedef vector<vector<int>> graph;
+
+bool is_empty_position(char c) {
+  return c == '.' ||
+         c == 'S' ||
+         c == 'G';
+}
+
+int index_in_graph(const maze &m, int k, int i, int j) {
+  return m.width() * m.height() * k +
+         m.width() * i + j;
+}
+
+void add_edge(graph &g, const maze &m,  int k, int si, int sj, int di, int dj) {
+  int src = index_in_graph(m, k, si, sj);
+  int dst = index_in_graph(m, (k + 1) % 4, di, dj);
+  g[src].push_back(dst);
+}
+
+graph build_graph(const maze &m) {
+  vector<maze> submazes = generate_submazes(m);
+  for(maze &m : submazes) project_beams(m);
+
+  graph g(m.width() * m.height() * 4, vector<int>());
+
+  for(int k = 0; k < 4; k++) {
+    maze &m = submazes[k], &mm = submazes[(k + 1) % 4];
+
+    for(int i = 0; i < m.height(); i++) {
+      for(int j = 0; j < m.width(); j++) {
+        if(m[i][j] == '#') continue;
+        if(i > 0 && is_empty_position(mm[i - 1][j])) {
+          add_edge(g, m, k, i, j, i - 1, j);
+        }
+        if(j < m.width() - 1 && is_empty_position(mm[i][j + 1])) {
+          add_edge(g, m, k, i, j, i, j + 1);
+        }
+        if(i < m.height() - 1 && is_empty_position(mm[i + 1][j])) {
+          add_edge(g, m, k, i, j, i + 1, j);
+        }
+        if(j > 0 && is_empty_position(mm[i][j - 1])) {
+          add_edge(g, m, k, i, j, i, j - 1);
+        }
+      }
+    }
+  }
+
+  return g;
+}
+
+void find_start_position(const maze &m, int &i, int &j) {
+  for(int ii = 0; ii < m.height(); ii++) {
+    for(int jj = 0; jj < m.width(); jj++) {
+      if(m[ii][jj] == 'S') {
+        i = ii;
+        j = jj;
+        return;
+      }
+    }
+  }
+}
+
+void find_goal_position(const maze &m, int &i, int &j) {
+  for(int ii = 0; ii < m.height(); ii++) {
+    for(int jj = 0; jj < m.width(); jj++) {
+      if(m[ii][jj] == 'G') {
+        i = ii;
+        j = jj;
+        return;
+      }
+    }
+  }
+}
+
+vector<int> bfs(const graph &g, int start) {
+  vector<int> parents(g.size(), INT_MAX);
+  queue<int> q;
+
+  parents[start] = -1;
+  q.push(start);
+
+  while(!q.empty()) {
+    int v = q.front();
+    q.pop();
+    for(int w : g[v]) {
+      if(parents[w] == INT_MAX) {
+        q.push(w);
+        parents[w] = v;
+      }
+    }
+  }
+
+  return parents;
+}
+
+int path_length(vector<int> parents, int position) {
+  if(parents[position] == INT_MAX) return INT_MAX;
+
+  int length = 0;
+  while(parents[position] != -1) {
+    position = parents[position];
+    length++;
+  }
+  return length;
+}
+
+int solve(const maze &m) {
+  int si, sj, gi, gj;
+  find_start_position(m, si, sj);
+  find_goal_position(m, gi, gj);
+
+  graph g = build_graph(m);
+
+  vector<int> parents = bfs(g, index_in_graph(m, 0, si, sj));
+
+  int min_length = INT_MAX;
+
+  for(int k = 0; k < 4; k++) {
+    int length = path_length(parents, index_in_graph(m, k, gi, gj));
+    min_length = min(min_length, length);
+  }
+
+  return min_length;
+}
+
+maze read_maze(int width, int height) {
+  maze m;
+  for(int i = 0; i < height; i++) {
+    string row(width, '.');
+    for(int j = 0; j < width; j++) {
+      cin >> row[j];
+    }
+    m.push_back(row);
+  }
+  return m;
+}
+
+int main() {
+  int T, w, h;
+
+  cin >> T;
+
+  for(int t = 1; t <= T; t++) {
+    cin >> h >> w;
+    maze m = read_maze(w, h);
+
+    int solution = solve(m);
+
+    cout << "Case #" << t << ": ";
+    if(solution == INT_MAX) cout << "impossible";
+    else cout << solution;
+    cout << endl;
+  }
+
+  return 0;
+}

@@ -1,0 +1,183 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: penyaev
+ * Date: 11.01.15
+ * Time: 4:03
+ */
+
+const LASER_UP = 0;
+const LASER_RIGHT = 1;
+const LASER_DOWN = 2;
+const LASER_LEFT = 3;
+
+$filename = 'laser_maze.txt';
+$file = fopen($filename, 'r');
+if (!$file) {
+  die ('Failed to open file '.$file);
+}
+
+$lasers_types = array(
+  '^' => LASER_UP,
+  '>' => LASER_RIGHT,
+  'v' => LASER_DOWN,
+  '<' => LASER_LEFT,
+);
+$test_cases = intval(fgets($file));
+for ($test_case = 1; $test_case <= $test_cases; ++$test_case) {
+  $maze = array();
+  $lasers = array();
+  $start_point = array();
+  $goal_point = array();
+  list ($maze_height, $maze_width) = array_map('intval', explode(' ', fgets($file)));
+  for ($row_index = 0; $row_index < $maze_height; ++$row_index) {
+    $row = trim(fgets($file));
+    foreach (str_split($row) as $column_index => $cell_type) {
+      $cell = array(
+        'movable' => in_array($cell_type, array('.', 'S', 'G')),
+        'min_moves' => array(
+          1 => true,
+          2 => true,
+          3 => true,
+          4 => true,
+        ),
+      );
+      $maze[$row_index][$column_index] = $cell;
+      if (in_array($cell_type, array_keys($lasers_types))) {
+        $lasers[] = array($row_index, $column_index, $lasers_types[$cell_type]);
+      }
+      if ($cell_type === 'S') {
+        $start_point = array($row_index, $column_index);
+      }
+      if ($cell_type === 'G') {
+        $goal_point = array($row_index, $column_index);
+      }
+    }
+  }
+  foreach ($lasers as $laser) {
+    list ($laser_row_index, $laser_column_index, $laser_direction) = $laser;
+
+    // up
+    $restrict_move_index = 4 - $laser_direction; // 1..4
+    $check_row_index = $laser_row_index - 1;
+    $check_column_index = $laser_column_index;
+    while (($check_row_index >= 0) && $maze[$check_row_index][$check_column_index]['movable']) {
+      $maze[$check_row_index][$check_column_index]['min_moves'][$restrict_move_index] = false;
+      $check_row_index--;
+    }
+
+    // right
+    $restrict_move_index++;
+    if ($restrict_move_index > 4) {
+      $restrict_move_index -= 4;
+    }
+    $check_row_index = $laser_row_index;
+    $check_column_index = $laser_column_index + 1;
+    while (($check_column_index < $maze_width) && $maze[$check_row_index][$check_column_index]['movable']) {
+      $maze[$check_row_index][$check_column_index]['min_moves'][$restrict_move_index] = false;
+      $check_column_index++;
+    }
+
+    // down
+    $restrict_move_index++;
+    if ($restrict_move_index > 4) {
+      $restrict_move_index -= 4;
+    }
+    $check_row_index = $laser_row_index + 1;
+    $check_column_index = $laser_column_index;
+    while (($check_row_index < $maze_height) && $maze[$check_row_index][$check_column_index]['movable']) {
+      $maze[$check_row_index][$check_column_index]['min_moves'][$restrict_move_index] = false;
+      $check_row_index++;
+    }
+
+    // left
+    $restrict_move_index++;
+    if ($restrict_move_index > 4) {
+      $restrict_move_index -= 4;
+    }
+    $check_row_index = $laser_row_index;
+    $check_column_index = $laser_column_index - 1;
+    while (($check_column_index >= 0) && $maze[$check_row_index][$check_column_index]['movable']) {
+      $maze[$check_row_index][$check_column_index]['min_moves'][$restrict_move_index] = false;
+      $check_column_index--;
+    }
+  }
+
+
+
+  $start_point[] = 0;
+  $check_cells_queue = array($start_point);
+  $current_move = -1;
+  while (count($check_cells_queue)) {
+    $check_cell = array_shift($check_cells_queue);
+    $check_row_index = $check_cell[0];
+    $check_column_index = $check_cell[1];
+    $current_move = $check_cell[2];
+    $next_move_index = ($current_move+1) % 4;
+    if ($next_move_index == 0) {
+      $next_move_index = 4;
+    }
+
+    // up
+    if ($check_row_index > 0) {
+      if ($maze[$check_row_index-1][$check_column_index]['movable'] && ($maze[$check_row_index-1][$check_column_index]['min_moves'][$next_move_index] === true)) {
+        $maze[$check_row_index-1][$check_column_index]['min_moves'][$next_move_index] = $current_move + 1;
+        array_push($check_cells_queue, array($check_row_index-1, $check_column_index, $current_move+1));
+      }
+    }
+
+    // right
+    if ($check_column_index < ($maze_width - 1)) {
+      if ($maze[$check_row_index][$check_column_index+1]['movable'] && ($maze[$check_row_index][$check_column_index+1]['min_moves'][$next_move_index] === true)) {
+        $maze[$check_row_index][$check_column_index+1]['min_moves'][$next_move_index] = $current_move + 1;
+        array_push($check_cells_queue, array($check_row_index, $check_column_index+1, $current_move+1));
+      }
+    }
+
+    // down
+    if ($check_row_index < ($maze_height - 1)) {
+      if ($maze[$check_row_index+1][$check_column_index]['movable'] && ($maze[$check_row_index+1][$check_column_index]['min_moves'][$next_move_index] === true)) {
+        $maze[$check_row_index+1][$check_column_index]['min_moves'][$next_move_index] = $current_move + 1;
+        array_push($check_cells_queue, array($check_row_index+1, $check_column_index, $current_move+1));
+      }
+    }
+
+    // left
+    if ($check_column_index > 0) {
+      if ($maze[$check_row_index][$check_column_index-1]['movable'] && ($maze[$check_row_index][$check_column_index-1]['min_moves'][$next_move_index] === true)) {
+        $maze[$check_row_index][$check_column_index-1]['min_moves'][$next_move_index] = $current_move + 1;
+        array_push($check_cells_queue, array($check_row_index, $check_column_index-1, $current_move+1));
+      }
+    }
+  }
+
+//  foreach ($maze as $row) {
+//    foreach ($row as $cell) {
+//      $string = '';
+//      foreach (range(1, 4) as $check_move_index) {
+//        $value = $cell['min_moves'][$check_move_index];
+//        if ($value === true) {
+//          $char = '-';
+//        } elseif ($value === false) {
+//          $char = 'x';
+//        } else {
+//          $char = $value;
+//        }
+//        $string .= substr('  '.$char, -3);
+//      }
+//      echo $string.' | ';
+//    }
+//    echo PHP_EOL;
+//  }
+//  die;
+  $min_value = PHP_INT_MAX;
+  foreach ($maze[$goal_point[0]][$goal_point[1]]['min_moves'] as $value) {
+    if (is_int($value) && ($value < $min_value)) {
+      $min_value = $value;
+    }
+  }
+  printf('Case #%d: %s'.PHP_EOL, $test_case, ($min_value === PHP_INT_MAX) ? 'impossible' : $min_value);
+}
+
+
+fclose($file);

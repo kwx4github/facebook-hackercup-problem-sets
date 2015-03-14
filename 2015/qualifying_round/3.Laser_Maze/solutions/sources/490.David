@@ -1,0 +1,137 @@
+#include <cstring>
+#include <iostream>
+#include <queue>
+#include <string>
+#include <tuple>
+#include <vector>
+using namespace std;
+
+class Maze {
+ public:
+  int solve(const vector<string>& board) {
+    const int n = board.size(), m = board[0].size();
+    memset(invalid_, false, sizeof invalid_);
+    board_ = board;
+
+    int goalX = -1, goalY = -1, startX = -1, startY = -1;
+    for (int i = 0; i < n; i++) {
+      for (int j = 0; j < m; j++) {
+        if (board_[i][j] == 'S') {
+          startX = i;
+          startY = j;
+        }
+
+        if (board_[i][j] == 'G') {
+          goalX = i;
+          goalY = j;
+        }
+
+        if (isTurret(i, j)) {
+          markInvalids(i, j);
+        }
+      }
+    }
+
+    return bfs(startX, startY, goalX, goalY);
+  }
+
+ private:
+  static const int maxn = 100;
+  bool invalid_[maxn][maxn][4];
+  bool vis_[maxn][maxn][4];
+  vector<string> board_;
+
+  bool isTurret(const int x, const int y) {
+    const string turrets = "<^>v";
+    return turrets.find(board_[x][y]) != string::npos;
+  }
+
+  bool isPartiallyValid(const int x, const int y) {
+    if (x < 0 || x >= board_.size() || y < 0 || y >= board_[0].size()) {
+      return false;
+    }
+
+    if (isTurret(x, y) || board_[x][y] == '#') {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool isValid(const int x, const int y, const int t) {
+    return isPartiallyValid(x, y) && !invalid_[x][y][t % 4];
+  }
+
+  void markInvalids(const int x, const int y) {
+    const int q[4][2] = {{0, -1}, {-1, 0}, {0, 1}, {1, 0}};
+
+    const string turrets = "<^>v";
+    int type = (turrets.find(board_[x][y]) + 1) % 4;
+    for (int i = 1; i <= 4; i++) {
+      int xx = x + q[type][0], yy = y + q[type][1];
+      while (isPartiallyValid(xx, yy)) {
+        invalid_[xx][yy][i % 4] = true;
+        xx += q[type][0];
+        yy += q[type][1];
+      }
+
+      type = (type + 1) % 4;
+    }
+  }
+
+  int bfs(const int sx, const int sy, const int gx, const int gy) {
+    memset(vis_, false, sizeof vis_);
+    queue<tuple<int, int, int>> q;
+
+    q.emplace(sx, sy, 0);
+    while (!q.empty()) {
+      tuple<int, int, int> node = q.front();
+      q.pop();
+
+      const int x = get<0>(node);
+      const int y = get<1>(node);
+      const int t = get<2>(node);
+      if (x == gx && y == gy) {
+        return t;
+      }
+
+      const int movs[4][2] = {{0, -1}, {-1, 0}, {0, 1}, {1, 0}};
+      for (int i = 0; i < 4; i++) {
+        const int xx = x + movs[i][0], yy = y + movs[i][1];
+        if (isValid(xx, yy, t + 1) && !vis_[xx][yy][(t + 1) % 4]) {
+          q.emplace(xx, yy, t + 1);
+          vis_[xx][yy][(t + 1) % 4] = true;
+        }
+      }
+    }
+
+    return -1;
+  }
+};
+
+int main() {
+  Maze maze;
+
+  int t;
+  cin >> t;
+  for (int tt = 1; tt <= t; tt++) {
+    int n, m;
+    cin >> n >> m;
+
+    vector<string> board(n);
+    for (int i = 0; i < n; i++) {
+      cin >> board[i];
+    }
+
+    const int ans = maze.solve(board);
+    cout << "Case #" << tt << ": ";
+    if (ans == -1) {
+      cout << "impossible";
+    } else {
+      cout << ans;
+    }
+    cout << endl;
+  }
+
+  return 0;
+}

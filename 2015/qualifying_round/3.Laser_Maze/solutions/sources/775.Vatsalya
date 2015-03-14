@@ -1,0 +1,164 @@
+#include <iostream>
+#include <stdio.h>
+#include <math.h>
+#include <climits>
+#include <functional>
+#include <string>
+#include <cstring>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#define fi(n) scanf("%d",&n)
+#define fo(n) printf("%d",n)
+#define pb(x) push_back(x)
+#define mp(x,y) make_pair(x,y)
+#define all(v) v.begin(),v.end()
+#define it(i,v) __typeof(v.begin()) i;
+#define set(a,val) memset(a,val,sizeof(a))
+#define rep(i,a,b) for(__typeof(a) i = (a); i < (b) ; i++)
+#define rev(i,a,b) for(__typeof(a) i = (a); i >= (b) ; i--)
+
+using namespace std;
+
+typedef struct node{
+	int x_cor,y_cor,depth;
+}node;
+
+char utility_arr[101][101][4];
+int dest_X,dest_Y;
+int step[100][100][4];
+int n,m;
+
+int min(int a,int b){
+	return a>b?b:a;
+}
+
+int main(){
+	int t,T,value_of_orientation,k,x,y,start_X,start_Y,ti,tj,tk,ans;
+	fi(T);
+
+	for(t=1;t<=T;t++){
+		fi(m);fi(n);
+		char input_arr[m][n];
+		rep(i,0,m){
+			scanf("%s",input_arr[i]);
+		}
+		////////// utility array preparation starts here ////////////
+		vector<pair<int,int> > bombers;
+		
+		rep(i,0,m)rep(j,0,n){
+			if(input_arr[i][j]=='G'){
+				dest_X = i; dest_Y = j; break;
+			}
+		}
+		rep(i,0,m)rep(j,0,n){
+			if(input_arr[i][j]=='S'){
+				start_X = i; start_Y = j; break;
+			}
+		}
+		rep(i,0,m)rep(j,0,n)rep(k,0,4){step[i][j][k]=1e9+1;
+			if(input_arr[i][j]=='.' || input_arr[i][j]=='S' || input_arr[i][j]=='G')
+				utility_arr[i][j][0] = utility_arr[i][j][1] = utility_arr[i][j][2] = utility_arr[i][j][3] = 's';
+			else if(input_arr[i][j]=='#')
+				utility_arr[i][j][0] = utility_arr[i][j][1] = utility_arr[i][j][2] = utility_arr[i][j][3] = 'f';
+			else{
+				utility_arr[i][j][0] = utility_arr[i][j][1] = utility_arr[i][j][2] = utility_arr[i][j][3] = 'f';
+				bombers.pb(mp(i,j));
+			}
+		}
+		vector<pair<int,int> >::iterator it = bombers.begin();
+		while(it!=bombers.end()){
+			x = it->first; y = it->second;
+			switch(input_arr[x][y]){
+				case '>' : value_of_orientation = 0; break;
+				case 'v' : value_of_orientation = 1; break;
+				case '<' : value_of_orientation = 2; break;
+				case '^' : value_of_orientation = 3; break;
+			}
+			rep(i,0,4){
+				k = (i+value_of_orientation)%4;
+				if(k==0){
+					rep(j,y+1,n){
+						if(input_arr[x][j]=='#' || input_arr[x][j]=='>' || input_arr[x][j]=='<' || input_arr[x][j]=='^' || input_arr[x][j]=='v')
+							break;
+						utility_arr[x][j][i] = 'f';
+					}
+				}
+				else if(k==1){
+					rep(j,x+1,m){
+						if(input_arr[j][y]=='#' || input_arr[j][y]=='>' || input_arr[j][y]=='<' || input_arr[j][y]=='^' || input_arr[j][y]=='v')
+							break;
+						utility_arr[j][y][i] = 'f';
+					}
+				}
+				else if(k==2){
+					rev(j,y-1,0){
+						if(input_arr[x][j]=='#' || input_arr[x][j]=='>' || input_arr[x][j]=='<' || input_arr[x][j]=='^' || input_arr[x][j]=='v')
+							break;
+						utility_arr[x][j][i] = 'f';
+					}
+				}
+				else{
+					rev(j,x-1,0){
+						if(input_arr[j][y]=='#' || input_arr[j][y]=='>' || input_arr[j][y]=='<' || input_arr[j][y]=='^' || input_arr[j][y]=='v')
+							break;
+						utility_arr[j][y][i] = 'f';
+					}
+				}
+			}
+			it++;
+		}
+		queue<node> myqueue;
+
+		///////////////////// BFS ///////////////////////////
+		node newnode,temp;
+		newnode.x_cor = start_X; newnode.y_cor = start_Y; newnode.depth = 0;
+		myqueue.push(newnode); step[start_X][start_Y][0] = 0;
+		while(!myqueue.empty()){
+			newnode = myqueue.front();
+			myqueue.pop();
+			ti = newnode.x_cor; tj = newnode.y_cor; tk = newnode.depth;
+			if(ti + 1 <m && utility_arr[ti+1][tj][(tk+1)%4]=='s'){
+				if(step[ti + 1][tj][(tk+1)%4] > tk+1){
+					node temp;
+					temp.x_cor = ti+1; temp.y_cor = tj; temp.depth = tk+1;
+					step[ti + 1][tj][(tk+1)%4] = tk+1;
+					myqueue.push(temp);
+				}
+			}
+			if(ti - 1 >=0 && utility_arr[ti-1][tj][(tk+1)%4]=='s'){
+				if(step[ti - 1][tj][(tk+1)%4] > tk+1){
+					node temp;
+					temp.x_cor = ti-1; temp.y_cor = tj; temp.depth = tk+1;
+					step[ti - 1][tj][(tk+1)%4] = tk+1;
+					myqueue.push(temp);
+				}
+			}
+			if(tj + 1 <n && utility_arr[ti][tj+1][(tk+1)%4]=='s'){
+				if(step[ti][tj+1][(tk+1)%4] > tk+1){
+					node temp;
+					temp.x_cor = ti; temp.y_cor = tj+1; temp.depth = tk+1;
+					step[ti][tj+1][(tk+1)%4] = tk+1;
+					myqueue.push(temp);
+				}
+			}
+			if(tj - 1 >=0 && utility_arr[ti][tj-1][(tk+1)%4]=='s'){
+				if(step[ti][tj-1][(tk+1)%4] > tk+1){
+					node temp;
+					temp.x_cor = ti; temp.y_cor = tj-1; temp.depth = tk+1;
+					step[ti][tj-1][(tk+1)%4] = tk+1;
+					myqueue.push(temp);
+				}
+			}
+		}
+
+		/////////////////////////////////////////////////////
+		ans = min(min(step[dest_X][dest_Y][0],step[dest_X][dest_Y][1]),min(step[dest_X][dest_Y][2],step[dest_X][dest_Y][3]));
+		if(ans==1e9+1)
+			printf("Case #%d: impossible\n",t);
+		else
+			printf("Case #%d: %d\n",t,ans);
+		///////////////////////   END   ////////////////////////////////////
+	}
+	return 0;
+}

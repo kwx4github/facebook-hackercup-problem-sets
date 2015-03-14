@@ -1,0 +1,127 @@
+#!/usr/bin/python
+
+import sys, datetime
+
+lasers = right = down = None
+
+def possible(i, j ,k):
+    for y, x, l in lasers:
+        if i == y:
+            if j < x and (l+k) % 4 == 0 and right[i][j+1:x] == '.'*(x-j-1):
+                return False
+            if x < j and (l+k) % 4 == 2 and right[i][x+1:j] == '.'*(j-x-1):
+                return False
+        if j == x:
+            if i < y and (l+k) % 4 == 1 and down[j][i+1:y] == '.'*(y-i-1):
+                return False
+            if y < i and (l+k) % 4 == 3 and down[j][y+1:i] == '.'*(i-y-1):
+                return False
+    return True
+
+
+def solve(m, n, maze):
+    global lasers, right, down
+    right = []
+    for i in xrange(m):
+        s = ''
+        for j in xrange(n):
+            s += '#' if maze[i][j] in '#<>^v' else '.'
+        right.append(s)
+    down = []
+    for j in xrange(n):
+        s = ''
+        for i in xrange(m):
+            s += '#' if maze[i][j] in '#<>^v' else '.'
+        down.append(s)
+    lasers = set()
+    vertices = set()
+    goal = start = None
+    for i in xrange(m):
+        for j in xrange(n):
+            if maze[i][j] in '<^>v':
+                lasers.add((i,j,'<^>v'.index(maze[i][j])))
+            elif maze[i][j] == 'S':
+                start = (i,j,0)
+            elif maze[i][j] == 'G':
+                goal = (i,j)
+    for i in xrange(m):
+        for j in xrange(n):
+            if maze[i][j] in 'SG.':
+                k = (abs(i-start[0]) + abs(j-start[1])) % 4
+                l = (k+2)%4
+                for x in (k, l):
+                    if possible(i,j,x):
+                        vertices.add((i,j,x))
+    vertices.add(start)
+    neighbors = {(i,j,k): set() for (i,j,k) in vertices}
+    for (i,j,k) in vertices:
+        l = (k+1)%4
+        for y, x in ((i-1, j), (i+1, j), (i, j-1), (i, j+1)):
+            if (y, x, l) in vertices:
+                neighbors[(i,j,k)].add((y,x,l))
+    dist = {(i,j,k): 50000 for (i,j,k) in vertices}
+    dist[start] = 0
+    current = start
+    unvisited = set(vertices)
+    while True:
+        for vertex in neighbors[current]:
+            dist[vertex] = min(dist[vertex], dist[current] + 1)
+        unvisited.remove(current)
+        if current[:2] == goal:
+            return dist[current]
+        current = min(unvisited, key=dist.get)
+        if dist[current] == 50000:
+            break
+    return 'impossible'
+
+
+def main():
+    if len(sys.argv) < 2:
+        print 'Please provide input file'
+        print 'Usage: %s inputfile [outputfile]' % sys.argv[0]
+        return
+    timestart = datetime.datetime.now()
+
+    try:
+        inputFile = open(sys.argv[1])
+    except:
+        print 'Failed to read input file %s' % sys.argv[1]
+        return
+    try:
+        outputFile = open(sys.argv[2], 'w') if len(sys.argv) >= 3 else None
+    except:
+        print 'Failed to create output file %s' % sys.argv[2]
+        return
+
+    testCases = int(inputFile.readline().strip())
+
+    print '-----------------'
+    print 'Test cases: %d ' % testCases
+    print 'No output file' if len(sys.argv) < 3 else 'Writing to %s' % sys.argv[2]
+    print '-----------------'
+
+    for testCaseNumber in range(1, testCases+1):
+
+        m, n = map(int, inputFile.readline().strip().split())
+
+        maze = []
+        for i in range(m):
+            maze.append(inputFile.readline().strip())
+
+        string = 'Case #%d: %s' % (testCaseNumber, solve(m, n, maze))
+
+        print string
+        if outputFile:
+            outputFile.write(string + '\n')
+
+    print '-----------------'
+    print 'Written to %s' % sys.argv[2] if outputFile else 'No output file'
+    print 'Elapsed time: %s' % (datetime.datetime.now() - timestart)
+    print '-----------------'
+
+    inputFile.close()
+    if outputFile:
+        outputFile.close()
+
+if __name__=='__main__':
+    main()

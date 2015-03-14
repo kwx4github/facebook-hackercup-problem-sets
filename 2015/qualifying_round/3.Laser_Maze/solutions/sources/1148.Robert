@@ -1,0 +1,178 @@
+package main
+
+import (
+	"container/list"
+	"fmt"
+	"strings"
+)
+
+var maze = Maze{}
+
+func main() {
+	var testCases int
+	fmt.Scan(&testCases)
+	for caseNum := 1; caseNum <= testCases; caseNum++ {
+		maze.read()
+		steps := maze.solve()
+		if (steps == -1) {
+			fmt.Printf("Case #%d: %s\n", caseNum, "impossible")
+		} else {
+			fmt.Printf("Case #%d: %d\n", caseNum, steps)
+		}
+	}
+}
+
+func (m *Maze) solve() int {
+		seen := []map[Cell]bool{
+			make(map[Cell]bool),
+			make(map[Cell]bool),
+			make(map[Cell]bool),
+			make(map[Cell]bool)}
+		steps := 0
+		q := list.New()
+		start := m.findStart()
+		seen[steps % 4][start] = true
+		q.PushBack(start)
+		currentFringeSize := 1
+		nextFringeSize := 1
+		for q.Front() != nil {
+			currentNode := q.Remove(q.Front()).(Cell)
+			currentFringeSize--
+			if currentFringeSize == 0 {
+				steps++
+				currentFringeSize = nextFringeSize
+				nextFringeSize = 0
+			}
+			for _, cell := range m.neighbours(currentNode, steps) {
+				if m.rows[cell.i][cell.j] == 'G' {
+					return steps
+				}
+				_, ok := seen[(steps + 1) % 4][cell]
+				if !ok {
+					q.PushBack(cell)
+					seen[(steps + 1) % 4][cell] = true
+					nextFringeSize += 1
+				}
+			}
+		}
+	return -1
+}
+
+func (m *Maze) findStart() Cell {
+	for i := 0; i < m.M; i++ {
+		for j := 0; j < m.N; j++ {
+			if m.rows[i][j] == 'S' {
+				return Cell{i,j}
+			}
+		}
+	}
+	return Cell{-1, -1}
+}
+
+func (m *Maze) neighbours(c Cell, steps int) []Cell {
+	stepBit := uint8(1) << uint8((steps) % 4)
+	var adj []Cell
+	deltas := [][]int{[]int{1, 0},[]int{0, 1},[]int{-1, 0},[]int{0, -1}}
+	for _, d := range deltas {
+		newCell := Cell{c.i + d[0], c.j + d[1]}
+		if m.canMoveTo(newCell, stepBit) {
+			adj = append(adj, newCell)
+		}
+	}
+	return adj
+}
+
+func (m *Maze) canMoveTo(c Cell, stepBit uint8) bool {
+	return c.i >= 0 && c.j >= 0 && c.i < m.M && c.j < m.N && isFloor(m.rows[c.i][c.j]) && m.isLaserSafe(c, stepBit)
+}
+
+func (m *Maze) isLaserSafe(c Cell, stepBit uint8) bool {
+	bits := m.bitmap[c.i][c.j]
+	ans := (bits & stepBit) == 0
+	return ans
+}
+
+func (m *Maze) read() {
+	m.clear()
+	fmt.Scan(&m.M)
+	fmt.Scan(&m.N)
+	for i := 0; i < m.M; i++ {
+		fmt.Scan(&m.rows[i])
+	}
+	m.scanAllLasers()
+}
+
+func (m *Maze) scanAllLasers() {
+	for i := 0; i < m.M; i++ {
+		m.scanLasers(i, 0, m.N, 0, 1) //right
+		m.scanLasers(i, m.N-1, m.N, 0, -1) //left
+	}
+	for j := 0; j < m.N; j++ {
+		m.scanLasers(0, j, m.M, 1, 0) //down
+		m.scanLasers(m.M-1, j, m.M, -1, 0) //up
+	}
+}
+
+func (m *Maze) scanLasers(i, j, steps, di, dj int) {
+	laser := uint8(0)
+	for ; steps > 0; steps-- {
+		c := m.rows[i][j]
+		if isFloor(c) {
+			m.bitmap[i][j] = laser | m.bitmap[i][j]
+		} else {
+			laser = getLaser(c, di, dj)
+		}
+		i += di
+		j += dj
+	}
+}
+
+func isFloor(c byte) bool {
+	return c == '.' || c == 'S' || c == 'G'
+}
+
+func getLaser(c byte, di, dj int) uint8 {
+	laserId := strings.IndexByte("<^>v", c)
+	if laserId == -1 {
+		return uint8(0)
+	}
+	var directionId int
+	if dj == -1 {
+		//left
+		directionId = 0
+	} else if di == -1 {
+		//up
+		directionId = 1
+	} else if dj == 1 {
+		//right
+		directionId = 2
+	} else if di == 1 {
+		//down
+		directionId = 3
+	}
+	rotations := directionId - laserId
+	if rotations < 0 {
+		rotations += 4
+	}
+	return 1 << uint8(rotations)
+}
+
+func (m *Maze) clear() {
+	for i := 0; i < 100; i++ {
+		for j := 0; j < 100; j++ {
+			m.bitmap[i][j] = uint8(0)
+		}
+	}
+}
+
+type Cell struct {
+	i int
+	j int
+}
+
+type Maze struct {
+	M      int
+	N      int
+	rows   [100]string
+	bitmap [100][100]uint8
+}

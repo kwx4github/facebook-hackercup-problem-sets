@@ -1,0 +1,168 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+#define INFINITE 100*100*4+1
+
+int min(int a, int b) {
+    return a<b? a : b;
+}
+
+typedef struct rec_res_ {
+    bool is_possible;
+    int min_steps;
+} RecRes;
+
+typedef struct pos_ {
+    int lin, col;
+}Position;
+
+void fillMazeTurret(int maze[][100][4], int turr_lin, int turr_col, int start_direction, int maze_lin, int maze_cols) {
+    int val_start, val_end;
+    bool hor; // if false vertical
+
+    int direction = start_direction;
+    for(int i = 0; i < 4; i++) {
+    switch(direction) {
+    case 0: hor = true;
+        val_start = turr_col;
+        val_end = maze_cols-1;
+        break;
+    case 2: hor = true;
+        val_start = 0;
+        val_end = turr_col;
+        break;
+    case 1: hor = false;
+        val_start = turr_lin;
+        val_end = maze_lin-1;
+        break;
+    case 3: hor = false;
+        val_start = 0;
+        val_end = turr_lin;
+        break;
+    }
+
+    for(int j = val_start; j <= val_end; j++) {
+        if(hor) {
+            maze[turr_lin][j][i] = 1;
+        }else{
+            maze[j][turr_col][i] = 1;
+        }
+    }
+    direction = (direction + 1)%4;
+    }
+}
+
+RecRes searchMaze(int maze[][100][4], int current_step, int current_lin, int current_col, int goal_lin, int goal_col, int maze_lins, int maze_cols) {
+    RecRes partial;
+    partial.is_possible = false;
+    if(current_lin == goal_lin && current_col == goal_col) {
+        partial.is_possible = true;
+        partial.min_steps = current_step;
+        return partial;
+    }
+
+    RecRes right, bot , left, top;
+    right.is_possible = bot.is_possible = left.is_possible = top.is_possible = false;
+    right.min_steps = bot.min_steps = left.min_steps = top.min_steps = INFINITE;
+    int current_time = current_step%4;
+    int next_time = (current_step+1)%4;
+
+    maze[current_lin][current_col][current_time] = 2;
+
+    if(current_col + 1 < maze_cols && (maze[current_lin][current_col+1][next_time]==0)) {
+        right = searchMaze(maze, current_step+1, current_lin, current_col+1, goal_lin, goal_col, maze_lins, maze_cols);
+    }
+    if( current_lin +1 < maze_lins && (maze[current_lin+1][current_col][next_time]==0)) {
+        bot = searchMaze(maze, current_step+1, current_lin+1, current_col, goal_lin, goal_col, maze_lins, maze_cols);
+    }
+    if(current_col - 1 >= 0 && (maze[current_lin][current_col-1][next_time]==0)) {
+        left = searchMaze(maze, current_step+1, current_lin, current_col-1, goal_lin, goal_col, maze_lins, maze_cols);
+    }
+    if( current_lin -1 >= 0  && (maze[current_lin-1][current_col][next_time]==0)) {
+        top = searchMaze(maze, current_step+1, current_lin-1, current_col, goal_lin, goal_col, maze_lins, maze_cols);
+    }
+
+    partial.is_possible = right.is_possible || bot.is_possible || left.is_possible || top.is_possible;
+
+    if(!partial.is_possible){
+        partial.min_steps = INFINITE;
+        return partial;
+    }else{
+        partial.min_steps = min(min(right.min_steps, left.min_steps), min(top.min_steps, bot.min_steps));
+        return partial;
+    }
+
+}
+
+
+int main()
+{
+    int t;
+    cin >> t;
+
+    int lins, cols;
+
+    int maze[100][100][4];
+
+    string input_line;
+
+    Position start, goal;
+
+    for(int i = 1; i <= t; i++) {
+        cin >> lins;
+        cin >> cols;
+
+        for(int j = 0; j < lins; j++) {
+            for(int k = 0; k < cols; k++) {
+                for(int n = 0; n < 4; n++) {
+                    maze[j][k][n] = 0;
+                }
+            }
+        }
+
+        for(int j = 0; j < lins; j++) {
+            cin >> input_line;
+            for(int k = 0; k < cols; k++) {
+
+                switch(input_line[k]) {
+                case '.': break;
+                case 'S':;
+                    start.lin = j;
+                    start.col = k;
+                    break;
+                case 'G':;
+                    goal.lin = j;
+                    goal.col = k;
+                    break;
+                case '>': fillMazeTurret(maze, j, k, 0, lins, cols);
+                    break;
+                case 'v': fillMazeTurret(maze, j, k, 1, lins, cols);
+                    break;
+                case '<': fillMazeTurret(maze, j, k, 2, lins, cols);
+                    break;
+                case '^': fillMazeTurret(maze, j, k, 3, lins, cols);
+                    break;
+                case '#':
+                    maze[j][k][0] = 1;
+                    maze[j][k][1] = 1;
+                    maze[j][k][2] = 1;
+                    maze[j][k][3] = 1;
+                    break;
+                }
+            }
+        }
+
+        RecRes res = searchMaze(maze, 0, start.lin, start.col, goal.lin, goal.col, lins, cols);
+
+        cout << "Case #"<< i <<": ";
+        if(res.is_possible)
+            cout << res.min_steps;
+        else
+            cout << "impossible";
+        cout << endl;
+    }
+
+    return 0;
+}
+

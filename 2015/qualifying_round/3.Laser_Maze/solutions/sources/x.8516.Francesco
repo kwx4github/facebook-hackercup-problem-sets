@@ -1,0 +1,307 @@
+//
+//  Laser Maze
+//  Facebook Hacker Cup 2015
+//
+//  Created by Francesco Infante on 09/01/15.
+//  Copyright (c) 2015 Francesco Infante. All rights reserved.
+//
+
+//Standard mazes lose their mystery as one grows older. But throw in some lasers, and suddenly you've got yourself a recipe for cross-generational appeal. The object in any maze is to find your way from your starting point to some goal. In a Laser Maze you must additionally contend with laser turrets.
+//
+//A laser turret is a stationary pillar that both blocks your movement and fires lasers from one side. Every time you take a step (either up, down, left, or right), every laser turret in the maze then rotates 90 degrees clockwise, and then shoots a momentary laser blast in the direction that it is facing. Needless to say, if you find yourself in the path of one of these lasers, you won't be around long enough to find a way out. A wall is a stationary pillar that blocks your movement, but does not fire lasers.
+//
+//Lasers are powerful, but they do not pass through walls or laser turrets. The laser turrets respond to your movements, so you can't stand still and wait for the turrets to turn. If you reach the goal, but are immediately shot by a laser, your efforts will have been in vain, so make sure you reach the goal safely.
+//
+//Input
+//Input begins with an integer T, the number of mazes you'll explore. For each maze, there is first a line containing two integers, M and N, the height and width of the maze, respectively. The next M lines contain N characters each, describing the maze:
+//
+//. (empty space)
+//# (wall)
+//S (starting position)
+//G (goal)
+//< > ^ v (laser turrets)
+//The four symbols for laser turrets signify turrets that are initially pointing left, right, up, or down respectively before you take your first step.
+//
+//Output
+//For the ith maze, print a line containing "Case #i: " followed by the smallest number of steps necessary to get to the exit without being hit by a laser, or the string "impossible'' if there is no way to reach the goal safely.
+//
+//Constraints
+//1 ≤ T ≤ 100
+//1 ≤ M, N ≤ 100
+//
+//5
+//2 5
+//##^##
+//S...G
+//2 5
+//##v##
+//S...G
+//1 5
+//S..G<
+//1 6
+//S...G<
+//5 5
+//S....
+//.....
+//.>v..
+//.^<..
+//....G
+//
+//Case #1: 6
+//Case #2: 4
+//Case #3: 3
+//Case #4: impossible
+//Case #5: 8
+
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <set>
+#include <queue>
+#include <algorithm>
+using namespace std;
+
+inline int node_id(int i, int j, int multi) {
+    return multi*10000 + i*100 + j;
+}
+
+char labirinto[100][100];
+set<int> invalid_nodes;
+vector<int> end_nodes;
+vector<vector<int>> adj_lists;
+int m, n;
+
+struct node_pair {
+    int node_id;
+    int dist;
+};
+struct Comparator {
+    bool operator()(node_pair a, node_pair b){
+        return a.dist < b.dist;
+    }
+};
+
+int dijkstra(int start_node) {
+    if (end_nodes.empty()) {
+        return INT_MAX;
+    }
+    priority_queue<node_pair, vector<node_pair>, Comparator> pq;
+    node_pair np;
+    np.node_id = start_node;
+    np.dist = 0;
+    pq.push(np);
+    int node_dist[node_id(99,99,4)];
+    for (int i = 0; i<=node_id(99,99,4); i++) {
+        node_dist[i] = INT_MAX;
+    }
+    node_dist[start_node] = 0;
+    
+    while (!pq.empty()) {
+        auto node = pq.top();
+        pq.pop();
+        if (node_dist[node.node_id] == node.dist) {
+            for (int adj : adj_lists[node.node_id]) {
+                if (node.dist+1 < node_dist[adj]) {
+                    node_dist[adj] =node.dist+1;
+                    node_pair nep;
+                    nep.node_id = adj;
+                    nep.dist = node_dist[adj];
+                    pq.push(nep);
+                }
+            }
+        }
+    }
+    
+    int minimum = node_dist[end_nodes[0]];
+    for (int j = 1; j<end_nodes.size(); j++) {
+        minimum = min(minimum, node_dist[end_nodes[j]]);
+    }
+    
+    return minimum;
+}
+
+void invalid_me(int i, int j) {
+    invalid_nodes.insert(node_id(i,j,1));
+    invalid_nodes.insert(node_id(i,j,2));
+    invalid_nodes.insert(node_id(i,j,3));
+    invalid_nodes.insert(node_id(i,j,4));
+}
+
+bool valid_node(int i, int j, int multi) {
+    if (i<0 || j <0 || i > m-1 || j > n-1) {
+        return false;
+    }
+    if (invalid_nodes.find(node_id(i, j, multi)) != invalid_nodes.end()) {
+        return false;
+    }
+    return true;
+}
+
+void set_invalid(int i, int j, int multi, char direction) {
+    if (direction == '^') {
+        while (i>=0) {
+            invalid_nodes.insert(node_id(i,j,multi));
+            i--;
+        }
+    }
+    if (direction == '>') {
+        while (j<n) {
+            invalid_nodes.insert(node_id(i,j,multi));
+            j++;
+        }
+    }
+    if (direction == 'v') {
+        while (i<m) {
+            invalid_nodes.insert(node_id(i,j,multi));
+            i++;
+        }
+    }
+    if (direction == '<') {
+        while (j>=0) {
+            invalid_nodes.insert(node_id(i,j,multi));
+            j--;
+        }
+    }
+}
+
+int main() {
+    ifstream in;
+    ofstream out;
+    in.open("input");
+    out.open("output");
+    
+    int test;
+    in >> test;
+    for (int t = 1; t<= test; t++) {
+        int result = INT_MAX;
+        
+        in >> m >> n;
+        
+        for (int i = 0; i<m; i++) {
+            in >> labirinto[i];
+        }
+        
+        invalid_nodes.clear();
+        adj_lists.clear();
+        end_nodes.clear();
+        
+        for (int i = 0; i<=node_id(99,99,4); i++) {
+            adj_lists.push_back(vector<int>());
+        }
+        
+        int start_node = -1;
+        
+        
+        for (int i = 0; i<m; i++) {
+            for (int j = 0; j<n; j++) {
+                if (labirinto[i][j] == '#') {
+                    invalid_me(i,j);
+                    continue;
+                }
+                
+                if (labirinto[i][j] == '^') {
+                    invalid_me(i,j);
+                    set_invalid(i, j, 1, '^');
+                    set_invalid(i, j, 2, '>');
+                    set_invalid(i, j, 3, 'v');
+                    set_invalid(i, j, 4, '<');
+                    continue;
+                }
+                
+                if (labirinto[i][j] == '>') {
+                    invalid_me(i,j);
+                    set_invalid(i, j, 1, '>');
+                    set_invalid(i, j, 2, 'v');
+                    set_invalid(i, j, 3, '<');
+                    set_invalid(i, j, 4, '^');
+                    continue;
+                }
+                
+                if (labirinto[i][j] == 'v') {
+                    invalid_me(i,j);
+                    set_invalid(i, j, 1, 'v');
+                    set_invalid(i, j, 2, '<');
+                    set_invalid(i, j, 3, '^');
+                    set_invalid(i, j, 4, '>');
+                    continue;
+                }
+                
+                if (labirinto[i][j] == '<') {
+                    invalid_me(i,j);
+                    set_invalid(i, j, 1, '<');
+                    set_invalid(i, j, 2, '^');
+                    set_invalid(i, j, 3, '>');
+                    set_invalid(i, j, 4, 'v');
+                    continue;
+                }
+                
+                if (labirinto[i][j] == 'S') {
+                    start_node = node_id(i,j,1);
+                }
+                
+                if (labirinto[i][j] == 'G') {
+                    end_nodes.push_back(node_id(i,j,1));
+                    end_nodes.push_back(node_id(i,j,2));
+                    end_nodes.push_back(node_id(i,j,3));
+                    end_nodes.push_back(node_id(i,j,4));
+                }
+            }
+        }
+        
+        for (int i = 0; i<m; i++) {
+            for (int j = 0; j<n; j++) {
+                for (int k = 1; k<=4; k++) {
+                    if (valid_node(i,j,k) || node_id(i, j, k) == start_node) {
+                        int next_multi = (k+1);
+                        if (next_multi == 5) {
+                            next_multi = 1;
+                        }
+                        
+                        if (valid_node(i-1,j-1,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i-1, j-1, next_multi));
+                        }
+                        if (valid_node(i+1,j+1,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i+1, j+1, next_multi));
+                        }
+                        if (valid_node(i-1,j+1,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i-1, j+1, next_multi));
+                        }
+                        if (valid_node(i+1,j-1,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i+1, j-1, next_multi));
+                        }
+                        if (valid_node(i-1,j,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i-1, j, next_multi));
+                        }
+                        if (valid_node(i,j+1,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i, j+1, next_multi));
+                        }
+                        if (valid_node(i+1,j,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i+1, j, next_multi));
+                        }
+                        if (valid_node(i,j-1,next_multi)) {
+                            adj_lists[node_id(i, j, k)].push_back(node_id(i, j-1, next_multi));
+                        }
+                    }
+                }
+            }
+        }
+        
+        int res = dijkstra(start_node);
+        if (res < result) {
+            result = res;
+        }
+        
+        if (result<INT_MAX) {
+            out << "Case #" << t << ": " << result << endl;
+        } else {
+            out << "Case #" << t << ": " << "impossible" << endl;
+            
+        }
+    }
+    
+    
+    in.close();
+    out.close();
+    return 0;
+}

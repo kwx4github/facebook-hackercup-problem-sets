@@ -1,0 +1,117 @@
+__author__ = 'z_bodya'
+
+from heapq import *
+
+# inp = open('laser_maze_example_input.txt', 'r')
+inp = open('laser_maze.txt', 'r')
+# out = open('out.txt', 'w')
+out = open('out_res.txt', 'w')
+test_count = int(inp.readline().strip())
+
+
+def test_laser(c, step, dst):
+    laser_states = {
+        '<': 0,
+        '^': 1,
+        '>': 2,
+        'v': 3,
+    }
+    l = laser_states[c]
+    return (l + step) % 4 == dst
+
+
+def solve(maze, m, n):
+    def find_c(c):
+        for i in range(m):
+            for j in range(n):
+                if maze[i][j] == c:
+                    return i, j
+
+    sx, sy = find_c('S')
+    ex, ey = find_c('G')
+
+    maze[sx][sy] = maze[ex][ey] = '.'
+
+    moves = ((-1, 0), (0, -1), (0, 1), (1, 0))
+
+    def test_lasers(x, y, step):
+        for i in range(1, m):
+            if x + i == m: break
+            c = maze[x + i][y]
+            if c == '#': break
+            if c == '.': continue
+
+            if test_laser(c, step, 1):
+                return False
+
+            break
+
+        for i in range(1, m):
+            if x - i < 0: break
+            c = maze[x - i][y]
+            if c == '#': break
+            if c == '.': continue
+
+            if test_laser(c, step, 3):
+                return False
+            break
+
+        for i in range(1, n):
+            if y + i >= n: break
+            c = maze[x][y + i]
+            if c == '#': break
+            if c == '.': continue
+
+            if test_laser(c, step, 0):
+                return False
+            break
+
+        for i in range(1, n):
+            if y - i < 0: break
+            c = maze[x][y - i]
+            if c == '#': break
+            if c == '.': continue
+
+            if test_laser(c, step, 2):
+                return False
+            break
+
+        return True
+
+    q = []
+    not_visited = [[[True for l in range(4)] for i in range(n)] for j in range(m)]
+
+    heappush(q, (0, sx, sy))
+    ans = -1
+    while q:
+        step, sx, sy = heappop(q)
+        for dx, dy in moves:
+            x, y = sx + dx, sy + dy
+            if x < 0 or y < 0 or x >= m or y >= n or maze[x][y] == '#':
+                continue
+            if maze[x][y] == '.' and not_visited[x][y][(step + 1) % 4] and test_lasers(x, y, step + 1):
+                not_visited[x][y][(step + 1) % 4] = False
+                heappush(q, (step + 1, x, y))
+                if x == ex and y == ey:
+                    q = []
+                    ans = step + 1
+                    break
+
+    if ans > 0:
+        return str(ans)
+    else:
+        return 'impossible'
+
+
+for test_number in range(test_count):
+    m, n = map(int, inp.readline().strip().split(' '))
+    maze = []
+    for line_number in range(m):
+        line = list(inp.readline().strip())
+        maze.append(line)
+
+    ans = solve(maze, m, n)
+    out.write('Case #%d: %s\n' % (test_number + 1, ans))
+
+out.close()
+inp.close()

@@ -1,0 +1,156 @@
+//spero che la complessità sia abbastanza bassa, ma non credo. Forse dovrei visitare in ampiezza invece che profondità.
+//non mi sono fidato. ora visito in ampiezza. Speriamo basti
+//
+
+//Infernet89
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<queue>
+#include<utility>
+
+
+using namespace std;
+
+int T;
+int M,N,x,y;
+char maze[128][128]; //y,x. riga,colonna
+char devnull;
+char stringa[128];
+int v[4][128][128];
+int sx,sy,gx,gy;
+int bestSol;
+//std::queue<int> coda;
+std::queue<std::pair <std::pair <int,int>,int> > coda;
+//costruisce le scacchiere percorribili al passo i%4
+int preprocess()
+{
+	int i,j,k;
+	for(i=0;i<4;i++)
+		for(j=0;j<M;j++)
+			for(k=0;k<N;k++)
+				v[i][j][k]=0;
+	//-1 se la zona non è transitabile, dovrebbero essere già a zero di default
+	for(y=0;y<M;y++)
+		for(x=0;x<N;x++)
+			if(maze[y][x]=='#')
+			{
+				v[0][y][x]=-1;
+				v[1][y][x]=-1;
+				v[2][y][x]=-1;
+				v[3][y][x]=-1;
+			}
+			else if(maze[y][x]=='<')
+			{
+				v[0][y][x]=-1;
+				v[1][y][x]=-1;
+				v[2][y][x]=-1;
+				v[3][y][x]=-1;
+				for(i=x-1;i>=0;i--) v[0][y][i]=-1;
+				for(i=y-1;i>=0;i--) v[1][i][x]=-1;
+				for(i=x+1;i<N;i++) v[2][y][i]=-1;
+				for(i=y+1;i<M;i++) v[3][i][x]=-1;
+			}
+			else if(maze[y][x]=='^')
+			{
+				v[0][y][x]=-1;
+				v[1][y][x]=-1;
+				v[2][y][x]=-1;
+				v[3][y][x]=-1;
+				for(i=x-1;i>=0;i--) v[3][y][i]=-1;
+				for(i=y-1;i>=0;i--) v[0][i][x]=-1;
+				for(i=x+1;i<N;i++) v[1][y][i]=-1;
+				for(i=y+1;i<M;i++) v[2][i][x]=-1;
+			}
+			else if(maze[y][x]=='>')
+			{
+				v[0][y][x]=-1;
+				v[1][y][x]=-1;
+				v[2][y][x]=-1;
+				v[3][y][x]=-1;
+				for(i=x-1;i>=0;i--) v[2][y][i]=-1;
+				for(i=y-1;i>=0;i--) v[3][i][x]=-1;
+				for(i=x+1;i<N;i++) v[0][y][i]=-1;
+				for(i=y+1;i<M;i++) v[1][i][x]=-1;
+			}
+			else if(maze[y][x]=='v')
+			{
+				v[0][y][x]=-1;
+				v[1][y][x]=-1;
+				v[2][y][x]=-1;
+				v[3][y][x]=-1;
+				for(i=x-1;i>=0;i--) v[1][y][i]=-1;
+				for(i=y-1;i>=0;i--) v[2][i][x]=-1;
+				for(i=x+1;i<N;i++) v[3][y][i]=-1;
+				for(i=y+1;i<M;i++) v[0][i][x]=-1;
+			}
+			else if(maze[y][x]=='S')
+			{
+				sx=x;
+				sy=y;
+			}
+			else if(maze[y][x]=='G')
+			{
+				gx=x;
+				gy=y;
+			}
+}
+int cammina(int passo, int px, int py)
+{
+	if(px==gx && py==gy)
+	{
+		if(bestSol>passo) bestSol=passo;
+		return 0;
+	}
+	v[passo%4][py][px]=passo;
+	//printf("Passo %d in %d %d\n",passo,px,py);
+	//prendiamo le 4 direzioni
+	passo++;
+	if(py>0 && v[passo%4][py-1][px]==0) coda.push(make_pair(make_pair(px,py-1),passo));
+	if(px>0 && v[passo%4][py][px-1]==0) coda.push(make_pair(make_pair(px-1,py),passo));
+	if(py<M-1 && v[passo%4][py+1][px]==0) coda.push(make_pair(make_pair(px,py+1),passo));
+	if(px<N-1 && v[passo%4][py][px+1]==0) coda.push(make_pair(make_pair(px+1,py),passo));
+	/*if(py>0 && (v[passo%4][py-1][px]==0 || v[passo%4][py-1][px]>passo)) cammina(passo,px,py-1);
+	if(px>0 && (v[passo%4][py][px-1]==0 || v[passo%4][py][px-1]>passo)) cammina(passo,px-1,py);
+	if(py<M-1 && (v[passo%4][py+1][px]==0 || v[passo%4][py+1][px]>passo)) cammina(passo,px,py+1);
+	if(px<N-1 && (v[passo%4][py][px+1]==0 || v[passo%4][py][px+1]>passo)) cammina(passo,px+1,py);*/
+}
+int main()
+{
+	FILE *in=fopen("input.txt","r");
+	fscanf(in,"%d",&T);
+	for(int iT=0;iT<T;iT++)
+	{
+		fscanf(in,"%d %d",&M,&N);
+		for(y=0;y<M;y++)
+		{
+			fscanf(in,"%s",maze[y]);
+		}
+		preprocess();
+		bestSol=999999;
+		cammina(0,sx,sy);
+		while(!coda.empty())
+		{
+			std::pair <std::pair <int,int>,int> tmp;
+			int p,px,py;
+			tmp=coda.front();
+			p=tmp.second;
+			px=tmp.first.first;
+			py=tmp.first.second;
+			cammina(p,px,py);
+			coda.pop();
+			if(bestSol<999999) break;
+		}
+		if(bestSol==999999) printf("Case #%d: impossible\n",iT+1);
+		else printf("Case #%d: %d\n",iT+1,bestSol);
+		/*for(y=0;y<M;y++)
+		{
+			for(x=0;x<N;x++)
+				if(v[0][y][x]==-1) printf("#");
+				else printf(".");
+			printf("\n");
+		}*/
+	}
+	fclose(in);
+	return 0;
+}

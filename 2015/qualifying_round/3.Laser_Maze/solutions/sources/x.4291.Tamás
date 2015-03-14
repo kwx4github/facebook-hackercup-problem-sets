@@ -1,0 +1,172 @@
+#include <iostream>
+#include <string.h>
+#include <fstream>
+
+#define INSTR(a,b) b.find(a)!=string::npos
+
+using namespace std;
+
+ifstream infile;
+ofstream outfile;
+
+int arr[1000][1000], arr2[1000][1000], seeds[1000];
+int m=0,n=0;
+int mstart=0,nstart=0,mgoal=0,ngoal=0;
+
+int grow(int mseed, int nseed, int seedvalue) {
+    if(mseed>=0 && mseed<m && nseed>=0 && nseed<n) {
+        int oldvalue=arr2[mseed][nseed];
+        int mask;
+        switch((seedvalue-1)%4+1) {
+        case 1: mask=8; break;
+        case 2: mask=4; break;
+        case 3: mask=2; break;
+        case 4: mask=1; break;
+        }
+        if((arr[mseed][nseed] & mask)>0 && (oldvalue==0 || oldvalue>seedvalue)) {
+            if(mseed!=mstart || nseed!=nstart) {
+                arr2[mseed][nseed]=seedvalue;
+                int j;
+                for(j=0;j<1000&&seeds[j]>0;j++);
+
+                if(seeds[j]>-1) {
+                    cout << "OUCH!!! HURRY, GUY!!!";
+                }
+                seeds[j]=mseed*1000+nseed;
+            }
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int testCase()
+{
+    string line, turrets="v^<>";
+    int north,south,east,west;
+    for(int i=0;i<1000;i++) {
+        seeds[i]=-1;
+    }
+
+    infile >> m >> n;
+    getline(infile,line);
+    for(int i=0;i<m;i++){
+        getline(infile,line);
+        for(int j=0;j<n;j++){
+            arr[i][j]=line[j];
+            if(line[j]=='S'){
+                mstart=i;
+                nstart=j;
+            } else if(line[j]=='G'){
+                mgoal=i;
+                ngoal=j;
+            }
+        }
+    }
+    for(int i=0;i<m;i++) {
+        for(int j=0;j<n;j++) {
+            switch(arr[i][j]) {
+            case '.':
+            case 'G':
+            case 'S':
+                if((i+j-mstart-nstart)%2==0) {
+                    arr[i][j]=5;
+                } else {
+                    arr[i][j]=10;
+                }
+                break;
+            case '#':
+                arr[i][j]=0;
+                break;
+            }
+        }
+    }
+    for(int i=0;i<m;i++) {
+        for(int j=0;j<n;j++) {
+            if(INSTR(arr[i][j],turrets)){
+                switch(arr[i][j]){
+                case 'v': west=8; north=4; east=2; south=1; arr[i][j]=0; break;
+                case '^': east=8; south=4; west=2; north=1; arr[i][j]=0; break;
+                case '<': north=8; east=4; south=2; west=1; arr[i][j]=0; break;
+                case '>': south=8; west=4; north=2; east=1; arr[i][j]=0; break;
+                }
+                for(int k=j-1;k>=0;k--){
+                    if(arr[i][k]==0) break;
+                    if(arr[i][k]==5 || arr[i][k]==10){
+                        arr[i][k]&=~west;
+                    }
+                }
+                for(int k=i-1;k>=0;k--){
+                    if(arr[k][j]==0) break;
+                    if(arr[k][j]==5 || arr[k][j]==10){
+                        arr[k][j]&=~north;
+                    }
+                }
+                for(int k=j+1;k<n;k++){
+                    if(arr[i][k]==0) break;
+                    if(arr[i][k]==5 || arr[i][k]==10){
+                        arr[i][k]&=~east;
+                    }
+                }
+                for(int k=i+1;k<m;k++){
+                    if(arr[k][j]==0) break;
+                    if(arr[k][j]==5 || arr[k][j]==10){
+                        arr[k][j]&=~south;
+                    }
+                }
+            }
+        }
+    }
+    for(int i=0;i<m;i++) {
+        for(int j=0;j<n;j++) {
+            arr2[i][j]=0;
+        }
+    }
+    seeds[0]=mstart*1000+nstart;
+    do {
+        for(int i=0;i<1000&&seeds[i]>-1;i++) {
+            int mseed=seeds[i]/1000;
+            int nseed=seeds[i]%1000;
+            int seedvalue=arr2[mseed][nseed];
+            seeds[i]=-1;
+
+            if(grow(mseed-1,nseed,seedvalue+1) |
+               grow(mseed+1,nseed,seedvalue+1) |
+               grow(mseed,nseed-1,seedvalue+1) |
+               grow(mseed,nseed+1,seedvalue+1)) {
+                grow(mseed-1,nseed,seedvalue+3);
+                grow(mseed+1,nseed,seedvalue+3);
+                grow(mseed,nseed-1,seedvalue+3);
+                grow(mseed,nseed+1,seedvalue+3);
+            }
+        }
+    } while(seeds[0]>-1);
+    for(int i=0;i<m;i++) {
+        for(int j=0;j<n;j++) {
+        }
+    }
+    return arr2[mgoal][ngoal];
+}
+
+int main()
+{
+    string line;
+    int cases;
+    infile.open("input.txt");
+    outfile.open("output.txt");
+
+    infile >> cases;
+    getline(infile,line);
+    for(int i=0;i<cases;i++)
+    {
+        int tc=testCase();
+        if(tc>0) {
+            outfile << "Case #" << (i+1) << ": " << tc << endl;
+        } else {
+            outfile << "Case #" << (i+1) << ": impossible" << endl;
+        }
+    }
+    infile.close();
+    outfile.close();
+    return 0;
+}

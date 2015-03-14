@@ -1,0 +1,192 @@
+#!/usr/bin/python
+
+import sys
+
+class Problem(object):
+
+	def __init__(self,N,M,lab):
+		self.M = M
+		self.N = N
+		self.lab = lab
+		self.start = self.get_start()
+		self.goal = self.get_goal()
+		self.create_death_map()
+
+	def create_death_map(self):
+		self.death_map = {} 
+		for i in xrange(self.M):
+			for j in xrange(self.N):
+				if self.lab[i][j] not in ['#','v','^','<','>']:
+					for orientation in xrange(4):					
+						key = str(i)+'|'+str(j)+'|'+str(orientation)			
+						self.death_map[key] = self.compute_is_dead((i,j),orientation)
+
+	def compute_is_dead(self,position,orientation):
+		#is there a turret before us that can kill us for that orientation?
+		t = self.get_turret_before(position)
+		if t != '':
+			you_dead = (orientation == 0 and t == '>') or (orientation == 1 and t == '^') \
+					or (orientation == 2 and t == '<') or (orientation == 3 and t == 'v')
+			if you_dead: #you dead
+				return True
+		#is there a turret after us that can kill us for that orientation?
+		t = self.get_turret_after(position)
+		if t != '':
+			you_dead = (orientation == 0 and t == '<') or (orientation == 1 and t == 'v') \
+					or (orientation == 2 and t == '>') or (orientation == 3 and t == '^')
+			if you_dead: #you dead
+				return True
+		#is there a turret under us that can kill us for that orientation?
+		t = self.get_turret_under(position)
+		if t != '':
+			you_dead = (orientation == 0 and t == '^') or (orientation == 1 and t == '<') \
+					or (orientation == 2 and t == 'v') or (orientation == 3 and t == '>')
+			if you_dead: #you dead
+				return True
+		#is there a turret above us that can kill us for that orientation?
+		t = self.get_turret_above(position)
+		if t != '':
+			you_dead = (orientation == 0 and t == 'v') or (orientation == 1 and t == '>') \
+					or (orientation == 2 and t == '^') or (orientation == 3 and t == '<')
+			if you_dead: #you dead
+				return True
+		return False
+
+	def get_turret_before(self,position):
+		row = position[0]
+		col = position[1]
+		while self.lab[row][col] not in ['#','v','^','<','>']:
+			col -= 1
+			if col < 0 or self.lab[row][col] == '#':
+				return ''
+		return self.lab[row][col]
+
+	def get_turret_after(self,position):
+		row = position[0]
+		col = position[1]
+		while self.lab[row][col] not in ['#','v','^','<','>']:
+			col += 1
+			if col >= self.N or self.lab[row][col] == '#':
+				return ''
+		return self.lab[row][col]
+
+	def get_turret_under(self,position):
+		row = position[0]
+		col = position[1]
+		while self.lab[row][col] not in ['#','v','^','<','>']:
+			row += 1
+			if row >= self.M or self.lab[row][col] == '#':
+				return ''
+		return self.lab[row][col]
+
+	def get_turret_above(self,position):
+		row = position[0]
+		col = position[1]
+		while self.lab[row][col] not in ['#','v','^','<','>']:
+			row -= 1
+			if row < 0 or self.lab[row][col] == '#':
+				return ''
+		return self.lab[row][col]
+
+	def is_dead(self, position, orientation):
+		key = str(position[0])+'|'+str(position[1])+'|'+str(orientation)
+		return self.death_map[key]
+
+	def get_start(self):
+		for i in xrange(self.M):
+			for j in xrange(self.N):
+				if self.lab[i][j] == 'S':
+					return (i,j)
+
+	def get_goal(self):
+		for i in xrange(self.M):
+			for j in xrange(self.N):
+				if self.lab[i][j] == 'G':
+					return (i,j)
+
+	def is_goal(self,position):
+		if position == self.goal:
+			return True
+		return False
+
+	def get_next_steps(self,known_states,frontier):
+		new_frontier = {}
+		for state in frontier:
+			state_row = state[0][0]
+			state_col = state[0][1]
+			next_orientation = (state[1]+1)%4
+			if self.is_valid_state((state_row+1,state_col),next_orientation):
+				key = str(state_row+1)+'|'+str(state_col)+'|'+str(next_orientation)
+				if key not in known_states:
+					if key not in new_frontier:
+						new_frontier[key] = ((state_row+1,state_col),next_orientation)
+						known_states.add(key)
+
+			if self.is_valid_state((state_row-1,state_col),next_orientation):
+				key = str(state_row-1)+'|'+str(state_col)+'|'+str(next_orientation)
+				if key not in known_states:
+					if key not in new_frontier:
+						new_frontier[key] = ((state_row-1,state_col),next_orientation)
+						known_states.add(key)
+
+			if self.is_valid_state((state_row,state_col+1),next_orientation):
+				key = str(state_row)+'|'+str(state_col+1)+'|'+str(next_orientation)
+				if key not in known_states:
+					if key not in new_frontier:
+						new_frontier[key] = ((state_row,state_col+1),next_orientation)
+						known_states.add(key)
+
+			if self.is_valid_state((state_row,state_col-1),next_orientation):
+				key = str(state_row)+'|'+str(state_col-1)+'|'+str(next_orientation)
+				if key not in known_states:
+					if key not in new_frontier:
+						new_frontier[key] = ((state_row,state_col-1),next_orientation)
+						known_states.add(key)
+		return new_frontier.values()
+
+	def is_valid_state(self,pos,orientation):
+		if pos[0]<0 or pos[1]<0 or pos[0]>=self.M or pos[1]>=self.N:
+			return False
+		if self.lab[pos[0]][pos[1]] in ['#','v','^','<','>']:
+			return False
+		if self.is_dead(pos, orientation):
+			return False
+		return True
+
+	def solve(self): #using BFS
+		current_state = (self.start, 0)
+		known_states = set([]) #all the states we explored as a set of keys
+		steps_cpt = 0	
+		frontier = self.get_next_steps(known_states,[current_state])#return only non-dead states
+		while len(frontier) != 0:
+			steps_cpt += 1
+			for state in frontier:
+				if self.is_goal(state[0]):
+					return str(steps_cpt)
+			frontier = self.get_next_steps(known_states,frontier)
+		return "impossible"
+		
+
+def read_input(fpath):
+	with open(fpath,'r') as fstream:
+		content = []
+		lines = [x.strip('\n') for x in fstream.readlines()]
+		T = int(lines[0])
+		pt = 1
+		for prblm_idx in xrange(T):
+			M, N = tuple([int(x) for x in lines[pt].split(' ')])
+			maze = lines[pt+1:pt+1+M]
+			content.append(Problem(N,M,maze))
+			pt += M+1
+		return content
+
+if __name__=="__main__":
+
+	fpath = sys.argv[1]
+
+	problems = read_input(fpath)
+
+	for idx,problem in enumerate(problems):
+		print "Case #"+str(idx+1)+": "+problem.solve()
+
+

@@ -1,0 +1,191 @@
+#include <iostream>
+#include <vector>
+#include <set>
+#include <queue>
+
+using namespace std;
+
+int a[5][100][100];
+int t,n,m;
+
+const int ti[4] = {0,-1,0,1};
+const int tj[4] = {-1,0,1,0};
+
+struct qelem
+{
+	int x, y;
+	int l;
+	int k;
+};
+
+void setlays(int i, int j, int v)
+{
+	if(a[0][i][j]==0) a[0][i][j] = v;
+	if(a[1][i][j]==0) a[1][i][j] = v;
+	if(a[2][i][j]==0) a[2][i][j] = v;
+	if(a[3][i][j]==0) a[3][i][j] = v;
+}
+
+void makelayline(int i, int j, int dir, int l)
+{
+	i+=ti[dir];
+	j+=tj[dir];
+	if(i>=0 && i<n && j>=0 && j<m && (a[4][i][j]==0))
+	{
+		a[l][i][j] = -1;
+		makelayline(i,j,dir,l);
+	}
+}
+
+void makelays()
+{
+	for(int i = 0; i < n; i++)
+	{
+		for(int j = 0; j < m; j++)
+		{
+			switch (a[4][i][j])
+			{
+			case 0:
+				setlays(i,j,0);
+				break;
+			case -1:
+				for(int l = 0; l<4; l++)
+				{
+					makelayline(i,j,l,l);
+				}
+				setlays(i,j,-1);
+				break;
+			case -2:
+				for(int l = 0; l<4; l++)
+				{
+					makelayline(i,j,(l+1)%4,l);
+				}
+				setlays(i,j,-1);
+				break;
+			case -3:
+				for(int l = 0; l<4; l++)
+				{
+					makelayline(i,j,(l+2)%4,l);
+				}
+				setlays(i,j,-1);
+				break;
+			case -4:
+				for(int l = 0; l<4; l++)
+				{
+					makelayline(i,j,(l+3)%4,l);
+				}
+				setlays(i,j,-1);
+				break;
+			case -5:
+				setlays(i,j,-1);
+				break;
+			}
+		}
+	}
+}
+
+bool good(int i, int j, int l)
+{
+	return (i>=0 && i<n && j>=0 && j<m && (a[l][i][j]==0));
+}
+
+int main()
+{	
+	freopen ("laser_maze.txt","r",stdin);
+	freopen ("laser_maze_output.txt","w",stdout);
+	pair<int,int> goal;
+	char c;
+	scanf("%d%c",&t,&c);
+	for(int l = 0; l < t; l++)
+	{
+		queue<qelem> q;
+		memset(a,0,sizeof(a));
+		scanf("%d%d",&n,&m);
+		for(int i = 0; i < n; i++)
+		{
+			while (c!='.'&&c!='#'&&c!='S'&&c!='G'&&c!='<'&&c!='^'&&c!='>'&&c!='v')
+				scanf("%c",&c);
+			for(int j = 0; j < m; j++)
+			{
+				if(c=='.')
+					a[4][i][j] = 0;
+				if(c=='#')
+					a[4][i][j] = -5;
+				if(c=='S')
+				{
+					//add to queue
+					qelem p;
+					p.x = i; p.y = j;
+					p.l = 0; p.k = 0;
+					q.push(p);
+				}
+				if(c=='G')
+				{
+					goal.first = i;
+					goal.second = j;
+					a[4][i][j] = 0;
+				}
+				if(c=='<')
+				{
+					a[4][i][j] = -1;
+				}
+				if(c=='^')
+				{
+					a[4][i][j] = -2;
+				}
+				if(c=='>')
+				{
+					a[4][i][j] = -3;
+				}
+				if(c=='v')
+				{
+					a[4][i][j] = -4;
+				}
+				scanf("%c",&c);
+			}
+		}
+		makelays();
+
+		while(!q.empty()&&!((q.front().x==goal.first)&&(q.front().y==goal.second)))
+		{
+			qelem p = q.front();
+			p.k++;
+			p.l = (p.l+1)%4;
+			if (good(p.x+1,p.y,p.l))
+			{
+				p.x++;
+				q.push(p);
+				a[p.l][p.x][p.y] = p.k;
+				p.x--;
+			}
+			if (good(p.x,p.y+1,p.l))
+			{
+				p.y++;
+				q.push(p);
+				a[p.l][p.x][p.y] = p.k;
+				p.y--;
+			}
+			if (good(p.x-1,p.y,p.l))
+			{
+				p.x--;
+				q.push(p);
+				a[p.l][p.x][p.y] = p.k;
+				p.x++;
+			}
+			if (good(p.x,p.y-1,p.l))
+			{
+				p.y--;
+				q.push(p);
+				a[p.l][p.x][p.y] = p.k;
+				p.y++;
+			}
+			q.pop();
+		}
+
+		printf("Case #%d: ",l+1);
+		if(q.empty())
+			printf("impossible\n");
+		else printf("%d\n",q.front().k);
+	}
+	return 0;
+}

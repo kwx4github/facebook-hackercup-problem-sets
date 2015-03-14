@@ -1,0 +1,114 @@
+#include <bits/stdc++.h>
+using namespace std;
+typedef vector<int> vi;
+typedef set<int> si;
+typedef pair<int, int> pii;
+#define tr(c,i) for(auto i=(c).begin(); i != (c).end(); i++)
+#define present(c,x) ((c).find(x) != (c).end())
+#define rep(i,n) for(int i=0;i<(n);i++)
+#define fu(i,a,b) for(int i=(a);i<=(b);i++)
+#define fd(i,a,b) for(int i=(a);i>=(b);i--)
+#define clr(x) memset(x, 0, sizeof x);
+#define fi first
+#define sc second
+#define mp make_pair
+int tcs, tc;
+#define tcsolve() cin >> tcs; for (tc=1; tc <= tcs; ++tc) solve();
+
+int n, m;
+int starti, startj;
+int endi, endj;
+int g[4][100][100];
+string sg[100];
+bool found;
+
+char tiles[] = {' ', '^', '>', 'v', '<', '#'};
+map<char, int> tileid = {{'^', 1}, {'>', 2}, {'v', 3}, {'<', 4}, {'#', 5}, {'.', 0}, {0, -1}};
+char next(char a) {
+	return 1 + tiles[(tileid[a]+1)%4];
+}
+
+void zap(int k, int i, int j, int dir) {
+	switch (dir) {
+		case 1: while (i >= 0 && g[k][i][j] != 5) g[k][i--][j] = dir; break;
+		case 2: while (j < m && g[k][i][j] != 5) g[k][i][j++] = dir; break;
+		case 3: while (i < n && g[k][i][j] != 5) g[k][i++][j] = dir; break;
+		case 4: while (j >= 0 && g[k][i][j] != 5) g[k][i][j--] = dir; break;
+	}
+}
+
+int vhash(int i, int j, int k) {
+	return n*m*k + m*i + j;
+}
+
+vi get_ngbs(int h) {
+	int j = h%m;
+	int i = (h/m)%n;
+	int k = (h/(m*n))%4;
+	vi ngbs;
+	if (g[k][i][j] > 0 && sg[i][j] != 'S') return ngbs;
+	k = (k+1)%4;
+	if (i > 0) ngbs.push_back(vhash(i-1, j, k));
+	if (j > 0) ngbs.push_back(vhash(i, j-1, k));
+	if (i < n-1) ngbs.push_back(vhash(i+1, j, k));
+	if (j < m-1) ngbs.push_back(vhash(i, j+1, k));
+	return ngbs;
+}
+
+void solve() {
+	cin >> n >> m;
+	clr(g);
+	rep (i, n) cin >> sg[i];
+	rep (i, n) rep (j, m)
+		if (sg[i][j] == '#') rep (k, 4)
+			g[k][i][j] = 5;
+	rep (i, n) rep (j, m) {
+		if (sg[i][j] == '.') continue;
+		if (sg[i][j] == '#') continue;
+		if (sg[i][j] == 'S') {
+			starti = i;
+			startj = j;
+			continue;
+		}
+		if (sg[i][j] == 'G') {
+			endi = i;
+			endj = j;
+			continue;
+		}
+		int dir = tileid[sg[i][j]];
+		rep (k, 4)
+			zap(k, i, j, 1 + (dir + 3 + k) % 4);
+	}
+	
+	int N = 4*m*n;
+	vi D(N, INT_MAX);
+	set<pii> Q;
+	D[vhash(starti, startj, 0)] = 0;
+	Q.insert(mp(0, vhash(starti, startj, 0)));
+	while(!Q.empty()) {
+		pii top = *Q.begin();
+		Q.erase(Q.begin());
+		int v = top.second;
+
+		vi ngbs = get_ngbs(v);
+		tr(ngbs, it) {
+			int v2 = *it, cost = 1;
+			if(D[v2] > D[v] + cost) {
+				if(D[v2] != INT_MAX)
+					Q.erase(Q.find(mp(D[v2], v2)));
+				D[v2] = D[v] + cost;
+				Q.insert(mp(D[v2], v2));
+			}
+		}
+	}
+	int ans = INT_MAX;
+	rep (k, 4) if (g[k][endi][endj] < 1) ans = min(ans, D[vhash(endi, endj, k)]);
+	if (ans == INT_MAX) cout << "Case #" << tc << ": impossible" << endl;
+	else cout << "Case #" << tc << ": " << ans << endl;
+}
+
+int main () {
+	std::ios::sync_with_stdio(false);
+	tcsolve();
+	return 0;
+}

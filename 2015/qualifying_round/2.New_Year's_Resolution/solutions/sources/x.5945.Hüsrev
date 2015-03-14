@@ -1,0 +1,55 @@
+import scala.io.Source
+import java.io.File
+
+case class Nutrition(p: Int, c: Int, f: Int) {
+  def +(n: Nutrition) = Nutrition(p + n.p, c + n.c, f + n.f)
+  def <=(n: Nutrition) = p <= n.p && c <= n.c && f <= n.f
+}
+case class Test(target: Nutrition, foods: List[Nutrition])
+
+object FBHC2 extends App {
+  val lines = Source.fromFile("/home/husrev/Downloads/new_years_resolution.txt").getLines.drop(1).map(_.split(' ').toList).toList
+  val testStartLines = lines.zipWithIndex.toList.filter(_._1.size == 1).map(_._2)
+  val tests = for (countLine <- testStartLines) yield {
+    def extractNutritionFromLine(index: Int) = {
+      val List(p, c, f) = lines(index).map(_.toInt)
+      Nutrition(p, c, f)
+    }
+    val foodCount = lines(countLine)(0).toInt
+    val target = extractNutritionFromLine(countLine - 1);
+    val foods = (1 to foodCount).map(l => extractNutritionFromLine(countLine + l)).toList;
+    Test(target, foods)
+  }
+
+  val results = tests map possible
+  val resultsWithIndexes = results zipWithIndex;
+  val resultLines = resultsWithIndexes map { case (possible, index) => s"Case #${index + 1}: $possible" }
+  val output = printToFile(new File("/home/husrev/fbhc2.txt")) { pw =>
+    resultLines.foreach(pw.println(_))
+  }
+  def possible(test: Test) = if (test.foods.contains(test.target)) true else {
+    def remainingPossible(current: Nutrition, target: Nutrition, remaining: List[Nutrition]): Boolean = {
+      if (current.equals(target))
+        true
+      else if (!(current <= target)) false
+      else if (remaining.size == 1) target == remaining(0) + current
+      else {
+        var result = false
+        var i = 0;
+        while (!result && i < remaining.size) {
+          val candidate = remaining(i)
+          result = remainingPossible(current + candidate, target, remaining.slice(0, i) ++ remaining.slice(i + 1, remaining.size))
+          i += 1
+        }
+        result
+      }
+    }
+
+    val r = remainingPossible(Nutrition(0, 0, 0), test.target, test.foods)
+    if(r) "yes" else "no"
+  }
+  def printToFile(f: java.io.File)(op: java.io.PrintWriter => Unit) {
+    val p = new java.io.PrintWriter(f)
+    try { op(p) } finally { p.close() }
+  }
+}

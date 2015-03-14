@@ -1,0 +1,217 @@
+#include <stdio.h>
+#include <queue>
+#include <algorithm>
+#include <stack>
+#include <memory.h>
+
+using namespace std;
+
+int T;
+int N,M;
+int gridSize;
+char grid[1000][1000];
+int dp[400000];
+
+int toAbsCoord(int x,int y) {
+	return y*N + x;
+}
+
+// First = x!
+// Second = y!
+pair<int,int> toGridCoord(int coord) {
+	pair<int,int> p;
+	p.second = coord/N;
+	p.first = coord - p.second * N;
+	return p;
+}
+
+bool checkField(int x,int y) {
+	return grid[y][x] == '.' || grid[y][x] == 'S' || grid[y][x] == 'G';
+}
+
+bool checkLeft(int x,int y, int turn) {
+	for(int i = x; i >= 0; i--) {
+		if(grid[y][i] == '#') return true;
+		switch(turn) {
+			case 0:
+				if(grid[y][i] == '>') return false;
+				break;
+			case 1:
+				if(grid[y][i] == '^') return false;
+				break;
+			case 2:
+				if(grid[y][i] == '<') return false;
+				break;
+			case 3:
+				if(grid[y][i] == 'v') return false;
+				break;
+		}	
+	}
+	return true;
+}
+
+bool checkRight(int x,int y, int turn) {
+	for(int i = x; i < N; i++) {
+		if(grid[y][i] == '#') return true;
+		switch(turn) {
+			case 0:
+				if(grid[y][i] == '<') return false;
+				break;
+			case 1:
+				if(grid[y][i] == 'v') return false;
+				break;
+			case 2:
+				if(grid[y][i] == '>') return false;
+				break;
+			case 3:
+				if(grid[y][i] == '^') return false;
+				break;
+		}	
+	}
+	return true;
+}
+
+bool checkUp(int x,int y, int turn) {
+	for(int i = y; i >= 0; i--) {
+		//printf("test: %c\n", grid[i][x]);
+		if(grid[i][x] == '#') return true;
+		switch(turn) {
+			case 0:
+				if(grid[i][x] == 'v') return false;
+				break;
+			case 1:
+				if(grid[i][x] == '>') return false;
+				break;
+			case 2:
+				if(grid[i][x] == '^') return false;
+				break;
+			case 3:
+				if(grid[i][x] == '<') return false;
+				break;
+		}	
+	}
+	return true;
+}
+
+bool checkDown(int x,int y, int turn) {
+	for(int i = y; i < M; i++) {
+		if(grid[i][x] == '#') return true;
+		switch(turn) {
+			case 0:
+				if(grid[i][x] == '^') return false;
+				break;
+			case 1:
+				if(grid[i][x] == '<') return false;
+				break;
+			case 2:
+				if(grid[i][x] == 'v') return false;
+				break;
+			case 3:
+				if(grid[i][x] == '>') return false;
+				break;
+		}	
+	}
+	return true;
+}
+
+int toDpCoord(int coord,int turn) {
+	return coord + turn*gridSize;
+}
+
+int toDpCoord(int x,int y,int turn) {
+	return toDpCoord(toAbsCoord(x,y),turn);
+}
+
+int main() {
+	scanf("%d",&T);
+	for(int t = 0; t < T;t++) {
+		int startx = 0;
+		int starty = 0;
+		int goalx = 0;
+		int goaly = 0;
+		
+		scanf("%d %d",&M,&N);
+		gridSize = N*M;
+		for(int i = 0; i < M;i++) {
+			scanf("%s",grid[i]);
+			for(int j = 0; j < N;j++) {
+				if(grid[i][j] == 'S') {
+					starty = i;
+					startx = j;
+				}
+				if(grid[i][j] == 'G') {
+					goaly = i;
+					goalx = j;
+				}
+			}
+		
+		}
+		memset(dp,0,sizeof(dp));
+		
+		int start = toAbsCoord(startx,starty);
+		dp[toDpCoord(start,0)] = 1;
+		queue< pair<int,int> > q;
+		q.push(make_pair<int,int>(start,0));
+		
+		int success = -1;
+
+		while(!q.empty()) {
+			stack<int> s;
+			pair<int,int> item = q.front();
+			q.pop();
+			
+			int coord = item.first;
+			int turn = item.second;
+			
+			
+			pair<int,int> p = toGridCoord(coord);
+			int x = p.first;
+			int y = p.second;
+			
+			//printf("item: %d %d t:%d\n",x,y,turn);
+			
+			if(x == goalx && y == goaly) {
+				success = turn;
+				break;
+			}
+			
+			if( x + 1 < N) s.push(toAbsCoord(x+1,y));
+			if( x - 1 >= 0) s.push(toAbsCoord(x-1,y));
+			if( y + 1 < M) s.push(toAbsCoord(x,y+1));
+			if( y - 1 >= 0) s.push(toAbsCoord(x,y-1));
+			
+			while(!s.empty()) {
+				int nextPosition = s.top();
+				s.pop();
+				
+				if(dp[toDpCoord(nextPosition,(turn+1)%4)]) continue;
+				dp[toDpCoord(nextPosition,(turn+1)%4)] = 1;
+				
+				
+				pair<int,int> xyCoord = toGridCoord(nextPosition);
+				int nx = xyCoord.first;
+				int ny = xyCoord.second;
+				
+				//printf("nextItem: %d %d\n",nx,ny);		
+				
+				if( checkField(nx,ny) && checkLeft(nx,ny,(turn+1)%4) 	&& 
+						checkRight(nx,ny,(turn+1)%4) && checkUp(nx,ny,(turn+1)%4) 		&& 
+						checkDown(nx,ny,(turn+1)%4) ) {
+					q.push(make_pair<int,int>(nextPosition,turn+1));
+				}				
+				//printf("test\n");
+			}			
+		}
+		while(!q.empty()) q.pop();
+		printf("Case #%d: ",t+1);
+		if(success != -1) {
+			printf("%d",success);
+		} else {
+			printf("impossible");
+		}
+		
+		printf("\n");
+		
+	}
+	return 0;
+}

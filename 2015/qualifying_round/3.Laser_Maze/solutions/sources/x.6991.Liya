@@ -1,0 +1,367 @@
+INPUT_FILE = '../laser_maze.txt'
+OUTPUT_FILE = '../laser_maze_out.txt'
+short_distance = {}
+
+
+
+def update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col,direction):
+    rowlist = []
+    if maze[Start_row][Start_col] != 'S' or maze[Goal_row][Goal_col] != 'G':
+        return
+
+    status_Node = []
+    
+    status_Node = [Start_row,Start_col,direction]
+    status_all.append(status_Node)
+
+    #status_all.append(maze)    
+
+    for i, rowlist in enumerate(maze):
+            for j, item in enumerate(rowlist):
+                status_Node = []
+
+                if item == '.':
+                    #maze[Start_row][Start_col], maze[i][j] = maze[i][j],maze[Start_row][Start_col]
+                    #status_all.append(maze)
+
+                    status_Node = [i,j,direction]
+                    status_all.append(status_Node)
+                    continue
+                if item == 'G':
+                    # maze[Start_row][Start_col] = '.'
+                    # maze[i][j] = 'R'  # Reached Goal
+                    # status_all.append(maze)
+
+                    status_Node = [i,j,direction]
+                    status_all.append(status_Node)
+                    continue
+                continue
+    return            
+
+def hit_maze(laser_all,maze,w):
+    laser = []
+
+    # print 'before hit maze:', maze
+    # print 'before hit laser:', laser_all
+        
+    for laser in laser_all:
+        laser[1:] = [int(x) for x in laser[1:]]
+        #print 'before hit laser 0 :', laser[0]
+        # laser >, all cells to the right of laser will be Hit unless it's # or Laser
+        if laser[0] == '>':
+            for col_index in range(laser[2]+1,w):
+                if maze[laser[1]][col_index] in ('#','v','>','<','^'):
+                    break
+                else:
+                    maze[laser[1]][col_index] = 'H'
+            continue        
+        # all cells below the laser will be Hit            
+        elif laser[0] == 'v':    
+            for row_index in range(laser[1]+1,len(maze)):
+                if maze[row_index][laser[2]] in ('#','v','>','<','^'):
+                    break
+                else:
+                    maze[row_index][laser[2]] = 'H'    
+            continue
+        # all cells to the left of the laser will be Hit    
+        elif laser[0] == '<':  
+            #print 'hit here: laser2:', laser[2], w
+            if laser[2] == 0:
+                break
+            for col_index in range(laser[2]): 
+                col_index = abs(w -2-col_index)    
+                #print 'Hit here:', col_index,   maze[laser[1]][col_index] 
+                if maze[laser[1]][col_index] in ('#','v','>','<','^'):
+                    break
+                else:   
+                    maze[laser[1]][col_index] = 'H'
+                    #print 'hit here after:', maze
+            continue
+        
+        # all cells above the laser will be Hit       
+        else:
+            if laser[1] == 0:
+                break
+            for row_index in range(laser[1]):    
+                row_index = abs(len(maze)-2-row_index)
+                if maze[row_index][laser[2]] in ('#','v','>','<','^'):
+                    break
+                else:
+                    maze[row_index][laser[2]] = 'H'  
+            continue 
+    #print 'after hit:', maze
+    return 
+
+def compute_distance(status_all, cur_row, cur_col, cur_direction, prev_row, prev_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height):
+    
+    # if status_all[0] == [Start_row,Start_col,0]:
+    #     direction = 0
+    #     new_row, new_col = Start_row, Start_col
+    #     short_distance = {}
+    #     short_distance[(Start_row,Start_col)] = 'Start'
+    #     status_all.pop(0)
+
+    if cur_row < 0 or cur_col < 0 or cur_row > height-1 or cur_col > width -1:
+        return
+
+    if [cur_row,cur_col,cur_direction] not in status_all:
+        return
+    
+    if (cur_row,cur_col) == (Goal_row,Goal_col):   
+        prev_direction = (cur_direction + 3)%4
+        if (prev_row,prev_col, prev_direction) in short_distance.keys():
+            distance = short_distance[(prev_row,prev_col,prev_direction)][2] + 1
+        if (cur_row,cur_col, cur_direction) not in short_distance.keys():
+            short_distance[(cur_row,cur_col,cur_direction)] = [prev_row,prev_col,distance]
+        else:
+            if short_distance[(cur_row,cur_col,cur_direction)][2] > distance:
+                short_distance[(cur_row,cur_col,cur_direction)] = [prev_row,prev_col,distance]
+        return            
+
+            
+
+    if (cur_row,cur_col,cur_direction) == (Start_row,Start_col,Start_direction):
+        short_distance[(cur_row,cur_col,cur_direction)] = [cur_row,cur_col,0]
+        status_all.pop(0)
+        compute_distance(status_all, cur_row+1, cur_col, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        compute_distance(status_all, cur_row, cur_col+1, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        compute_distance(status_all, cur_row-1, cur_col, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        compute_distance(status_all, cur_row, cur_col-1, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        return
+
+     
+
+    
+
+    else:  # exist current status
+        # put current status to dict if not exist,update dict if distance is smaller
+        # put current status as prev status 
+        # pop current status from status_all
+
+        # print 'cur_node: %d, %d, %d' % (cur_row, cur_col, cur_direction)
+        # print 'prev node: %d, %d' % (prev_row, prev_col)
+        # print 'short_distance before:', short_distance
+
+        prev_direction = (cur_direction+3)%4
+        if (prev_row,prev_col, prev_direction) in short_distance.keys():
+            distance = short_distance[(prev_row,prev_col,prev_direction)][2] + 1
+        else:
+            return    
+        if (cur_row,cur_col,cur_direction) not in short_distance.keys():
+            short_distance[(cur_row,cur_col,cur_direction)] = [prev_row,prev_col,distance]
+        else:
+            if short_distance[(cur_row,cur_col,cur_direction)][2] > distance:
+                short_distance[(cur_row,cur_col,cur_direction)] = [prev_row,prev_col,distance]
+        status_all.remove([cur_row,cur_col,cur_direction])        
+        compute_distance(status_all, cur_row+1, cur_col, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)        
+        compute_distance(status_all, cur_row, cur_col+1, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        compute_distance(status_all, cur_row-1, cur_col, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        compute_distance(status_all, cur_row, cur_col-1, (cur_direction+1)%4, cur_row, cur_col, Start_row, Start_col,Start_direction,Goal_row, Goal_col, width, height)
+        #print 'short_distance:',short_distance
+        return        
+
+       
+
+
+
+def get_all_possibilities(initial_maze,w, output,current_case):
+    status_all = []
+    laser_all = []
+
+    # copy initial maze to maze
+    maze = []
+    initial_row = []
+    new_row = []
+
+    for initial_row in initial_maze:
+        new_row = initial_row[:]
+        maze.append(new_row)
+
+    # get pos of Start, Goal and Lasers    
+    for i, rowlist in enumerate(maze):
+        for j, item in enumerate(rowlist):
+            if item == 'S':
+                Start_col = j
+                Start_row = i
+                continue
+
+            if item == 'G':
+                Goal_col = j
+                Goal_row = i
+                continue
+
+            if item in ('v','>','<','^'):
+                line = item + ',' + str(i) + ',' + str(j) + ',' + '0'
+                laser = []
+                laser = line.split(',')
+            
+                laser_all.append(laser)
+                continue
+    #print 'laser all:', laser_all
+
+    if not laser_all:  # no lasers in the maze
+        #status_all.append(maze) # initial status
+
+        #update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col)
+      
+
+        update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col,5)  #direction 5 means no lasers
+
+               
+    
+    else:  # having lasers in the maze
+        # identify Hit areas for all lasers, 1st direction
+        hit_maze(laser_all,maze,w)
+           
+
+        #update status_all using new maze  
+        update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col,0)
+
+        #print 'All status:',status_all
+
+        # identify Hit areas, move 1
+        all_directions = '>v<^>'
+        new_laser_all = []
+        maze = []
+
+        for initial_row in initial_maze:
+            new_row = initial_row[:]
+            maze.append(new_row)
+
+        for laser in laser_all:
+            new_laser = laser[:]
+            
+            new_laser[0] = all_directions[all_directions.index(laser[0])+1]
+            new_laser_all.append(new_laser) 
+
+        #print 'new laser all:', new_laser_all    
+        hit_maze(new_laser_all,maze,w)   
+
+        update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col,1)   
+
+        # identify Hit areas, move 2   
+        all_directions = '><>v^v'
+        new_laser_all = []
+        maze = []
+
+        for initial_row in initial_maze:
+            new_row = initial_row[:]
+            maze.append(new_row)
+
+        for laser in laser_all:
+            new_laser = laser[:]
+            
+            new_laser[0] = all_directions[all_directions.index(laser[0])+1]
+            new_laser_all.append(new_laser)  
+
+        hit_maze(new_laser_all,maze,w)   
+
+        update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col,2)   
+     
+
+        # identify Hit areas, move 3  
+        all_directions = '>^<v>'
+        new_laser_all = []
+        maze = []
+
+        for initial_row in initial_maze:
+            new_row = initial_row[:]
+            maze.append(new_row)
+
+        for laser in laser_all:
+            new_laser = laser[:]
+            
+            new_laser[0] = all_directions[all_directions.index(laser[0])+1]
+            new_laser_all.append(new_laser)    
+
+        hit_maze(new_laser_all,maze,w)   
+
+        update_all_status(maze,status_all,Start_row,Start_col,Goal_row,Goal_col,3)   
+
+    #compute shorter distance for each status, each status is a maze 
+    #print 'after all hit:', maze
+    #print 'All status:', status_all
+    search_graph = []  # S(row,col), direction, next(row,col), distance
+
+    short_distance.clear()
+    compute_distance(status_all, Start_row, Start_col, 0, Start_row, Start_col,Start_row, Start_col,0,Goal_row, Goal_col, w, len(maze))
+    
+    #print 'final:', short_distance
+    distance = 0
+
+    if (Goal_row,Goal_col,0) in short_distance.keys():
+        distance = short_distance[(Goal_row,Goal_col,0)][2]
+
+    if (Goal_row,Goal_col,1) in short_distance.keys():
+        distance = short_distance[(Goal_row,Goal_col,1)][2]
+        
+    if (Goal_row,Goal_col,2) in short_distance.keys():
+        distance = short_distance[(Goal_row,Goal_col,2)][2]
+    
+    if (Goal_row,Goal_col,3) in short_distance.keys():
+        distance = short_distance[(Goal_row,Goal_col,3)][2] 
+    
+    #print 'distance' , distance
+    if distance:  
+
+
+        outline = 'Case #' + str(current_case) + ': ' + str(distance) + '\n'
+    else:
+        outline = 'Case #' + str(current_case) + ': impossible\n'    
+    output.write(outline)  
+
+   
+    return            
+
+
+def read_input():                         
+    # Read file to all_maze
+    section_pos = [0,0,0]
+    f = open(INPUT_FILE, 'r')
+    output_f = open(OUTPUT_FILE, 'w')
+
+    current_case = 0
+    
+
+    for i,line in enumerate(f):
+        if i == 0:
+            total_case = int(line.strip())
+            continue
+        if section_pos.index(0) == 0:    
+            current_case = current_case + 1
+            section_pos[0] = 1
+            #print 'current_case:', current_case
+            height = int(line.strip().split()[0])
+            width = int(line.strip().split()[1])
+            mazelist = []
+            rowlist = []
+            continue
+        if section_pos.index(0) == 1:      
+            height = height - 1  # remaining rows 
+            if height > 0: 
+                
+                rowlist = list(line.strip())
+                mazelist.append(rowlist)
+                continue
+            # reach end of the section
+            section_pos = [0,0,0]
+            rowlist = list(line.strip())
+            mazelist.append(rowlist)
+            
+
+            print 'current_case:', current_case
+            get_all_possibilities(mazelist,width, output_f,current_case)
+
+  
+
+    f.close()
+    output_f.close()
+    return
+
+
+read_input()
+                    
+
+
+
+

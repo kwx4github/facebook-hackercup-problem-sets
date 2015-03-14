@@ -1,0 +1,143 @@
+#include <fstream>
+#include <cstring>
+
+const int MAX_FAT_MACRONUTRIENTS = 3;
+const int MAX_AMOUNT = 1001;
+const int MAX_FOODS = 20;
+const int MAX_DECISIONS = 2;
+
+const int PROTEIN_INDX = 0;
+const int CARBOHYDRATES_INDX = 1;
+const int FAT_INDX = 2;
+
+bool Protein_Val_Decisions[MAX_DECISIONS][MAX_FOODS][MAX_AMOUNT];
+bool Carbohydrates_Val_Decisions[MAX_DECISIONS][MAX_FOODS][MAX_AMOUNT];
+bool Fat_Val_Decisions[MAX_DECISIONS][MAX_FOODS][MAX_AMOUNT];
+
+int Alex_Required_Vals[MAX_FAT_MACRONUTRIENTS];
+
+int Food_Vals[MAX_FOODS][MAX_FAT_MACRONUTRIENTS];
+
+void Construct_Protein_Carbohydrates_Fat_Values(int nFoodItemCnt)
+{
+	for (int x = 0; x < MAX_DECISIONS; ++x)
+	{
+		for (int y = 0; y < MAX_FOODS; ++y)
+		{
+			memset(Protein_Val_Decisions[x][y], 0, MAX_AMOUNT);
+			memset(Carbohydrates_Val_Decisions[x][y], 0, MAX_AMOUNT);
+			memset(Fat_Val_Decisions, 0, MAX_AMOUNT);
+		}
+	}
+
+	Protein_Val_Decisions[0][0][0] = Carbohydrates_Val_Decisions[0][0][0] = Fat_Val_Decisions[0][0][0] = false;
+	Protein_Val_Decisions[1][0][0] = Carbohydrates_Val_Decisions[1][0][0] = Fat_Val_Decisions[1][0][0] = true;
+
+	for (int i = 10; i < MAX_AMOUNT; ++i)
+	{
+		if (i == Food_Vals[0][PROTEIN_INDX])
+			Protein_Val_Decisions[0][0][i] = true;
+
+		if (i == Food_Vals[0][CARBOHYDRATES_INDX])
+			Carbohydrates_Val_Decisions[0][0][i] = true;
+		
+		if (i == Food_Vals[0][FAT_INDX])
+			Fat_Val_Decisions[0][0][i] = true;
+	}
+
+	for (int iItem = 1; iItem < nFoodItemCnt; ++iItem)
+	{
+		for (int i = 10; i < MAX_AMOUNT; ++i)
+		{
+			if (i >= Food_Vals[iItem][PROTEIN_INDX])
+			{
+				if ((Protein_Val_Decisions[0][iItem - 1][i - Food_Vals[iItem][PROTEIN_INDX]] == true) ||
+					(Protein_Val_Decisions[1][iItem - 1][i - Food_Vals[iItem][PROTEIN_INDX]] == true))
+					Protein_Val_Decisions[0][iItem][i] = true;
+			}
+
+			if ((Protein_Val_Decisions[1][iItem - 1][i] == true) || (Protein_Val_Decisions[0][iItem - 1][i] == true))
+				Protein_Val_Decisions[1][iItem][i] = true;
+
+			if (i >= Food_Vals[iItem][CARBOHYDRATES_INDX])
+			{
+				if ((Carbohydrates_Val_Decisions[0][iItem - 1][i - Food_Vals[iItem][CARBOHYDRATES_INDX]] == true) ||
+					(Carbohydrates_Val_Decisions[1][iItem - 1][i - Food_Vals[iItem][CARBOHYDRATES_INDX]] == true))
+					Carbohydrates_Val_Decisions[0][iItem][i] = true;
+			}
+
+			if ((Carbohydrates_Val_Decisions[1][iItem - 1][i] == true) || (Carbohydrates_Val_Decisions[0][iItem - 1][i] == true))
+				Carbohydrates_Val_Decisions[1][iItem][i] = true;
+
+
+			if (i >= Food_Vals[iItem][FAT_INDX])
+			{
+				if ((Fat_Val_Decisions[0][iItem - 1][i - Food_Vals[iItem][FAT_INDX]] == true) ||
+					(Fat_Val_Decisions[1][iItem - 1][i - Food_Vals[iItem][FAT_INDX]] == true))
+					Fat_Val_Decisions[0][iItem][i] = true;
+			}
+
+			if ((Fat_Val_Decisions[1][iItem - 1][i] == true) || (Fat_Val_Decisions[0][iItem - 1][i] == true))
+				Fat_Val_Decisions[1][iItem][i] = true;
+		}
+	}
+
+	return;
+}
+
+bool Can_Build_Alex_Values(int iIndx, int nProteinVal, int nCarbohydratesVal, int nFatVal)
+{
+	if (iIndx == -1)
+		return false;
+
+	if ((Protein_Val_Decisions[0][iIndx][nProteinVal] == true) &&
+		(Carbohydrates_Val_Decisions[0][iIndx][nCarbohydratesVal] == true) &&
+		(Fat_Val_Decisions[0][iIndx][nFatVal]))
+	{
+		if ((nProteinVal - Food_Vals[iIndx][PROTEIN_INDX] == 0) &&
+			(nCarbohydratesVal - Food_Vals[iIndx][CARBOHYDRATES_INDX] == 0) &&
+			(nFatVal - Food_Vals[iIndx][FAT_INDX] == 0))
+			return true;
+
+		if (Can_Build_Alex_Values(iIndx - 1, nProteinVal - Food_Vals[iIndx][PROTEIN_INDX], nCarbohydratesVal - Food_Vals[iIndx][CARBOHYDRATES_INDX], nFatVal - Food_Vals[iIndx][FAT_INDX]))	
+			return true;
+	}
+
+	if ((Protein_Val_Decisions[1][iIndx][nProteinVal] == true) &&
+		(Carbohydrates_Val_Decisions[1][iIndx][nCarbohydratesVal] == true) &&
+		(Fat_Val_Decisions[1][iIndx][nFatVal] == true))
+	{
+		return Can_Build_Alex_Values(iIndx - 1, nProteinVal, nCarbohydratesVal, nFatVal);
+	}
+
+	return false;
+}
+
+int main()
+{
+	std::ifstream	InFile("new_years_resolution.txt");
+	std::ofstream	OutFile("new_years_resolution_output.txt", std::ios_base::ate || std::ios_base::out);
+	int				iCase = 0;
+	int				T;
+	int				nFoodsCnt;
+
+	InFile >> T;
+
+	while (T--)
+	{
+		InFile >> Alex_Required_Vals[PROTEIN_INDX] >> Alex_Required_Vals[CARBOHYDRATES_INDX] >> Alex_Required_Vals[FAT_INDX];
+
+		InFile >> nFoodsCnt;
+
+		for (int indx = 0; indx < nFoodsCnt; ++indx)
+			InFile >> Food_Vals[indx][PROTEIN_INDX] >> Food_Vals[indx][CARBOHYDRATES_INDX] >> Food_Vals[indx][FAT_INDX];
+
+		Construct_Protein_Carbohydrates_Fat_Values(nFoodsCnt);
+
+		bool	bRes = Can_Build_Alex_Values(nFoodsCnt - 1, Alex_Required_Vals[PROTEIN_INDX], Alex_Required_Vals[CARBOHYDRATES_INDX], Alex_Required_Vals[FAT_INDX]); // (Protines_Vals[Alex_Required_Vals[PROTINE_INDX]] && Carbohydrates_Vals[Alex_Required_Vals[CARBOHYDRATES_INDX]] && Fat_Vals[Alex_Required_Vals[FAT_INDX]]);
+
+		OutFile << "Case #" << ++iCase << ": " << ((bRes)? "yes" : "no") << "\n";
+	}
+
+	return 0;
+}

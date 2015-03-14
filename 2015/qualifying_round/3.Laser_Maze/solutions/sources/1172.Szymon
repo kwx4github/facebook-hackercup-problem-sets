@@ -1,0 +1,142 @@
+#include <cstdio>
+#include <queue>
+#include <tuple>
+#include <vector>
+
+struct Cell {
+  bool is_obstructed = false; // either wall or laser
+  bool is_deadly[4] = {false, false, false, false}; // after num steps % 4
+  bool is_visited[4] = {false, false, false, false}; // after num steps % 4
+};
+
+enum Direction {
+  UP, RIGHT, DOWN, LEFT
+};
+
+struct Laser {
+  int r, c;
+  Direction dir;
+
+  Laser(int r, int c, Direction dir) : r(r), c(c), dir(dir) {
+  }
+};
+
+void get_direction_delta(Direction dir, int *dir_r, int *dir_c) {
+  switch (dir) {
+    case UP:
+      *dir_r = -1;
+      *dir_c = 0;
+      break;
+    case RIGHT:
+      *dir_r = 0;
+      *dir_c = 1;
+      break;
+    case DOWN:
+      *dir_r = 1;
+      *dir_c = 0;
+      break;
+    case LEFT:
+      *dir_r = 0;
+      *dir_c = -1;
+      break;
+  }
+}
+
+int bfs(
+    int num_rows, int num_cols,
+    std::vector< std::vector<Cell> > &maze,
+    int start_row, int start_col, int goal_row, int goal_col
+) {
+  std::queue< std::tuple<int, int, int> > q;
+  maze[start_row][start_col].is_visited[0] = true;
+  q.push(std::tuple<int, int, int>(start_row, start_col, 0));
+  while (!q.empty()) {
+    int r, c, num_steps;
+    std::tie(r, c, num_steps) = q.front();
+    q.pop();
+    for (int dir = 0; dir < 4; ++dir) {
+      int dir_r, dir_c;
+      get_direction_delta((Direction)dir, &dir_r, &dir_c);
+      if (r + dir_r >= 0 && r + dir_r < num_rows &&
+          c + dir_c >= 0 && c + dir_c < num_cols &&
+          !maze[r + dir_r][c + dir_c].is_obstructed &&
+          !maze[r + dir_r][c + dir_c].is_visited[(num_steps + 1) % 4] &&
+          !maze[r + dir_r][c + dir_c].is_deadly[(num_steps + 1) % 4]) {   
+        if (r + dir_r == goal_row && c + dir_c == goal_col) {
+          return num_steps + 1;
+        }
+        maze[r + dir_r][c + dir_c].is_visited[(num_steps + 1) % 4] = true;
+        q.push(
+          std::tuple<int, int, int>(r + dir_r, c + dir_c, num_steps + 1)
+        );
+      }
+    }
+  }
+  return -1;
+}
+
+int main() {
+  int t;
+  scanf("%d", &t);
+  for (int ti = 1; ti <= t; ++ti) {
+    int num_rows, num_cols;
+    scanf("%d %d", &num_rows, &num_cols);
+    std::vector< std::vector<Cell> > maze(
+      num_rows,
+      std::vector<Cell>(num_cols, Cell())
+    );
+    std::vector<Laser> lasers;
+    int start_row, start_col, goal_row, goal_col;
+    for (int r = 0; r < num_rows; ++r) {
+      char buf[num_cols + 1];
+      scanf("%s", buf);
+      for (int c = 0; c < num_cols; ++c) {
+        maze[r][c].is_obstructed = (
+          buf[c] == '#' ||
+          buf[c] == '^' || buf[c] == '>' || buf[c] == 'v' || buf[c] == '<'
+        );
+        if (buf[c] == '^') lasers.push_back(Laser(r, c, UP));
+        if (buf[c] == '>') lasers.push_back(Laser(r, c, RIGHT));
+        if (buf[c] == 'v') lasers.push_back(Laser(r, c, DOWN));
+        if (buf[c] == '<') lasers.push_back(Laser(r, c, LEFT));
+        if (buf[c] == 'S') {
+          start_row = r;
+          start_col = c;
+        }
+        if (buf[c] == 'G') {
+          goal_row = r;
+          goal_col = c;
+        }
+      }
+    }
+    // For each unobstructed cell, compute when it's deadly.
+    for (std::vector<Laser>::const_iterator it = lasers.begin();
+        it != lasers.end();
+        ++it) {
+      for (int num_rotations = 0; num_rotations < 4; ++num_rotations) {
+        Direction dir = (Direction)((it->dir + num_rotations) % 4);
+        int dir_r, dir_c;
+        get_direction_delta(dir, &dir_r, &dir_c);
+        int r = it->r, c = it->c;
+        while (r + dir_r >= 0 && r + dir_r < num_rows &&
+               c + dir_c >= 0 && c + dir_c < num_cols &&
+               !maze[r + dir_r][c + dir_c].is_obstructed) {
+          r += dir_r;
+          c += dir_c;
+          maze[r][c].is_deadly[num_rotations] = true;
+        }
+      }
+    }
+    // Move with BFS.
+    int num_steps = bfs(
+      num_rows, num_cols,
+      maze,
+      start_row, start_col, goal_row, goal_col
+    );
+    if (num_steps == -1) {
+      printf("Case #%d: impossible\n", ti);
+    } else {
+      printf("Case #%d: %d\n", ti, num_steps);
+    }
+  }
+}

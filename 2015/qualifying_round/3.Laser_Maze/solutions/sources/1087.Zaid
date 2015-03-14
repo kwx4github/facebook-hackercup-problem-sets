@@ -1,0 +1,145 @@
+import math
+
+
+def main():
+  f = open('laser_maze.txt')
+
+  line = f.readline()
+  cases = int(line)
+
+  of = open('laser_maze_output.txt', 'w')
+  for i in range(cases):
+    res = "Case #%d: %s" % (i+1, test_case(f))
+    print(res)
+    of.write(res + "\n")
+  of.close()
+  f.close()
+
+
+from collections import namedtuple 
+ 
+inf = float('inf')
+Edge = namedtuple('Edge', 'start, end, cost')
+ 
+class Graph():
+  def __init__(self, edges):
+    self.edges = edges2 = [Edge(*edge) for edge in edges]
+    self.vertices = set(sum(([e.start, e.end] for e in edges2), []))
+ 
+  def dijkstra(self, source):
+    assert source in self.vertices
+    dist = {vertex: inf for vertex in self.vertices}
+    dist[source] = 0
+    q = self.vertices.copy()
+    neighbours = {vertex: set() for vertex in self.vertices}
+    for start, end, cost in self.edges:
+      neighbours[start].add((end, cost))
+ 
+    while q:
+      u = min(q, key=lambda vertex: dist[vertex])
+      q.remove(u)
+      if dist[u] == inf:
+        break
+      for v, cost in neighbours[u]:
+        alt = dist[u] + cost
+        if alt < dist[v]:
+          dist[v] = alt
+
+    return dist
+
+
+def test_case(ff):
+  height, width = ff.readline().strip().split(' ')
+  width = int(width)
+  height = int(height)
+
+  startx = starty = 0
+  goalx = goaly = 0
+  
+  themap = []
+  for i in range(height):
+    line = ff.readline().strip()
+    pos = line.find('S')
+    if pos != -1:
+      startx = pos
+      starty = i
+
+    pos = line.find('G')
+    if pos != -1:
+      goalx = pos
+      goaly = i
+    
+    themap.append(line)
+  
+  laser_offsets = {'<' : -3, '>' : -1, '^' : 0, 'v' : -2}
+  lasers = [[0 for x in range(width)] for x in range(height)]
+
+  def build_laser_paths(x, y, offset):
+    blocks = ['.', 'S', 'G']
+    # up
+    for i in range(1, y + 1):
+      if themap[y - i][x] not in blocks:
+        break
+      lasers[y - i][x] |= pow(2, offset % 4)
+
+    # down
+    for i in range(1, height - y):
+      if themap[y + i][x] not in blocks:
+        break
+      lasers[y + i][x] |= pow(2, (offset + 2) % 4)
+
+    # right
+    for i in range(1, width - x):
+      if themap[y][x + i] not in blocks:
+        break
+      lasers[y][x + i] |= pow(2, (offset + 1) % 4)
+
+    # left
+    for i in range(1, x + 1):
+      if themap[y][x - i] not in blocks:
+        break
+      lasers[y][x - i] |= pow(2, (offset + 3) % 4)
+    
+  for x in range(width):
+    for y in range(height):
+      if themap[y][x] in laser_offsets.keys():
+        build_laser_paths(x, y, laser_offsets[themap[y][x]])
+
+  graph = []
+  for x in range(width):
+    for y in range(height):
+      c1 = themap[y][x]
+      for d in [[1, 0], [0, 1], [-1, 0], [0, -1]]:
+        x2 = x + d[0]
+        y2 = y + d[1]
+        if x2 < 0 or y2 < 0 or x2 >= width or y2 >= height:
+          continue
+
+        c2 = themap[y2][x2]
+        if c1 not in ['.', 'S', 'G']:
+          continue
+
+        if c2 not in ['.', 'S', 'G']:
+          continue
+
+        for i in range(4):
+          i2 = (i + 1) % 4
+          if lasers[y2][x2] & pow(2, i2) == 0:
+            key1 = "%d/%d/%d" % (x, y, i)
+            key2 = "%d/%d/%d" % (x2, y2, i2)
+            graph.append((key1, key2, 1))
+
+  g = Graph(graph)
+  res = 999999
+  dist = g.dijkstra("%d/%d/%d" % (startx, starty, 0))
+  for i in range(4):
+    k = "%d/%d/%d" % (goalx, goaly, i)
+    if k in dist:
+      res = min(res, dist[k])
+
+  if res >= 999999:
+    return "impossible"
+
+  return res
+
+main()

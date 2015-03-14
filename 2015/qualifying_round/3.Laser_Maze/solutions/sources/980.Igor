@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <string.h>
+
+char maze[128][128];
+int death[128][128];
+int m, n, si, sj, ei, ej;
+const int DI[] = {0, -1, 0, 1};
+const int DJ[] = {1, 0, -1, 0};
+int q[128 * 128 * 4 * 3], qf, qb, depth[128][128][4];
+
+inline char _(int i, int j) {
+  if (i < 0 || i >= m || j < 0 || j >= n) return '#';
+  return maze[i][j];
+}
+
+int main() {
+  int N; scanf(" %d", &N);
+  for (int prob = 1; prob <= N; ++prob) {
+    scanf(" %d %d", &m, &n); gets(maze[0]);
+    for (int i = 0; i < m; ++i) {
+      gets(maze[i]);
+      for (int j = 0; j < n; ++j) {
+        if (maze[i][j] == 'S') { si = i; sj = j; maze[i][j] = '.'; }
+        if (maze[i][j] == 'G') { ei = i; ej = j; maze[i][j] = '.'; }
+      }
+    }
+ 
+    memset(death, 0, sizeof(death));   
+    for (int i = 0; i < m; ++i) for (int j = 0; j < n; ++j) {
+      int d = -1;
+      if (maze[i][j] == '>') d = 0;
+      if (maze[i][j] == '^') d = 1;
+      if (maze[i][j] == '<') d = 2;
+      if (maze[i][j] == 'v') d = 3;
+      if (d < 0) continue;
+      maze[i][j] = '#';
+      for (int q = 0; q < 4; ++q) {
+        int ii = i, jj = j, dd = (d + 3 * q) % 4;
+        while (true) {
+          ii += DI[dd];
+          jj += DJ[dd];
+          if (_(ii, jj) != '.') break;
+          death[ii][jj] |= (1 << q);
+        }
+      }
+    }
+
+    memset(depth, 1, sizeof(depth));
+    depth[si][sj][0] = 0;
+    qf = qb = 0;
+    q[qb++] = si; q[qb++] = sj; q[qb++] = 0;
+    int ans = -1;
+    while (qf < qb) {
+      int ui = q[qf++], uj = q[qf++], umod = q[qf++];
+      for (int d = 0; d < 4; ++d) {
+        int vi = ui + DI[d], vj = uj + DJ[d], vmod = (umod + 1) % 4;
+        if (_(vi, vj) != '.') continue;
+        if (death[vi][vj] & (1 << vmod)) continue;
+        if (depth[vi][vj][vmod] <= depth[ui][uj][umod] + 1) continue;
+        depth[vi][vj][vmod] = depth[ui][uj][umod] + 1;
+        q[qb++] = vi; q[qb++] = vj; q[qb++] = vmod;
+        if (vi == ei && vj == ej) { ans = depth[vi][vj][vmod]; goto hell; }
+      }
+    }
+    hell:;
+
+    printf("Case #%d: ", prob);
+    if (ans < 0) puts("impossible");
+    else printf("%d\n", ans);
+  }
+  return 0;
+}

@@ -1,0 +1,86 @@
+package main
+
+import (
+  "bufio"
+  "io/ioutil"
+  "log"
+  "os"
+  "strconv"
+  "strings"
+)
+
+type queueItem struct {
+  goal []int
+  numFoods int
+}
+
+func getAnswer(goal []int, numFoods int, foods [][]int) string {
+  if canEat(goal, numFoods, foods) {
+    return "yes"
+  }
+  return "no"
+}
+
+func canEat(originalGoal []int, originalNumFoods int, foods [][]int) bool {
+  queue := []queueItem {{goal: originalGoal, numFoods: originalNumFoods}}
+  for ;len(queue) > 0; {
+    item := queue[0]
+    queue = queue[1:]
+    if item.numFoods == 0 {
+      if len(item.goal) != 3 {
+        log.Fatal("length of item.goal is" + strconv.Itoa(len(item.goal)))
+      }
+      if item.goal[0] + item.goal[1] + item.goal[2] == 0 {
+        return true
+      }
+      continue
+    }
+    lastFood := foods[item.numFoods - 1]
+    newGoal := make([]int, 3)
+    copy(newGoal, item.goal)
+    for j := range newGoal {
+      newGoal[j] -= lastFood[j]
+    }
+    queue = append(queue, queueItem{goal: item.goal, numFoods: item.numFoods - 1})
+    queue = append(queue, queueItem{goal: newGoal, numFoods: item.numFoods - 1})
+  }
+  return false
+}
+
+func readNums(scanner *bufio.Scanner) []int {
+  scanner.Scan()
+  line := scanner.Text()
+  splitLine := strings.Split(line, " ")
+  var nums []int
+  for _, str := range splitLine {
+    num, _ := strconv.Atoi(str)
+    nums = append(nums, num)
+  }
+  return nums
+}
+
+func main() {
+    file, _ := os.Open("input.txt")
+    scanner := bufio.NewScanner(file)
+    scanner.Scan()
+    T, _ := strconv.Atoi(scanner.Text())
+    answer := ""
+    for i := 1; i <= T; i++ {
+      goal := readNums(scanner)
+      if len(goal) != 3 {
+        log.Fatal("length of goal is " + strconv.Itoa(len(goal)))
+      }
+      scanner.Scan()
+      numFoods, _ := strconv.Atoi(scanner.Text())
+      var foods [][]int
+      for i := 1; i <= numFoods; i++ {
+        foods = append(foods, readNums(scanner))
+      }
+      header := "Case #" + strconv.Itoa(i) + ": "
+      answer += header + getAnswer(goal, numFoods, foods) + "\n"
+    }
+    if err := scanner.Err(); err != nil {
+      log.Fatal(err)
+    }
+    _ = ioutil.WriteFile("output.txt", []byte(answer), 0755)
+}

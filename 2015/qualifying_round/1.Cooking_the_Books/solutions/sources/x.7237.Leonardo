@@ -1,0 +1,154 @@
+# Parse input and get line count
+class InputParser
+  
+  attr_reader :input, :count, :line_no
+  
+  def initialize path
+    @input = File.open( path )
+    @count = @input.readline.to_i
+    @line_no = -1
+  end
+  
+  def compute_lines &block
+    @line_no = -1
+    @input.each_line do |line|
+      @line_no = @line_no + 1
+      yield line.chomp
+    end
+    @input.close
+  end
+end
+
+# Compute permutations
+class Permutation
+  
+  attr :high, :low
+  
+  def swap pos
+    chars = @digits_chars.clone
+    
+    temp              = chars[pos[:from]]
+    chars[pos[:from]] = chars[pos[:to]]
+    chars[pos[:to]]   = temp
+    
+    return chars
+  end
+  
+  def initialize num_str
+    @string = num_str
+    @number = num_str.to_i
+    
+    @digits_chars = num_str.scan /\w/
+    
+    # If just one letter, trivial result
+    if @digits_chars.length == 1
+      @high = @string
+      @low = @string
+    else # Compute best permutations
+      high_swap = {
+        from: nil,
+        to: nil
+      }
+      
+      low_swap = {
+        from: nil,
+        to: nil
+      }
+      
+      second_low_swap = {
+        from: nil,
+        to: nil
+      }
+      
+      # Max int
+      high_pos = {
+        index: -1,
+        value: -1
+      }
+      
+      # Min int
+      low_pos = {
+        index: -1,
+        value: 10 # > 9
+      }
+      
+      # Second min int. Always valid since there are atleast two numbers, and one is not zero.
+      second_low_pos = {
+        index: -1,
+        value: 10
+      }
+      
+      # Register digits as number
+      @digits = []
+      @digits_chars.each_with_index do |char, i|
+        digit = char.to_i
+        @digits.push digit
+        
+        # Find last highest number
+        if digit >= high_pos[:value]
+          high_pos[:index] = i
+          high_pos[:value] = digit
+        end
+        
+        # Find last lowest number
+        if digit <= low_pos[:value]
+          # second_low_pos should be the lowest integer not equal to zero
+          if low_pos[:value] != 0
+            second_low_pos[:index] = low_pos[:index]
+            second_low_pos[:value] = low_pos[:value]
+          end
+          low_pos[:index] = i
+          low_pos[:value] = digit
+        end
+      end
+      
+      second_low_solved = false
+      low_solved = false
+      high_solved = false
+      
+      # Try swapping
+      @digits.each_with_index do |digit, i|
+        # Swap for highest
+        if !high_solved and i < high_pos[:index] and digit < high_pos[:value]
+          high_swap[:from]  = high_pos[:index]
+          high_swap[:to]    = i
+          high_solved     = true
+        end
+        
+        # Swap for lowest, except if we would like to put a 0 in the first place
+        if !low_solved and i < low_pos[:index] and digit > low_pos[:value] and !(low_pos[:value] == 0 and i == 0)
+          low_swap[:from]   = low_pos[:index]
+          low_swap[:to]     = i
+          low_solved = true
+        end
+        
+        # Swap for second lowest
+        if !second_low_solved and i < second_low_pos[:index] and digit > second_low_pos[:value]
+          second_low_swap[:from]  = second_low_pos[:index]
+          second_low_swap[:to]    = i
+          second_low_solved = true
+        end
+        
+        break if low_solved and high_solved and second_low_solved
+      end
+      
+      # Compute swaps
+      low_zero      = low_solved ? swap(low_swap).join('') : @string
+      low_not_zero  = second_low_solved ? swap(second_low_swap).join('') : @string
+      @low  = low_zero.to_i < low_not_zero.to_i ? low_zero : low_not_zero
+      @high = high_solved ? swap(high_swap).join('') : @string
+    end
+  end
+end
+
+input = InputParser.new(*ARGV)
+
+output = File.open 'output.txt', 'w'
+
+input.compute_lines do |line|
+  line_no = input.line_no + 1 # 0-based to 1-based
+  perm = Permutation.new(line)
+  output.puts "Case ##{line_no}: #{perm.low} #{perm.high}"
+end
+
+output.close

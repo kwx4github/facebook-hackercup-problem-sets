@@ -1,0 +1,229 @@
+#!/usr/bin/python
+
+import time
+import sys
+import blist
+import copy
+
+
+class AStar:
+    def __init__(self, width, height, M, no_lasers, standard_path):
+        self.width = width
+        self.height = height
+        self.initM = M
+        self.M = M
+        self.blocked = []
+        self.visited = []
+        self.cached_blocked = [ None for _ in xrange(4) ]
+        self.no_lasers = no_lasers
+        self.standard_path = standard_path
+        pass
+
+    def computeBlocked(self, steps):
+        cached_id = steps % 4
+        if self.cached_blocked[cached_id] != None:
+            self.blocked = self.cached_blocked[cached_id]
+            return
+
+        self.blocked = [ [ 0 for _ in xrange(self.width) ] for _ in xrange(self.height) ]
+        self.M = copy.deepcopy(self.initM)
+        for x in xrange(self.width):
+            for y in xrange(self.height):
+                c = self.M[y][x]
+                if c == '.' or c == 'S' or c == 'G':
+                    continue
+
+                self.blocked[y][x] = 1
+
+        if steps > 0 and self.no_lasers == False:
+            for x in xrange(self.width):
+                for y in xrange(self.height):
+                    c = self.M[y][x]
+
+                    for i in xrange(0, steps % 4):
+                        if c == '>':
+                            self.M[y][x] = 'v'
+                        elif c == 'v':
+                            self.M[y][x] = '<'
+                        elif c == '<':
+                            self.M[y][x] = '^'
+                        elif c == '^':
+                            self.M[y][x] = '>'
+
+                        c = self.M[y][x]
+
+                    if c == '>':
+                        for x1 in xrange(x + 1, self.width):
+                            if self.blocked[y][x1] == 1:
+                                break
+                            self.blocked[y][x1] = 2
+                    elif c == '<':
+                        for x1 in xrange(x - 1, -1, -1):
+                            if self.blocked[y][x1] == 1:
+                                break
+                            self.blocked[y][x1] = 2
+                    elif c == '^':
+                        for y1 in xrange(y - 1, -1, -1):
+                            if self.blocked[y1][x] == 1:
+                                break
+                            self.blocked[y1][x] = 2
+                    elif c == 'v':
+                        for y1 in xrange(y + 1, self.height):
+                            if self.blocked[y1][x] == 1:
+                                break
+                            self.blocked[y1][x] = 2
+        
+        self.cached_blocked[cached_id] = self.blocked
+
+    def passable(self, x, y):
+        if x < 0 or x >= self.width or y < 0 or y >= self.height:
+            return 1
+        return self.blocked[y][x]
+
+    def addNode(self, todo, G, x, y, prev):
+        if prev == None:
+            cost = 0
+            stdpath = 1
+        else:
+            cost = prev['cost'] + 1
+            stdpath = prev['stdpath']
+
+        if self.no_lasers == True:
+            stdpath = 0
+        else:
+            for p in self.standard_path:
+                if p[0] == x and p[1] == y:
+                    stdpath = stdpath + 1
+                    break
+
+        metric = (cost + abs(G[0] - x) + abs(G[1] - y)) * 1000 + self.visited[y][x] - (stdpath * 1000)
+
+        node = {
+            'pos': (x, y),
+            'cost': cost,
+            'metric': metric,
+            'prev': prev,
+            'stdpath': stdpath
+        }
+
+        todo.add(node)
+        pass
+
+    def run(self, S, G):
+        self.visited = [ [ 0 for _ in xrange(self.width) ] for _ in xrange(self.height) ]
+        sol_node = None
+
+        todo = blist.sortedset(key=lambda n: -n['metric'])
+        self.addNode(todo, G, S[0], S[1], None)
+
+        it = 0
+
+        while len(todo) > 0:
+            node = todo.pop()
+
+            it = it + 1
+
+            # ---
+            if False:
+                print chr(27) + "[2J"
+                print chr(27) + "[0;0H"
+                R = self.M[:]
+                rN = node
+                while rN != None:
+                    R[rN['pos'][1]][rN['pos'][0]] = '*'
+                    rN = rN['prev']
+                R[node['pos'][1]][node['pos'][0]] = 'x'
+                r = ""
+                for l in R:
+                    r = r + ''.join(l) + "\n"
+                sys.stdout.write(r)
+                sys.stdout.write("Node metric: %d" % (node['metric']))
+                sys.stdout.flush()
+                time.sleep(0.01)
+            # ---
+
+            x = node['pos'][0]
+            y = node['pos'][1]
+
+            self.computeBlocked(node['cost'] + 1)
+
+            if x == G[0] and y == G[1]:
+                sol_node = node
+                break
+
+            for new_pos in ((x+1, y), (x-1, y), (x, y+1), (x, y-1)):
+                if self.passable(new_pos[0], new_pos[1]) != 0:
+                    continue
+
+                self.visited[new_pos[1]][new_pos[0]] = self.visited[new_pos[1]][new_pos[0]] + 1
+
+                if self.no_lasers == True:
+                    if self.visited[new_pos[1]][new_pos[0]] > 1:
+                        continue
+                elif self.visited[new_pos[1]][new_pos[0]] > 10:
+                    continue
+
+                self.addNode(todo, G, new_pos[0], new_pos[1], node)
+            pass
+        pass
+
+        # print "-- %d iterations" % (it)
+
+        ret = []
+        while sol_node != None:
+            ret.insert(0, (sol_node['pos'][0], sol_node['pos'][1]))
+            sol_node = sol_node['prev']
+
+        return ret
+
+
+T = int(raw_input().strip())
+for Ti in xrange(T):
+    M, N = [ int(i) for i in raw_input().strip().split() ]
+
+    A = []
+    for i in xrange(M):
+        p = [ x for x in raw_input().strip() ]
+        A.append(p)
+
+    S = (-1, -1)
+    G = (-1, -1)
+
+    for x in xrange(N):
+        for y in xrange(M):
+            if A[y][x] == 'S':
+                S = (x, y)
+            elif A[y][x] == 'G':
+                G = (x, y)
+
+    if S[0] == -1 or G[0] == -1:
+        print "Error: Start or Goal point not found in map."
+        continue
+
+    astar_path_nolasers = AStar(N, M, A, True, None)
+    path = astar_path_nolasers.run(S, G)
+
+    if (len(path) < 2):
+        answer = "impossible"
+    else:
+        astar = AStar(N, M, A, False, path)
+        sol = astar.run(S, G)
+        if len(sol) < 2:
+            answer = "impossible"
+        else:
+            answer = str(len(sol) - 1)
+
+    print "Case #%d: %s" % (Ti + 1, answer)
+
+    if False:
+        print sol
+
+        k = 0
+        for f in sol:
+            A[f[1]][f[0]] = str(k % 10)
+            k = k + 1
+        for l in A:
+            print ''.join(l)
+
+        print " ============================== "
+

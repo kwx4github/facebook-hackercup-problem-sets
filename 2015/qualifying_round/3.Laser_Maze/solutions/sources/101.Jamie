@@ -1,0 +1,129 @@
+#include <fstream>
+#include <iostream>
+#include <queue>
+
+using namespace std;
+
+ifstream fin ("data.in");
+ofstream fout ("data.out");
+
+bool isBlock (char c, int step = -1) {
+    if (step != -1)
+	if (c & (1 << step))
+	    return true;
+    return c == '#' || c == '<' || c == '^' || c == '>' || c == 'v';
+}
+
+int main () {
+    int T;
+    fin >> T;
+
+    for (int test = 1; test <= T; test++) {
+	fout << "Case #" << test << ": ";
+	
+	int rows, cols;
+	fin >> rows >> cols;
+
+	char grid [rows][cols];
+
+	for (int i = 0; i < rows; i++) {
+	    string row;
+	    fin >> row;
+	    for (int j = 0; j < cols; j++)
+		grid[i][j] = row[j];
+	}
+
+	pair<int, int> start, end;
+
+	for (int i = 0; i < rows; i++)
+	    for (int j = 0; j < cols; j++) {
+		if (grid[i][j] == 'S')
+		    start = make_pair(i, j);
+
+		if (grid[i][j] == 'G')
+		    end = make_pair(i, j);
+
+		if (!isBlock(grid[i][j]))
+		    grid[i][j] = 0;
+	    }
+	
+	for (int i = 0; i < rows; i++)
+	    for (int j = 0; j < cols; j++) {
+		int laserval = -1;
+		if (grid[i][j] == '<')
+		    laserval = 0;
+		if (grid[i][j] == '^')
+		    laserval = 3;
+		if (grid[i][j] == '>')
+		    laserval = 2;
+		if (grid[i][j] == 'v')
+		    laserval = 1;
+
+		if (laserval == -1)
+		    continue;
+
+		for (int y = i-1; y >= 0 && !isBlock(grid[y][j]); y--)
+		    grid[y][j] |= 1<<laserval;
+
+		for (int x = j+1; x < cols && !isBlock(grid[i][x]); x++)
+		    grid[i][x] |= 1<<((laserval+1) % 4);
+
+		for (int y = i+1; y < rows && !isBlock(grid[y][j]); y++)
+		    grid[y][j] |= 1<<((laserval+2) % 4);
+
+		for (int x = j-1; x >= 0 && !isBlock(grid[i][x]); x--)
+		    grid[i][x] |= 1<<((laserval+3) % 4);
+	    }
+
+	queue< pair< int, pair<int, int> > > q;
+	q.push(make_pair(0, start));
+
+	bool visited [rows][cols][4];
+
+	for (int i = 0; i < rows; i++)
+	    for (int j = 0; j < cols; j++)
+		for (int k = 0; k < 4; k++)
+		    visited[i][j][k] = false;
+	
+	while (!q.empty()) {
+	    int step = q.front().first;
+	    pair<int, int> loc = q.front().second;
+	    int x = loc.second;
+	    int y = loc.first;
+
+	    if (loc == end) {
+		fout << step << "\n";
+		break;
+	    }
+	    
+	    if (visited[y][x][step%4]) {
+		q.pop();
+		continue;
+	    }
+
+	    //cout << step << " " << x << " " << y << "\n";
+
+	    visited[y][x][step%4] = true;
+
+	    for (int xx = x-1; xx <= x+1; xx++)
+		for (int yy = y-1; yy <= y+1; yy++) {
+		    if (!((xx != x) ^ (yy != y)))
+			continue;
+
+		    if (xx < 0 || xx >= cols || yy < 0 || yy >= rows)
+			continue;
+
+		    if (isBlock(grid[yy][xx], step%4))
+			continue;
+
+		    q.push(make_pair(step+1, make_pair(yy, xx)));
+		}
+
+	    q.pop();
+	}
+
+	if (q.empty())
+	    fout << "impossible\n";
+    }
+}
+		

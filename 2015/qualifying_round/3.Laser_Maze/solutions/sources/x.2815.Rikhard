@@ -1,0 +1,146 @@
+#include <iostream>
+#include <fstream>
+#include <queue>
+#include <string>
+#include <memory.h>
+using namespace std;
+
+struct position {
+    int row;
+    int col;
+    int orient;
+};
+
+const int lf_turret = 0;
+const int rg_turret = 2;
+const int up_turret = 1;
+const int dw_turret = 3;
+const int empty = 10;
+const int wall = 11;
+const int mv_x[4] = {0, -1, 0, +1};
+const int mv_y[4] = {-1, 0, +1, 0};
+
+int visited[110][110][4];
+int map[110][110];
+int lf[110][110], rg[110][110], up[110][110], dw[110][110];
+int N, M;
+
+bool is_turret(char c) {
+    return c == '>' || c == '<' || c == '^' || c == 'v';
+}
+
+int turret_to_int(char c) {
+    if (c == '<') return lf_turret;
+    if (c == '^') return up_turret;
+    if (c == '>') return rg_turret;
+    if (c == 'v') return dw_turret;
+    return -1;
+}
+
+int rotate(int turret, int times) {
+    return (turret + times) % 4;
+}
+
+bool is_safe(int x, int y, int orient) {
+    if (lf[x][y] == -1 || rotate(map[x][lf[x][y]], orient) != rg_turret) {
+        if (rg[x][y] == -1 || rotate(map[x][rg[x][y]], orient) != lf_turret) {
+            if (up[x][y] == -1 || rotate(map[up[x][y]][y], orient) != dw_turret) {
+                if (dw[x][y] == -1 || rotate(map[dw[x][y]][y], orient) != up_turret) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+bool in_field(int x, int y) {
+    return x >= 0 && x < N && y >= 0 && y < M;
+}
+
+int main() {
+    ifstream inf("input.txt");
+    ofstream outf("output.txt");
+    int T; inf >> T;
+    for (int t = 0; t < T; ++t) {
+        outf << "Case #" << t + 1 << ": ";
+        inf >> N >> M;
+        int sx, sy, fx, fy;
+        memset(lf, -1, sizeof(lf));
+        memset(rg, -1, sizeof(rg));
+        memset(dw, -1, sizeof(dw));
+        memset(up, -1, sizeof(up));
+        string row;
+        for (int i = 0; i < N; ++i) {
+            inf >> row;
+            for (int j = 0; j < M; ++j) {
+                if (j > 0)
+                    lf[i][j] = lf[i][j - 1];
+                if (i > 0)
+                    up[i][j] = up[i - 1][j];
+                if (is_turret(row[j])) {
+                    lf[i][j] = j;
+                    up[i][j] = i;
+                    map[i][j] = turret_to_int(row[j]);
+                } else if (row[j] == 'S') {
+                    sx = i;
+                    sy = j;
+                    map[i][j] = empty;
+                } else if (row[j] == 'G') {
+                    fx = i;
+                    fy = j;
+                    map[i][j] = empty;
+                } else if (row[j] == '.') {
+                    map[i][j] = empty;
+                } else if (row[j] == '#') {
+                    map[i][j] = wall;
+                }
+            }
+        }
+        for (int i = N - 1; i >= 0; --i) {
+            for (int j = M - 1; j >= 0; --j) {
+                if (j < M - 1)
+                    rg[i][j] = rg[i][j + 1];
+                if (i < N - 1)
+                    dw[i][j] = dw[i + 1][j];
+                if (map[i][j] < 4) {
+                    rg[i][j] = j;
+                    dw[i][j] = i;
+                }
+            }
+        }
+
+//        if (!is_safe(sx, sy, 0)) {
+//            outf << "impossible\n";
+//            continue;
+//        }
+        memset(visited, 0, sizeof(visited));
+        queue<position> q;
+        q.push({sx, sy, 0});
+        visited[sx][sy][0] = 1;
+        int steps = -1;
+        while (!q.empty() && steps == -1) {
+            position pos = q.front();
+            q.pop();
+            for (int i = 0; i < 4; ++i) {
+                int x = pos.row + mv_x[i];
+                int y = pos.col + mv_y[i];
+                int o = (pos.orient + 1) % 4;
+                if (in_field(x, y) && visited[x][y][o] == 0 && is_safe(x, y, o)) {
+                    if (x == fx && y == fy) {
+                        steps = visited[pos.row][pos.col][pos.orient];
+                        break;
+                    }
+                    visited[x][y][o] = visited[pos.row][pos.col][pos.orient] + 1;
+                    q.push({x, y, o});
+                }
+            }
+        }
+        if (steps == -1) {
+            outf << "impossible\n";
+        } else {
+            outf << steps << '\n';
+        }
+    }
+}
+

@@ -1,0 +1,193 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const int MAXN = 105;
+
+int n, m;
+char s[MAXN][MAXN];
+int memo[MAXN][MAXN][5][2];
+const int INF = (int) 1e7;
+
+int valid(int x, int y) {
+    return (x >= 0 && x < n && y >= 0 && y < m);
+}
+
+int isLaser(int x, int y) {
+    char ch = s[x][y];
+    if (ch == '<') {
+        return true;
+    } else if (ch == '>') {
+        return true;
+    } else if (ch == 'v') {
+        return true;
+    } else if (ch == '^') {
+        return true;
+    }
+    return false;
+}
+
+char rotateClockwise(char ch) {
+    if (ch == '>') {
+        return 'v';
+    }
+    if (ch == 'v') {
+        return '<';
+    }
+    if (ch == '<') {
+        return '^';
+    }
+    if (ch == '^') {
+        return '>';
+    }
+    assert(false);
+}
+
+int cntHorizontal(int x, int sy, int ey) {
+    if (sy > ey) {
+        assert(abs(sy - ey) <= 1);
+    }
+    int cnt = 0;
+    for (int i = sy; i <= ey; i++) {
+        if (isLaser(x, i) || s[x][i] == '#') {
+            cnt++;
+        }
+    }
+    return cnt;
+}
+
+int cntVertical(int y, int sx, int ex) {
+    if (sx > ex) {
+        assert(abs(sx - ex) <= 1);
+    }
+    int cnt = 0;
+    for (int i = sx; i <= ex; i++) {
+        if (isLaser(i, y) || s[i][y] == '#') {
+            cnt++;
+        }
+    }
+    return cnt;
+}
+
+int willKill(int x, int y, int X, int Y, int moves) {
+    assert(isLaser(x, y));
+    char ch = s[x][y];
+    for (int i = 0; i < moves; i++) {
+        ch = rotateClockwise(ch);
+    }
+    if (ch == '>') {
+        if (X == x && Y >= y) {
+            if (cntHorizontal(x, y + 1, Y - 1) == 0) {
+                return true;
+            }
+        }
+    }
+    if (ch == '<') {
+        if (X == x && Y <= y) {
+            if (cntHorizontal(x, Y + 1, y - 1) == 0) {
+                return true;
+            }
+        }
+    }
+    if (ch == '^') {
+        if (Y == y && X <= x) {
+            if (cntVertical(y, X + 1, x - 1) == 0) {
+                return true;
+            }
+        }
+    }
+    if (ch == 'v') {
+        if (Y == y && X >= x) {
+            if (cntVertical(y, x + 1, X - 1) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int dp(int x, int y, int moves, int isFirstMove) {
+    int &res = memo[x][y][moves][isFirstMove];
+    if (res == -1) {
+        int ok = true;
+        if (!isFirstMove) {
+            for (int i = 0; i < m; i++) {
+                if (i == y) {
+                    continue;
+                }
+                if (isLaser(x, i) && willKill(x, i, x, y, moves)) {
+                    ok = false;
+                    break;
+                }
+            }
+            for (int i = 0; i < n && ok; i++) {
+                if (i == x) {
+                    continue;
+                }
+                if (isLaser(i, y) && willKill(i, y, x, y, moves)) {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+        if (!ok) {
+            res = INF;
+        } else {
+            res = INF;
+            if (s[x][y] == 'G') {
+                res = 0;
+            } else {
+                for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        if (abs(dx) + abs(dy) == 1)  {
+                            int nx = x + dx;
+                            int ny = y + dy;
+                            if (valid(nx, ny) && s[nx][ny] != '#' && !isLaser(nx, ny)) {
+                                res = min(res, dp(nx, ny, (moves + 1) % 4, false) + 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return res;
+}
+
+int main() {
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+    int T, caseNo = 1;
+    scanf("%d", &T);
+    while (T--){
+        scanf("%d %d", &n, &m);
+        for (int i = 0; i < n; i++){
+            scanf("%s", s[i]);
+        }
+        memset(memo, -1, sizeof(memo));
+        int sx = -1, sy = -1;
+        int gx = -1, gy = -1;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                if (s[i][j] == 'S') {
+                    sx = i;
+                    sy = j;
+                }
+                if (s[i][j] == 'G') {
+                    gx = i;
+                    gy = j;
+                }
+            }
+        }
+        int ans = INF;
+        if (sx != -1 && gx != -1) {
+            ans = dp(sx, sy, 0, true);
+        }
+        if (ans >= INF) {
+            printf("Case #%d: %s\n", caseNo++, "impossible");
+        } else {
+            printf("Case #%d: %d\n", caseNo++, ans);
+        }
+    }
+    return 0;
+}

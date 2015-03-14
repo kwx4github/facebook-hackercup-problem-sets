@@ -1,0 +1,316 @@
+//
+//  gameLazer.cpp
+//  BST
+//
+//  Created by S Venu Madhav Chitta on 1/9/15.
+//  Copyright (c) 2015 S Venu Madhav Chitta. All rights reserved.
+//
+
+#include <stdio.h>
+#include <stdio.h>
+#include <iostream>
+#include <string>
+#include <cmath>
+#include <vector>
+#include <limits>
+
+int player_x;
+int player_y;
+int goal_x;
+int goal_y;
+int vecLength;
+int pathLength;
+class direction;
+class coords;
+int rows,cols;
+std::vector <direction*> lazers;
+std::vector <coords*> path;
+
+class direction{
+public:
+    int x;
+    int y;
+    int d;
+    direction (int x,int y,int d)
+    {
+        this->x = x;
+        this->y = y;
+        this->d = d;
+    }
+    
+};
+
+class coords{
+public:
+    int r;
+    int c;
+    short n;
+    short d;
+    coords(int a,int b)
+    {
+        r=a,c=b,n=0,d=0;
+    }
+    coords(int a,int b,short flag,short dir)
+    {
+        r=a,c=b,n=flag,d=dir;
+    }
+    coords()
+    {
+        r=0,c=0,n=true,d=0;
+    }
+    void toString()
+    {
+        std::cout<<"Rows: "<<r<<" Cols: "<<c<<" Moves: "<<n<<" Direction: "<<d<<std::endl;
+    }
+};
+
+void updateDir()
+{
+    for (int p=0;p<vecLength;p++)
+        lazers[p]->d=(lazers[p]->d+1)%4;
+    
+}
+
+bool findObstacle(direction dr,coords *cr,char** matrix)
+{
+    if (dr.d==0){//cr->c==dr.y&&cr->r<dr.x
+        for(int i=cr->r+1;i<dr.x;i++)
+            if(matrix[i][dr.y]=='#'||matrix[i][dr.y]=='>'||matrix[i][dr.y]=='<'||
+               matrix[i][dr.y]=='^'||matrix[i][dr.y]=='v')
+                return true;}
+    else if (dr.d==1){ //dr.x==cr->r&&cr->c>dr.y
+        for(int j=dr.y+1;j<cr->c;j++)
+            if(matrix[dr.x][j]=='#'||matrix[dr.x][j]=='>'||matrix[dr.x][j]=='<'||
+               matrix[dr.x][j]=='^'||matrix[dr.x][j]=='v')
+                return true;}
+    else if (dr.d==2){//cr->c==dr.y&&cr->r>dr.x
+        for(int i=dr.x+1;i<cr->r;i++)
+            if(matrix[i][dr.y]=='#'||matrix[i][dr.y]=='>'||matrix[i][dr.y]=='<'||
+               matrix[i][dr.y]=='^'||matrix[i][dr.y]=='v')
+                return true;}
+    else if (dr.d==3){ //dr.x==cr->r&&cr->c<dr.y
+        for(int j=cr->c;j<dr.y;j++)
+            if(matrix[dr.x][j]=='#'||matrix[dr.x][j]=='>'||matrix[dr.x][j]=='<'||
+               matrix[dr.x][j]=='^'||matrix[dr.x][j]=='v')
+                return true;}
+    return false;
+}
+
+bool findIfReachable(direction dr,coords *cr,char** matrix)
+{
+    if((dr.d==0&&cr->c==dr.y&&cr->r<dr.x)||(dr.d==1&&dr.x==cr->r&&cr->c>dr.y)||
+       (dr.d==2&&cr->c==dr.y&&cr->r>dr.x)||(dr.d==3&&dr.x==cr->r&&cr->c<dr.y))
+    {
+        if (findObstacle(dr,cr,matrix)==true)
+            return false;
+        else
+            return true;
+    }
+    return false;
+}
+
+
+bool findDist(coords*dir,char** matrix)
+{
+    
+    for (int i=0;i<vecLength;i++)
+    {
+        if(findIfReachable(*lazers[i],dir,matrix)==true)
+            return false;
+    }
+    
+    return true;
+}
+
+coords **getDirs(char** matrix, int x,int y)
+{
+    coords **dir=new coords*[4];
+    for(int i=0;i<4;i++)
+        dir[i]=NULL;
+    
+    if(x-1>=0&&matrix[x-1][y]!='#')
+        dir[0]=new coords(),dir[0]->r=x-1,dir[0]->c=y;
+    if(x+1<rows&&matrix[x+1][y]!='#')
+        dir[2]=new coords(),dir[2]->r=x+1,dir[2]->c=y;
+    if(y+1<cols&&matrix[x][y+1]!='#')
+        dir[1]=new coords(),dir[1]->r=x,dir[1]->c=y+1;
+    if(y-1>=0&&matrix[x][y-1]!='#')
+        dir[3]=new coords(),dir[3]->r=x,dir[3]->c=y-1;
+    return dir;
+}
+
+coords **findIfDer(coords ** dir)
+{
+    for (int i=0;i<4;i++)
+        if(dir[i]!=NULL)
+            if (dir[i]->r==player_x&&dir[i]->c==player_y)
+                dir[i]=NULL;
+    return dir;
+}
+
+int findRecursiveBest(coords **dir,int x,int y,char **matrix)
+{
+    coords **left = getDirs(matrix, dir[x]->r,dir[x]->c);
+    coords **right = getDirs(matrix, dir[y]->r,dir[y]->c);
+    left=findIfDer(left);
+    right=findIfDer(right);
+    int lefts=std::numeric_limits<int>::max();
+    int rights=std::numeric_limits<int>::max();
+    for(int i=0;i<4;i++)
+    {
+        if(left[i]!=NULL)
+        {
+                int temp = abs(left[i]->r-goal_x)+abs(left[i]->c-goal_y);
+                if(temp<lefts)
+                    lefts=temp;
+                else if (temp==lefts)
+                    findRecursiveBest(left,lefts,i,matrix);
+        }
+    }
+    for(int i=0;i<4;i++)
+    {
+        if(right[i]!=NULL)
+        {
+            int temp = abs(right[i]->r-goal_x)+abs(right[i]->c-goal_y);
+            if(temp<rights)
+                rights=temp;
+            else if (temp==rights)
+                findRecursiveBest(right,rights,i,matrix);
+        }
+    }
+    
+    if (lefts<rights)
+        return 0;
+    else if(rights<lefts)
+        return 1;
+    return -1;
+}
+
+int findOptimalDist(coords** dir,char** matrix)
+{
+    int optimum_dist=std::numeric_limits<int>::max(),optimum_index=-1;
+    for(int i=0;i<4;i++)
+    {
+        if(dir[i]!=NULL)
+        {
+            if(findDist(dir[i],matrix)==true)
+            {
+                int temp = abs(dir[i]->r-goal_x)+abs(dir[i]->c-goal_y);
+                if(temp<optimum_dist)
+                    optimum_dist=temp,optimum_index=i;
+                //else if (temp==optimum_dist)
+                  //  if (findRecursiveBest(dir,optimum_index,i,matrix)==1)
+                    //    optimum_dist=temp,optimum_index=i;
+            }
+        }
+    }
+    
+    if (optimum_dist==0)
+        return -2;
+    else
+        return optimum_index;
+}
+
+
+
+int movePlayer(char **matrix,int &noMoves)
+{
+    coords **dir=getDirs(matrix, player_x, player_y);
+    updateDir();
+    int x=findOptimalDist(dir,matrix);
+    if (x==-1) return -1;
+    else if (x==-2) return -2;
+    else{
+        path.push_back(new coords(player_x,player_y,noMoves+1,x));
+        pathLength++;
+        player_x=dir[x]->r;
+        player_y=dir[x]->c;
+        
+    }
+    return 0;
+}
+
+void startGame(char** matrix)
+{
+    bool stop=false;
+    int noMoves=0;
+    while(!stop)
+    {
+        int temp=movePlayer(matrix,noMoves);
+        if (temp==-1)
+        {
+            std::cout<<"impossible"<<std::endl;
+            return;
+        }
+        else if(temp==-2)
+        {
+            std::cout<<noMoves+1<<std::endl;
+            return;
+        }
+        if (noMoves>100000)
+        {
+            std::cout<<"impossible"<<std::endl;
+            return;
+        }
+        
+            
+        noMoves++;
+    }
+    //return noMoves;
+}
+
+
+int main()
+{
+    int test;
+    std::cin>>test;
+    for (int i=0;i<test;i++)
+    {
+        std::cin >>rows>>cols;
+        char ** matrix = new char*[rows];
+        for(int i=0;i<rows;i++)
+            matrix[i]=new char[cols];
+        lazers.clear();
+        path.clear();
+        pathLength=0;
+        vecLength = 0;
+        for (int p=0;p<rows;p++)
+        {
+            std::string str;
+            std::cin>>str;
+            for (int q=0;q<cols;q++)
+            {
+                char sym=str[q];
+                matrix[p][q]=str[q];
+                if (sym == 'S')
+                    player_x = p,player_y = q;
+                else if (sym == 'G')
+                    goal_x = p,goal_y = q;
+                else if (sym == '<'||sym=='>'||sym=='^'||sym=='v')
+                {
+                    int d;
+                    if (sym == '<')
+                        d=3;
+                    else if (sym=='>')
+                        d=1;
+                    else if (sym=='^')
+                        d=0;
+                    else if (sym=='v')
+                        d=2;
+                    direction *dir = new direction(p,q,d);
+                    vecLength++;
+                    lazers.push_back(dir);
+                }
+            }
+        }
+        std::cout<<"Case #"<<i+1<<": ";
+        startGame(matrix);
+        /*for(int i=0;i<pathLength;i++)
+            path[i]->toString();*/
+        
+        for( int i = 0 ; i < rows ; i++ )
+            delete [] matrix[i] ;
+        delete [] matrix ;
+    }
+    return 0;
+}

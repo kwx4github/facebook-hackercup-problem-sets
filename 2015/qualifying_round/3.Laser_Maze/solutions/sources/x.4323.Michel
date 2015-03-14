@@ -1,0 +1,161 @@
+#include <iomanip>
+#include <algorithm>
+#include <iterator>     // std::insert_iterator
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <queue>
+#include <set>
+#include <map>
+#include <cstdio>
+#include <cstdlib>
+#include <cctype>
+#include <cmath>
+#include <fstream>
+
+using namespace std;
+struct Node{
+	int step, row, col;
+	bool operator<(const Node& a) const{ return a.step < step; }
+	Node(int s, int r, int c) : step(s), row(r), col(c) {}
+};
+
+int dx[] = { 0, 0, 1, -1};
+int dy[] = { 1, -1, 0, 0};
+
+//priority_queue< Node, vector< Node >, less< Node > > pq;
+
+bool shoots[102][102][4];
+
+void ComputeShoots(vector<string> &maze){
+	for (int i = 0; i < maze.size(); i++)
+		for (int j = 0; j < maze[0].size(); j++)
+			for (int k = 0; k < 4; k++)
+				shoots[i][j][k] = false;
+
+	for (int r = 0; r < maze.size(); r++){
+		for (int c = 0; c < maze[0].size(); c++){
+			int step;
+			if (maze[r][c] == '<')
+				step=0;
+			else if (maze[r][c] == '^')
+				step=1;
+			else if (maze[r][c] == '>')
+				step=2;
+			else if (maze[r][c] == 'v')
+				step=3;
+			else continue;
+
+			int new_row = r, new_col = c;
+
+			//left
+			new_col = c - 1;
+			while (new_col >= 0 && (maze[r][new_col] == '.' || maze[r][new_col] == 'S' || maze[r][new_col] == 'G')){
+				//'<' = 0 
+				//'^' = 1
+				//'>' = 2
+				//'v' = 3
+				shoots[r][new_col][step] = true;
+				new_col--;
+			}
+
+			step = (step + 1) % 4;
+			//down
+			new_row = r + 1;
+			while (new_row < maze.size() && (maze[new_row][c] == '.' || maze[new_row][c] == 'S' || maze[new_row][c] == 'G')){
+				//'<' = 1 
+				//'^' = 2
+				//'>' = 3
+				//'v' = 0
+				shoots[new_row][c][step] = true;
+				new_row++;
+			}
+
+			step = (step + 1) % 4;
+			//right
+			new_col = c + 1;
+			while (new_col < maze[0].size() && (maze[r][new_col] == '.' || maze[r][new_col] == 'S' || maze[r][new_col] == 'G')){
+				//'<' = 2 
+				//'^' = 3
+				//'>' = 0
+				//'v' = 1
+				shoots[r][new_col][step] = true;
+				new_col++;
+			}
+
+			step = (step + 1) % 4;
+			//up
+			new_row = r - 1;
+			while (new_row >= 0 && (maze[new_row][c] == '.' || maze[new_row][c] == 'S' || maze[new_row][c] == 'G')){
+				//'<' = 3 
+				//'^' = 0
+				//'>' = 1
+				//'v' = 2
+				shoots[new_row][c][step] = true;
+				new_row--;
+			}
+		}
+	}
+}
+
+bool Can(int row, int col, int step, vector<string> &maze){
+	if (maze[row][col] == '#' || maze[row][col] == '<' || maze[row][col] == '>' || maze[row][col] == 'v' || maze[row][col] == '^') return false;
+	if (shoots[row][col][step%4]) return false;
+	return true;
+}
+
+int BfsMaze(int R, int C, int rowStart, int colStart, int rowEnd, int colEnd, vector<string> &maze){
+	vector< vector<vector<bool> > > used(R + 1, vector<vector<bool>>(C + 1, vector<bool> (4,false)));
+	queue<Node> q;
+	Node cur(0,rowStart, colStart);
+	used[cur.row][cur.col][cur.step] = true;
+	q.push(cur);
+	while (!q.empty()){
+		cur = q.front(); q.pop();
+		if (cur.row == rowEnd && cur.col == colEnd) return cur.step;
+		Node nxt = cur;
+		for (int k = 0; k<4; k++){
+			int newRow = cur.row + dy[k], newCol = cur.col + dx[k];
+			if (newRow >= R || newRow < 0 || newCol >= C || newCol<0) continue;
+			if (used[newRow][newCol][(cur.step+1)%4] || !Can(newRow, newCol, cur.step + 1, maze)) continue;
+			used[newRow][newCol][(cur.step+1)%4] = true;
+			nxt.step = cur.step + 1; nxt.row = newRow; nxt.col = newCol;
+			q.push(nxt);
+		}
+	}
+	return -1;
+}
+
+int main(){
+	ios_base::sync_with_stdio(false);
+	ifstream in("A.in");
+	ofstream out("result.txt");
+	int T, N;
+	in >> T;
+	for (int test = 0; test < T; test++){
+	cout << "Case " << test << endl;
+		out << "Case #" << test+1 << ": ";
+		int M, N;
+		in >> M >> N;
+		vector<string> maze(M);
+		for (int i = 0; i < M; i++)
+			in >> maze[i];
+		
+		ComputeShoots(maze);
+		int rowStart=-1, colStart = -1, rowEnd = -1, colEnd = -1;
+		for (int i = 0; i < M; i++){
+			for (int j = 0; j < N; j++){
+				if (maze[i][j] == 'S'){
+					rowStart = i, colStart = j;
+				}
+				else if (maze[i][j] == 'G'){
+					rowEnd = i, colEnd = j;
+				}
+			}
+		}
+		int ret = BfsMaze(M, N, rowStart, colStart, rowEnd, colEnd,maze);
+		if (ret == -1) out << "impossible\n", cout << "impossible\n";
+		else out << ret << endl, cout << ret << endl;
+	}
+}

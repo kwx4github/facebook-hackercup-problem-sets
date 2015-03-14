@@ -1,0 +1,119 @@
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <queue>
+#include <tuple>
+#include <cstring>
+
+using namespace std;
+
+int mov[4][2] = { {0, 1}, {1, 0}, {0, -1}, {-1, 0} };
+int m, n;
+
+char maze[101][101];
+int laser[101][101][4];
+int dist[101][101][4];
+
+bool isLaser (char c) {
+	return c == '<' or c == '^' or c == 'v' or c == '<';
+}
+
+bool canGo (int i, int j, int k, int dir) {
+	int ii = i + mov[dir][0];
+	int jj = j + mov[dir][1];
+	if (ii  >= n or jj >= m or ii < 0 or jj < 0) return false;
+	if (maze[ii][jj] == '#') return false;
+	if (laser[ii][jj][k]) return false;
+	return true;
+}
+
+int getDir (char c) {
+	if (c == '^') return 3;
+	if (c == '>') return 0;
+	if (c == 'v') return 1;
+	return 2;
+}
+
+
+void pre () {
+	for (int k = 0; k < 4; ++k) {
+		for (int i = 0; i < n; ++i) {
+			for (int j = 0; j < m; ++j) {
+				if (isLaser(maze[i][j])) {
+					int dir = getDir(maze[i][j]);
+					dir = (dir + k)%4;
+					int ii = i;
+					int jj = j;
+					while (ii < n and jj < m and ii >= 0 and jj >= 0) {
+						if (maze[ii][jj] == '#') break;
+						laser[ii][jj][k] = 1;
+						ii += mov[dir][0];
+						jj += mov[dir][1];
+					}
+				}
+			}
+		}
+	}
+}
+
+typedef pair<int,int> pii;
+
+int main (void) 
+{
+	int t, res;
+	cin >> t;
+	
+	for (int c = 0; c < t; ++c) {
+		cin >> n >> m;
+		for (int i = 0; i < n; ++i)
+			cin >> maze[i];
+
+		memset(dist, -1, sizeof dist);
+		memset(laser, 0, sizeof laser);
+
+		pre();
+
+		int si, sj;
+		int gi, gj;
+		res = -1;
+
+		for (int i = 0; i < n; ++i)
+			for (int j = 0; j < m; ++j)
+				if (maze[i][j] == 'S') si = i, sj = j;
+				else if (maze[i][j] == 'G') gi = i, gj = j;
+
+		queue< tuple<int, int, int > > q;
+		q.push(make_tuple(si, sj, 0));
+		dist[si][sj][0] = 0;
+
+		while (!q.empty()) {
+			tuple<int, int, int> cur = q.front(); q.pop();
+			int ci = get<0>(cur);
+			int cj = get<1>(cur);
+			int ck = get<2>(cur);
+
+			if (ci == gi and cj == gj) {
+				res = dist[ci][cj][ck];
+				break;
+			}
+
+			for (int d = 0; d < 4; ++d) {
+				if (canGo(ci, cj, (ck + 1)%4, d)) {
+					int ni = ci + mov[d][0];
+					int nj = cj + mov[d][1];
+					int nk = (ck + 1)%4;
+					if (dist[ni][nj][nk] == -1) {
+						dist[ni][nj][nk] = dist[ci][cj][ck] + 1;
+						q.push(make_tuple(ni, nj, nk));
+					}
+				}
+			}
+		}
+
+		printf("Case #%d: ", c + 1);
+		if (res == -1) printf("impossible\n");
+		else printf("%d\n", res);
+	}
+
+	return 0;
+}

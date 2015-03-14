@@ -1,0 +1,172 @@
+//
+//  main.cpp
+//  facebookhackercup
+//
+//  Created by Yoshioka Tsuneo on 2015/01/10.
+//  Copyright (c) 2015年 Yoshioka Tsuneo. All rights reserved.
+//
+
+#include <fstream>
+#include <iostream>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <set>
+#include <numeric>
+#include <algorithm>
+#include <sstream>
+#include <queue>
+#include <stdexcept>
+
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <climits>
+#include <cfloat>
+#include <cassert>
+#include <unistd.h>
+#include <string.h>
+
+#include <stack>
+
+// #define MULTI_THREAD
+
+#ifdef MULTI_THREAD
+#include <thread>
+#endif
+
+#define decltype(X) __typeof(X)
+#define REP(i, n) for(int i=0; i<(int)n; i++)
+#define FOR(it, c) for(decltype((c).begin()) it = (c).begin(); it!=(c).end(); it++)
+#define ALL(c) (c).begin(), (c).end()
+
+#define EPS 0.000001
+using namespace std;
+
+typedef long long ll;
+
+
+
+
+// int testcase_itr(const string &A, const string &B, const string &S)
+string testcase_itr(int gp, int gc, int gf, int N, vector<int> ps, vector<int> cs, vector<int> fs)
+{
+    // solution start
+    for(int mask=0;mask<(1<<N);mask++){
+        int p=0, c=0, f=0;
+        for(int i=0;i<N;i++){
+            if(mask & (1<<i)){
+                p += ps[i];
+                c += cs[i];
+                f += fs[i];
+            }
+        }
+        if(p==gp && c==gc && f==gf){
+            return string("yes");
+        }
+    }
+    return string("no");
+    // solution end
+    
+    // return 12345;
+}
+void testcase(istream &in)
+{
+    int T;
+    in >> T;
+    for(int i=0;i<T;i++){
+        int gp, gc, gf;
+        in >> gp >> gc >> gf;
+        int N;
+        in >> N;
+        vector<int> ps, cs, fs;
+        for(int j=0;j<N;j++){
+            int p, c, f;
+            in >> p >> c >> f;
+            ps.push_back(p);
+            cs.push_back(c);
+            fs.push_back(f);
+        }
+        string ret = testcase_itr(gp, gc, gf, N, ps, cs, fs);
+        cout << "Case #" << i+1 << ": " << ret << endl;
+    }
+    // string A, B, S;
+    // in >> A >> B >> S;
+    // return testcase_itr(A, B, S);
+}
+
+#ifdef MULTI_THREAD
+semaphore sem(6);
+vector< pair<bool, double> > g_results;
+
+void testcase_for_multithread(int t, double C, double F, double X)
+{
+    g_results[t].second = testcase_itr(C, F, X);
+    g_results[t].first = true;
+    // sleep(rand()/(RAND_MAX/3.0));
+    sem.notify();
+}
+#endif
+
+int main(int argc, const char * argv[])
+{
+    // sleep(1000);
+    // insert code here...
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+    cout.precision(15);
+    string fname = "/dev/stdin";
+    if(argc>=2){
+        fname = argv[1];
+        ifstream in(fname, ifstream::in);
+        if(!in){
+            cout << "File open error:" << fname << endl;
+            exit(1);
+        }
+        testcase(in);
+        /*
+        int result = testcase(in);
+        cout << result << endl;
+         */
+    }else{
+        testcase(cin);
+        /*
+        int result = testcase(cin);
+        cout << result << endl;
+         */
+        
+    }
+#ifdef MULTI_THREAD
+        
+    vector<thread> threads;
+    g_results.resize(T);
+    int cur_result = 0;
+    for(int t=0;t<T;t++){
+        sem.wait();
+        while(g_results[cur_result].first == true){
+            cout << "Case #" << cur_result+1 << ": " << g_results[cur_result].second << endl;
+            cur_result++;
+        }
+        double C, F, X;
+        
+        in >> C >> F >> X;
+        
+        threads.push_back(thread(testcase_for_multithread, t, C, F, X ));
+    }
+    while(cur_result<T){
+        sem.wait();
+        while(g_results[cur_result].first == true){
+            cout << "Case #" << cur_result+1 << ": " << g_results[cur_result].second << endl;
+            cur_result ++;
+        }
+    }
+    for(int t=0;t<T;t++){
+        threads[t].join();
+    }
+#endif
+    return 0;
+}
+
+
+

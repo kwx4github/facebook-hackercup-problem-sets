@@ -1,0 +1,158 @@
+#include <cstdio>
+#include <cassert>
+#include <utility>
+#include <queue>
+#include <set>
+#include <list>
+#include <map>
+#include <iostream>
+#include <algorithm>
+#include <string>
+#include <vector>
+using namespace std;
+typedef vector<int> VI;
+typedef long long LL;
+#define FOR(x, b, e) for(int (x)=(b); x<=(e); ++(x))
+#define FORD(x, b, e) for(int (x)=(b); x>=(e); --(x))
+#define REP(x, n) for(int x=0; x<(n); ++x)
+#define VAR(v,n) __typeof(n) v=(n)
+#define ALL(c) c.begin(),c.end()
+#define SIZE(x) (int)x.size()
+#define FOREACH(i,c) for(VAR(i,(c).begin());i!=(c).end();++i)
+#define PB push_back
+#define ST first
+#define ND second
+#define MP make_pair
+#define PII pair<int, int>
+
+struct Ind {
+    int r, c, t, d;
+};
+
+const int K = 4;
+int R[K] = {-1, 0, 1, 0};
+int C[K] = {0, 1, 0, -1};
+
+bool update(bool &laser, char c, char dir) {
+    if (c == 'S' || c == 'G' || c == '.')
+        return laser;
+    else if (c == dir) {
+        laser = false;
+        return false;
+    }
+    else {
+        laser = true;
+        return false;
+    }
+}
+
+vector<vector<bool>> calculate(int m, int n, const vector<string> &T) {
+    vector<vector<bool>> B(m, vector<bool>(n, true));
+    REP(i, m) {
+        bool laser = true;
+        REP(j, n) {
+            bool res = update(laser, T[i][j], '>');
+            B[i][j] = B[i][j] && res;
+        }
+        laser = true;
+        FORD(j, n-1, 0) {
+            bool res = update(laser, T[i][j], '<');
+            B[i][j] = B[i][j] && res;
+        }
+    }
+    REP(j, n) {
+        bool laser = true;
+        REP(i, m) {
+            bool res = update(laser, T[i][j], 'v');
+            B[i][j] = B[i][j] && res;
+        }
+        laser = true;
+        FORD(i, m - 1, 0) {
+            bool res = update(laser, T[i][j], '^');
+            B[i][j] = B[i][j] && res;
+        }
+    }
+    return B;
+}
+
+char turn_clockwise(char c) {
+    switch (c) {
+        case '^':
+            return '>';
+        case '>':
+            return 'v';
+        case 'v':
+            return '<';
+        case '<':
+            return '^';
+        default:
+            return c;
+    }
+}
+
+void rotate(int m, int n, vector<string> &T) {
+    REP(i, m) REP(j, n)
+        T[i][j] = turn_clockwise(T[i][j]);
+}
+
+bool are_coords_valid(int i, int j, int m, int n) {
+    return i >= 0 && i < m && j >= 0 && j < n;
+}
+
+int main() {
+    int t;
+    scanf("%d", &t);
+    FOR(z, 1, t) {
+        int m, n;
+        cin >> m >> n;
+        vector<string> T(m);
+        PII S, G;
+        REP(i, m) {
+            cin >> T[i];
+            REP(j, n) {
+                if (T[i][j] == 'S')
+                    S = MP(i, j);
+                else if (T[i][j] == 'G')
+                    G = MP(i, j);
+            }
+        }
+        vector<vector<bool>> B[4];
+        REP(i, 4) {
+            B[i] = std::move(calculate(m, n, T));
+            rotate(m, n, T);
+        }
+        vector<vector<bool>> V[4];
+        REP(i, 4)
+            V[i] = vector<vector<bool>>(m, vector<bool>(n, false));
+        typedef queue<Ind, list<Ind>> Queue;
+        Queue Q;
+        Q.push({.r = S.ST, .c = S.ND, .t = 0, .d = 0});
+        bool found = false;
+        int dist;
+        while (!Q.empty()) {
+            auto ind = Q.front();
+            if (ind.r == G.ST && ind.c == G.ND) {
+                found = true;
+                dist = ind.d;
+                break;
+            }
+            Q.pop();
+            REP(i, K) {
+                int r = ind.r + R[i],
+                    c = ind.c + C[i],
+                    t = (ind.t + 1) % 4,
+                    d = ind.d + 1;
+                if (are_coords_valid(r, c, m, n) && B[t][r][c] && !V[t][r][c]) {
+                    V[t][r][c] = true;
+                    Q.push({.r=r,.c=c,.t=t, .d = d});
+                }
+            }
+        }
+        printf("Case #%d: ", z);
+        if (found)
+            printf("%d\n", dist);
+        else
+            printf("impossible\n");
+    }
+    return 0;
+}

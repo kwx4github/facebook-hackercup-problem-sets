@@ -1,0 +1,129 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.PriorityQueue;
+import java.util.Scanner;
+
+
+public class NewYearsResolution {
+	public static void main (String[] args) {
+		try {
+			Scanner s = new Scanner(new BufferedReader(new FileReader("newyearsinput.txt")));
+			BufferedWriter fout = new BufferedWriter(new FileWriter("output.txt"));
+			int numCases = s.nextInt();
+			Food goal;
+			ArrayList<Food> foods;
+			int numFoods;
+			for (int i = 1; i <= numCases; i++) {
+				goal = new Food(s.nextInt(), s.nextInt(), s.nextInt());
+				numFoods = s.nextInt();
+				foods = new ArrayList<Food>();
+				for (int j = 0; j < numFoods; j++) {
+					foods.add(new Food(s.nextInt(), s.nextInt(), s.nextInt()));
+				}
+				fout.append("Case #" + i + ": " + (canAddFoods(goal, foods)?"yes":"no") + "\n");
+			}
+			fout.close();
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public static boolean canAddFoods (Food goal, ArrayList<Food> list) {
+		FoodChain start = new FoodChain(new Food(0, 0, 0), goal);
+		PriorityQueue<FoodChain> frontier = new PriorityQueue<FoodChain>();
+		frontier.add(start);
+		FoodChain next;
+		boolean works;
+		while (true) {
+			next = frontier.poll();
+			if (next == null) return false;
+			if (next.metric() == 0) return true;
+			for (Food f : list) {
+				if (next.foodset.contains(f)) continue;
+				works = true;
+				for (int i = 0; i < next.sums.length; i++) {
+					if (next.sums[i] + f.vals[i] > goal.vals[i]) {
+						works = false;
+						break;
+					}
+				}
+				if (works) frontier.add(new FoodChain(f, next));
+			}
+		}
+	}
+}
+
+class FoodChain implements Comparable<FoodChain> {
+	public HashSet<Food> foodset;
+	public Food goal;
+	public int[] sums;
+
+	public FoodChain (Food start, Food g) {
+		foodset = new HashSet<Food>();
+		foodset.add(start);
+		sums = new int[start.vals.length];
+		for (int i = 0; i < sums.length; i++) {
+			sums[i] = start.vals[i];
+		}
+		goal = g; 
+	}
+	
+	public FoodChain (Food append, FoodChain other) {
+		foodset = new HashSet<Food>(other.foodset);
+		goal = other.goal;
+		foodset.add(append);
+		sums = new int[other.sums.length];
+		for (int i = 0; i < sums.length; i++) {
+			sums[i] = other.sums[i] + append.vals[i];
+		}
+	}
+	
+	public int metric () {
+		int metric = 0;
+		for (int i = 0; i < sums.length; i++) {
+			metric += goal.vals[i] - sums[i];
+		}
+		return metric;
+	}
+	
+	public int compareTo(FoodChain other) {
+		return this.metric() - other.metric();
+	}
+}
+
+class Food {
+	public int[] vals;
+	
+	public Food (int x, int y, int z) {
+		vals = new int[3];
+		vals[0] = x;
+		vals[1] = y;
+		vals[2] = z;
+	}
+	
+	public boolean equals(Object obj) {
+        if (this == obj) {
+                return true;
+        }
+        if (obj == null) {
+                return false;
+        }
+        if (!(obj instanceof Food)) {
+                return false;
+        }
+        Food other = (Food) obj;
+        for (int i = 0; i < vals.length; i++) 
+        	if (this.vals[i] != other.vals[i]) return false;
+        return true;
+	}
+	
+	public String toString () {
+		return "{" + vals[0] + ", " + vals[1] + ", " + vals[2] + "}";
+	}
+}

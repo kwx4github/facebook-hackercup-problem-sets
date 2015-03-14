@@ -1,0 +1,113 @@
+#!/usr/bin/perl -w
+use strict;
+use Data::Dumper;
+use Time::Piece;
+
+# Main --------------------------------------------------------
+# I/O file
+#my $inputFile = "new_years_resolution_kevin_input.txt";	# Kevin
+#my $inputFile = "new_years_resolution_example_input.txt";	# Practice
+my $inputFile = "new_years_resolution.txt";	# Release
+
+open(INPUTFILE,"<$inputFile") or die("Problemo in open: $!");
+my $outPutFile = "output.txt";
+open(OUTPUTFILE,">$outPutFile") or die("Problemo in open: $!");
+
+# Treatment
+my $numberOfTestCases = <INPUTFILE>;
+for (my $testCase = 1; $testCase <= $numberOfTestCases; ++$testCase) {
+
+	# Test case
+	my $goalLine = <INPUTFILE>;
+	my $goal = getFoodArrayFromLine($goalLine);
+	
+	# Foods number
+	my $numberOfFoods = <INPUTFILE>;
+
+	# Foods
+	my @foods = ();	
+	for (my $i = 0; $i < $numberOfFoods; ++$i) {
+		my $foodLine = <INPUTFILE>;		
+		$foods[$i] = getFoodArrayFromLine($foodLine);		
+	}
+	#my $t1 = time();
+	print(OUTPUTFILE "Case #$testCase: @{[isFoodCombinationPossible($goal, @foods)]}\n"); # OUTPUTFILE
+	#my $t2 = time();
+	#print $t2-$t1;
+}
+
+# Cleanup
+close(INPUTFILE);
+close(OUTPUTFILE);
+
+# Logic --------------------------------------------------------
+sub getFoodArrayFromLine {
+	my ($foodLine) = @_;
+	my @foodMicronutrients = ();
+	my $i = 0;
+	foreach my $foodMicronutrient (split(" ", $foodLine)) {
+		$foodMicronutrients[$i++] = $foodMicronutrient;			
+	}
+	return \@foodMicronutrients;
+}
+sub isFoodCombinationPossible {
+	my ($goal, @foods) = @_;
+	my $goalP = $goal->[0];
+	my $goalC = $goal->[1];
+	my $goalF = $goal->[2];
+
+	# Treatment
+	my @blacklistedCombinations = ();
+	
+	# Not actually faster
+	#for(my $i = 0; $i < @foods; ++$i) {
+	#	my $p = $foods[$i]->[0];
+	#	my $c = $foods[$i]->[1];
+	#	my $f = $foods[$i]->[2];				
+	#	if($p > $goalP || $c > $goalC || $f > $goalF) {
+	#		my $combination = 2**($i);
+	#		push(@blacklistedCombinations, $combination);	# Add to blacklist		
+	#	}
+	#	if($p == $goalP && $c == $goalC && $f == $goalF) {
+	#		return "yes";
+	#	}
+	#}
+	
+	for(my $combination = 1; $combination < 2**@foods; ++$combination) {
+		my $isCombinationInvalid = 0;
+		foreach my $blacklistedCombinationMask(@blacklistedCombinations) {
+			$isCombinationInvalid = 1 if(($combination & $blacklistedCombinationMask) == $blacklistedCombinationMask);			
+		}
+		next if($isCombinationInvalid);
+		
+		# Combination is not blacklisted => Combine the values of the foods and check
+		my $combinedP = 0;
+		my $combinedC = 0;
+		my $combinedF = 0;
+		for(my $i = 0; $i < @foods; ++$i) {
+			
+			# Is the food part of the combination?
+			if($combination & 2**($i)) {
+			
+				# Combine the values
+				$combinedP += $foods[$i]->[0];
+				$combinedC += $foods[$i]->[1];
+				$combinedF += $foods[$i]->[2];
+				
+				# Are the current values already too much?
+				if($combinedP > $goalP || $combinedC > $goalC || $combinedF > $goalF) {
+					push(@blacklistedCombinations, $combination);	# Add to blacklist
+					last;	# No need to check the rest of the combination
+				}
+				if($combinedP == $goalP && $combinedC == $goalC && $combinedF == $goalF) {
+					return "yes";
+				}
+			}
+		}
+	}
+	return "no";
+}
+
+
+
+

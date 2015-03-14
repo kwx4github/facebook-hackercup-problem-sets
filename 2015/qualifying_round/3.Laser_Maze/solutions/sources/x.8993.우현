@@ -1,0 +1,293 @@
+/*
+해커컵 문제
+
+3. Laser Maze; (55점)
+
+사각형 모양의 미로가 있다. 일반적인 미로와 달리 여기저기에 레이저 발사대가 설치되어 있다.
+여기에서 우리의 목표는 시작지점(S)에서 도착지점(G)까지 도달하는 것이 목표이다.
+
+레이저 터렛은 고정된 위치에 존재하며 당신은 그 터렛 위를 지날 수 없다. 또한 레이저를 단방향으로 발사한다.
+매 번 당신이 한 칸씩 움직일 때마다, 모든 레이저 터렛들은 시계방향으로 회전하며 자신의 방향으로
+레이저를 발사하게 된다. 또한 이 중에서 고정된 벽(#)이 존재한다.
+
+레이저는 강력하지만 벽을 뚫거나 다른 레이저 터렛을 뚫지 못한다. 
+또한 당신은 제자리에 멈춰 서서 레이저 터렛이 회전을 하기를 기다릴 수 없다.
+또한 목표 지점에 도달하자마자 레이저를 맞는 경우에는 실패가 된다.
+
+- 입력
+미로의 수 T가 주어진다.(테스트케이스의 수)
+다음으로 높이 M과 너비 N이 주어진다.
+그리고 다음과 같은 문자로 미로가 주어진다.
+
+.(빈 공간)
+#(벽)
+S(시작지점)
+G(도달지점)
+<>^v(레이저 터렛)
+
+- 출력
+i번째 미로에서 먼저 "Case#i: "를 출력 후 도달할 수 있는 최단거리의 step수를 출력한다.
+만약 탈출하지 못하는 미로인 경우 "impossible"을 출력한다.
+
+- 제약 사항
+1<=T<=100
+1<=M,N<=100
+각 미로는 S와 G를 하나씩 가진다.
+
+예시)
+입력:
+5
+2 5
+##^##
+S...G
+2 5
+##v##
+S...G
+1 5
+S..G<
+1 6
+S...G<
+5 5
+S....
+.....
+.>v..
+.^<..
+....G
+
+출력:
+Case #1: 6
+Case #2: 4
+Case #3: 3
+Case #4: impossible
+Case #5: 8
+*/
+
+
+#include<iostream>
+#include<queue>
+using namespace std;
+
+#define MAX_MAP_TYPE 5
+#define TYPE_DEFAULT 4
+#define MAX_M 102
+#define MAX_N 102
+
+const char BLOCKS[5] = {'#', '>', 'v', '<', '^'};
+const char BARRIER[7] = {'@', '#', '>', 'v', '<', '^', 0};
+
+char MAP[MAX_MAP_TYPE][MAX_M+2][MAX_N+2];
+bool chk[MAX_MAP_TYPE][MAX_M+2][MAX_N+2];
+/* Map */
+
+inline bool isBlock(const int type, const int _i, const int _j)
+{
+	for(int i = 0; i < 5; i++)
+	{
+		if(MAP[type][_i][_j] == BLOCKS[i])
+			return true;
+	}
+	return false;
+}
+
+inline void setLaser(int M, int N, char direction, int type, int _i, int _j)
+{
+	switch(direction)
+	{
+	case '>':
+		for(int j = _j+1; j <= N; j++)
+		{
+			if(isBlock(type, _i, j)) break;
+			MAP[type][_i][j] = '@';
+		}
+		break;
+	case 'v':
+		for(int i = _i+1; i <= M; i++)
+		{
+			if(isBlock(type, i, _j)) break;
+			MAP[type][i][_j] = '@';
+		}
+		break;
+	case '<':
+		for(int j = _j-1; j > 0; j--)
+		{
+			if(isBlock(type, _i, j)) break;
+			MAP[type][_i][j] = '@';
+		}
+		break;
+	case '^':
+		for(int i = _i-1; i > 0; i--)
+		{
+			if(isBlock(type, i, _j)) break;
+			MAP[type][i][_j] = '@';
+		}
+		break;
+	}
+}
+
+void generateMaps(int M, int N)
+{
+	//copy map
+	for(int i = 0; i <= 3; i++)
+	{
+		memcpy(MAP[i], MAP[TYPE_DEFAULT], sizeof(MAP[TYPE_DEFAULT]));
+	}
+	//gen maps
+	for(int type = 1; type <= 3; type++)
+	{
+		for(int i = 1; i <= M; i++) for(int j = 1; j <= N; j++)
+		{
+			switch(MAP[type-1][i][j])
+			{
+			case '>':
+				MAP[type][i][j] = 'v';
+				break;
+			case 'v':
+				MAP[type][i][j] = '<';
+				break;
+			case '<':
+				MAP[type][i][j] = '^';
+				break;
+			case '^':
+				MAP[type][i][j] = '>';
+				break;
+			default:
+				MAP[type][i][j] = MAP[type-1][i][j];
+			}
+		}		
+	}
+	//set laser
+	for(int type = 0; type <= 3; type++)
+	{
+		for(int i = 1; i <= M; i++) for(int j = 1; j <= N; j++)
+		{
+			setLaser(M,N, MAP[type][i][j], type, i, j);
+		}
+	}
+}
+
+void display(int type, int M, int N)
+{
+	for(int i = 1; i <= M; i++) 
+	{
+		for(int j = 1; j <= N; j++)
+		{
+			cout << MAP[type][i][j];
+		}
+		cout << endl;
+	}
+}
+
+typedef struct _DATA
+{
+	int i;
+	int j;
+	int step;
+	_DATA(int _i, int _j, int _step)
+	{
+		i = _i; j = _j; step = _step;
+	}
+	_DATA(){};
+} Data;
+/* MOVEMENT */
+inline bool canMove(int type, int _i, int _j)
+{
+	for(int i = 0; i < 7; i++)
+	{
+		if(BARRIER[i] == MAP[type][_i][_j]) return false;
+	}
+	return true;
+}
+
+inline Data getPoint(int M, int N, char data)
+{
+	Data p;
+	for(int i = 1; i <= M; i++) 
+	{
+		for(int j = 1; j <= N; j++)
+		{
+			if(MAP[TYPE_DEFAULT][i][j] == data)	
+			{
+				p.i = i;
+				p.j = j;
+				p.step = 0;
+				return p;
+			}
+		}
+	}
+	exit(1);
+}
+
+int run(int M, int N)
+{
+	/*
+	p = S위치한다.
+	while(p가 G에 도달할 때까지)
+	{
+		1. p가 죽었는가? 버린다.
+		2. 이미 체크한 적 있는가? 버린다.(circular)
+	}
+	*/
+	queue<Data> Q;
+
+	Data s = getPoint(M,N, 'S');
+	Q.push(s);
+	Data g = getPoint(M,N, 'G');
+	
+	while(!Q.empty())
+	{
+		Data curr = Q.front(); Q.pop();
+		
+		int type = curr.step%4;
+		if(curr.step != 0)
+			if(!canMove(type, curr.i, curr.j)) continue; // kill the data
+		if(chk[type][curr.i][curr.j] == true) continue; //kill the data
+		if((curr.i == g.i) && (curr.j == g.j)) return curr.step; // have done.
+		chk[type][curr.i][curr.j] = true;
+
+		curr.step++;
+		Data left = curr; left.j--;
+		Data right = curr; right.j++;
+		Data up = curr; up.i--;
+		Data down = curr; down.i++;
+		
+		Q.push(right);
+		Q.push(down);
+		Q.push(left);
+		Q.push(up);
+	}
+	return -1;
+}
+
+int main(void)
+{
+	int TestCase = 0;
+	cin >> TestCase;
+	
+
+	for(int tcase = 0; tcase < TestCase; tcase++)
+	{
+		memset(MAP, 0, sizeof(MAP));
+		memset(chk, false, sizeof(chk));
+		// Input a maze
+		int M = 0, N = 0;
+		cin >> M >> N;
+		int i ;
+		int j ;
+		for(i = 1; i <= M; i++) for(j= 1; j <= N; j++)
+		{
+			cin >> MAP[TYPE_DEFAULT][i][j];			
+		}
+
+		generateMaps(M,N);
+
+		int result = run(M, N);
+		
+		cout << "Case#"<<tcase+1<<": ";
+		if(result != -1)
+			cout << result << endl;
+		else
+			cout << "impossible\n";
+	}
+
+	return 0;
+}

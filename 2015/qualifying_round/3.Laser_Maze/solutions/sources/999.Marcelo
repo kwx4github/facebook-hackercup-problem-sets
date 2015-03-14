@@ -1,0 +1,209 @@
+#include <bits/stdc++.h>
+
+#define pb                 push_back
+#define VISITED            1
+#define UNVISITED          0
+#define all(x)             (x).begin(), (x).end()
+#define rall(x)            (x).rbegin(), (x).rend()
+#define inttochar(x)       (char(x + '0'))
+#define chartoint(x)       (int(x - '0'))
+#define sqr(x)             (x)*(x)
+#define mset0(a)           memset(a, 0, sizeof a)
+#define mset1(a)           memset(a, 1, sizeof a)
+#define msetm1(a)          memset(a, -1, sizeof a)
+#define inrange(lo,i,hi)   ((lo) <= (i) && (i) <= (hi))
+#define inrangex(lo,i,hi)  ((lo) < (i) && (i) < (hi))
+#define sz(x)              (int)(x).size()
+#define fastio             ios::sync_with_stdio(false); cin.tie(0);
+#define foreach(it,A)      for(__typeof((A).begin())it=(A).begin();it!=(A).end();it++)
+#define hashit(x)          (char(x) - char('a') + 1)
+#define read(file)         freopen(file, "r", stdin);
+#define write(file)        freopen(file, "w", stdout);
+
+
+using namespace std;
+
+const int inf = int(1e9+7);
+typedef long long          i64;
+typedef unsigned long long u64;
+
+struct node
+{
+	int r, c;
+	node(){}
+
+	node(int _r, int _c){r = _r, c = _c;}
+};
+
+int dx[] = {1,0,-1,0};
+int dy[] = {0,1,0,-1};
+
+char graph[105][105];
+
+int dist[4][105][105];
+int vis[4][105][105];
+int vis2[4][105][105];
+
+vector <node> vec;
+
+int row, col;
+
+void rotate()
+{
+	int a, b;
+	for(int i = 0; i < (int)vec.size(); i++)
+	{
+		a = vec[i].r, b = vec[i].c;
+		if(graph[a][b] == 'v')
+			graph[a][b] = '<';
+		else if(graph[a][b] == '<')
+			graph[a][b] = '^';
+		else if(graph[a][b] == '^')
+			graph[a][b] = '>';
+		else if(graph[a][b] == '>')
+			graph[a][b] = 'v';
+	}
+}
+
+bool isLaser(char x)
+{
+	if(x == '>' || x == '<' || x == 'v' || x == '^')
+		return true;
+	return false;
+}
+
+void laserFill(int pos)
+{
+	int ro, co;
+	for(int i = 0; i < (int)vec.size(); i++)
+	{
+		ro = vec[i].r, co = vec[i].c;
+		vis[pos][ro][co] = 1;
+
+		if(graph[ro][co] == '^')
+		{
+			int it = ro-1;
+			while(it >= 0 && graph[it][co] != '#' && !isLaser(graph[it][co]))
+			{
+				vis[pos][it][co] = 1;
+				it--;
+			}
+		}
+		else if(graph[ro][co] == '>')
+		{
+			int it = co+1;
+			while(it < col && graph[ro][it] != '#' && !isLaser(graph[ro][it]))
+			{
+				vis[pos][ro][it] = 1;
+				it++;
+			}
+		}
+		else if(graph[ro][co] == 'v')
+		{
+			int it = ro+1;
+			while(it < row && graph[it][co] != '#' && !isLaser(graph[it][co]))
+			{
+				vis[pos][it][co] = 1;
+				it++;
+			}
+		}
+		else if(graph[ro][co] == '<')
+		{
+			int it = co-1;
+			while(it >= 0 && graph[ro][it] != '#' && !isLaser(graph[ro][it]))
+			{
+				vis[pos][ro][it] = 1;
+				it--;
+			}
+		}
+	}
+}
+
+void bfs(node s)
+{
+	queue < pair<node,int> > q;
+	q.emplace(s, 0);
+	dist[0][s.r][s.c] = 0;
+
+	while(!q.empty())
+	{
+		s = q.front().first;
+		int st = q.front().second;
+		q.pop();
+		if(vis2[st][s.r][s.c]) continue;
+
+		vis2[st][s.r][s.c] = 1;
+
+		int xx, yy, zz;
+
+		for(int i = 0; i < 4; i++)
+		{
+			xx = s.r + dx[i];
+			yy = s.c + dy[i];
+			zz = (st + 1) % 4;
+
+			if(xx < 0 || xx >= row || yy < 0 || yy >= col || graph[xx][yy] == '#' || vis[zz][xx][yy] == 1 || dist[zz][xx][yy] != -1) continue;
+
+			dist[zz][xx][yy] = dist[st][s.r][s.c] + 1;
+			q.push(make_pair(node(xx,yy), zz));
+		}
+	}
+}
+
+int main()
+{
+	#ifndef ONLINE_JUDGE
+		read("laser_maze.txt");
+		write("laser_maze_out.txt");
+	#endif
+
+	int cases; cin >> cases;
+	node start, finish;
+
+	for(int c = 1; c <= cases; c++)
+	{
+		vec.clear();
+		cout << "Case #" << c << ": ";
+
+		cin >> row >> col;
+
+		for(int i = 0; i < row; i++)
+		{
+			for(int j = 0; j < col; j++)
+			{
+				cin >> graph[i][j];
+
+				if(graph[i][j] == 'S')
+					start = node(i,j);
+				else if(graph[i][j] =='G')
+					finish = node(i,j);
+				else if(isLaser(graph[i][j]))
+					vec.emplace_back(i,j);
+			}
+		}
+		msetm1(dist);
+		mset0(vis);
+		mset0(vis2);
+
+		for(int i = 0; i < 4; i++)
+		{
+			laserFill(i);
+			rotate();
+		}
+
+		bfs(start);
+
+		int ans = inf;
+		for(int i = 0; i < 4; i++)
+		{
+			if(dist[i][finish.r][finish.c] != -1)
+				ans = min(ans, dist[i][finish.r][finish.c]);
+		}
+
+		if(ans == inf)
+			cout << "impossible\n";
+		else
+			cout << ans << endl;
+	}
+	return 0;
+}

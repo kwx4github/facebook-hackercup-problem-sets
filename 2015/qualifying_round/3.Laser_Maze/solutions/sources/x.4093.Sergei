@@ -1,0 +1,330 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.StringTokenizer;
+
+/*
+ Standard mazes lose their mystery as one grows older. But throw in some lasers, and suddenly you've 
+ got yourself a recipe for cross-generational appeal. The object in any maze is to find your way from 
+ your starting point to some goal. In a Laser Maze you must additionally contend with laser turrets.
+
+ A laser turret is a stationary pillar that both blocks your movement and fires lasers from one side. 
+ Every time you take a step (either up, down, left, or right), every laser turret in the maze then 
+ rotates 90 degrees clockwise, and then shoots a momentary laser blast in the direction that it is 
+ facing. Needless to say, if you find yourself in the path of one of these lasers, you won't be 
+ around long enough to find a way out. A wall is a stationary pillar that blocks your movement, but 
+ does not fire lasers.
+
+ Lasers are powerful, but they do not pass through walls or laser turrets. The laser turrets respond 
+ to your movements, so you can't stand still and wait for the turrets to turn. If you reach the goal, 
+ but are immediately shot by a laser, your efforts will have been in vain, so make sure you reach the 
+ goal safely.
+
+ Input
+ Input begins with an integer T, the number of mazes you'll explore. For each maze, there is first a 
+ line containing two integers, M and N, the height and width of the maze, respectively. The next M 
+ lines contain N characters each, describing the maze:
+
+ . (empty space)
+ # (wall)
+ S (starting position)
+ G (goal)
+ < > ^ v (laser turrets)
+
+ The four symbols for laser turrets signify turrets that are initially pointing left, right, 
+ up, or down respectively before you take your first step.
+
+ Output
+ For the ith maze, print a line containing "Case #i: " followed by the smallest number of steps 
+ necessary to get to the exit without being hit by a laser, or the string "impossible'' if there 
+ is no way to reach the goal safely.
+
+ Constraints
+ 1 ≤ T ≤ 100
+ 1 ≤ M, N ≤ 100
+ Each maze will contain exactly one 'S' and exactly one 'G'.
+ */
+
+public class C {
+	class Solver implements Runnable {
+		int testId;
+		boolean failed = false;
+		String result = "impossible";
+
+		Solver(int testId) {
+			this.testId = testId;
+		}
+
+		int m, n;
+		int res;
+		byte[][] a, mask;
+		int[][] grid;
+		char[][] maze;
+		boolean[][] plus2map;
+		HashMap<Long, Boolean> reachableOn;
+
+		private static final int WALL = -3;
+		private static final int BLANK = -2;
+
+		ArrayList<String> text = new ArrayList<String>();
+		private int by, bx; // goal
+
+		private void readInput() {
+			m = nextInt();
+			n = nextInt();
+
+			a = new byte[m][n];
+			mask = new byte[m][n];
+			maze = new char[m][n];
+			grid = new int[m][n];
+			plus2map = new boolean[m][n];
+
+			for (int i = 0; i < m; i++) {
+				String s = nextToken();
+				for (int j = 0; j < n; j++) {
+					maze[i][j] = s.charAt(j);
+					switch (maze[i][j]) {
+					case '.':
+						grid[i][j] = BLANK;
+						break;
+					case '#':
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						break;
+					case 'S':
+						grid[i][j] = 0;
+						break;
+					case 'G':
+						grid[i][j] = BLANK;
+						by = i;
+						bx = j;
+						break;
+					case '<':
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						break;
+					case '^':
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						break;
+					case '>':
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						break;
+					case 'v':
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						break;
+					default:
+						throw new RuntimeException("MAZE READ ERROR");
+					}
+				}
+			}
+
+			prepareMask();
+		}
+
+		private void prepareMask() { // some duplication here. does not matter
+										// :)
+			for (int i = 0; i < m; i++) {
+				for (int j = 0; j < n; j++) {
+					switch (maze[i][j]) {
+					case '<': // step1Rotation 3
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						shootAroundGrid(i, j, 3);
+						break;
+					case '^': // step1Rotation 0
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						shootAroundGrid(i, j, 0);
+						break;
+					case '>': // step1Rotation 1
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						shootAroundGrid(i, j, 1);
+						break;
+					case 'v': // step1Rotation 2
+						grid[i][j] = WALL;
+						mask[i][j] = (byte) 0b11111111;
+						shootAroundGrid(i, j, 2);
+						break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+
+		int dx[] = { 1, 0, -1, 0 }; // index shifts for cell's neighbours
+		int dy[] = { 0, 1, 0, -1 }; // right, bottom, left & top
+
+		private void shootAroundGrid(int yc, int xc, int step1Rotation) {
+			for (int k = 0; k < 4; k++) { // cannon in i,j shoots four sides
+				int y = yc;
+				int x = xc;
+				try {
+					do { // Gentlemen, shoot your lasers!
+						x = x + dx[(k + step1Rotation) % 4];
+						y = y + dy[(k + step1Rotation) % 4];
+						// Burn mask in each cell. Indicate phase as
+						// (startingPhase + k) modulo 4
+						mask[y][x] |= stepMask(k);
+					} while (grid[y][x] == BLANK);
+				} catch (Exception e) {
+				}
+			}
+		}
+
+		private byte stepMask(int step) {
+			return (byte) (1 << (step % 4));
+		}
+		
+		Long reachableOnKey(int y, int x, int step) {
+			return new Long(y*(10^9) + x*(10^6) + step); /*|| (grid[y][x] == d-2 && reachableOn.containsKey(reachableOnKey(y, x, d))*/
+		}
+
+		int leeWithReturns() {
+			boolean stop;
+
+			int d = 0;
+			do { // run successive waves
+				stop = true; // terminate if cannot propagate wave to any new
+								// cells - wave stopped
+				for (int y = 0; y < m; ++y) {
+					for (int x = 0; x < n; ++x) {
+						if (grid[y][x] >= d - 4) { // won't hurt if we'll do a few more iterations
+							stop = false;
+						}
+						if (grid[y][x] == d || (grid[y][x] == d-2 && plus2map[y][x])) // grid is marked as reachable on step d
+						{
+							for (int k = 0; k < 4; ++k) {
+								// propagate to neighbours
+								try {
+									  if ((mask[y + dy[k]][x + dx[k]] & stepMask(d)) == 0) { //it's possible to visit this point
+										  if (grid[y + dy[k]][x + dx[k]] == BLANK || grid[y + dy[k]][x + dx[k]] == d+1 ) { // if unvisited (or already visited on current step, need this to correctly fill plus2map)
+													stop = false; // got propagation
+										
+										if ((mask[y][x] & stepMask(d+1)) == 0) { // we can return to grid[y][x] if grid[y][x] will not be shot on d+1											
+											plus2map[y][x] = true;
+											// and maybe to current position - grid[y + dy[k]][x + dx[k]] - too, on d+2
+											if ((mask[y + dy[k]][x + dx[k]] & stepMask(d+2)) == 0) {
+												plus2map[y + dy[k]][x + dx[k]] = true;
+											}
+										}
+										
+										grid[y + dy[k]][x + dx[k]] = d + 1; // propagate
+									  } 
+									}
+								} catch (Exception e) {
+									// suppress IndexOutOfBounds
+								}
+							}
+						}
+					}
+				}
+				d++;
+			} while (!stop && grid[by][bx] == BLANK); // no propagation or
+														// reached goal
+
+			return grid[by][bx]; // path length or BLANK
+		}
+
+		/*
+		 * int lee() { boolean stop;
+		 * 
+		 * int d = 0; do { // run successive waves stop = true; // terminate if
+		 * cannot propagate wave to any new // cells - wave stopped for (int y =
+		 * 0; y < m; ++y) for (int x = 0; x < n; ++x) if (grid[y][x] == d) //
+		 * grid is marked with step d { for (int k = 0; k < 4; ++k) { //
+		 * propagate to neighbours try { if (grid[y + dy[k]][x + dx[k]] ==
+		 * BLANK) { stop = false; // got propagation grid[y + dy[k]][x + dx[k]]
+		 * = d + 1; // propagate } } catch (Exception e) { // suppress
+		 * IndexOutOfBounds } } } d++; } while (!stop && grid[by][bx] == BLANK);
+		 * // no propagation or reached goal
+		 * 
+		 * return grid[by][bx]; // path length or BLANK }
+		 */
+
+		public void run() {
+			int step = 0;
+			int r = leeWithReturns();
+
+			result = (r == BLANK) ? "impossible" : Integer.toString(r);
+		}
+
+		private void printOutput() {
+			if (failed) {
+				writer.println("0");
+				System.out.println("FAILURE!!!");
+			} else {
+				writer.println(String.format("Case #%d: %s", testId, result));
+			}
+		}
+	}
+
+	// solve the problem here
+	private void solve() {
+		int numTests = nextInt();
+		for (int testId = 1; testId <= numTests; testId++) {
+			Solver solver = new Solver(testId);
+			solver.readInput();
+			solver.run();
+			solver.printOutput();
+		}
+
+	}
+
+	BufferedReader reader;
+	StringTokenizer tokenizer = null;
+	PrintWriter writer;
+
+	public void run() {
+		try {
+			long now = System.currentTimeMillis();
+			String problemfilename = this.getClass().getSimpleName();
+			reader = new BufferedReader(new FileReader(problemfilename + ".in"));
+			writer = new PrintWriter(problemfilename + ".out");
+			solve();
+			reader.close();
+			writer.close();
+			System.out.println(System.currentTimeMillis() - now + "ms");
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	int nextInt() {
+		return Integer.parseInt(nextToken());
+	}
+
+	double nextDouble() {
+		return Double.parseDouble(nextToken());
+	}
+
+	long nextLong() {
+		return Long.parseLong(nextToken());
+	}
+
+	String nextToken() {
+		while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+			try {
+				tokenizer = new StringTokenizer(reader.readLine());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return tokenizer.nextToken();
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		new C().run();
+	}
+
+}

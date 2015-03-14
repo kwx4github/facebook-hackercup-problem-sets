@@ -1,0 +1,380 @@
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class LaserMaze {
+	private BufferedReader reader;
+	private BufferedWriter writer;
+	private int testCases;
+	private int currentOutput = 1;
+
+	public void solve(File input, File output) throws FileNotFoundException,
+			IOException {
+		try (BufferedReader reader = new BufferedReader(new FileReader(input));
+				BufferedWriter writer = new BufferedWriter(new FileWriter(
+						output))) {
+			this.reader = reader;
+			this.writer = writer;
+			this.testCases = Integer.parseInt(readNextLine());
+			for (int i = 0; i < testCases; i++) {
+				int height = Integer.parseInt(readNextLine().split(" ")[0]);
+				writeOutput(solveProblem(new Maze(IntStream.range(0, height)
+						.mapToObj(index -> readNextLine())
+						.collect(Collectors.toList()))));
+			}
+		}
+	}
+
+	private String solveProblem(Maze maze) {
+		TreeSet<Maze> frontier = new TreeSet<>();
+		List<Maze> explored = new ArrayList<>();
+		frontier.add(maze);
+		while (!frontier.isEmpty()) {
+			Maze m = frontier.pollFirst();
+			explored.add(m);
+			List<Direction> posibleDirections = m.getPosibleDirections();
+			for (Direction direction : posibleDirections) {
+				Maze nm = m.moveTo(direction);
+				if (nm.isDeath()) {
+					continue;
+				}
+				if (!explored.contains(nm)) {
+					if (nm.isInGoal()) {
+						System.out
+								.println("############ FOUND GOUAL ###############");
+						return Integer.toString(nm.getLength());
+					}
+					frontier.add(nm);
+				}
+			}
+		}
+		return "impossible";
+	}
+
+	public static void main(String[] args) throws FileNotFoundException,
+			IOException {
+		File inputFile = new File("/Users/Michael/downloads/laser_maze.txt");
+		File outputFile = new File("/Users/Michael/downloads/laser_maze_solv.txt");
+		LaserMaze challenge = new LaserMaze();
+		challenge.solve(inputFile, outputFile);
+	}
+
+	private void writeOutput(String output) {
+		try {
+			writer.write("Case #" + currentOutput++ + ": " + output);
+			writer.newLine();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private String readNextLine() {
+		try {
+			return reader.readLine();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	private enum Direction {
+		TOP, RIGHT, BOTTOM, LEFT
+	}
+
+	private static enum Field {
+		USER, USER_GOAL, FREE, WALL, GOAL, TOP, RIGHT, BUTTOM, LEFT
+	}
+
+	private class Maze implements Cloneable, Comparable<Maze> {
+		private Field[][] maze;
+		private int userX, userY;
+		private int goalX, goalY;
+		private int length = 0;
+
+		public Maze(int length, int goalX, int goalY) {
+			this.length = length;
+			this.goalX = goalX;
+			this.goalY = goalY;
+		}
+
+		public int getLength() {
+			return length;
+		}
+
+		private void setField(Field[][] maze) {
+			this.maze = maze;
+			for (int x = 0; x < maze.length; x++) {
+				for (int y = 0; y < maze[x].length; y++) {
+					if (maze[x][y] == Field.USER
+							|| maze[x][y] == Field.USER_GOAL) {
+						userX = x;
+						userY = y;
+						return;
+					}
+				}
+			}
+		}
+
+		public Maze(List<String> lines) {
+			maze = new Field[lines.get(0).length()][lines.size()];
+			for (int y = 0; y < lines.size(); y++) {
+				for (int x = 0; x < lines.get(y).length(); x++) {
+					switch (lines.get(y).charAt(x)) {
+					case '.':
+						maze[x][y] = Field.FREE;
+						break;
+					case '#':
+						maze[x][y] = Field.WALL;
+						break;
+					case 'S':
+						maze[x][y] = Field.USER;
+						userX = x;
+						userY = y;
+						break;
+					case 'G':
+						maze[x][y] = Field.FREE;
+						goalX = x;
+						goalY = y;
+						break;
+					case '<':
+						maze[x][y] = Field.LEFT;
+						break;
+					case '>':
+						maze[x][y] = Field.RIGHT;
+						break;
+					case '^':
+						maze[x][y] = Field.TOP;
+						break;
+					case 'v':
+						maze[x][y] = Field.BUTTOM;
+						break;
+					default:
+						System.out.println("Unkown char: "
+								+ lines.get(y).charAt(x));
+					}
+				}
+			}
+		}
+
+		public List<Direction> getPosibleDirections() {
+			return Arrays.stream(Direction.values())
+					.filter(direction -> canMoveTo(direction))
+					.collect(Collectors.toList());
+		}
+
+		public Maze moveTo(Direction direction) {
+			Field[][] newField = rotateLaser(maze);
+			Maze maze = new Maze(getLength() + 1, goalX, goalY);
+			switch (direction) {
+			case BOTTOM:
+				newField[userX][userY] = Field.FREE;
+				newField[userX][userY + 1] = Field.USER;
+				break;
+			case TOP:
+				newField[userX][userY] = Field.FREE;
+				newField[userX][userY - 1] = Field.USER;
+				break;
+			case LEFT:
+				newField[userX][userY] = Field.FREE;
+				newField[userX - 1][userY] = Field.USER;
+				break;
+			case RIGHT:
+				newField[userX][userY] = Field.FREE;
+				newField[userX + 1][userY] = Field.USER;
+				break;
+			}
+			maze.setField(newField);
+			return maze;
+		}
+
+		private boolean canMoveTo(Direction direction) {
+			switch (direction) {
+			case BOTTOM:
+				return maze[userX].length > userY + 1
+						&& maze[userX][userY + 1] == Field.FREE;
+			case LEFT:
+				return userX > 0 && maze[userX - 1][userY] == Field.FREE;
+			case RIGHT:
+				return maze.length > userX + 1
+						&& maze[userX + 1][userY] == Field.FREE;
+			case TOP:
+				return userY > 0 && maze[userX][userY - 1] == Field.FREE;
+			default:
+				return false;
+			}
+		}
+
+		private Field[][] rotateLaser(Field[][] field) {
+			Field[][] newField = new Field[field.length][field[0].length];
+			for (int x = 0; x < field.length; x++) {
+				for (int y = 0; y < field[x].length; y++) {
+					newField[x][y] = field[x][y];
+					switch (newField[x][y]) {
+					case TOP:
+						newField[x][y] = Field.RIGHT;
+						break;
+					case RIGHT:
+						newField[x][y] = Field.BUTTOM;
+						break;
+					case BUTTOM:
+						newField[x][y] = Field.LEFT;
+						break;
+					case LEFT:
+						newField[x][y] = Field.TOP;
+						break;
+					default:
+						break;
+					}
+				}
+			}
+			return newField;
+		}
+
+		private boolean isDeath() {
+			return Arrays.stream(Direction.values())
+					.filter(direction -> laserShootFromDirection(direction))
+					.findAny().isPresent();
+		}
+
+		private boolean laserShootFromDirection(Direction direction) {
+			int x = userX;
+			int y = userY;
+			switch (direction) {
+			case BOTTOM:
+				while (y + 1 < maze[x].length) {
+					y++;
+					if (maze[x][y] == Field.TOP) {
+						return true;
+					}
+					if (maze[x][y] != Field.FREE) {
+						return false;
+					}
+				}
+				return false;
+			case TOP:
+				while (y > 0) {
+					y--;
+					if (maze[x][y] == Field.BUTTOM) {
+						return true;
+					}
+					if (maze[x][y] != Field.FREE) {
+						return false;
+					}
+				}
+				return false;
+			case LEFT:
+				while (x > 0) {
+					x--;
+					if (maze[x][y] == Field.RIGHT) {
+						return true;
+					}
+					if (maze[x][y] != Field.FREE) {
+						return false;
+					}
+				}
+				return false;
+			case RIGHT:
+				while (x + 1 < maze.length) {
+					x++;
+					if (maze[x][y] == Field.LEFT) {
+						return true;
+					}
+					if (maze[x][y] != Field.FREE) {
+						return false;
+					}
+				}
+				return false;
+			}
+			return false;
+		}
+
+		public boolean isInGoal() {
+			return userX == goalX && userY == goalY;
+		}
+
+		public String toString() {
+			StringBuilder sb = new StringBuilder();
+			for (int y = 0; y < maze[0].length; y++) {
+				for (int x = 0; x < maze.length; x++) {
+					if (x == goalX && y == goalY) {
+						sb.append('G');
+						continue;
+					}
+					switch (maze[x][y]) {
+					case BUTTOM:
+						sb.append('v');
+						break;
+					case RIGHT:
+						sb.append('>');
+						break;
+					case TOP:
+						sb.append('^');
+						break;
+					case LEFT:
+						sb.append('<');
+						break;
+					case FREE:
+						sb.append('.');
+						break;
+					case GOAL:
+						sb.append('G');
+						break;
+					case WALL:
+						sb.append('#');
+						break;
+					case USER:
+						sb.append('U');
+						break;
+					case USER_GOAL:
+						sb.append('X');
+						break;
+					}
+				}
+				sb.append(System.lineSeparator());
+			}
+			sb.append("User: " + userX + ":" + userY);
+			return sb.toString();
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj instanceof Maze) {
+				Maze m = (Maze) obj;
+				if (m.maze.length != maze.length
+						|| m.maze[0].length != maze[0].length) {
+					return false;
+				}
+				for (int x = 0; x < maze.length; x++) {
+					for (int y = 0; y < maze[x].length; y++) {
+						if (m.maze[x][y] != maze[x][y]) {
+							return false;
+						}
+					}
+				}
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		private int getLengthToGoal() {
+			return Math.abs(userX - goalX) + Math.abs(userY - goalY);
+		}
+
+		@Override
+		public int compareTo(Maze o) {
+			return getLengthToGoal() - o.getLengthToGoal();
+		}
+	}
+}

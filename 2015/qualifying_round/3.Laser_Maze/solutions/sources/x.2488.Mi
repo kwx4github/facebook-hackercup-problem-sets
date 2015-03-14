@@ -1,0 +1,169 @@
+#include <bits/stdc++.h>
+#define all(x) begin(x), end(x)
+#define rall(x) (x).rbegin(),(x).rend()
+#define sz(x) ((int)(x).size())
+#define REP(i,b,n) for(int i=(int)(b);i<(int)(n);++i)
+#define rep(i,n) REP(i,0,n)
+#define repsz(i,v) rep(i,sz(v))
+#define eb emplace_back
+#define mt make_tuple
+#define aur auto&
+#define bit(n) (1LL<<(n))
+using namespace std;
+typedef long long ll;
+//#define int long long
+static const int INF = 1<<25;
+static const double EPS = 1e-5;
+template<class T>bool chmin(T&a,const T&b){if(a<=b)return false;a=b;return true;}
+template<class T>bool chmax(T&a,const T&b){if(a>=b)return false;a=b;return true;}
+
+template<typename T> string to_s(T t){ //{{{
+    stringstream ss;
+    ss << t;
+    return ss.str();
+} //}}}
+template<typename T> T s_to(string s){ //{{{
+    stringstream ss;
+    T res;
+    ss << s;
+    ss >> res;
+    return res;
+} //}}}
+
+typedef complex<int> P;
+#define X real()
+#define Y imag()
+#define At(a, p) (a)[(p).X][(p).Y]
+map<char, P> dir;
+void pre(){//{{{
+    dir['v'] = P(1, 0);
+    dir['^'] = P(-1, 0);
+    dir['>'] = P(0,  1);
+    dir['<'] = P(0, -1);
+}//}}}
+
+template<typename C>
+struct G{//{{{
+    struct E{
+        int s, t;
+        C c;
+        E(const int &s, const int &t, const C &c) : s(s), t(t), c(c){}
+    };
+    vector<E> es;
+    int N;
+    G() : N(0) {}
+    G(int N) : N(N) {}
+    inline void add_edge(int s, int t, C c){
+        es.emplace_back(s, t, c);
+    }
+    vector<vector<E>> build(int n){
+        n = max(n, N);
+        for(auto &e : es) n = max(n, max(e.s, e.t) + 1);
+        vector<vector<E>> g(n);
+        for(auto &e : es) g[e.s].emplace_back(e);
+        return g;
+    }
+    inline vector<C> dijkstra(const int &s){
+        const vector<vector<E>> g = build(s + 1);
+        const int &n = (int)(g.size());
+        vector<C> d(n, numeric_limits<C>::max());
+        priority_queue<tuple<C, int>, vector<tuple<C, int>>, greater<tuple<C, int>>> pq;
+        pq.emplace(d[s] = (C)0, s);
+        while(!pq.empty()){
+            C c; int u;
+            tie(c, u) = pq.top(); pq.pop();
+            if(c > d[u]) continue;
+            for(auto &e : g[u]) if(chmin(d[e.t], d[u] + e.c))
+                pq.emplace(d[e.t], e.t);
+        }
+        return d;
+    }
+};//}}}
+
+bool solve(){
+    int h, w; cin >> h >> w;
+    vector<string> in(h+2, string(w+2, '#'));
+    rep(i, h) rep(j, w) cin >> in[i+1][j+1];
+    h += 2; w += 2;
+
+    P start(-1, -1), goal(-1, -1);
+    rep(i, h) rep(j, w){//{{{
+        if(in[i][j] == 'S'){
+            in[i][j] = '.';
+            assert(start.X == -1);
+            start = P(i, j);
+        }
+        if(in[i][j] == 'G'){
+            in[i][j] = '.';
+            assert(goal.X == -1);
+            goal = P(i, j);
+        }
+    }//}}}
+    assert(min(start.X, goal.X) != -1);
+
+    vector<vector<vector<int>>> ng(4, vector<vector<int>>(h, vector<int>(w)));
+    rep(i, h) rep(j, w){//{{{
+        if(in[i][j] == '.') continue;
+        if(in[i][j] == '#'){
+            rep(t, 4) ng[t][i][j] = true;
+            continue;
+        }
+        assert(dir.count(in[i][j]));
+        P d = dir[in[i][j]];
+        rep(t, 4){
+            P p(i, j);
+            while(At(in, p) != '#'){
+                At(ng[t], p) = true;
+                p += d;
+            }
+            d *= P(0, -1);
+        }
+    }//}}}
+    //rep(t, 4){
+    //    rep(i, h){
+    //        rep(j, w) cout << ng[t][i][j];
+    //        cout << endl;
+    //    }cout << endl;
+    //}
+
+#define enc(i, j, t) (((i)*w + (j))*4 + (t))
+#define encp(p, t) enc((p).X, (p).Y, t)
+
+    G<int> g(h * w  * 4);
+    rep(i, h) rep(j, w) rep(t, 4) if(in[i][j] == '.'){ //if(not ng[t][i][j]){
+        P p(i, j);
+        P d(1, 0);
+        rep(_, 4){
+            if(not At(ng[(t+1)%4], p + d)){
+                //cout << p << " - " << t << " -> " << p+d << endl;
+                g.add_edge(encp(p, t), encp(p+d, (t+1)%4), 1);
+            }
+            d *= P(0, 1);
+        }
+    }
+    vector<int> dist = g.dijkstra(encp(start, 0));
+    int res = numeric_limits<int>::max();
+    rep(t, 4) chmin(res, dist[encp(goal, t)]);
+    if(res == numeric_limits<int>::max()){
+        cout << "impossible" << endl;
+    }else{
+        cout << res << endl;
+    }
+    return true;
+}
+
+signed main(){
+    pre();
+    //cin.tie(0);
+    //ios_base::sync_with_stdio(0);
+    cout.setf(ios::fixed); cout.precision(10);
+    int T;
+    cin >> T;
+    cin.ignore();
+    for(int i = 1; i <= T; ++i){
+        cout << "Case #" << i << ": ";
+        solve();
+    }
+    return 0;
+}
+// vim:set foldmethod=marker commentstring=//%s:

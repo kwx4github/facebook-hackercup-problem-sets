@@ -1,0 +1,166 @@
+#include <stdio.h>
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <string>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <deque>
+#include <algorithm>
+#include <cmath>
+#include <climits>
+#include <cfloat>
+
+using namespace std;
+
+ifstream fin("laser_maze_example_input.txt");
+ofstream fout("laser_maze_example_output.txt");
+
+const int MAX_T = 100;
+const int MAX_N = 100;
+
+const char EMPTY = '.';
+const char WALL = '#';
+const char START = 'S';
+const char GOAL = 'G';
+const char LASER_UP = '^';
+const char LASER_DOWN = 'v';
+const char LASER_RIGHT = '>';
+const char LASER_LEFT = '<';
+
+struct State
+{
+	int y, x, t;
+	bool operator<(const State& s) const
+	{
+		if (x != s.x) return x < s.x;
+		return y < s.y;
+	}
+	bool operator==(const State& s) const
+	{
+		return x == s.x && y == s.y;
+	}
+};
+
+int numTests, n, m;
+char maze[MAX_N][MAX_N];
+int sx, sy, ex, ey;
+int r;
+
+set<State> s[4];
+
+void f(int t)
+{
+	if (sy < 0 || sy >= n || sx < 0 || sx >= m) return;
+	if (maze[sy][sx] == WALL || maze[sy][sx] == LASER_UP || maze[sy][sx] == LASER_DOWN || 
+								maze[sy][sx] == LASER_RIGHT || maze[sy][sx] == LASER_LEFT) return;
+	State now{sy, sx, t};
+	int tm = t % 4;
+	if (s[tm].find(now) != s[tm].end())
+	{
+		State then = *(s[tm].find(now));
+		if (then.t <= t) return;
+		s[tm].erase(s[tm].find(now));
+	}
+	s[tm].insert(now);
+
+	for (int y = 0; y < sy; y++)
+	{
+		if (maze[y][sx] == LASER_DOWN && t % 4 == 0) return;
+		if (maze[y][sx] == LASER_RIGHT && t % 4 == 1) return;
+		if (maze[y][sx] == LASER_UP && t % 4 == 2) return;
+		if (maze[y][sx] == LASER_LEFT && t % 4 == 3) return;
+	}
+	for (int y = sy + 1; y < n; y++)
+	{
+		if (maze[y][sx] == LASER_DOWN && t % 4 == 2) return;
+		if (maze[y][sx] == LASER_RIGHT && t % 4 == 3) return;
+		if (maze[y][sx] == LASER_UP && t % 4 == 0) return;
+		if (maze[y][sx] == LASER_LEFT && t % 4 == 1) return;
+	}
+	for (int x = 0; x < sx; x++)
+	{
+		if (maze[sy][x] == LASER_RIGHT && t % 4 == 0) return;
+		if (maze[sy][x] == LASER_UP && t % 4 == 1) return;
+		if (maze[sy][x] == LASER_LEFT && t % 4 == 2) return;
+		if (maze[sy][x] == LASER_DOWN && t % 4 == 3) return;
+	}
+	for (int x = sx + 1; x < m; x++)
+	{
+		if (maze[sy][x] == LASER_RIGHT && t % 4 == 2) return;
+		if (maze[sy][x] == LASER_UP && t % 4 == 3) return;
+		if (maze[sy][x] == LASER_LEFT && t % 4 == 0) return;
+		if (maze[sy][x] == LASER_DOWN && t % 4 == 1) return;
+	}
+
+	if (sx == ex && sy == ey)
+	{
+		if (r < 0 || t < r)
+		{
+			r = t;
+		}
+		return;
+	}
+
+	t++;
+	sx++;
+	f(t);
+	sx -= 2;
+	f(t);
+	sx++;
+	sy++;
+	f(t);
+	sy -= 2;
+	f(t);
+	sy++;
+}
+
+int main()
+{
+	fin >> numTests;
+	for (int test = 0; test < numTests; test++)
+	{
+		r = -1;
+		s[0].clear();
+		s[1].clear();
+		s[2].clear();
+		s[3].clear();
+		fin >> n >> m;
+		for (int y = 0; y < n; y++)
+		{
+			for (int x = 0; x < m; x++)
+			{
+				fin >> maze[y][x];
+				if (maze[y][x] == START)
+				{
+					sx = x;
+					sy = y;
+					maze[y][x] = EMPTY;
+				}
+				else if (maze[y][x] == GOAL)
+				{
+					ex = x;
+					ey = y;
+					maze[y][x] = EMPTY;
+				}
+			}
+		}
+		sx++;
+		f(1);
+		sx -= 2;
+		f(1);
+		sx++;
+		sy++;
+		f(1);
+		sy -= 2;
+		f(1);
+		fout << "Case #" << (test + 1) << ": ";
+		if (r < 0) fout << "impossible";
+		else fout << r;
+		fout << endl;
+	}
+
+	return 0;
+}

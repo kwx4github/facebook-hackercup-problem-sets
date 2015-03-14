@@ -1,0 +1,148 @@
+#include<cstdio>
+#include<iostream>
+#include<queue>
+#include<utility>
+
+using namespace std;
+
+#define REP(a, b, c) for(int a=(b); a<(c); a++)
+#define dREP(a, b, c) for(int a=(b); a>=(c); a--)
+#define F first
+#define S second
+#define MP make_pair
+
+struct state{
+	int x, y, k;
+	int vis;
+	int steps;
+};
+
+char maze_tmp[110][110];
+int maze[110][110];
+struct state g[110][110][4];
+int M, N;
+char laz[4] = {'>', 'v', '<', '^'};
+int dx[][4] = {{0 ,1, 0, -1}, {1, 0, -1, 0}, {0, -1, 0, 1}, {-1, 0, 1, 0}};
+int dy[][4] = {{1, 0 ,-1, 0}, {0, -1, 0, 1}, {-1, 0, 1, 0}, {0, 1, 0, -1}};
+
+int ind(char c){
+	REP(i, 0, 4)
+		if(laz[i]==c) return i;
+}
+
+bool isvalid(int x, int y){
+	if(x<0||x>=M) return false;
+	if(y<0||y>=N) return false;
+	return true;
+}
+
+void set_laser(int m, int n){
+	int l = ind(maze_tmp[m][n]);
+	REP(i, 0, 4){
+		int k=1;
+		while(true){
+			int x = m+k*dx[l][i], y = n+k*dy[l][i];
+			if(isvalid(x, y)){
+				if(maze_tmp[x][y]=='.'||maze_tmp[x][y]=='S'||maze_tmp[x][y]=='G')
+					maze[x][y] ^= (1<<i);
+				else
+					break;
+			}else break;
+			k++;
+		}
+	}
+}
+
+int bfs(int sx, int sy, int gx, int gy){
+	REP(i, 0, M)
+		REP(j, 0, N)
+			REP(k, 0, 4){
+				g[i][j][k].x = i;
+				g[i][j][k].y = j;
+				g[i][j][k].k = k;
+				g[i][j][k].vis = 0;
+			}
+	int steps = 0;
+	queue<struct state> q;
+//	if(!(1&maze[sx][sy])){	//If laser points at you at the beginning, it does shoot you but turns in the next move
+		g[sx][sy][0].vis = 1;
+		g[sx][sy][0].steps = 0;
+		q.push(g[sx][sy][0]);
+//		cout << "Q: " << sx << " " << sy << " " << 0 << "\n";
+		while(!q.empty()){
+			struct state st = q.front();
+			q.pop();
+			int x=st.x, y=st.y, k=st.k;
+			steps = g[x][y][k].steps+1;
+			REP(i, 0, 4){
+				int nx = x+dx[0][i], ny = y+dy[0][i], nk = (k+1)%4;
+				if(isvalid(nx, ny)){
+					if(g[nx][ny][nk].vis==0){
+						if(!((1<<nk)&(maze[nx][ny]))){
+							g[nx][ny][nk].vis = 1;
+							g[nx][ny][nk].steps = steps;
+			//				cout << "Q: " << nx << " " << ny << " " << nk << "\n";
+							q.push(g[nx][ny][nk]);
+							if(nx==gx&&ny==gy) return steps;
+						}
+					}
+				}
+			}
+		}
+//	}
+	return -1;
+}
+
+int main(){
+	freopen("laser_maze.txt", "r", stdin);
+	freopen("final_output.txt", "w", stdout);
+	int T;
+	cin >> T;
+	REP(t, 1, T+1){
+		cout << "Case #" << t << ": ";
+		cin >> M >> N;
+		REP(i, 0, M)
+			cin >> maze_tmp[i];
+		REP(i, 0, M){
+			REP(j, 0, N){
+				maze[i][j] = 0;
+			}
+		}
+		int sx, sy, gx, gy;
+		REP(i, 0, M){
+			REP(j, 0, N){
+				switch(maze_tmp[i][j]){
+					case '.':
+						maze[i][j] ^= 0;
+						break;
+					case '#':
+						maze[i][j] ^= 15;
+						break;
+					case 'S':
+						sx = i;
+						sy = j;
+						break;
+					case 'G':
+						gx = i;
+						gy = j;
+						break;
+					default:
+						set_laser(i, j);
+						break;
+				}
+			}
+		}
+/*		cout << "\n";
+		REP(i, 0, M){
+			REP(j, 0, N)
+				cout << maze[i][j] << "\t";
+			cout << "\n";
+		}
+*/
+		int steps = bfs(sx, sy, gx, gy);
+		if(steps==-1) cout << "impossible\n";
+		else cout << steps << "\n";
+	}
+	return 0;
+}
+

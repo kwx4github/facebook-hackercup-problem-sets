@@ -1,0 +1,149 @@
+#include <cstdio>
+#include <queue>
+#include <tuple>
+using namespace std;
+
+const int INFTY = 100000000;
+
+char rotate(char c, int nrot) {
+    if (nrot <= 0)
+        return c;
+    switch (c) {
+        case '>':
+            return rotate('v', nrot-1);
+        case 'v':
+            return rotate('<', nrot-1);
+        case '<':
+            return rotate('^', nrot-1);
+        case '^':
+            return rotate('>', nrot-1);
+        default:
+            return c;
+    }
+}
+
+bool inbounds(int y, int x, int Y, int X) {
+    return (y >= 0 && y < Y) && (x >= 0 && x < X);
+}
+
+bool isturret(char c) {
+    return rotate(c, 1) != c;
+}
+
+void Go(int tc) {
+    // read
+    int Y, X;
+    scanf("%d%d\n", &Y, &X);
+
+    int sx(-1), sy(-1), gx(-1), gy(-1);
+
+    char origmaze[Y][X];
+    for (int y = 0; y < Y; ++y) {
+        for (int x = 0; x < X; ++x) {
+            origmaze[y][x] = getchar();
+            if (origmaze[y][x] == 'S') {
+                sy = y;
+                sx = x;
+            }
+            if (origmaze[y][x] == 'G') {
+                gy = y;
+                gx = x;
+            }
+        }
+        getchar(); // \n
+    }
+
+    // quadruple
+    char mazes[Y][X][4];
+    int dist[Y][X][4];
+    for (int m = 0; m < 4; ++m)
+        for (int y = 0; y < Y; ++y)
+            for (int x = 0; x < X; ++x) {
+                mazes[y][x][m] = origmaze[y][x];
+                dist[y][x][m] = INFTY;
+            }
+
+    // you spin me right round 
+    for (int m = 1; m < 4; ++m) {
+        for (int y = 0; y < Y; ++y) {
+            for (int x = 0; x < X; ++x) {
+                mazes[y][x][m] = rotate(mazes[y][x][m], m);
+            }
+        }
+    }
+
+    // shoot beams
+    for (int m = 0; m < 4; ++m) {
+        for (int y = 0; y < Y; ++y) {
+            for (int x = 0; x < X; ++x) {
+                int dy = 0, dx = 0;
+                switch (mazes[y][x][m]) {
+                    case '>':
+                        dx = 1; break;
+                    case 'v':
+                        dy = 1; break;
+                    case '<':
+                        dx = -1; break;
+                    case '^':
+                        dy = -1; break;
+                    default:
+                        continue;
+                }
+         
+                for (int by = y + dy, bx = x + dx; inbounds(by, bx, Y, X) && mazes[by][bx][m] != '#'; by += dy, bx += dx) {
+                    mazes[by][bx][m] = '!'; 
+                }
+            }
+        }
+
+    }
+    
+
+    // search
+    queue<tuple<int, int, int>> q; // y, x, m
+   
+    q.push(make_tuple(sy, sx, 0));
+    dist[sy][sx][0] = 0;
+    mazes[sy][sx][0] = 'x';
+
+    while (!q.empty()) {
+        int y = get<0>(q.front());
+        int x = get<1>(q.front());
+        int m = get<2>(q.front());
+        q.pop();
+
+        int nm = (m+1) % 4;
+
+        for (tuple<int, int> dir : vector<tuple<int,int>>({make_tuple(y, x+1), make_tuple(y-1, x), make_tuple(y, x-1), make_tuple(y+1, x)})) {
+            int ny = get<0>(dir);
+            int nx = get<1>(dir);
+        
+
+            if (!inbounds(ny, nx, Y, X)) continue;
+            if (mazes[ny][nx][nm] == 'x' || mazes[ny][nx][nm] == '#' || mazes[ny][nx][nm] == '!' || isturret(mazes[ny][nx][nm])) continue;
+            
+            mazes[ny][nx][nm] = 'x';
+            dist[ny][nx][nm] = dist[y][x][m] + 1;
+            q.push(make_tuple(ny, nx, nm));
+        }
+    }
+
+    int mindist = INFTY;
+    for (int m = 0; m < 4; ++m)
+        if (mindist > dist[gy][gx][m])
+            mindist = dist[gy][gx][m];
+
+    if (mindist == INFTY)
+        printf("Case #%d: impossible\n", tc);
+    else
+        printf("Case #%d: %d\n", tc, mindist);
+    
+}
+
+int main() {
+    int n;
+    scanf("%d", &n);
+    for (int i = 1; i <= n; ++i) {
+        Go(i);
+    }
+}

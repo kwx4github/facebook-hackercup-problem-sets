@@ -1,0 +1,237 @@
+import java.io.BufferedReader;
+import java.util.Comparator;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.util.Collection;
+import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.math.BigInteger;
+import java.util.Collections;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ * @author AlexFetisov
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("input.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("output.txt");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		LaserMaze solver = new LaserMaze();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class LaserMaze {
+
+    public static final String IMP = "impossible";
+    public static final int INF = Integer.MAX_VALUE / 2;
+
+    boolean[][][] f;
+    int n, m;
+
+    char[][] c;
+    private int[][][] way;
+    private int[] qDir;
+    private int[] qX;
+    private int[] qY;
+    private int qSize;
+    int xStart = -1, yStart = -1, xFinish = -1, yFinish = -1;
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        out.print("Case #" + testNumber + ": ");
+        n = in.nextInt();
+        m = in.nextInt();
+        c = new char[n][m];
+        for (int i = 0; i < n; ++i) {
+            c[i] = in.nextString().toCharArray();
+            for (int j = 0; j < m; ++j) {
+                if (c[i][j] == 'S') {
+                    xStart = i;
+                    yStart = j;
+                    c[i][j] = '.';
+                }
+                if (c[i][j] == 'G') {
+                    xFinish = i;
+                    yFinish = j;
+                    c[i][j] = '.';
+                }
+            }
+        }
+        if (xFinish == -1 || xStart == -1) {
+            out.println(IMP);
+            return;
+        }
+        f = new boolean[4][n][m];
+        for (int t = 0; t < 4; ++t) {
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < m; ++j) {
+                    if (c[i][j] != '.') {
+                        f[t][i][j] = true;
+                    } else if (checkTurrent(i, j)) {
+                        f[t][i][j] = true;
+                    }
+                }
+            }
+            rotateAll();
+        }
+        bfs();
+        int min = INF;
+        for (int i = 0; i < 4; ++i) {
+            min = Math.min(min, way[i][xFinish][yFinish]);
+        }
+        if (min >= INF) {
+            out.println(IMP);
+        } else {
+            out.println(min);
+        }
+    }
+
+    private void bfs() {
+        way = new int[4][n][m];
+        ArrayUtils.fill(way, INF);
+        way[0][xStart][yStart] = 0;
+        qDir = new int[4 * n * m * 2];
+        qX = new int[4 * n * m * 2];
+        qY = new int[4 * n * m * 2];
+        qSize = 1;
+        qDir[0] = 0;
+        qX[0] = xStart;
+        qY[0] = yStart;
+
+        for (int qi = 0; qi < qSize; ++qi) {
+            int cx = qX[qi];
+            int cy = qY[qi];
+            int cd = qDir[qi];
+
+            int nd = (cd + 1) % 4;
+            for (int i = 0; i < 4; ++i) {
+                int nx = cx + dx[i];
+                int ny = cy + dy[i];
+                if (isValid(nx, ny)) {
+                    if (way[nd][nx][ny] > way[cd][cx][cy] + 1) {
+                        if (!f[nd][nx][ny]) {
+                            qDir[qSize] = nd;
+                            qX[qSize] = nx;
+                            qY[qSize] = ny;
+                            ++qSize;
+                            way[nd][nx][ny] = way[cd][cx][cy] + 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    int[] dx = new int[] {1, 0, -1, 0};
+    int[] dy = new int[] {0, 1, 0, -1};
+
+    private void rotateAll() {
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < m; ++j) {
+                if (c[i][j] == '>') {
+                    c[i][j] = 'v';
+                } else if (c[i][j] == 'v') {
+                    c[i][j] = '<';
+                } else if (c[i][j] == '<') {
+                    c[i][j] = '^';
+                } else if (c[i][j] == '^') {
+                    c[i][j] = '>';
+                }
+            }
+        }
+    }
+
+    private boolean checkTurrent(int x, int y) {
+        if (hasOne(x, y, 0, 1, '<') || hasOne(x, y, 0, -1, '>') || hasOne(x, y, 1, 0, '^') || hasOne(x, y, -1, 0, 'v')) {
+            return true;
+        }
+        return false;
+    }
+
+    private boolean hasOne(int x, int y, int dx, int dy, char ch) {
+        while (isValid(x, y)) {
+            if (c[x][y] == ch) {
+                return true;
+            }
+            x += dx;
+            y += dy;
+        }
+        return false;
+    }
+
+    private boolean isValid(int x, int y) {
+        return x >= 0 && y >= 0 && x < n && y < m;
+    }
+}
+
+class InputReader {
+    private BufferedReader reader;
+    private StringTokenizer stt;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String nextLine() {
+        try {
+            return reader.readLine();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    public String nextString() {
+        while (stt == null || !stt.hasMoreTokens()) {
+            stt = new StringTokenizer(nextLine());
+        }
+        return stt.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextString());
+    }
+
+    public String next() {
+        return nextString();
+    }
+}
+
+class ArrayUtils {
+
+    public static void fill(int[][] f, int value) {
+        for (int i = 0; i < f.length; ++i) {
+            Arrays.fill(f[i], value);
+        }
+    }
+
+    public static void fill(int[][][] a, int value) {
+        for (int i = 0; i < a.length; ++i) {
+            fill(a[i], value);
+        }
+    }
+
+}
+

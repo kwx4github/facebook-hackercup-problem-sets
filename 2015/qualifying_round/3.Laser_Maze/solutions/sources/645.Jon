@@ -1,0 +1,112 @@
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.*;
+
+public class LaserMaze {
+  public static void main(String[] args) throws IOException {
+    Scanner s = new Scanner(new File("laser_maze.txt"));
+    PrintWriter out = new PrintWriter(new File("laser_maze.out"));
+    int T = s.nextInt();
+    for (int i = 1; i <= T; i++) {
+      int height = s.nextInt();
+      int width = s.nextInt();
+      int startR = -1, startC = -1;
+      char[][] maze = new char[height][];
+      for (int r = 0; r < height; r++) {
+        maze[r] = s.next().toCharArray();
+        for (int c = 0; c < width; c++) {
+          if (maze[r][c] == 'S') {
+            startR = r;
+            startC = c;
+          }
+        }
+      }
+      boolean[][][] isLaserHit = new boolean[4][height][width];
+      for (int time = 0; time < 4; time++) {
+        for (int r = 0; r < height; r++) {
+          for (int c = 0; c < width; c++) {
+            int[] dir = getLaserDirection(maze[r][c], time);
+            if (dir == null) {
+              continue;
+            }
+            int atR = r + dir[0];
+            int atC = c + dir[1];
+            while (isEmptySpace(maze, atR, atC)) {
+              isLaserHit[time][atR][atC] = true;
+              atR += dir[0];
+              atC += dir[1];
+            }
+          }
+        }
+      }
+      Integer shortest = bfs(maze, isLaserHit, startR, startC);
+      out.printf("Case #%d: %s\n", i, shortest == null ? "impossible" : Integer.toString(shortest));
+    }
+    out.close();
+  }
+
+  private static class State {
+    int r, c, turn, steps;
+    State(int r, int c, int turn, int steps) {
+      this.r = r;
+      this.c = c;
+      this.turn = turn;
+      this.steps = steps;
+    }
+  }
+
+  private static Integer bfs(char[][] maze, boolean[][][] isLaserHit, int startR, int startC) {
+    boolean[][][] seen = new boolean[4][maze.length][maze[0].length];
+    LinkedList<State> states = new LinkedList<State>();
+    seen[0][startR][startC] = true;
+    states.addLast(new State(startR, startC, 0, 0));
+    while (!states.isEmpty()) {
+      State state = states.removeFirst();
+      if (maze[state.r][state.c] == 'G') {
+        return state.steps;
+      }
+      for (int[] dir : dirs) {
+        int tryR = state.r + dir[0];
+        int tryC = state.c + dir[1];
+        int tryTurn = (state.turn + 1) % 4;
+        if (isEmptySpace(maze, tryR, tryC) && !seen[tryTurn][tryR][tryC] && !isLaserHit[tryTurn][tryR][tryC]) {
+          seen[tryTurn][tryR][tryC] = true;
+          states.addLast(new State(tryR, tryC, tryTurn, state.steps + 1));
+        }
+      }
+    }
+    return null;
+  }
+
+  static List<Character> lasers = Arrays.asList('^', '>', 'v', '<');
+  static int[][] dirs = {{-1, 0}, {0, 1}, {1, 0}, {0, -1}};
+  private static int[] getLaserDirection(char c, int time) {
+    int index = lasers.indexOf(c);
+    if (index == -1) {
+      return null;
+    }
+    char rotated = lasers.get((index + time) % 4);
+    switch (rotated) {
+      case '^':
+        return dirs[0];
+      case '>':
+        return dirs[1];
+      case 'v':
+        return dirs[2];
+      case '<':
+        return dirs[3];
+      default:
+        throw new IllegalStateException("Mystery character " + rotated);
+    }
+  }
+
+  public static boolean inBounds(char[][] maze, int atR, int atC) {
+    return atR >= 0 && atR < maze.length && atC >= 0 && atC < maze[0].length;
+  }
+
+  public static boolean isEmptySpace(char[][] maze, int r, int c) {
+    return inBounds(maze, r, c) &&
+        (maze[r][c] == '.' || maze[r][c] == 'S' || maze[r][c] == 'G');
+  }
+}

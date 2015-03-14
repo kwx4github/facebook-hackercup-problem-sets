@@ -1,0 +1,151 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+enum CellValue {WALL = 4, FREE, GOAL};
+
+int val[128];
+int N, M;	// Note that I'm swapping their meaning with what's described in the problem.
+string stringGrid[100];
+int grid[100][100];
+int startX, startY;		// X for row, Y for column
+bool hasLaser[100][100][4];	// Definition: hasLaser[x][y][nSteps] == true iff cell(x, y) will be attacked by laser in nSteps steps (module 4, of course).
+
+/*
+ * Precondition: N, M, stringGrid initialized correctly.
+ * Post: startX, startY, grid initialized correctly.
+ */
+void initializeGrid() {
+	for (int i = 0; i < N; ++i)
+		for (int j = 0; j < M; ++j) {
+			grid[i][j] = val[(int)stringGrid[i][j]];
+			if (stringGrid[i][j] == 'S')
+				startX = i, startY = j;
+		}
+	// Done converting the grid.
+}
+
+#define MODULO4(x) ((x + 40000000) % 4)
+
+/*
+ * Pre: N, M, grid initialized correctly.
+ * Post: hasLaser initialized correctly.
+ */
+void initializeHasLaser() {
+	memset(hasLaser, 0, sizeof(hasLaser));
+	for (int i = 0; i < N; ++i)
+		for (int j = 0; j < M; ++j) {
+			if (grid[i][j] >= WALL)
+				continue;
+			for (int k = j - 1; k >= 0 && grid[i][k] >= FREE; --k)
+				hasLaser[i][k][MODULO4(-1 * grid[i][j] + 0)] = true;
+			for (int k = i - 1; k >= 0 && grid[k][j] >= FREE; --k)
+				hasLaser[k][j][MODULO4(-1 * grid[i][j] + 1)] = true;
+			for (int k = j + 1; k < M && grid[i][k] >= FREE; ++k)
+				hasLaser[i][k][MODULO4(-1 * grid[i][j] + 2)] = true;
+			for (int k = i + 1; k < N && grid[k][j] >= FREE; ++k)
+				hasLaser[k][j][MODULO4(-1 * grid[i][j] + 3)] = true;
+		}
+}
+
+// For BFS:
+bool vis[100][100][4];
+// Must confirm with the direction I'm making <^>v
+int di[] = {0, -1, 0, 1};
+int dj[] = {-1, 0, 1, 0};
+#define val(x, y) (x >= 0 && y >= 0 && x < N && y < M)
+
+// For debugging purposes:
+void printGrid() {
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < M; ++j)
+			cout << grid[i][j] << " ";
+		cout << endl;
+	}
+	cout << endl;
+}
+void printHasLaser() {
+	for (int i = 0; i < N; ++i) {
+		for (int j = 0; j < M; ++j) {
+			for (int k = 0; k < 4; ++k)
+				cout << (hasLaser[i][j][k] ? 1 : 0) << ", ";
+			cout << " ";
+		}
+		cout << endl;
+	}
+	cout << endl;
+}
+
+int main() {
+	freopen("laser_maze.txt","r",stdin);
+	freopen("laser_maze.out","w",stdout);
+	cin.tie(0); cout.tie(0);
+	ios_base::sync_with_stdio(false);
+
+	val['<'] = 0;
+	val['^'] = 1;
+	val['>'] = 2;
+	val['v'] = 3;
+	val['#'] = WALL;
+	val['S'] = val['.'] = FREE;
+	val['G'] = GOAL;
+
+	int T; cin >> T;
+	for (int tt = 0; tt < T; ++tt) {
+
+		cin >> N >> M;
+		for (int i = 0; i < N; ++i)
+			cin >> stringGrid[i];
+		initializeGrid();
+		//printGrid();
+		// Grid: Check.
+		// Note: I'm doing this debugging even before trying out the whole code. For mentality purposes.
+
+		// Initialize hasLaser for reducing the order by 100. Although old order would probably pass.
+		initializeHasLaser();
+		//printHasLaser();
+		// Laser: Check.
+
+		// Start BFS:
+		queue<pair<int, int> > Q;	// x, y.
+									// Number of steps will be known from the BFS structures.
+		int nSteps = 0;
+		bool foundSomething = false;
+
+		// Initialize Q & vis:
+		memset(vis, 0, sizeof(vis));
+		vis[startX][startY][0] = 1;
+		Q.push(make_pair(startX, startY));
+		while(!Q.empty()) {
+			++nSteps;	// Since S will never be the same as G.
+			int sz = Q.size();
+			while(sz--) {
+				int x = Q.front().first, y = Q.front().second;
+				Q.pop();
+				for (int i = 0; i < 4; ++i) {
+					int tempX = x + di[i], tempY = y + dj[i];
+					if (!val(tempX, tempY))
+						continue;
+					if (hasLaser[tempX][tempY][nSteps % 4])
+						continue;
+					if (vis[tempX][tempY][nSteps % 4] || grid[tempX][tempY] <= WALL)
+						continue;
+					if (grid[tempX][tempY] == GOAL) {
+						foundSomething = true;
+						goto END;
+					}
+					vis[tempX][tempY][nSteps % 4] = true;
+					Q.push(make_pair(tempX, tempY));
+				}
+			}
+
+		}
+
+		END:
+		if (foundSomething)
+			cout << "Case #" << tt + 1 << ": " << nSteps << "\n";
+		else
+			cout << "Case #" << tt + 1 << ": " << "impossible" << "\n";
+	}
+
+	return 0;
+}
