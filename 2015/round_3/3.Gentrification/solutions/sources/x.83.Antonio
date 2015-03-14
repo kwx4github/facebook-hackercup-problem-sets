@@ -1,0 +1,212 @@
+#include <bits/stdc++.h>
+
+using namespace std;
+
+#define fi first
+#define se second
+#define pb push_back
+#define mp make_pair
+#define mt make_tuple
+#define eb emplace_back
+
+#define foreach(v,c) for(typeof((c).begin()) v = (c).begin(); v!=(c).end(); ++v)
+#define all(c) (c).begin(), (c).end()
+#define REP(i,n) for(int i=0; i<n; i++)
+#define F(i,L,R) for(int i=L; i<R; i++)
+
+#define printA(a,L,R) 3;//F(puf,L,R) cout << a[puf] << (puf==(R-1)?'\n':' ')
+#define printV(a) 3;//printA(a,0,a.size())
+#define dbg(x) 3;//cerr << #x << " = " << x << endl;
+
+typedef long long ll;
+typedef unsigned long long ull;
+typedef long double ld;
+
+typedef pair<int,int> ii;
+typedef pair<int, ii> iii;
+typedef vector<int> vi;
+typedef vector<ii> vii;
+typedef vector<iii> viii;
+typedef vector<ld> vld;
+
+#define PI 3.1415926535897932384626
+#define INF 2001000009
+#define EPS 1e-8
+#define MAXN 512
+#define MAXM 11000
+#define MOD 1000000007
+
+int T;
+int N,M;
+int A[MAXM],B[MAXM];
+int parents[MAXN], rank[MAXN];
+int score[MAXN];
+
+vi children[MAXN];
+vi antichildren[MAXN];
+
+void DJMakeSet(int x) {
+  parents[x]=x;
+  rank[x]=0;
+  score[x]=1;
+}
+int DJFind(int x) {
+  if(parents[x]!=x)
+    parents[x]=DJFind(parents[x]);
+  return parents[x];
+}
+void DJUnionA(int x,int y) {
+  x=DJFind(x);
+  y=DJFind(y);
+  if (x==y)return;
+  //cerr<<"unioning:" << endl;dbg(x);dbg(y);
+  score[x]=score[y]=score[x]+score[y];
+  if (rank[x]<rank[y])
+    parents[x]=y;
+  else if (rank[y]<rank[x])
+    parents[y]=x;
+  else {
+    parents[y]=x;
+    rank[x]++;
+  }
+}
+void DJUnionB(int x,int y) {
+  x=DJFind(x);
+  y=DJFind(y);
+  if (x==y)return;
+  score[x]=score[y]=max(score[x],score[y]);
+  if (rank[x]<rank[y])
+    parents[x]=y;
+  else if (rank[y]<rank[x])
+    parents[y]=x;
+  else {
+    parents[y]=x;
+    rank[x]++;
+  }
+}
+
+int visitedA[MAXN];
+void dfsA(int u) {
+  if (visitedA[u]) return;
+  visitedA[u]=1;
+  foreach(v,children[u])
+    dfsA(*v);
+}
+int visitedB[MAXN];
+void dfsB(int u) {
+  if (visitedB[u]) return;
+  visitedB[u]=1;
+  foreach(v,antichildren[u])
+    dfsB(*v);
+}
+int visitedC[MAXN];
+int root[MAXN];
+
+int visitedD[MAXN];
+
+int pnodes[MAXN];
+int pprev[MAXN];
+int pnc;
+int padjmat[MAXN][MAXN];
+vi pchildren[MAXN];
+vi pantichildren[MAXN];
+int psco[MAXN];
+int visitedE[MAXN];
+int roots[MAXN];
+int numroots;
+void dfsE(int u) {
+  if (visitedE[u]) return;
+  visitedE[u]=1;
+  foreach(v,pantichildren[u])
+    dfsE(*v);
+  if (pantichildren[u].empty())
+    roots[numroots++]=u;
+}
+
+int dfsF(int u) {
+  int csco = 0;
+  foreach(v,pchildren[u])
+    csco += dfsF(*v);
+  return max(psco[u],csco);
+}
+
+
+int main() { ios_base::sync_with_stdio(0); cin.tie(0);
+
+  cin >> T;
+  F(zz,1,T+1) {
+    cin >> N >> M;
+
+    REP(i,N) DJMakeSet(i);
+    REP(i,N) children[i].clear();
+    REP(i,N) antichildren[i].clear();
+
+    REP(i,M) {
+      cin >> A[i] >> B[i];
+      children[A[i]].pb(B[i]);
+      antichildren[B[i]].pb(A[i]);
+    }
+
+    REP(root,N) {
+      REP(u,N) visitedA[u]=visitedB[u]=0;
+      dfsA(root);
+      dfsB(root);
+      REP(u,N)
+        if (visitedA[u] && visitedB[u])
+          DJUnionA(u,root);
+    }
+
+    pnc = 0;
+    REP(u,N) visitedD[u]=0;
+    REP(u,N) {
+      int pp = DJFind(u);
+      if (!visitedD[pp]) {
+        pnodes[pnc]=pp;
+        pprev[pp]=pnc;
+        psco[pnc]=score[pp];
+        pnc++;
+        visitedD[pp]=1;
+      }
+      pprev[u] = pprev[pp];
+    }
+
+    //cerr << "pprev = ";
+    printA(pprev,0,N);
+
+    REP(i,pnc) pchildren[i].clear();
+    REP(i,pnc) pantichildren[i].clear();
+    REP(i,pnc) REP(j,pnc) padjmat[i][j]=0;
+    REP(u,N)
+      foreach(v,children[u])
+      if (pprev[u]!=pprev[*v])
+        padjmat[pprev[u]][pprev[*v]] = 1;
+
+    //cerr << "padjmat:" << endl;
+    REP(i,pnc) printA(padjmat[i],0,pnc);
+
+    REP(u,pnc) REP(v,pnc) if (padjmat[u][v]) {
+      pchildren[u].pb(v);
+      pantichildren[v].pb(u);
+    }
+    REP(i,pnc) {
+      //cerr << "pchildren[" << i << "] = ";
+      printV(pchildren[i]);
+    }
+    REP(u,pnc) visitedE[u]=0;
+    numroots = 0;
+    REP(u,pnc) dfsE(u);
+    int res = 0;
+    REP(i,numroots)
+      res+=dfsF(roots[i]);
+
+
+
+
+
+
+
+    cout << "Case #" << zz << ": ";
+    cout << res;
+    cout << endl;
+  }
+}

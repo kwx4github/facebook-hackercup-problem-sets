@@ -1,0 +1,323 @@
+#include <bits/stdc++.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/resource.h>
+
+using namespace std;
+
+/*** START OF TEMPLATE CODE ***/
+
+typedef vector<int> vi;
+typedef vector<string> vs;
+typedef long long ll;
+typedef complex<double> pnt;
+typedef pair<int, int> pii;
+
+#define RA(x) begin(x), end(x)
+#define FE(i, x) for (auto i = begin(x); i != end(x); ++i)
+#define SZ(x) ((int) (x).size())
+
+template<class T>
+vector<T> splitstr(const string &s)
+{
+    istringstream in(s);
+    vector<T> out;
+    copy(istream_iterator<T>(in), istream_iterator<T>(), back_inserter(out));
+    return out;
+}
+
+template<class T> T gcd(T a, T b) { return b ? gcd(b, a % b) : a; }
+
+static void redirect(int argc, const char **argv)
+{
+    struct rlimit stack_limit;
+    getrlimit(RLIMIT_STACK, &stack_limit);
+    stack_limit.rlim_cur = 1024 * 1024 * 1024;
+    setrlimit(RLIMIT_STACK, &stack_limit);
+
+    ios::sync_with_stdio(false);
+
+    if (argc > 1)
+    {
+        int fd = open(argv[1], O_RDONLY);
+        if (fd == -1) { perror(argv[1]); exit(1); }
+        if (-1 == dup2(fd, 0)) { perror(argv[1]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[1]); exit(1); }
+    }
+
+    if (argc > 2)
+    {
+        int fd = open(argv[2], O_WRONLY | O_CREAT, 0666);
+        if (fd == -1) { perror(argv[2]); exit(1); }
+        if (-1 == dup2(fd, 1)) { perror(argv[2]); exit(1); }
+        if (-1 == close(fd)) { perror(argv[2]); exit(1); }
+    }
+
+    cin.exceptions(ios::failbit | ios::badbit);
+}
+
+template<typename EdgeType>
+struct SimpleNode
+{
+    typedef EdgeType Edge;
+    std::vector<Edge> edges;
+};
+
+struct SimpleEdge
+{
+    int trg;
+
+    SimpleEdge() {}
+    explicit SimpleEdge(int trg) : trg(trg) {}
+};
+
+template<typename T = int>
+struct WeightedEdge
+{
+    typedef T weight_type;
+
+    int trg;
+    T weight;
+    WeightedEdge() {}
+    WeightedEdge(int trg, T weight) : trg(trg), weight(weight) {}
+};
+
+template<typename EdgeType, typename NodeType = SimpleNode<EdgeType> >
+class GraphBase
+{
+public:
+    typedef EdgeType Edge;
+    typedef NodeType Node;
+
+    std::vector<Node> nodes;
+
+    int size() const { return nodes.size(); }
+
+    int size(int id) const
+    {
+        assert(0 <= id && id < size());
+        return nodes[id].edges.size();
+    }
+
+    NodeType &operator[](int id)
+    {
+        assert(0 <= id && id < size());
+        return nodes[id];
+    }
+
+    const NodeType &operator[](int id) const
+    {
+        assert(0 <= id && id < size());
+        return nodes[id];
+    }
+
+    explicit GraphBase(std::size_t size = 0) : nodes(size) {}
+};
+
+// Unweighted graph with arbitrary node type
+template<typename NodeType = SimpleNode<SimpleEdge> >
+class UGGraph : public GraphBase<SimpleEdge, NodeType>
+{
+public:
+    // Add unidirectional edge
+    void add1(int a, int b)
+    {
+        assert(0 <= a && a < this->size());
+        assert(0 <= b && b < this->size());
+        this->nodes[a].edges.push_back(SimpleEdge(b));
+    }
+
+    // Add bidirected edge
+    void add2(int a, int b)
+    {
+        add1(a, b);
+        add1(b, a);
+    }
+
+    explicit UGGraph(std::size_t size = 0) : GraphBase<SimpleEdge, NodeType>(size) {}
+};
+
+// Unweighted graph
+typedef UGGraph<> UGraph;
+
+// Weighted graph
+template<typename T = int, typename NodeType = SimpleNode<WeightedEdge<T> > >
+class WGraph : public GraphBase<WeightedEdge<T>, NodeType>
+{
+public:
+    typedef typename GraphBase<WeightedEdge<T>, NodeType>::Edge::weight_type weight_type;
+    typedef typename GraphBase<WeightedEdge<T>, NodeType>::Edge Edge;
+    typedef typename GraphBase<WeightedEdge<T>, NodeType>::Node Node;
+
+    // Add unidirectional edge
+    void add1(int a, int b, T weight)
+    {
+        assert(0 <= a && a < this->size());
+        assert(0 <= b && b < this->size());
+        this->nodes[a].edges.push_back(Edge(b, weight));
+    }
+
+    // Add bidirectional edge
+    void add2(int a, int b, T weight)
+    {
+        add1(a, b, weight);
+        add1(b, a, weight);
+    }
+
+    explicit WGraph(std::size_t size = 0) : GraphBase<WeightedEdge<T>, NodeType>(size) {}
+};
+
+template<typename EdgeType>
+struct SccNode
+{
+    typedef EdgeType Edge;
+    int id;
+    int link;
+    std::vector<Edge> edges;
+};
+
+template<typename Graph>
+int sccs_r(Graph &g, int root, int &pool, std::vector<std::vector<int> > &ans, std::stack<int> &active)
+{
+    typename Graph::Node &r = g[root];
+    if (r.id != -1)
+        return g[root].link;
+    active.push(root);
+
+    r.id = pool++;
+    r.link = r.id;
+    for (std::size_t i = 0; i < r.edges.size(); i++)
+    {
+        int trg = r.edges[i].trg;
+        r.link = std::min(r.link, sccs_r(g, trg, pool, ans, active));
+    }
+    if (r.link == r.id)
+    {
+        ans.push_back(std::vector<int>());
+        do
+        {
+            g[active.top()].link = INT_MAX;
+            ans.back().push_back(active.top());
+            active.pop();
+        } while (ans.back().back() != root);
+    }
+    return r.link;
+}
+
+// Modifies the id and link elements of the graph
+template<typename Graph>
+std::vector<std::vector<int> > sccs(Graph &g)
+{
+    for (int i = 0; i < g.size(); i++)
+    {
+        g[i].id = -1;
+        g[i].link = -1;
+    }
+
+    int pool = 0;
+    std::vector<std::vector<int> > ans;
+    std::stack<int> st;
+    for (int i = 0; i < g.size(); i++)
+        sccs_r(g, i, pool, ans, st);
+    return ans;
+}
+
+/*** END OF TEMPLATE CODE ***/
+
+static bool augment(const vector<vector<bool> > &edges, vector<bool> &done, vi &back, int x)
+{
+    if (x == -1)
+        return true;
+    if (done[x])
+        return false;
+    done[x] = true;
+    for (int y = 0; y < SZ(edges[x]); y++)
+        if (edges[x][y])
+        {
+            int old = back[y];
+            back[y] = x;
+            if (augment(edges, done, back, old))
+                return true;
+            back[y] = old;
+        }
+    return false;
+}
+
+static int bipartite(const vector<vector<bool> > &edges)
+{
+    int N = SZ(edges);
+    vi back(N, -1);
+    int ans = 0;
+    vector<bool> done(N, false);
+    for (int i = 0; i < N; i++)
+    {
+        fill(RA(done), false);
+        if (augment(edges, done, back, i))
+            ans++;
+    }
+    return ans;
+}
+
+int main(int argc, const char **argv)
+{
+    redirect(argc, argv);
+
+    int cases;
+    cin >> cases;
+    for (int cas = 0; cas < cases; cas++)
+    {
+        int N, M;
+        cin >> N >> M;
+        UGGraph<SccNode<SimpleEdge> > raw(N);
+        vector<pii> raw_edges;
+        for (int i = 0; i < M; i++)
+        {
+            int a, b;
+            cin >> a >> b;
+            raw.add1(a, b);
+            raw_edges.emplace_back(a, b);
+        }
+
+        auto S = sccs(raw);
+        vi comp(N);
+        int X = SZ(S);
+        vi start(X), end(X);
+        int V = 0;
+        for (int i = 0; i < X; i++)
+        {
+            for (int j : S[i])
+                comp[j] = i;
+            start[i] = V++;
+            V += SZ(S[i]);
+            end[i] = V++;
+        }
+
+        vector<vector<bool> > edges2(V, vector<bool>(V));
+        for (int i = 0; i < X; i++)
+        {
+            int s = SZ(S[i]);
+            for (int j = 0; j < s; j++)
+            {
+                edges2[start[i]][start[i] + 1 + j] = true;
+                edges2[start[i] + 1 + j][end[i]] = true;
+            }
+        }
+        for (const auto &e : raw_edges)
+        {
+            int a = comp[e.first];
+            int b = comp[e.second];
+            if (a != b)
+                edges2[end[b]][start[a]] = true;
+        }
+
+        for (int y = 0; y < V; y++)
+            for (int x = 0; x < V; x++)
+                if (edges2[x][y])
+                    for (int z = 0; z < V; z++)
+                        edges2[x][z] = edges2[x][z] || edges2[y][z];
+
+        int match = bipartite(edges2);
+        cout << "Case #" << cas + 1 << ": " << V - match << "\n";
+    }
+    return 0;
+}

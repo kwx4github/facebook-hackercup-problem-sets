@@ -1,0 +1,170 @@
+#include <bits/stdc++.h>
+#define SZ(X) ((int)(X).size())
+#define ALL(X) (X).begin(), (X).end()
+#define REP(I, N) for (int I = 0; I < (N); ++I)
+#define REPP(I, A, B) for (int I = (A); I < (B); ++I)
+#define RI(X) scanf("%d", &(X))
+#define RII(X, Y) scanf("%d%d", &(X), &(Y))
+#define RIII(X, Y, Z) scanf("%d%d%d", &(X), &(Y), &(Z))
+#define DRI(X) int (X); scanf("%d", &X)
+#define DRII(X, Y) int X, Y; scanf("%d%d", &X, &Y)
+#define DRIII(X, Y, Z) int X, Y, Z; scanf("%d%d%d", &X, &Y, &Z)
+#define RS(X) scanf("%s", (X))
+#define CASET int ___T, case_n = 1; scanf("%d ", &___T); while (___T-- > 0)
+#define MP make_pair
+#define PB push_back
+#define MS0(X) memset((X), 0, sizeof((X)))
+#define MS1(X) memset((X), -1, sizeof((X)))
+#define LEN(X) strlen(X)
+#define PII pair<int,int>
+#define VPII vector<pair<int,int> >
+#define PLL pair<long long,long long>
+#define F first
+#define S second
+typedef long long LL;
+using namespace std;
+const int MOD = 1e9+7;
+const int SIZE = 1e4+10;
+#define FN 500010
+#define FM 4200010
+#define INF 1034567890
+#define FOR(it,c) for ( __typeof((c).begin()) it=(c).begin(); it!=(c).end(); it++ )
+using namespace std;
+typedef long long LL;
+struct E {
+    int k,c;
+    E(){}
+    E( int _k, int _c ):k(_k),c(_c){}
+} es[FM];
+
+struct Flow {
+    int n,m,dis[FN];
+    int qq[FN],qr,ql;
+    vector<int> e[FN];
+    void init( int _n ) {
+        n=_n; m=0;
+        for ( int i=0; i<n; i++ ) e[i]=vector<int>();
+    }
+    void add( int a, int b, int c ) {
+        e[a].push_back(m); es[m]=E(b,c); m++;
+        e[b].push_back(m); es[m]=E(a,0); m++;
+    }
+    bool BFS() {
+        memset(dis,-1,n*sizeof(int));
+        ql=qr=0;
+        qq[qr++]=0;
+        dis[0]=0;
+        while ( ql!=qr && dis[n-1]==-1 ) {
+            int p=qq[ql++];
+            FOR(it,e[p]) {
+                E ee=es[*it];
+                if ( ee.c==0 || dis[ee.k]!=-1 ) continue;
+                dis[ee.k]=dis[p]+1;
+                qq[qr++]=ee.k;
+            }
+        }
+        return dis[n-1]!=-1;
+    }
+    LL go( int p, LL c ) {
+        if ( p==n-1 ) return c;
+        LL ret=0,tmp;
+        FOR(it,e[p]) {
+            E &ee=es[*it];
+            if ( ee.c==0 || dis[p]+1!=dis[ee.k] ) continue;
+            tmp=go(ee.k,min(c-ret,(LL)ee.c));
+            ret+=tmp; ee.c-=tmp; es[(*it)^1].c+=tmp;
+            if ( ret==c ) break;
+        }
+        if ( ret==0 ) dis[p]=-1;
+        return ret;
+    }
+    LL maxflow() {
+        LL ret=0;
+        while ( BFS() ) ret+=go(0,1LL<<60);
+        return ret;
+    }
+} flow;
+struct SCC{
+    int n,used[SIZE],order[SIZE],gg[SIZE];
+    vector<int>e[SIZE],ae[SIZE],ge[SIZE],emp,gv[SIZE];
+    int id,gn;
+    void init(int _n){
+        n=_n;
+        memset(used,0,sizeof(int)*n);
+        REP(i,n){
+            e[i]=ae[i]=ge[i]=gv[i]=emp;
+        }
+    }
+    void add_edge(int x,int y){
+        e[x].PB(y);
+        ae[y].PB(x);
+    }
+    void dfs1(int x){
+        if(used[x]==1)return;
+        used[x]=1;
+        REP(i,SZ(e[x])){
+            int y=e[x][i];
+            dfs1(y);
+        }
+        order[--id]=x;
+    }
+    void dfs2(int x){
+        if(used[x]==2)return;
+        gv[gn].PB(x);
+        gg[x]=gn;
+        used[x]=2;
+        REP(i,SZ(ae[x])){
+            int y=ae[x][i];
+            if(used[y]==2){
+                if(gg[y]!=gg[x])ge[gg[y]].PB(gg[x]);
+            }
+            else dfs2(y);
+        }
+    }
+    void make_scc(){
+        gn=0;
+        id=n;
+        REP(i,n)
+            dfs1(i);
+        REP(i,n){
+            if(used[order[i]]!=2){
+                dfs2(order[i]);
+                gn++;
+            }
+        }
+        REP(i,gn){
+            sort(ALL(ge[i]));
+            ge[i].resize(unique(ALL(ge[i]))-ge[i].begin());
+        }
+    }
+    int solve(){
+        flow.init(n*2+2);
+        REP(i,n){
+            flow.add(0,i+1,1);
+            flow.add(n+i+1,n*2+1,1);
+        }
+        REP(i,gn){
+            int gx=i;
+            REP(j,SZ(ge[i])){
+                int gy=ge[i][j];
+                REP(k1,SZ(gv[gx]))REP(k2,SZ(gv[gy])){
+                    flow.add(gv[gx][k1]+1,gv[gy][k2]+n+1,1);
+                }
+            }
+        }
+        return n-flow.maxflow();
+    }
+}scc;
+int main(){
+    CASET{
+        DRII(N,M);
+        scc.init(N);
+        REP(i,M){
+            DRII(x,y);
+            scc.add_edge(x,y);
+        }
+        scc.make_scc();
+        printf("Case #%d: %d\n",case_n++,scc.solve());
+    }
+    return 0;
+}

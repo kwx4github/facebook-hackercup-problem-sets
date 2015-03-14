@@ -1,0 +1,252 @@
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Future;
+import java.io.OutputStream;
+import java.util.concurrent.Executors;
+import java.io.PrintWriter;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.io.FileInputStream;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.FilenameFilter;
+import java.util.Locale;
+import java.io.PrintStream;
+import java.io.FileOutputStream;
+import java.io.File;
+import java.util.concurrent.ExecutionException;
+import java.util.StringTokenizer;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		Locale.setDefault(Locale.US);
+		InputStream inputStream;
+		try {
+			final String regex = "gentrification.*[.]txt";
+			File directory = new File(".");
+			File[] candidates = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File dir, String name) {
+					return name.matches(regex);
+				}
+			});
+			File toRun = null;
+			for (File candidate : candidates) {
+				if (toRun == null || candidate.lastModified() > toRun.lastModified())
+					toRun = candidate;
+			}
+			inputStream = new FileInputStream(toRun);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("gentrification.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		Gentrification solver = new Gentrification();
+		solver.solve(1, in, out);
+		out.close();
+	}
+}
+
+class Gentrification {
+    static class Testcase implements Callable<Testcase> {
+        int testNumber;
+        int n;
+        int m;
+        int res;
+        int[] from;
+        int[] to;
+
+        Testcase(int testNumber) {
+            this.testNumber = testNumber;
+        }
+
+        public void readInput(InputReader in) {
+            n = in.nextInt();
+            m = in.nextInt();
+            from = new int[m];
+            to = new int[m];
+            for (int i = 0; i < m; ++i) {
+                from[i] = in.nextInt();
+                to[i] = in.nextInt();
+            }
+        }
+
+        public Testcase call() {
+            City[] cities = new City[n];
+            for (int i = 0; i < n; ++i) {
+                cities[i] = new City();
+            }
+            for (int i = 0; i < from.length; ++i) {
+                City a = cities[from[i]];
+                City b = cities[to[i]];
+                a.outgo.add(b);
+                b.incom.add(a);
+            }
+            List<Scc> sccs = findScc(cities);
+
+            for (City x : cities) ++x.scc.size;
+            int nextIndex = 0;
+            for (Scc scc : sccs) {
+                scc.firstIndex = nextIndex;
+                nextIndex += scc.size;
+            }
+            if (nextIndex != n) throw new RuntimeException();
+
+            boolean[][] edge = new boolean[n][n];
+            for (int i = 0; i < from.length; ++i) {
+                Scc a = cities[from[i]].scc;
+                Scc b = cities[to[i]].scc;
+                if (a != b) {
+                    if (!edge[a.firstIndex][b.firstIndex]) {
+                        for (int ai = a.firstIndex; ai < a.firstIndex + a.size; ++ai)
+                            for (int bi = b.firstIndex; bi < b.firstIndex + b.size; ++bi)
+                                edge[ai][bi] = true;
+                    }
+                }
+            }
+            for (int k = 0; k < n; ++k)
+                for (int i = 0; i < n; ++i)
+                    for (int j = 0; j < n; ++j) if (edge[i][k] && edge[k][j]) edge[i][j] = true;
+
+            res = nextIndex;
+            int[] match = new int[nextIndex];
+            Arrays.fill(match, -1);
+            boolean[] mark = new boolean[nextIndex];
+
+            for (int i = 0; i < n; ++i) {
+                if (dfs(i, mark, match, edge, n)) {
+                    --res;
+                    Arrays.fill(mark, false);
+                }
+            }
+
+            System.err.println("Done test " + testNumber);
+            return this;
+        }
+
+        private boolean dfs(int at, boolean[] mark, int[] match, boolean[][] edge, int n) {
+            if (mark[at]) return false;
+            mark[at] = true;
+            for (int i = 0; i < n; ++i) if (edge[at][i]) {
+                if (match[i] < 0 || dfs(match[i], mark, match, edge, n)) {
+                    match[i] = at;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void writeOutput(PrintWriter out) {
+            out.println("Case #" + testNumber + ": " + res);
+        }
+
+        class City {
+            List<City> outgo = new ArrayList<City>();
+            List<City> incom = new ArrayList<City>();
+            boolean mark = false;
+            boolean mark2 = false;
+            Scc scc;
+
+            public void dfs1() {
+                if (mark) return;
+                mark = true;
+                for (City x : outgo) x.dfs1();
+                seq[seqPtr++] = this;
+            }
+
+            public void dfs2(Scc scc) {
+                if (mark2) return;
+                mark2 = true;
+                this.scc = scc;
+                for (City x : incom) x.dfs2(scc);
+            }
+        }
+
+        class Scc {
+            int firstIndex;
+            int size;
+        }
+
+        City[] seq;
+        int seqPtr;
+
+        private List<Scc> findScc(City[] cities) {
+            seq = new City[cities.length];
+            List<Scc> res = new ArrayList<>();
+            seqPtr = 0;
+            for (City x : cities) if (!x.mark) x.dfs1();
+            if (seqPtr != cities.length) throw new RuntimeException();
+            for (int i = seqPtr - 1; i >= 0; --i) {
+                City x = seq[i];
+                if (!x.mark2) {
+                    Scc scc = new Scc();
+                    res.add(scc);
+                    x.dfs2(scc);
+                }
+            }
+            return res;
+        }
+    }
+
+
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int nt = in.nextInt();
+        List<Future<Testcase>> tests = new ArrayList<Future<Testcase>>();
+        ExecutorService pool = Executors.newFixedThreadPool(1);
+        for (int it = 0; it < nt; ++it) {
+            Testcase t = new Testcase(it + 1);
+            t.readInput(in);
+            tests.add(pool.submit(t));
+        }
+        for (Future<Testcase> test : tests) {
+            try {
+                Testcase t = test.get();
+                t.writeOutput(out);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        pool.shutdown();
+    }
+}
+
+class InputReader {
+    public BufferedReader reader;
+    public StringTokenizer tokenizer;
+
+    public InputReader(InputStream stream) {
+        reader = new BufferedReader(new InputStreamReader(stream), 32768);
+        tokenizer = null;
+    }
+
+    public String next() {
+        while (tokenizer == null || !tokenizer.hasMoreTokens()) {
+            try {
+                tokenizer = new StringTokenizer(reader.readLine());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return tokenizer.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(next());
+    }
+
+}
+

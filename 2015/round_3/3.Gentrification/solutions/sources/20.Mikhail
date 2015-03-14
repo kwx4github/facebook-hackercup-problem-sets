@@ -1,0 +1,288 @@
+import java.io.*;
+import java.util.*;
+
+public class Gentrification {
+
+	BufferedReader br;
+	PrintWriter out;
+	StringTokenizer st;
+	boolean eof;
+
+	enum InputType {
+		SAMPLE, SUBMIT
+	}
+
+	static final InputType INPUT_TYPE = InputType.SUBMIT;
+
+	List<Integer>[] g, gr;
+
+	void dfs1(int v, boolean[] vis, List<Integer> order) {
+		vis[v] = true;
+		for (int i = 0; i < g[v].size(); i++) {
+			int to = g[v].get(i);
+			if (!vis[to]) {
+				dfs1(to, vis, order);
+			}
+		}
+		order.add(v);
+	}
+
+	int[] added;
+	int addedVer = 0;
+
+	int dfs2(int v, int[] cols, int col, List<List<Integer>> gc) {
+		int ret = 1;
+		cols[v] = col;
+		for (int i = 0; i < gr[v].size(); i++) {
+			int to = gr[v].get(i);
+			if (cols[to] == -1) {
+				ret += dfs2(to, cols, col, gc);
+			} else if (cols[to] != col) {
+				int from = cols[to];
+				if (added[from] != addedVer) {
+					added[from] = addedVer;
+					gc.get(from).add(col);
+				}
+			}
+		}
+		return ret;
+	}
+
+	static class FlowGraph {
+		int N, S, T;
+		static final int INF = Integer.MAX_VALUE / 3;
+
+		List<FlowEdge>[] g;
+
+		private int[] dist;
+		private Deque<Integer> q;
+		private int[] ptr;
+
+		public FlowGraph(int n, int s, int t) {
+			N = n;
+			S = s;
+			T = t;
+			g = new List[N];
+			for (int i = 0; i < N; i++) {
+				g[i] = new ArrayList<>();
+			}
+			dist = new int[N];
+			q = new ArrayDeque<>();
+			ptr = new int[N];
+		}
+
+		public void addDirectedEdge(int v1, int v2, int cap) {
+			FlowEdge e1 = new FlowEdge(v2, cap);
+			FlowEdge e2 = new FlowEdge(v1, 0);
+			e1.rev = e2;
+			e2.rev = e1;
+			g[v1].add(e1);
+			g[v2].add(e2);
+		}
+
+		public void addUndirectedEdge(int v1, int v2, int cap) {
+			FlowEdge e1 = new FlowEdge(v2, cap);
+			FlowEdge e2 = new FlowEdge(v1, cap);
+			e1.rev = e2;
+			e2.rev = e1;
+			g[v1].add(e1);
+			g[v2].add(e2);
+		}
+
+		private boolean bfs() {
+			Arrays.fill(dist, INF);
+			dist[S] = 0;
+			q.clear();
+			q.add(S);
+
+			while (!q.isEmpty()) {
+				int v = q.poll();
+				List<FlowEdge> adj = g[v];
+				for (int i = 0; i < adj.size(); i++) {
+					FlowEdge e = adj.get(i);
+					if (e.flow < e.cap && dist[e.to] > dist[v] + 1) {
+						dist[e.to] = dist[v] + 1;
+						q.add(e.to);
+					}
+				}
+			}
+			return dist[T] != INF;
+		}
+
+		private int dfs(int v, int curFlow) {
+			if (v == T)
+				return curFlow;
+			List<FlowEdge> adj = g[v];
+			for (; ptr[v] < adj.size(); ptr[v]++) {
+				FlowEdge e = adj.get(ptr[v]);
+				if (dist[e.to] == dist[v] + 1 && e.flow != e.cap) {
+					int go = dfs(e.to, Math.min(curFlow, e.cap - e.flow));
+					if (go != 0) {
+						e.flow += go;
+						e.rev.flow -= go;
+						return go;
+					}
+				}
+			}
+			return 0;
+		}
+
+		public int maxFlow() {
+			int flow = 0;
+
+			while (bfs()) {
+				Arrays.fill(ptr, 0);
+				int addFlow;
+				do {
+					addFlow = dfs(S, INF);
+					flow += addFlow;
+				} while (addFlow > 0);
+			}
+
+			return flow;
+		}
+
+	}
+
+	static class FlowEdge {
+		int to;
+		int flow, cap;
+
+		FlowEdge rev;
+
+		public FlowEdge(int to, int cap) {
+			this.to = to;
+			this.cap = cap;
+		}
+	}
+	
+	void dfs3(int v, List<List<Integer>> gc, boolean[] vis) {
+		vis[v] = true;
+		for (int to : gc.get(v)) {
+			if (!vis[to]) {
+				dfs3(to, gc, vis);
+			}
+		}
+	}
+
+	void solve() throws IOException {
+		int n = nextInt();
+		int m = nextInt();
+		g = new List[n];
+		gr = new List[n];
+		for (int i = 0; i < n; i++) {
+			g[i] = new ArrayList<>(0);
+			gr[i] = new ArrayList<>(0);
+		}
+
+		for (int i = 0; i < m; i++) {
+			int v1 = nextInt();
+			int v2 = nextInt();
+			g[v1].add(v2);
+			gr[v2].add(v1);
+		}
+
+		List<Integer> order = new ArrayList<>(n);
+		boolean[] vis = new boolean[n];
+		for (int i = 0; i < n; i++) {
+			if (!vis[i]) {
+				dfs1(i, vis, order);
+			}
+		}
+
+		List<List<Integer>> gc = new ArrayList<>(n);
+
+		Collections.reverse(order);
+		int[] col = new int[n];
+		List<Integer> sz = new ArrayList<>();
+		Arrays.fill(col, -1);
+		added = new int[n];
+		for (int v : order) {
+			if (col[v] == -1) {
+				int cc = sz.size();
+				addedVer++;
+				gc.add(new ArrayList<Integer>());
+				sz.add(dfs2(v, col, cc, gc));
+			}
+		}
+
+		int condN = sz.size();
+
+		FlowGraph g = new FlowGraph(2 * condN + 2, 2 * condN, 2 * condN + 1);
+		for (int i = 0; i < condN; i++) {
+			g.addDirectedEdge(g.S, i, sz.get(i));
+			g.addDirectedEdge(i + condN, g.T, sz.get(i));
+			
+			vis = new boolean[condN];
+			dfs3(i, gc, vis);
+			for (int j = 0; j < condN; j++) {
+				if (i != j && vis[j]) {
+					g.addDirectedEdge(i, j + condN, FlowGraph.INF);
+				}
+			}
+		}
+		
+		int val = g.maxFlow();
+		out.println(n - val);
+	}
+
+	Gentrification() throws IOException {
+		switch (INPUT_TYPE) {
+		case SAMPLE: {
+			br = new BufferedReader(new FileReader("sample.in"));
+			out = new PrintWriter("sample.out");
+			break;
+		}
+		case SUBMIT: {
+			String taskName = "gentrification";
+			br = new BufferedReader(new FileReader(taskName + ".txt"));
+			out = new PrintWriter(taskName + ".out");
+			break;
+		}
+		}
+		int t = nextInt();
+		for (int i = 1; i <= t; i++) {
+			System.err.println("Test " + i);
+			out.print("Case #" + i + ": ");
+			solve();
+		}
+		out.close();
+	}
+
+	public static void main(String[] args) throws IOException {
+		new Gentrification();
+	}
+
+	String nextToken() {
+		while (st == null || !st.hasMoreTokens()) {
+			try {
+				st = new StringTokenizer(br.readLine());
+			} catch (Exception e) {
+				eof = true;
+				return null;
+			}
+		}
+		return st.nextToken();
+	}
+
+	String nextString() {
+		try {
+			return br.readLine();
+		} catch (IOException e) {
+			eof = true;
+			return null;
+		}
+	}
+
+	int nextInt() throws IOException {
+		return Integer.parseInt(nextToken());
+	}
+
+	long nextLong() throws IOException {
+		return Long.parseLong(nextToken());
+	}
+
+	double nextDouble() throws IOException {
+		return Double.parseDouble(nextToken());
+	}
+}

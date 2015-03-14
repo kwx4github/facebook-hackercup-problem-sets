@@ -1,0 +1,180 @@
+#include <algorithm>
+#include <iostream>
+#include <iomanip>
+#include <complex>
+#include <cstring>
+#include <cstdlib>
+#include <string>
+#include <vector>
+#include <cstdio>
+#include <cmath>
+//#include <ctime>
+#include <map>
+using namespace std;
+
+#define MAXN 200001
+
+int maxint = ~0U>>1;
+int flow;
+int pi[MAXN+1], v[MAXN+1];
+int S, T;
+
+struct etype
+{
+	int t, c;
+	etype* next;
+	etype* pair;
+	etype(){next=0;}
+	etype(int _t, int _c, etype* _n){t=_t, c=_c, next=_n;}
+}*e[MAXN+1], *eb[MAXN+1], *Pe, *Pool;
+
+int aug(int w, int lim)
+{
+	int t;
+	v[w] = 1;
+	if(w == T)
+	{
+		flow += lim;
+		return lim;
+	}
+	for(etype *& i=e[w]; i; i = i->next)
+		if(i->c && !v[i->t] && pi[w] == pi[i->t] + 1)
+			if(t = aug(i->t, min(lim, i->c)))
+				return i->c -= t, i->pair->c += t, t;
+	return 0;
+}
+
+bool fix()
+{
+	int t = maxint;
+	for(int i = S; i <= T; i++)
+		if(v[i])
+		{
+			for(etype *j = eb[i]; j; j = j->next)
+				if(j->c && !v[j->t])
+					t = min(t, pi[j->t] + 1 - pi[i]);
+		}
+	if(t == maxint)
+		return 0;
+
+	for(int i = S; i <= T; i++)
+		if(v[i])
+			e[i] = eb[i], pi[i] += t;
+	return 1;
+}
+
+void addedge(int s, int t, int c)
+{
+	++Pe;
+	Pe->t = t, Pe->c = c, Pe->next = e[s];
+	e[s] = Pe;
+	++Pe;
+	Pe->t = s, Pe->c = 0, Pe->next = e[t];
+	e[t] = Pe;
+	e[s]->pair=e[t];
+	e[t]->pair=e[s];
+}
+
+void prepare()
+{
+	if(Pool == NULL)
+		Pool = new etype[1000001];
+	Pe = Pool;
+	memset(e, 0, sizeof(e));
+}
+
+int MaxFlow()
+{
+	flow = 0;
+	memcpy(eb, e, sizeof(e));
+	memset(pi, 0, sizeof(pi));
+	do
+	{
+		do
+		memset(v, 0, sizeof(v));
+		while(aug(S, maxint));
+	}
+	while(fix());
+	return flow;
+}
+
+/*  Note
+	1. Set maxNodes here: #define MAXN 200001
+	2. Set maxEdges here: Pool = new etype[1000001];
+	3. S must be the min id, T must be the max id
+*/
+
+/*  Eaxmple
+	prepare();
+	S = 1, T = 2;
+	addedge(1, 2, 3);
+	cout << MaxFlow() << endl;
+*/
+
+int n, m;
+int G[501][501];
+int L(int x){return x + 1;}
+int R(int x){return x + 500 + 1;}
+
+void solve()
+{
+	prepare();
+	S = 1;
+	T = 1002;
+	cin >> n >> m;
+	memset(G, 0, sizeof(G));
+	for(int i = 1; i <= m; i++)
+	{
+		int a, b;
+		cin >> a >> b;
+		a ++;
+		b ++;
+		G[a][b] = true;
+	}
+	for(int k = 1; k <= n; k++)
+		for(int i = 1; i <= n; i++)
+			for(int j = 1; j <= n; j++)
+				G[i][j] |= G[i][k] & G[k][j];
+	for(int i = 1; i <= n; i++)
+	{
+		addedge(S, L(i), 1);
+		addedge(R(i), T, 1);
+	}
+	for(int i = 1; i <= n; i++)
+		for(int j = 1; j <= n; j++)
+		{
+			if(i == j) continue;
+			if(G[i][j] && G[j][i]) continue;
+			if(G[i][j])
+			{
+				//cout << i << " " << j << endl;
+				addedge(L(i), R(j), 1);
+			}
+		}
+	cout << n - MaxFlow() << endl;
+	
+}
+
+int MAIN()
+{
+	int TestCase;
+	cin >> TestCase;
+	for(int caseID = 1; caseID <= TestCase; caseID ++)
+	{
+		cout << "Case #" << caseID << ": ";
+		solve();
+	}
+	return 0;
+}
+
+int main()
+{
+	//srand((unsigned)time(NULL));
+	#ifdef LOCAL_TEST
+		freopen("in.txt", "r", stdin);
+		freopen("out.txt", "w", stdout);
+	#endif
+	ios :: sync_with_stdio(false);
+	cout << fixed << setprecision(16);
+	return MAIN();
+}

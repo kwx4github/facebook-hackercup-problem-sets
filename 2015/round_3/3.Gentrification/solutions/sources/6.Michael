@@ -1,0 +1,194 @@
+import java.util.List;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.io.PrintStream;
+import java.io.BufferedReader;
+import java.io.OutputStream;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.util.Random;
+import java.io.FileInputStream;
+import java.util.StringTokenizer;
+import java.io.InputStream;
+
+/**
+ * Built using CHelper plug-in
+ * Actual solution is at the top
+ */
+public class Main {
+	public static void main(String[] args) {
+		InputStream inputStream;
+		try {
+			inputStream = new FileInputStream("gentrification.in");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		OutputStream outputStream;
+		try {
+			outputStream = new FileOutputStream("gentrification.out");
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		InputReader in = new InputReader(inputStream);
+		PrintWriter out = new PrintWriter(outputStream);
+		Gentrification solver = new Gentrification();
+		int testCount = Integer.parseInt(in.next());
+		for (int i = 1; i <= testCount; i++)
+			solver.solve(i, in, out);
+		out.close();
+	}
+}
+
+class Gentrification {
+    public void solve(int testNumber, InputReader in, PrintWriter out) {
+        int n = in.nextInt();
+        int m = in.nextInt();
+        boolean[][] can0 = new boolean[n][n];
+        for (int i = 0; i < m; i++) {
+            int u = in.nextInt();
+            int v = in.nextInt();
+            can0[u][v] = true;
+        }
+        out.println("Case #" + testNumber + ": " + smart(can0));
+    }
+
+    static int smart(boolean[][] can0) {
+        int n = can0.length;
+        boolean[][] can1 = new boolean[n][n];
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(can0[i], 0, can1[i], 0, n);
+        }
+        for (int k = 0; k < n; k++) {
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    can1[i][j] |= can1[i][k] & can1[k][j];
+                }
+            }
+        }
+        int[] color = new int[n];
+        Arrays.fill(color, -1);
+        int colors = 0;
+        for (int i = 0; i < n; i++) {
+            if (color[i] < 0) {
+                color[i] = colors;
+                for (int j = 0; j < n; j++) {
+                    if (can1[i][j] && can1[j][i]) {
+                        color[j] = colors;
+                    }
+                }
+                ++colors;
+            }
+        }
+        boolean[][] can2 = new boolean[n][n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                can2[i][j] = can1[i][j] && color[i] != color[j];
+            }
+        }
+        Graph graph = new Graph(n, n);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (can2[i][j]) {
+                    graph.addEdge(i, j);
+                }
+            }
+        }
+        int answer = graph.matching();
+        return n - answer;
+    }
+
+
+    public static class Graph {
+        public final int n, m;
+        public final int[] mt;
+        public final boolean[] visited, matched;
+        public List<Integer>[] edges;
+
+        public Graph(int n, int m) {
+            this.n = n;
+            this.m = m;
+            edges = new List[n];
+            visited = new boolean[n];
+            matched = new boolean[n];
+            mt = new int[m];
+            Arrays.fill(mt, -1);
+            for (int i = 0; i < n; i++) {
+                edges[i] = new ArrayList<Integer>();
+            }
+        }
+
+        public void addEdge(int u, int v) {
+            edges[u].add(v);
+            if (!matched[u] && mt[v] == -1) {
+                matched[u] = true;
+                mt[v] = u;
+            }
+        }
+
+        public int matching() {
+            for (int i = 0; i < n; i++) {
+                if (matched[i])
+                    continue;
+                Arrays.fill(visited, false);
+                dfs(i);
+            }
+            int ans = 0;
+            for (int i = 0; i < m; i++) {
+                if (mt[i] >= 0)
+                    ++ans;
+            }
+            return ans;
+        }
+
+        boolean dfs(int u) {
+            if (visited[u])
+                return false;
+            visited[u] = true;
+            for (int i : edges[u]) {
+                if (mt[i] == -1 || dfs(mt[i])) {
+                    mt[i] = u;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+    }
+}
+
+class InputReader {
+    BufferedReader br;
+    StringTokenizer st;
+
+    public InputReader(InputStream stream) {
+        br = new BufferedReader(new InputStreamReader(stream));
+    }
+
+    public String next() {
+        return nextToken();
+    }
+
+    public String nextToken() {
+        while (st == null || !st.hasMoreTokens()) {
+            String line = null;
+            try {
+                line = br.readLine();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (line == null) {
+                return null;
+            }
+            st = new StringTokenizer(line);
+        }
+        return st.nextToken();
+    }
+
+    public int nextInt() {
+        return Integer.parseInt(nextToken());
+    }
+
+}
+

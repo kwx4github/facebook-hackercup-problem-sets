@@ -1,0 +1,228 @@
+#include <iostream>
+#include <thread>
+#include <time.h>
+#include <bitset>
+#include <stdio.h>
+#include <vector>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <string>
+#include <string.h>
+#include <cmath>
+#include <memory.h>
+#include <algorithm>
+using namespace std;
+typedef long long ll;
+const int N = 500;
+int n, m, low[N], comp[N], sz[N], dfs = 1, cmp;
+bool vis[N];
+vector<int> s;
+vector<vector<int> > g, G;
+void DFS(int u){
+	int idx = low[u] = dfs++, v;
+	vis[u] = true;
+	s.push_back(u);
+	for (int i = 0; i < g[u].size(); ++i){
+		v = g[u][i];
+		if (low[v] == 0)
+			DFS(v);
+		if (vis[v])
+			low[u] = min(low[u], low[v]);
+	}
+	if (low[u] == idx){
+		while (true){
+			v = s.back();
+			s.pop_back();
+			comp[v] = cmp;
+			++sz[cmp];
+			vis[v] = false;
+			if (v == u)
+				break;
+		}
+		++cmp;
+	}
+}
+int res;
+bitset<N> cant, pred[N], succ[N];
+vector<pair<int, int> > v;
+clock_t TT;
+void calc(int i, int cur){
+	if (cur + v[i].first <= res)
+		return;
+	if (i + 1 == v.size()){
+		res = cur;
+		/*if (0){
+			printf("%d\n", res);
+			fflush(0);
+		}*/
+		return;
+	}
+	if (float(clock() - TT) > 2 * CLOCKS_PER_SEC)
+		return;
+	int k = v[i].second;
+	bool x = rand() % 2;
+	if (x == 0){
+		if (!(cant&pred[k]).any() && !(cant&succ[k]).any()){
+			cant.set(k);
+			calc(i + 1, cur + sz[k]);
+			cant.reset(k);
+		}
+		calc(i + 1, cur);
+	}else{
+		calc(i + 1, cur);
+		if (!(cant&pred[k]).any() && !(cant&succ[k]).any()){
+			cant.set(k);
+			calc(i + 1, cur + sz[k]);
+			cant.reset(k);
+		}
+	}
+}
+void solve(int &res){
+	res = 0;
+	vector<int> v;
+	for (int i = 0; i < n; ++i)
+		v.push_back(i);
+	int tz[11] = {2, 2, 2, 2, 3, 4, 5, 6, 6, 7, 8 };
+	while (float(clock() - TT) < tz[n/50] * CLOCKS_PER_SEC){
+		for (int it = 0; it < 20; ++it){
+			for (int j = 0; j < n; ++j)
+				swap(v[rand() % n], v[rand() % n]);
+			for (int z = 0; z < 2; ++z){
+				int cur = 0;
+				cant.reset();
+				for (int i = 0; i < n; ++i)
+				if (!(cant&pred[v[i]]).any() && !(cant&succ[v[i]]).any()){
+					cant.set(v[i]);
+					cur += sz[v[i]];
+				}
+				res = max(res, cur);
+				reverse(v.begin(), v.end());
+			}
+		}
+	}
+}
+void calc(int u){
+	if (pred[u].any())
+		return;
+	pred[u].set(u);
+	for (int i = 0; i < G[u].size(); ++i){
+		calc(G[u][i]);
+		pred[u] |= pred[G[u][i]];
+	}
+}
+void calcS(int u){
+	if (succ[u].any())
+		return;
+	succ[u].set(u);
+	for (int i = 0; i < g[u].size(); ++i){
+		calcS(g[u][i]);
+		succ[u] |= succ[g[u][i]];
+	}
+}
+int p[500];
+int find(int x){
+	if (p[x] == x)
+		return x;
+	return p[x] = find(p[x]);
+}
+void generate(int n){
+	for (int i = 0; i < n; ++i)
+		p[i] = i;
+	printf("%d %d\n", n, n + 19);
+	vector<pair<int, int> > e;
+	while (e.size() != n - 1){
+		int a = rand() % n;
+		int b = rand() % n;
+		if (a == b || find(a) == find(b))
+			continue;
+		e.push_back(make_pair(a, b));
+		printf("%d %d\n", a, b);
+		p[find(a)] = find(b);
+	}
+	for (int i = 0; i < 20; ++i){
+		int a = rand() % n;
+		int b = rand() % n;
+		if (a == b)
+			--i;
+		else
+			printf("%d %d\n", a, b);
+	}
+}
+int main()
+{
+	srand(time(0));
+	if (0){
+		freopen("src.txt", "w", stdout);
+		printf("%d\n", 20);
+		for (int i = 0; i < 20; ++i)
+			generate((i + 1) * 25);
+		return 0;
+	}
+	clock_t TI = clock();
+	freopen("C.txt", "r", stdin);
+	freopen("output.txt", "w", stdout);
+	int t;
+	scanf("%d", &t);
+	for (int T = 1; T <= t; ++T){
+		printf("Case #%d: ", T);
+		scanf("%d%d", &n, &m);
+		g.clear();
+		g.resize(n);
+		for (int a, b, i = 0; i < m; ++i){
+			scanf("%d%d", &a, &b);
+			g[a].push_back(b);
+		}
+		memset(vis, 0, sizeof(vis));
+		memset(low, 0, sizeof(low));
+		memset(sz, 0, sizeof(sz));
+		s.clear();
+		cmp = 0;
+		dfs = 1;
+		for (int i = 0; i < n;++i)
+		if (low[i] == 0)
+			DFS(i);
+		set<pair<int, int> > evis;
+		G.clear();
+		G.resize(cmp);
+		for (int a, b, i = 0; i < n; ++i)
+		for (int j = 0; j < g[i].size(); ++j)
+		if (comp[i] != comp[g[i][j]]){
+			a = comp[i];
+			b = comp[g[i][j]];
+			if (evis.insert(make_pair(a, b)).second){
+				G[b].push_back(a);
+			}
+		}
+		for (int i = 0; i < cmp; ++i){
+			pred[i].reset();
+			succ[i].reset();
+		}
+		for (int i = 0; i < cmp; ++i)
+			calc(i);
+		g.clear();
+		g.resize(cmp);
+		for (int i = 0; i < cmp;++i)
+		for (int j = 0; j < G[i].size(); ++j)
+			g[G[i][j]].push_back(i);
+		for (int i = 0; i < cmp; ++i)
+			calcS(i);
+		v.clear();
+		for (int i = 0; i < cmp; ++i)
+			v.push_back(make_pair(sz[i], i));
+		sort(v.begin(), v.end());
+		reverse(v.begin(), v.end());
+		for (int j = (signed)v.size() - 2; j >= 0; --j)
+			v[j].first += v[j + 1].first;
+		v.push_back(make_pair(0, 0));
+		cant.reset();
+		g = G;
+		res = 1;
+		TT = clock();
+		solve(res);
+		printf("%d\n", res);
+	}
+	//printf("%.3lf\n", double(clock() - TI) / CLOCKS_PER_SEC);
+	return 0;
+}

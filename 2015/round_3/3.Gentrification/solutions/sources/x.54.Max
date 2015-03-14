@@ -1,0 +1,237 @@
+#include <cstdio>
+#include <set>
+#include <memory.h>
+#include <algorithm>
+#include <cassert>
+using namespace std;
+
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+//#define eprintf(...) 42
+
+const int N = 1050;
+const int M = 100500;
+struct edge
+{
+    int t;
+    int f, c, u;
+    int nxt;
+} E[2 * M];
+
+int first[N];
+
+int ept = 0;
+
+inline void add_edge(int a, int b, int c, int u)
+{
+    //eprintf("adding edge %d -> %d, c = %d, u = %d\n", a, b, c, u); 
+    assert(ept < 2 * M - 10);
+    E[ept] = {b, 0, c, u, first[a]};
+    E[ept + 1] = {a, 0, 0, -u, first[b]};
+    first[a] = ept;
+    first[b] = ept + 1;
+    ept += 2;
+}
+
+int prv[N];
+int D[N];
+int S, T;
+const int inf = 1e9;
+
+int F[N];
+
+bool was[N];
+int n;
+
+int curf = 0;
+
+set<pair<int, int> > Q;
+
+int push()
+{
+    for (int i = 0; i < n; i++)
+        D[i] = 1e9, prv[i] = -1, was[i] = false;
+    D[S] = 0;
+    Q.clear();
+    for (int i = 0; i < n; i++)
+        Q.insert(make_pair(D[i], i));
+    while (!Q.empty())
+    {
+/*
+        int mn = 1e9;
+        int mni = -1;
+        for (int j = 0; j < n; j++)
+            if (!was[j] && mn > D[j])
+                mn = D[j], mni = j;
+        if (mni == -1)
+            break;*/
+        int mni = Q.begin()->second;
+        int mn = Q.begin()->first;
+        Q.erase(Q.begin());
+        if (mn >= 1e9 - 2)
+            break;
+        was[mni] = true;
+        for (int e = first[mni]; e != -1; e = E[e].nxt)
+        {
+            int y = E[e].t;
+            if (E[e].f != E[e].c && D[y] > D[mni] + E[e].u + F[mni] - F[y]) {
+                int oldd = D[y];
+                int newd = D[mni] + E[e].u + F[mni] - F[y];
+                Q.erase(make_pair(oldd, y));
+                Q.insert(make_pair(newd, y));
+                D[y] = newd;
+                prv[y] = e;
+            }
+        }
+    }
+    if (D[T] > inf / 2)
+        return -inf;
+    int mn = 1e9;
+    for (int t = T; prv[t] != -1; t = E[prv[t] ^ 1].t)
+        mn = min(mn, E[prv[t]].c - E[prv[t]].f);
+    for (int t = T; prv[t] != -1; t = E[prv[t] ^ 1].t)
+        E[prv[t]].f += mn, E[prv[t] ^ 1].f -= mn;
+    curf += mn;
+    int ans = mn * (D[T] - F[S] + F[T]); 
+    for (int i = 0; i < n; i++)
+        F[i] += D[i];
+    return ans;
+}
+
+int gn;
+
+vector<int> G[N], IG[N];
+
+bool gwas[N];
+
+vector<int> topsort;
+
+void DFS(int x)
+{
+    gwas[x] = true;
+    for (int y : G[x])
+    {
+        if (!gwas[y])
+            DFS(y);
+    }
+    topsort.push_back(x);
+}
+
+int C[N];
+int cnt[N];
+
+void DFS2(int x, int col)
+{
+    C[x] = col;
+    cnt[col]++;
+    for (int y : IG[x]) 
+    {
+        if (C[y] == -1)
+            DFS2(y, col);
+    }
+}
+
+set<pair<int, int> > condE;
+
+vector<pair<int, int> > edges;
+
+const int CINF = 10500;
+
+void solve(int cs)
+{
+    memset(first, -1, sizeof(first));
+    
+    scanf("%d", &gn);
+    int m;
+    scanf("%d", &m);   
+    
+    memset(E, 0, sizeof(E));
+    memset(first, -1, sizeof(first));            
+    ept = 0;
+    memset(prv, 0, sizeof(prv));
+    memset(D, 0, sizeof(D));
+    S = T = 0;
+    memset(F, 0, sizeof(F));
+    memset(was, 0, sizeof(was));            
+    n = 0;
+    curf = 0;
+
+    memset(cnt, 0, sizeof(cnt));
+
+    for (int i = 0; i < gn; i++)
+        G[i].clear(), IG[i].clear();
+
+    edges.clear();
+
+    for (int i = 0; i < m; i++)
+    {
+        int a, b;
+        scanf("%d %d", &a, &b);
+        edges.push_back(make_pair(a, b));
+        G[a].push_back(b);
+        IG[b].push_back(a);
+    }
+    memset(gwas, 0, sizeof(gwas));
+
+    topsort.clear();
+    for (int i = 0; i < gn; i++)
+    {
+        if (!gwas[i])
+        {
+            DFS(i);
+        }
+    }
+
+    memset(C, -1, sizeof(C));
+    reverse(topsort.begin(), topsort.end());
+    int curc = 1;
+    for (int x : topsort)
+    {
+        if (C[x] == -1)
+            DFS2(x, curc++);
+    }
+    --curc;
+
+    condE.clear();
+    
+    for (pair<int, int> pr : edges)
+    {
+        int a = pr.first;
+        int b = pr.second;
+        if (C[a] == C[b])
+            continue;
+        a = C[a];
+        b = C[b];
+        add_edge(2 * a + 1, 2 * b, CINF, 0);
+    }
+
+    S = 0;
+    T = 1;
+    n = 2 * curc + 2;
+
+    for (int i = 1; i <= curc; i++)
+    {
+        add_edge(S, 2 * i, CINF, 0);
+        add_edge(2 * i + 1, T, CINF, 0);
+        add_edge(2 * i, 2 * i + 1, cnt[i], -1);
+    }
+
+    int ans = 0;
+    while (true)
+    {
+        int v = push();
+        ans += v;
+        if (ans == -gn)
+            break;
+    }
+    printf("Case #%d: %d\n", cs, curf);
+    fflush(stdout);
+}
+
+int main()
+{
+    int T;
+    scanf("%d", &T);
+    for (int i = 0; i < T; i++)
+        solve(i + 1);
+}
+

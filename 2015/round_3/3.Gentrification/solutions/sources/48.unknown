@@ -1,0 +1,282 @@
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <functional>
+#include <complex>
+#include <queue>
+#include <stack>
+#include <cmath>
+#include <cassert>
+#include <tuple>
+using namespace std;
+typedef long long LL;
+typedef complex<double> CMP;
+
+class SCC
+{
+	vector< vector<int> > G;
+
+public:
+	typedef int Vert;
+	void addVert( Vert s )
+	{
+		if( s >= G.size() ) G.resize(s+1);
+	}
+
+	void addEdge( Vert s, Vert t )
+	{
+		if( max(s,t) >= G.size() ) G.resize(max(s,t)+1);
+		G[s].push_back(t);
+	}
+
+	void scc()
+	{
+		int N = G.size();
+		dfs_no.assign(N, 0);
+		dfs_lo.assign(N, 0);
+		pending = stack<int>();
+		scc_id.assign(N, -1);
+		scc_list.clear();
+		scc_children.clear();
+		for(int v=0; v<N; ++v)
+			dfs(v);
+	}
+
+	vector<int> scc_id; // which scc does the vert belong to?
+	vector< vector<int> > scc_list;     // list of nodes in the scc
+	vector< vector<int> > scc_children; // forest relationship of sccs
+
+private:
+	int no;
+	vector<int> dfs_no; // 1-origin dfs-visit ID
+	vector<int> dfs_lo; // the least ID in the vert's scc
+	stack<int> pending; // current unclassigied verts
+
+	void dfs(int v)
+	{
+		// visit v if not yet
+		if( dfs_no[v] )
+			return;
+		dfs_no[v] = dfs_lo[v] = ++no;
+		pending.push(v);
+
+		// visit children
+		for(int i=0; i<G[v].size(); ++i) {
+			int u = G[v][i];
+			dfs( u );
+			if( scc_id[u] == -1 )
+				dfs_lo[v] = min( dfs_lo[v], dfs_lo[u] );
+		}
+
+		// when v is the representative of scc
+		if( dfs_no[v] == dfs_lo[v] ) {
+			vector<int> scc;
+			for(;;) {
+				int w = pending.top(); pending.pop();
+				scc.push_back(w);
+				scc_id[w] = scc_list.size();
+				if( w == v ) break;
+			}
+			scc_list.push_back(scc);
+
+			set<int> children;
+			for(int j=0; j<scc.size(); ++j)
+				for(int i=0; i<G[scc[j]].size(); ++i)
+					children.insert( scc_id[G[scc[j]][i]] );
+			children.erase(scc_id[v]);
+			scc_children.push_back( vector<int>(children.begin(), children.end()) );
+		}
+	}
+};
+
+template<typename T>
+class IdGen
+{
+	map<T, int> v2id_;
+	vector<T>   id2v_;
+public:
+	int v2id(const T& v) {
+		if( !v2id_.count(v) ) { v2id_[v] = size(); id2v_.push_back(v); }
+		return v2id_[v];
+	}
+	const T& id2v(int i) const { return id2v_[i]; }
+	int size() const { return id2v_.size(); }
+};
+
+template<typename Vert, typename Cost, typename Flow, int NV=1024>
+class MinCostFlow
+{
+	IdGen<Vert> idgen;
+
+	vector<int> G[NV];
+	Flow F[NV][NV];
+	Cost C[NV][NV];
+
+public:
+	void addEdge( Vert s_, Vert t_, Cost c, Flow f )
+	{
+		int s = idgen.v2id(s_), t = idgen.v2id(t_);
+		G[s].push_back(t);
+		G[t].push_back(s);
+		C[s][t] = c;
+		C[t][s] = -c;
+		F[s][t] = f;
+		F[t][s] = 0;
+	}
+
+	pair<Cost, Flow> calc( Vert s_, Vert t_ )
+	{
+		const int N=idgen.size(), S=idgen.v2id(s_), T=idgen.v2id(t_);
+		static const Cost COST_INF = 0x3fffffff; // !!EDIT HERE!!
+		static const Flow FLOW_INF = 0x3fffffff;
+
+		Cost total_cost = 0;
+		Flow total_flow = 0;
+		vector<Cost> dist(N, 0); // Distance from S : initially unknown.
+		for(;;)
+		{
+			// Dijkstra : find the "shortest path" from S to T wrt C[][].
+			//   C[][] can be <0 so we must be careful. Instead of computing the shortest path directly,
+			//   we compute the increase ("delta") from the shortest path in the previous iteration.
+			//   Since shortest path cannot decrease, delta is always >=0 when traversing edges.
+			//   Smallest delta implies smallest dist[T]+delta[T].
+			vector<Cost> delta(N, COST_INF); delta[S] = 0;
+			vector<int>  prev(N, -1);
+
+			typedef pair< Cost, pair<int, int> > cedge;
+			priority_queue< cedge, vector<cedge>, greater<cedge> > Q;
+			Q.push( cedge(0, make_pair(S, S)) );
+			while( !Q.empty() ) {
+				const cedge e = Q.top(); Q.pop();
+				const int u_prev = e.second.first;
+				const int u = e.second.second;
+				if( prev[u] >= 0 ) // visited
+					continue;
+				prev[u] = u_prev;
+
+				for(int i=0; i<G[u].size(); ++i) {
+					const int  v = G[u][i];
+					const Cost v_delta = dist[u]+delta[u]+C[u][v] - dist[v];
+					if( F[u][v]>0 && delta[v]>v_delta )
+						Q.push( cedge(delta[v]=v_delta, make_pair(u,v)) );
+				}
+			}
+
+			// If T is unreachable, finished.
+			if( prev[T] < 0 )
+				break;
+
+			// Update the distance table.
+			for(int u=0; u<N; ++u)
+				if( delta[u] != COST_INF )
+					dist[u] += delta[u];
+
+			// How much water can flow on the min-cost path?
+			Flow f = FLOW_INF;
+			for(int u=T; u!=S; u=prev[u])
+				f = min(f, F[prev[u]][u]);
+
+			// Run the flow as much as possible
+			total_flow += f;
+			for(int u=T; u!=S; u=prev[u]) {
+				total_cost    += f * C[prev[u]][u];
+				F[prev[u]][u] -= f;
+				F[u][prev[u]] += f;
+			}
+		}
+		return make_pair(total_cost, total_flow);
+	}
+};
+
+
+void problem_main()
+{
+	int V, E;
+	cin >> V >> E;
+
+	SCC scc;
+	for(int v=0; v<V; ++v)
+		scc.addVert(v);
+	while(E-->0) {
+		int A, B; cin >> A >> B;
+		scc.addEdge(A,B);
+	}
+	scc.scc();
+
+	int NSCC = scc.scc_list.size();
+
+	vector<vector<int>> scc_parent(NSCC);
+	for(int v=0; v<NSCC; ++v)
+		for(int u: scc.scc_children[v])
+			scc_parent[u].push_back(v);
+
+int best = 0;
+for(int _=0; _<100000; ++_)
+{
+	int total = 0;
+	vector<bool> dead(NSCC, false);
+	for(;;) {
+		int vv = -1, cc = 0, rs = 0;
+		for(int v=0; v<NSCC; ++v) if(!dead[v]) {
+			if(cc < scc.scc_list[v].size()) {
+				cc = scc.scc_list[v].size();
+				vv = v;
+				++rs;
+			} else if(cc == scc.scc_list[v].size()) {
+				if(rand()/10%rs==0) {
+					cc = scc.scc_list[v].size();
+					vv = v;
+				}
+				++rs;
+			}
+		}
+		if(vv == -1)
+			break;
+
+		total += cc;
+		dead[vv] = true;
+		{
+			queue<int> Q;
+			for(int u: scc.scc_children[vv]) Q.push(u);
+			while(!Q.empty()) {
+				int v = Q.front(); Q.pop();
+				if(dead[v]) continue;
+				dead[v] = true;
+				for(int u: scc.scc_children[v]) Q.push(u);
+			}
+		}
+		{
+			queue<int> Q;
+			for(int u: scc_parent[vv]) Q.push(u);
+			while(!Q.empty()) {
+				int v = Q.front(); Q.pop();
+				if(dead[v]) continue;
+				dead[v] = true;
+				for(int u: scc_parent[v]) Q.push(u);
+			}
+		}
+	}
+best = max(total, best);
+}
+
+	cout << best << endl;
+}
+
+int main()
+{
+	srand(time(0));
+
+	int T; cin>>T;
+	for(int C=1; C<=T; ++C)
+	{
+		cout << "Case #" << C << ": ";
+		problem_main();
+	}
+}

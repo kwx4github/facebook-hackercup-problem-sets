@@ -1,0 +1,222 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <queue>
+#include <cstring>
+#define INF 0x3fffffff
+#define RE(x) ((x)^1)
+
+using namespace std;
+
+int tt;
+int n,m;
+bool g[510][510];
+
+
+int N, M, head[1500], dis[1500], idx, sum;
+
+const int vsource = 1100, vsink = 1101;
+int source, sink;
+
+queue<int>q;
+
+struct Point
+{
+    int in, out;
+}p[1050];
+
+struct Edge
+{
+    int v, cap, next, rec;
+}e[1000000];
+
+void insert(int f, int t, int c, int rec)
+{
+    ++idx;
+    e[idx].v = t, e[idx].cap = c;
+    e[idx].rec = rec;
+    e[idx].next = head[f], head[f] = idx;
+}
+
+void init()
+{
+    idx = -1;
+    memset(head, 0xff, sizeof (head));
+}
+
+bool spfa(int u, int sk)
+{
+    memset(dis, 0xff, sizeof (dis));
+    dis[u] = 0;
+    q.push(u);
+    while (!q.empty()) {
+        u = q.front();
+        q.pop();
+        for (int i = head[u]; i != -1; i = e[i].next) {
+            if (dis[e[i].v] == -1 && e[i].cap > 0) {
+                dis[e[i].v] = dis[u] + 1;
+                q.push(e[i].v);
+            }
+        }
+    }
+    return dis[sk] != -1;
+}
+
+int dfs(int u, int sk, int flow)
+{
+    if (u == sk) {
+        return flow;
+    }
+    int tf = 0, sf;
+    for (int i = head[u]; i != -1; i = e[i].next)
+    {
+        if (dis[u]+1 == dis[e[i].v] && e[i].cap > 0 && (sf = dfs(e[i].v, sk, min( flow-tf, e[i].cap )))) {
+            e[i].cap -= sf;
+            e[RE(i)].cap += sf;
+            tf += sf;
+            if (tf == flow) {
+                return tf;
+            }
+        }
+    }
+    if (!tf) {
+        dis[u] = -1;
+    }
+    return tf;
+}
+
+int Dinic(int u, int sk, int flow)
+{
+    int ans = 0;
+    while (spfa(u, sk)) {
+        ans += dfs(u, sk, flow);
+    }
+    return ans;
+}
+
+bool used[510];
+int f[510];
+int pin[510],pout[510];
+int size[510];
+bool go[510][510];
+
+void find(int st,int x) {
+	used[x]=true;
+	g[st][x]=true;
+	for (int i=0;i<n;++i)
+		if (g[x][i] && !used[i])
+			find(st,i);
+}
+
+int main() {
+	freopen("c.in","r",stdin);
+	freopen("c.out","w",stdout);
+
+	scanf("%d",&tt);
+
+	for (int ii=1;ii<=tt;++ii) {
+		printf("Case #%d: ",ii);
+
+		scanf("%d%d",&n,&m);
+
+		memset(g,false,sizeof(g));
+		memset(go,false,sizeof(go));
+		for (int i=0;i<m;++i) {
+			int x,y;
+			scanf("%d%d",&x,&y);
+			g[x][y]=true;
+		}
+
+		for (int i=0;i<n;++i) {
+			memset(used,false,sizeof(used));
+			find(i,i);
+		}
+
+		for (int i=0;i<n;++i)
+			f[i]=i,size[i]=1;
+
+		for (int i=0;i<n;++i)
+			for (int j=0;j<i;++j)
+				if (g[i][j] && g[j][i]) {
+					f[i]=j;
+					size[j]++;
+					for (int k=0;k<n;++k)
+						g[j][k]|=g[i][k],g[k][j]|=g[k][i];
+					break;
+				}
+		for (int i=0;i<n;++i)
+			g[i][i]=false;
+		memset(pin,0,sizeof(pin));
+		memset(pout,0,sizeof(pout));
+		for (int i=0;i<n;++i)
+			for (int j=0;j<n;++j)
+				if (i!=j && i==f[i] && j==f[j]) {
+					if (g[i][j]) pout[i]++;
+					if (g[j][i]) pin[i]++;
+				}
+
+	    int ans1, ans2, ans;
+	    init();
+	    N=n*2;
+	    sum=0;
+	    source = N+1, sink = N+2;
+	    memset(p,0,sizeof(p));
+	    for (int i=0;i<n;++i) {
+	    	if (i!=f[i]) continue;
+	    	sum+=size[i];
+	    	p[i+1].out+=size[i];
+	    	p[i+1+n].in+=size[i];
+	    	insert(i+1,i+1+n,0,0);
+	    	insert(i+1+n,i+1,0,0);
+	    	insert(i+1,i+1+n,n,n);
+	    	insert(i+1+n,i+1,0,0);
+	    	if (pin[i]==0) {
+	    		insert(source,i+1,n,n);
+	    		insert(i+1,source,0,0);
+	    	}
+	    	if (pout[i]==0) {
+	    		insert(i+n+1,sink,n,n);
+	    		insert(sink,i+n+1,0,0);
+	    	}
+	    }
+	    for (int i=0;i<n;++i)
+	    	for (int j=0;j<n;++j)
+	    		if (i!=j && g[i][j] && i==f[i] && j==f[j]) {
+	    			insert(i+n+1,j+1,n,n);
+	    			insert(i+1,i+n+1,0,0);
+	    		}
+	    N+=2;
+	    // 接下来遍历所有节点，添加附加源点
+	    for (int i = 1; i <= N; ++i) {
+	        insert(vsource, i, p[i].in, p[i].in);
+	        insert(i, vsource, 0, 0);
+	        insert(i, vsink, p[i].out, p[i].out);
+	        insert(vsink, i, 0, 0);
+	    }
+	    insert(sink, source, INF, INF);
+	    insert(source, sink, 0, 0);
+
+	    if (Dinic(vsource, vsink, sum) != sum) {
+	        puts("Impossible");
+	    }
+
+	    ans1 = e[RE(head[sink])].cap;
+	    // 这里得到的是一个原网络的可行流，并非最小或者最大流
+
+	    e[head[sink]].cap = 0;
+	    e[RE(head[sink])].cap = 0;
+
+	    ans2 = Dinic(sink, source, INF);
+	    // 寻找缩流
+	    ans = ans1 - ans2;
+	    if (ans < 0) {  // 如果愿网络在不加汇点到源点的INF边足以提供多余可行流的流量
+	        // 那么最小流就可以等于零，内部成环
+	        e[head[sink]].cap = 0;
+	        e[RE(head[sink])].cap = 0;
+	        insert(vsource, source, -ans, -ans);
+	        Dinic(vsource, sink, INF);
+	        ans = 0;
+	    }
+	    printf("%d\n", ans);
+	}
+}

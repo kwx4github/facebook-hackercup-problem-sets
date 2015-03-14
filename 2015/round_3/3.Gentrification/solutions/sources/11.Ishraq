@@ -1,0 +1,150 @@
+#include <bits/stdc++.h>
+
+#define FO(i,a,b) for (int i = (a); i < (b); i++)
+#define sz(v) int(v.size())
+
+using namespace std;
+
+namespace MF {
+    const int N = 3005, M = 9000005;
+    int f[N], e[2*M], c[2*M], fl[2*M], nxt[2*M], ce;
+    int n, s, t;
+    int Q[N], lvl[N];
+    int le[N];
+
+    void init(int _n) {
+        n = _n+2; s = _n; t = _n+1; ce = 0;
+        FO(i,0,n) f[i]=-1;
+    }
+
+    void add(int a, int b, int cap) {
+        nxt[ce]=f[a]; f[a]=ce; e[ce]=b; fl[ce]=0; c[ce]=cap; ce++;
+        nxt[ce]=f[b]; f[b]=ce; e[ce]=a; fl[ce]=0; c[ce]=0; ce++;
+    }
+
+    bool bfs() {
+        FO(i,0,n) lvl[i]=-1;
+        int qi = 1;
+        Q[0] = s; lvl[s] = 0;
+        FO(i,0,qi) {
+            int x=Q[i];
+            le[x]=f[x];
+            for (int j=f[x];j>=0;j=nxt[j]) if (c[j]-fl[j]>0) {
+                int y=e[j];
+                if (lvl[y]==-1) {
+                    lvl[y]=lvl[x]+1;
+                    Q[qi++]=y;
+                }
+            }
+        }
+        return lvl[t]!=-1;
+    }
+
+    int aug(int cu, int f) {
+        if (cu == t) return f;
+        for (int &i=le[cu];i>=0;i=nxt[i]) if (c[i]-fl[i]>0) {
+            int x=e[i];
+            if (lvl[x]!=lvl[cu]+1) continue;
+            int rf = aug(x,min(f,c[i]-fl[i]));
+            if (rf>0) {
+                fl[i]+=rf;
+                fl[i^1]-=rf;
+                return rf;
+            }
+        }
+        lvl[cu]=-1;
+        return 0;
+    }
+
+    int mf() {
+        int tot = 0;
+        while (bfs())
+            for (int x=aug(s,1e9);x;x=aug(s,1e9)) tot+=x;
+        return tot;
+    }
+};
+
+
+struct sol {
+    struct G {
+        int n;
+        bool r[2005][2005];
+
+        void init(int _n) {
+            n = _n;
+            memset(r,0,sizeof r);
+            FO(i,0,n) r[i][i] = true;
+        }
+
+        void addedge(int x, int y) {
+            //printf("%d->%d\n", x, y);
+            r[x][y] = true;
+        }
+
+        int maxanti() {
+            FO(i,0,n) FO(j,0,n) FO(k,0,n) r[j][k] |= r[j][i]&&r[i][k];
+            MF::init(2*n);
+            FO(i,0,n) MF::add(MF::s, i, 1);
+            FO(i,0,n) MF::add(n+i, MF::t, 1);
+            FO(i,0,n) FO(j,0,n) if (i!=j && r[i][j]) {
+                MF::add(i,j+n,1);
+            }
+            return n-MF::mf();
+        }
+    };
+
+    int r[505][505];
+    int l[505], inv[505], outv[505];
+    G g;
+
+    int getans() {
+        int n, m;
+        scanf("%d %d", &n, &m);
+        vector<pair<int,int>> e;
+        FO(i,0,m) {
+            int a, b; scanf("%d %d", &a, &b);
+            e.emplace_back(a,b);
+            r[a][b] = true;
+        }
+        FO(i,0,n) r[i][i] = true;
+        FO(i,0,n) FO(j,0,n) FO(k,0,n) r[j][k] |= r[j][i]&&r[i][k];
+        memset(l,-1,sizeof l);
+        int ev = n;
+        FO(i,0,n) if (l[i] == -1) {
+            int s = 0;
+            FO(j,0,n) if (r[i][j] && r[j][i]) {
+                l[j] = i;
+                s++;
+            }
+            if (s > 1) {
+                inv[i] = ev++;
+                outv[i] = ev++;
+            } else {
+                inv[i] = i;
+                outv[i] = i;
+            }
+        }
+        g.init(ev);
+        FO(i,0,n) {
+            FO(j,0,n) {
+                if (r[i][j] && !r[j][i]) {
+                    g.addedge(outv[l[i]], inv[l[j]]);
+                }
+            }
+            g.addedge(inv[l[i]], i);
+            g.addedge(i, outv[l[i]]);
+        }
+        return g.maxanti();
+    }
+};
+
+sol s[25];
+
+int main() {
+    int T; scanf("%d", &T);
+    FO(Z,1,T+1) {
+        int r = s[Z].getans();
+        printf("Case #%d: %d\n", Z, r);
+    }
+}
+

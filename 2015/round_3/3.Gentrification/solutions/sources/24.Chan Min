@@ -1,0 +1,176 @@
+#include <cstdio>
+#include <thread>
+#include <numeric>
+#include <ctime>
+#include <vector>
+#include <cstdlib>
+#include <algorithm>
+
+using namespace std;
+
+struct solver
+{
+	int n,m;
+	vector<int> gforward[502];
+	vector<int> gbackward[502];
+
+	vector<int> q;
+	int v[502],vcnt;
+	int group[502],gcnt;
+	int gsize[502];
+	char graph[502][502];
+
+	volatile int ans;
+
+	void dfs(int nod) {
+		v[nod] = vcnt;
+		for (auto next : gforward[nod]) {
+			if (v[next] == vcnt) continue;
+			dfs(next);
+		}
+		q.push_back(nod);
+	}
+
+	void dfsrev(int nod) {
+		v[nod] = vcnt;
+		q.push_back(nod);
+		for (auto next : gbackward[nod]) {
+			if (v[next] == vcnt) continue;
+			dfsrev(next);
+		}
+	}
+
+	void input() {
+		scanf("%d%d",&n,&m);
+		for (int i = 0; i < n; i++) gforward[i].clear();
+		for (int i = 0; i < n; i++) gbackward[i].clear();
+		for (int i = 0; i < m; i++) {
+			int a,b;
+			scanf("%d%d",&a,&b);
+			gforward[a].push_back(b);
+			gbackward[b].push_back(a);
+		}
+		++vcnt;
+		q.clear();
+		for (int i = 0; i < n; i++) {
+			if (v[i] == vcnt) continue;
+			dfs(i);
+		}
+		vector<int> rq = q;
+		reverse(rq.begin(),rq.end());
+		++vcnt;
+		gcnt = 0;
+		for (auto i : rq) {
+			if (v[i] == vcnt) continue;
+			q.clear();
+			dfsrev(i);
+			for (auto j : q) group[j] = gcnt;
+			gsize[gcnt] = q.size();
+			gcnt++;
+		}
+		for (int i = 0; i < gcnt; i++) {
+			for (int j = 0; j < gcnt; j++) {
+				graph[i][j] = 0;
+			}
+		}
+		for (int i = 0; i < n; i++) {
+			for (auto next : gforward[i]) {
+				graph[group[i]][group[next]] = 1;
+			}
+		}
+		for (int i = 0; i < gcnt; i++) {
+			for (int j = 0; j < gcnt; j++) {
+				for (int k = 0; k < gcnt; k++) {
+					if (graph[j][i] && graph[i][k]) {
+						graph[j][k] = 1;
+					}
+				}
+			}
+		}
+		for (int i = 0; i < gcnt; i++) {
+			for (int j = 0; j < gcnt; j++) {
+				if (graph[i][j]) {
+					graph[j][i] = 1;
+				}
+			}
+		}
+	}
+
+	void solve() {
+		clock_t start = clock();
+		vector<int> cands;
+		int ans = 0;
+		for (;;) {
+			clock_t cur = clock();
+			if (cur - start >= CLOCKS_PER_SEC * 30) break;
+			for (int i = 0; i < gcnt; i++) {
+				vector<int> selected(gcnt,0);
+				vector<int> selections;
+				int curval = 0;
+				curval = gsize[i];
+				selections.push_back(i);
+				selected[i] = 1;
+				for(;;) {
+					cands.clear();
+					for (int j = 0; j < gcnt; j++) {
+						bool fail = false;
+						if (selected[j]) continue;
+						for (auto sel : selections) {
+							if (graph[sel][j]) {
+								fail = true;
+								break;
+							}
+						}
+						if (!fail) {
+							cands.push_back(j);
+						}
+					}
+					if (cands.size() == 0) {
+						break;
+					}
+					int total = 0;
+					for (auto c : cands) {
+						total += gsize[c];
+					}
+					int p = rand()%total;
+					for (auto c : cands) {
+						p -= gsize[c];
+						if (p < 0) {
+							curval += gsize[c];
+							selected[c] = 1;
+							selections.push_back(c);
+							break;
+						}
+					}
+				}
+				ans = max(ans, curval);
+			}
+		}
+		this->ans = ans;
+	}
+};
+
+solver A, B;
+int main(){
+	int T;
+	scanf("%d",&T);
+	vector<int> ans;
+	for (int testcase = 1; testcase <= T; testcase += 2) {
+		if (testcase <= T) A.input();
+		if (testcase + 1 <= T) B.input();
+		thread a([&]{
+			if (testcase <= T) A.solve();
+		});
+		thread b([&]{
+			if (testcase + 1 <= T) B.solve();
+		});
+		a.join();
+		b.join();
+
+		if (testcase <= T) ans.push_back((int)A.ans);
+		if (testcase + 1 <= T) ans.push_back((int)B.ans);
+	}
+	for (int testcase = 0; testcase < T; testcase++) {
+		printf("Case #%d: %d\n", testcase+1, ans[testcase]);
+	}
+}

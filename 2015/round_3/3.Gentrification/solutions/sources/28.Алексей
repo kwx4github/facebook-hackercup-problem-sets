@@ -1,0 +1,209 @@
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+#include <cstring>
+#include <cassert>
+#include <algorithm>
+#include <vector>
+#include <set>
+#include <map>
+#include <bitset>
+#include <stack>
+#include <queue>
+#include <deque>
+#include <complex>
+
+using namespace std;
+
+#define pb push_back
+#define mp make_pair
+#define sz(s) int((s).size())
+#define all(s) (s).begin(), (s).end()
+#if ( _WIN32 || __WIN32__ || _WIN64 || __WIN64__ )
+#define LLD "%I64d"
+#else
+#define LLD "%lld"
+#endif
+#ifdef LOCAL42
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define eprintf(...) 42
+#endif
+#define y0 yy0
+#define y1 yy1
+#define next _next
+#define prev _prev
+#define rank _rank
+#define link _link
+#define hash _hash
+#define fs first
+#define sc second
+
+typedef long long ll;
+typedef long long llong;
+typedef long long int64;
+typedef unsigned int uint;
+typedef long double ld;
+typedef unsigned long long ull;
+typedef unsigned long long ullong;
+typedef unsigned long long lint;
+typedef pair<int, int> pii;
+typedef vector<int> vi;
+
+const int inf = int(1e9);
+const double eps = 1e-7;
+const double pi = 4 * atan(double(1));
+const int N = 555;
+
+int sz;
+vi g[N], rg[N];
+bool used[N];
+bool tmp[N][N];
+int lst[N], cnt[N], suff[N], col[N];
+bitset<N> can[N], exists[N];
+pii ord[N];
+
+void dfs1(int v) {
+    used[v] = true;
+    for (int i = 0; i < sz(g[v]); ++i) {
+        if (!used[g[v][i]]) {
+            dfs1(g[v][i]);
+        }
+    }
+    lst[sz++] = v;
+}
+
+void dfs2(int v) {
+    ++cnt[sz];
+    col[v] = sz;
+    for (int i = 0; i < sz(rg[v]); ++i) {
+        if (col[rg[v][i]] == 0) {
+            dfs2(rg[v][i]);
+        }
+    }
+}
+
+void dfs3(int v, int pv) {
+    tmp[pv][v] = true;
+    for (int i = 0; i < sz(g[v]); ++i) {
+        if (!tmp[pv][g[v][i]]) {
+            dfs3(g[v][i], pv);
+        }
+    }
+}
+
+const int MAX_ITERS = int(1e9);
+
+int ans;
+int iters = 0;
+
+void gen(int x, int y, int last) {
+    if (x > sz) {
+        ans = max(ans, y);
+        return;
+    }
+    ++iters;
+    if (iters >= MAX_ITERS) {
+        return;
+    }
+    if (y + suff[x] <= ans) {
+        return;
+    }
+    if (!exists[last].test(ord[x].sc)) {
+        exists[x] = (exists[last] | can[ord[x].sc]);
+        gen(x + 1, y + ord[x].fs, x);
+    }
+    gen(x + 1, y, last);
+}
+
+inline void solve() {
+    int n, m;
+    scanf("%d %d", &n, &m);
+    for (int i = 0; i < n; ++i) {
+        g[i].clear();
+        rg[i].clear();
+        used[i] = false;
+        col[i] = 0;
+    }
+    for (int i = 0; i < m; ++i) {
+        int a, b;
+        scanf("%d %d", &a, &b);
+        g[a].pb(b);
+        rg[b].pb(a);
+    }
+    sz = 0;
+    for (int i = 0; i < n; ++i) {
+        if (!used[i]) {
+            dfs1(i);
+        }
+    }
+    sz = 0;
+    for (int i = n - 1; i >= 0; --i) {
+        if (col[lst[i]] == 0) {
+            cnt[++sz] = 0;
+            dfs2(lst[i]);
+        }
+    }
+    for (int i = 1; i <= sz; ++i) {
+        g[i].clear();
+    }
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < sz(rg[i]); ++j) {
+            if (col[rg[i][j]] != col[i]) {
+                g[col[rg[i][j]]].pb(col[i]);
+            }
+        }
+    }
+    for (int i = 1; i <= sz; ++i) {
+        for (int j = 1; j <= sz; ++j) {
+            tmp[i][j] = false;
+        }
+        dfs3(i, i);
+        ord[i] = mp(cnt[i], i);
+    }
+    for (int i = 1; i <= sz; ++i) {
+        can[i].reset();
+        for (int j = 1; j <= sz; ++j) {
+            if (tmp[i][j] || tmp[j][i]) {
+                can[i].set(j);
+            }
+        }
+    }
+    sort(ord + 1, ord + sz + 1);
+    reverse(ord + 1, ord + sz + 1);
+    for (int i = sz; i > 0; --i) {
+        suff[i] = (i + 1 <= sz ? suff[i + 1] : 0) + ord[i].fs;
+    }
+    ans = 0;
+    iters = 0;
+    gen(1, 0, 0);
+    printf("%d\n", ans);
+}
+
+inline void gen() {
+    freopen("input.txt", "w", stdout);
+    cout << 1 << endl;
+    cout << 500 << " " << 500 << endl;
+    for (int i = 0; i < 500; ++i) {
+        cout << rand() % 500 << " " << rand() % 500 << endl;
+    }
+    exit(0);
+}
+
+int main() {
+    //gen();
+#ifdef LOCAL42
+    freopen("input.txt", "r", stdin);
+    freopen("output.txt", "w", stdout);
+#endif
+    int t;
+    cin >> t;
+    for (int i = 0; i < t; ++i) {
+        printf("Case #%d: ", i + 1);
+        solve();
+        cerr << "Test " << i << " of " << t << endl;
+    }
+    return 0;
+}
